@@ -10,7 +10,7 @@
 
 //! Code to save/load the dep-graph from files.
 
-use rustc::dep_graph::{DepNode, WorkProductId, DepKind};
+use rustc::dep_graph::{DepNode, WorkProductId, DepKind, PreviousDepGraph};
 use rustc::hir::svh::Svh;
 use rustc::ich::Fingerprint;
 use rustc::session::Session;
@@ -23,8 +23,6 @@ use rustc_serialize::opaque::Decoder;
 use std::path::{Path};
 
 use super::data::*;
-use super::dirty_clean;
-use super::hash::*;
 use super::fs::*;
 use super::file_format;
 use super::work_product;
@@ -40,6 +38,7 @@ pub type DirtyNodes = FxHashMap<DepNodeIndex, DepNodeIndex>;
 /// actually it doesn't matter all that much.) See `README.md` for
 /// more general overview.
 pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    tcx.allocate_metadata_dep_nodes();
     tcx.precompute_in_scope_traits_hashes();
     if tcx.sess.incr_session_load_dep_graph() {
         let _ignore = tcx.dep_graph.in_ignore();
@@ -103,7 +102,7 @@ fn does_still_exist(tcx: TyCtxt, dep_node: &DepNode) -> bool {
         DepKind::Hir |
         DepKind::HirBody |
         DepKind::InScopeTraits |
-        DepKind::MetaData => {
+        DepKind::CrateMetadata => {
             dep_node.extract_def_id(tcx).is_some()
         }
         _ => {
@@ -186,9 +185,6 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // dirty.
     reconcile_work_products(tcx, work_products, &clean_work_products);
 
-    dirty_clean::check_dirty_clean_annotations(tcx,
-                                               &serialized_dep_graph.nodes,
-                                               &dirty_raw_nodes);
     Ok(())
 }
 
@@ -198,15 +194,12 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  nodes: &IndexVec<DepNodeIndex, DepNode>,
                                  serialized_hashes: &[(DepNodeIndex, Fingerprint)])
                                  -> DirtyNodes {
-    let mut hcx = HashContext::new(tcx);
     let mut dirty_nodes = FxHashMap();
 
     for &(dep_node_index, prev_hash) in serialized_hashes {
         let dep_node = nodes[dep_node_index];
         if does_still_exist(tcx, &dep_node) {
-            let current_hash = hcx.hash(&dep_node).unwrap_or_else(|| {
-                bug!("Cannot find current ICH for input that still exists?")
-            });
+            let current_hash = tcx.dep_graph.fingerprint_of(&dep_node);
 
             if current_hash == prev_hash {
                 debug!("initial_dirty_nodes: {:?} is clean (hash={:?})",
@@ -416,7 +409,7 @@ fn process_edge<'a, 'tcx, 'edges>(
     // clean target because removing the input would have dirtied the input
     // node and transitively dirtied the target.
     debug_assert!(match nodes[source].kind {
-        DepKind::Hir | DepKind::HirBody | DepKind::MetaData => {
+        DepKind::Hir | DepKind::HirBody | DepKind::CrateMetadata => {
             does_still_exist(tcx, &nodes[source])
         }
         _ => true,
@@ -431,5 +424,40 @@ fn process_edge<'a, 'tcx, 'edges>(
             let wp_id = WorkProductId::from_fingerprint(target.hash);
             clean_work_products.insert(wp_id);
         }
+    }
+}
+
+pub fn load_dep_graph_new(sess: &Session) -> PreviousDepGraph {
+    use rustc::dep_graph::SerializedDepGraph as SerializedDepGraphNew;
+
+    let empty = PreviousDepGraph::new(SerializedDepGraphNew::new());
+
+    if sess.opts.incremental.is_none() {
+        return empty
+    }
+
+    if let Some(bytes) = load_data(sess, &dep_graph_path_new(sess)) {
+        let mut decoder = Decoder::new(&bytes, 0);
+        let prev_commandline_args_hash = u64::decode(&mut decoder)
+            .expect("Error reading commandline arg hash from cached dep-graph");
+
+        if prev_commandline_args_hash != sess.opts.dep_tracking_hash() {
+            if sess.opts.debugging_opts.incremental_info {
+                eprintln!("incremental: completely ignoring cache because of \
+                           differing commandline arguments");
+            }
+            // We can't reuse the cache, purge it.
+            debug!("load_dep_graph_new: differing commandline arg hashes");
+
+            // No need to do any further work
+            return empty
+        }
+
+        let dep_graph = SerializedDepGraphNew::decode(&mut decoder)
+            .expect("Error reading cached dep-graph");
+
+        PreviousDepGraph::new(dep_graph)
+    } else {
+        empty
     }
 }

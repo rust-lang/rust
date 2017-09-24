@@ -97,6 +97,17 @@ impl serialize::UseSpecializedDecodable for CrateNum {
            RustcDecodable, Hash, Copy)]
 pub struct DefIndex(u32);
 
+impl Idx for DefIndex {
+    fn new(value: usize) -> Self {
+        assert!(value < (u32::MAX) as usize);
+        DefIndex(value as u32)
+    }
+
+    fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
 impl fmt::Debug for DefIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,

@@ -60,7 +60,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use hir::def_id::{CrateNum, DefId, DefIndex};
+use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
 
@@ -420,7 +420,7 @@ define_dep_nodes!( <'tcx>
     [input] Hir(DefId),
 
     // Represents metadata from an extern crate.
-    [input] MetaData(DefId),
+    [input] CrateMetadata(CrateNum),
 
     // Represents some artifact that we save to disk. Note that these
     // do not have a def-id as part of their identifier.
@@ -675,6 +675,22 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefIndex,
 
     fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
         tcx.item_path_str(DefId::local(self.0))
+    }
+}
+
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (CrateNum,) {
+    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+
+    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+        let def_id = DefId {
+            krate: self.0,
+            index: CRATE_DEF_INDEX,
+        };
+        tcx.def_path_hash(def_id).0
+    }
+
+    fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
+        tcx.crate_name(self.0).as_str().to_string()
     }
 }
 

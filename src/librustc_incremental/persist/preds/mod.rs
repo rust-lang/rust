@@ -10,10 +10,10 @@
 
 use rustc::dep_graph::{DepGraphQuery, DepNode, DepKind};
 use rustc::ich::Fingerprint;
+use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::{Graph, NodeIndex};
 
-use super::hash::*;
 
 mod compress;
 
@@ -40,15 +40,13 @@ pub struct Predecessors<'query> {
 }
 
 impl<'q> Predecessors<'q> {
-    pub fn new(query: &'q DepGraphQuery, hcx: &mut HashContext) -> Self {
-        let tcx = hcx.tcx;
-
+    pub fn new(tcx: TyCtxt, query: &'q DepGraphQuery) -> Self {
         // Find the set of "start nodes". These are nodes that we will
         // possibly query later.
         let is_output = |node: &DepNode| -> bool {
             match node.kind {
                 DepKind::WorkProduct => true,
-                DepKind::MetaData => {
+                DepKind::CrateMetadata => {
                     // We do *not* create dep-nodes for the current crate's
                     // metadata anymore, just for metadata that we import/read
                     // from other crates.
@@ -74,7 +72,7 @@ impl<'q> Predecessors<'q> {
             let input = *graph.node_data(input_index);
             debug!("computing hash for input node `{:?}`", input);
             hashes.entry(input)
-                  .or_insert_with(|| hcx.hash(input).unwrap());
+                  .or_insert_with(|| tcx.dep_graph.fingerprint_of(&input));
         }
 
         if tcx.sess.opts.debugging_opts.query_dep_graph {
@@ -89,7 +87,7 @@ impl<'q> Predecessors<'q> {
 
             for node in hir_nodes {
                 hashes.entry(node)
-                      .or_insert_with(|| hcx.hash(node).unwrap());
+                      .or_insert_with(|| tcx.dep_graph.fingerprint_of(&node));
             }
         }
 

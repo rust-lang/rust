@@ -643,7 +643,16 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         &crate_name,
         &disambiguator.as_str(),
     );
-    let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
+
+    let dep_graph = if sess.opts.build_dep_graph() {
+        let prev_dep_graph = time(time_passes, "load prev dep-graph (new)", || {
+            rustc_incremental::load_dep_graph_new(sess)
+        });
+
+        DepGraph::new(prev_dep_graph)
+    } else {
+        DepGraph::new_disabled()
+    };
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
@@ -713,7 +722,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     // item, much like we do for macro expansion. In other words, the hash reflects not just
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
-    let _ignore = dep_graph.in_ignore();
     let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
     let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess,

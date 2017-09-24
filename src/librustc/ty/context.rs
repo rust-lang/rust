@@ -11,6 +11,7 @@
 //! type context book-keeping
 
 use dep_graph::DepGraph;
+use dep_graph::{DepNode, DepConstructor};
 use errors::DiagnosticBuilder;
 use session::Session;
 use session::config::OutputFilenames;
@@ -1235,6 +1236,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   krate,
                                   self.hir.definitions(),
                                   self.cstore)
+    }
+
+    // This method makes sure that we have a DepNode and a Fingerprint for
+    // every upstream crate. It needs to be called once right after the tcx is
+    // created.
+    // With full-fledged red/green, the method will probably become unnecessary
+    // as this will be done on-demand.
+    pub fn allocate_metadata_dep_nodes(self) {
+        // We cannot use the query versions of crates() and crate_hash(), since
+        // those would need the DepNodes that we are allocating here.
+        for cnum in self.cstore.crates_untracked() {
+            let dep_node = DepNode::new(self, DepConstructor::CrateMetadata(cnum));
+            let crate_hash = self.cstore.crate_hash_untracked(cnum);
+            self.dep_graph.with_task(dep_node,
+                                     self,
+                                     crate_hash,
+                                     |_, x| x // No transformation needed
+            );
+        }
     }
 
     // This method exercises the `in_scope_traits_map` query for all possible
