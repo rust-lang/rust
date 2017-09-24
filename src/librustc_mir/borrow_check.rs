@@ -412,7 +412,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                             WriteKind::StorageDead |
                             WriteKind::Mutate =>
                                 this.report_illegal_mutation_of_borrowed(
-                                    context, lvalue_span),
+                                    context, lvalue_span, borrow),
                             WriteKind::Move =>
                                 this.report_move_out_while_borrowed(
                                     context, lvalue_span, borrow),
@@ -975,7 +975,10 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         err.emit();
     }
 
-    fn report_illegal_mutation_of_borrowed(&mut self, _: Context, (lvalue, span): (&Lvalue, Span)) {
+    fn report_illegal_mutation_of_borrowed(&mut self,
+                                           _: Context,
+                                           (lvalue, span): (&Lvalue, Span),
+                                           loan: &BorrowData) {
         let mut err = self.tcx.cannot_assign_to_borrowed(
             span, &self.describe_lvalue(lvalue), Origin::Mir);
         // FIXME: add span labels for borrow and assignment points
