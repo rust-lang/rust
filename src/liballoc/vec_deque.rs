@@ -558,7 +558,7 @@ impl<T> VecDeque<T> {
             .and_then(|needed_cap| needed_cap.checked_next_power_of_two())
             .expect("capacity overflow");
 
-        if new_cap > self.capacity() {
+        if new_cap > old_cap {
             self.buf.reserve_exact(used_cap, new_cap - used_cap);
             unsafe {
                 self.handle_cap_increase(old_cap);
