@@ -59,7 +59,7 @@ impl IntPlusOne {
         false
     }
 
-    fn check_binop(&self, cx: &EarlyContext, block: &Expr, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<(bool, Option<String>)> {
+    fn check_binop(&self, cx: &EarlyContext, block: &Expr, binop: BinOpKind, lhs: &Expr, rhs: &Expr) {
         match (binop, &lhs.node, &rhs.node) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (BinOpKind::Ge, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) => {
