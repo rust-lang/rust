@@ -413,11 +413,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn mul_add(self, a: f32, b: f32) -> f32 {
-        #[cfg(target_feature="fma")]
-        unsafe { intrinsics::fmaf32(self, a, b) }
-
-        #[cfg(not(target_feature="fma"))]
-        self * a + b
+        if cfg!(target_feature="fma") {
+            unsafe { intrinsics::fmaf32(self, a, b) }
+        } else {
+            self * a + b
+        }
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
