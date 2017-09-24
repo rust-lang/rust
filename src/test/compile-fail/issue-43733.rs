@@ -9,15 +9,15 @@
 // except according to those terms.
 
 #![feature(const_fn)]
+#![feature(thread_local)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
 
 type Foo = std::cell::RefCell<String>;
 
 #[cfg(target_thread_local)]
+#[thread_local]
 static __KEY: std::thread::__FastLocalKeyInner<Foo> =
     std::thread::__FastLocalKeyInner::new();
-//~^^ ERROR Sync` is not satisfied
-//~^^^ ERROR Sync` is not satisfied
 
 #[cfg(not(target_thread_local))]
 static __KEY: std::thread::__OsLocalKeyInner<Foo> =
