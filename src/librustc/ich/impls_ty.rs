@@ -514,7 +514,17 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl_stable_hash_for!(enum ::middle::region::Scope {
+impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { idx });
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ::middle::region::Scope {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.data().hash_stable(hcx, hasher)
+    }
+}
+
+impl_stable_hash_for!(enum ::middle::region::ScopeData {
     Node(local_id),
     Destruction(local_id),
     CallSite(local_id),
