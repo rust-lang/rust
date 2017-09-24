@@ -126,7 +126,7 @@ extern crate lazy_static;
 extern crate serde_json;
 extern crate cmake;
 extern crate filetime;
-extern crate gcc;
+extern crate cc;
 extern crate getopts;
 extern crate num_cpus;
 extern crate toml;
@@ -148,7 +148,7 @@ use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppresse
 
 use util::{exe, libdir, OutputFolder, CiEnv};
 
-mod cc;
+mod cc_detect;
 mod channel;
 mod check;
 mod clean;
@@ -241,9 +241,9 @@ pub struct Build {
 
     // Runtime state filled in later on
     // target -> (cc, ar)
-    cc: HashMap<Interned<String>, (gcc::Tool, Option<PathBuf>)>,
+    cc: HashMap<Interned<String>, (cc::Tool, Option<PathBuf>)>,
     // host -> (cc, ar)
-    cxx: HashMap<Interned<String>, gcc::Tool>,
+    cxx: HashMap<Interned<String>, cc::Tool>,
     crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
@@ -350,7 +350,7 @@ impl Build {
         }
 
         self.verbose("finding compilers");
-        cc::find(self);
+        cc_detect::find(self);
         self.verbose("running sanity check");
         sanity::check(self);
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
@@ -619,7 +619,7 @@ impl Build {
     /// specified.
     fn cflags(&self, target: Interned<String>) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
-        // gcc-rs because the build scripts will determine that for themselves.
+        // cc-rs because the build scripts will determine that for themselves.
         let mut base = self.cc[&target].0.args().iter()
                            .map(|s| s.to_string_lossy().into_owned())
                            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))

@@ -23,7 +23,7 @@
 //! 6. "cc"
 //!
 //! Some of this logic is implemented here, but much of it is farmed out to the
-//! `gcc` crate itself, so we end up having the same fallbacks as there.
+//! `cc` crate itself, so we end up having the same fallbacks as there.
 //! Similar logic is then used to find a C++ compiler, just some s/cc/c++/ is
 //! used.
 //!
@@ -35,7 +35,7 @@ use std::process::Command;
 use std::iter;
 
 use build_helper::{cc2ar, output};
-use gcc;
+use cc;
 
 use Build;
 use config::Target;
@@ -45,7 +45,7 @@ pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
     for target in build.targets.iter().chain(&build.hosts).cloned().chain(iter::once(build.build)) {
-        let mut cfg = gcc::Build::new();
+        let mut cfg = cc::Build::new();
         cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false)
            .target(&target).host(&build.build);
 
@@ -67,7 +67,7 @@ pub fn find(build: &mut Build) {
 
     // For all host triples we need to find a C++ compiler as well
     for host in build.hosts.iter().cloned().chain(iter::once(build.build)) {
-        let mut cfg = gcc::Build::new();
+        let mut cfg = cc::Build::new();
         cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false).cpp(true)
            .target(&host).host(&build.build);
         let config = build.config.target_config.get(&host);
@@ -82,7 +82,7 @@ pub fn find(build: &mut Build) {
     }
 }
 
-fn set_compiler(cfg: &mut gcc::Build,
+fn set_compiler(cfg: &mut cc::Build,
                 gnu_compiler: &str,
                 target: Interned<String>,
                 config: Option<&Target>,
