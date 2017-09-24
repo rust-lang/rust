@@ -2,6 +2,7 @@ use itertools::Itertools;
 use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
+use rustc::hir::def_id; 
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
@@ -619,7 +620,7 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
-    check_for_mut_range_bound(cx, arg, body, expr);
+    check_for_mut_range_bound(cx, arg, body);
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
@@ -1309,15 +1310,14 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     }
 }
 
-struct MutateDelegate<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>,
+struct MutateDelegate {
     node_id_low: Option<NodeId>,
     node_id_high: Option<NodeId>,
     span_low: Option<Span>,
     span_high: Option<Span>,
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for MutateDelegate<'a, 'tcx> {
+impl<'tcx> Delegate<'tcx> for MutateDelegate {
     fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {
     }
   
@@ -1345,14 +1345,14 @@ impl<'a, 'tcx> Delegate<'tcx> for MutateDelegate<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutateDelegate<'a, 'tcx> {
+impl<'tcx> MutateDelegate {
     fn mutation_span(&self) -> (Option<Span>, Option<Span>) {
         (self.span_low, self.span_high)
     }
 }
 
-fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr,  expr: &Expr) {
-    if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
+fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
+    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(arg) {
         let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {
             let (span_low, span_high) = check_for_mutation(cx, body, mut_ids);
@@ -1371,7 +1371,7 @@ fn mut_warn_with_span(cx: &LateContext, span: Option<Span>) {
 fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
     if_let_chain! {[
         let ExprPath(ref qpath) = bound.node,
-        let QPath::Resolved(None, ref path) = *qpath,
+        let QPath::Resolved(None, _) = *qpath,
     ], {
         let def = cx.tables.qpath_def(qpath, bound.hir_id);
         match def {
@@ -1394,24 +1394,11 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
 }
 
 fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: Vec<Option<NodeId>>) -> (Option<Span>, Option<Span>) {
-    let mut delegate = MutateDelegate { cx: cx, node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
-    if let Some(id) = get_id_if_some(&bound_ids) {
-        let def_id = cx.tcx.hir.local_def_id(id);
-        let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
-        ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
-        return delegate.mutation_span();
-    } else {
-        return (None, None);
-    }
-}
-
-fn get_id_if_some(bound_ids: &Vec<Option<NodeId>>) -> Option<NodeId> {
-    for id in bound_ids.into_iter() {
-        if id.is_some() {
-            return *id;
-        }
-    }
-    return None;
+    let mut delegate = MutateDelegate { node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
+    let def_id = def_id::DefId::local(body.hir_id.owner);
+    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
+    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
+    return delegate.mutation_span();
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
