@@ -150,13 +150,13 @@ impl_stable_hash_for!(struct hir::Path {
 
 impl_stable_hash_for!(struct hir::PathSegment {
     name,
+    infer_types,
     parameters
 });
 
 impl_stable_hash_for!(struct hir::PathParameters {
     lifetimes,
     types,
-    infer_types,
     bindings,
     parenthesized
 });

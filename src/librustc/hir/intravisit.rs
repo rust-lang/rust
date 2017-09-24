@@ -627,7 +627,9 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'v PathSegment) {
     visitor.visit_name(path_span, segment.name);
-    visitor.visit_path_parameters(path_span, &segment.parameters);
+    if let Some(ref parameters) = segment.parameters {
+        visitor.visit_path_parameters(path_span, parameters);
+    }
 }
 
 pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
