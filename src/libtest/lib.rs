@@ -278,12 +278,11 @@ impl Options {
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
-    let mut opts = match parse_opts(args) {
+    let opts = match parse_opts(args, options) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => panic!("{:?}", msg),
         None => return,
     };
-    opts.options = options;
     if opts.list {
         if let Err(e) = list_tests_console(&opts, tests) {
             panic!("io error when listing tests: {:?}", e);
@@ -434,7 +433,7 @@ Test Attributes:
 }
 
 // Parses command line arguments into test options
-pub fn parse_opts(args: &[String]) -> Option<OptRes> {
+pub fn parse_opts(args: &[String], mut options: Options) -> Option<OptRes> {
     let opts = optgroups();
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -506,6 +505,10 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         }
     };
 
+    if teamcity {
+        options.display_service_messages = true
+    }
+
     let test_opts = TestOpts {
         list,
         filter,
@@ -519,12 +522,8 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         quiet,
         test_threads,
         skip: matches.opt_strs("skip"),
-        options: Options{
-            display_output: false,
-            display_service_messages: teamcity
-        },
+        options: options
     };
-   // test_opts.options.display_service_messages = teamcity;
 
     Some(Ok(test_opts))
 }
@@ -607,6 +606,7 @@ impl<T: Write> ConsoleTestState<T> {
         self.write_short_result("ok", ".", term::color::GREEN)?;
 
         let name : String = service_message_escape(test.name.as_slice());
+        println!("display_service_messages {}", &self.options.display_service_messages);
         if self.options.display_service_messages {
             self.write_plain(&format!("\n##teamcity[testFinished name='{}']\n", name))?;
         }
@@ -617,7 +617,8 @@ impl<T: Write> ConsoleTestState<T> {
 
         self.write_short_result("FAILED", "F", term::color::RED)?;
         if self.options.display_service_messages {
-            self.write_plain(&format!("\n##teamcity[testFailed name='{}']\n", service_message_escape(test.name.as_slice())))?;
+            self.write_plain(&format!("\n##teamcity[testFailed name='{}']\n",
+                                      service_message_escape(test.name.as_slice())))?;
         }
         std::result::Result::Ok(())
     }
@@ -625,7 +626,8 @@ impl<T: Write> ConsoleTestState<T> {
     pub fn write_ignored(&mut self, test: &TestDesc) -> io::Result<()> {
         self.write_short_result("ignored", "i", term::color::YELLOW)?;
         if self.options.display_service_messages {
-            self.write_plain(&format!("\n##teamcity[testIgnored name='{}']\n", service_message_escape(test.name.as_slice())))?;
+            self.write_plain(&format!("\n##teamcity[testIgnored name='{}']\n",
+                                      service_message_escape(test.name.as_slice())))?;
         }
         std::result::Result::Ok(())
     }
@@ -706,8 +708,9 @@ impl<T: Write> ConsoleTestState<T> {
                 } else {
                     "false"
                 };
-                self.write_plain(&format!("\n##teamcity[testStarted name='{}' captureStandardOutput='{}']\n",
-                                          service_message_escape(test.name.as_slice()), use_std_out))?;
+                self.write_plain(
+                    &format!("\n##teamcity[testStarted name='{}' captureStandardOutput='{}']\n",
+                             service_message_escape(test.name.as_slice()), use_std_out))?;
             }
             self.write_plain(&format!("test {} ... ", name))
         }
@@ -733,7 +736,8 @@ impl<T: Write> ConsoleTestState<T> {
 
     pub fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
         if self.options.display_service_messages {
-            self.write_plain(&format!("\n##teamcity[testFailed name='{}']\n", service_message_escape(desc.name.as_slice())))?;
+            self.write_plain(&format!("\n##teamcity[testFailed name='{}']\n",
+                                      service_message_escape(desc.name.as_slice())))?;
         }
         self.write_plain(&format!("test {} has been running for over {} seconds\n",
                                   desc.name,
@@ -778,18 +782,24 @@ impl<T: Write> ConsoleTestState<T> {
             output.write_fmt(format_args!(" = {} MB/s", bs.mb_s)).unwrap();
 
             if self.options.display_service_messages {
-                output.write_fmt(format_args!("##teamcity[buildStatisticValue key='{}_MB_s' value='{}']\n",
-                                              test.name.as_slice(), bs.mb_s)).unwrap();
+                output.write_fmt(
+                    format_args!("##teamcity[buildStatisticValue key='{}_MB_s' value='{}']\n",
+                                 test.name.as_slice(), bs.mb_s)).unwrap();
             }
         }
         if self.options.display_service_messages {
-            output.write_fmt(format_args!("\n##teamcity[buildStatisticValue key='{}_ns_iter_median' value='{}']\n",
-                                          test.name.as_slice(), median)).unwrap();
+            output.write_fmt(
+                format_args!(
+                    "\n##teamcity[buildStatisticValue key='{}_ns_iter_median' value='{}']\n",
+                             test.name.as_slice(), median)).unwrap();
 
-            output.write_fmt(format_args!("##teamcity[buildStatisticValue key='{}_std_dev' value='{}']\n",
-                                          test.name.as_slice(), deviation)).unwrap();
+            output.write_fmt(
+                format_args!("##teamcity[buildStatisticValue key='{}_std_dev' value='{}']\n",
+                             test.name.as_slice(), deviation)).unwrap();
         }
-        output.write_fmt(format_args!("##teamcity[testFinished name='{}']\n", test.name.as_slice())).unwrap();
+        output.write_fmt(
+            format_args!("##teamcity[testFinished name='{}']\n",
+                         test.name.as_slice())).unwrap();
         output
     }
 
@@ -895,7 +905,7 @@ fn service_message_escape(message: &str) -> String {
         .replace('\r', "|r")
         .replace('[', "|[")
         .replace(']', "|]")
-    //TODO \uNNNN (unicode symbol with code 0xNNNN) to "|0xNNNN'
+    //FIXME \uNNNN (unicode symbol with code 0xNNNN) to "|0xNNNN'
 }
 
 // Format a number with thousands separators
@@ -1029,6 +1039,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         let n = t.desc.name.as_slice();
         st.max_name_len = n.len();
     }
+    println!("opts are {}", opts.options.display_service_messages);
     run_tests(opts, tests, |x| callback(&x, &mut st))?;
     return st.write_run_finish();
 }
@@ -1919,11 +1930,31 @@ mod tests {
     #[test]
     fn parse_ignored_flag() {
         let args = vec!["progname".to_string(), "filter".to_string(), "--ignored".to_string()];
-        let opts = match parse_opts(&args) {
+        let opts = match parse_opts(&args, TestOpts::new().options) {
             Some(Ok(o)) => o,
             _ => panic!("Malformed arg in parse_ignored_flag"),
         };
-        assert!((opts.run_ignored));
+        assert!(opts.run_ignored);
+    }
+
+    #[test]
+    fn parse_teamcity_flag() {
+        let args = vec!["progname".to_string(), "filter".to_string(), "--teamcity".to_string()];
+        let opts = match parse_opts(&args, TestOpts::new().options) {
+            Some(Ok(o)) => o,
+            _ => panic!("Malformed arg in parse_ignored_flag"),
+        };
+        assert!(opts.options.display_service_messages);
+    }
+
+    #[test]
+    fn teamcity_service_messages_defaults_to_off() {
+        let args = vec!["progname".to_string(), "filter".to_string(), "--ignored".to_string()];
+        let opts = match parse_opts(&args, TestOpts::new().options) {
+            Some(Ok(o)) => o,
+            _ => panic!("Malformed arg in parse_ignored_flag"),
+        };
+        assert!(!opts.options.display_service_messages);
     }
 
     #[test]
