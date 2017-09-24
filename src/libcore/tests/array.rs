@@ -38,7 +38,7 @@ fn array_try_from() {
                 let slice: &[u8] = &array[..];
 
                 let result = <&Array>::try_from(slice);
-                assert_eq!(Ok(&array), result);
+                assert_eq!(&array, result.unwrap());
             })+
         }
     }
