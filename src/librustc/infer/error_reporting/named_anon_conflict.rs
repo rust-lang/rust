@@ -78,8 +78,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return false;
         }
 
-        if let Some(anon_ty) = self.find_anon_type(anon, &br) {
-            let (_, fndecl) = anon_ty;
+        if let Some((_, fndecl)) = self.find_anon_type(anon, &br) {
             if self.is_return_type_anon(scope_def_id, br, fndecl).is_some() ||
                self.is_self_anon(is_first, scope_def_id) {
                 return false;
