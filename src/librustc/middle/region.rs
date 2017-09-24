@@ -98,8 +98,15 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
 pub struct Scope {
-    pub scope_data: ScopeData
+    pub(crate) id: hir::ItemLocalId,
+    pub(crate) code: u32
 }
+
+const SCOPE_DATA_NODE: u32 = !0;
+const SCOPE_DATA_CALLSITE: u32 = !1;
+const SCOPE_DATA_ARGUMENTS: u32 = !2;
+const SCOPE_DATA_DESTRUCTION: u32 = !3;
+const SCOPE_DATA_REMAINDER_MAX: u32 = !4;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
 pub enum ScopeData {
@@ -148,11 +155,9 @@ pub struct BlockRemainder {
          RustcDecodable, Debug, Copy)]
 pub struct FirstStatementIndex { pub idx: u32 }
 
-pub const FIRST_STATEMENT_MAX: usize = !0u32 as usize;
-
 impl Idx for FirstStatementIndex {
     fn new(idx: usize) -> Self {
-        assert!(idx <= FIRST_STATEMENT_MAX);
+        assert!(idx <= SCOPE_DATA_REMAINDER_MAX as usize);
         FirstStatementIndex { idx: idx as u32 }
     }
 
@@ -164,7 +169,14 @@ impl Idx for FirstStatementIndex {
 impl From<ScopeData> for Scope {
     #[inline]
     fn from(scope_data: ScopeData) -> Self {
-        Self { scope_data }
+        let (id, code) = match scope_data {
+            ScopeData::Node(id) => (id, SCOPE_DATA_NODE),
+            ScopeData::CallSite(id) => (id, SCOPE_DATA_CALLSITE),
+            ScopeData::Arguments(id) => (id, SCOPE_DATA_ARGUMENTS),
+            ScopeData::Destruction(id) => (id, SCOPE_DATA_DESTRUCTION),
+            ScopeData::Remainder(r) => (r.block, r.first_statement_index.index() as u32)
+        };
+        Self { id, code }
     }
 }
 
@@ -172,7 +184,16 @@ impl From<ScopeData> for Scope {
 impl Scope {
     #[inline]
     pub fn data(self) -> ScopeData {
-        self.scope_data
+        match self.code {
+            SCOPE_DATA_NODE => ScopeData::Node(self.id),
+            SCOPE_DATA_CALLSITE => ScopeData::CallSite(self.id),
+            SCOPE_DATA_ARGUMENTS => ScopeData::Arguments(self.id),
+            SCOPE_DATA_DESTRUCTION => ScopeData::Destruction(self.id),
+            idx => ScopeData::Remainder(BlockRemainder {
+                block: self.id,
+                first_statement_index: FirstStatementIndex { idx }
+            })
+        }
     }
 
     #[inline]
@@ -207,17 +228,7 @@ impl Scope {
     /// NB: likely to be replaced as API is refined; e.g. pnkfelix
     /// anticipates `fn entry_node_id` and `fn each_exit_node_id`.
     pub fn item_local_id(&self) -> hir::ItemLocalId {
-        // TODO: killme
-        match self.data() {
-            ScopeData::Node(id) => id,
-
-            // These cases all return rough approximations to the
-            // precise scope denoted by `self`.
-            ScopeData::Remainder(br) => br.block,
-            ScopeData::Destruction(id) |
-            ScopeData::CallSite(id) |
-            ScopeData::Arguments(id) => id,
-        }
+        self.id
     }
 
     pub fn node_id(&self, tcx: TyCtxt, scope_tree: &ScopeTree) -> ast::NodeId {
