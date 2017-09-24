@@ -12,7 +12,7 @@ use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
 use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
 use rustc::ty::{self, TypeFoldable};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{self, LayoutOf};
 use rustc::traits;
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
@@ -663,7 +663,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             } else {
                 llval = bcx.load(llval, align.non_abi());
             }
-            if arg.layout.ty == bcx.tcx().types.bool {
+            if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = arg.layout.abi {
                 bcx.range_metadata(llval, 0..2);
                 // We store bools as i8 so we need to truncate to i1.
                 llval = base::to_immediate(bcx, llval, arg.layout);

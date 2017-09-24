@@ -453,7 +453,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 span_bug!(span, "dereference of non-constant pointer `{:?}`",
                                           Value(base));
                             }
-                            if projected_ty.is_bool() {
+                            let layout = self.ccx.layout_of(projected_ty);
+                            if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = layout.abi {
                                 let i1_type = Type::i1(self.ccx);
                                 if val_ty(val) != i1_type {
                                     unsafe {

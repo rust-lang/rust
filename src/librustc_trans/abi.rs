@@ -695,17 +695,15 @@ impl<'a, 'tcx> FnType<'tcx> {
 
         let arg_of = |ty: Ty<'tcx>, is_return: bool| {
             let mut arg = ArgType::new(ccx.layout_of(ty));
-            if ty.is_bool() {
+            if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = arg.layout.abi {
                 arg.attrs.set(ArgAttribute::ZExt);
-            } else {
-                if arg.layout.is_zst() {
-                    // For some forsaken reason, x86_64-pc-windows-gnu
-                    // doesn't ignore zero-sized struct arguments.
-                    // The same is true for s390x-unknown-linux-gnu.
-                    if is_return || rust_abi ||
-                       (!win_x64_gnu && !linux_s390x) {
-                        arg.ignore();
-                    }
+            } else if arg.layout.is_zst() {
+                // For some forsaken reason, x86_64-pc-windows-gnu
+                // doesn't ignore zero-sized struct arguments.
+                // The same is true for s390x-unknown-linux-gnu.
+                if is_return || rust_abi ||
+                    (!win_x64_gnu && !linux_s390x) {
+                    arg.ignore();
                 }
             }
             arg
