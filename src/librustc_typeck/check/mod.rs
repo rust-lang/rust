@@ -145,6 +145,7 @@ mod closure;
 mod callee;
 mod compare_method;
 mod generator_interior;
+mod generator_type_vars;
 mod intrinsic;
 mod op;
 
@@ -204,7 +205,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>)>>,
+    deferred_generator_interiors: RefCell<Vec<(ast::NodeId, hir::BodyId, Ty<'tcx>)>>,
 
     // Anonymized types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -1051,6 +1052,13 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     }
 
     let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
+    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
+
+    fcx.check_return_expr(&body.value);
+
+    // We insert the deferred_generator_interiors entry after visiting the body.
+    // This ensures that all nested generators appear before the entry of this generator.
+    // resolve_generator_interiors relies on this property.
     let gen_ty = if can_be_generator && body.is_generator {
         let gen_sig = ty::GenSig {
             yield_ty: fcx.yield_ty.unwrap(),
@@ -1059,7 +1067,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, Some(gen_sig));
 
         let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
-        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), witness));
+        fcx.deferred_generator_interiors.borrow_mut().push((fn_id, body.id(), witness));
         let interior = ty::GeneratorInterior::new(witness);
 
         inherited.tables.borrow_mut().generator_interiors_mut().insert(fn_hir_id, interior);
@@ -1069,9 +1077,6 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, None);
         None
     };
-    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
-
-    fcx.check_return_expr(&body.value);
 
     // Finalize the return check by taking the LUB of the return types
     // we saw and assigning it to the expected return type. This isn't
@@ -2094,8 +2099,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn resolve_generator_interiors(&self, def_id: DefId) {
-        let mut deferred_generator_interiors = self.deferred_generator_interiors.borrow_mut();
-        for (body_id, witness) in deferred_generator_interiors.drain(..) {
+        let generators: Vec<_> = {
+            let mut entries = self.deferred_generator_interiors.borrow_mut();
+            let r = entries.drain(..).collect();
+            r
+        };
+        for (node_id, body_id, witness) in generators {
+            self.select_obligations_where_possible();
+            generator_type_vars::find_type_vars(self, node_id, body_id);
             generator_interior::resolve_interior(self, def_id, body_id, witness);
         }
     }
