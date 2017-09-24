@@ -1065,22 +1065,29 @@ fn trans_const_adt<'a, 'tcx>(
                 },
                 _ => 0,
             };
-            let discr_ty = l.field(ccx, 0).ty;
-            let discr = C_int(ccx.layout_of(discr_ty).llvm_type(ccx), discr as i64);
+            let discr_field = l.field(ccx, 0);
+            let discr = C_int(discr_field.llvm_type(ccx), discr as i64);
             if let layout::Abi::Scalar(_) = l.abi {
                 Const::new(discr, t)
             } else {
-                let discr = Const::new(discr, discr_ty);
+                let discr = Const::new(discr, discr_field.ty);
                 build_const_struct(ccx, l.for_variant(variant_index), vals, Some(discr))
             }
         }
-        layout::Variants::NicheFilling { nndiscr, .. } => {
-            if variant_index as u64 == nndiscr {
-                build_const_struct(ccx, l.for_variant(variant_index), vals, None)
+        layout::Variants::NicheFilling { dataful_variant, niche_value, .. } => {
+            if variant_index == dataful_variant {
+                build_const_struct(ccx, l.for_variant(dataful_variant), vals, None)
             } else {
-                // Always use null even if it's not the `discrfield`th
-                // field; see #8506.
-                Const::new(C_null(ccx.layout_of(t).llvm_type(ccx)), t)
+                let niche = l.field(ccx, 0);
+                let niche_llty = niche.llvm_type(ccx);
+                // FIXME(eddyb) Check the actual primitive type here.
+                let niche_llval = if niche_value == 0 {
+                    // HACK(eddyb) Using `C_null` as it works on all types.
+                    C_null(niche_llty)
+                } else {
+                    C_uint_big(niche_llty, niche_value)
+                };
+                build_const_struct(ccx, l, &[Const::new(niche_llval, niche.ty)], None)
             }
         }
     }

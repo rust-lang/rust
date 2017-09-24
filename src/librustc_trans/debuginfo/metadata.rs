@@ -1162,17 +1162,13 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 }).collect()
             }
-            layout::Variants::NicheFilling {
-                nndiscr,
-                discr,
-                ..
-            } => {
-                let variant = self.layout.for_variant(nndiscr as usize);
+            layout::Variants::NicheFilling { dataful_variant, .. } => {
+                let variant = self.layout.for_variant(dataful_variant);
                 // Create a description of the non-null variant
                 let (variant_type_metadata, member_description_factory) =
                     describe_enum_variant(cx,
                                           variant,
-                                          &adt.variants[nndiscr as usize],
+                                          &adt.variants[dataful_variant],
                                           OptimizedDiscriminant,
                                           self.containing_scope,
                                           self.span);
@@ -1210,8 +1206,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 compute_field_path(cx, &mut name,
                                    self.layout,
                                    self.layout.fields.offset(0),
-                                   discr.size(cx));
-                name.push_str(&adt.variants[(1 - nndiscr) as usize].name.as_str());
+                                   self.layout.field(cx, 0).size);
+                name.push_str(&adt.variants[1 - dataful_variant].name.as_str());
 
                 // Create the (singleton) list of descriptions of union members.
                 vec![

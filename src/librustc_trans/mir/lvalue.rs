@@ -16,7 +16,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null};
+use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, C_uint_big};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -70,10 +70,6 @@ impl Alignment {
             Alignment::AbiAligned => None,
         }
     }
-}
-
-fn target_sets_discr_via_memset<'a, 'tcx>(bcx: &Builder<'a, 'tcx>) -> bool {
-    bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -325,10 +321,17 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 };
                 bcx.intcast(lldiscr, cast_to, signed)
             }
-            layout::Variants::NicheFilling { nndiscr, .. } => {
-                let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                let zero = C_null(discr.layout.llvm_type(bcx.ccx));
-                bcx.intcast(bcx.icmp(cmp, lldiscr, zero), cast_to, false)
+            layout::Variants::NicheFilling { dataful_variant, niche_value, .. } => {
+                let niche_llty = discr.layout.llvm_type(bcx.ccx);
+                // FIXME(eddyb) Check the actual primitive type here.
+                let niche_llval = if niche_value == 0 {
+                    // HACK(eddyb) Using `C_null` as it works on all types.
+                    C_null(niche_llty)
+                } else {
+                    C_uint_big(niche_llty, niche_value)
+                };
+                let cmp = if dataful_variant == 0 { llvm::IntEQ } else { llvm::IntNE };
+                bcx.intcast(bcx.icmp(cmp, lldiscr, niche_llval), cast_to, false)
             }
         }
     }
@@ -336,40 +339,42 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     /// Set the discriminant for a new value of the given case of the given
     /// representation.
     pub fn trans_set_discr(&self, bcx: &Builder<'a, 'tcx>, variant_index: usize) {
-        let to = self.layout.ty.ty_adt_def().unwrap()
-            .discriminant_for_variant(bcx.tcx(), variant_index)
-            .to_u128_unchecked() as u64;
         match self.layout.variants {
             layout::Variants::Single { index } => {
-                assert_eq!(to, 0);
                 assert_eq!(variant_index, index);
             }
             layout::Variants::Tagged { .. } => {
                 let ptr = self.project_field(bcx, 0);
+                let to = self.layout.ty.ty_adt_def().unwrap()
+                    .discriminant_for_variant(bcx.tcx(), variant_index)
+                    .to_u128_unchecked() as u64;
                 bcx.store(C_int(ptr.layout.llvm_type(bcx.ccx), to as i64),
                     ptr.llval, ptr.alignment.non_abi());
             }
-            layout::Variants::NicheFilling { nndiscr, .. } => {
-                if to != nndiscr {
-                    let use_memset = match self.layout.abi {
-                        layout::Abi::Scalar(_) => false,
-                        _ => target_sets_discr_via_memset(bcx)
-                    };
-                    if use_memset {
-                        // Issue #34427: As workaround for LLVM bug on
-                        // ARM, use memset of 0 on whole struct rather
-                        // than storing null to single target field.
+            layout::Variants::NicheFilling { dataful_variant, niche_value, .. } => {
+                if variant_index != dataful_variant {
+                    if bcx.sess().target.target.arch == "arm" ||
+                       bcx.sess().target.target.arch == "aarch64" {
+                        // Issue #34427: As workaround for LLVM bug on ARM,
+                        // use memset of 0 before assigning niche value.
                         let llptr = bcx.pointercast(self.llval, Type::i8(bcx.ccx).ptr_to());
                         let fill_byte = C_u8(bcx.ccx, 0);
                         let (size, align) = self.layout.size_and_align();
                         let size = C_usize(bcx.ccx, size.bytes());
                         let align = C_u32(bcx.ccx, align.abi() as u32);
                         base::call_memset(bcx, llptr, fill_byte, size, align, false);
-                    } else {
-                        let ptr = self.project_field(bcx, 0);
-                        bcx.store(C_null(ptr.layout.llvm_type(bcx.ccx)),
-                            ptr.llval, ptr.alignment.non_abi());
                     }
+
+                    let niche = self.project_field(bcx, 0);
+                    let niche_llty = niche.layout.llvm_type(bcx.ccx);
+                    // FIXME(eddyb) Check the actual primitive type here.
+                    let niche_llval = if niche_value == 0 {
+                        // HACK(eddyb) Using `C_null` as it works on all types.
+                        C_null(niche_llty)
+                    } else {
+                        C_uint_big(niche_llty, niche_value)
+                    };
+                    bcx.store(niche_llval, niche.llval, niche.alignment.non_abi());
                 }
             }
         }
