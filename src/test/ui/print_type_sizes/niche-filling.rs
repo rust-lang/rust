@@ -10,8 +10,8 @@
 
 // compile-flags: -Z print-type-sizes
 
-// This file illustrates how enums with a non-null field are handled,
-// modelled after cases like `Option<&u32>` and such.
+// This file illustrates how niche-filling enums are handled,
+// modelled after cases like `Option<&u32>`, `Option<bool>` and such.
 //
 // It uses NonZero directly, rather than `&_` or `Unique<_>`, because
 // the test is not set up to deal with target-dependent pointer width.
@@ -72,4 +72,8 @@ pub fn main() {
     let _x: MyOption<NonZero<u32>> = Default::default();
     let _y: EmbeddedDiscr = Default::default();
     let _z: MyOption<IndirectNonZero<u32>> = Default::default();
+    let _a: MyOption<bool> = Default::default();
+    let _b: MyOption<char> = Default::default();
+    let _c: MyOption<std::cmp::Ordering> = Default::default();
+    let _b: MyOption<MyOption<u8>> = Default::default();
 }

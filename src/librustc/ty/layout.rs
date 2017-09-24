@@ -790,17 +790,18 @@ pub enum Variants {
         variants: Vec<CachedLayout>,
     },
 
-    /// Two cases distinguished by a niche: the case with discriminant
-    /// `nndiscr` is represented by the struct `nonnull`, where field `0`
-    /// is known to be nonnull due to its type; if that field is null, then
-    /// it represents the other case, which is known to be zero sized.
+    /// Two cases distinguished by a niche (a value invalid for a type):
+    /// the variant `dataful_variant` contains a niche at an arbitrary
+    /// offset (field 0 of the enum), which is set to `niche_value`
+    /// for the other variant.
     ///
-    /// For example, `std::option::Option` instantiated at a safe pointer type
-    /// is represented such that `None` is a null pointer and `Some` is the
-    /// identity function.
+    /// For example, `Option<(usize, &T)>`  is represented such that
+    /// `None` has a null pointer for the second tuple field, and
+    /// `Some` is the identity function (with a non-null reference).
     NicheFilling {
-        nndiscr: u64,
-        discr: Primitive,
+        dataful_variant: usize,
+        niche: Primitive,
+        niche_value: u128,
         variants: Vec<CachedLayout>,
     }
 }
@@ -1323,7 +1324,7 @@ impl<'a, 'tcx> CachedLayout {
                         }
 
                         for (field_index, field) in variants[i].iter().enumerate() {
-                            if let Some((offset, discr)) = field.non_zero_field(cx)? {
+                            if let Some((offset, niche, niche_value)) = field.find_niche(cx)? {
                                 let mut st = vec![
                                     univariant_uninterned(&variants[0],
                                         &def.repr, StructKind::AlwaysSized)?,
@@ -1342,23 +1343,23 @@ impl<'a, 'tcx> CachedLayout {
                                     ..
                                 } = st[i];
 
-                                let mut discr_align = discr.align(dl);
-                                if offset.bytes() == 0 && discr.size(dl) == size {
-                                    abi = Abi::Scalar(discr);
+                                let mut niche_align = niche.align(dl);
+                                if offset.bytes() == 0 && niche.size(dl) == size {
+                                    abi = Abi::Scalar(niche);
                                 } else if let Abi::Aggregate { ref mut packed, .. } = abi {
-                                    if offset.abi_align(discr_align) != offset {
+                                    if offset.abi_align(niche_align) != offset {
                                         *packed = true;
-                                        discr_align = dl.i8_align;
+                                        niche_align = dl.i8_align;
                                     }
                                 }
-                                align = align.max(discr_align);
-                                primitive_align = primitive_align.max(discr_align);
+                                align = align.max(niche_align);
+                                primitive_align = primitive_align.max(niche_align);
 
                                 return Ok(tcx.intern_layout(CachedLayout {
                                     variants: Variants::NicheFilling {
-                                        nndiscr: i as u64,
-
-                                        discr,
+                                        dataful_variant: i,
+                                        niche,
+                                        niche_value,
                                         variants: st,
                                     },
                                     fields: FieldPlacement::Arbitrary {
@@ -2048,7 +2049,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
                     // Discriminant field for enums (where applicable).
                     Variants::Tagged { discr, .. } |
-                    Variants::NicheFilling { discr, .. } => {
+                    Variants::NicheFilling { niche: discr, .. } => {
                         return cx.layout_of([discr.to_ty(tcx)][i]);
                     }
                 }
@@ -2084,30 +2085,48 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         (self.size, self.align)
     }
 
-    /// Find the offset of a non-zero leaf field, starting from
+    /// Find the offset of a niche leaf field, starting from
     /// the given type and recursing through aggregates.
-    /// The tuple is `(offset, primitive, source_path)`.
+    /// The tuple is `(offset, primitive, niche_value)`.
     // FIXME(eddyb) track value ranges and traverse already optimized enums.
-    fn non_zero_field<C>(&self, cx: C)
-        -> Result<Option<(Size, Primitive)>, LayoutError<'tcx>>
+    fn find_niche<C>(&self, cx: C)
+        -> Result<Option<(Size, Primitive, u128)>, LayoutError<'tcx>>
         where C: LayoutOf<Ty<'tcx>, TyLayout = Result<Self, LayoutError<'tcx>>> +
                  HasTyCtxt<'tcx>
     {
         let tcx = cx.tcx();
         match (&self.variants, self.abi, &self.ty.sty) {
             // FIXME(eddyb) check this via value ranges on scalars.
+            (_, Abi::Scalar(Int(I1, _)), _) => {
+                Ok(Some((Size::from_bytes(0), Int(I8, false), 2)))
+            }
+            (_, Abi::Scalar(Int(I32, _)), &ty::TyChar) => {
+                Ok(Some((Size::from_bytes(0), Int(I32, false), 0x10FFFF+1)))
+            }
             (_, Abi::Scalar(Pointer), &ty::TyRef(..)) |
             (_, Abi::Scalar(Pointer), &ty::TyFnPtr(..)) => {
-                Ok(Some((Size::from_bytes(0), Pointer)))
+                Ok(Some((Size::from_bytes(0), Pointer, 0)))
             }
             (_, Abi::Scalar(Pointer), &ty::TyAdt(def, _)) if def.is_box() => {
-                Ok(Some((Size::from_bytes(0), Pointer)))
+                Ok(Some((Size::from_bytes(0), Pointer, 0)))
             }
 
             // FIXME(eddyb) check this via value ranges on scalars.
-            (&Variants::Tagged { discr, .. }, _, &ty::TyAdt(def, _)) => {
-                if def.discriminants(tcx).all(|d| d.to_u128_unchecked() != 0) {
-                    Ok(Some((self.fields.offset(0), discr)))
+            (&Variants::Tagged { discr, ref discr_range, .. }, _, _) => {
+                // FIXME(eddyb) support negative/wrap-around discriminant ranges.
+                if discr_range.start < discr_range.end {
+                    if discr_range.start > 0 {
+                        Ok(Some((self.fields.offset(0), discr, 0)))
+                    } else {
+                        let bits = discr.size(tcx).bits();
+                        assert!(bits <= 128);
+                        let max_value = !0u128 >> (128 - bits);
+                        if discr_range.end < max_value {
+                            Ok(Some((self.fields.offset(0), discr, discr_range.end + 1)))
+                        } else {
+                            Ok(None)
+                        }
+                    }
                 } else {
                     Ok(None)
                 }
@@ -2118,7 +2137,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 let field = self.field(cx, 0)?;
                 let offset = self.fields.offset(0);
                 if let Abi::Scalar(value) = field.abi {
-                    Ok(Some((offset, value)))
+                    Ok(Some((offset, value, 0)))
                 } else {
                     Ok(None)
                 }
@@ -2128,13 +2147,14 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             _ => {
                 if let FieldPlacement::Array { count, .. } = self.fields {
                     if count > 0 {
-                        return self.field(cx, 0)?.non_zero_field(cx);
+                        return self.field(cx, 0)?.find_niche(cx);
                     }
                 }
                 for i in 0..self.fields.count() {
-                    let r = self.field(cx, i)?.non_zero_field(cx)?;
-                    if let Some((offset, primitive)) = r {
-                        return Ok(Some((self.fields.offset(i) + offset, primitive)));
+                    let r = self.field(cx, i)?.find_niche(cx)?;
+                    if let Some((offset, primitive, niche_value)) = r {
+                        let offset = self.fields.offset(i) + offset;
+                        return Ok(Some((offset, primitive, niche_value)));
                     }
                 }
                 Ok(None)
@@ -2165,13 +2185,15 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Variants {
                 variants.hash_stable(hcx, hasher);
             }
             NicheFilling {
-                nndiscr,
+                dataful_variant,
+                ref niche,
+                niche_value,
                 ref variants,
-                ref discr,
             } => {
-                nndiscr.hash_stable(hcx, hasher);
+                dataful_variant.hash_stable(hcx, hasher);
+                niche.hash_stable(hcx, hasher);
+                niche_value.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
-                discr.hash_stable(hcx, hasher);
             }
         }
     }
