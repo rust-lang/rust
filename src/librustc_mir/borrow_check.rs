@@ -580,7 +580,19 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             if flow_state.inits.curr_state.contains(&mpi) {
                 // may already be assigned before reaching this statement;
                 // report error.
-                self.report_illegal_reassignment(context, (lvalue, span));
+                // FIXME: Not ideal, it only finds the assignment that lexically comes first
+                let assigned_lvalue = &move_data.move_paths[mpi].lvalue;
+                let assignment_stmt = self.mir.basic_blocks().iter().filter_map(|bb| {
+                    bb.statements.iter().find(|stmt| {
+                        if let StatementKind::Assign(ref lv, _) = stmt.kind {
+                            *lv == *assigned_lvalue
+                        } else {
+                            false
+                        }
+                    })
+                }).next().unwrap();
+                self.report_illegal_reassignment(
+                    context, (lvalue, span), assignment_stmt.source_info.span);
             }
         }
     }
@@ -982,11 +994,17 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         err.emit();
     }
 
-    fn report_illegal_reassignment(&mut self, _context: Context, (lvalue, span): (&Lvalue, Span)) {
-        let mut err = self.tcx.cannot_reassign_immutable(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME: add span labels for borrow and assignment points
-        err.emit();
+    fn report_illegal_reassignment(&mut self,
+                                   _context: Context,
+                                   (lvalue, span): (&Lvalue, Span),
+                                   assigned_span: Span) {
+        self.tcx.cannot_reassign_immutable(span,
+                                           &self.describe_lvalue(lvalue),
+                                           Origin::Mir)
+                .span_label(span, "re-assignment of immutable variable")
+                .span_label(assigned_span, format!("first assignment to `{}`",
+                                                   self.describe_lvalue(lvalue)))
+                .emit();
     }
 
     fn report_assignment_to_static(&mut self, _context: Context, (lvalue, span): (&Lvalue, Span)) {
