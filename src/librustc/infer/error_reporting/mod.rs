@@ -333,11 +333,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             GenericBoundFailure(..) => true,
         };
 
-        if errors.iter().all(|e| is_bound_failure(e)) {
+
+        let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
             errors.clone()
         } else {
             errors.iter().filter(|&e| !is_bound_failure(e)).cloned().collect()
-        }
+        };
+
+        // sort the errors by span, for better error message stability.
+        errors.sort_by_key(|u| match *u {
+            ConcreteFailure(ref sro, _, _) => sro.span(),
+            GenericBoundFailure(ref sro, _, _) => sro.span(),
+            SubSupConflict(ref rvo, _, _, _, _) => rvo.span(),
+        });
+        errors
     }
 
     /// Adds a note if the types come from similarly named crates
