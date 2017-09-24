@@ -351,7 +351,8 @@ impl Error for char::ParseCharError {
 #[unstable(feature = "try_from", issue = "33417")]
 impl Error for convert::Infallible {
     fn description(&self) -> &str {
-        "an error of this type can never exist"
+        match *self {
+        }
     }
 }
 

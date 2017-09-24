@@ -62,8 +62,9 @@ pub enum Infallible {}
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl fmt::Display for Infallible {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        "an error of this type can never exist".fmt(f)
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+        }
     }
 }
 /// A cheap reference-to-reference conversion. Used to convert a value to a
