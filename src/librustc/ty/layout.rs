@@ -2033,7 +2033,17 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyAdt(def, substs) => {
                 match self.variants {
                     Variants::Single { index } => {
-                        def.variants[index].fields[i].ty(tcx, substs)
+                        let mut field_ty = def.variants[index].fields[i].ty(tcx, substs);
+
+                        // Treat NonZero<*T> as containing &T.
+                        // This is especially useful for fat pointers.
+                        if Some(def.did) == tcx.lang_items().non_zero() {
+                            if let ty::TyRawPtr(mt) = field_ty.sty {
+                                field_ty = tcx.mk_ref(tcx.types.re_erased, mt);
+                            }
+                        }
+
+                        field_ty
                     }
 
                     // Discriminant field for enums (where applicable).
@@ -2109,10 +2119,6 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 let offset = self.fields.offset(0);
                 if let Abi::Scalar(value) = field.abi {
                     Ok(Some((offset, value)))
-                } else if let ty::TyRawPtr(_) = field.ty.sty {
-                    // If `NonZero` contains a non-scalar `*T`, it's
-                    // a fat pointer, which starts with a thin pointer.
-                    Ok(Some((offset, Pointer)))
                 } else {
                     Ok(None)
                 }
