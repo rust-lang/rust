@@ -59,26 +59,20 @@ impl IntPlusOne {
         false
     }
 
-    fn check_binop(&self, cx: &EarlyContext, block: &Expr, binop: BinOpKind, lhs: &Expr, rhs: &Expr) {
+    fn check_binop(&self, cx: &EarlyContext, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<(bool, Option<String>)> {
         match (binop, &lhs.node, &rhs.node) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (BinOpKind::Ge, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) => {
                 match (lhskind.node, &lhslhs.node, &lhsrhs.node) {
                     // `-1 + x`
                     (BinOpKind::Add, &ExprKind::Lit(ref lit), _) => {
-                        let recommendation = self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS);
-                        if self.check_lit(lit, -1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, -1), self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS)))
                     },
                     // `x - 1`
                     (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) => {
-                        let recommendation = self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS);
-                        if self.check_lit(lit, 1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, 1), self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS)))
                     }
-                    _ => ()
+                    _ => None
                 }
             },
             // case where `... >= y + 1` or `... >= 1 + y`
@@ -86,18 +80,12 @@ impl IntPlusOne {
                 match (&rhslhs.node, &rhsrhs.node) {
                     // `y + 1` and `1 + y`
                     (&ExprKind::Lit(ref lit), _) => {
-                        let recommendation = self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS);
-                        if self.check_lit(lit, 1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, 1), self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS)))
                     },
                     (_, &ExprKind::Lit(ref lit)) => {
-                        let recommendation = self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS);
-                        if self.check_lit(lit, 1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, 1), self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS)))
                     },
-                    _ => ()
+                    _ => None
                 }
             },
             // case where `x + 1 <= ...` or `1 + x <= ...`
@@ -105,18 +93,12 @@ impl IntPlusOne {
                 match (&lhslhs.node, &lhsrhs.node) {
                     // `1 + x` and `x + 1`
                     (&ExprKind::Lit(ref lit), _) => {
-                        let recommendation = self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS);
-                        if self.check_lit(lit, 1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, 1), self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS)))
                     },
                     (_, &ExprKind::Lit(ref lit)) => {
-                        let recommendation = self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS);
-                        if self.check_lit(lit, 1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, 1), self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS)))
                     },
-                    _ => ()
+                    _ => None
                 }
             },
             // case where `... >= y - 1` or `... >= -1 + y`
@@ -124,22 +106,16 @@ impl IntPlusOne {
                 match (rhskind.node, &rhslhs.node, &rhsrhs.node) {
                     // `-1 + y`
                     (BinOpKind::Add, &ExprKind::Lit(ref lit), _) => {
-                        let recommendation = self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS);
-                        if self.check_lit(lit, -1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, -1), self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS)))
                     },
                     // `y - 1`
                     (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) => {
-                        let recommendation = self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS);
-                        if self.check_lit(lit, 1) {
-                            self.emit_warning(cx, block, recommendation)
-                        }
+                        Some((self.check_lit(lit, 1), self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS)))
                     },
-                    _ => ()
+                    _ => None
                 }
             },
-            _ => ()
+            _ => None
         }
     }
 
@@ -161,23 +137,24 @@ impl IntPlusOne {
         None
     }
 
-    fn emit_warning(&self, cx: &EarlyContext, block: &Expr, recommendation: Option<String>) {
-        if let Some(rec) = recommendation {
-            span_lint_and_then(cx,
-                               INT_PLUS_ONE,
-                               block.span,
-                               "Unnecessary `>= y + 1` or `x - 1 >=`",
-                               |db| {
-                db.span_suggestion(block.span, "change `>= y + 1` to `> y` as shown", rec);
-            });
-        }
+    fn emit_warning(&self, cx: &EarlyContext, block: &Expr, recommendation: String) {
+        span_lint_and_then(cx,
+                           INT_PLUS_ONE,
+                           block.span,
+                           "Unnecessary `>= y + 1` or `x - 1 >=`",
+                           |db| {
+            db.span_suggestion(block.span, "change `>= y + 1` to `> y` as shown", recommendation);
+        });
     }
 }
 
 impl EarlyLintPass for IntPlusOne {
     fn check_expr(&mut self, cx: &EarlyContext, item: &Expr) {
         if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = item.node {
-            self.check_binop(cx, item, kind.node, lhs, rhs);
+            match self.check_binop(cx, kind.node, lhs, rhs) {
+                Some((should_emit, Some(ref rec))) if should_emit => self.emit_warning(cx, item, rec.clone()),
+                _ => ()
+            }
         }
     }
 }
