@@ -343,6 +343,9 @@ impl f64 {
     /// error. This produces a more accurate result with better performance than
     /// a separate multiplication operation followed by an add.
     ///
+    /// This will fall back to computing `(self * a) + b` if the target-feature `fma`
+    /// is not enabled.
+    ///
     /// ```
     /// let m = 10.0_f64;
     /// let x = 4.0_f64;
@@ -356,7 +359,11 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn mul_add(self, a: f64, b: f64) -> f64 {
-        unsafe { intrinsics::fmaf64(self, a, b) }
+        if cfg!(target_feature="fma") {
+            unsafe { intrinsics::fmaf64(self, a, b) }
+        } else {
+            self * a + b
+        }
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
