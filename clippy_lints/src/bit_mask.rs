@@ -90,7 +90,17 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct BitMask;
+pub struct BitMask {
+    verbose_bit_mask_threshold: u64,
+}
+
+impl BitMask {
+    pub fn new(verbose_bit_mask_threshold: u64) -> Self {
+        Self {
+            verbose_bit_mask_threshold: verbose_bit_mask_threshold,
+        }
+    }
+}
 
 impl LintPass for BitMask {
     fn get_lints(&self) -> LintArray {
@@ -119,6 +129,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
             let Expr_::ExprLit(ref lit1) = right.node,
             let LitKind::Int(0, _) = lit1.node,
             n.leading_zeros() == n.count_zeros(),
+            n > u128::from(self.verbose_bit_mask_threshold),
         ], {
             span_lint_and_then(cx,
                                VERBOSE_BIT_MASK,

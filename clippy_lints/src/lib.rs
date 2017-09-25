@@ -231,7 +231,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box enum_variants::EnumVariantNames::new(conf.enum_variant_name_threshold));
     reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
     reg.register_late_lint_pass(box enum_clike::UnportableVariant);
-    reg.register_late_lint_pass(box bit_mask::BitMask);
+    reg.register_late_lint_pass(box bit_mask::BitMask::new(conf.verbose_bit_mask_threshold));
     reg.register_late_lint_pass(box ptr::PointerPass);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
     reg.register_late_lint_pass(box needless_bool::BoolComparison);
