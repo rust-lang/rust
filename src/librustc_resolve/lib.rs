@@ -1844,7 +1844,6 @@ impl<'a> Resolver<'a> {
 
                         for trait_item in trait_items {
                             this.check_proc_macro_attrs(&trait_item.attrs);
-                            this.visit_generics(&trait_item.generics);
 
                             match trait_item.node {
                                 TraitItemKind::Const(ref ty, ref default) => {
@@ -2056,7 +2055,6 @@ impl<'a> Resolver<'a> {
                         this.with_current_self_type(self_type, |this| {
                             for impl_item in impl_items {
                                 this.check_proc_macro_attrs(&impl_item.attrs);
-                                this.visit_generics(&impl_item.generics);
                                 this.resolve_visibility(&impl_item.vis);
                                 match impl_item.node {
                                     ImplItemKind::Const(..) => {
