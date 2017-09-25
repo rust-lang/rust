@@ -22,6 +22,14 @@
 //! > **Note**: This crate is *nightly only* at the moment, and requires a
 //! > nightly rust toolchain to compile.
 //!
+//! This documentation is only for one particular architecture, you can find
+//! others at:
+//!
+//! * [i686](https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/)
+//! * [x86_64](https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/)
+//! * [arm](https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/)
+//! * [aarch64](https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/)
+//!
 //! ## Portability
 //!
 //! The `simd` module and its types should be portable to all platforms. The
