@@ -59,21 +59,24 @@ impl Rewrite for Pat {
                 None
             },
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => match *end_kind {
-                RangeEnd::Included => rewrite_pair(
-                    &**lhs,
-                    &**rhs,
-                    "",
-                    "...",
-                    "",
-                    context,
-                    shape,
-                    SeparatorPlace::Front,
-                ),
                 RangeEnd::Excluded => rewrite_pair(
                     &**lhs,
                     &**rhs,
                     "",
                     "..",
+                    "",
+                    context,
+                    shape,
+                    SeparatorPlace::Front,
+                ),
+                // FIXME: Change _ to RangeEnd::Included(RangeSyntax::DotDotDot)
+                // and add RangeEnd::Included(RangeSyntax::DotDotEq)
+                // once rust PR #44709 gets merged
+                _ => rewrite_pair(
+                    &**lhs,
+                    &**rhs,
+                    "",
+                    "...",
                     "",
                     context,
                     shape,
