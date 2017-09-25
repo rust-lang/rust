@@ -12,6 +12,7 @@ This is a **work in progress**.
 * [Documentation - i686][i686]
 * [Documentation - x86\_64][x86_64]
 * [Documentation - arm][arm]
+* [Documentation - aarch64][aarch64]
 * [How to get started][contrib]
 * [How to help implement intrinsics][help-implement]
 
