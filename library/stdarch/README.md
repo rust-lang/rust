@@ -17,9 +17,9 @@ This is a **work in progress**.
 
 [contrib]: https://github.com/rust-lang-nursery/stdsimd/blob/master/CONTRIBUTING.md
 [help-implement]: https://github.com/rust-lang-nursery/stdsimd/issues/40
-[i686]: https://rust-lang-nursery.github.io/stdsimd/i686/simd/
-[x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/simd/
-[arm]: https://rust-lang-nursery.github.io/stdsimd/arm/simd/
+[i686]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/
+[x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/
+[arm]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/
 
 ### Approach
 
