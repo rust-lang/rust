@@ -30,7 +30,7 @@ declare_lint! {
 
 declare_lint! {
     pub UNUSED_EXTERN_CRATES,
-    Warn,
+    Allow,
     "extern crates that are never used"
 }
 
