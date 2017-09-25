@@ -1,15 +1,24 @@
 language: rust
 sudo: false
+rust: nightly
 
 matrix:
   include:
-    - rust: nightly
-    - rust: nightly
-      os: osx
+    - env: TARGET=i686-unknown-linux-gnu
+    - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    - env: TARGET=arm-unknown-linux-gnueabihf
+    - env: TARGET=armv7-unknown-linux-gnueabihf
+    - env: TARGET=aarch64-unknown-linux-gnu
+    - os: osx
+      env: TARGET=x86_64-apple-darwin NO_ADD=1
+      script: ci/run.sh
+
+install:
+  - if [ "$NO_ADD" = "" ]; then rustup target add $TARGET; fi
 
 script:
-  - cargo test
-  - cargo test --release
+  - cargo generate-lockfile
+  - ci/run-docker.sh $TARGET
 
 notifications:
   email:

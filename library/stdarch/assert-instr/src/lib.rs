@@ -58,7 +58,8 @@ fn disassemble_myself() -> HashMap<String, Vec<Function>> {
 
         parse_otool(&str::from_utf8(&output.stdout).expect("stdout not utf8"))
     } else {
-        let output = Command::new("objdump")
+        let objdump = env::var("OBJDUMP").unwrap_or("objdump".to_string());
+        let output = Command::new(objdump)
             .arg("--disassemble")
             .arg(&me)
             .output()
@@ -72,6 +73,13 @@ fn disassemble_myself() -> HashMap<String, Vec<Function>> {
 
 fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
     let mut lines = output.lines();
+    let expected_len = if cfg!(target_arch = "arm") {
+        8
+    } else if cfg!(target_arch = "aarch64") {
+        8
+    } else {
+        2
+    };
 
     for line in output.lines().take(100) {
         println!("{}", line);
@@ -97,7 +105,7 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
             let parts = instruction.split_whitespace()
                 .skip(1)
                 .skip_while(|s| {
-                    s.len() == 2 && usize::from_str_radix(s, 16).is_ok()
+                    s.len() == expected_len && usize::from_str_radix(s, 16).is_ok()
                 })
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();

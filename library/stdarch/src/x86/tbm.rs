@@ -75,6 +75,7 @@ pub fn _blcfill_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(blcfill))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blcfill_u64(x: u64) -> u64 {
     x & (x.wrapping_add(1))
 }
@@ -95,6 +96,7 @@ pub fn _blci_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(blci))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blci_u64(x: u64) -> u64 {
     x | !(x.wrapping_add(1))
 }
@@ -115,6 +117,7 @@ pub fn _blcic_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(blcic))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blcic_u64(x: u64) -> u64 {
     !x & (x.wrapping_add(1))
 }
@@ -135,6 +138,7 @@ pub fn _blcmsk_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(blcmsk))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blcmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_add(1))
 }
@@ -155,6 +159,7 @@ pub fn _blcs_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(blcs))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blcs_u64(x: u64) -> u64 {
     x | x.wrapping_add(1)
 }
@@ -175,6 +180,7 @@ pub fn _blsfill_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(blsfill))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blsfill_u64(x: u64) -> u64 {
     x | (x.wrapping_sub(1))
 }
@@ -195,6 +201,7 @@ pub fn _blsic_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(blsic))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blsic_u64(x: u64) -> u64 {
     !x | (x.wrapping_sub(1))
 }
@@ -217,6 +224,7 @@ pub fn _t1mskc_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(t1mskc))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _t1mskc_u64(x: u64) -> u64 {
     !x | (x.wrapping_add(1))
 }
@@ -239,6 +247,7 @@ pub fn _tzmsk_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+tbm"]
 #[cfg_attr(test, assert_instr(tzmsk))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _tzmsk_u64(x: u64) -> u64 {
     !x & (x.wrapping_sub(1))
 }

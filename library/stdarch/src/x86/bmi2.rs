@@ -16,7 +16,8 @@ use assert_instr::assert_instr;
 /// the low half and the high half of the result.
 #[inline(always)]
 // LLVM BUG (should be mulxl): https://bugs.llvm.org/show_bug.cgi?id=34232
-#[cfg_attr(test, assert_instr(imul))]
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(imul))]
+#[cfg_attr(all(test, target_arch = "x86"), assert_instr(mulx))]
 #[target_feature = "+bmi2"]
 pub fn _mulx_u32(a: u32, b: u32) -> (u32, u32) {
     let result: u64 = (a as u64) * (b as u64);
@@ -31,6 +32,7 @@ pub fn _mulx_u32(a: u32, b: u32) -> (u32, u32) {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(mulx))]
 #[target_feature = "+bmi2"]
+#[cfg(not(target_arch = "x86"))] // calls an intrinsic
 pub fn _mulx_u64(a: u64, b: u64) -> (u64, u64) {
     let result: u128 = (a as u128) * (b as u128);
     let hi = (result >> 64) as u64;
@@ -66,6 +68,7 @@ pub fn _bzhi_u32(a: u32, index: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi2"]
 #[cfg_attr(test, assert_instr(bzhi))]
+#[cfg(not(target_arch = "x86"))]
 pub fn _bzhi_u64(a: u64, index: u64) -> u64 {
     unsafe { x86_bmi2_bzhi_64(a, index) }
 }
@@ -85,6 +88,7 @@ pub fn _pdep_u32(a: u32, mask: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi2"]
 #[cfg_attr(test, assert_instr(pdep))]
+#[cfg(not(target_arch = "x86"))]
 pub fn _pdep_u64(a: u64, mask: u64) -> u64 {
     unsafe { x86_bmi2_pdep_64(a, mask) }
 }
@@ -103,6 +107,7 @@ pub fn _pext_u32(a: u32, mask: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi2"]
 #[cfg_attr(test, assert_instr(pext))]
+#[cfg(not(target_arch = "x86"))]
 pub fn _pext_u64(a: u64, mask: u64) -> u64 {
     unsafe { x86_bmi2_pext_64(a, mask) }
 }
