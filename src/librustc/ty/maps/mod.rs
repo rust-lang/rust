@@ -159,6 +159,10 @@ define_maps! { <'tcx>
     /// expression defining the closure.
     [] fn closure_kind: ClosureKind(DefId) -> ty::ClosureKind,
 
+    /// Unsafety violations for this def ID.
+    [] fn unsafety_violations: UnsafetyViolations(DefId)
+        -> Rc<[mir::UnsafetyViolation]>,
+
     /// The signature of functions and closures.
     [] fn fn_sig: FnSignature(DefId) -> ty::PolyFnSig<'tcx>,
 

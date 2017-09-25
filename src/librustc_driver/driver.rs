@@ -1005,19 +1005,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // What we need to run borrowck etc.
 
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
-
-    // FIXME: ariel points SimplifyBranches should run after
-    // mir-borrowck; otherwise code within `if false { ... }` would
-    // not be checked.
-    passes.push_pass(MIR_VALIDATED,
-                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
     passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
     passes.push_pass(MIR_VALIDATED, mir::transform::nll::NLL);
 
     // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
 
-    // These next passes must be executed together
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
+    passes.push_pass(MIR_OPTIMIZED,
+                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
+
+    // These next passes must be executed together
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::elaborate_drops::ElaborateDrops);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
@@ -1081,10 +1078,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || middle::intrinsicck::check_crate(tcx));
 
         time(time_passes,
-             "effect checking",
-             || middle::effect::check_crate(tcx));
-
-        time(time_passes,
              "match checking",
              || check_match::check_crate(tcx));
 
@@ -1104,6 +1097,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "MIR borrow checking",
              || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id) });
 
+        time(time_passes,
+             "MIR effect checking",
+             || for def_id in tcx.body_owners() {
+                 mir::transform::check_unsafety::check_unsafety(tcx, def_id)
+             });
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids
         // a

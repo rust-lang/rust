@@ -111,7 +111,6 @@ pub mod middle {
     pub mod dataflow;
     pub mod dead;
     pub mod dependency_format;
-    pub mod effect;
     pub mod entry;
     pub mod exported_symbols;
     pub mod free_region;

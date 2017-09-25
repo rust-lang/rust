@@ -39,8 +39,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         match expr.kind {
-            ExprKind::Scope { region_scope, value } => {
-                this.in_scope((region_scope, source_info), block, |this| {
+            ExprKind::Scope { region_scope, lint_level, value } => {
+                this.in_scope((region_scope, source_info), lint_level, block, |this| {
                     this.as_lvalue(block, value)
                 })
             }

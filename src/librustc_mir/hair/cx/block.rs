@@ -30,6 +30,16 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
             span: self.span,
             stmts,
             expr: self.expr.to_ref(),
+            safety_mode: match self.rules {
+                hir::BlockCheckMode::DefaultBlock =>
+                    BlockSafety::Safe,
+                hir::BlockCheckMode::UnsafeBlock(..) =>
+                    BlockSafety::ExplicitUnsafe(self.id),
+                hir::BlockCheckMode::PushUnsafeBlock(..) =>
+                    BlockSafety::PushUnsafe,
+                hir::BlockCheckMode::PopUnsafeBlock(..) =>
+                    BlockSafety::PopUnsafe
+            },
         }
     }
 }
@@ -71,6 +81,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 init_scope: region::Scope::Node(hir_id.local_id),
                                 pattern,
                                 initializer: local.init.to_ref(),
+                                lint_level: cx.lint_level_of(local.id),
                             },
                             opt_destruction_scope: opt_dxn_ext,
                         })));

@@ -20,13 +20,14 @@ use rustc::mir::transform::MirSource;
 use rustc::middle::const_val::{ConstEvalErr, ConstVal};
 use rustc_const_eval::ConstContext;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
+use syntax::ast;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
@@ -37,6 +38,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 
+    pub root_lint_level: ast::NodeId,
     pub param_env: ty::ParamEnv<'gcx>,
 
     /// Identity `Substs` for use with const-evaluation.
@@ -57,7 +59,8 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, src: MirSource) -> Cx<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+               src: MirSource) -> Cx<'a, 'gcx, 'tcx> {
         let constness = match src {
             MirSource::Const(_) |
             MirSource::Static(..) => hir::Constness::Const,
@@ -87,9 +90,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Constants and const fn's always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
+        let lint_level = lint_level_for_hir_id(tcx, src_id);
         Cx {
             tcx,
             infcx,
+            root_lint_level: lint_level,
             param_env: tcx.param_env(src_def_id),
             identity_substs: Substs::identity_for_item(tcx.global_tcx(), src_def_id),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
@@ -99,6 +104,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             check_overflow,
         }
     }
+
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -229,6 +235,19 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
+    fn lint_level_of(&self, node_id: ast::NodeId) -> LintLevel {
+        let hir_id = self.tcx.hir.definitions().node_to_hir_id(node_id);
+        let has_lint_level = self.tcx.dep_graph.with_ignore(|| {
+            self.tcx.lint_levels(LOCAL_CRATE).lint_level_set(hir_id).is_some()
+        });
+
+        if has_lint_level {
+            LintLevel::Explicit(node_id)
+        } else {
+            LintLevel::Inherited
+        }
+    }
+
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
@@ -240,6 +259,31 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn check_overflow(&self) -> bool {
         self.check_overflow
     }
+}
+
+fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {
+    // Right now we insert a `with_ignore` node in the dep graph here to
+    // ignore the fact that `lint_levels` below depends on the entire crate.
+    // For now this'll prevent false positives of recompiling too much when
+    // anything changes.
+    //
+    // Once red/green incremental compilation lands we should be able to
+    // remove this because while the crate changes often the lint level map
+    // will change rarely.
+    tcx.dep_graph.with_ignore(|| {
+        let sets = tcx.lint_levels(LOCAL_CRATE);
+        loop {
+            let hir_id = tcx.hir.definitions().node_to_hir_id(id);
+            if sets.lint_level_set(hir_id).is_some() {
+                return id
+            }
+            let next = tcx.hir.get_parent_node(id);
+            if next == id {
+                bug!("lint traversal reached the root of the crate");
+            }
+            id = next;
+        }
+    })
 }
 
 mod block;

@@ -690,11 +690,13 @@ macro_rules! make_mir_visitor {
                     name: _,
                     ref $($mutability)* source_info,
                     internal: _,
+                    ref $($mutability)* lexical_scope,
                     is_user_variable: _,
                 } = *local_decl;
 
                 self.visit_ty(ty, Lookup::Src(*source_info));
                 self.visit_source_info(source_info);
+                self.visit_visibility_scope(lexical_scope);
             }
 
             fn super_visibility_scope(&mut self,

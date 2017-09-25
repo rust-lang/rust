@@ -46,8 +46,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Get the arm bodies and their scopes, while declaring bindings.
         let arm_bodies: Vec<_> = arms.iter().map(|arm| {
+            // BUG: use arm lint level
             let body = self.hir.mirror(arm.body.clone());
-            let scope = self.declare_bindings(None, body.span, &arm.patterns[0]);
+            let scope = self.declare_bindings(None, body.span,
+                                              LintLevel::Inherited,
+                                              &arm.patterns[0]);
             (body, scope.unwrap_or(self.visibility_scope))
         }).collect();
 
@@ -171,11 +174,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn declare_bindings(&mut self,
                             mut var_scope: Option<VisibilityScope>,
                             scope_span: Span,
+                            lint_level: LintLevel,
                             pattern: &Pattern<'tcx>)
                             -> Option<VisibilityScope> {
+        assert!(!(var_scope.is_some() && lint_level.is_explicit()),
+               "can't have both a var and a lint scope at the same time");
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
-                var_scope = Some(this.new_visibility_scope(scope_span));
+                var_scope = Some(this.new_visibility_scope(scope_span,
+                                                           LintLevel::Inherited,
+                                                           None));
+                // If we have lints, create a new visibility scope
+                // that marks the lints for the locals.
+                if lint_level.is_explicit() {
+                    this.visibility_scope =
+                        this.new_visibility_scope(scope_span, lint_level, None);
+                }
             }
             let source_info = SourceInfo {
                 span,
@@ -183,6 +197,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             };
             this.declare_binding(source_info, mutability, name, var, ty);
         });
+        // Pop any scope we created for the locals.
+        if let Some(var_scope) = var_scope {
+            self.visibility_scope = var_scope;
+        }
         var_scope
     }
 
@@ -712,6 +730,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty: var_ty.clone(),
             name: Some(name),
             source_info,
+            lexical_scope: self.visibility_scope,
             internal: false,
             is_user_variable: true,
         });

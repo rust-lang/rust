@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core_intrinsics)]
 
-unsafe fn foo(x: *const Box<isize>) -> Box<isize> {
-    let y = *x; //~ ERROR cannot move out of dereference of raw pointer
-    return y;
-}
+use std::intrinsics;
 
+// `move_val_init` has an odd desugaring, check that it is still treated
+// as unsafe.
 fn main() {
+    intrinsics::move_val_init(1 as *mut u32, 1);
+    //~^ ERROR dereference of raw pointer requires unsafe function or block
 }
