@@ -15,6 +15,10 @@ dox() {
 
   echo documenting $arch
 
+  if [ "$CI" != "" ]; then
+    rustup target add $target || true
+  fi
+
   rm -rf target/doc/$arch
   mkdir target/doc/$arch
 
