@@ -12,6 +12,8 @@ matrix:
     - os: osx
       env: TARGET=x86_64-apple-darwin NO_ADD=1
       script: ci/run.sh
+    - install: true
+      script: ci/dox.sh
 
 install:
   - if [ "$NO_ADD" = "" ]; then rustup target add $TARGET; fi
@@ -23,3 +25,6 @@ script:
 notifications:
   email:
     on_success: never
+env:
+  global:
+    secure: "jmh7FfVwtPYQN/xPrVYmX7ys70GvX9YsKYtDpp8UwtIihCr81KHi2P2a1/KZNvQN0gPO+nneKieCbNQSCEtxDG9plUoB+OhX8ov9g3ImTJbyt+oW35Vlqq9ftB+Hr/Wn42o4OSTYxRfy1gf9VMePBaJfdkuym3BB75K4s+k+akuVqJv+KAm3zz0wSqU4O/evj2EGz1ldMzqxpogrO2WJQkXyl4xaW/1E0y8IZfRy0bJPKALFUpTDp39ZiWvzjNdr8CXUW1DChJdFPNo7yswxyl/NL5e/meHqF2dzS5b0YyOhcCzlBm7eZoEwyHZWB73t7n5Tuo0uYpX/kBXPAvtDrljQjBNcpm9vJtg6sj3oG0bGAI8pJfNNpLdHLHO6CjmORGP/rzZLeRdEFVb8t7UIXG7l3NcoBpRNiwPFY4gpE5dgiRsKjNrtmNe3GahhsYwbPkc+QUeQFIDtYYRxdJVZj+KvU9jIEpRh5Zv8FZBfsfx0LcLEdtRBjJxFNGGO5NY8nP0OWNVyt4ckRbRMtVzcbcOdzcfUc74/wZYZj8SrfcbSqsfylMQbxLAHJCynvuFmoMf3udPqP3aPuO+4EjDYDIQ1kHwKK87lwqlXFHdhRepAmhRR//g3bDUxzXd96KJqbFU3MYZnn/jzIi0kl+jx3FxivT380cYLVjrD29aGc7M="

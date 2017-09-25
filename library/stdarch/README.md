@@ -9,8 +9,8 @@ standard library
 
 This is a **work in progress**.
 
-[How to get started][contrib]
-[How to help implement intrinsics][help-implement]
+* [How to get started][contrib]
+* [How to help implement intrinsics][help-implement]
 
 [contrib]: https://github.com/rust-lang-nursery/stdsimd/blob/master/CONTRIBUTING.md
 [help-implement]: https://github.com/rust-lang-nursery/stdsimd/issues/40
