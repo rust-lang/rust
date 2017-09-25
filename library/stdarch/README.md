@@ -9,11 +9,17 @@ standard library
 
 This is a **work in progress**.
 
+* [Documentation - i686][i686]
+* [Documentation - x86\_64][x86_64]
+* [Documentation - arm][arm]
 * [How to get started][contrib]
 * [How to help implement intrinsics][help-implement]
 
 [contrib]: https://github.com/rust-lang-nursery/stdsimd/blob/master/CONTRIBUTING.md
 [help-implement]: https://github.com/rust-lang-nursery/stdsimd/issues/40
+[i686]: https://rust-lang-nursery.github.io/stdsimd/i686/simd/
+[x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/simd/
+[arm]: https://rust-lang-nursery.github.io/stdsimd/arm/simd/
 
 ### Approach
 
