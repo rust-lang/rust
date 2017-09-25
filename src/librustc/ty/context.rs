@@ -915,6 +915,10 @@ pub struct GlobalCtxt<'tcx> {
     /// Maps Expr NodeId's to `true` iff `&expr` can have 'static lifetime.
     pub rvalue_promotable_to_static: RefCell<NodeMap<bool>>,
 
+    pub display_used_late_bound_region_names: RefCell<Option<FxHashSet<Name>>>,
+
+    pub display_late_bound_region_index: Cell<usize>,
+
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
     pub crate_name: Symbol,
@@ -1189,6 +1193,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
+            display_used_late_bound_region_names: RefCell::new(None),
+            display_late_bound_region_index: Cell::new(0),
             crate_name: Symbol::intern(crate_name),
             data_layout,
             layout_interner: RefCell::new(FxHashSet()),

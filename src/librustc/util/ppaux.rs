@@ -20,6 +20,7 @@ use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
+use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
 use std::fmt;
@@ -259,12 +260,34 @@ pub fn parameterized(f: &mut fmt::Formatter,
     Ok(())
 }
 
+struct LateBoundRegionNameCollector(FxHashSet<Symbol>);
+
+impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+        match *r {
+            ty::ReLateBound(_, ty::BrNamed(_, name)) => {
+                self.0.insert(name);
+            },
+            _ => {},
+        }
+        r.super_visit_with(self)
+    }
+}
+
 fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
                                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                    original: &ty::Binder<T>,
                                    lifted: Option<ty::Binder<U>>) -> fmt::Result
     where T: fmt::Display, U: fmt::Display + TypeFoldable<'tcx>
 {
+    fn name_by_region_index(index: usize) -> Symbol {
+        match index {
+            0 => Symbol::intern("'r"),
+            1 => Symbol::intern("'s"),
+            i => Symbol::intern(&format!("'t{}", i-2)),
+        }
+    }
+
     // Replace any anonymous late-bound regions with named
     // variants, using gensym'd identifiers, so that we can
     // clearly differentiate between named and unnamed regions in
@@ -286,27 +309,54 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
         }
     };
 
-    let new_value = tcx.replace_late_bound_regions(&value, |br| {
-        let _ = start_or_continue(f, "for<", ", ");
-        let br = match br {
-            ty::BrNamed(_, name) => {
-                let _ = write!(f, "{}", name);
-                br
-            }
-            ty::BrAnon(_) |
-            ty::BrFresh(_) |
-            ty::BrEnv => {
-                let name = Symbol::intern("'r");
-                let _ = write!(f, "{}", name);
-                ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID),
-                            name)
-            }
-        };
-        tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), br))
-    }).0;
+    // If displaying is just started, collect named late-bound regions.
+    let display_just_started = tcx.display_used_late_bound_region_names.borrow().is_none();
+    if display_just_started {
+        let mut collector = LateBoundRegionNameCollector(FxHashSet());
+        value.visit_with(&mut collector);
+        *tcx.display_used_late_bound_region_names.borrow_mut() = Some(collector.0);
+    }
 
+    let old_region_index = tcx.display_late_bound_region_index.get();
+    let mut region_index = old_region_index;
+    let new_value = {
+        let used_region_names = tcx.display_used_late_bound_region_names.borrow();
+        let used_region_names = used_region_names.as_ref().unwrap();
+        tcx.replace_late_bound_regions(&value, |br| {
+            let _ = start_or_continue(f, "for<", ", ");
+            let br = match br {
+                ty::BrNamed(_, name) => {
+                    let _ = write!(f, "{}", name);
+                    br
+                }
+                ty::BrAnon(_) |
+                ty::BrFresh(_) |
+                ty::BrEnv => {
+                    let name = loop {
+                        let name = name_by_region_index(region_index);
+                        region_index += 1;
+                        if !used_region_names.contains(&name) {
+                            break name;
+                        }
+                    };
+                    let _ = write!(f, "{}", name);
+                    ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID),
+                                name)
+                }
+            };
+            tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), br))
+        }).0
+    };
     start_or_continue(f, "", "> ")?;
-    write!(f, "{}", new_value)
+
+    // Push current state to gcx, and restore after writing new_value.
+    tcx.display_late_bound_region_index.set(region_index);
+    write!(f, "{}", new_value)?;
+    tcx.display_late_bound_region_index.set(old_region_index);
+    if display_just_started {
+        *tcx.display_used_late_bound_region_names.borrow_mut() = None;
+    }
+    Ok(())
 }
 
 impl<'tcx> fmt::Display for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
@@ -782,7 +832,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
-                write!(f, "{}", bare_fn.0)
+                write!(f, "{}", bare_fn)
             }
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
