@@ -1033,7 +1033,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for Ref<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Hash> Hash for Ref<'a, T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -1041,7 +1041,7 @@ impl<'a, T: ?Sized + Hash> Hash for Ref<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialEq> PartialEq for Ref<'a, T> {
     #[inline]
     fn eq(&self, other: &Ref<T>) -> bool {
@@ -1049,10 +1049,10 @@ impl<'a, T: ?Sized + PartialEq> PartialEq for Ref<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Eq> Eq for Ref<'a, T> { }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Ord> Ord for Ref<'a, T> {
     #[inline]
     fn cmp(&self, other: &Ref<T>) -> Ordering {
@@ -1060,7 +1060,7 @@ impl<'a, T: ?Sized + Ord> Ord for Ref<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialOrd> PartialOrd for Ref<'a, T> {
     #[inline]
     fn partial_cmp(&self, other: &Ref<T>) -> Option<Ordering> {
@@ -1187,7 +1187,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Hash> Hash for RefMut<'a, T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -1195,7 +1195,7 @@ impl<'a, T: ?Sized + Hash> Hash for RefMut<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialEq> PartialEq for RefMut<'a, T> {
     #[inline]
     fn eq(&self, other: &RefMut<T>) -> bool {
@@ -1203,10 +1203,10 @@ impl<'a, T: ?Sized + PartialEq> PartialEq for RefMut<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Eq> Eq for RefMut<'a, T> { }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Ord> Ord for RefMut<'a, T> {
     #[inline]
     fn cmp(&self, other: &RefMut<T>) -> Ordering {
@@ -1214,7 +1214,7 @@ impl<'a, T: ?Sized + Ord> Ord for RefMut<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialOrd> PartialOrd for RefMut<'a, T> {
     #[inline]
     fn partial_cmp(&self, other: &RefMut<T>) -> Option<Ordering> {

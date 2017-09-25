@@ -379,7 +379,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Hash> Hash for RwLockReadGuard<'a, T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -387,7 +387,7 @@ impl<'a, T: ?Sized + Hash> Hash for RwLockReadGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialEq> PartialEq for RwLockReadGuard<'a, T> {
     #[inline]
     fn eq(&self, other: &RwLockReadGuard<T>) -> bool {
@@ -395,10 +395,10 @@ impl<'a, T: ?Sized + PartialEq> PartialEq for RwLockReadGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Eq> Eq for RwLockReadGuard<'a, T> { }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Ord> Ord for RwLockReadGuard<'a, T> {
     #[inline]
     fn cmp(&self, other: &RwLockReadGuard<T>) -> Ordering {
@@ -406,7 +406,7 @@ impl<'a, T: ?Sized + Ord> Ord for RwLockReadGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialOrd> PartialOrd for RwLockReadGuard<'a, T> {
     #[inline]
     fn partial_cmp(&self, other: &RwLockReadGuard<T>) -> Option<Ordering> {
@@ -450,7 +450,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Hash> Hash for RwLockWriteGuard<'a, T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -458,7 +458,7 @@ impl<'a, T: ?Sized + Hash> Hash for RwLockWriteGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialEq> PartialEq for RwLockWriteGuard<'a, T> {
     #[inline]
     fn eq(&self, other: &RwLockWriteGuard<T>) -> bool {
@@ -466,10 +466,10 @@ impl<'a, T: ?Sized + PartialEq> PartialEq for RwLockWriteGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Eq> Eq for RwLockWriteGuard<'a, T> { }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Ord> Ord for RwLockWriteGuard<'a, T> {
     #[inline]
     fn cmp(&self, other: &RwLockWriteGuard<T>) -> Ordering {
@@ -477,7 +477,7 @@ impl<'a, T: ?Sized + Ord> Ord for RwLockWriteGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialOrd> PartialOrd for RwLockWriteGuard<'a, T> {
     #[inline]
     fn partial_cmp(&self, other: &RwLockWriteGuard<T>) -> Option<Ordering> {

@@ -449,7 +449,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Hash> Hash for MutexGuard<'a, T> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -457,7 +457,7 @@ impl<'a, T: ?Sized + Hash> Hash for MutexGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialEq> PartialEq for MutexGuard<'a, T> {
     #[inline]
     fn eq(&self, other: &MutexGuard<T>) -> bool {
@@ -465,10 +465,10 @@ impl<'a, T: ?Sized + PartialEq> PartialEq for MutexGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Eq> Eq for MutexGuard<'a, T> { }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + Ord> Ord for MutexGuard<'a, T> {
     #[inline]
     fn cmp(&self, other: &MutexGuard<T>) -> Ordering {
@@ -476,7 +476,7 @@ impl<'a, T: ?Sized + Ord> Ord for MutexGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
 impl<'a, T: ?Sized + PartialOrd> PartialOrd for MutexGuard<'a, T> {
     #[inline]
     fn partial_cmp(&self, other: &MutexGuard<T>) -> Option<Ordering> {
