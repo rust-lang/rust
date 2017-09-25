@@ -398,7 +398,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// }
 /// ```
 #[inline]
-#[stable(feature = "needs_drop", since = "1.22.0")]
+#[stable(feature = "needs_drop", since = "1.21.0")]
 pub fn needs_drop<T>() -> bool {
     unsafe { intrinsics::needs_drop::<T>() }
 }
