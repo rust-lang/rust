@@ -1,10 +1,6 @@
 [root]
-name = "unwind"
-version = "0.0.0"
-dependencies = [
- "core 0.0.0",
- "libc 0.0.0",
-]
+name = "workspace_symbol"
+version = "0.1.0"
 
 [[package]]
 name = "advapi32-sys"
@@ -1362,7 +1358,7 @@ dependencies = [
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "racer 2.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-analysis 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-analysis 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-data 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-rustc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1376,7 +1372,7 @@ dependencies = [
 
 [[package]]
 name = "rls-analysis"
-version = "0.6.7"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "derive-new 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2348,6 +2344,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "unwind"
+version = "0.0.0"
+dependencies = [
+ "core 0.0.0",
+ "libc 0.0.0",
+]
+
+[[package]]
 name = "url"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2585,7 +2589,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1731164734096285ec2a5ec7fea5248ae2f5485b3feeb0115af4fda2183b2d1b"
 "checksum regex-syntax 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "f9ec002c35e86791825ed294b50008eea9ddfc8def4420124fbc6b08db834957"
 "checksum regex-syntax 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ad890a5eef7953f55427c50575c680c42841653abd2b028b68cd223d157f62db"
-"checksum rls-analysis 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "4302cc8291570d7f817945845d8c01756e833dbc93c0a87d4f6c9a0b0b7992f1"
+"checksum rls-analysis 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)" = "fa390bdc70b0a90d07d9cd5c6989ba5fca2d59728903919ebda1a1b2037b18d7"
 "checksum rls-data 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "11d339f1888e33e74d8032de0f83c40b2bdaaaf04a8cfc03b32186c3481fb534"
 "checksum rls-rustc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b21ea952e9bf1569929abf1bb920262cde04b7b1b26d8e0260286302807299d2"
 "checksum rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d7c7046dc6a92f2ae02ed302746db4382e75131b9ce20ce967259f6b5867a6a"
