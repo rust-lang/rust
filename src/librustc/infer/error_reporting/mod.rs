@@ -72,6 +72,8 @@ use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{DiagnosticBuilder, DiagnosticStyledString};
 
+use rustc_data_structures::indexed_vec::Idx;
+
 mod note;
 
 mod need_type_info;
@@ -152,21 +154,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match scope {
-                    region::Scope::Node(_) => tag,
-                    region::Scope::CallSite(_) => {
+                let scope_decorated_tag = match scope.data() {
+                    region::ScopeData::Node(_) => tag,
+                    region::ScopeData::CallSite(_) => {
                         "scope of call-site for function"
                     }
-                    region::Scope::Arguments(_) => {
+                    region::ScopeData::Arguments(_) => {
                         "scope of function body"
                     }
-                    region::Scope::Destruction(_) => {
+                    region::ScopeData::Destruction(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::Scope::Remainder(r) => {
+                    region::ScopeData::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
-                                             r.first_statement_index);
+                                             r.first_statement_index.index());
                         &new_string[..]
                     }
                 };

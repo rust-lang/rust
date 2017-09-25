@@ -514,13 +514,8 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl_stable_hash_for!(enum ::middle::region::Scope {
-    Node(local_id),
-    Destruction(local_id),
-    CallSite(local_id),
-    Arguments(local_id),
-    Remainder(block_remainder)
-});
+impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { idx });
+impl_stable_hash_for!(struct ::middle::region::Scope { id, code });
 
 impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for region::Scope {
     type KeyType = region::Scope;

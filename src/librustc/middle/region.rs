@@ -18,6 +18,7 @@ use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
+use std::fmt;
 use std::mem;
 use std::rc::Rc;
 use syntax::codemap;
@@ -31,6 +32,7 @@ use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
 use mir::transform::MirSource;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
@@ -95,8 +97,24 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// placate the same deriving in `ty::FreeRegion`, but we may want to
 /// actually attach a more meaningful ordering to scopes than the one
 /// generated via deriving here.
+///
+/// Scope is a bit-packed to save space - if `code` is SCOPE_DATA_REMAINDER_MAX
+/// or less, it is a `ScopeData::Remainder`, otherwise it is a type specified
+/// by the bitpacking.
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
+pub struct Scope {
+    pub(crate) id: hir::ItemLocalId,
+    pub(crate) code: u32
+}
+
+const SCOPE_DATA_NODE: u32 = !0;
+const SCOPE_DATA_CALLSITE: u32 = !1;
+const SCOPE_DATA_ARGUMENTS: u32 = !2;
+const SCOPE_DATA_DESTRUCTION: u32 = !3;
+const SCOPE_DATA_REMAINDER_MAX: u32 = !4;
+
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
-pub enum Scope {
+pub enum ScopeData {
     Node(hir::ItemLocalId),
 
     // Scope of the call-site for a function or closure
@@ -135,7 +153,90 @@ pub enum Scope {
          RustcDecodable, Debug, Copy)]
 pub struct BlockRemainder {
     pub block: hir::ItemLocalId,
-    pub first_statement_index: u32,
+    pub first_statement_index: FirstStatementIndex,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
+         RustcDecodable, Copy)]
+pub struct FirstStatementIndex { pub idx: u32 }
+
+impl Idx for FirstStatementIndex {
+    fn new(idx: usize) -> Self {
+        assert!(idx <= SCOPE_DATA_REMAINDER_MAX as usize);
+        FirstStatementIndex { idx: idx as u32 }
+    }
+
+    fn index(self) -> usize {
+        self.idx as usize
+    }
+}
+
+impl fmt::Debug for FirstStatementIndex {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.index(), formatter)
+    }
+}
+
+impl From<ScopeData> for Scope {
+    #[inline]
+    fn from(scope_data: ScopeData) -> Self {
+        let (id, code) = match scope_data {
+            ScopeData::Node(id) => (id, SCOPE_DATA_NODE),
+            ScopeData::CallSite(id) => (id, SCOPE_DATA_CALLSITE),
+            ScopeData::Arguments(id) => (id, SCOPE_DATA_ARGUMENTS),
+            ScopeData::Destruction(id) => (id, SCOPE_DATA_DESTRUCTION),
+            ScopeData::Remainder(r) => (r.block, r.first_statement_index.index() as u32)
+        };
+        Self { id, code }
+    }
+}
+
+impl fmt::Debug for Scope {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.data(), formatter)
+    }
+}
+
+#[allow(non_snake_case)]
+impl Scope {
+    #[inline]
+    pub fn data(self) -> ScopeData {
+        match self.code {
+            SCOPE_DATA_NODE => ScopeData::Node(self.id),
+            SCOPE_DATA_CALLSITE => ScopeData::CallSite(self.id),
+            SCOPE_DATA_ARGUMENTS => ScopeData::Arguments(self.id),
+            SCOPE_DATA_DESTRUCTION => ScopeData::Destruction(self.id),
+            idx => ScopeData::Remainder(BlockRemainder {
+                block: self.id,
+                first_statement_index: FirstStatementIndex { idx }
+            })
+        }
+    }
+
+    #[inline]
+    pub fn Node(id: hir::ItemLocalId) -> Self {
+        Self::from(ScopeData::Node(id))
+    }
+
+    #[inline]
+    pub fn CallSite(id: hir::ItemLocalId) -> Self {
+        Self::from(ScopeData::CallSite(id))
+    }
+
+    #[inline]
+    pub fn Arguments(id: hir::ItemLocalId) -> Self {
+        Self::from(ScopeData::Arguments(id))
+    }
+
+    #[inline]
+    pub fn Destruction(id: hir::ItemLocalId) -> Self {
+        Self::from(ScopeData::Destruction(id))
+    }
+
+    #[inline]
+    pub fn Remainder(r: BlockRemainder) -> Self {
+        Self::from(ScopeData::Remainder(r))
+    }
 }
 
 impl Scope {
@@ -144,16 +245,7 @@ impl Scope {
     /// NB: likely to be replaced as API is refined; e.g. pnkfelix
     /// anticipates `fn entry_node_id` and `fn each_exit_node_id`.
     pub fn item_local_id(&self) -> hir::ItemLocalId {
-        match *self {
-            Scope::Node(id) => id,
-
-            // These cases all return rough approximations to the
-            // precise scope denoted by `self`.
-            Scope::Remainder(br) => br.block,
-            Scope::Destruction(id) |
-            Scope::CallSite(id) |
-            Scope::Arguments(id) => id,
-        }
+        self.id
     }
 
     pub fn node_id(&self, tcx: TyCtxt, scope_tree: &ScopeTree) -> ast::NodeId {
@@ -177,7 +269,7 @@ impl Scope {
             return DUMMY_SP;
         }
         let span = tcx.hir.span(node_id);
-        if let Scope::Remainder(r) = *self {
+        if let ScopeData::Remainder(r) = self.data() {
             if let hir::map::NodeBlock(ref blk) = tcx.hir.get(node_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
@@ -187,7 +279,7 @@ impl Scope {
                 // (This is the special case aluded to in the
                 // doc-comment for this method)
 
-                let stmt_span = blk.stmts[r.first_statement_index as usize].span;
+                let stmt_span = blk.stmts[r.first_statement_index.index()].span;
 
                 // To avoid issues with macro-generated spans, the span
                 // of the statement must be nested in that of the block.
@@ -387,7 +479,7 @@ impl<'tcx> ScopeTree {
         }
 
         // record the destruction scopes for later so we can query them
-        if let Scope::Destruction(n) = child {
+        if let ScopeData::Destruction(n) = child.data() {
             self.destruction_scopes.insert(n, child);
         }
     }
@@ -482,8 +574,8 @@ impl<'tcx> ScopeTree {
         let mut id = Scope::Node(expr_id);
 
         while let Some(&p) = self.parent_map.get(&id) {
-            match p {
-                Scope::Destruction(..) => {
+            match p.data() {
+                ScopeData::Destruction(..) => {
                     debug!("temporary_scope({:?}) = {:?} [enclosing]",
                            expr_id, id);
                     return Some(id);
@@ -573,9 +665,9 @@ impl<'tcx> ScopeTree {
             // infer::region_inference for more details.
             let a_root_scope = a_ancestors[a_index];
             let b_root_scope = a_ancestors[a_index];
-            return match (a_root_scope, b_root_scope) {
-                (Scope::Destruction(a_root_id),
-                 Scope::Destruction(b_root_id)) => {
+            return match (a_root_scope.data(), b_root_scope.data()) {
+                (ScopeData::Destruction(a_root_id),
+                 ScopeData::Destruction(b_root_id)) => {
                     if self.closure_is_enclosed_by(a_root_id, b_root_id) {
                         // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
                         scope_b
@@ -764,7 +856,7 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
                 visitor.enter_scope(
                     Scope::Remainder(BlockRemainder {
                         block: blk.hir_id.local_id,
-                        first_statement_index: i as u32
+                        first_statement_index: FirstStatementIndex::new(i)
                     })
                 );
                 visitor.cx.var_parent = visitor.cx.parent;
@@ -915,8 +1007,10 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             // Keep traversing up while we can.
             match visitor.scope_tree.parent_map.get(&scope) {
                 // Don't cross from closure bodies to their parent.
-                Some(&Scope::CallSite(_)) => break,
-                Some(&superscope) => scope = superscope,
+                Some(&superscope) => match superscope.data() {
+                    ScopeData::CallSite(_) => break,
+                    _ => scope = superscope
+                },
                 None => break
             }
         }
