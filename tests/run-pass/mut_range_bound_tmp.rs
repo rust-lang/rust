@@ -9,6 +9,8 @@ fn main() {
     mut_range_bound_both();
     mut_range_bound_no_mutation();
     immut_range_bound();
+    mut_borrow_range_bound();
+    immut_borrow_range_bound();
 }
 
 fn mut_range_bound_upper() {
@@ -35,8 +37,15 @@ fn mut_range_bound_no_mutation() {
 fn mut_borrow_range_bound() {
     let mut m = 4;
     for i in 0..m {
-        let n = &mut m;
-        *n += 1;
+        let n = &mut m;  // warning here?
+        *n += 1;         // or here?
+    }
+}
+
+fn immut_borrow_range_bound() {
+    let mut m = 4;
+    for i in 0..m {
+        let n = &m;   // should be no warning?
     }
 }
 

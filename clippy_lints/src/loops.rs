@@ -1327,7 +1327,20 @@ impl<'tcx> Delegate<'tcx> for MutateDelegate {
     fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {
     }
 
-    fn borrow(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, _: LoanCause) {        
+    fn borrow(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+        match bk {
+            ty::BorrowKind::MutBorrow => {
+                if let Categorization::Local(id) = cmt.cat {
+                    if Some(id) == self.node_id_low {
+                        self.span_low = Some(sp)
+                    }
+                    if Some(id) == self.node_id_high {
+                        self.span_high = Some(sp)
+                    }
+                }
+            },
+            _ => (),
+        }
     }
 
     fn mutate(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: MutateMode) {
@@ -1390,8 +1403,8 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
 
 fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: Vec<Option<NodeId>>) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutateDelegate { node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
-    let d = def_id::DefId::local(body.hir_id.owner);
-    let region_scope_tree = &cx.tcx.region_scope_tree(d);
+    let def_id = def_id::DefId::local(body.hir_id.owner);
+    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
     return delegate.mutation_span();
 }
