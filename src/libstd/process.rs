@@ -1083,8 +1083,6 @@ impl Child {
 /// function and compute the exit code from its return value:
 ///
 /// ```
-/// use std::io::{self, Write};
-///
 /// fn run_app() -> Result<(), ()> {
 ///     // Application logic here
 ///     Ok(())
@@ -1094,7 +1092,7 @@ impl Child {
 ///     ::std::process::exit(match run_app() {
 ///        Ok(_) => 0,
 ///        Err(err) => {
-///            writeln!(io::stderr(), "error: {:?}", err).unwrap();
+///            eprintln!("error: {:?}", err);
 ///            1
 ///        }
 ///     });
