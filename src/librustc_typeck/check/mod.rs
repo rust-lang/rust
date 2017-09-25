@@ -2102,12 +2102,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn resolve_generator_interiors(&self, def_id: DefId) -> Vec<Span> {
         let mut vars = Vec::new();
-        let generators: Vec<_> = {
-            let mut entries = self.deferred_generator_interiors.borrow_mut();
-            let r = entries.drain(..).collect();
-            r
-        };
-        for (node_id, body_id, witness) in generators {
+        let mut generators = self.deferred_generator_interiors.borrow_mut();
+        for (node_id, body_id, witness) in generators.drain(..) {
             self.select_obligations_where_possible();
             generator_type_vars::find_type_vars(self, node_id, body_id, &mut vars);
             generator_interior::resolve_interior(self, def_id, body_id, witness);
