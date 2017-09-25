@@ -1374,20 +1374,15 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
         let QPath::Resolved(None, _) = *qpath,
     ], {
         let def = cx.tables.qpath_def(qpath, bound.hir_id);
-        match def {
-            Def::Local(..) | Def::Upvar(..) => {
-                let def_id = def.def_id();
-                let node_id = cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
-                let node_str = cx.tcx.hir.get(node_id);
-                if_let_chain! {[
-                    let map::Node::NodeBinding(pat) = node_str,
-                    let PatKind::Binding(bind_ann, _, _, _) = pat.node,
-                    let BindingAnnotation::Mutable = bind_ann,
-                ], { 
-                    return Some(node_id); 
-                }}
-            }
-            _ => ()
+        if let Def::Local(node_id) = def {
+            let node_str = cx.tcx.hir.get(node_id);
+            if_let_chain! {[
+                let map::Node::NodeBinding(pat) = node_str,
+                let PatKind::Binding(bind_ann, _, _, _) = pat.node,
+                let BindingAnnotation::Mutable = bind_ann,
+            ], {
+                return Some(node_id);
+            }}
         }
     }}
     return None;
@@ -1395,8 +1390,8 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
 
 fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: Vec<Option<NodeId>>) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutateDelegate { node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
-    let def_id = def_id::DefId::local(body.hir_id.owner);
-    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
+    let d = def_id::DefId::local(body.hir_id.owner);
+    let region_scope_tree = &cx.tcx.region_scope_tree(d);
     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
     return delegate.mutation_span();
 }
