@@ -1,17 +1,21 @@
 FROM ubuntu:16.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
-  ca-certificates \
-  python2.7-dev \
-  git \
-  cmake \
-  ninja-build \
-  sudo \
+RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y \
+  build-essential \
   bzip2 \
+  ca-certificates \
+  cmake \
+  curl \
+  file \
+  g++ \
+  gdb \
+  git \
+  libedit-dev \
+  make \
+  ninja-build \
+  nodejs \
+  python2.7-dev \
+  sudo \
   xz-utils \
   unzip
 

@@ -27,7 +27,7 @@ git reset --hard FETCH_HEAD
 
 # Download toolchain
 ./scripts/download-toolchain
-chmod +x prebuilt/downloads/clang+llvm-x86_64-linux/bin/*
+chmod -R a+rx prebuilt/downloads/clang+llvm-x86_64-linux
 cp -a prebuilt/downloads/clang+llvm-x86_64-linux/. /usr/local
 
 build() {
