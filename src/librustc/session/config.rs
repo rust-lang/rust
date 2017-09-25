@@ -350,6 +350,9 @@ top_level_options!(
         // is currently just a hack and will be removed eventually, so please
         // try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
+
+        // Number of object files/codegen units to produce on the backend
+        codegen_units: usize [UNTRACKED],
     }
 );
 
@@ -512,6 +515,7 @@ pub fn basic_options() -> Options {
         unstable_features: UnstableFeatures::Disallow,
         debug_assertions: true,
         actually_rustdoc: false,
+        codegen_units: 1,
     }
 }
 
@@ -527,11 +531,6 @@ impl Options {
     pub fn enable_dep_node_debug_strs(&self) -> bool {
         cfg!(debug_assertions) &&
             (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
-    }
-
-    pub fn single_codegen_unit(&self) -> bool {
-        self.incremental.is_none() ||
-        self.cg.codegen_units == 1
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
@@ -791,7 +790,7 @@ macro_rules! options {
         fn parse_opt_uint(slot: &mut Option<usize>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
-                None => { *slot = None; true }
+                None => { *slot = None; false }
             }
         }
 
@@ -924,7 +923,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          "metadata to mangle symbol names with"),
     extra_filename: String = ("".to_string(), parse_string, [UNTRACKED],
          "extra data to put in each output filename"),
-    codegen_units: usize = (1, parse_uint, [UNTRACKED],
+    codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
     remark: Passes = (SomePasses(Vec::new()), parse_passes, [UNTRACKED],
         "print remarks for these optimization passes (space separated, or \"all\")"),
@@ -1521,27 +1520,35 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     }
 
     let mut cg = build_codegen_options(matches, error_format);
+    let mut codegen_units = cg.codegen_units;
 
     // Issue #30063: if user requests llvm-related output to one
     // particular path, disable codegen-units.
-    if matches.opt_present("o") && cg.codegen_units != 1 {
-        let incompatible: Vec<_> = output_types.iter()
-            .map(|ot_path| ot_path.0)
-            .filter(|ot| {
-                !ot.is_compatible_with_codegen_units_and_single_output_file()
-            }).collect();
-        if !incompatible.is_empty() {
-            for ot in &incompatible {
-                early_warn(error_format, &format!("--emit={} with -o incompatible with \
-                                                 -C codegen-units=N for N > 1",
-                                                ot.shorthand()));
+    let incompatible: Vec<_> = output_types.iter()
+        .map(|ot_path| ot_path.0)
+        .filter(|ot| {
+            !ot.is_compatible_with_codegen_units_and_single_output_file()
+        })
+        .map(|ot| ot.shorthand())
+        .collect();
+    if !incompatible.is_empty() {
+        match codegen_units {
+            Some(n) if n > 1 => {
+                if matches.opt_present("o") {
+                    for ot in &incompatible {
+                        early_warn(error_format, &format!("--emit={} with -o incompatible with \
+                                                         -C codegen-units=N for N > 1",
+                                                        ot));
+                    }
+                    early_warn(error_format, "resetting to default -C codegen-units=1");
+                    codegen_units = Some(1);
+                }
             }
-            early_warn(error_format, "resetting to default -C codegen-units=1");
-            cg.codegen_units = 1;
+            _ => codegen_units = Some(1),
         }
     }
 
-    if cg.codegen_units < 1 {
+    if codegen_units == Some(0) {
         early_error(error_format, "Value for codegen units must be a positive nonzero integer");
     }
 
@@ -1550,12 +1557,17 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     // case, but it would be confusing to have the validity of
     // `-Z lto -C codegen-units=2` depend on details of the crate being
     // compiled, so we complain regardless.
-    if cg.lto && cg.codegen_units > 1 {
-        // This case is impossible to handle because LTO expects to be able
-        // to combine the entire crate and all its dependencies into a
-        // single compilation unit, but each codegen unit is in a separate
-        // LLVM context, so they can't easily be combined.
-        early_error(error_format, "can't perform LTO when using multiple codegen units");
+    if cg.lto {
+        if let Some(n) = codegen_units {
+            if n > 1 {
+                // This case is impossible to handle because LTO expects to be able
+                // to combine the entire crate and all its dependencies into a
+                // single compilation unit, but each codegen unit is in a separate
+                // LLVM context, so they can't easily be combined.
+                early_error(error_format, "can't perform LTO when using multiple codegen units");
+            }
+        }
+        codegen_units = Some(1);
     }
 
     if cg.lto && debugging_opts.incremental.is_some() {
@@ -1720,6 +1732,34 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let incremental = debugging_opts.incremental.as_ref().map(|m| PathBuf::from(m));
 
+    let codegen_units = codegen_units.unwrap_or_else(|| {
+        match opt_level {
+            // If we're compiling at `-O0` then default to 32 codegen units.
+            // The number here shouldn't matter too too much as debug mode
+            // builds don't rely on performance at all, meaning that lost
+            // opportunities for inlining through multiple codegen units is
+            // a non-issue.
+            //
+            // Note that the high number here doesn't mean that we'll be
+            // spawning a large number of threads in parallel. The backend
+            // of rustc contains global rate limiting through the
+            // `jobserver` crate so we'll never overload the system with too
+            // much work, but rather we'll only be optimizing when we're
+            // otherwise cooperating with other instances of rustc.
+            //
+            // Rather the high number here means that we should be able to
+            // keep a lot of idle cpus busy. By ensuring that no codegen
+            // unit takes *too* long to build we'll be guaranteed that all
+            // cpus will finish pretty closely to one another and we should
+            // make relatively optimal use of system resources
+            OptLevel::No => 32,
+
+            // All other optimization levels default use one codegen unit,
+            // the historical default in Rust for a Long Time.
+            _ => 1,
+        }
+    });
+
     (Options {
         crate_types,
         optimize: opt_level,
@@ -1744,6 +1784,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         unstable_features: UnstableFeatures::from_environment(),
         debug_assertions,
         actually_rustdoc: false,
+        codegen_units,
     },
     cfg)
 }
@@ -2447,7 +2488,7 @@ mod tests {
         opts.cg.extra_filename = String::from("extra-filename");
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-        opts.cg.codegen_units = 42;
+        opts.cg.codegen_units = Some(42);
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts.cg.remark = super::SomePasses(vec![String::from("pass1"),

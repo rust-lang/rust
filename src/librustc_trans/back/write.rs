@@ -939,10 +939,10 @@ fn produce_final_output_artifacts(sess: &Session,
         let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
 
         let keep_numbered_bitcode = needs_crate_bitcode ||
-                (user_wants_bitcode && sess.opts.cg.codegen_units > 1);
+                (user_wants_bitcode && sess.opts.codegen_units > 1);
 
         let keep_numbered_objects = needs_crate_object ||
-                (user_wants_objects && sess.opts.cg.codegen_units > 1);
+                (user_wants_objects && sess.opts.codegen_units > 1);
 
         for module in compiled_modules.modules.iter() {
             let module_name = Some(&module.name[..]);
@@ -1520,6 +1520,11 @@ fn start_executing_work(tcx: TyCtxt,
                                     total_llvm_time);
         }
 
+        // Regardless of what order these modules completed in, report them to
+        // the backend in the same order every time to ensure that we're handing
+        // out deterministic results.
+        compiled_modules.sort_by(|a, b| a.name.cmp(&b.name));
+
         let compiled_metadata_module = compiled_metadata_module
             .expect("Metadata module not compiled?");
 
@@ -1853,7 +1858,7 @@ impl OngoingCrateTranslation {
 
         // FIXME: time_llvm_passes support - does this use a global context or
         // something?
-        if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
+        if sess.opts.codegen_units == 1 && sess.time_llvm_passes() {
             unsafe { llvm::LLVMRustPrintPassTimings(); }
         }
 

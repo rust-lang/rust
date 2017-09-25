@@ -77,6 +77,7 @@ fn main() {
         .split(' ').map(|s| s.to_string()).collect();
     args.push("--out-dir".to_string());
     args.push(env::var("TMPDIR").unwrap());
+    args.push("-Ccodegen-units=1".to_string());
 
     let (result, _) = rustc_driver::run_compiler(
         &args, &mut JitCalls, Some(box JitLoader), None);
