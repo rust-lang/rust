@@ -128,16 +128,20 @@ pub struct CString {
 
 /// Representation of a borrowed C string.
 ///
-/// This dynamically sized type is only safely constructed via a borrowed
-/// version of an instance of `CString`. This type can be constructed from a raw
-/// C string as well and represents a C string borrowed from another location.
+/// This type represents a borrowed reference to a nul-terminated
+/// array of bytes.  It can be constructed safely from a `&[`[`u8`]`]`
+/// slice, or unsafely from a raw `*const c_char`.  It can then be
+/// converted to a Rust [`&str`] by performing UTF-8 validation, or
+/// into an owned [`CString`].
+///
+/// `CStr` is to [`CString`] as [`&str`] is to [`String`]: the former
+/// in each pair are borrowed references; the latter are owned
+/// strings.
 ///
 /// Note that this structure is **not** `repr(C)` and is not recommended to be
-/// placed in the signatures of FFI functions. Instead safe wrappers of FFI
+/// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
 /// functions may leverage the unsafe [`from_ptr`] constructor to provide a safe
 /// interface to other consumers.
-///
-/// [`from_ptr`]: #method.from_ptr
 ///
 /// # Examples
 ///
@@ -151,7 +155,7 @@ pub struct CString {
 ///
 /// unsafe {
 ///     let slice = CStr::from_ptr(my_string());
-///     println!("string length: {}", slice.to_bytes().len());
+///     println!("string buffer size without nul terminator: {}", slice.to_bytes().len());
 /// }
 /// ```
 ///
@@ -173,8 +177,6 @@ pub struct CString {
 ///
 /// Converting a foreign C string into a Rust [`String`]:
 ///
-/// [`String`]: ../string/struct.String.html
-///
 /// ```no_run
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
@@ -189,6 +191,12 @@ pub struct CString {
 ///
 /// println!("string: {}", my_string_safe());
 /// ```
+///
+/// [`u8`]: ../primitive.u8.html
+/// [`&str`]: ../primitive.str.html
+/// [`String`]: ../string/struct.String.html
+/// [`CString`]: struct.CString.html
+/// [`from_ptr`]: #method.from_ptr
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CStr {
@@ -215,8 +223,10 @@ pub struct CStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
-/// An error returned from [`CStr::from_bytes_with_nul`] to indicate that a nul
-/// byte was found too early in the slice provided or one wasn't found at all.
+/// An error returned from [`CStr::from_bytes_with_nul`] to indicate
+/// that a nul byte was found too early in the slice provided, or one
+/// wasn't found at all.  The slice used to create a `CStr` must have one
+/// and only one nul byte at the end of the slice.
 ///
 /// [`CStr::from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
 ///
@@ -795,9 +805,9 @@ impl fmt::Display for IntoStringError {
 }
 
 impl CStr {
-    /// Casts a raw C string to a safe C string wrapper.
+    /// Wraps a raw C string with a safe C string wrapper.
     ///
-    /// This function will cast the provided `ptr` to the `CStr` wrapper which
+    /// This function will wrap the provided `ptr` with a `CStr` wrapper, which
     /// allows inspection and interoperation of non-owned C strings. This method
     /// is unsafe for a number of reasons:
     ///
@@ -837,9 +847,9 @@ impl CStr {
 
     /// Creates a C string wrapper from a byte slice.
     ///
-    /// This function will cast the provided `bytes` to a `CStr` wrapper after
-    /// ensuring that it is null terminated and does not contain any interior
-    /// nul bytes.
+    /// This function will cast the provided `bytes` to a `CStr`
+    /// wrapper after ensuring that the byte slice is nul-terminated
+    /// and does not contain any interior nul bytes.
     ///
     /// # Examples
     ///
@@ -884,7 +894,7 @@ impl CStr {
     /// Unsafely creates a C string wrapper from a byte slice.
     ///
     /// This function will cast the provided `bytes` to a `CStr` wrapper without
-    /// performing any sanity checks. The provided slice must be null terminated
+    /// performing any sanity checks. The provided slice **must** be nul-terminated
     /// and not contain any interior nul bytes.
     ///
     /// # Examples
@@ -906,7 +916,7 @@ impl CStr {
 
     /// Returns the inner pointer to this C string.
     ///
-    /// The returned pointer will be valid for as long as `self` is and points
+    /// The returned pointer will be valid for as long as `self` is, and points
     /// to a contiguous region of memory terminated with a 0 byte to represent
     /// the end of the string.
     ///
@@ -927,9 +937,9 @@ impl CStr {
     /// ```
     ///
     /// This happens because the pointer returned by `as_ptr` does not carry any
-    /// lifetime information and the string is deallocated immediately after
+    /// lifetime information and the [`CString`] is deallocated immediately after
     /// the `CString::new("Hello").unwrap().as_ptr()` expression is evaluated.
-    /// To fix the problem, bind the string to a local variable:
+    /// To fix the problem, bind the `CString` to a local variable:
     ///
     /// ```no_run
     /// use std::ffi::{CString};
@@ -941,6 +951,11 @@ impl CStr {
     ///     *ptr;
     /// }
     /// ```
+    ///
+    /// This way, the lifetime of the `CString` in `hello` encompasses
+    /// the lifetime of `ptr` and the `unsafe` block.
+    ///
+    /// [`CString`]: struct.CString.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_ptr(&self) -> *const c_char {
@@ -948,10 +963,6 @@ impl CStr {
     }
 
     /// Converts this C string to a byte slice.
-    ///
-    /// This function will calculate the length of this string (which normally
-    /// requires a linear amount of work to be done) and then return the
-    /// resulting slice of `u8` elements.
     ///
     /// The returned slice will **not** contain the trailing nul terminator that this C
     /// string has.
@@ -1002,8 +1013,9 @@ impl CStr {
 
     /// Yields a [`&str`] slice if the `CStr` contains valid UTF-8.
     ///
-    /// This function will calculate the length of this string and check for
-    /// UTF-8 validity, and then return the [`&str`] if it's valid.
+    /// If the contents of the `CStr` are valid UTF-8 data, this
+    /// function will return the corresponding [`&str`] slice.  Otherwise,
+    /// it will return an error with details of where UTF-8 validation failed.
     ///
     /// > **Note**: This method is currently implemented to check for validity
     /// > after a 0-cost cast, but it is planned to alter its definition in the
@@ -1031,10 +1043,12 @@ impl CStr {
 
     /// Converts a `CStr` into a [`Cow`]`<`[`str`]`>`.
     ///
-    /// This function will calculate the length of this string (which normally
-    /// requires a linear amount of work to be done) and then return the
-    /// resulting slice as a [`Cow`]`<`[`str`]`>`, replacing any invalid UTF-8 sequences
-    /// with `U+FFFD REPLACEMENT CHARACTER`.
+    /// If the contents of the `CStr` are valid UTF-8 data, this
+    /// function will return a [`Cow`]`::`[`Borrowed`]`(`[`&str`]`)`
+    /// with the the corresponding [`&str`] slice.  Otherwise, it will
+    /// replace any invalid UTF-8 sequences with `U+FFFD REPLACEMENT
+    /// CHARACTER` and return a [`Cow`]`::`[`Owned`]`(`[`String`]`)`
+    /// with the result.
     ///
     /// > **Note**: This method is currently implemented to check for validity
     /// > after a 0-cost cast, but it is planned to alter its definition in the
@@ -1042,7 +1056,9 @@ impl CStr {
     /// > check whenever this method is called.
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
     /// [`str`]: ../primitive.str.html
+    /// [`String`]: ../string/struct.String.html
     ///
     /// # Examples
     ///
