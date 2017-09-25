@@ -1,7 +1,7 @@
-- Feature Name: generic_assert
+- Feature Name: `generic_assert`
 - Start Date: 2017-05-24
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2011](https://github.com/rust-lang/rfcs/pull/2011)
+- Rust Issue: [rust-lang/rust#44838](https://github.com/rust-lang/rust/issues/44838)
 
 # Summary
 [summary]: #summary
