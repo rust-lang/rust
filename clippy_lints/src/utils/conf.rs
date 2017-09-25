@@ -82,7 +82,8 @@ macro_rules! define_Conf {
             #[serde(rename_all="kebab-case")]
             #[serde(deny_unknown_fields)]
             pub struct Conf {
-                $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)] pub $rust_name: define_Conf!(TY $($ty)+),)+
+                $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)]
+                          pub $rust_name: define_Conf!(TY $($ty)+),)+
                 #[allow(dead_code)]
                 #[serde(default)]
                 third_party: Option<::toml::Value>,
@@ -91,10 +92,12 @@ macro_rules! define_Conf {
                 mod $rust_name {
                     use serde;
                     use serde::Deserialize;
-                    pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<define_Conf!(TY $($ty)+), D::Error> {
+                    pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D)
+                    -> Result<define_Conf!(TY $($ty)+), D::Error> {
                         type T = define_Conf!(TY $($ty)+);
                         Ok(T::deserialize(deserializer).unwrap_or_else(|e| {
-                            ::utils::conf::ERRORS.lock().expect("no threading here").push(::utils::conf::Error::Toml(e.to_string()));
+                            ::utils::conf::ERRORS.lock().expect("no threading here")
+                                                        .push(::utils::conf::Error::Toml(e.to_string()));
                             super::$rust_name()
                         }))
                     }

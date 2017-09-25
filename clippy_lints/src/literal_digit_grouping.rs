@@ -279,12 +279,19 @@ impl LiteralDigitGrouping {
                         let fractional_part = &parts[1].chars().rev().collect::<String>();
                         let _ = Self::do_lint(fractional_part)
                             .map(|fractional_group_size| {
-                                let consistent = Self::parts_consistent(integral_group_size, fractional_group_size, parts[0].len(), parts[1].len());
+                                let consistent = Self::parts_consistent(integral_group_size,
+                                                                        fractional_group_size,
+                                                                        parts[0].len(),
+                                                                        parts[1].len());
                                 if !consistent {
-                                    WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(), cx, &lit.span);
+                                    WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(),
+                                                                                   cx,
+                                                                                   &lit.span);
                                 }
                             })
-                            .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(), cx, &lit.span));
+                            .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(),
+                                                                         cx,
+                                                                         &lit.span));
                     }
                 })
                 .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(), cx, &lit.span));
@@ -332,7 +339,8 @@ impl LiteralDigitGrouping {
                 .windows(2)
                 .all(|ps| ps[1] - ps[0] == group_size + 1)
                 // number of digits to the left of the last group cannot be bigger than group size.
-                && (digits.len() - underscore_positions.last().expect("there's at least one element") <= group_size + 1);
+                && (digits.len() - underscore_positions.last()
+                                                       .expect("there's at least one element") <= group_size + 1);
 
             if !consistent {
                 return Err(WarningType::InconsistentDigitGrouping);
