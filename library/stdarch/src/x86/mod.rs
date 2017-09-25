@@ -11,6 +11,8 @@ pub use self::bmi::*;
 pub use self::bmi2::*;
 pub use self::tbm::*;
 
+pub use self::runtime::{__Feature, __unstable_detect_feature};
+
 #[allow(non_camel_case_types)]
 pub type __m128i = ::v128::i8x16;
 #[allow(non_camel_case_types)]
@@ -30,3 +32,6 @@ mod abm;
 mod bmi;
 mod bmi2;
 mod tbm;
+
+#[macro_use]
+mod runtime;
