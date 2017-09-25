@@ -18,6 +18,7 @@ use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
+use std::fmt;
 use std::mem;
 use std::rc::Rc;
 use syntax::codemap;
@@ -96,7 +97,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// placate the same deriving in `ty::FreeRegion`, but we may want to
 /// actually attach a more meaningful ordering to scopes than the one
 /// generated via deriving here.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
+///
+/// Scope is a bit-packed to save space - if `code` is SCOPE_DATA_REMAINDER_MAX
+/// or less, it is a `ScopeData::Remainder`, otherwise it is a type specified
+/// by the bitpacking.
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
 pub struct Scope {
     pub(crate) id: hir::ItemLocalId,
     pub(crate) code: u32
@@ -152,7 +157,7 @@ pub struct BlockRemainder {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-         RustcDecodable, Debug, Copy)]
+         RustcDecodable, Copy)]
 pub struct FirstStatementIndex { pub idx: u32 }
 
 impl Idx for FirstStatementIndex {
@@ -163,6 +168,12 @@ impl Idx for FirstStatementIndex {
 
     fn index(self) -> usize {
         self.idx as usize
+    }
+}
+
+impl fmt::Debug for FirstStatementIndex {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.index(), formatter)
     }
 }
 
@@ -177,6 +188,12 @@ impl From<ScopeData> for Scope {
             ScopeData::Remainder(r) => (r.block, r.first_statement_index.index() as u32)
         };
         Self { id, code }
+    }
+}
+
+impl fmt::Debug for Scope {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.data(), formatter)
     }
 }
 
