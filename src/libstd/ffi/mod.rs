@@ -92,13 +92,40 @@
 //! your code can detect errors in case the environment variable did
 //! not in fact contain valid Unicode data.
 //!
-//! * [`OsStr`] represents a borrowed string slice in a format that
-//! can be passed to the operating system.  It can be converted into
-//! an UTF-8 Rust string slice in a similar way to `OsString`.
+//! * [`OsStr`] represents a borrowed reference to a string in a
+//! format that can be passed to the operating system.  It can be
+//! converted into an UTF-8 Rust string slice in a similar way to
+//! `OsString`.
+//!
+//! # Conversions
+//!
+//! ## On Unix
+//!
+//! On Unix, [`OsStr`] implements the `std::os::unix:ffi::`[`OsStrExt`][unix.OsStrExt] trait, which
+//! augments it with two methods, [`from_bytes`] and [`as_bytes`].  These do inexpensive conversions
+//! from and to UTF-8 byte slices.
+//!
+//! Additionally, on Unix [`OsString`] implements the
+//! `std::os::unix:ffi::`[`OsStringExt`][unix.OsStringExt] trait,
+//! which provides [`from_vec`] and [`into_vec`] methods that consume
+//! their arguments, and take or produce vectors of [`u8`].
+//!
+//! ## On Windows
+//!
+//! On Windows, [`OsStr`] implements the `std::os::windows::ffi::`[`OsStrExt`][windows.OsStrExt]
+//! trait, which provides an [`encode_wide`] method.  This provides an iterator that can be
+//! [`collect`]ed into a vector of [`u16`].
+//!
+//! Additionally, on Windows [`OsString`] implements the
+//! `std::os::windows:ffi::`[`OsStringExt`][windows.OsStringExt] trait, which provides a
+//! [`from_wide`] method.  The result of this method is an `OsString` which can be round-tripped to
+//! a Windows string losslessly.
 //!
 //! [`String`]: ../string/struct.String.html
 //! [`str`]: ../primitive.str.html
 //! [`char`]: ../primitive.char.html
+//! [`u8`]: ../primitive.u8.html
+//! [`u16`]: ../primitive.u16.html
 //! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: http://www.unicode.org/glossary/#code_point
 //! [`CString`]: struct.CString.html
@@ -108,6 +135,18 @@
 //! [`env::set_var()`]: ../env/fn.set_var.html
 //! [`env::var_os()`]: ../env/fn.var_os.html
 //! [`Result<>`]: ../result/enum.Result.html
+//! [unix.OsStringExt]: ../os/unix/ffi/trait.OsStringExt.html
+//! [`from_vec`]: ../os/unix/ffi/trait.OsStringExt.html#tymethod.from_vec
+//! [`into_vec`]: ../os/unix/ffi/trait.OsStringExt.html#tymethod.into_vec
+//! [unix.OsStrExt]: ../os/unix/ffi/trait.OsStrExt.html
+//! [`from_bytes`]: ../os/unix/ffi/trait.OsStrExt.html#tymethod.from_bytes
+//! [`as_bytes`]: ../os/unix/ffi/trait.OsStrExt.html#tymethod.as_bytes
+//! [`OsStrExt`]: ../os/unix/ffi/trait.OsStrExt.html
+//! [windows.OsStrExt]: ../os/windows/ffi/trait.OsStrExt.html
+//! [`encode_wide`]: ../os/windows/ffi/trait.OsStrExt.html#tymethod.encode_wide
+//! [`collect`]: ../iter/trait.Iterator.html#method.collect
+//! [windows.OsStringExt]: ../os/windows/ffi/trait.OsStringExt.html
+//! [`from_wide`]: ../os/windows/ffi/trait.OsStringExt.html#tymethod.from_wide
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
