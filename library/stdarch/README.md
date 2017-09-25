@@ -21,6 +21,7 @@ This is a **work in progress**.
 [i686]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/
 [x86_64]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/
 [arm]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/
+[aarch64]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/
 
 ### Approach
 
