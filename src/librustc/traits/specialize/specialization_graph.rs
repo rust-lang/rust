@@ -346,11 +346,14 @@ impl<'a, 'gcx, 'tcx> Ancestors {
     /// Search the items from the given ancestors, returning each definition
     /// with the given name and the given kind.
     #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-    pub fn defs(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, name: Name, kind: ty::AssociatedKind)
+    pub fn defs(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, trait_item_name: Name,
+                trait_item_kind: ty::AssociatedKind, trait_def_id: DefId)
                 -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + 'a {
         self.flat_map(move |node| {
-            node.items(tcx).filter(move |item| item.kind == kind && item.name == name)
-                           .map(move |item| NodeItem { node: node, item: item })
+            node.items(tcx).filter(move |impl_item| {
+                impl_item.kind == trait_item_kind &&
+                tcx.hygienic_eq(impl_item.name, trait_item_name, trait_def_id)
+            }).map(move |item| NodeItem { node: node, item: item })
         })
     }
 }

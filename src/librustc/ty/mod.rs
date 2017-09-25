@@ -2345,6 +2345,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    // Hygienically compare a use-site name (`use_name`) for a field or an associated item with its
+    // supposed definition name (`def_name`). The method also needs `DefId` of the supposed
+    // definition's parent/scope to perform comparison.
+    pub fn hygienic_eq(self, use_name: Name, def_name: Name, def_parent_def_id: DefId) -> bool {
+        self.adjust(use_name, def_parent_def_id, DUMMY_NODE_ID).0 == def_name.to_ident()
+    }
+
     pub fn adjust(self, name: Name, scope: DefId, block: NodeId) -> (Ident, DefId) {
         self.adjust_ident(name.to_ident(), scope, block)
     }
@@ -2356,6 +2363,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let scope = match ident.ctxt.adjust(expansion) {
             Some(macro_def) => self.hir.definitions().macro_def_scope(macro_def),
+            None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
             None => self.hir.get_module_parent(block),
         };
         (ident, scope)
