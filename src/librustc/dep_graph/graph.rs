@@ -59,6 +59,13 @@ impl DepNodeIndex {
     };
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum DepNodeColor {
+    Red,
+    Green,
+    Gray
+}
+
 struct DepGraphData {
     /// The old, initial encoding of the dependency graph. This will soon go
     /// away.
@@ -73,6 +80,8 @@ struct DepGraphData {
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
     previous: PreviousDepGraph,
+
+    colors: RefCell<FxHashMap<DepNode, DepNodeColor>>,
 
     /// When we load, there may be `.o` files, cached mir, or other such
     /// things available to us. If we find that they are not dirty, we
@@ -97,6 +106,7 @@ impl DepGraph {
                 dep_node_debug: RefCell::new(FxHashMap()),
                 current: RefCell::new(CurrentDepGraph::new()),
                 previous: prev_graph,
+                colors: RefCell::new(FxHashMap()),
             })),
             fingerprints: Rc::new(RefCell::new(FxHashMap())),
         }
@@ -192,10 +202,22 @@ impl DepGraph {
             let mut stable_hasher = StableHasher::new();
             result.hash_stable(&mut hcx, &mut stable_hasher);
 
+            let current_fingerprint = stable_hasher.finish();
+
             assert!(self.fingerprints
                         .borrow_mut()
-                        .insert(key, stable_hasher.finish())
+                        .insert(key, current_fingerprint)
                         .is_none());
+
+            let prev_fingerprint = data.previous.fingerprint_of(&key);
+
+            let color = if Some(current_fingerprint) == prev_fingerprint {
+                DepNodeColor::Green
+            } else {
+                DepNodeColor::Red
+            };
+
+            assert!(data.colors.borrow_mut().insert(key, color).is_none());
 
             (result, DepNodeIndex {
                 legacy: dep_node_index_legacy,
@@ -228,7 +250,16 @@ impl DepGraph {
             data.current.borrow_mut().push_anon_task();
             let result = op();
             let dep_node_index_legacy = data.edges.borrow_mut().pop_anon_task(dep_kind);
-            let dep_node_index_new = data.current.borrow_mut().pop_anon_task(dep_kind);
+            let (new_dep_node, dep_node_index_new) = data.current
+                                                         .borrow_mut()
+                                                         .pop_anon_task(dep_kind);
+            if let Some(new_dep_node) = new_dep_node {
+                assert!(data.colors
+                            .borrow_mut()
+                            .insert(new_dep_node, DepNodeColor::Red)
+                            .is_none());
+            }
+
             (result, DepNodeIndex {
                 legacy: dep_node_index_legacy,
                 new: dep_node_index_new,
@@ -275,8 +306,20 @@ impl DepGraph {
         self.fingerprints.borrow()[dep_node]
     }
 
-    pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Fingerprint {
+    pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
+    }
+
+    pub fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
+        match self.data.as_ref().unwrap().colors.borrow().get(dep_node) {
+            Some(&color) => {
+                debug_assert!(color != DepNodeColor::Gray);
+                color
+            }
+            None => {
+                DepNodeColor::Gray
+            }
+        }
     }
 
     /// Indicates that a previous work product exists for `v`. This is
@@ -485,7 +528,7 @@ impl CurrentDepGraph {
         });
     }
 
-    fn pop_anon_task(&mut self, kind: DepKind) -> DepNodeIndexNew {
+    fn pop_anon_task(&mut self, kind: DepKind) -> (Option<DepNode>, DepNodeIndexNew) {
         let popped_node = self.task_stack.pop().unwrap();
 
         if let OpenTask::Anon {
@@ -514,10 +557,10 @@ impl CurrentDepGraph {
             };
 
             if let Some(&index) = self.node_to_node_index.get(&target_dep_node) {
-                return index;
+                (None, index)
+            } else {
+                (Some(target_dep_node), self.alloc_node(target_dep_node, reads))
             }
-
-            self.alloc_node(target_dep_node, reads)
         } else {
             bug!("pop_anon_task() - Expected anonymous task to be popped")
         }

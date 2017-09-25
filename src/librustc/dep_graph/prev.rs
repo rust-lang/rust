@@ -39,8 +39,9 @@ impl PreviousDepGraph {
             .for_each(|&index| f(&self.data.nodes[index]));
     }
 
-    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Fingerprint {
-        let node_index = self.index[dep_node];
-        self.data.nodes[node_index].1
+    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
+        self.index
+            .get(dep_node)
+            .map(|&node_index| self.data.nodes[node_index].1)
     }
 }
