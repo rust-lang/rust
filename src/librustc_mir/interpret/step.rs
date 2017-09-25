@@ -92,6 +92,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         trace!("{:?}", stmt);
 
         use rustc::mir::StatementKind::*;
+
+        // Some statements (e.g. box) push new stack frames.  We have to record the stack frame number
+        // *before* executing the statement.
+        let frame_idx = self.cur_frame();
+
         match stmt.kind {
             Assign(ref lvalue, ref rvalue) => self.eval_rvalue_into_lvalue(rvalue, lvalue)?,
 
@@ -175,7 +180,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             InlineAsm { .. } => return err!(InlineAsm),
         }
 
-        self.frame_mut().stmt += 1;
+        self.stack[frame_idx].stmt += 1;
         Ok(())
     }
 

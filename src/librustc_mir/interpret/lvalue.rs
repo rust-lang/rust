@@ -497,7 +497,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(Lvalue::Ptr { ptr, extra })
     }
 
-    pub(super) fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
+    pub fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         self.monomorphize(
             lvalue.ty(self.mir(), self.tcx).to_ty(self.tcx),
             self.substs(),

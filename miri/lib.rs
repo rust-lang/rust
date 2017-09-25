@@ -114,6 +114,8 @@ pub fn eval_main<'a, 'tcx: 'a>(
             ecx.memory.write_primval(foo_ptr.into(), PrimVal::Ptr(foo.into()), ptr_size, false)?;
             ecx.memory.mark_static_initalized(foo_ptr.alloc_id, Mutability::Immutable)?;
             ecx.write_ptr(dest, foo_ptr.into(), ty)?;
+
+            assert!(args.next().is_none(), "start lang item has more arguments than expected");
         } else {
             ecx.push_stack_frame(
                 main_instance,
@@ -122,6 +124,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 Lvalue::undef(),
                 StackPopCleanup::None,
             )?;
+
+            // No arguments
+            let mut args = ecx.frame().mir.args_iter();
+            assert!(args.next().is_none(), "main function must not have arguments");
         }
 
         while ecx.step()? {}
@@ -227,17 +233,52 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         ty: ty::Ty<'tcx>,
-    ) -> EvalResult<'tcx, PrimVal> {
-        // FIXME: call the `exchange_malloc` lang item if available
+        dest: Lvalue,
+    ) -> EvalResult<'tcx> {
         let size = ecx.type_size(ty)?.expect("box only works with sized types");
         let align = ecx.type_align(ty)?;
-        if size == 0 {
-            Ok(PrimVal::Bytes(align.into()))
-        } else {
-            ecx.memory
-                .allocate(size, align, MemoryKind::Machine(memory::MemoryKind::Rust))
-                .map(PrimVal::Ptr)
-        }
+
+        // Call the `exchange_malloc` lang item
+        let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
+        let malloc = ty::Instance::mono(ecx.tcx, malloc);
+        let malloc_mir = ecx.load_mir(malloc.def)?;
+        ecx.push_stack_frame(
+            malloc,
+            malloc_mir.span,
+            malloc_mir,
+            dest,
+            // Don't do anything when we are done.  The statement() function will increment
+            // the old stack frame's stmt counter to the next statement, which means that when
+            // exchange_malloc returns, we go on evaluating exactly where we want to be.
+            StackPopCleanup::None,
+        )?;
+
+        let mut args = ecx.frame().mir.args_iter();
+        let usize = ecx.tcx.types.usize;
+
+        // First argument: size
+        let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
+        ecx.write_value(
+            ValTy {
+                value: Value::ByVal(PrimVal::Bytes(size as u128)),
+                ty: usize,
+            },
+            dest,
+        )?;
+
+        // Second argument: align
+        let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
+        ecx.write_value(
+            ValTy {
+                value: Value::ByVal(PrimVal::Bytes(align as u128)),
+                ty: usize,
+            },
+            dest,
+        )?;
+
+        // No more arguments
+        assert!(args.next().is_none(), "exchange_malloc lang item has more arguments than expected");
+        Ok(())
     }
 
     fn global_item_with_linkage<'a>(

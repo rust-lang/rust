@@ -176,8 +176,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     Lvalue::undef(),
                     StackPopCleanup::Goto(dest_block),
                 )?;
+                let mut args = self.frame().mir.args_iter();
 
-                let arg_local = self.frame().mir.args_iter().next().ok_or(
+                let arg_local = args.next().ok_or(
                     EvalErrorKind::AbiViolation(
                         "Argument to __rust_maybe_catch_panic does not take enough arguments."
                             .to_owned(),
@@ -185,6 +186,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 )?;
                 let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                 self.write_ptr(arg_dest, data, u8_ptr_ty)?;
+
+                assert!(args.next().is_none(), "__rust_maybe_catch_panic argument has more arguments than expected");
 
                 // We ourselves return 0
                 self.write_null(dest, dest_ty)?;

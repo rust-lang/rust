@@ -70,7 +70,8 @@ pub trait Machine<'tcx>: Sized {
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         ty: ty::Ty<'tcx>,
-    ) -> EvalResult<'tcx, PrimVal>;
+        dest: Lvalue,
+    ) -> EvalResult<'tcx>;
 
     /// Called when trying to access a global declared with a `linkage` attribute
     fn global_item_with_linkage<'a>(
