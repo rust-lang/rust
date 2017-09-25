@@ -568,15 +568,11 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let num_trait_m_type_params = trait_m_generics.types.len();
     if num_impl_m_type_params != num_trait_m_type_params {
         let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
-        let span = match tcx.hir.expect_impl_item(impl_m_node_id).node {
-            ImplItemKind::Method(ref impl_m_sig, _) => {
-                if impl_m_sig.generics.is_parameterized() {
-                    impl_m_sig.generics.span
-                } else {
-                    impl_m_span
-                }
-            }
-            _ => bug!("{:?} is not a method", impl_m),
+        let impl_m_item = tcx.hir.expect_impl_item(impl_m_node_id);
+        let span = if impl_m_item.generics.is_parameterized() {
+            impl_m_item.generics.span
+        } else {
+            impl_m_span
         };
 
         let mut err = struct_span_err!(tcx.sess,

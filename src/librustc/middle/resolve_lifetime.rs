@@ -410,7 +410,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         if let hir::TraitItemKind::Method(ref sig, _) = trait_item.node {
             self.visit_early_late(
                 Some(self.hir_map.get_parent(trait_item.id)),
-                &sig.decl, &sig.generics,
+                &sig.decl, &trait_item.generics,
                 |this| intravisit::walk_trait_item(this, trait_item))
         } else {
             intravisit::walk_trait_item(self, trait_item);
@@ -421,7 +421,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
             self.visit_early_late(
                 Some(self.hir_map.get_parent(impl_item.id)),
-                &sig.decl, &sig.generics,
+                &sig.decl, &impl_item.generics,
                 |this| intravisit::walk_impl_item(this, impl_item))
         } else {
             intravisit::walk_impl_item(self, impl_item);
