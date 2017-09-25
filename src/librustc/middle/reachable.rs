@@ -58,11 +58,10 @@ fn item_might_be_inlined(item: &hir::Item) -> bool {
 }
 
 fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     sig: &hir::MethodSig,
                                      impl_item: &hir::ImplItem,
                                      impl_src: DefId) -> bool {
     if attr::requests_inline(&impl_item.attrs) ||
-        generics_require_inlining(&sig.generics) {
+        generics_require_inlining(&impl_item.generics) {
         return true
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
@@ -176,8 +175,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Some(hir_map::NodeImplItem(impl_item)) => {
                 match impl_item.node {
                     hir::ImplItemKind::Const(..) => true,
-                    hir::ImplItemKind::Method(ref sig, _) => {
-                        if generics_require_inlining(&sig.generics) ||
+                    hir::ImplItemKind::Method(..) => {
+                        if generics_require_inlining(&impl_item.generics) ||
                                 attr::requests_inline(&impl_item.attrs) {
                             true
                         } else {
@@ -293,9 +292,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Const(_, body) => {
                         self.visit_nested_body(body);
                     }
-                    hir::ImplItemKind::Method(ref sig, body) => {
+                    hir::ImplItemKind::Method(_, body) => {
                         let did = self.tcx.hir.get_parent_did(search_item);
-                        if method_might_be_inlined(self.tcx, sig, impl_item, did) {
+                        if method_might_be_inlined(self.tcx, impl_item, did) {
                             self.visit_nested_body(body)
                         }
                     }

@@ -1539,6 +1539,7 @@ impl<'a> LoweringContext<'a> {
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
+                generics: this.lower_generics(&i.generics),
                 node: match i.node {
                     TraitItemKind::Const(ref ty, ref default) => {
                         hir::TraitItemKind::Const(this.lower_ty(ty),
@@ -1548,7 +1549,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     TraitItemKind::Method(ref sig, None) => {
                         let names = this.lower_fn_args_to_names(&sig.decl);
-                        hir::TraitItemKind::Method(this.lower_method_sig(&i.generics, sig),
+                        hir::TraitItemKind::Method(this.lower_method_sig(sig),
                                                    hir::TraitMethod::Required(names))
                     }
                     TraitItemKind::Method(ref sig, Some(ref body)) => {
@@ -1556,7 +1557,7 @@ impl<'a> LoweringContext<'a> {
                             let body = this.lower_block(body, false);
                             this.expr_block(body, ThinVec::new())
                         });
-                        hir::TraitItemKind::Method(this.lower_method_sig(&i.generics, sig),
+                        hir::TraitItemKind::Method(this.lower_method_sig(sig),
                                                    hir::TraitMethod::Provided(body_id))
                     }
                     TraitItemKind::Type(ref bounds, ref default) => {
@@ -1603,6 +1604,7 @@ impl<'a> LoweringContext<'a> {
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
+                generics: this.lower_generics(&i.generics),
                 vis: this.lower_visibility(&i.vis, None),
                 defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
                 node: match i.node {
@@ -1615,7 +1617,7 @@ impl<'a> LoweringContext<'a> {
                             let body = this.lower_block(body, false);
                             this.expr_block(body, ThinVec::new())
                         });
-                        hir::ImplItemKind::Method(this.lower_method_sig(&i.generics, sig), body_id)
+                        hir::ImplItemKind::Method(this.lower_method_sig(sig), body_id)
                     }
                     ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(this.lower_ty(ty)),
                     ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
@@ -1727,9 +1729,8 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lower_method_sig(&mut self, generics: &Generics, sig: &MethodSig) -> hir::MethodSig {
+    fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
         hir::MethodSig {
-            generics: self.lower_generics(generics),
             abi: sig.abi,
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
