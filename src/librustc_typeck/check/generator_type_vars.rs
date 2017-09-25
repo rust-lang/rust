@@ -15,11 +15,12 @@ use syntax::ast::NodeId;
 use syntax_pos::Span;
 use rustc::ty::fold::TypeFoldable;
 
-struct InferVarVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct InferVarVisitor<'b, 'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+    vars: &'b mut Vec<Span>,
 }
 
-impl<'a, 'gcx, 'tcx> InferVarVisitor<'a, 'gcx, 'tcx> {
+impl<'b, 'a, 'gcx, 'tcx> InferVarVisitor<'b, 'a, 'gcx, 'tcx> {
     fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
         // Resolve any borrowings for the node with id `node_id`
         self.visit_adjustments(span, hir_id);
@@ -38,9 +39,9 @@ impl<'a, 'gcx, 'tcx> InferVarVisitor<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn resolve<T: TypeFoldable<'tcx>>(&self, x: &T, span: Span) {
+    fn resolve<T: TypeFoldable<'tcx>>(&mut self, x: &T, span: Span) {
         if self.fcx.any_unresolved_type_vars(x) {
-            self.fcx.tcx.sess.span_warn(span, "infer variable in generator, please report this");
+            self.vars.push(span);
         }
     }
 
@@ -53,12 +54,24 @@ impl<'a, 'gcx, 'tcx> InferVarVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
+pub fn report_type_vars<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+                                        spans: Vec<Span>)  {
+    if fcx.is_tainted_by_errors() {
+        return;
+    }
+    for span in spans {
+        fcx.tcx.sess.span_warn(span, "infer variable in generator, please report this");
+    }
+}
+
 pub fn find_type_vars<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
                                       node_id: NodeId,
-                                      body_id: hir::BodyId) {
+                                      body_id: hir::BodyId,
+                                      vars: &mut Vec<Span>) {
     let body = fcx.tcx.hir.body(body_id);
     let mut visitor = InferVarVisitor {
         fcx,
+        vars,
     };
     for arg in &body.arguments {
         visitor.visit_node_id(arg.pat.span, arg.hir_id);
@@ -72,7 +85,7 @@ pub fn find_type_vars<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     visitor.visit_body(body);
 }
 
-impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InferVarVisitor<'a, 'gcx, 'tcx> {
+impl<'b, 'a, 'gcx, 'tcx> Visitor<'tcx> for InferVarVisitor<'b, 'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }

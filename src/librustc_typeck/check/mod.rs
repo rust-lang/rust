@@ -902,7 +902,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fcx.closure_analyze(body);
         fcx.select_obligations_where_possible();
         fcx.check_casts();
-        fcx.resolve_generator_interiors(def_id);
+        let type_vars = fcx.resolve_generator_interiors(def_id);
         fcx.select_all_obligations_or_error();
 
         if fn_decl.is_some() {
@@ -911,7 +911,9 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fcx.regionck_expr(body);
         }
 
-        fcx.resolve_type_vars_in_body(body)
+        let result = fcx.resolve_type_vars_in_body(body);
+        generator_type_vars::report_type_vars(&fcx, type_vars);
+        result
     });
 
     // Consistency check our TypeckTables instance can hold all ItemLocalIds
@@ -2098,7 +2100,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn resolve_generator_interiors(&self, def_id: DefId) {
+    fn resolve_generator_interiors(&self, def_id: DefId) -> Vec<Span> {
+        let mut vars = Vec::new();
         let generators: Vec<_> = {
             let mut entries = self.deferred_generator_interiors.borrow_mut();
             let r = entries.drain(..).collect();
@@ -2106,9 +2109,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         for (node_id, body_id, witness) in generators {
             self.select_obligations_where_possible();
-            generator_type_vars::find_type_vars(self, node_id, body_id);
+            generator_type_vars::find_type_vars(self, node_id, body_id, &mut vars);
             generator_interior::resolve_interior(self, def_id, body_id, witness);
         }
+        vars
     }
 
     /// Apply "fallbacks" to some types
