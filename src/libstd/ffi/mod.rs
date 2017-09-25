@@ -92,7 +92,7 @@
 //! your code can detect errors in case the environment variable did
 //! not in fact contain valid Unicode data.
 //!
-//! * [`OsStr`] represents a borrowed reference to a string in a format that
+//! * [`OsStr`] represents a borrowed string slice in a format that
 //! can be passed to the operating system.  It can be converted into
 //! an UTF-8 Rust string slice in a similar way to `OsString`.
 //!
