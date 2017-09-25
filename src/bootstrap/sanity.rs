@@ -221,8 +221,9 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     let run = |cmd: &mut Command| {
         cmd.output().map(|output| {
             String::from_utf8_lossy(&output.stdout)
-                   .lines().next().unwrap()
-                   .to_string()
+                   .lines().next().unwrap_or_else(|| {
+                       panic!("{:?} failed {:?}", cmd, output)
+                   }).to_string()
         })
     };
     build.lldb_version = run(Command::new("lldb").arg("--version")).ok();
