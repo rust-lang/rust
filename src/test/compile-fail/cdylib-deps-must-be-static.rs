@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: dependency `cdylib_dep` not found in rlib format
+// error-pattern: crate `cdylib_dep` required to be available in rlib format, but was not found
 // aux-build:cdylib-dep.rs
 // ignore-musl
 // ignore-emscripten
