@@ -8,7 +8,7 @@ homepage = "https://github.com/BurntSushi/stdsimd"
 repository = "https://github.com/BurntSushi/stdsimd"
 readme = "README.md"
 keywords = ["std", "simd", "intrinsics", "sse", "avx"]
-license = "MIT"
+license = "MIT/Apache-2.0"
 
 [profile.release]
 debug = true
