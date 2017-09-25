@@ -1752,7 +1752,7 @@ pub fn fence(order: Ordering) {
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 /// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
-#[stable(feature = "compiler_fences", since = "1.22.0")]
+#[stable(feature = "compiler_fences", since = "1.21.0")]
 pub fn compiler_fence(order: Ordering) {
     unsafe {
         match order {
