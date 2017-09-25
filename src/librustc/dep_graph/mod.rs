@@ -21,7 +21,7 @@ mod serialized;
 
 pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
 pub use self::dep_node::{DepNode, DepKind, DepConstructor, WorkProductId};
-pub use self::graph::{DepGraph, WorkProduct, DepNodeIndex};
+pub use self::graph::{DepGraph, WorkProduct, DepNodeIndex, DepNodeColor};
 pub use self::prev::PreviousDepGraph;
 pub use self::query::DepGraphQuery;
 pub use self::safe::AssertDepGraphSafe;

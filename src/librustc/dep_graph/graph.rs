@@ -16,6 +16,7 @@ use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::hash::Hash;
 use std::rc::Rc;
+use ty::TyCtxt;
 use util::common::{ProfileQueriesMsg, profq_msg};
 
 use ich::Fingerprint;
@@ -27,6 +28,7 @@ use super::safe::DepGraphSafe;
 use super::edges::{self, DepGraphEdges};
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use super::prev::PreviousDepGraph;
+
 
 #[derive(Clone)]
 pub struct DepGraph {
@@ -62,8 +64,7 @@ impl DepNodeIndex {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DepNodeColor {
     Red,
-    Green,
-    Gray
+    Green(DepNodeIndex)
 }
 
 struct DepGraphData {
@@ -178,6 +179,8 @@ impl DepGraph {
               R: HashStable<HCX>,
     {
         if let Some(ref data) = self.data {
+            debug_assert!(!data.colors.borrow().contains_key(&key));
+
             data.edges.borrow_mut().push_task(key);
             data.current.borrow_mut().push_task(key);
             if cfg!(debug_assertions) {
@@ -212,7 +215,10 @@ impl DepGraph {
             let prev_fingerprint = data.previous.fingerprint_of(&key);
 
             let color = if Some(current_fingerprint) == prev_fingerprint {
-                DepNodeColor::Green
+                DepNodeColor::Green(DepNodeIndex {
+                    legacy: dep_node_index_legacy,
+                    new: dep_node_index_new,
+                })
             } else {
                 DepNodeColor::Red
             };
@@ -308,18 +314,6 @@ impl DepGraph {
 
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
-    }
-
-    pub fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
-        match self.data.as_ref().unwrap().colors.borrow().get(dep_node) {
-            Some(&color) => {
-                debug_assert!(color != DepNodeColor::Gray);
-                color
-            }
-            None => {
-                DepNodeColor::Gray
-            }
-        }
     }
 
     /// Indicates that a previous work product exists for `v`. This is
@@ -425,6 +419,128 @@ impl DepGraph {
             edge_list_indices,
             edge_list_data,
         }
+    }
+
+    pub fn node_color(&self, dep_node: &DepNode) -> Option<DepNodeColor> {
+        self.data.as_ref().and_then(|data| data.colors.borrow().get(dep_node).cloned())
+    }
+
+    pub fn try_mark_green(&self,
+                          tcx: TyCtxt,
+                          dep_node: &DepNode)
+                          -> Option<DepNodeIndex> {
+        let data = self.data.as_ref().unwrap();
+
+        debug_assert!(!data.colors.borrow().contains_key(dep_node));
+        debug_assert!(!data.current.borrow().node_to_node_index.contains_key(dep_node));
+
+        if dep_node.kind.is_input() {
+            // We should only hit try_mark_green() for inputs that do not exist
+            // anymore in the current compilation session. Existing inputs are
+            // eagerly marked as either red/green before any queries are
+            // executed.
+            debug_assert!(dep_node.extract_def_id(tcx).is_none());
+            return None;
+        }
+
+        let (prev_deps, prev_dep_node_index) = match data.previous.edges_from(dep_node) {
+            Some(prev) => {
+                // This DepNode and the corresponding query invocation existed
+                // in the previous compilation session too, so we can try to
+                // mark it as green by recursively marking all of its
+                // dependencies green.
+                prev
+            }
+            None => {
+                // This DepNode did not exist in the previous compilation session,
+                // so we cannot mark it as green.
+                return None
+            }
+        };
+
+        let mut current_deps = Vec::new();
+
+        for &dep_dep_node in prev_deps {
+            let dep_dep_node = &data.previous.index_to_node(dep_dep_node);
+            let dep_dep_node_color = data.colors.borrow().get(dep_dep_node).cloned();
+            match dep_dep_node_color {
+                Some(DepNodeColor::Green(node_index)) => {
+                    // This dependency has been marked as green before, we are
+                    // still fine and can continue with checking the other
+                    // dependencies.
+                    current_deps.push(node_index);
+                }
+                Some(DepNodeColor::Red) => {
+                    // We found a dependency the value of which has changed
+                    // compared to the previous compilation session. We cannot
+                    // mark the DepNode as green and also don't need to bother
+                    // with checking any of the other dependencies.
+                    return None
+                }
+                None => {
+                    // We don't know the state of this dependency. Let's try to
+                    // mark it green.
+                    if let Some(node_index) = self.try_mark_green(tcx, dep_dep_node) {
+                        current_deps.push(node_index);
+                    } else {
+                        // We failed to mark it green. This can have various
+                        // reasons.
+                        return None
+                    }
+                }
+            }
+        }
+
+        // If we got here without hitting a `return` that means that all
+        // dependencies of this DepNode could be marked as green. Therefore we
+        // can also mark this DepNode as green. We do so by...
+
+        // ... allocating an entry for it in the current dependency graph and
+        // adding all the appropriate edges imported from the previous graph ...
+        let node_index_new = data.current
+                                 .borrow_mut()
+                                 .alloc_node(*dep_node,
+                                             current_deps.iter().map(|n| n.new).collect());
+        let dep_node_index_legacy = {
+            let mut legacy_graph = data.edges.borrow_mut();
+            legacy_graph.push_task(*dep_node);
+            for node_index in current_deps.into_iter().map(|n| n.legacy) {
+                legacy_graph.read_index(node_index);
+            }
+            legacy_graph.pop_task(*dep_node)
+        };
+
+        // ... copying the fingerprint from the previous graph too, so we don't
+        // have to recompute it ...
+        let fingerprint = data.previous.fingerprint_by_index(prev_dep_node_index);
+        assert!(self.fingerprints
+                    .borrow_mut()
+                    .insert(*dep_node, fingerprint)
+                    .is_none());
+
+        let node_index = DepNodeIndex {
+            legacy: dep_node_index_legacy,
+            new: node_index_new,
+        };
+
+        // ... and finally storing a "Green" entry in the color map.
+        assert!(data.colors
+                    .borrow_mut()
+                    .insert(*dep_node, DepNodeColor::Green(node_index))
+                    .is_none());
+
+        Some(node_index)
+    }
+
+    // Used in various assertions
+    pub fn is_green(&self, dep_node_index: DepNodeIndex) -> bool {
+        let dep_node = self.data.as_ref().unwrap().current.borrow().nodes[dep_node_index.new];
+        self.data.as_ref().unwrap().colors.borrow().get(&dep_node).map(|&color| {
+            match color {
+                DepNodeColor::Red => false,
+                DepNodeColor::Green(_) => true,
+            }
+        }).unwrap_or(false)
     }
 }
 

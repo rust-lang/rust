@@ -36,6 +36,26 @@ pub(super) struct QueryValue<T> {
     pub(super) diagnostics: Option<Box<QueryDiagnostics>>,
 }
 
+impl<T> QueryValue<T> {
+    pub(super) fn new(value: T,
+                      dep_node_index: DepNodeIndex,
+                      diagnostics: Vec<Diagnostic>)
+                      -> QueryValue<T> {
+        QueryValue {
+            value,
+            index: dep_node_index,
+            diagnostics: if diagnostics.len() == 0 {
+                None
+            } else {
+                Some(Box::new(QueryDiagnostics {
+                    diagnostics,
+                    emitted_diagnostics: Cell::new(true),
+                }))
+            },
+        }
+    }
+}
+
 pub(super) struct QueryDiagnostics {
     pub(super) diagnostics: Vec<Diagnostic>,
     pub(super) emitted_diagnostics: Cell<bool>,
@@ -142,6 +162,10 @@ macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
+
+        use dep_graph::DepNodeIndex;
+        use std::cell::RefCell;
+
         define_map_struct! {
             tcx: $tcx,
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
@@ -200,6 +224,7 @@ macro_rules! define_maps {
         }
 
         impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
+
             #[allow(unused)]
             fn to_dep_node(tcx: TyCtxt<'a, $tcx, 'lcx>, key: &$K) -> DepNode {
                 use dep_graph::DepConstructor::*;
@@ -241,9 +266,6 @@ macro_rules! define_maps {
                     tcx.dep_graph.read_index(value.index);
                     return Ok(f(&value.value));
                 }
-                // else, we are going to run the provider:
-                profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
-
                 // FIXME(eddyb) Get more valid Span's on queries.
                 // def_span guard is necessary to prevent a recursive loop,
                 // default_span calls def_span query internally.
@@ -252,42 +274,92 @@ macro_rules! define_maps {
                 }
 
                 let dep_node = Self::to_dep_node(tcx, &key);
+
+                if !dep_node.kind.is_input() && tcx.sess.opts.build_dep_graph() {
+                    use dep_graph::DepNodeColor;
+                    if let Some(DepNodeColor::Green(dep_node_index)) = tcx.dep_graph
+                                                                          .node_color(&dep_node) {
+                        profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                        tcx.dep_graph.read_index(dep_node_index);
+                        return Self::load_from_disk_and_cache_in_memory(tcx,
+                                                                        key,
+                                                                        span,
+                                                                        dep_node_index,
+                                                                        f)
+                    }
+
+                    if let Some(dep_node_index) = tcx.dep_graph.try_mark_green(tcx, &dep_node) {
+                        debug_assert!(tcx.dep_graph.is_green(dep_node_index));
+                        profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                        tcx.dep_graph.read_index(dep_node_index);
+                        return Self::load_from_disk_and_cache_in_memory(tcx,
+                                                                        key,
+                                                                        span,
+                                                                        dep_node_index,
+                                                                        f)
+                    }
+                }
+
+                // else, we are going to run the provider:
+                profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
+
                 let res = tcx.cycle_check(span, Query::$name(key), || {
                     tcx.sess.diagnostic().track_diagnostics(|| {
                         if dep_node.kind.is_anon() {
                             tcx.dep_graph.with_anon_task(dep_node.kind, || {
-                                let provider = tcx.maps.providers[key.map_crate()].$name;
-                                provider(tcx.global_tcx(), key)
+                                Self::compute_result(tcx.global_tcx(), key)
                             })
                         } else {
-                            fn run_provider<'a, 'tcx, 'lcx>(tcx: TyCtxt<'a, 'tcx, 'lcx>,
-                                                            key: $K)
-                                                            -> $V {
-                                let provider = tcx.maps.providers[key.map_crate()].$name;
-                                provider(tcx.global_tcx(), key)
-                            }
-
-                            tcx.dep_graph.with_task(dep_node, tcx, key, run_provider)
+                            tcx.dep_graph.with_task(dep_node,
+                                                    tcx,
+                                                    key,
+                                                    Self::compute_result)
                         }
                     })
                 })?;
+
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
                 let ((result, dep_node_index), diagnostics) = res;
 
                 tcx.dep_graph.read_index(dep_node_index);
 
-                let value = QueryValue {
-                    value: result,
-                    index: dep_node_index,
-                    diagnostics: if diagnostics.len() == 0 {
-                        None
-                    } else {
-                        Some(Box::new(QueryDiagnostics {
-                            diagnostics,
-                            emitted_diagnostics: Cell::new(true),
-                        }))
-                    },
-                };
+                let value = QueryValue::new(result, dep_node_index, diagnostics);
+
+                Ok(f(&tcx.maps
+                         .$name
+                         .borrow_mut()
+                         .map
+                         .entry(key)
+                         .or_insert(value)
+                         .value))
+            }
+
+            fn compute_result(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> $V {
+                let provider = tcx.maps.providers[key.map_crate()].$name;
+                provider(tcx.global_tcx(), key)
+            }
+
+            fn load_from_disk_and_cache_in_memory<F, R>(tcx: TyCtxt<'a, $tcx, 'lcx>,
+                                                        key: $K,
+                                                        span: Span,
+                                                        dep_node_index: DepNodeIndex,
+                                                        f: F)
+                                                        -> Result<R, CycleError<'a, $tcx>>
+                where F: FnOnce(&$V) -> R
+            {
+                debug_assert!(tcx.dep_graph.is_green(dep_node_index));
+
+                // We don't do any caching yet, so recompute
+                let (result, diagnostics) = tcx.cycle_check(span, Query::$name(key), || {
+                    tcx.sess.diagnostic().track_diagnostics(|| {
+                        // The dep-graph for this computation is already in place
+                        tcx.dep_graph.with_ignore(|| {
+                            Self::compute_result(tcx, key)
+                        })
+                    })
+                })?;
+
+                let value = QueryValue::new(result, dep_node_index, diagnostics);
 
                 Ok(f(&tcx.maps
                          .$name

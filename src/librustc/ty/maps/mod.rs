@@ -43,7 +43,6 @@ use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
-use std::cell::{RefCell, Cell};
 
 use std::ops::Deref;
 use std::rc::Rc;

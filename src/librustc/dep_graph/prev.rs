@@ -28,20 +28,33 @@ impl PreviousDepGraph {
         PreviousDepGraph { data, index }
     }
 
-    pub fn with_edges_from<F>(&self, dep_node: &DepNode, mut f: F)
-    where
-        F: FnMut(&(DepNode, Fingerprint)),
-    {
-        let node_index = self.index[dep_node];
-        self.data
-            .edge_targets_from(node_index)
-            .into_iter()
-            .for_each(|&index| f(&self.data.nodes[index]));
+    #[inline]
+    pub fn edges_from(&self,
+                      dep_node: &DepNode)
+                      -> Option<(&[SerializedDepNodeIndex], SerializedDepNodeIndex)> {
+        self.index
+            .get(dep_node)
+            .map(|&node_index| {
+                (self.data.edge_targets_from(node_index), node_index)
+            })
     }
 
+    #[inline]
+    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode {
+        self.data.nodes[dep_node_index].0
+    }
+
+    #[inline]
     pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.index
             .get(dep_node)
             .map(|&node_index| self.data.nodes[node_index].1)
+    }
+
+    #[inline]
+    pub fn fingerprint_by_index(&self,
+                                dep_node_index: SerializedDepNodeIndex)
+                                -> Fingerprint {
+        self.data.nodes[dep_node_index].1
     }
 }
