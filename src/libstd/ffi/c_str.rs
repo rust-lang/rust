@@ -208,8 +208,13 @@ pub struct CStr {
 }
 
 /// An error returned from [`CString::new`] to indicate that a nul byte was found
-/// in the vector provided.
+/// in the vector provided.  While Rust strings may contain nul bytes in the middle,
+/// C strings can't, as that byte would effectively truncate the string.
 ///
+/// This `struct` is created by the [`new`][`CString::new`] method on
+/// [`CString`]. See its documentation for more.
+///
+/// [`CString`]: struct.CString.html
 /// [`CString::new`]: struct.CString.html#method.new
 ///
 /// # Examples
@@ -225,9 +230,15 @@ pub struct NulError(usize, Vec<u8>);
 
 /// An error returned from [`CStr::from_bytes_with_nul`] to indicate
 /// that a nul byte was found too early in the slice provided, or one
-/// wasn't found at all.  The slice used to create a `CStr` must have one
-/// and only one nul byte at the end of the slice.
+/// wasn't found at all for the nul terminator.  The slice used to
+/// create a `CStr` must have one and only one nul byte at the end of
+/// the slice.
 ///
+/// This `struct` is created by the
+/// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on
+/// [`CStr`]. See its documentation for more.
+///
+/// [`CStr`]: struct.CStr.html
 /// [`CStr::from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
 ///
 /// # Examples
@@ -262,9 +273,17 @@ impl FromBytesWithNulError {
     }
 }
 
-/// An error returned from [`CString::into_string`] to indicate that a UTF-8 error
-/// was encountered during the conversion.
+/// An error returned from [`CString::into_string`] to indicate that a
+/// UTF-8 error was encountered during the conversion.  `CString` is
+/// just a wrapper over a buffer of bytes with a nul terminator;
+/// [`into_string`][`CString::into_string`] performs UTF-8 validation
+/// and may return this error.
 ///
+/// This `struct` is created by the
+/// [`into_string`][`CString::into_string`] method on [`CString`]. See
+/// its documentation for more.
+///
+/// [`CString`]: struct.CString.html
 /// [`CString::into_string`]: struct.CString.html#method.into_string
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
