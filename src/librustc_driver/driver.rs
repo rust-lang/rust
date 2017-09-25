@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(not(feature="llvm"), allow(dead_code))]
-
 use rustc::dep_graph::DepGraph;
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
@@ -34,8 +32,8 @@ use rustc_incremental;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
-use rustc_trans::back::write;
 use rustc_trans as trans;
+use rustc_trans_utils::trans_crate::TransCrate;
 use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
@@ -43,6 +41,7 @@ use rustc_plugin as plugin;
 use rustc_passes::{ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
+use ::DefaultTransCrate;
 
 use serialize::json;
 
@@ -76,7 +75,8 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
-    use rustc_trans::back::write::OngoingCrateTranslation;
+    use rustc::session::config::CrateType;
+
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
             let state = &mut $make_state;
@@ -94,17 +94,16 @@ pub fn compile_input(sess: &Session,
     }
 
     if cfg!(not(feature="llvm")) {
-        use rustc::session::config::CrateType;
-        if !sess.opts.debugging_opts.no_trans && sess.opts.output_types.should_trans() {
-            sess.err("LLVM is not supported by this rustc. Please use -Z no-trans to compile")
-        }
-
-        if sess.opts.crate_types.iter().all(|&t|{
-            t != CrateType::CrateTypeRlib && t != CrateType::CrateTypeExecutable
-        }) && !sess.opts.crate_types.is_empty() {
-            sess.err(
-                "LLVM is not supported by this rustc, so non rlib libraries are not supported"
-            );
+        for cty in sess.opts.crate_types.iter() {
+            match *cty {
+                CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
+                CrateType::CrateTypeExecutable => {},
+                _ => {
+                    sess.parse_sess.span_diagnostic.warn(
+                        &format!("LLVM unsupported, so output type {} is not supported", cty)
+                    );
+                },
+            }
         }
 
         sess.abort_if_errors();
@@ -117,7 +116,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans, dep_graph): (OutputFilenames, OngoingCrateTranslation, DepGraph) = {
+    let (outputs, trans, dep_graph) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -246,7 +245,7 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            let trans = phase_4_translate_to_llvm(tcx, rx);
+            let trans = phase_4_translate_to_llvm::<DefaultTransCrate>(tcx, rx);
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -264,44 +263,42 @@ pub fn compile_input(sess: &Session,
         })??
     };
 
-    if cfg!(not(feature="llvm")) {
-        let (_, _) = (outputs, trans);
-        sess.fatal("LLVM is not supported by this rustc");
+    if sess.opts.debugging_opts.print_type_sizes {
+        sess.code_stats.borrow().print_type_sizes();
     }
 
+    let (phase5_result, trans) =
+        phase_5_run_llvm_passes::<DefaultTransCrate>(sess, &dep_graph, trans);
+
+    controller_entry_point!(after_llvm,
+                            sess,
+                            CompileState::state_after_llvm(input, sess, outdir, output, &trans),
+                            phase5_result);
+    phase5_result?;
+
+    // Run the linker on any artifacts that resulted from the LLVM run.
+    // This should produce either a finished executable or library.
+    time(sess.time_passes(), "linking", || {
+        DefaultTransCrate::link_binary(sess, &trans, &outputs)
+    });
+
+    // Now that we won't touch anything in the incremental compilation directory
+    // any more, we can finalize it (which involves renaming it)
     #[cfg(feature="llvm")]
-    {
-        if sess.opts.debugging_opts.print_type_sizes {
-            sess.code_stats.borrow().print_type_sizes();
-        }
+    rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
 
-        let (phase5_result, trans) = phase_5_run_llvm_passes(sess, &dep_graph, trans);
-
-        controller_entry_point!(after_llvm,
-                                sess,
-                                CompileState::state_after_llvm(input, sess, outdir, output, &trans),
-                                phase5_result);
-        phase5_result?;
-
-        phase_6_link_output(sess, &trans, &outputs);
-
-        // Now that we won't touch anything in the incremental compilation directory
-        // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
-
-        if sess.opts.debugging_opts.perf_stats {
-            sess.print_perf_stats();
-        }
-
-        controller_entry_point!(
-            compilation_done,
-            sess,
-            CompileState::state_when_compilation_done(input, sess, outdir, output),
-            Ok(())
-        );
-
-        Ok(())
+    if sess.opts.debugging_opts.perf_stats {
+        sess.print_perf_stats();
     }
+
+    controller_entry_point!(
+        compilation_done,
+        sess,
+        CompileState::state_when_compilation_done(input, sess, outdir, output),
+        Ok(())
+    );
+
+    Ok(())
 }
 
 fn keep_hygiene_data(sess: &Session) -> bool {
@@ -970,7 +967,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
-    trans::provide_local(&mut local_providers);
+    DefaultTransCrate::provide_local(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     traits::provide(&mut local_providers);
@@ -982,7 +979,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
-    trans::provide_extern(&mut extern_providers);
+    DefaultTransCrate::provide_extern(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     traits::provide_extern(&mut extern_providers);
     // FIXME(eddyb) get rid of this once we replace const_eval with miri.
@@ -1126,9 +1123,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn phase_4_translate_to_llvm<'a, 'tcx, Trans: TransCrate>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            rx: mpsc::Receiver<Box<Any + Send>>)
-                                           -> write::OngoingCrateTranslation {
+                                           -> <Trans as TransCrate>::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
@@ -1137,9 +1134,8 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let translation =
         time(time_passes, "translation", move || {
-            trans::trans_crate(tcx, rx)
+            Trans::trans_crate(tcx, rx)
         });
-
     if tcx.sess.profile_queries() {
         profile::dump("profile_queries".to_string())
     }
@@ -1149,15 +1145,14 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
-#[cfg(feature="llvm")]
-pub fn phase_5_run_llvm_passes(sess: &Session,
+pub fn phase_5_run_llvm_passes<Trans: TransCrate>(sess: &Session,
                                dep_graph: &DepGraph,
-                               trans: write::OngoingCrateTranslation)
-                               -> (CompileResult, trans::CrateTranslation) {
-    let trans = trans.join(sess, dep_graph);
+                               trans: <Trans as TransCrate>::OngoingCrateTranslation)
+                               -> (CompileResult, <Trans as TransCrate>::TranslatedCrate) {
+    let trans = Trans::join_trans(trans, sess, dep_graph);
 
     if sess.opts.debugging_opts.incremental_info {
-        write::dump_incremental_data(&trans);
+        Trans::dump_incremental_data(&trans);
     }
 
     time(sess.time_passes(),
@@ -1165,20 +1160,6 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
          move || rustc_incremental::save_work_products(sess, dep_graph));
 
     (sess.compile_status(), trans)
-}
-
-/// Run the linker on any artifacts that resulted from the LLVM run.
-/// This should produce either a finished executable or library.
-#[cfg(feature="llvm")]
-pub fn phase_6_link_output(sess: &Session,
-                           trans: &trans::CrateTranslation,
-                           outputs: &OutputFilenames) {
-    time(sess.time_passes(), "linking", || {
-        ::rustc_trans::back::link::link_binary(sess,
-                                               trans,
-                                               outputs,
-                                               &trans.crate_name.as_str())
-    });
 }
 
 fn escape_dep_filename(filename: &str) -> String {

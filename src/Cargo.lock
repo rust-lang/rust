@@ -1778,7 +1778,12 @@ dependencies = [
 name = "rustc_trans_utils"
 version = "0.0.0"
 dependencies = [
+ "ar 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
+ "rustc_back 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]

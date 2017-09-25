@@ -43,7 +43,6 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepKind};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
-use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
@@ -94,6 +93,8 @@ use rustc::hir;
 use syntax::ast;
 
 use mir::lvalue::Alignment;
+
+pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
@@ -660,20 +661,6 @@ pub fn set_link_section(ccx: &CrateContext,
     }
 }
 
-// check for the #[rustc_error] annotation, which forces an
-// error in trans. This is used to write compile-fail tests
-// that actually test that compilation succeeds without
-// reporting an error.
-fn check_for_rustc_errors_attr(tcx: TyCtxt) {
-    if let Some((id, span)) = *tcx.sess.entry_fn.borrow() {
-        let main_def_id = tcx.hir.local_def_id(id);
-
-        if tcx.has_attr(main_def_id, "rustc_error") {
-            tcx.sess.span_fatal(span, "compilation successful");
-        }
-    }
-}
-
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
 fn maybe_create_entry_wrapper(ccx: &CrateContext) {
@@ -885,59 +872,10 @@ fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
     }
 }
 
-/// The context provided lists a set of reachable ids as calculated by
-/// middle::reachable, but this contains far more ids and symbols than we're
-/// actually exposing from the object file. This function will filter the set in
-/// the context to the set of ids which correspond to symbols that are exposed
-/// from the object file being generated.
-///
-/// This list is later used by linkers to determine the set of symbols needed to
-/// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
-    tcx.reachable_set(LOCAL_CRATE).0.iter().cloned().filter(|&id| {
-        // Next, we want to ignore some FFI functions that are not exposed from
-        // this crate. Reachable FFI functions can be lumped into two
-        // categories:
-        //
-        // 1. Those that are included statically via a static library
-        // 2. Those included otherwise (e.g. dynamically or via a framework)
-        //
-        // Although our LLVM module is not literally emitting code for the
-        // statically included symbols, it's an export of our library which
-        // needs to be passed on to the linker and encoded in the metadata.
-        //
-        // As a result, if this id is an FFI item (foreign item) then we only
-        // let it through if it's included statically.
-        match tcx.hir.get(id) {
-            hir_map::NodeForeignItem(..) => {
-                let def_id = tcx.hir.local_def_id(id);
-                tcx.is_statically_included_foreign_item(def_id)
-            }
-
-            // Only consider nodes that actually have exported symbols.
-            hir_map::NodeItem(&hir::Item {
-                node: hir::ItemStatic(..), .. }) |
-            hir_map::NodeItem(&hir::Item {
-                node: hir::ItemFn(..), .. }) |
-            hir_map::NodeImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Method(..), .. }) => {
-                let def_id = tcx.hir.local_def_id(id);
-                let generics = tcx.generics_of(def_id);
-                let attributes = tcx.get_attrs(def_id);
-                (generics.parent_types == 0 && generics.types.is_empty()) &&
-                // Functions marked with #[inline] are only ever translated
-                // with "internal" linkage and are never exported.
-                !attr::requests_inline(&attributes)
-            }
-
-            _ => false
-        }
-    }).collect()
-}
-
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              rx: mpsc::Receiver<Box<Any + Send>>)
                              -> OngoingCrateTranslation {
+
     check_for_rustc_errors_attr(tcx);
 
 
