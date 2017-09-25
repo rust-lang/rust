@@ -164,6 +164,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
                                                unsatisfied_predicates,
                                                out_of_scope_traits,
+                                               lev_candidate,
                                                mode,
                                                .. }) => {
                 let tcx = self.tcx;
@@ -282,6 +283,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               item_name,
                                               rcvr_expr,
                                               out_of_scope_traits);
+
+                if let Some(lev_candidate) = lev_candidate {
+                    err.help(&format!("did you mean `{}`?", lev_candidate.name));
+                }
                 err.emit();
             }
 
