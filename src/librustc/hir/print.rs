@@ -905,12 +905,14 @@ impl<'a> State<'a> {
                 self.print_associated_const(ti.name, &ty, default, &hir::Inherited)?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
-                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, arg_names, None)?;
+                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, arg_names,
+                    None)?;
                 self.s.word(";")?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
                 self.head("")?;
-                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, &[], Some(body))?;
+                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, &[],
+                    Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
