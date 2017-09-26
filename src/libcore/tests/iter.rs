@@ -249,6 +249,25 @@ fn test_filter_map() {
 }
 
 #[test]
+fn test_filter_map_fold() {
+    let xs = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let ys = [0*0, 2*2, 4*4, 6*6, 8*8];
+    let it = xs.iter().filter_map(|&x| if x % 2 == 0 { Some(x*x) } else { None });
+    let i = it.fold(0, |i, x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
+    assert_eq!(i, ys.len());
+
+    let it = xs.iter().filter_map(|&x| if x % 2 == 0 { Some(x*x) } else { None });
+    let i = it.rfold(ys.len(), |i, x| {
+        assert_eq!(x, ys[i - 1]);
+        i - 1
+    });
+    assert_eq!(i, 0);
+}
+
+#[test]
 fn test_iterator_enumerate() {
     let xs = [0, 1, 2, 3, 4, 5];
     let it = xs.iter().enumerate();
@@ -282,13 +301,56 @@ fn test_iterator_enumerate_nth() {
 #[test]
 fn test_iterator_enumerate_count() {
     let xs = [0, 1, 2, 3, 4, 5];
-    assert_eq!(xs.iter().count(), 6);
+    assert_eq!(xs.iter().enumerate().count(), 6);
+}
+
+#[test]
+fn test_iterator_enumerate_fold() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let mut it = xs.iter().enumerate();
+    // steal a couple to get an interesting offset
+    assert_eq!(it.next(), Some((0, &0)));
+    assert_eq!(it.next(), Some((1, &1)));
+    let i = it.fold(2, |i, (j, &x)| {
+        assert_eq!(i, j);
+        assert_eq!(x, xs[j]);
+        i + 1
+    });
+    assert_eq!(i, xs.len());
+
+    let mut it = xs.iter().enumerate();
+    assert_eq!(it.next(), Some((0, &0)));
+    let i = it.rfold(xs.len() - 1, |i, (j, &x)| {
+        assert_eq!(i, j);
+        assert_eq!(x, xs[j]);
+        i - 1
+    });
+    assert_eq!(i, 0);
 }
 
 #[test]
 fn test_iterator_filter_count() {
     let xs = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     assert_eq!(xs.iter().filter(|&&x| x % 2 == 0).count(), 5);
+}
+
+#[test]
+fn test_iterator_filter_fold() {
+    let xs = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let ys = [0, 2, 4, 6, 8];
+    let it = xs.iter().filter(|&&x| x % 2 == 0);
+    let i = it.fold(0, |i, &x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
+    assert_eq!(i, ys.len());
+
+    let it = xs.iter().filter(|&&x| x % 2 == 0);
+    let i = it.rfold(ys.len(), |i, &x| {
+        assert_eq!(x, ys[i - 1]);
+        i - 1
+    });
+    assert_eq!(i, 0);
 }
 
 #[test]
@@ -381,6 +443,18 @@ fn test_iterator_peekable_last() {
     assert_eq!(it.last(), None);
 }
 
+#[test]
+fn test_iterator_peekable_fold() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let mut it = xs.iter().peekable();
+    assert_eq!(it.peek(), Some(&&0));
+    let i = it.fold(0, |i, &x| {
+        assert_eq!(x, xs[i]);
+        i + 1
+    });
+    assert_eq!(i, xs.len());
+}
+
 /// This is an iterator that follows the Iterator contract,
 /// but it is not fused. After having returned None once, it will start
 /// producing elements if .next() is called again.
@@ -467,6 +541,26 @@ fn test_iterator_skip_while() {
         assert_eq!(*x, ys[i]);
         i += 1;
     }
+    assert_eq!(i, ys.len());
+}
+
+#[test]
+fn test_iterator_skip_while_fold() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+    let ys = [15, 16, 17, 19];
+    let it = xs.iter().skip_while(|&x| *x < 15);
+    let i = it.fold(0, |i, &x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
+    assert_eq!(i, ys.len());
+
+    let mut it = xs.iter().skip_while(|&x| *x < 15);
+    assert_eq!(it.next(), Some(&ys[0])); // process skips before folding
+    let i = it.fold(1, |i, &x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
     assert_eq!(i, ys.len());
 }
 
@@ -567,6 +661,26 @@ fn test_iterator_skip_last() {
 }
 
 #[test]
+fn test_iterator_skip_fold() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+    let ys = [13, 15, 16, 17, 19, 20, 30];
+    let it = xs.iter().skip(5);
+    let i = it.fold(0, |i, &x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
+    assert_eq!(i, ys.len());
+
+    let mut it = xs.iter().skip(5);
+    assert_eq!(it.next(), Some(&ys[0])); // process skips before folding
+    let i = it.fold(1, |i, &x| {
+        assert_eq!(x, ys[i]);
+        i + 1
+    });
+    assert_eq!(i, ys.len());
+}
+
+#[test]
 fn test_iterator_take() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
     let ys = [0, 1, 2, 3, 5];
@@ -661,13 +775,22 @@ fn test_iterator_flat_map_fold() {
     let xs = [0, 3, 6];
     let ys = [1, 2, 3, 4, 5, 6, 7];
     let mut it = xs.iter().flat_map(|&x| x..x+3);
-    it.next();
-    it.next_back();
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(8));
     let i = it.fold(0, |i, x| {
         assert_eq!(x, ys[i]);
         i + 1
     });
     assert_eq!(i, ys.len());
+
+    let mut it = xs.iter().flat_map(|&x| x..x+3);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(8));
+    let i = it.rfold(ys.len(), |i, x| {
+        assert_eq!(x, ys[i - 1]);
+        i - 1
+    });
+    assert_eq!(i, 0);
 }
 
 #[test]
@@ -682,6 +805,32 @@ fn test_inspect() {
 
     assert_eq!(n, xs.len());
     assert_eq!(&xs[..], &ys[..]);
+}
+
+#[test]
+fn test_inspect_fold() {
+    let xs = [1, 2, 3, 4];
+    let mut n = 0;
+    {
+        let it = xs.iter().inspect(|_| n += 1);
+        let i = it.fold(0, |i, &x| {
+            assert_eq!(x, xs[i]);
+            i + 1
+        });
+        assert_eq!(i, xs.len());
+    }
+    assert_eq!(n, xs.len());
+
+    let mut n = 0;
+    {
+        let it = xs.iter().inspect(|_| n += 1);
+        let i = it.rfold(xs.len(), |i, &x| {
+            assert_eq!(x, xs[i - 1]);
+            i - 1
+        });
+        assert_eq!(i, 0);
+    }
+    assert_eq!(n, xs.len());
 }
 
 #[test]
@@ -1239,6 +1388,31 @@ fn test_fuse_count() {
     assert_eq!(it.len(), 3);
     assert_eq!(it.count(), 3);
     // Can't check len now because count consumes.
+}
+
+#[test]
+fn test_fuse_fold() {
+    let xs = [0, 1, 2];
+    let it = xs.iter(); // `FusedIterator`
+    let i = it.fuse().fold(0, |i, &x| {
+        assert_eq!(x, xs[i]);
+        i + 1
+    });
+    assert_eq!(i, xs.len());
+
+    let it = xs.iter(); // `FusedIterator`
+    let i = it.fuse().rfold(xs.len(), |i, &x| {
+        assert_eq!(x, xs[i - 1]);
+        i - 1
+    });
+    assert_eq!(i, 0);
+
+    let it = xs.iter().scan((), |_, &x| Some(x)); // `!FusedIterator`
+    let i = it.fuse().fold(0, |i, x| {
+        assert_eq!(x, xs[i]);
+        i + 1
+    });
+    assert_eq!(i, xs.len());
 }
 
 #[test]

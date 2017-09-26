@@ -25,6 +25,7 @@
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 #![feature(iter_rfind)]
+#![feature(iter_rfold)]
 #![feature(nonzero)]
 #![feature(rand)]
 #![feature(raw)]
