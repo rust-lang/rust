@@ -1420,7 +1420,7 @@ impl String {
     /// assert_eq!(t, "α is alpha, ");
     /// assert_eq!(s, "Α is capital alpha; β is beta");
     /// ```
-    #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+    #[unstable(feature = "splice", reason = "recently added", issue = "44643")]
     pub fn splice<'a, 'b, R>(&'a mut self, range: R, replace_with: &'b str) -> Splice<'a, 'b>
         where R: RangeArgument<usize>
     {
@@ -2250,7 +2250,7 @@ impl<'a> FusedIterator for Drain<'a> {}
 /// [`splice()`]: struct.String.html#method.splice
 /// [`String`]: struct.String.html
 #[derive(Debug)]
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[unstable(feature = "splice", reason = "recently added", issue = "44643")]
 pub struct Splice<'a, 'b> {
     /// Will be used as &'a mut String in the destructor
     string: *mut String,
@@ -2263,12 +2263,12 @@ pub struct Splice<'a, 'b> {
     replace_with: &'b str,
 }
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[unstable(feature = "splice", reason = "recently added", issue = "44643")]
 unsafe impl<'a, 'b> Sync for Splice<'a, 'b> {}
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[unstable(feature = "splice", reason = "recently added", issue = "44643")]
 unsafe impl<'a, 'b> Send for Splice<'a, 'b> {}
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[unstable(feature = "splice", reason = "recently added", issue = "44643")]
 impl<'a, 'b> Drop for Splice<'a, 'b> {
     fn drop(&mut self) {
         unsafe {
@@ -2278,7 +2278,7 @@ impl<'a, 'b> Drop for Splice<'a, 'b> {
     }
 }
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[unstable(feature = "splice", reason = "recently added", issue = "44643")]
 impl<'a, 'b> Iterator for Splice<'a, 'b> {
     type Item = char;
 
@@ -2292,7 +2292,7 @@ impl<'a, 'b> Iterator for Splice<'a, 'b> {
     }
 }
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[unstable(feature = "splice", reason = "recently added", issue = "44643")]
 impl<'a, 'b> DoubleEndedIterator for Splice<'a, 'b> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {

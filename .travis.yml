@@ -126,7 +126,8 @@ matrix:
 
 env:
   global:
-    - SCCACHE_BUCKET=rust-lang-ci-sccache
+    - SCCACHE_BUCKET=rust-lang-ci-sccache2
+    - SCCACHE_REGION=us-west-1
     - AWS_ACCESS_KEY_ID=AKIAJAMV3QAMMA6AXHFQ
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
@@ -161,7 +162,7 @@ install:
     else
       case "$TRAVIS_OS_NAME" in
         linux)
-          travis_retry curl -fo $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
+          travis_retry curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
             chmod +x $HOME/stamp &&
             export PATH=$PATH:$HOME
           ;;
@@ -170,9 +171,9 @@ install:
             travis_retry brew update &&
             travis_retry brew install xz;
           fi &&
-          travis_retry curl -fo /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&
-          travis_retry curl -fo /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
+          travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/stamp
           ;;
       esac
@@ -256,12 +257,12 @@ before_deploy:
 
 deploy:
   - provider: s3
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
     upload_dir: rustc-builds
     acl: public_read
-    region: us-east-1
+    region: us-west-1
     access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
@@ -270,12 +271,12 @@ deploy:
       condition: $DEPLOY = 1
 
   - provider: s3
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
     upload_dir: rustc-builds-try
     acl: public_read
-    region: us-east-1
+    region: us-west-1
     access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
@@ -286,12 +287,12 @@ deploy:
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
   - provider: s3
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
     upload_dir: rustc-builds-alt
     acl: public_read
-    region: us-east-1
+    region: us-west-1
     access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="

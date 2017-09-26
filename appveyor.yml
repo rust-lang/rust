@@ -1,5 +1,6 @@
 environment:
-  SCCACHE_BUCKET: rust-lang-ci-sccache
+  SCCACHE_BUCKET: rust-lang-ci-sccache2
+  SCCACHE_REGION: us-west-1
   AWS_ACCESS_KEY_ID: AKIAJAMV3QAMMA6AXHFQ
   AWS_SECRET_ACCESS_KEY:
     secure: 7Y+JiquYedOAgnUU26uL0DPzrxmTtR+qIwG6rNKSuWDffqU3vVZxbGXim9QpTO80
@@ -40,13 +41,13 @@ environment:
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     SCRIPT: python x.py test
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
   - MSYS_BITS: 64
     SCRIPT: python x.py test
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
 
@@ -67,14 +68,14 @@ environment:
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
     SCRIPT: python x.py dist
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
@@ -132,25 +133,25 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-pc-windows-msvc
+  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-pc-windows-msvc
   - mv 2017-05-12-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
 
   # Download and install ninja
   #
   # Note that this is originally from the github releases patch of Ninja
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-15-ninja-win.zip
+  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-15-ninja-win.zip
   - 7z x 2017-03-15-ninja-win.zip
   - set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja
   # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-08-22-is.exe
+  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-08-22-is.exe
   - 2017-08-22-is.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
   - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-15-Handle.zip
+  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-15-Handle.zip
   - mkdir handle
   - 7z x -ohandle 2017-05-15-Handle.zip
   - set PATH=%PATH%;%CD%\handle
@@ -188,9 +189,9 @@ deploy:
     access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
       secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     set_public: true
-    region: us-east-1
+    region: us-west-1
     artifact: /.*/
     folder: rustc-builds
     on:
@@ -205,9 +206,9 @@ deploy:
     access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
       secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     set_public: true
-    region: us-east-1
+    region: us-west-1
     artifact: /.*/
     folder: rustc-builds-alt
     on:
