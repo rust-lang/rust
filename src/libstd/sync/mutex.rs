@@ -9,7 +9,9 @@
 // except according to those terms.
 
 use cell::UnsafeCell;
+use cmp::{Ordering};
 use fmt;
+use hash::{Hash, Hasher};
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
@@ -444,6 +446,61 @@ impl<'a, T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'a, T> {
 impl<'a, T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Hash> Hash for MutexGuard<'a, T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + PartialEq> PartialEq for MutexGuard<'a, T> {
+    #[inline]
+    fn eq(&self, other: &MutexGuard<T>) -> bool {
+        **self == **other
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Eq> Eq for MutexGuard<'a, T> { }
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Ord> Ord for MutexGuard<'a, T> {
+    #[inline]
+    fn cmp(&self, other: &MutexGuard<T>) -> Ordering {
+        self.deref().cmp(&other.deref())
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + PartialOrd> PartialOrd for MutexGuard<'a, T> {
+    #[inline]
+    fn partial_cmp(&self, other: &MutexGuard<T>) -> Option<Ordering> {
+        self.deref().partial_cmp(&other.deref())
+    }
+
+    #[inline]
+    fn lt(&self, other: &MutexGuard<T>) -> bool {
+        **self < **other
+    }
+
+    #[inline]
+    fn le(&self, other: &MutexGuard<T>) -> bool {
+        **self <= **other
+    }
+
+    #[inline]
+    fn gt(&self, other: &MutexGuard<T>) -> bool {
+        **self > **other
+    }
+
+    #[inline]
+    fn ge(&self, other: &MutexGuard<T>) -> bool {
+        **self >= **other
     }
 }
 

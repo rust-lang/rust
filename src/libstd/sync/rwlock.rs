@@ -9,7 +9,9 @@
 // except according to those terms.
 
 use cell::UnsafeCell;
+use cmp::Ordering;
 use fmt;
+use hash::{Hash, Hasher};
 use marker;
 use mem;
 use ops::{Deref, DerefMut};
@@ -484,6 +486,61 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'a, T> {
     }
 }
 
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Hash> Hash for RwLockReadGuard<'a, T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + PartialEq> PartialEq for RwLockReadGuard<'a, T> {
+    #[inline]
+    fn eq(&self, other: &RwLockReadGuard<T>) -> bool {
+        **self == **other
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Eq> Eq for RwLockReadGuard<'a, T> { }
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Ord> Ord for RwLockReadGuard<'a, T> {
+    #[inline]
+    fn cmp(&self, other: &RwLockReadGuard<T>) -> Ordering {
+        self.deref().cmp(&other.deref())
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + PartialOrd> PartialOrd for RwLockReadGuard<'a, T> {
+    #[inline]
+    fn partial_cmp(&self, other: &RwLockReadGuard<T>) -> Option<Ordering> {
+        self.deref().partial_cmp(&other.deref())
+    }
+
+    #[inline]
+    fn lt(&self, other: &RwLockReadGuard<T>) -> bool {
+        **self < **other
+    }
+
+    #[inline]
+    fn le(&self, other: &RwLockReadGuard<T>) -> bool {
+        **self <= **other
+    }
+
+    #[inline]
+    fn gt(&self, other: &RwLockReadGuard<T>) -> bool {
+        **self > **other
+    }
+
+    #[inline]
+    fn ge(&self, other: &RwLockReadGuard<T>) -> bool {
+        **self >= **other
+    }
+}
+
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -497,6 +554,61 @@ impl<'a, T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'a, T> {
 impl<'a, T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Hash> Hash for RwLockWriteGuard<'a, T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + PartialEq> PartialEq for RwLockWriteGuard<'a, T> {
+    #[inline]
+    fn eq(&self, other: &RwLockWriteGuard<T>) -> bool {
+        **self == **other
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Eq> Eq for RwLockWriteGuard<'a, T> { }
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + Ord> Ord for RwLockWriteGuard<'a, T> {
+    #[inline]
+    fn cmp(&self, other: &RwLockWriteGuard<T>) -> Ordering {
+        self.deref().cmp(&other.deref())
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.22.0")]
+impl<'a, T: ?Sized + PartialOrd> PartialOrd for RwLockWriteGuard<'a, T> {
+    #[inline]
+    fn partial_cmp(&self, other: &RwLockWriteGuard<T>) -> Option<Ordering> {
+        self.deref().partial_cmp(&other.deref())
+    }
+
+    #[inline]
+    fn lt(&self, other: &RwLockWriteGuard<T>) -> bool {
+        **self < **other
+    }
+
+    #[inline]
+    fn le(&self, other: &RwLockWriteGuard<T>) -> bool {
+        **self <= **other
+    }
+
+    #[inline]
+    fn gt(&self, other: &RwLockWriteGuard<T>) -> bool {
+        **self > **other
+    }
+
+    #[inline]
+    fn ge(&self, other: &RwLockWriteGuard<T>) -> bool {
+        **self >= **other
     }
 }
 
