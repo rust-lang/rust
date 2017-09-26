@@ -164,13 +164,101 @@ pub fn _mm_max_ps(a: f32x4, b: f32x4) -> f32x4 {
     unsafe { maxps(a, b) }
 }
 
+// Shuffle packed single-precision (32-bit) floating-point elements in `a` and `b`
+// using `mask`.
+// The lower half of result takes values from `a` and the higher half from `b`.
+// Mask is split to 2 control bits each to index the element from inputs.
+#[inline(always)]
+#[target_feature = "+sse"]
+pub fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: i32) -> f32x4 {
+    let mask = (mask & 0xFF) as u8;
+
+    macro_rules! shuffle_done {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
+            unsafe {
+                simd_shuffle4(a, b, [$x01, $x23, $x45, $x67])
+            }
+        }
+    }
+    macro_rules! shuffle_x67 {
+        ($x01:expr, $x23:expr, $x45:expr) => {
+            match (mask >> 6) & 0b11 {
+                0b00 => shuffle_done!($x01, $x23, $x45, 4),
+                0b01 => shuffle_done!($x01, $x23, $x45, 5),
+                0b10 => shuffle_done!($x01, $x23, $x45, 6),
+                _ => shuffle_done!($x01, $x23, $x45, 7),
+            }
+        }
+    }
+    macro_rules! shuffle_x45 {
+        ($x01:expr, $x23:expr) => {
+            match (mask >> 4) & 0b11 {
+                0b00 => shuffle_x67!($x01, $x23, 4),
+                0b01 => shuffle_x67!($x01, $x23, 5),
+                0b10 => shuffle_x67!($x01, $x23, 6),
+                _ => shuffle_x67!($x01, $x23, 7),
+            }
+        }
+    }
+    macro_rules! shuffle_x23 {
+        ($x01:expr) => {
+            match (mask >> 2) & 0b11 {
+                0b00 => shuffle_x45!($x01, 0),
+                0b01 => shuffle_x45!($x01, 1),
+                0b10 => shuffle_x45!($x01, 2),
+                _ => shuffle_x45!($x01, 3),
+            }
+        }
+    }
+    match mask & 0b11 {
+        0b00 => shuffle_x23!(0),
+        0b01 => shuffle_x23!(1),
+        0b10 => shuffle_x23!(2),
+        _ => shuffle_x23!(3),
+    }
+}
+
+#[cfg(test)]
+#[cfg_attr(test, assert_instr(shufps))]
+#[target_feature = "+sse"]
+fn _test_mm_shuffle_ps(a: f32x4, b: f32x4) -> f32x4 {
+    _mm_shuffle_ps(a, b, 3)
+}
+
 /// Unpack and interleave single-precision (32-bit) floating-point elements
-/// from the high half of `a` and `b`;
+/// from the higher half of `a` and `b`.
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(unpckhps))]
 pub fn _mm_unpackhi_ps(a: f32x4, b: f32x4) -> f32x4 {
     unsafe { simd_shuffle4(a, b, [2, 6, 3, 7]) }
+}
+
+/// Unpack and interleave single-precision (32-bit) floating-point elements
+/// from the lower half of `a` and `b`.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(unpcklps))]
+pub fn _mm_unpacklo_ps(a: f32x4, b: f32x4) -> f32x4 {
+    unsafe { simd_shuffle4(a, b, [0, 4, 1, 5]) }
+}
+
+/// Combine higher half of `a` and `b`. The highwe half of `b` occupies the lower
+/// half of result.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movhlps))]
+pub fn _mm_movehl_ps(a: f32x4, b: f32x4) -> f32x4 {
+    unsafe { simd_shuffle4(a, b, [6, 7, 2, 3]) }
+}
+
+/// Combine lower half of `a` and `b`. The lower half of `b` occupies the higher
+/// half of result.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(unpcklpd))]
+pub fn _mm_movelh_ps(a: f32x4, b: f32x4) -> f32x4 {
+    unsafe { simd_shuffle4(a, b, [0, 1, 4, 5]) }
 }
 
 /// Return a mask of the most significant bit of each element in `a`.
@@ -369,11 +457,44 @@ mod tests {
     }
 
     #[simd_test = "sse"]
+    fn _mm_shuffle_ps() {
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
+        let mask = 0b00_01_01_11;
+        let r = sse::_mm_shuffle_ps(a, b, mask);
+        assert_eq!(r, f32x4::new(4.0, 2.0, 6.0, 5.0));
+    }
+
+    #[simd_test = "sse"]
     fn _mm_unpackhi_ps() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
         let r = sse::_mm_unpackhi_ps(a, b);
         assert_eq!(r, f32x4::new(3.0, 7.0, 4.0, 8.0));
+    }
+
+    #[simd_test = "sse"]
+    fn _mm_unpacklo_ps() {
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
+        let r = sse::_mm_unpacklo_ps(a, b);
+        assert_eq!(r, f32x4::new(1.0, 5.0, 2.0, 6.0));
+    }
+
+    #[simd_test = "sse"]
+    fn _mm_movehl_ps() {
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
+        let r = sse::_mm_movehl_ps(a, b);
+        assert_eq!(r, f32x4::new(7.0, 8.0, 3.0, 4.0));
+    }
+
+    #[simd_test = "sse"]
+    fn _mm_movelh_ps() {
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
+        let r = sse::_mm_movelh_ps(a, b);
+        assert_eq!(r, f32x4::new(1.0, 2.0, 5.0, 6.0));
     }
 
     #[simd_test = "sse"]
