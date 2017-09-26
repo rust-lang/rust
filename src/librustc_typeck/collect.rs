@@ -1329,10 +1329,21 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
         })
 }
 
+//todo
+fn inferred_outlives_of<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           _def_id: DefId)
+                           -> Vec<ty::Predicate<'tcx>> {
+    Vec::new()
+}
+
 fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> ty::GenericPredicates<'tcx> {
-    explicit_predicates_of(tcx, def_id)
+    let explicit = explicit_predicates_of(tcx, def_id);
+    ty::GenericPredicates {
+        parent: explicit.parent,
+        predicates: [&explicit.predicates[..], &inferred_outlives_of(tcx, def_id)[..]].concat()
+    }
 }
 
 fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
