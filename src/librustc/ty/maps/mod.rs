@@ -56,6 +56,7 @@ use syntax::symbol::Symbol;
 #[macro_use]
 mod plumbing;
 use self::plumbing::*;
+pub use self::plumbing::force_from_dep_node;
 
 mod keys;
 pub use self::keys::Key;

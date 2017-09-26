@@ -947,6 +947,19 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         shared_ccx.tcx().collect_and_partition_translation_items(LOCAL_CRATE).1;
     let codegen_units = (*codegen_units).clone();
 
+    // Force all codegen_unit queries so they are already either red or green
+    // when compile_codegen_unit accesses them. We are not able to re-execute
+    // the codegen_unit query from just the DepNode, so an unknown color would
+    // lead to having to re-execute compile_codegen_unit, possibly
+    // unnecessarily.
+    if tcx.dep_graph.is_fully_enabled() {
+        for cgu in &codegen_units {
+            tcx.codegen_unit(cgu.name().clone());
+        }
+    }
+
+    assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
+
     let ongoing_translation = write::start_async_translation(
         tcx,
         time_graph.clone(),

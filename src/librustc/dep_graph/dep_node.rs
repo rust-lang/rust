@@ -66,7 +66,6 @@ use hir::{HirId, ItemLocalId};
 
 use ich::Fingerprint;
 use ty::{TyCtxt, Instance, InstanceDef};
-use ty::fast_reject::SimplifiedType;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
 use std::fmt;
@@ -430,7 +429,6 @@ define_dep_nodes!( <'tcx>
     [] RegionScopeTree(DefId),
     [] Coherence,
     [] CoherenceInherentImplOverlapCheck,
-    [] Resolve,
     [] CoherenceCheckTrait(DefId),
     [] PrivacyAccessLevels(CrateNum),
 
@@ -447,10 +445,8 @@ define_dep_nodes!( <'tcx>
     [] MirBorrowCheck(DefId),
     [] UnsafetyViolations(DefId),
 
-    [] RvalueCheck(DefId),
     [] Reachability,
     [] MirKeys,
-    [] TransWriteMetadata,
     [] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
@@ -498,17 +494,8 @@ define_dep_nodes!( <'tcx>
 
     // The set of impls for a given trait.
     [] TraitImpls(DefId),
-    [] RelevantTraitImpls(DefId, SimplifiedType),
 
     [] AllLocalTraitImpls,
-
-    // Nodes representing caches. To properly handle a true cache, we
-    // don't use a DepTrackingMap, but rather we push a task node.
-    // Otherwise the write into the map would be incorrectly
-    // attributed to the first task that happened to fill the cache,
-    // which would yield an overly conservative dep-graph.
-    [] TraitItems(DefId),
-    [] ReprHints(DefId),
 
     // Trait selection cache is a little funny. Given a trait
     // reference like `Foo: SomeTrait<Bar>`, there could be
@@ -598,7 +585,6 @@ define_dep_nodes!( <'tcx>
     [] MissingLangItems(CrateNum),
     [] ExternConstBody(DefId),
     [] VisibleParentMap,
-    [] IsDirectExternCrate(CrateNum),
     [] MissingExternCrateItem(CrateNum),
     [] UsedCrateSource(CrateNum),
     [] PostorderCnums,
@@ -618,6 +604,9 @@ define_dep_nodes!( <'tcx>
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [] OutputFilenames,
+
+    // We use this for most things when incr. comp. is turned off.
+    [] Null,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

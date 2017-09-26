@@ -460,8 +460,9 @@ impl DepGraph {
 
         let mut current_deps = Vec::new();
 
-        for &dep_dep_node in prev_deps {
-            let dep_dep_node = &data.previous.index_to_node(dep_dep_node);
+        for &dep_dep_node_index in prev_deps {
+            let dep_dep_node = &data.previous.index_to_node(dep_dep_node_index);
+
             let dep_dep_node_color = data.colors.borrow().get(dep_dep_node).cloned();
             match dep_dep_node_color {
                 Some(DepNodeColor::Green(node_index)) => {
@@ -478,18 +479,41 @@ impl DepGraph {
                     return None
                 }
                 None => {
+                    if dep_dep_node.kind.is_input() {
+                        // This input does not exist anymore.
+                        debug_assert!(dep_dep_node.extract_def_id(tcx).is_none());
+                        return None;
+                    }
+
                     // We don't know the state of this dependency. Let's try to
                     // mark it green.
                     if let Some(node_index) = self.try_mark_green(tcx, dep_dep_node) {
                         current_deps.push(node_index);
                     } else {
-                        // We failed to mark it green. This can have various
-                        // reasons.
-                        return None
+                        // We failed to mark it green, so we try to force the query.
+                        if ::ty::maps::force_from_dep_node(tcx, dep_dep_node) {
+                            let dep_dep_node_color = data.colors.borrow().get(dep_dep_node).cloned();
+                            match dep_dep_node_color {
+                                Some(DepNodeColor::Green(node_index)) => {
+                                    current_deps.push(node_index);
+                                }
+                                Some(DepNodeColor::Red) => {
+                                    return None
+                                }
+                                None => {
+                                    bug!("try_mark_green() - Forcing the DepNode \
+                                          should have set its color")
+                                }
+                            }
+                        } else {
+                            // The DepNode could not be forced.
+                            return None
+                        }
                     }
                 }
             }
         }
+
 
         // If we got here without hitting a `return` that means that all
         // dependencies of this DepNode could be marked as green. Therefore we
