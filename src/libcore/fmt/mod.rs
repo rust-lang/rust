@@ -1630,6 +1630,38 @@ impl<T: ?Sized> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
+// Implementation of specific formatters for slices of supporting types
+
+macro_rules! additional_slice_formatting {
+    ($($tr:ident),*) => {
+        $(
+        #[stable(feature = "additional_slice_formatting", since = "1.22.0")]
+        impl<T: $tr> $tr for [T] {
+            fn fmt(&self, f: &mut Formatter) -> Result {
+                let mut has_items = false;
+
+                f.write_str("[")?;
+
+                for i in self.iter() {
+                    if has_items {
+                        f.write_str(", ")?;
+                    }
+
+                    <T as $tr>::fmt(i, f)?;
+                    has_items = true;
+                }
+
+                f.write_str("]")?;
+
+                Ok(())
+            }
+        }
+        )*
+    }
+}
+
+additional_slice_formatting!( Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp, Pointer );
+
 macro_rules! peel {
     ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
 }
