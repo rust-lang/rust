@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## Trunk
+* New lint: [`mut_range_bound`]
+
 ## 0.0.164
 * Update to *rustc 1.22.0-nightly (6c476ce46 2017-09-25)*
 * New lint: [`int_plus_one`]
@@ -561,6 +564,7 @@ All notable changes to this project will be documented in this file.
 [`modulo_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#modulo_one
 [`mut_from_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_from_ref
 [`mut_mut`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_mut
+[`mut_range_bound`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_range_bound
 [`mutex_atomic`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mutex_atomic
 [`mutex_integer`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mutex_integer
 [`naive_bytecount`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#naive_bytecount

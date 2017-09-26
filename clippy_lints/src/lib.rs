@@ -449,6 +449,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         loops::FOR_LOOP_OVER_RESULT,
         loops::ITER_NEXT_LOOP,
         loops::MANUAL_MEMCPY,
+        loops::MUT_RANGE_BOUND,
         loops::NEEDLESS_RANGE_LOOP,
         loops::NEVER_LOOP,
         loops::REVERSE_RANGE_LOOP,

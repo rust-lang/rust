@@ -2,16 +2,22 @@ use itertools::Itertools;
 use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
+use rustc::hir::def_id; 
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
+// use rustc::middle::region::CodeExtent;
+use rustc::middle::expr_use_visitor::*;
+use rustc::middle::mem_categorization::Categorization;
+use rustc::middle::mem_categorization::cmt;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Subst, Substs};
 use rustc_const_eval::ConstContext;
 use std::collections::{HashMap, HashSet};
 use syntax::ast;
+use syntax::codemap::Span;
 use utils::sugg;
 use utils::const_to_u64;
 
@@ -328,6 +334,14 @@ declare_lint! {
     "any loop that will always `break` or `return`"
 }
 
+/// TODO: add documentation
+
+declare_lint! {
+    pub MUT_RANGE_BOUND,
+    Warn,
+    "for loop over a range where one of the bounds is a mutable variable"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -348,7 +362,8 @@ impl LintPass for Pass {
             EMPTY_LOOP,
             WHILE_LET_ON_ITERATOR,
             FOR_KV_MAP,
-            NEVER_LOOP
+            NEVER_LOOP, 
+            MUT_RANGE_BOUND
         )
     }
 }
@@ -605,6 +620,7 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
+    check_for_mut_range_bound(cx, arg, body);
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
@@ -1292,6 +1308,102 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
             }
         }
     }
+}
+
+struct MutateDelegate {
+    node_id_low: Option<NodeId>,
+    node_id_high: Option<NodeId>,
+    span_low: Option<Span>,
+    span_high: Option<Span>,
+}
+
+impl<'tcx> Delegate<'tcx> for MutateDelegate {
+    fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {
+    }
+  
+    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {
+    }
+
+    fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {
+    }
+
+    fn borrow(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+        if let ty::BorrowKind::MutBorrow = bk {
+            if let Categorization::Local(id) = cmt.cat {
+                if Some(id) == self.node_id_low {
+                    self.span_low = Some(sp)
+                }
+                if Some(id) == self.node_id_high {
+                    self.span_high = Some(sp)
+                }
+            }
+        }
+    }
+
+    fn mutate(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: MutateMode) {
+        if let Categorization::Local(id) = cmt.cat {
+            if Some(id) == self.node_id_low {
+                self.span_low = Some(sp)
+            }
+            if Some(id) == self.node_id_high {
+                self.span_high = Some(sp)
+            }
+        }
+    }
+
+    fn decl_without_init(&mut self, _: NodeId, _: Span) {
+    }
+}
+
+impl<'tcx> MutateDelegate {
+    fn mutation_span(&self) -> (Option<Span>, Option<Span>) {
+        (self.span_low, self.span_high)
+    }
+}
+
+fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
+    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(arg) {
+        let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
+        if mut_ids[0].is_some() || mut_ids[1].is_some() {
+            let (span_low, span_high) = check_for_mutation(cx, body, &mut_ids);
+            mut_warn_with_span(cx, span_low);
+            mut_warn_with_span(cx, span_high);
+        }
+    }
+}
+
+fn mut_warn_with_span(cx: &LateContext, span: Option<Span>) {
+    if let Some(sp) = span {
+        span_lint(cx, MUT_RANGE_BOUND, sp, "attempt to mutate range bound within loop; note that the range of the loop is unchanged");
+    }
+}
+
+fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
+    if_let_chain! {[
+        let ExprPath(ref qpath) = bound.node,
+        let QPath::Resolved(None, _) = *qpath,
+    ], {
+        let def = cx.tables.qpath_def(qpath, bound.hir_id);
+        if let Def::Local(node_id) = def {
+            let node_str = cx.tcx.hir.get(node_id);
+            if_let_chain! {[
+                let map::Node::NodeBinding(pat) = node_str,
+                let PatKind::Binding(bind_ann, _, _, _) = pat.node,
+                let BindingAnnotation::Mutable = bind_ann,
+            ], {
+                return Some(node_id);
+            }}
+        }
+    }}
+    None
+}
+
+fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: &[Option<NodeId>]) -> (Option<Span>, Option<Span>) {
+    let mut delegate = MutateDelegate { node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
+    let def_id = def_id::DefId::local(body.hir_id.owner);
+    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
+    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
+    delegate.mutation_span()
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
