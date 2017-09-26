@@ -20,6 +20,9 @@ pub type __m256i = ::v256::i8x32;
 
 #[macro_use]
 mod macros;
+#[macro_use]
+mod runtime;
+
 mod sse;
 mod sse2;
 mod ssse3;
@@ -32,6 +35,3 @@ mod abm;
 mod bmi;
 mod bmi2;
 mod tbm;
-
-#[macro_use]
-mod runtime;

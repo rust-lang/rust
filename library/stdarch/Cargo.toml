@@ -19,4 +19,4 @@ debug = true
 opt-level = 3
 
 [dev-dependencies]
-assert-instr = { path = "assert-instr" }
+stdsimd-test = { path = "stdsimd-test" }

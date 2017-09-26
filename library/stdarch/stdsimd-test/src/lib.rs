@@ -1,4 +1,4 @@
-//! Runtime support needed for the `#![assert_instr]` macro
+//! Runtime support needed for testing the stdsimd crate.
 //!
 //! This basically just disassembles the current executable and then parses the
 //! output once globally and then provides the `assert` function which makes
@@ -7,6 +7,7 @@
 #![feature(proc_macro)]
 
 extern crate assert_instr_macro;
+extern crate simd_test_macro;
 extern crate backtrace;
 extern crate cc;
 extern crate rustc_demangle;
@@ -19,6 +20,7 @@ use std::process::Command;
 use std::str;
 
 pub use assert_instr_macro::*;
+pub use simd_test_macro::*;
 
 lazy_static! {
     static ref DISASSEMBLY: HashMap<String, Vec<Function>> = disassemble_myself();

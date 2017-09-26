@@ -11,7 +11,7 @@
 //! provides a quick overview of the instructions available.
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Counts the leading most significant zero bits.
 ///
@@ -41,30 +41,28 @@ pub fn _popcnt32(x: u32) -> u32 { x.count_ones() }
 #[cfg_attr(test, assert_instr(popcnt))]
 pub fn _popcnt64(x: u64) -> u64 { x.count_ones() as u64 }
 
-#[cfg(all(test, target_feature = "bmi", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use x86::abm;
 
-    #[test]
-    #[target_feature = "+lzcnt"]
+    #[simd_test = "lzcnt"]
     fn _lzcnt_u32() {
         assert_eq!(abm::_lzcnt_u32(0b0101_1010u32), 25u32);
     }
 
-    #[test]
-    #[target_feature = "+lzcnt"]
+    #[simd_test = "lzcnt"]
     fn _lzcnt_u64() {
         assert_eq!(abm::_lzcnt_u64(0b0101_1010u64), 57u64);
     }
 
-    #[test]
-    #[target_feature = "+popcnt"]
+    #[simd_test = "popcnt"]
     fn _popcnt32() {
         assert_eq!(abm::_popcnt32(0b0101_1010u32), 4);
     }
 
-    #[test]
-    #[target_feature = "+popcnt"]
+    #[simd_test = "popcnt"]
     fn _popcnt64() {
         assert_eq!(abm::_popcnt64(0b0101_1010u64), 4);
     }

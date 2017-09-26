@@ -89,7 +89,7 @@
 #![cfg_attr(test, feature(proc_macro))]
 
 #[cfg(test)]
-extern crate assert_instr;
+extern crate stdsimd_test;
 
 /// Platform independent SIMD vector types and operations.
 pub mod simd {
