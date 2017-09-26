@@ -100,7 +100,8 @@ fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
             let arg_segment = [
                 PathSegment {
                     name: id,
-                    parameters: PathParameters::none(),
+                    parameters: None,
+                    infer_types: true,
                 },
             ];
             !path.is_global() && path.segments[..] == arg_segment

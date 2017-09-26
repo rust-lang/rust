@@ -59,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
             let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node,
         ], {
             let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).parameters;
-            if !parameters.parenthesized && parameters.lifetimes.len() == 0 {
+            if parameters.is_none() {
                 let visitor = &mut UseSelfVisitor {
                     item_path: item_path,
                     cx: cx,

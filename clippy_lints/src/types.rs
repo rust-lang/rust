@@ -154,8 +154,9 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     let last = last_path_segment(qpath);
                     if_let_chain! {[
-                        !last.parameters.parenthesized,
-                        let Some(vec) = last.parameters.types.get(0),
+                        let Some(ref params) = last.parameters,
+                        !params.parenthesized,
+                        let Some(vec) = params.types.get(0),
                         let TyPath(ref qpath) = vec.node,
                         let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id))),
                         match_def_path(cx.tcx, did, &paths::VEC),
@@ -183,21 +184,25 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                     check_ty(cx, ty, is_local);
                     for ty in p.segments
                         .iter()
-                        .flat_map(|seg| seg.parameters.types.iter())
+                        .filter_map(|ref seg| seg.parameters.as_ref())
+                        .flat_map(|ref params| params.types.iter())
                     {
                         check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::Resolved(None, ref p) => for ty in p.segments
                     .iter()
-                    .flat_map(|seg| seg.parameters.types.iter())
+                    .filter_map(|ref seg| seg.parameters.as_ref())
+                    .flat_map(|ref params| params.types.iter())
                 {
                     check_ty(cx, ty, is_local);
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
                     check_ty(cx, ty, is_local);
-                    for ty in seg.parameters.types.iter() {
-                        check_ty(cx, ty, is_local);
+                    if let Some(ref params) = seg.parameters {
+                        for ty in params.types.iter() {
+                            check_ty(cx, ty, is_local);
+                        }
                     }
                 },
             }
@@ -212,8 +217,9 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         Some(def_id) == cx.tcx.lang_items().owned_box(),
                         let QPath::Resolved(None, ref path) = *qpath,
                         let [ref bx] = *path.segments,
-                        !bx.parameters.parenthesized,
-                        let [ref inner] = *bx.parameters.types
+                        let Some(ref params) = bx.parameters,
+                        !params.parenthesized,
+                        let [ref inner] = *params.types
                     ], {
                         if is_any_trait(inner) {
                             // Ignore `Box<Any>` types, see #1884 for details.
