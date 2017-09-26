@@ -574,7 +574,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyTup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
-        TyBareFn(ref function_declaration) => {
+        TyBareFn(ref function_declaration, _) => {
             visitor.visit_fn_decl(&function_declaration.decl);
             walk_list!(visitor, visit_lifetime_def, &function_declaration.lifetimes);
         }
