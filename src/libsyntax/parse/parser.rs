@@ -1280,10 +1280,10 @@ impl<'a> Parser<'a> {
                          mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
         let lo = self.span;
 
-        let (name, node) = if self.eat_keyword(keywords::Type) {
+        let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             let TyParam {ident, bounds, default, ..} = self.parse_ty_param(vec![])?;
             self.expect(&token::Semi)?;
-            (ident, TraitItemKind::Type(bounds, default))
+            (ident, TraitItemKind::Type(bounds, default), ast::Generics::default())
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
@@ -1298,7 +1298,7 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Semi)?;
                 None
             };
-            (ident, TraitItemKind::Const(ty, default))
+            (ident, TraitItemKind::Const(ty, default), ast::Generics::default())
         } else if self.token.is_path_start() {
             // trait item macro.
             // code copied from parse_macro_use_or_failure... abstraction!
@@ -1321,7 +1321,7 @@ impl<'a> Parser<'a> {
             }
 
             let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
-            (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac))
+            (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac), ast::Generics::default())
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
 
@@ -1334,13 +1334,12 @@ impl<'a> Parser<'a> {
                 // definition...
                 p.parse_arg_general(false)
             })?;
-
             generics.where_clause = self.parse_where_clause()?;
+
             let sig = ast::MethodSig {
                 unsafety,
                 constness,
                 decl: d,
-                generics,
                 abi,
             };
 
@@ -1363,13 +1362,14 @@ impl<'a> Parser<'a> {
                     return Err(self.fatal(&format!("expected `;` or `{{`, found `{}`", token_str)));
                 }
             };
-            (ident, ast::TraitItemKind::Method(sig, body))
+            (ident, ast::TraitItemKind::Method(sig, body), generics)
         };
 
         Ok(TraitItem {
             id: ast::DUMMY_NODE_ID,
             ident: name,
             attrs,
+            generics,
             node,
             span: lo.to(self.prev_span),
             tokens: None,
@@ -4834,12 +4834,12 @@ impl<'a> Parser<'a> {
         let lo = self.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness()?;
-        let (name, node) = if self.eat_keyword(keywords::Type) {
+        let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             let name = self.parse_ident()?;
             self.expect(&token::Eq)?;
             let typ = self.parse_ty()?;
             self.expect(&token::Semi)?;
-            (name, ast::ImplItemKind::Type(typ))
+            (name, ast::ImplItemKind::Type(typ), ast::Generics::default())
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let name = self.parse_ident()?;
@@ -4848,11 +4848,11 @@ impl<'a> Parser<'a> {
             self.expect(&token::Eq)?;
             let expr = self.parse_expr()?;
             self.expect(&token::Semi)?;
-            (name, ast::ImplItemKind::Const(typ, expr))
+            (name, ast::ImplItemKind::Const(typ, expr), ast::Generics::default())
         } else {
-            let (name, inner_attrs, node) = self.parse_impl_method(&vis, at_end)?;
+            let (name, inner_attrs, generics, node) = self.parse_impl_method(&vis, at_end)?;
             attrs.extend(inner_attrs);
-            (name, node)
+            (name, node, generics)
         };
 
         Ok(ImplItem {
@@ -4862,6 +4862,7 @@ impl<'a> Parser<'a> {
             vis,
             defaultness,
             attrs,
+            generics,
             node,
             tokens: None,
         })
@@ -4919,7 +4920,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a method or a macro invocation in a trait impl.
     fn parse_impl_method(&mut self, vis: &Visibility, at_end: &mut bool)
-                         -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
+                         -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::Generics,
+                             ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if self.token.is_path_start() {
             // Method macro.
@@ -4946,7 +4948,8 @@ impl<'a> Parser<'a> {
             }
 
             let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
-            Ok((keywords::Invalid.ident(), vec![], ast::ImplItemKind::Macro(mac)))
+            Ok((keywords::Invalid.ident(), vec![], ast::Generics::default(),
+                ast::ImplItemKind::Macro(mac)))
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
@@ -4955,8 +4958,7 @@ impl<'a> Parser<'a> {
             generics.where_clause = self.parse_where_clause()?;
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-            Ok((ident, inner_attrs, ast::ImplItemKind::Method(ast::MethodSig {
-                generics,
+            Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(ast::MethodSig {
                 abi,
                 unsafety,
                 constness,

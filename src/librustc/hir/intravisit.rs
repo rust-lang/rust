@@ -780,9 +780,7 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
         FnKind::ItemFn(_, generics, ..) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(_, sig, ..) => {
-            visitor.visit_generics(&sig.generics);
-        }
+        FnKind::Method(..) |
         FnKind::Closure(_) => {}
     }
 }
@@ -802,6 +800,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
     visitor.visit_name(trait_item.span, trait_item.name);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
+    visitor.visit_generics(&trait_item.generics);
     match trait_item.node {
         TraitItemKind::Const(ref ty, default) => {
             visitor.visit_id(trait_item.id);
@@ -810,7 +809,6 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         }
         TraitItemKind::Method(ref sig, TraitMethod::Required(ref names)) => {
             visitor.visit_id(trait_item.id);
-            visitor.visit_generics(&sig.generics);
             visitor.visit_fn_decl(&sig.decl);
             for name in names {
                 visitor.visit_name(name.span, name.node);
@@ -852,6 +850,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         ref vis,
         ref defaultness,
         ref attrs,
+        ref generics,
         ref node,
         span
     } = *impl_item;
@@ -860,6 +859,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     visitor.visit_vis(vis);
     visitor.visit_defaultness(defaultness);
     walk_list!(visitor, visit_attribute, attrs);
+    visitor.visit_generics(generics);
     match *node {
         ImplItemKind::Const(ref ty, body) => {
             visitor.visit_id(impl_item.id);

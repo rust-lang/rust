@@ -1289,7 +1289,6 @@ pub struct MethodSig {
     pub constness: Constness,
     pub abi: Abi,
     pub decl: P<FnDecl>,
-    pub generics: Generics,
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1310,6 +1309,7 @@ pub struct TraitItem {
     pub name: Name,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
+    pub generics: Generics,
     pub node: TraitItemKind,
     pub span: Span,
 }
@@ -1354,6 +1354,7 @@ pub struct ImplItem {
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
+    pub generics: Generics,
     pub node: ImplItemKind,
     pub span: Span,
 }

@@ -719,7 +719,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 ItemRibKind
             }
             FnKind::Method(_, sig, _, _) => {
-                self.visit_generics(&sig.generics);
                 MethodRibKind(!sig.decl.has_self())
             }
             FnKind::Closure(_) => ClosureRibKind(node_id),
@@ -1872,7 +1871,7 @@ impl<'a> Resolver<'a> {
                                 }
                                 TraitItemKind::Method(ref sig, _) => {
                                     let type_parameters =
-                                        HasTypeParameters(&sig.generics,
+                                        HasTypeParameters(&trait_item.generics,
                                                           MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
@@ -2089,7 +2088,7 @@ impl<'a> Resolver<'a> {
                                         // We also need a new scope for the method-
                                         // specific type parameters.
                                         let type_parameters =
-                                            HasTypeParameters(&sig.generics,
+                                            HasTypeParameters(&impl_item.generics,
                                                             MethodRibKind(!sig.decl.has_self()));
                                         this.with_type_parameter_rib(type_parameters, |this| {
                                             visit::walk_impl_item(this, impl_item);
