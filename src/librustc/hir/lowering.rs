@@ -1103,6 +1103,10 @@ impl<'a> LoweringContext<'a> {
             default: tp.default.as_ref().map(|x| self.lower_ty(x)),
             span: tp.span,
             pure_wrt_drop: tp.attrs.iter().any(|attr| attr.check_name("may_dangle")),
+            synthetic: tp.attrs.iter()
+                               .filter(|attr| attr.check_name("rustc_synthetic"))
+                               .map(|_| hir::SyntheticTyParamKind::ImplTrait)
+                               .nth(0),
         }
     }
 

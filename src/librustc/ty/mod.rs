@@ -675,6 +675,8 @@ pub struct TypeParameterDef {
     /// on generic parameter `T`, asserts data behind the parameter
     /// `T` won't be accessed during the parent type's `Drop` impl.
     pub pure_wrt_drop: bool,
+
+    pub synthetic: Option<hir::SyntheticTyParamKind>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
