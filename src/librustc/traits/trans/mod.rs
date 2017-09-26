@@ -19,7 +19,7 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use syntax::ast;
 use syntax_pos::Span;
-use traits::{FulfillmentContext, Obligation, ObligationCause, Reveal, SelectionContext, Vtable};
+use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -31,24 +31,25 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// (necessarily) resolve all nested obligations on the impl. Note
     /// that type check should guarantee to us that all nested
     /// obligations *could be* resolved if we wanted to.
+    /// Assumes that this is run after the entire crate has been successfully type-checked.
     pub fn trans_fulfill_obligation(self,
                                     span: Span,
+                                    param_env: ty::ParamEnv<'tcx>,
                                     trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> Vtable<'tcx, ()>
     {
         // Remove any references to regions; this helps improve caching.
         let trait_ref = self.erase_regions(&trait_ref);
 
-        self.trans_trait_caches.trait_cache.memoize(trait_ref, || {
+        self.trans_trait_caches.trait_cache.memoize((param_env, trait_ref), || {
             debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
-                   trait_ref, trait_ref.def_id());
+                   (param_env, trait_ref), trait_ref.def_id());
 
             // Do the initial selection for the obligation. This yields the
             // shallow result we are looking for -- that is, what specific impl.
             self.infer_ctxt().enter(|infcx| {
                 let mut selcx = SelectionContext::new(&infcx);
 
-                let param_env = ty::ParamEnv::empty(Reveal::All);
                 let obligation_cause = ObligationCause::misc(span,
                                                              ast::DUMMY_NODE_ID);
                 let obligation = Obligation::new(obligation_cause,
@@ -167,7 +168,7 @@ pub struct TraitSelectionCache<'tcx> {
 }
 
 impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
-    type Key = ty::PolyTraitRef<'tcx>;
+    type Key = (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>);
     type Value = Vtable<'tcx, ()>;
     fn to_dep_kind() -> DepKind {
         DepKind::TraitSelect
