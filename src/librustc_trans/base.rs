@@ -375,11 +375,12 @@ pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
 }
 
 pub fn to_immediate(bcx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
-    if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = layout.abi {
-        bcx.trunc(val, Type::i1(bcx.ccx))
-    } else {
-        val
+    if let layout::Abi::Scalar(ref scalar) = layout.abi {
+        if scalar.is_bool() {
+            return bcx.trunc(val, Type::i1(bcx.ccx));
+        }
     }
+    val
 }
 
 pub fn call_memcpy(b: &Builder,

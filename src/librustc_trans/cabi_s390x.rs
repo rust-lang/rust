@@ -27,8 +27,12 @@ fn classify_ret_ty(ret: &mut ArgType) {
 fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   layout: TyLayout<'tcx>) -> bool {
     match layout.abi {
-        layout::Abi::Scalar(layout::F32) |
-        layout::Abi::Scalar(layout::F64) => true,
+        layout::Abi::Scalar(ref scalar) => {
+            match scalar.value {
+                layout::F32 | layout::F64 => true,
+                _ => false
+            }
+        }
         layout::Abi::Aggregate { .. } => {
             if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
                 is_single_fp_element(ccx, layout.field(ccx, 0))

@@ -287,8 +287,8 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
     fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg> {
         match self.abi {
             // The primitive for this algorithm.
-            layout::Abi::Scalar(value) => {
-                let kind = match value {
+            layout::Abi::Scalar(ref scalar) => {
+                let kind = match scalar.value {
                     layout::Int(..) |
                     layout::Pointer => RegKind::Integer,
                     layout::F32 |
@@ -471,8 +471,8 @@ impl<'a, 'tcx> ArgType<'tcx> {
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
-        match self.layout.abi {
-            layout::Abi::Scalar(layout::Int(i, signed)) => {
+        if let layout::Abi::Scalar(ref scalar) = self.layout.abi {
+            if let layout::Int(i, signed) = scalar.value {
                 if i.size().bits() < bits {
                     self.attrs.set(if signed {
                         ArgAttribute::SExt
@@ -481,8 +481,6 @@ impl<'a, 'tcx> ArgType<'tcx> {
                     });
                 }
             }
-
-            _ => {}
         }
     }
 
@@ -695,9 +693,12 @@ impl<'a, 'tcx> FnType<'tcx> {
 
         let arg_of = |ty: Ty<'tcx>, is_return: bool| {
             let mut arg = ArgType::new(ccx.layout_of(ty));
-            if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = arg.layout.abi {
-                arg.attrs.set(ArgAttribute::ZExt);
-            } else if arg.layout.is_zst() {
+            if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
+                if scalar.is_bool() {
+                    arg.attrs.set(ArgAttribute::ZExt);
+                }
+            }
+            if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
                 // The same is true for s390x-unknown-linux-gnu.

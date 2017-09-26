@@ -114,6 +114,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
+                    let v = base::from_immediate(&bcx, v);
                     if common::val_ty(v) == Type::i8(bcx.ccx) {
                         base::call_memset(&bcx, start, v, size, align, false);
                         return bcx;
@@ -273,27 +274,24 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let ll_t_out = cast.immediate_llvm_type(bcx.ccx);
                         let llval = operand.immediate();
 
-                        match operand.layout.variants {
-                            layout::Variants::Tagged {
-                                ref discr_range, ..
-                            } if discr_range.end > discr_range.start => {
-                                // We want `table[e as usize]` to not
-                                // have bound checks, and this is the most
-                                // convenient place to put the `assume`.
+                        let mut signed = false;
+                        if let layout::Abi::Scalar(ref scalar) = operand.layout.abi {
+                            if let layout::Int(_, s) = scalar.value {
+                                signed = s;
 
-                                base::call_assume(&bcx, bcx.icmp(
-                                    llvm::IntULE,
-                                    llval,
-                                    C_uint_big(ll_t_in, discr_range.end)
-                                ));
+                                if scalar.valid_range.end > scalar.valid_range.start {
+                                    // We want `table[e as usize]` to not
+                                    // have bound checks, and this is the most
+                                    // convenient place to put the `assume`.
+
+                                    base::call_assume(&bcx, bcx.icmp(
+                                        llvm::IntULE,
+                                        llval,
+                                        C_uint_big(ll_t_in, scalar.valid_range.end)
+                                    ));
+                                }
                             }
-                            _ => {}
                         }
-
-                        let signed = match operand.layout.abi {
-                            layout::Abi::Scalar(layout::Int(_, signed)) => signed,
-                            _ => false
-                        };
 
                         let newval = match (r_t_in, r_t_out) {
                             (CastTy::Int(_), CastTy::Int(_)) => {

@@ -1400,11 +1400,13 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let discriminant_type_metadata = match layout.variants {
         layout::Variants::Single { .. } |
         layout::Variants::NicheFilling { .. } => None,
-        layout::Variants::Tagged { discr, .. } => Some(discriminant_type_metadata(discr)),
+        layout::Variants::Tagged { ref discr, .. } => {
+            Some(discriminant_type_metadata(discr.value))
+        }
     };
 
-    match (layout.abi, discriminant_type_metadata) {
-        (layout::Abi::Scalar(_), Some(discr)) => return FinalMetadata(discr),
+    match (&layout.abi, discriminant_type_metadata) {
+        (&layout::Abi::Scalar(_), Some(discr)) => return FinalMetadata(discr),
         _ => {}
     }
 

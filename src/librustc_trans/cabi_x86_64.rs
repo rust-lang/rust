@@ -65,8 +65,8 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
         }
 
         match layout.abi {
-            layout::Abi::Scalar(value) => {
-                let reg = match value {
+            layout::Abi::Scalar(ref scalar) => {
+                let reg = match scalar.value {
                     layout::Int(..) |
                     layout::Pointer => Class::Int,
                     layout::F32 |

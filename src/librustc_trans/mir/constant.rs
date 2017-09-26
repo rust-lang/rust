@@ -454,9 +454,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                           Value(base));
                             }
                             let layout = self.ccx.layout_of(projected_ty);
-                            if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = layout.abi {
+                            if let layout::Abi::Scalar(ref scalar) = layout.abi {
                                 let i1_type = Type::i1(self.ccx);
-                                if val_ty(val) != i1_type {
+                                if scalar.is_bool() && val_ty(val) != i1_type {
                                     unsafe {
                                         val = llvm::LLVMConstTrunc(val, i1_type.to_ref());
                                     }
@@ -684,10 +684,14 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         assert!(cast_layout.is_llvm_immediate());
                         let ll_t_out = cast_layout.immediate_llvm_type(self.ccx);
                         let llval = operand.llval;
-                        let signed = match self.ccx.layout_of(operand.ty).abi {
-                            layout::Abi::Scalar(layout::Int(_, signed)) => signed,
-                            _ => false
-                        };
+
+                        let mut signed = false;
+                        let l = self.ccx.layout_of(operand.ty);
+                        if let layout::Abi::Scalar(ref scalar) = l.abi {
+                            if let layout::Int(_, true) = scalar.value {
+                                signed = true;
+                            }
+                        }
 
                         unsafe {
                             match (r_t_in, r_t_out) {
