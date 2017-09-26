@@ -399,7 +399,8 @@ impl<'a> State<'a> {
                     },
                     span: syntax_pos::DUMMY_SP,
                 };
-                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics)?;
+                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics,
+                                 &f.arg_names[..])?;
             }
             hir::TyPath(ref qpath) => {
                 self.print_qpath(qpath, false)?
@@ -2140,7 +2141,8 @@ impl<'a> State<'a> {
                        unsafety: hir::Unsafety,
                        decl: &hir::FnDecl,
                        name: Option<ast::Name>,
-                       generics: &hir::Generics)
+                       generics: &hir::Generics,
+                       arg_names: &[Spanned<ast::Name>])
                        -> io::Result<()> {
         self.ibox(indent_unit)?;
         if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
@@ -2163,7 +2165,7 @@ impl<'a> State<'a> {
                       name,
                       &generics,
                       &hir::Inherited,
-                      &[],
+                      arg_names,
                       None)?;
         self.end()
     }

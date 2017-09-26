@@ -1418,6 +1418,7 @@ pub struct BareFnTy {
     pub abi: Abi,
     pub lifetimes: HirVec<LifetimeDef>,
     pub decl: P<FnDecl>,
+    pub arg_names: HirVec<Spanned<Name>>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

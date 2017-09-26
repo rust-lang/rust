@@ -673,15 +673,8 @@ impl<'a> LoweringContext<'a> {
                     unsafety: self.lower_unsafety(f.unsafety),
                     abi: f.abi,
                     decl: self.lower_fn_decl(&f.decl),
-                },
-                decl.inputs.iter().map(|arg| {
-                    match arg.pat.node {
-                        PatKind::Ident(_, ident, None) => {
-                            respan(ident.span, ident.node.name)
-                        }
-                        _ => respan(arg.pat.span, keywords::Invalid.name()),
-                    }
-                }).collect()))
+                    arg_names: self.lower_fn_args_to_names(&f.decl),
+                }))
             }
             TyKind::Never => hir::TyNever,
             TyKind::Tup(ref tys) => {
