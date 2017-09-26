@@ -4,7 +4,7 @@
 //! Manual](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0419c/index.html).
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Reverse the order of the bytes.
 #[inline(always)]

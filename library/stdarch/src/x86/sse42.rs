@@ -40,13 +40,14 @@ extern {
     fn pcmpestri128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
 }
 
-#[cfg(all(test, target_feature = "sse4.2", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use v128::*;
     use x86::{__m128i, sse42};
 
-    #[test]
-    #[target_feature = "+sse4.2"]
+    #[simd_test = "sse4.2"]
     fn _mm_cmpestri() {
         let a = &b"bar             "[..];
         let b = &b"foobar          "[..];

@@ -8,7 +8,7 @@
 //! provides a quick overview of the available instructions.
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 #[allow(dead_code)]
 extern "C" {
@@ -185,22 +185,21 @@ pub fn _mm_tzcnt_u64(x: u64) -> u64 {
 
 #[cfg(all(test, target_feature = "bmi", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use x86::bmi;
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _bextr_u32() {
         assert_eq!(bmi::_bextr_u32(0b0101_0000u32, 4, 4), 0b0000_0101u32);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _bextr_u64() {
         assert_eq!(bmi::_bextr_u64(0b0101_0000u64, 4, 4), 0b0000_0101u64);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _andn_u32() {
         assert_eq!(bmi::_andn_u32(0, 0), 0);
         assert_eq!(bmi::_andn_u32(0, 1), 1);
@@ -214,8 +213,7 @@ mod tests {
         assert_eq!(bmi::_andn_u32(0b0100_0000u32, 0b0101_1101u32), 0b0001_1101u32);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _andn_u64() {
         assert_eq!(bmi::_andn_u64(0, 0), 0);
         assert_eq!(bmi::_andn_u64(0, 1), 1);
@@ -229,62 +227,53 @@ mod tests {
         assert_eq!(bmi::_andn_u64(0b0100_0000u64, 0b0101_1101u64), 0b0001_1101u64);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _blsi_u32() {
         assert_eq!(bmi::_blsi_u32(0b1101_0000u32), 0b0001_0000u32);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _blsi_u64() {
         assert_eq!(bmi::_blsi_u64(0b1101_0000u64), 0b0001_0000u64);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _blsmsk_u32() {
         assert_eq!(bmi::_blsmsk_u32(0b0011_0000u32), 0b0001_1111u32);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _blsmsk_u64() {
         assert_eq!(bmi::_blsmsk_u64(0b0011_0000u64), 0b0001_1111u64);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _blsr_u32() {
         /// TODO: test the behavior when the input is 0
         assert_eq!(bmi::_blsr_u32(0b0011_0000u32), 0b0010_0000u32);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _blsr_u64() {
         /// TODO: test the behavior when the input is 0
         assert_eq!(bmi::_blsr_u64(0b0011_0000u64), 0b0010_0000u64);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _tzcnt_u16() {
         assert_eq!(bmi::_tzcnt_u16(0b0000_0001u16), 0u16);
         assert_eq!(bmi::_tzcnt_u16(0b0000_0000u16), 16u16);
         assert_eq!(bmi::_tzcnt_u16(0b1001_0000u16), 4u16);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _tzcnt_u32() {
         assert_eq!(bmi::_tzcnt_u32(0b0000_0001u32), 0u32);
         assert_eq!(bmi::_tzcnt_u32(0b0000_0000u32), 32u32);
         assert_eq!(bmi::_tzcnt_u32(0b1001_0000u32), 4u32);
     }
 
-    #[test]
-    #[target_feature = "+bmi"]
+    #[simd_test = "bmi"]
     fn _tzcnt_u64() {
         assert_eq!(bmi::_tzcnt_u64(0b0000_0001u64), 0u64);
         assert_eq!(bmi::_tzcnt_u64(0b0000_0000u64), 64u64);

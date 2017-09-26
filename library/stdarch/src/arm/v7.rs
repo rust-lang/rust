@@ -6,7 +6,7 @@
 pub use super::v6::*;
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Count Leading Zeros.
 #[inline(always)]

@@ -50,20 +50,20 @@ extern {
     fn pshufb128(a: u8x16, b: u8x16) -> u8x16;
 }
 
-#[cfg(all(test, target_feature = "ssse3", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use v128::*;
     use x86::ssse3 as ssse3;
 
-    #[test]
-    #[target_feature = "+ssse3"]
+    #[simd_test = "ssse3"]
     fn _mm_abs_epi8() {
         let r = ssse3::_mm_abs_epi8(i8x16::splat(-5));
         assert_eq!(r, u8x16::splat(5));
     }
 
-    #[test]
-    #[target_feature = "+ssse3"]
+    #[simd_test = "ssse3"]
     fn _mm_shuffle_epi8() {
         let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let b = u8x16::new(4, 128, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);

@@ -5,7 +5,7 @@
 pub use super::v7::*;
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Reverse the order of the bytes.
 #[inline(always)]

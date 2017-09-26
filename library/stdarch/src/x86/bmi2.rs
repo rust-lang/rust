@@ -8,7 +8,7 @@
 //! provides a quick overview of the available instructions.
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Unsigned multiply without affecting flags.
 ///
@@ -112,12 +112,13 @@ pub fn _pext_u64(a: u64, mask: u64) -> u64 {
     unsafe { x86_bmi2_pext_64(a, mask) }
 }
 
-#[cfg(all(test, target_feature = "bmi2", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use x86::bmi2;
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
     fn _pext_u32() {
         let n  = 0b1011_1110_1001_0011u32;
 
@@ -131,8 +132,8 @@ mod tests {
         assert_eq!(bmi2::_pext_u32(n, m1), s1);
     }
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
+    #[cfg(not(target_arch = "x86"))]
     fn _pext_u64() {
         let n  = 0b1011_1110_1001_0011u64;
 
@@ -146,8 +147,7 @@ mod tests {
         assert_eq!(bmi2::_pext_u64(n, m1), s1);
     }
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
     fn _pdep_u32() {
         let n  = 0b1011_1110_1001_0011u32;
 
@@ -161,8 +161,8 @@ mod tests {
         assert_eq!(bmi2::_pdep_u32(n, m1), s1);
     }
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
+    #[cfg(not(target_arch = "x86"))]
     fn _pdep_u64() {
         let n  = 0b1011_1110_1001_0011u64;
 
@@ -176,24 +176,22 @@ mod tests {
         assert_eq!(bmi2::_pdep_u64(n, m1), s1);
     }
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
     fn _bzhi_u32() {
         let n = 0b1111_0010u32;
         let s = 0b0001_0010u32;
         assert_eq!(bmi2::_bzhi_u32(n, 5), s);
     }
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
+    #[cfg(not(target_arch = "x86"))]
     fn _bzhi_u64() {
         let n = 0b1111_0010u64;
         let s = 0b0001_0010u64;
         assert_eq!(bmi2::_bzhi_u64(n, 5), s);
     }
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
     fn _mulx_u32() {
         let a: u32 = 4_294_967_200;
         let b: u32 = 2;
@@ -205,8 +203,8 @@ mod tests {
         assert_eq!(hi, 0b0001u32);
     }
 
-    #[test]
-    #[target_feature = "+bmi2"]
+    #[simd_test = "bmi2"]
+    #[cfg(not(target_arch = "x86"))]
     fn _mulx_u64() {
         let a: u64 = 9_223_372_036_854_775_800;
         let b: u64 = 100;

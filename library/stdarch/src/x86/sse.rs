@@ -2,7 +2,7 @@ use simd_llvm::simd_shuffle4;
 use v128::*;
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Adds the first component of `a` and `b`, the other components are copied
 /// from `a`.
@@ -217,13 +217,13 @@ extern {
     fn movmskps(a: f32x4) -> i32;
 }
 
-#[cfg(all(test, target_feature = "sse", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
     use v128::*;
     use x86::sse;
+    use stdsimd_test::simd_test;
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_add_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -231,8 +231,7 @@ mod tests {
         assert_eq!(r, f32x4::new(-101.0, 25.0, 0.0, -15.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_add_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -240,8 +239,7 @@ mod tests {
         assert_eq!(r, f32x4::new(-101.0, 5.0, 0.0, -10.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_sub_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -249,8 +247,7 @@ mod tests {
         assert_eq!(r, f32x4::new(99.0, -15.0, 0.0, -5.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_sub_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -258,8 +255,7 @@ mod tests {
         assert_eq!(r, f32x4::new(99.0, 5.0, 0.0, -10.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_mul_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -267,8 +263,7 @@ mod tests {
         assert_eq!(r, f32x4::new(100.0, 100.0, 0.0, 50.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_mul_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -276,8 +271,7 @@ mod tests {
         assert_eq!(r, f32x4::new(100.0, 5.0, 0.0, -10.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_div_ps() {
         let a = f32x4::new(-1.0, 5.0, 2.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.2, -5.0);
@@ -285,8 +279,7 @@ mod tests {
         assert_eq!(r, f32x4::new(0.01, 0.25, 10.0, 2.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_div_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -294,8 +287,7 @@ mod tests {
         assert_eq!(r, f32x4::new(0.01, 5.0, 0.0, -10.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_sqrt_ss() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_sqrt_ss(a);
@@ -303,8 +295,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_sqrt_ps() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_sqrt_ps(a);
@@ -312,8 +303,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_rcp_ss() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_rcp_ss(a);
@@ -321,8 +311,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_rcp_ps() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_rcp_ps(a);
@@ -330,8 +319,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_rsqrt_ss() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_rsqrt_ss(a);
@@ -339,8 +327,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_rsqrt_ps() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_rsqrt_ps(a);
@@ -348,8 +335,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_min_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -357,8 +343,7 @@ mod tests {
         assert_eq!(r, f32x4::new(-100.0, 5.0, 0.0, -10.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_min_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -366,8 +351,7 @@ mod tests {
         assert_eq!(r, f32x4::new(-100.0, 5.0, 0.0, -10.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_max_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -375,8 +359,7 @@ mod tests {
         assert_eq!(r, f32x4::new(-1.0, 5.0, 0.0, -10.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_max_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
@@ -384,8 +367,7 @@ mod tests {
         assert_eq!(r, f32x4::new(-1.0, 20.0, 0.0, -5.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_unpackhi_ps() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
@@ -393,8 +375,7 @@ mod tests {
         assert_eq!(r, f32x4::new(3.0, 7.0, 4.0, 8.0));
     }
 
-    #[test]
-    #[target_feature = "+sse"]
+    #[simd_test = "sse"]
     fn _mm_movemask_ps() {
         let r = sse::_mm_movemask_ps(f32x4::new(-1.0, 5.0, -5.0, 0.0));
         assert_eq!(r, 0b0101);

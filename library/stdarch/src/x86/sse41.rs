@@ -57,13 +57,14 @@ extern {
     fn dpps(a: f32x4, b: f32x4, imm8: u8) -> f32x4;
 }
 
-#[cfg(all(test, target_feature = "sse4.1", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use v128::*;
     use x86::sse41;
 
-    #[test]
-    #[target_feature = "+sse4.1"]
+    #[simd_test = "sse4.1"]
     fn _mm_blendv_epi8() {
         let a = i8x16::new(
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
@@ -76,8 +77,7 @@ mod tests {
         assert_eq!(sse41::_mm_blendv_epi8(a, b, mask), e);
     }
 
-    #[test]
-    #[target_feature = "+sse4.1"]
+    #[simd_test = "sse4.1"]
     fn _mm_dp_pd() {
         let a = f64x2::new(2.0, 3.0);
         let b = f64x2::new(1.0, 4.0);
@@ -85,8 +85,7 @@ mod tests {
         assert_eq!(sse41::_mm_dp_pd(a, b, 0b00110001), e);
     }
 
-    #[test]
-    #[target_feature = "+sse4.1"]
+    #[simd_test = "sse4.1"]
     fn _mm_dp_ps() {
         let a = f32x4::new(2.0, 3.0, 1.0, 10.0);
         let b = f32x4::new(1.0, 4.0, 0.5, 10.0);
