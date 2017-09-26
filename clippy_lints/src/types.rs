@@ -184,16 +184,18 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                     check_ty(cx, ty, is_local);
                     for ty in p.segments
                         .iter()
-                        .filter_map(|seg| seg.parameters.as_ref())
-                        .flat_map(|params| params.types.iter())
+                        .flat_map(|seg| seg.parameters.as_ref()
+                                           .map_or_else(|| [].iter(),
+                                                        |params| params.types.iter()))
                     {
                         check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::Resolved(None, ref p) => for ty in p.segments
                     .iter()
-                    .filter_map(|seg| seg.parameters.as_ref())
-                    .flat_map(|params| params.types.iter())
+                    .flat_map(|seg| seg.parameters.as_ref()
+                                       .map_or_else(|| [].iter(),
+                                                    |params| params.types.iter()))
                 {
                     check_ty(cx, ty, is_local);
                 },
