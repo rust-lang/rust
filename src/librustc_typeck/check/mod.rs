@@ -4892,7 +4892,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut err = struct_span_err! {
                     self.tcx.sess,
                     span,
-                    E0631,
+                    E0632,
                     "cannot provide explicit type parameters when `impl Trait` is \
                     used in argument position."
                 };
