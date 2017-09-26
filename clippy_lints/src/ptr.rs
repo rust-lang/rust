@@ -159,7 +159,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                 let mut ty_snippet = None;
                 if_let_chain!([
                     let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node,
-                    let Some(&PathSegment{ref parameters, ..}) = path.segments.last(),
+                    let Some(&PathSegment{parameters: Some(ref parameters), ..}) = path.segments.last(),
                     parameters.types.len() == 1,
                 ], {
                     ty_snippet = snippet_opt(cx, parameters.types[0].span);
