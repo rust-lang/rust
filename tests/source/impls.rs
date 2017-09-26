@@ -139,3 +139,16 @@ pub trait Number: Copy + Eq +      Not<Output = Self> + Shl<u8, Output = Self> +
 pub trait SomeTrait : Clone + Eq + PartialEq + Ord + PartialOrd + Default + Hash + Debug + Display + Write + Read + FromStr {
     // comment
 }
+
+// #1995
+impl Foo {
+    fn f(
+		    S {
+			      aaaaaaaaaa: aaaaaaaaaa,
+			      bbbbbbbbbb: bbbbbbbbbb,
+			      cccccccccc: cccccccccc,
+		    }: S
+    ) -> u32{
+        1
+    }
+}

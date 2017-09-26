@@ -1598,11 +1598,12 @@ impl Rewrite for ast::Arg {
                 if context.config.space_after_type_annotation_colon() {
                     result.push_str(" ");
                 }
-                let max_width = try_opt!(shape.width.checked_sub(result.len()));
-                let ty_str = try_opt!(self.ty.rewrite(
-                    context,
-                    Shape::legacy(max_width, shape.indent + result.len()),
-                ));
+                let overhead = last_line_width(&result);
+                let max_width = try_opt!(shape.width.checked_sub(overhead));
+                let ty_str = try_opt!(
+                    self.ty
+                        .rewrite(context, Shape::legacy(max_width, shape.indent))
+                );
                 result.push_str(&ty_str);
             }
 
