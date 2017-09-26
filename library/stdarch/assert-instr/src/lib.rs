@@ -269,9 +269,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         }
     }
 
-    let probably_only_one_instruction = function.instrs.len() < 20;
-
-    if found && probably_only_one_instruction {
+    if found {
         return
     }
 
@@ -288,7 +286,5 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
 
     if !found {
         panic!("failed to find instruction `{}` in the disassembly", expected);
-    } else if !probably_only_one_instruction {
-        panic!("too many instructions in the disassembly");
     }
 }
