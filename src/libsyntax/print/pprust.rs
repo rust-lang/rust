@@ -1185,9 +1185,9 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            ast::ItemKind::Use(ref vp) => {
+            ast::ItemKind::Use(ref tree) => {
                 self.head(&visibility_qualified(&item.vis, "use"))?;
-                self.print_view_path(vp)?;
+                self.print_use_tree(tree)?;
                 self.s.word(";")?;
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
@@ -2918,45 +2918,39 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_view_path(&mut self, vp: &ast::ViewPath) -> io::Result<()> {
-        match vp.node {
-            ast::ViewPathSimple(ident, ref path) => {
-                self.print_path(path, false, 0, true)?;
+    pub fn print_use_tree(&mut self, tree: &ast::UseTree) -> io::Result<()> {
+        match tree.kind {
+            ast::UseTreeKind::Simple(ref ident) => {
+                self.print_path(&tree.prefix, false, 0, true)?;
 
-                if path.segments.last().unwrap().identifier.name !=
-                        ident.name {
+                if tree.prefix.segments.last().unwrap().identifier.name != ident.name {
                     self.s.space()?;
                     self.word_space("as")?;
-                    self.print_ident(ident)?;
+                    self.print_ident(*ident)?;
                 }
-
-                Ok(())
             }
-
-            ast::ViewPathGlob(ref path) => {
-                self.print_path(path, false, 0, true)?;
-                self.s.word("::*")
+            ast::UseTreeKind::Glob => {
+                if !tree.prefix.segments.is_empty() {
+                    self.print_path(&tree.prefix, false, 0, true)?;
+                    self.s.word("::")?;
+                }
+                self.s.word("*")?;
             }
-
-            ast::ViewPathList(ref path, ref idents) => {
-                if path.segments.is_empty() {
+            ast::UseTreeKind::Nested(ref items) => {
+                if tree.prefix.segments.is_empty() {
                     self.s.word("{")?;
                 } else {
-                    self.print_path(path, false, 0, true)?;
+                    self.print_path(&tree.prefix, false, 0, true)?;
                     self.s.word("::{")?;
                 }
-                self.commasep(Inconsistent, &idents[..], |s, w| {
-                    s.print_ident(w.node.name)?;
-                    if let Some(ident) = w.node.rename {
-                        s.s.space()?;
-                        s.word_space("as")?;
-                        s.print_ident(ident)?;
-                    }
-                    Ok(())
+                self.commasep(Inconsistent, &items[..], |this, &(ref tree, _)| {
+                    this.print_use_tree(tree)
                 })?;
-                self.s.word("}")
+                self.s.word("}")?;
             }
         }
+
+        Ok(())
     }
 
     pub fn print_mutability(&mut self,

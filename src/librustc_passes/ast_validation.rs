@@ -181,15 +181,27 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_ty(self, ty)
     }
 
+    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+        // Check if the path in this `use` is not generic, such as `use foo::bar<T>;` While this
+        // can't happen normally thanks to the parser, a generic might sneak in if the `use` is
+        // built using a macro.
+        //
+        // macro_use foo {
+        //     ($p:path) => { use $p; }
+        // }
+        // foo!(bar::baz<T>);
+        use_tree.prefix.segments.iter().find(|segment| {
+            segment.parameters.is_some()
+        }).map(|segment| {
+            self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+                                        "generic arguments in import path");
+        });
+
+        visit::walk_use_tree(self, use_tree, id);
+    }
+
     fn visit_item(&mut self, item: &'a Item) {
         match item.node {
-            ItemKind::Use(ref view_path) => {
-                let path = view_path.node.path();
-                path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
-                    self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
-                                                "generic arguments in import path");
-                });
-            }
             ItemKind::Impl(.., Some(..), _, ref impl_items) => {
                 self.invalid_visibility(&item.vis, item.span, None);
                 for impl_item in impl_items {

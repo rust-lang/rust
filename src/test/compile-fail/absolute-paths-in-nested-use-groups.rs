@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod x {
-    pub struct A;
-    pub struct B;
-}
+#![feature(use_nested_groups)]
+#![allow(unused_imports)]
 
-// `.` is similar to `,` so list parsing should continue to closing `}`
-use x::{A. B}; //~ ERROR expected one of `,`, `::`, or `as`, found `.`
+mod foo {}
+
+use foo::{
+    ::bar,       //~ ERROR crate root in paths can only be used in start position
+    super::bar,  //~ ERROR `super` in paths can only be used in start position
+    self::bar,   //~ ERROR `self` in paths can only be used in start position
+};
 
 fn main() {}

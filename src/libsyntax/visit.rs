@@ -120,8 +120,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_path(&mut self, path: &'ast Path, _id: NodeId) {
         walk_path(self, path)
     }
-    fn visit_path_list_item(&mut self, prefix: &'ast Path, item: &'ast PathListItem) {
-        walk_path_list_item(self, prefix, item)
+    fn visit_use_tree(&mut self, use_tree: &'ast UseTree, id: NodeId, _nested: bool) {
+        walk_use_tree(self, use_tree, id)
     }
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
         walk_path_segment(self, path_span, path_segment)
@@ -236,22 +236,8 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::ExternCrate(opt_name) => {
             walk_opt_name(visitor, item.span, opt_name)
         }
-        ItemKind::Use(ref vp) => {
-            match vp.node {
-                ViewPathSimple(ident, ref path) => {
-                    visitor.visit_ident(vp.span, ident);
-                    visitor.visit_path(path, item.id);
-                }
-                ViewPathGlob(ref path) => {
-                    visitor.visit_path(path, item.id);
-                }
-                ViewPathList(ref prefix, ref list) => {
-                    visitor.visit_path(prefix, item.id);
-                    for item in list {
-                        visitor.visit_path_list_item(prefix, item)
-                    }
-                }
-            }
+        ItemKind::Use(ref use_tree) => {
+            visitor.visit_use_tree(use_tree, item.id, false)
         }
         ItemKind::Static(ref typ, _, ref expr) |
         ItemKind::Const(ref typ, ref expr) => {
@@ -381,11 +367,22 @@ pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) {
     }
 }
 
-pub fn walk_path_list_item<'a, V: Visitor<'a>>(visitor: &mut V,
-                                               _prefix: &Path,
-                                               item: &'a PathListItem) {
-    visitor.visit_ident(item.span, item.node.name);
-    walk_opt_ident(visitor, item.span, item.node.rename);
+pub fn walk_use_tree<'a, V: Visitor<'a>>(
+    visitor: &mut V, use_tree: &'a UseTree, id: NodeId,
+) {
+    visitor.visit_path(&use_tree.prefix, id);
+
+    match use_tree.kind {
+        UseTreeKind::Simple(ident) => {
+            visitor.visit_ident(use_tree.span, ident);
+        }
+        UseTreeKind::Glob => {},
+        UseTreeKind::Nested(ref use_trees) => {
+            for &(ref nested_tree, nested_id) in use_trees {
+                visitor.visit_use_tree(nested_tree, nested_id, true);
+            }
+        }
+    }
 }
 
 pub fn walk_path_segment<'a, V: Visitor<'a>>(visitor: &mut V,

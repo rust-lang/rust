@@ -1768,80 +1768,14 @@ impl<'a> LoweringContext<'a> {
                        -> hir::Item_ {
         match *i {
             ItemKind::ExternCrate(string) => hir::ItemExternCrate(string),
-            ItemKind::Use(ref view_path) => {
-                let path = match view_path.node {
-                    ViewPathSimple(_, ref path) => path,
-                    ViewPathGlob(ref path) => path,
-                    ViewPathList(ref path, ref path_list_idents) => {
-                        for &Spanned { node: ref import, span } in path_list_idents {
-                            // `use a::{self as x, b as y};` lowers to
-                            // `use a as x; use a::b as y;`
-                            let mut ident = import.name;
-                            let suffix = if ident.name == keywords::SelfValue.name() {
-                                if let Some(last) = path.segments.last() {
-                                    ident = last.identifier;
-                                }
-                                None
-                            } else {
-                                Some(ident.name)
-                            };
-
-                            let mut path = self.lower_path_extra(import.id, path, suffix,
-                                                                 ParamMode::Explicit, true);
-                            path.span = span;
-
-                            self.allocate_hir_id_counter(import.id, import);
-                            let LoweredNodeId {
-                                node_id: import_node_id,
-                                hir_id: import_hir_id,
-                            } = self.lower_node_id(import.id);
-
-                            self.with_hir_id_owner(import_node_id, |this| {
-                                let vis = match *vis {
-                                    hir::Visibility::Public => hir::Visibility::Public,
-                                    hir::Visibility::Crate => hir::Visibility::Crate,
-                                    hir::Visibility::Inherited => hir::Visibility::Inherited,
-                                    hir::Visibility::Restricted { ref path, id: _ } => {
-                                        hir::Visibility::Restricted {
-                                            path: path.clone(),
-                                            // We are allocating a new NodeId here
-                                            id: this.next_id().node_id,
-                                        }
-                                    }
-                                };
-
-                                this.items.insert(import_node_id, hir::Item {
-                                    id: import_node_id,
-                                    hir_id: import_hir_id,
-                                    name: import.rename.unwrap_or(ident).name,
-                                    attrs: attrs.clone(),
-                                    node: hir::ItemUse(P(path), hir::UseKind::Single),
-                                    vis,
-                                    span,
-                                });
-                            });
-                        }
-                        path
-                    }
+            ItemKind::Use(ref use_tree) => {
+                // Start with an empty prefix
+                let prefix = Path {
+                    segments: vec![],
+                    span: use_tree.span,
                 };
-                let path = P(self.lower_path(id, path, ParamMode::Explicit, true));
-                let kind = match view_path.node {
-                    ViewPathSimple(ident, _) => {
-                        *name = ident.name;
-                        hir::UseKind::Single
-                    }
-                    ViewPathGlob(_) => {
-                        hir::UseKind::Glob
-                    }
-                    ViewPathList(..) => {
-                        // Privatize the degenerate import base, used only to check
-                        // the stability of `use a::{};`, to avoid it showing up as
-                        // a reexport by accident when `pub`, e.g. in documentation.
-                        *vis = hir::Inherited;
-                        hir::UseKind::ListStem
-                    }
-                };
-                hir::ItemUse(path, kind)
+
+                self.lower_use_tree(use_tree, &prefix, id, vis, name, attrs)
             }
             ItemKind::Static(ref t, m, ref e) => {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
@@ -1961,6 +1895,112 @@ impl<'a> LoweringContext<'a> {
 
         // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
         //     not cause an assertion failure inside the `lower_defaultness` function
+    }
+
+    fn lower_use_tree(&mut self,
+                       tree: &UseTree,
+                       prefix: &Path,
+                       id: NodeId,
+                       vis: &mut hir::Visibility,
+                       name: &mut Name,
+                       attrs: &hir::HirVec<Attribute>)
+                       -> hir::Item_ {
+        let path = &tree.prefix;
+
+        match tree.kind {
+            UseTreeKind::Simple(ident) => {
+                *name = ident.name;
+
+                // First apply the prefix to the path
+                let mut path = Path {
+                    segments: prefix.segments
+                        .iter()
+                        .chain(path.segments.iter())
+                        .cloned()
+                        .collect(),
+                    span: path.span.to(prefix.span),
+                };
+
+                // Correctly resolve `self` imports
+                if path.segments.last().unwrap().identifier.name == keywords::SelfValue.name() {
+                    let _ = path.segments.pop();
+                    if ident.name == keywords::SelfValue.name() {
+                        *name = path.segments.last().unwrap().identifier.name;
+                    }
+                }
+
+                let path = P(self.lower_path(id, &path, ParamMode::Explicit, true));
+                hir::ItemUse(path, hir::UseKind::Single)
+            }
+            UseTreeKind::Glob => {
+                let path = P(self.lower_path(id, &Path {
+                    segments: prefix.segments
+                        .iter()
+                        .chain(path.segments.iter())
+                        .cloned()
+                        .collect(),
+                    span: path.span,
+                }, ParamMode::Explicit, true));
+                hir::ItemUse(path, hir::UseKind::Glob)
+            }
+            UseTreeKind::Nested(ref trees) => {
+                let prefix = Path {
+                    segments: prefix.segments
+                        .iter()
+                        .chain(path.segments.iter())
+                        .cloned()
+                        .collect(),
+                    span: prefix.span.to(path.span),
+                };
+
+                // Add all the nested PathListItems in the HIR
+                for &(ref use_tree, id) in trees {
+                    self.allocate_hir_id_counter(id, &use_tree);
+                    let LoweredNodeId {
+                        node_id: new_id,
+                        hir_id: new_hir_id,
+                    } = self.lower_node_id(id);
+
+                    let mut vis = vis.clone();
+                    let mut name = name.clone();
+                    let item = self.lower_use_tree(
+                        use_tree, &prefix, new_id, &mut vis, &mut name, &attrs,
+                    );
+
+                    self.with_hir_id_owner(new_id, |this| {
+                        let vis = match vis {
+                            hir::Visibility::Public => hir::Visibility::Public,
+                            hir::Visibility::Crate => hir::Visibility::Crate,
+                            hir::Visibility::Inherited => hir::Visibility::Inherited,
+                            hir::Visibility::Restricted { ref path, id: _  } => {
+                                hir::Visibility::Restricted {
+                                    path: path.clone(),
+                                    // We are allocating a new NodeId here
+                                    id: this.next_id().node_id,
+                                }
+                            }
+                        };
+
+                        this.items.insert(new_id, hir::Item {
+                            id: new_id,
+                            hir_id: new_hir_id,
+                            name: name,
+                            attrs: attrs.clone(),
+                            node: item,
+                            vis,
+                            span: use_tree.span,
+                        });
+                    });
+                }
+
+                // Privatize the degenerate import base, used only to check
+                // the stability of `use a::{};`, to avoid it showing up as
+                // a reexport by accident when `pub`, e.g. in documentation.
+                let path = P(self.lower_path(id, &prefix, ParamMode::Explicit, true));
+                *vis = hir::Inherited;
+                hir::ItemUse(path, hir::UseKind::ListStem)
+            }
+        }
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
@@ -2129,16 +2169,28 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_item_id(&mut self, i: &Item) -> SmallVector<hir::ItemId> {
         match i.node {
-            ItemKind::Use(ref view_path) => {
-                if let ViewPathList(_, ref imports) = view_path.node {
-                    return iter::once(i.id).chain(imports.iter().map(|import| import.node.id))
-                        .map(|id| hir::ItemId { id: id }).collect();
-                }
+            ItemKind::Use(ref use_tree) => {
+                let mut vec = SmallVector::one(hir::ItemId { id: i.id });
+                self.lower_item_id_use_tree(use_tree, &mut vec);
+                return vec;
             }
             ItemKind::MacroDef(..) => return SmallVector::new(),
             _ => {}
         }
         SmallVector::one(hir::ItemId { id: i.id })
+    }
+
+    fn lower_item_id_use_tree(&self, tree: &UseTree, vec: &mut SmallVector<hir::ItemId>) {
+        match tree.kind {
+            UseTreeKind::Nested(ref nested_vec) => {
+                for &(ref nested, id) in nested_vec {
+                    vec.push(hir::ItemId { id, });
+                    self.lower_item_id_use_tree(nested, vec);
+                }
+            }
+            UseTreeKind::Glob => {}
+            UseTreeKind::Simple(..) => {}
+        }
     }
 
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {

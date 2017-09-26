@@ -8,12 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod x {
-    pub struct A;
-    pub struct B;
+#![feature(use_nested_groups)]
+
+mod a {
+    pub enum B {}
+
+    pub mod d {
+        pub enum E {}
+        pub enum F {}
+
+        pub mod g {
+            pub enum H {}
+            pub enum I {}
+        }
+    }
 }
 
-// `.` is similar to `,` so list parsing should continue to closing `}`
-use x::{A. B}; //~ ERROR expected one of `,`, `::`, or `as`, found `.`
+use a::{B, d::{self, *, g::H}};
 
-fn main() {}
+fn main() {
+    let _: B;
+    let _: E;
+    let _: F;
+    let _: H;
+    let _: d::g::I;
+}

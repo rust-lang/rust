@@ -35,8 +35,8 @@ use ast::StrStyle;
 use ast::SelfKind;
 use ast::{TraitItem, TraitRef, TraitObjectSyntax};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
-use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause, CrateSugar};
+use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
@@ -1861,7 +1861,7 @@ impl<'a> Parser<'a> {
         loop {
             segments.push(self.parse_path_segment(style, enable_warning)?);
 
-            if self.is_import_coupler() || !self.eat(&token::ModSep) {
+            if self.is_import_coupler(false) || !self.eat(&token::ModSep) {
                 return Ok(());
             }
         }
@@ -5964,7 +5964,7 @@ impl<'a> Parser<'a> {
 
         if self.eat_keyword(keywords::Use) {
             // USE ITEM
-            let item_ = ItemKind::Use(self.parse_view_path()?);
+            let item_ = ItemKind::Use(P(self.parse_use_tree(false)?));
             self.expect(&token::Semi)?;
 
             let prev_span = self.prev_span;
@@ -6407,74 +6407,101 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn parse_path_list_items(&mut self) -> PResult<'a, Vec<ast::PathListItem>> {
-        self.parse_unspanned_seq(&token::OpenDelim(token::Brace),
-                                 &token::CloseDelim(token::Brace),
-                                 SeqSep::trailing_allowed(token::Comma), |this| {
-            let lo = this.span;
-            let ident = if this.eat_keyword(keywords::SelfValue) {
-                keywords::SelfValue.ident()
+    /// `{` or `::{` or `*` or `::*`
+    /// `::{` or `::*` (also `{`  or `*` if unprefixed is true)
+    fn is_import_coupler(&mut self, unprefixed: bool) -> bool {
+        self.is_import_coupler_inner(&token::OpenDelim(token::Brace), unprefixed) ||
+            self.is_import_coupler_inner(&token::BinOp(token::Star), unprefixed)
+    }
+
+    fn is_import_coupler_inner(&mut self, token: &token::Token, unprefixed: bool) -> bool {
+        if self.check(&token::ModSep) {
+            self.look_ahead(1, |t| t == token)
+        } else if unprefixed {
+            self.check(token)
+        } else {
+            false
+        }
+    }
+
+    /// Parse UseTree
+    ///
+    /// USE_TREE = `*` |
+    ///            `{` USE_TREE_LIST `}` |
+    ///            PATH `::` `*` |
+    ///            PATH `::` `{` USE_TREE_LIST `}` |
+    ///            PATH [`as` IDENT]
+    fn parse_use_tree(&mut self, nested: bool) -> PResult<'a, UseTree> {
+        let lo = self.span;
+
+        let mut prefix = ast::Path {
+            segments: vec![],
+            span: lo.to(self.span),
+        };
+
+        let kind = if self.is_import_coupler(true) {
+            // `use *;` or `use ::*;` or `use {...};` `use ::{...};`
+
+            // Remove the first `::`
+            if self.eat(&token::ModSep) {
+                prefix.segments.push(PathSegment::crate_root(self.prev_span));
+            } else if !nested {
+                prefix.segments.push(PathSegment::crate_root(self.span));
+            }
+
+            if self.eat(&token::BinOp(token::Star)) {
+                // `use *;`
+                UseTreeKind::Glob
+            } else if self.check(&token::OpenDelim(token::Brace)) {
+                // `use {...};`
+                UseTreeKind::Nested(self.parse_use_tree_list()?)
             } else {
-                this.parse_ident()?
-            };
-            let rename = this.parse_rename()?;
-            let node = ast::PathListItem_ {
-                name: ident,
-                rename,
-                id: ast::DUMMY_NODE_ID
-            };
-            Ok(respan(lo.to(this.prev_span), node))
+                return self.unexpected();
+            }
+        } else {
+            // `use path::...;`
+            let mut parsed = self.parse_path(PathStyle::Mod)?;
+            if !nested {
+                parsed = parsed.default_to_global();
+            }
+
+            prefix.segments.append(&mut parsed.segments);
+            prefix.span = prefix.span.to(parsed.span);
+
+            if self.eat(&token::ModSep) {
+                if self.eat(&token::BinOp(token::Star)) {
+                    // `use path::*;`
+                    UseTreeKind::Glob
+                } else if self.check(&token::OpenDelim(token::Brace)) {
+                    // `use path::{...};`
+                    UseTreeKind::Nested(self.parse_use_tree_list()?)
+                } else {
+                    return self.unexpected();
+                }
+            } else {
+                // `use path::foo;` or `use path::foo as bar;`
+                let rename = self.parse_rename()?.
+                                  unwrap_or(prefix.segments.last().unwrap().identifier);
+                UseTreeKind::Simple(rename)
+            }
+        };
+
+        Ok(UseTree {
+            span: lo.to(self.prev_span),
+            kind,
+            prefix,
         })
     }
 
-    /// `::{` or `::*`
-    fn is_import_coupler(&mut self) -> bool {
-        self.check(&token::ModSep) &&
-            self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace) ||
-                                   *t == token::BinOp(token::Star))
-    }
-
-    /// Matches ViewPath:
-    /// MOD_SEP? non_global_path
-    /// MOD_SEP? non_global_path as IDENT
-    /// MOD_SEP? non_global_path MOD_SEP STAR
-    /// MOD_SEP? non_global_path MOD_SEP LBRACE item_seq RBRACE
-    /// MOD_SEP? LBRACE item_seq RBRACE
-    fn parse_view_path(&mut self) -> PResult<'a, P<ViewPath>> {
-        let lo = self.span;
-        if self.check(&token::OpenDelim(token::Brace)) || self.check(&token::BinOp(token::Star)) ||
-           self.is_import_coupler() {
-            // `{foo, bar}`, `::{foo, bar}`, `*`, or `::*`.
-            self.eat(&token::ModSep);
-            let prefix = ast::Path {
-                segments: vec![PathSegment::crate_root(lo)],
-                span: lo.to(self.span),
-            };
-            let view_path_kind = if self.eat(&token::BinOp(token::Star)) {
-                ViewPathGlob(prefix)
-            } else {
-                ViewPathList(prefix, self.parse_path_list_items()?)
-            };
-            Ok(P(respan(lo.to(self.span), view_path_kind)))
-        } else {
-            let prefix = self.parse_path(PathStyle::Mod)?.default_to_global();
-            if self.is_import_coupler() {
-                // `foo::bar::{a, b}` or `foo::bar::*`
-                self.bump();
-                if self.check(&token::BinOp(token::Star)) {
-                    self.bump();
-                    Ok(P(respan(lo.to(self.span), ViewPathGlob(prefix))))
-                } else {
-                    let items = self.parse_path_list_items()?;
-                    Ok(P(respan(lo.to(self.span), ViewPathList(prefix, items))))
-                }
-            } else {
-                // `foo::bar` or `foo::bar as baz`
-                let rename = self.parse_rename()?.
-                                  unwrap_or(prefix.segments.last().unwrap().identifier);
-                Ok(P(respan(lo.to(self.prev_span), ViewPathSimple(rename, prefix))))
-            }
-        }
+    /// Parse UseTreeKind::Nested(list)
+    ///
+    /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
+    fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
+        self.parse_unspanned_seq(&token::OpenDelim(token::Brace),
+                                 &token::CloseDelim(token::Brace),
+                                 SeqSep::trailing_allowed(token::Comma), |this| {
+            Ok((this.parse_use_tree(true)?, ast::DUMMY_NODE_ID))
+        })
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {

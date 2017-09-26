@@ -248,7 +248,6 @@ pub trait EarlyLintPass: LintPass {
     fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
-    fn check_path_list_item(&mut self, _: &EarlyContext, _: &ast::PathListItem) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such

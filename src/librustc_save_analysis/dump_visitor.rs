@@ -38,7 +38,7 @@ use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{bounds_to_string, generics_to_string, path_to_string, ty_to_string};
 use syntax::ptr::P;
-use syntax::codemap::Spanned;
+use syntax::codemap::{Spanned, DUMMY_SP};
 use syntax_pos::*;
 
 use {escape, generated_code, lower_attributes, PathCollector, SaveContext};
@@ -1229,6 +1229,106 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             ast::ImplItemKind::Macro(_) => {}
         }
     }
+
+    fn process_use_tree(&mut self,
+                         use_tree: &'l ast::UseTree,
+                         id: NodeId,
+                         parent_item: &'l ast::Item,
+                         prefix: &ast::Path) {
+        let path = &use_tree.prefix;
+        let access = access_from!(self.save_ctxt, parent_item);
+
+        match use_tree.kind {
+            ast::UseTreeKind::Simple(ident) => {
+                let path = ast::Path {
+                    segments: prefix.segments
+                        .iter()
+                        .chain(path.segments.iter())
+                        .cloned()
+                        .collect(),
+                    span: path.span,
+                };
+
+                let sub_span = self.span.span_for_last_ident(path.span);
+                let mod_id = match self.lookup_def_id(id) {
+                    Some(def_id) => {
+                        self.process_def_kind(id, path.span, sub_span, def_id);
+                        Some(def_id)
+                    }
+                    None => None,
+                };
+
+                // 'use' always introduces an alias, if there is not an explicit
+                // one, there is an implicit one.
+                let sub_span = match self.span.sub_span_after_keyword(use_tree.span,
+                                                                      keywords::As) {
+                    Some(sub_span) => Some(sub_span),
+                    None => sub_span,
+                };
+
+                if !self.span.filter_generated(sub_span, path.span) {
+                    let span =
+                        self.span_from_span(sub_span.expect("No span found for use"));
+                    self.dumper.import(&access, Import {
+                        kind: ImportKind::Use,
+                        ref_id: mod_id.map(|id| ::id_from_def_id(id)),
+                        span,
+                        name: ident.to_string(),
+                        value: String::new(),
+                    });
+                }
+                self.write_sub_paths_truncated(&path);
+            }
+            ast::UseTreeKind::Glob => {
+                let path = ast::Path {
+                    segments: prefix.segments
+                        .iter()
+                        .chain(path.segments.iter())
+                        .cloned()
+                        .collect(),
+                    span: path.span,
+                };
+
+                // Make a comma-separated list of names of imported modules.
+                let mut names = vec![];
+                let glob_map = &self.save_ctxt.analysis.glob_map;
+                let glob_map = glob_map.as_ref().unwrap();
+                if glob_map.contains_key(&id) {
+                    for n in glob_map.get(&id).unwrap() {
+                        names.push(n.to_string());
+                    }
+                }
+
+                let sub_span = self.span.sub_span_of_token(use_tree.span,
+                                                           token::BinOp(token::Star));
+                if !self.span.filter_generated(sub_span, use_tree.span) {
+                    let span =
+                        self.span_from_span(sub_span.expect("No span found for use glob"));
+                    self.dumper.import(&access, Import {
+                        kind: ImportKind::GlobUse,
+                        ref_id: None,
+                        span,
+                        name: "*".to_owned(),
+                        value: names.join(", "),
+                    });
+                }
+                self.write_sub_paths(&path);
+            }
+            ast::UseTreeKind::Nested(ref nested_items) => {
+                let prefix = ast::Path {
+                    segments: prefix.segments
+                        .iter()
+                        .chain(path.segments.iter())
+                        .cloned()
+                        .collect(),
+                    span: path.span,
+                };
+                for &(ref tree, id) in nested_items {
+                    self.process_use_tree(tree, id, parent_item, &prefix);
+                }
+            }
+        }
+    }
 }
 
 impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, O> {
@@ -1275,86 +1375,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span);
         match item.node {
-            Use(ref use_item) => {
-                let access = access_from!(self.save_ctxt, item);
-
-                match use_item.node {
-                    ast::ViewPathSimple(ident, ref path) => {
-                        let sub_span = self.span.span_for_last_ident(path.span);
-                        let mod_id = match self.lookup_def_id(item.id) {
-                            Some(def_id) => {
-                                self.process_def_kind(item.id, path.span, sub_span, def_id);
-                                Some(def_id)
-                            }
-                            None => None,
-                        };
-
-                        // 'use' always introduces an alias, if there is not an explicit
-                        // one, there is an implicit one.
-                        let sub_span = match self.span
-                            .sub_span_after_keyword(use_item.span, keywords::As)
-                        {
-                            Some(sub_span) => Some(sub_span),
-                            None => sub_span,
-                        };
-
-                        if !self.span.filter_generated(sub_span, path.span) {
-                            let span =
-                                self.span_from_span(sub_span.expect("No span found for use"));
-                            self.dumper.import(
-                                &access,
-                                Import {
-                                    kind: ImportKind::Use,
-                                    ref_id: mod_id.map(|id| ::id_from_def_id(id)),
-                                    span,
-                                    name: ident.to_string(),
-                                    value: String::new(),
-                                },
-                            );
-                        }
-                        self.write_sub_paths_truncated(path);
-                    }
-                    ast::ViewPathGlob(ref path) => {
-                        // Make a comma-separated list of names of imported modules.
-                        let mut names = vec![];
-                        let glob_map = &self.save_ctxt.analysis.glob_map;
-                        let glob_map = glob_map.as_ref().unwrap();
-                        if glob_map.contains_key(&item.id) {
-                            for n in glob_map.get(&item.id).unwrap() {
-                                names.push(n.to_string());
-                            }
-                        }
-
-                        let sub_span = self.span
-                            .sub_span_of_token(item.span, token::BinOp(token::Star));
-                        if !self.span.filter_generated(sub_span, item.span) {
-                            let span =
-                                self.span_from_span(sub_span.expect("No span found for use glob"));
-                            self.dumper.import(
-                                &access,
-                                Import {
-                                    kind: ImportKind::GlobUse,
-                                    ref_id: None,
-                                    span,
-                                    name: "*".to_owned(),
-                                    value: names.join(", "),
-                                },
-                            );
-                        }
-                        self.write_sub_paths(path);
-                    }
-                    ast::ViewPathList(ref path, ref list) => {
-                        for plid in list {
-                            let id = plid.node.id;
-                            if let Some(def_id) = self.lookup_def_id(id) {
-                                let span = plid.span;
-                                self.process_def_kind(id, span, Some(span), def_id);
-                            }
-                        }
-
-                        self.write_sub_paths(path);
-                    }
-                }
+            Use(ref use_tree) => {
+                let prefix = ast::Path {
+                    segments: vec![],
+                    span: DUMMY_SP,
+                };
+                self.process_use_tree(use_tree, item.id, item, &prefix);
             }
             ExternCrate(_) => {
                 let alias_span = self.span.span_for_last_ident(item.span);
