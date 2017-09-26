@@ -2,7 +2,7 @@ use v128::*;
 use x86::__m128i;
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 #[inline(always)]
 #[target_feature = "+sse4.1"]

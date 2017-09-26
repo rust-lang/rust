@@ -3,7 +3,7 @@ use v128::*;
 use x86::__m256i;
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Computes the absolute values of packed 32-bit integers in `a`.
 #[inline(always)]

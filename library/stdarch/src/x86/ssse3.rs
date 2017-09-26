@@ -1,7 +1,7 @@
 use v128::*;
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Compute the absolute value of packed 8-bit signed integers in `a` and
 /// return the unsigned results.
