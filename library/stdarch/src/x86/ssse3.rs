@@ -1,14 +1,16 @@
 use v128::*;
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 /// Compute the absolute value of packed 8-bit signed integers in `a` and
 /// return the unsigned results.
 #[inline(always)]
 #[target_feature = "+ssse3"]
+#[cfg_attr(test, assert_instr(pabsb))]
 pub fn _mm_abs_epi8(a: i8x16) -> u8x16 {
     unsafe { pabsb128(a) }
 }
-
-
 
 /// Shuffle bytes from `a` according to the content of `b`.
 ///
@@ -36,6 +38,7 @@ pub fn _mm_abs_epi8(a: i8x16) -> u8x16 {
 /// ```
 #[inline(always)]
 #[target_feature = "+ssse3"]
+#[cfg_attr(test, assert_instr(pshufb))]
 pub fn _mm_shuffle_epi8(a: u8x16, b: u8x16) -> u8x16 {
     unsafe { pshufb128(a, b) }
 }
