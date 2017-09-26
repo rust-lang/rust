@@ -59,8 +59,8 @@ use sys_common::{AsInner, IntoInner, FromInner};
 ///
 /// # Conversions
 ///
-/// See the [module's toplevel documentation about conversions][conversions] for a discussion on the traits which
-/// `OsString` implements for conversions from/to native representations.
+/// See the [module's toplevel documentation about conversions][conversions] for a discussion on
+/// the traits which `OsString` implements for conversions from/to native representations.
 ///
 /// [`OsStr`]: struct.OsStr.html
 /// [`From`]: ../convert/trait.From.html
@@ -87,8 +87,8 @@ pub struct OsString {
 /// `OsStr` is to [`OsString`] as [`String`] is to [`&str`]: the former in each pair are borrowed
 /// references; the latter are owned strings.
 ///
-/// See the [module's toplevel documentation about conversions][conversions] for a discussion on the traits which
-/// `OsStr` implements for conversions from/to native representations.
+/// See the [module's toplevel documentation about conversions][conversions] for a discussion on
+/// the traits which `OsStr` implements for conversions from/to native representations.
 ///
 /// [`OsString`]: struct.OsString.html
 /// [conversions]: index.html#conversions
