@@ -774,13 +774,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     item: Annotatable,
                     kind: ExpansionKind)
                     -> Expansion {
-        if !traits.is_empty() &&
-           (kind == ExpansionKind::TraitItems || kind == ExpansionKind::ImplItems) {
-            self.cx.span_err(traits[0].span, "`derive` can be only be applied to items");
-            self.cx.trace_macros_diag();
-            return kind.expect_from_annotatables(::std::iter::once(item));
-        }
-        self.collect(kind, InvocationKind::Attr { attr: attr, traits: traits, item: item })
+        self.collect(kind, InvocationKind::Attr { attr, traits, item })
     }
 
     // If `item` is an attr invocation, remove and return the macro attribute.
