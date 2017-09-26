@@ -1328,18 +1328,15 @@ impl<'tcx> Delegate<'tcx> for MutateDelegate {
     }
 
     fn borrow(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
-        match bk {
-            ty::BorrowKind::MutBorrow => {
-                if let Categorization::Local(id) = cmt.cat {
-                    if Some(id) == self.node_id_low {
-                        self.span_low = Some(sp)
-                    }
-                    if Some(id) == self.node_id_high {
-                        self.span_high = Some(sp)
-                    }
+        if let ty::BorrowKind::MutBorrow = bk {
+            if let Categorization::Local(id) = cmt.cat {
+                if Some(id) == self.node_id_low {
+                    self.span_low = Some(sp)
                 }
-            },
-            _ => (),
+                if Some(id) == self.node_id_high {
+                    self.span_high = Some(sp)
+                }
+            }
         }
     }
 
@@ -1368,7 +1365,7 @@ fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
     if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(arg) {
         let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {
-            let (span_low, span_high) = check_for_mutation(cx, body, mut_ids);
+            let (span_low, span_high) = check_for_mutation(cx, body, &mut_ids);
             mut_warn_with_span(cx, span_low);
             mut_warn_with_span(cx, span_high);
         }
@@ -1398,15 +1395,15 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
             }}
         }
     }}
-    return None;
+    None
 }
 
-fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: Vec<Option<NodeId>>) -> (Option<Span>, Option<Span>) {
+fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: &[Option<NodeId>]) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutateDelegate { node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
     let def_id = def_id::DefId::local(body.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
-    return delegate.mutation_span();
+    delegate.mutation_span()
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
