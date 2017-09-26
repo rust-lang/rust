@@ -44,7 +44,7 @@ pub fn assert_instr(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(non_snake_case)]
         {ignore}
         fn assert_instr_{name}() {{
-            ::assert_instr::assert({name} as usize,
+            ::stdsimd_test::assert({name} as usize,
                                    \"{name}\",
                                    \"{instr}\");
         }}

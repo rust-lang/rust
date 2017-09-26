@@ -94,38 +94,14 @@ extern "C" {
     fn roundpd256(a: f64x4, b: i32) -> f64x4;
 }
 
-// Function stubs: work around assert_instr issues in expanded forms
-// ref: https://github.com/rust-lang-nursery/stdsimd/issues/49
-// ref: https://github.com/rust-lang-nursery/stdsimd/issues/47
-
-// #[cfg(test)]
-// #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(vroundpd))]
-// pub fn _mm256_round_pd_auto(a: f64x4, b: i32) -> f64x4 {
-//     return _mm256_round_pd(a, b);
-// }
-
-// #[cfg(test)]
-// #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(vroundpd))]
-// pub fn _mm256_ceil_pd_auto(a: f64x4) -> f64x4 {
-//     return _mm256_ceil_pd(a);
-// }
-
-// #[cfg(test)]
-// #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(vroundpd))]
-// pub fn _mm256_floor_pd_auto(a: f64x4) -> f64x4 {
-//     return _mm256_floor_pd(a);
-// }
-
 #[cfg(all(test, target_feature = "avx", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use v256::*;
     use x86::avx;
 
-    #[test]
-    #[target_feature = "+avx"]
+    #[simd_test = "avx"]
     fn _mm256_add_pd() {
         let a = f64x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f64x4::new(5.0, 6.0, 7.0, 8.0);
@@ -134,8 +110,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+avx"]
+    #[simd_test = "avx"]
     fn _mm256_add_ps() {
         let a = f32x8::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let b = f32x8::new(9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
@@ -144,8 +119,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+avx"]
+    #[simd_test = "avx"]
     fn _mm256_addsub_pd() {
         let a = f64x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f64x4::new(5.0, 6.0, 7.0, 8.0);

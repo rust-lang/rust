@@ -23,12 +23,12 @@ macro_rules! define_impl {
         $($elname:ident),+
     ) => {
         impl $name {
-            #[inline]
+            #[inline(always)]
             pub fn new($($elname: $elemty),*) -> $name {
                 $name($($elname),*)
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn splat(value: $elemty) -> $name {
                 $name($({
                     #[allow(non_camel_case_types, dead_code)]
@@ -37,25 +37,25 @@ macro_rules! define_impl {
                 }),*)
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn extract(self, idx: u32) -> $elemty {
                 assert!(idx < $nelems);
                 unsafe { simd_extract(self, idx) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn replace(self, idx: u32, val: $elemty) -> $name {
                 assert!(idx < $nelems);
                 unsafe { simd_insert(self, idx, val) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn store(self, slice: &mut [$elemty], offset: usize) {
                 assert!(slice[offset..].len() >= $nelems);
                 unsafe { self.store_unchecked(slice, offset) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub unsafe fn store_unchecked(
                 self,
                 slice: &mut [$elemty],
@@ -70,13 +70,13 @@ macro_rules! define_impl {
                     size_of::<$name>());
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn load(slice: &[$elemty], offset: usize) -> $name {
                 assert!(slice[offset..].len() >= $nelems);
                 unsafe { $name::load_unchecked(slice, offset) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub unsafe fn load_unchecked(
                 slice: &[$elemty],
                 offset: usize,
@@ -92,32 +92,32 @@ macro_rules! define_impl {
                 x
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn eq(self, other: $name) -> $boolname {
                 unsafe { simd_eq(self, other) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn ne(self, other: $name) -> $boolname {
                 unsafe { simd_ne(self, other) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn lt(self, other: $name) -> $boolname {
                 unsafe { simd_lt(self, other) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn le(self, other: $name) -> $boolname {
                 unsafe { simd_le(self, other) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn gt(self, other: $name) -> $boolname {
                 unsafe { simd_gt(self, other) }
             }
 
-            #[inline]
+            #[inline(always)]
             pub fn ge(self, other: $name) -> $boolname {
                 unsafe { simd_ge(self, other) }
             }
@@ -129,6 +129,7 @@ macro_rules! define_from {
     ($to:ident, $($from:ident),+) => {
         $(
             impl From<$from> for $to {
+                #[inline(always)]
                 fn from(f: $from) -> $to {
                     unsafe { ::std::mem::transmute(f) }
                 }
@@ -259,7 +260,7 @@ macro_rules! define_casts {
     ($(($fromty:ident, $toty:ident, $cast:ident)),+) => {
         $(
             impl $fromty {
-                #[inline]
+                #[inline(always)]
                 pub fn $cast(self) -> ::simd::$toty {
                     unsafe { simd_cast(self) }
                 }
