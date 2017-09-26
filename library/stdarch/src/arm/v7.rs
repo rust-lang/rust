@@ -29,16 +29,16 @@ pub fn _clz_u32(x: u32) -> u32 {
     x.leading_zeros() as u32
 }
 
-#[allow(dead_code)]
-extern "C" {
-    #[link_name="llvm.bitreverse.i32"]
-    fn rbit_u32(i: i32) -> i32;
-}
-
 /// Reverse the bit order.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(rbit))]
 #[cfg_attr(target_arch = "arm", target_feature = "+v7")]
-pub fn _rbit_u32(x: u32) -> u32 {
-    unsafe { rbit_u32(x as i32) as u32 }
+pub unsafe fn _rbit_u32(x: u32) -> u32 {
+    rbit_u32(x as i32) as u32
+}
+
+#[allow(dead_code)]
+extern "C" {
+    #[link_name="llvm.bitreverse.i32"]
+    fn rbit_u32(i: i32) -> i32;
 }
