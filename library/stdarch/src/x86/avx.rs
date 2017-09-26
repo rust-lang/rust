@@ -38,13 +38,7 @@ extern "C" {
 #[target_feature = "+avx"]
 // #[cfg_attr(test, assert_instr(subpd))]
 pub fn _mm256_sub_pd(a: f64x4, b: f64x4) -> f64x4 {
-    unsafe { subpd256(a, b) }
-}
-
-#[allow(improper_ctypes)]
-extern "C" {
-    #[link_name = "llvm.x86.avx.sub.pd.256"]
-    fn subpd256(a: f64x4, b: f64x4) -> f64x4;
+    a - b
 }
 
 /// Subtract packed single-precision (32-bit) floating-point elements in `b`
@@ -53,13 +47,7 @@ extern "C" {
 #[target_feature = "+avx"]
 // #[cfg_attr(test, assert_instr(subps))]
 pub fn _mm256_sub_ps(a: f32x8, b: f32x8) -> f32x8 {
-    unsafe { subps256(a, b) }
-}
-
-#[allow(improper_ctypes)]
-extern "C" {
-    #[link_name = "llvm.x86.avx.sub.ps.256"]
-    fn subps256(a: f32x8, b: f32x8) -> f32x8;
+    a - b
 }
 
 /// Round packed double-precision (64-bit) floating point elements in `a`
