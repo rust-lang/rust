@@ -75,14 +75,14 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 unify(cls, off, reg);
             }
 
-            layout::Abi::Vector { element, count } => {
+            layout::Abi::Vector => {
                 unify(cls, off, Class::Sse);
 
                 // everything after the first one is the upper
                 // half of a register.
-                let eltsz = element.size(ccx);
-                for i in 1..count {
-                    unify(cls, off + eltsz * (i as u64), Class::SseUp);
+                for i in 1..layout.fields.count() {
+                    let field_off = off + layout.fields.offset(i);
+                    unify(cls, field_off, Class::SseUp);
                 }
             }
 

@@ -1041,7 +1041,7 @@ fn trans_const_adt<'a, 'tcx>(
     match l.variants {
         layout::Variants::Single { index } => {
             assert_eq!(variant_index, index);
-            if let layout::Abi::Vector { .. } = l.abi {
+            if let layout::Abi::Vector = l.abi {
                 Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
             } else if let layout::FieldPlacement::Union(_) = l.fields {
                 assert_eq!(variant_index, 0);

@@ -23,7 +23,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 -> Type {
     match layout.abi {
         layout::Abi::Scalar(_) => bug!("handled elsewhere"),
-        layout::Abi::Vector { .. } => {
+        layout::Abi::Vector => {
             return Type::vector(&layout.field(ccx, 0).llvm_type(ccx),
                                 layout.fields.count() as u64);
         }
@@ -158,7 +158,7 @@ pub trait LayoutLlvmExt<'tcx> {
 impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
-            layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => true,
+            layout::Abi::Scalar(_) | layout::Abi::Vector => true,
 
             layout::Abi::Aggregate { .. } => self.is_zst()
         }
