@@ -1101,43 +1101,38 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                       -> Vec<MemberDescription> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
         match self.layout.variants {
-            layout::Variants::Single { .. } => {
-                assert!(adt.variants.len() <= 1);
+            layout::Variants::Single { .. } if adt.variants.is_empty() => vec![],
+            layout::Variants::Single { index } => {
+                let (variant_type_metadata, member_description_factory) =
+                    describe_enum_variant(cx,
+                                          self.layout,
+                                          &adt.variants[index],
+                                          NoDiscriminant,
+                                          self.containing_scope,
+                                          self.span);
 
-                if adt.variants.is_empty() {
-                    vec![]
-                } else {
-                    let (variant_type_metadata, member_description_factory) =
-                        describe_enum_variant(cx,
-                                              self.layout,
-                                              &adt.variants[0],
-                                              NoDiscriminant,
-                                              self.containing_scope,
-                                              self.span);
+                let member_descriptions =
+                    member_description_factory.create_member_descriptions(cx);
 
-                    let member_descriptions =
-                        member_description_factory.create_member_descriptions(cx);
-
-                    set_members_of_composite_type(cx,
-                                                  variant_type_metadata,
-                                                  &member_descriptions[..]);
-                    vec![
-                        MemberDescription {
-                            name: "".to_string(),
-                            type_metadata: variant_type_metadata,
-                            offset: Size::from_bytes(0),
-                            size: self.layout.size,
-                            align: self.layout.align,
-                            flags: DIFlags::FlagZero
-                        }
-                    ]
-                }
+                set_members_of_composite_type(cx,
+                                              variant_type_metadata,
+                                              &member_descriptions[..]);
+                vec![
+                    MemberDescription {
+                        name: "".to_string(),
+                        type_metadata: variant_type_metadata,
+                        offset: Size::from_bytes(0),
+                        size: self.layout.size,
+                        align: self.layout.align,
+                        flags: DIFlags::FlagZero
+                    }
+                ]
             }
             layout::Variants::Tagged { ref variants, .. } => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
                     .expect(""));
                 (0..variants.len()).map(|i| {
-                    let variant = self.layout.for_variant(i);
+                    let variant = self.layout.for_variant(cx, i);
                     let (variant_type_metadata, member_desc_factory) =
                         describe_enum_variant(cx,
                                               variant,
@@ -1162,8 +1157,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 }).collect()
             }
-            layout::Variants::NicheFilling { dataful_variant, .. } => {
-                let variant = self.layout.for_variant(dataful_variant);
+            layout::Variants::NicheFilling { dataful_variant, niche_variant, .. } => {
+                let variant = self.layout.for_variant(cx, dataful_variant);
                 // Create a description of the non-null variant
                 let (variant_type_metadata, member_description_factory) =
                     describe_enum_variant(cx,
@@ -1207,7 +1202,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                    self.layout,
                                    self.layout.fields.offset(0),
                                    self.layout.field(cx, 0).size);
-                name.push_str(&adt.variants[1 - dataful_variant].name.as_str());
+                name.push_str(&adt.variants[niche_variant].name.as_str());
 
                 // Create the (singleton) list of descriptions of union members.
                 vec![

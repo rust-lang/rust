@@ -755,6 +755,7 @@ impl FieldPlacement {
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Abi {
+    Uninhabited,
     Scalar(Scalar),
     Vector,
     Aggregate {
@@ -768,7 +769,7 @@ impl Abi {
     /// Returns true if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Abi::Scalar(_) | Abi::Vector => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector => false,
             Abi::Aggregate { sized, .. } => !sized
         }
     }
@@ -776,7 +777,7 @@ impl Abi {
     /// Returns true if the fields of the layout are packed.
     pub fn is_packed(&self) -> bool {
         match *self {
-            Abi::Scalar(_) | Abi::Vector => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector => false,
             Abi::Aggregate { packed, .. } => packed
         }
     }
@@ -807,6 +808,7 @@ pub enum Variants {
     /// `Some` is the identity function (with a non-null reference).
     NicheFilling {
         dataful_variant: usize,
+        niche_variant: usize,
         niche: Scalar,
         niche_value: u128,
         variants: Vec<CachedLayout>,
@@ -853,6 +855,18 @@ impl CachedLayout {
             size,
             align,
             primitive_align: align
+        }
+    }
+
+    fn uninhabited(field_count: usize) -> Self {
+        let align = Align::from_bytes(1, 1).unwrap();
+        CachedLayout {
+            variants: Variants::Single { index: 0 },
+            fields: FieldPlacement::Union(field_count),
+            abi: Abi::Uninhabited,
+            align,
+            primitive_align: align,
+            size: Size::from_bytes(0)
         }
     }
 }
@@ -915,13 +929,14 @@ impl<'a, 'tcx> CachedLayout {
                 bug!("struct cannot be packed and aligned");
             }
 
-            let mut align = if packed {
+            let base_align = if packed {
                 dl.i8_align
             } else {
                 dl.aggregate_align
             };
 
-            let mut primitive_align = align;
+            let mut align = base_align;
+            let mut primitive_align = base_align;
             let mut sized = true;
 
             // Anything with repr(C) or repr(packed) doesn't optimize.
@@ -978,11 +993,15 @@ impl<'a, 'tcx> CachedLayout {
                 }
             }
 
-            for i in inverse_memory_index.iter() {
-                let field = fields[*i as usize];
+            for &i in &inverse_memory_index {
+                let field = fields[i as usize];
                 if !sized {
                     bug!("univariant: field #{} of `{}` comes after unsized field",
                         offsets.len(), ty);
+                }
+
+                if field.abi == Abi::Uninhabited {
+                    return Ok(CachedLayout::uninhabited(fields.len()));
                 }
 
                 if field.is_unsized() {
@@ -997,7 +1016,7 @@ impl<'a, 'tcx> CachedLayout {
                 }
 
                 debug!("univariant offset: {:?} field: {:#?}", offset, field);
-                offsets[*i as usize] = offset;
+                offsets[i as usize] = offset;
 
                 offset = offset.checked_add(field.size, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
@@ -1124,7 +1143,7 @@ impl<'a, 'tcx> CachedLayout {
 
             // The never type.
             ty::TyNever => {
-                univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?
+                tcx.intern_layout(CachedLayout::uninhabited(0))
             }
 
             // Potentially-fat pointers.
@@ -1278,11 +1297,15 @@ impl<'a, 'tcx> CachedLayout {
                     }).collect::<Result<Vec<_>, _>>()
                 }).collect::<Result<Vec<_>, _>>()?;
 
-                if variants.is_empty() {
-                    // Uninhabitable; represent as unit
-                    // (Typechecking will reject discriminant-sizing attrs.)
-
-                    return univariant(&[], &def.repr, StructKind::AlwaysSized);
+                let (inh_first, inh_second, inh_third) = {
+                    let mut inh_variants = (0..variants.len()).filter(|&v| {
+                        variants[v].iter().all(|f| f.abi != Abi::Uninhabited)
+                    });
+                    (inh_variants.next(), inh_variants.next(), inh_variants.next())
+                };
+                if inh_first.is_none() {
+                    // Uninhabited because it has no variants, or only uninhabited ones.
+                    return Ok(tcx.intern_layout(CachedLayout::uninhabited(0)));
                 }
 
                 if def.is_union() {
@@ -1329,49 +1352,58 @@ impl<'a, 'tcx> CachedLayout {
                     }));
                 }
 
-                if !def.is_enum() || (variants.len() == 1 &&
-                                      !def.repr.inhibit_enum_layout_opt() &&
-                                      !variants[0].is_empty()) {
-                    // Struct, or union, or univariant enum equivalent to a struct.
+                let is_struct = !def.is_enum() ||
+                    // Only one variant is inhabited.
+                    (inh_second.is_none() &&
+                    // Representation optimizations are allowed.
+                     !def.repr.inhibit_enum_layout_opt() &&
+                    // Inhabited variant either has data ...
+                     (!variants[inh_first.unwrap()].is_empty() ||
+                    // ... or there other, uninhabited, variants.
+                      variants.len() > 1));
+                if is_struct {
+                    // Struct, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
-                    let kind = if def.is_enum() || variants[0].len() == 0 {
+                    let v = inh_first.unwrap();
+                    let kind = if def.is_enum() || variants[v].len() == 0 {
                         StructKind::AlwaysSized
                     } else {
                         let param_env = tcx.param_env(def.did);
-                        let last_field = def.variants[0].fields.last().unwrap();
+                        let last_field = def.variants[v].fields.last().unwrap();
                         let always_sized = tcx.type_of(last_field.did)
                           .is_sized(tcx, param_env, DUMMY_SP);
                         if !always_sized { StructKind::MaybeUnsized }
                         else { StructKind::AlwaysSized }
                     };
 
-                    return univariant(&variants[0], &def.repr, kind);
+                    let mut st = univariant_uninterned(&variants[v], &def.repr, kind)?;
+                    st.variants = Variants::Single { index: v };
+                    return Ok(tcx.intern_layout(st));
                 }
 
                 let no_explicit_discriminants = def.variants.iter().enumerate()
                     .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i));
 
-                if variants.len() == 2 &&
+                if inh_second.is_some() && inh_third.is_none() &&
                    !def.repr.inhibit_enum_layout_opt() &&
                    no_explicit_discriminants {
                     // Nullable pointer optimization
-                    for i in 0..2 {
-                        if !variants[1 - i].iter().all(|f| f.is_zst()) {
+                    let (a, b) = (inh_first.unwrap(), inh_second.unwrap());
+                    for &(i, other) in &[(a, b), (b, a)] {
+                        if !variants[other].iter().all(|f| f.is_zst()) {
                             continue;
                         }
 
                         for (field_index, field) in variants[i].iter().enumerate() {
                             if let Some((offset, niche, niche_value)) = field.find_niche(cx)? {
-                                let mut st = vec![
-                                    univariant_uninterned(&variants[0],
-                                        &def.repr, StructKind::AlwaysSized)?,
-                                    univariant_uninterned(&variants[1],
-                                        &def.repr, StructKind::AlwaysSized)?
-                                ];
-                                for (i, v) in st.iter_mut().enumerate() {
-                                    v.variants = Variants::Single { index: i };
-                                }
+                                let st = variants.iter().enumerate().map(|(j, v)| {
+                                    let mut st = univariant_uninterned(v,
+                                        &def.repr, StructKind::AlwaysSized)?;
+                                    st.variants = Variants::Single { index: j };
+                                    Ok(st)
+                                }).collect::<Result<Vec<_>, _>>()?;
+
                                 let offset = st[i].fields.offset(field_index) + offset;
                                 let CachedLayout {
                                     size,
@@ -1400,6 +1432,7 @@ impl<'a, 'tcx> CachedLayout {
                                 return Ok(tcx.intern_layout(CachedLayout {
                                     variants: Variants::NicheFilling {
                                         dataful_variant: i,
+                                        niche_variant: other,
                                         niche,
                                         niche_value,
                                         variants: st,
@@ -1419,11 +1452,15 @@ impl<'a, 'tcx> CachedLayout {
                 }
 
                 let (mut min, mut max) = (i128::max_value(), i128::min_value());
-                for discr in def.discriminants(tcx) {
+                for (i, discr) in def.discriminants(tcx).enumerate() {
+                    if variants[i].iter().any(|f| f.abi == Abi::Uninhabited) {
+                        continue;
+                    }
                     let x = discr.to_u128_unchecked() as i128;
                     if x < min { min = x; }
                     if x > max { max = x; }
                 }
+                assert!(min <= max, "discriminant range is {}...{}", min, max);
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
                 let mut align = dl.aggregate_align;
@@ -1498,6 +1535,9 @@ impl<'a, 'tcx> CachedLayout {
                     let old_ity_size = min_ity.size();
                     let new_ity_size = ity.size();
                     for variant in &mut variants {
+                        if variant.abi == Abi::Uninhabited {
+                            continue;
+                        }
                         match variant.fields {
                             FieldPlacement::Arbitrary { ref mut offsets, .. } => {
                                 for i in offsets {
@@ -1697,7 +1737,7 @@ impl<'a, 'tcx> CachedLayout {
                             variant_def.fields.iter().map(|f| f.name).collect();
                         build_variant_info(Some(variant_def.name),
                                             &fields,
-                                            layout.for_variant(i))
+                                            layout.for_variant(cx, i))
                     })
                     .collect();
                 record(adt_kind.into(), match layout.variants {
@@ -1989,15 +2029,35 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> TyLayout<'tcx> {
-    pub fn for_variant(&self, variant_index: usize) -> Self {
+    pub fn for_variant<C>(&self, cx: C, variant_index: usize) -> Self
+        where C: LayoutOf<Ty<'tcx>> + HasTyCtxt<'tcx>,
+              C::TyLayout: MaybeResult<TyLayout<'tcx>>
+    {
         let cached = match self.variants {
-            Variants::Single { .. } => self.cached,
+            Variants::Single { index } if index == variant_index => self.cached,
+
+            Variants::Single { index } => {
+                // Deny calling for_variant more than once for non-Single enums.
+                cx.layout_of(self.ty).map_same(|layout| {
+                    assert_eq!(layout.variants, Variants::Single { index });
+                    layout
+                });
+
+                let fields = match self.ty.sty {
+                    ty::TyAdt(def, _) => def.variants[variant_index].fields.len(),
+                    _ => bug!()
+                };
+                let mut cached = CachedLayout::uninhabited(fields);
+                cached.variants = Variants::Single { index: variant_index };
+                cx.tcx().intern_layout(cached)
+            }
 
             Variants::NicheFilling { ref variants, .. } |
             Variants::Tagged { ref variants, .. } => {
                 &variants[variant_index]
             }
         };
+
         assert_eq!(cached.variants, Variants::Single { index: variant_index });
 
         TyLayout {
@@ -2138,6 +2198,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     /// Returns true if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
+            Abi::Uninhabited => true,
             Abi::Scalar(_) => false,
             Abi::Vector => self.size.bytes() == 0,
             Abi::Aggregate { sized, .. } => sized && self.size.bytes() == 0
@@ -2241,11 +2302,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Variants {
             }
             NicheFilling {
                 dataful_variant,
+                niche_variant,
                 ref niche,
                 niche_value,
                 ref variants,
             } => {
                 dataful_variant.hash_stable(hcx, hasher);
+                niche_variant.hash_stable(hcx, hasher);
                 niche.hash_stable(hcx, hasher);
                 niche_value.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
@@ -2285,6 +2348,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Abi {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
+            Uninhabited => {}
             Scalar(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
