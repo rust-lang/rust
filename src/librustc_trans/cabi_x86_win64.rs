@@ -26,7 +26,7 @@ pub fn compute_abi_info(fty: &mut FnType) {
                     _ => a.make_indirect()
                 }
             }
-            layout::Abi::Vector { .. } => {
+            layout::Abi::Vector => {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
