@@ -268,7 +268,6 @@ impl Type {
     pub fn from_integer(cx: &CrateContext, i: layout::Integer) -> Type {
         use rustc::ty::layout::Integer::*;
         match i {
-            I1 => Type::i1(cx),
             I8 => Type::i8(cx),
             I16 => Type::i16(cx),
             I32 => Type::i32(cx),

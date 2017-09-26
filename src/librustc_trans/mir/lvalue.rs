@@ -148,16 +148,29 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 const_llval
             } else {
                 let load = bcx.load(self.llval, self.alignment.non_abi());
-                if self.layout.ty.is_bool() {
-                    bcx.range_metadata(load, 0..2);
-                } else if self.layout.ty.is_char() {
-                    // a char is a Unicode codepoint, and so takes values from 0
-                    // to 0x10FFFF inclusive only.
-                    bcx.range_metadata(load, 0..0x10FFFF+1);
-                } else if self.layout.ty.is_region_ptr() ||
-                        self.layout.ty.is_box() ||
-                        self.layout.ty.is_fn() {
-                    bcx.nonnull_metadata(load);
+                if let layout::Abi::Scalar(ref scalar) = self.layout.abi {
+                    let (min, max) = (scalar.valid_range.start, scalar.valid_range.end);
+                    let max_next = max.wrapping_add(1);
+                    let bits = scalar.value.size(bcx.ccx).bits();
+                    assert!(bits <= 128);
+                    let mask = !0u128 >> (128 - bits);
+                    // For a (max) value of -1, max will be `-1 as usize`, which overflows.
+                    // However, that is fine here (it would still represent the full range),
+                    // i.e., if the range is everything.  The lo==hi case would be
+                    // rejected by the LLVM verifier (it would mean either an
+                    // empty set, which is impossible, or the entire range of the
+                    // type, which is pointless).
+                    match scalar.value {
+                        layout::Int(..) if max_next & mask != min & mask => {
+                            // llvm::ConstantRange can deal with ranges that wrap around,
+                            // so an overflow on (max + 1) is fine.
+                            bcx.range_metadata(load, min..max_next);
+                        }
+                        layout::Pointer if 0 < min && min < max => {
+                            bcx.nonnull_metadata(load);
+                        }
+                        _ => {}
+                    }
                 }
                 load
             };
@@ -274,48 +287,18 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let cast_to = bcx.ccx.layout_of(cast_to).immediate_llvm_type(bcx.ccx);
         match self.layout.variants {
             layout::Variants::Single { index } => {
-                assert_eq!(index, 0);
-                return C_uint(cast_to, 0);
+                return C_uint(cast_to, index as u64);
             }
             layout::Variants::Tagged { .. } |
             layout::Variants::NicheFilling { .. } => {},
         }
 
         let discr = self.project_field(bcx, 0);
-        let discr_scalar = match discr.layout.abi {
-            layout::Abi::Scalar(discr) => discr,
-            _ => bug!("discriminant not scalar: {:#?}", discr.layout)
-        };
-        let (min, max) = match self.layout.variants {
-            layout::Variants::Tagged { ref discr_range, .. } => {
-                (discr_range.start, discr_range.end)
-            }
-            _ => (0, !0),
-        };
-        let max_next = max.wrapping_add(1);
-        let bits = discr_scalar.size(bcx.ccx).bits();
-        assert!(bits <= 128);
-        let mask = !0u128 >> (128 - bits);
-        let lldiscr = bcx.load(discr.llval, discr.alignment.non_abi());
-        match discr_scalar {
-            // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
-            // However, that is fine here (it would still represent the full range),
-            layout::Int(..) if max_next & mask != min & mask => {
-                // llvm::ConstantRange can deal with ranges that wrap around,
-                // so an overflow on (max + 1) is fine.
-                bcx.range_metadata(lldiscr, min..max_next);
-            }
-            _ => {
-                // i.e., if the range is everything.  The lo==hi case would be
-                // rejected by the LLVM verifier (it would mean either an
-                // empty set, which is impossible, or the entire range of the
-                // type, which is pointless).
-            }
-        };
+        let lldiscr = discr.load(bcx).immediate();
         match self.layout.variants {
             layout::Variants::Single { .. } => bug!(),
-            layout::Variants::Tagged { .. } => {
-                let signed = match discr_scalar {
+            layout::Variants::Tagged { ref discr, .. } => {
+                let signed = match discr.value {
                     layout::Int(_, signed) => signed,
                     _ => false
                 };

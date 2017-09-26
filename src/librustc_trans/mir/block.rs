@@ -671,10 +671,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                  (align | Alignment::Packed(arg.layout.align))
                                     .non_abi());
             } else {
+                // We can't use `LvalueRef::load` here because the argument
+                // may have a type we don't treat as immediate, but the ABI
+                // used for this call is passing it by-value. In that case,
+                // the load would just produce `OperandValue::Ref` instead
+                // of the `OperandValue::Immediate` we need for the call.
                 llval = bcx.load(llval, align.non_abi());
-            }
-            if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = arg.layout.abi {
-                bcx.range_metadata(llval, 0..2);
+                if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
+                    if scalar.is_bool() {
+                        bcx.range_metadata(llval, 0..2);
+                    }
+                }
                 // We store bools as i8 so we need to truncate to i1.
                 llval = base::to_immediate(bcx, llval, arg.layout);
             }

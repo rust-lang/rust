@@ -176,14 +176,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
-        if let layout::Abi::Scalar(value) = self.abi {
+        if let layout::Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
             if let Some(&llty) = ccx.scalar_lltypes().borrow().get(&self.ty) {
                 return llty;
             }
-            let llty = match value {
-                layout::Int(layout::I1, _) => Type::i8(ccx),
+            let llty = match scalar.value {
                 layout::Int(i, _) => Type::from_integer(ccx, i),
                 layout::F32 => Type::f32(ccx),
                 layout::F64 => Type::f64(ccx),
@@ -249,11 +248,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     }
 
     fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
-        if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = self.abi {
-            Type::i1(ccx)
-        } else {
-            self.llvm_type(ccx)
+        if let layout::Abi::Scalar(ref scalar) = self.abi {
+            if scalar.is_bool() {
+                return Type::i1(ccx);
+            }
         }
+        self.llvm_type(ccx)
     }
 
     fn over_align(&self) -> Option<Align> {
