@@ -659,10 +659,26 @@ impl ReplaceBodyWithLoop {
                     ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. }) |
                     ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. }) |
                     ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
-                    ast::TyKind::Tup(ref tys) => tys.iter().any(|subty| involves_impl_trait(subty)),
+                    ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
+                    ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
+                        match seg.parameters.as_ref().map(|p| &**p) {
+                            None => false,
+                            Some(&ast::PathParameters::AngleBracketed(ref data)) =>
+                                any_involves_impl_trait(data.types.iter()) ||
+                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty)),
+                            Some(&ast::PathParameters::Parenthesized(ref data)) =>
+                                any_involves_impl_trait(data.inputs.iter()) ||
+                                any_involves_impl_trait(data.output.iter()),
+                        }
+                    }),
                     _ => false,
                 }
             }
+
+            fn any_involves_impl_trait<'a, I: Iterator<Item = &'a P<ast::Ty>>>(mut it: I) -> bool {
+                it.any(|subty| involves_impl_trait(subty))
+            }
+
             involves_impl_trait(ty)
         } else {
             false
