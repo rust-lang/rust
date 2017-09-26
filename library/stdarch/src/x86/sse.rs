@@ -127,7 +127,7 @@ pub fn _mm_rsqrt_ps(a: f32x4) -> f32x4 {
 }
 
 /// Compare the first single-precision (32-bit) floating-point element of `a`
-/// and `b`, and return the minimum value in the first element of the return 
+/// and `b`, and return the minimum value in the first element of the return
 /// value, the other elements are copied from `a`.
 #[inline(always)]
 #[target_feature = "+sse"]
@@ -146,7 +146,7 @@ pub fn _mm_min_ps(a: f32x4, b: f32x4) -> f32x4 {
 }
 
 /// Compare the first single-precision (32-bit) floating-point element of `a`
-/// and `b`, and return the maximum value in the first element of the return 
+/// and `b`, and return the maximum value in the first element of the return
 /// value, the other elements are copied from `a`.
 #[inline(always)]
 #[target_feature = "+sse"]
@@ -168,6 +168,7 @@ pub fn _mm_max_ps(a: f32x4, b: f32x4) -> f32x4 {
 /// from the high half of `a` and `b`;
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(unpckhps))]
 pub fn _mm_unpackhi_ps(a: f32x4, b: f32x4) -> f32x4 {
     unsafe { simd_shuffle4(a, b, [2, 6, 3, 7]) }
 }

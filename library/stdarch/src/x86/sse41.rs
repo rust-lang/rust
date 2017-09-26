@@ -1,8 +1,12 @@
 use v128::*;
 use x86::__m128i;
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 #[inline(always)]
 #[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pblendvb))]
 pub fn _mm_blendv_epi8(
     a: __m128i,
     b: __m128i,
