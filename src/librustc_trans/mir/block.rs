@@ -710,7 +710,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             Immediate(llval) => {
                 for i in 0..tuple.layout.fields.count() {
                     let field = tuple.layout.field(bcx.ccx, i);
-                    let elem = bcx.extract_value(llval, tuple.layout.llvm_field_index(i));
+                    let elem = if field.is_zst() {
+                        C_undef(field.llvm_type(bcx.ccx))
+                    } else {
+                        bcx.extract_value(llval, tuple.layout.llvm_field_index(i))
+                    };
                     // If the tuple is immediate, the elements are as well
                     let op = OperandRef {
                         val: Immediate(base::to_immediate(bcx, elem, field)),

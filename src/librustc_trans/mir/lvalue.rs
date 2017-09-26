@@ -115,7 +115,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 assert_eq!(count, 0);
                 self.llextra
             } else {
-                common::C_usize(ccx, count)
+                C_usize(ccx, count)
             }
         } else {
             bug!("unexpected layout `{:#?}` in LvalueRef::len", self.layout)
@@ -304,7 +304,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 };
                 bcx.intcast(lldiscr, cast_to, signed)
             }
-            layout::Variants::NicheFilling { dataful_variant, niche_value, .. } => {
+            layout::Variants::NicheFilling {
+                dataful_variant,
+                niche_variant,
+                niche_value,
+                ..
+            } => {
                 let niche_llty = discr.layout.llvm_type(bcx.ccx);
                 // FIXME(eddyb) Check the actual primitive type here.
                 let niche_llval = if niche_value == 0 {
@@ -313,8 +318,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 } else {
                     C_uint_big(niche_llty, niche_value)
                 };
-                let cmp = if dataful_variant == 0 { llvm::IntEQ } else { llvm::IntNE };
-                bcx.intcast(bcx.icmp(cmp, lldiscr, niche_llval), cast_to, false)
+                bcx.select(bcx.icmp(llvm::IntEQ, lldiscr, niche_llval),
+                    C_uint(cast_to, niche_variant as u64),
+                    C_uint(cast_to, dataful_variant as u64))
             }
         }
     }
@@ -324,7 +330,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn trans_set_discr(&self, bcx: &Builder<'a, 'tcx>, variant_index: usize) {
         match self.layout.variants {
             layout::Variants::Single { index } => {
-                assert_eq!(variant_index, index);
+                if index != variant_index {
+                    // If the layout of an enum is `Single`, all
+                    // other variants are necessarily uninhabited.
+                    assert_eq!(self.layout.for_variant(bcx.ccx, variant_index).abi,
+                               layout::Abi::Uninhabited);
+                }
             }
             layout::Variants::Tagged { .. } => {
                 let ptr = self.project_field(bcx, 0);
@@ -366,7 +377,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef)
                          -> LvalueRef<'tcx> {
         LvalueRef {
-            llval: bcx.inbounds_gep(self.llval, &[common::C_usize(bcx.ccx, 0), llindex]),
+            llval: bcx.inbounds_gep(self.llval, &[C_usize(bcx.ccx, 0), llindex]),
             llextra: ptr::null_mut(),
             layout: self.layout.field(bcx.ccx, 0),
             alignment: self.alignment
@@ -376,7 +387,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn project_downcast(&self, bcx: &Builder<'a, 'tcx>, variant_index: usize)
                             -> LvalueRef<'tcx> {
         let mut downcast = *self;
-        downcast.layout = self.layout.for_variant(variant_index);
+        downcast.layout = self.layout.for_variant(bcx.ccx, variant_index);
 
         // Cast to the appropriate variant struct type.
         let variant_ty = downcast.layout.llvm_type(bcx.ccx);

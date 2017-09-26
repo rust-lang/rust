@@ -1099,6 +1099,11 @@ fn trans_const_adt<'a, 'tcx>(
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
     };
+
+    if let layout::Abi::Uninhabited = l.abi {
+        return Const::new(C_undef(l.llvm_type(ccx)), t);
+    }
+
     match l.variants {
         layout::Variants::Single { index } => {
             assert_eq!(variant_index, index);
@@ -1114,7 +1119,6 @@ fn trans_const_adt<'a, 'tcx>(
 
                 Const::new(C_struct(ccx, &contents, l.is_packed()), t)
             } else {
-                assert_eq!(variant_index, 0);
                 build_const_struct(ccx, l, vals, None)
             }
         }
@@ -1132,12 +1136,12 @@ fn trans_const_adt<'a, 'tcx>(
                 Const::new(discr, t)
             } else {
                 let discr = Const::new(discr, discr_field.ty);
-                build_const_struct(ccx, l.for_variant(variant_index), vals, Some(discr))
+                build_const_struct(ccx, l.for_variant(ccx, variant_index), vals, Some(discr))
             }
         }
         layout::Variants::NicheFilling { dataful_variant, niche_value, .. } => {
             if variant_index == dataful_variant {
-                build_const_struct(ccx, l.for_variant(dataful_variant), vals, None)
+                build_const_struct(ccx, l.for_variant(ccx, dataful_variant), vals, None)
             } else {
                 let niche = l.field(ccx, 0);
                 let niche_llty = niche.llvm_type(ccx);

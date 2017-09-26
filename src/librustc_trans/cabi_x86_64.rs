@@ -65,6 +65,8 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
         }
 
         match layout.abi {
+            layout::Abi::Uninhabited => {}
+
             layout::Abi::Scalar(ref scalar) => {
                 let reg = match scalar.value {
                     layout::Int(..) |

@@ -27,6 +27,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             return Type::vector(&layout.field(ccx, 0).llvm_type(ccx),
                                 layout.fields.count() as u64);
         }
+        layout::Abi::Uninhabited |
         layout::Abi::Aggregate { .. } => {}
     }
 
@@ -158,7 +159,9 @@ pub trait LayoutLlvmExt<'tcx> {
 impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
-            layout::Abi::Scalar(_) | layout::Abi::Vector => true,
+            layout::Abi::Uninhabited |
+            layout::Abi::Scalar(_) |
+            layout::Abi::Vector => true,
 
             layout::Abi::Aggregate { .. } => self.is_zst()
         }
@@ -230,7 +233,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         let llty = if self.ty != normal_ty {
             let mut layout = ccx.layout_of(normal_ty);
             if let Some(v) = variant_index {
-                layout = layout.for_variant(v);
+                layout = layout.for_variant(ccx, v);
             }
             layout.llvm_type(ccx)
         } else {
