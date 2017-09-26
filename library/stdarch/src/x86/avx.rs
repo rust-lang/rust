@@ -1,7 +1,7 @@
 use v256::*;
 
-// #[cfg(test)]
-// use assert_instr::assert_instr;
+#[cfg(test)]
+use assert_instr::assert_instr;
 
 /// Add packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
@@ -26,17 +26,11 @@ pub fn _mm256_addsub_pd(a: f64x4, b: f64x4) -> f64x4 {
     unsafe { addsubpd256(a, b) }
 }
 
-#[allow(improper_ctypes)]
-extern "C" {
-    #[link_name = "llvm.x86.avx.addsub.pd.256"]
-    fn addsubpd256(a: f64x4, b: f64x4) -> f64x4;
-}
-
 /// Subtract packed double-precision (64-bit) floating-point elements in `b`
 /// from packed elements in `a`.
 #[inline(always)]
 #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(subpd))]
+#[cfg_attr(test, assert_instr(vsubpd))]
 pub fn _mm256_sub_pd(a: f64x4, b: f64x4) -> f64x4 {
     a - b
 }
@@ -45,56 +39,85 @@ pub fn _mm256_sub_pd(a: f64x4, b: f64x4) -> f64x4 {
 /// from packed elements in `a`.
 #[inline(always)]
 #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(subps))]
+#[cfg_attr(test, assert_instr(vsubps))]
 pub fn _mm256_sub_ps(a: f32x8, b: f32x8) -> f32x8 {
     a - b
 }
 
 /// Round packed double-precision (64-bit) floating point elements in `a`
 /// according to the flag `b`. The value of `b` may be as follows:
-///    Bits [7:4] are reserved.
-///    Bit [3] is a precision exception value:
-///      0: A normal PE exception is used.
-///      1: The PE field is not updated.
-///    Bit [2] is the rounding control source:
-///      0: Use bits [1:0] of \a M.
-///      1: Use the current MXCSR setting.
-///    Bits [1:0] contain the rounding control definition:
-///      00: Nearest.
-///      01: Downward (toward negative infinity).
-///      10: Upward (toward positive infinity).
-///      11: Truncated.
+/// 0x00: Round to the nearest whole number.
+/// 0x01: Round down, toward negative infinity.
+/// 0x02: Round up, toward positive infinity.
+/// 0x03: Truncate the values.
+/// For a few additional values options, check the LLVM docs:
+/// https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
 #[inline(always)]
 #[target_feature = "+avx"]
 // #[cfg_attr(test, assert_instr(vroundpd))]
+// TODO: Replace with assert_expanded_instr https://github.com/rust-lang-nursery/stdsimd/issues/49
 pub fn _mm256_round_pd(a: f64x4, b: i32) -> f64x4 {
-    unsafe { roundpd256(a, b) }
+    macro_rules! call {
+        ($imm8:expr) => {
+            unsafe { roundpd256(a, $imm8) }
+        }
+    }
+    constify_imm8!(b, call)
 }
 
+/// Round packed double-precision (64-bit) floating point elements in `a` toward
+/// positive infinity.
+#[inline(always)]
+#[target_feature = "+avx"]
+// #[cfg_attr(test, assert_instr(vroundpd))]
+// TODO: Replace with assert_expanded_instr https://github.com/rust-lang-nursery/stdsimd/issues/49
+pub fn _mm256_ceil_pd(a: f64x4) -> f64x4 {
+    unsafe { roundpd256(a, 0x02) }
+}
+
+/// Round packed double-precision (64-bit) floating point elements in `a` toward
+/// negative infinity.
+#[inline(always)]
+#[target_feature = "+avx"]
+// #[cfg_attr(test, assert_instr(vroundpd))]
+// TODO: Replace with assert_expanded_instr https://github.com/rust-lang-nursery/stdsimd/issues/49
+pub fn _mm256_floor_pd(a: f64x4) -> f64x4 {
+    unsafe { roundpd256(a, 0x01) }
+}
+
+/// LLVM intrinsics used in the above functions
 #[allow(improper_ctypes)]
 extern "C" {
+    #[link_name = "llvm.x86.avx.addsub.pd.256"]
+    fn addsubpd256(a: f64x4, b: f64x4) -> f64x4;
     #[link_name = "llvm.x86.avx.round.pd.256"]
     fn roundpd256(a: f64x4, b: i32) -> f64x4;
 }
 
-/// Round packed double-precision (64-bit) floating point elements in `a` toward
-/// positive infinity.
-#[inline(always)]
-#[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(vroundpd))]
-pub fn _mm256_ceil_pd(a: f64x4) -> f64x4 {
-    _mm256_round_pd(a, 0b00000010)
-}
+// Function stubs: work around assert_instr issues in expanded forms
+// ref: https://github.com/rust-lang-nursery/stdsimd/issues/49
+// ref: https://github.com/rust-lang-nursery/stdsimd/issues/47
 
-/// Round packed double-precision (64-bit) floating point elements in `a` toward
-/// positive infinity.
-#[inline(always)]
-#[target_feature = "+avx"]
+// #[cfg(test)]
+// #[target_feature = "+avx"]
 // #[cfg_attr(test, assert_instr(vroundpd))]
-pub fn _mm256_floor_pd(a: f64x4) -> f64x4 {
-    _mm256_round_pd(a, 0b00000001)
-}
+// pub fn _mm256_round_pd_auto(a: f64x4, b: i32) -> f64x4 {
+//     return _mm256_round_pd(a, b);
+// }
 
+// #[cfg(test)]
+// #[target_feature = "+avx"]
+// #[cfg_attr(test, assert_instr(vroundpd))]
+// pub fn _mm256_ceil_pd_auto(a: f64x4) -> f64x4 {
+//     return _mm256_ceil_pd(a);
+// }
+
+// #[cfg(test)]
+// #[target_feature = "+avx"]
+// #[cfg_attr(test, assert_instr(vroundpd))]
+// pub fn _mm256_floor_pd_auto(a: f64x4) -> f64x4 {
+//     return _mm256_floor_pd(a);
+// }
 
 #[cfg(all(test, target_feature = "avx", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
@@ -183,5 +206,4 @@ mod tests {
         let expected_up = f64x4::new(2.0, 3.0, 4.0, -1.0);
         assert_eq!(result_up, expected_up);
     }
-
 }
