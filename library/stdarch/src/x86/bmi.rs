@@ -183,7 +183,7 @@ pub fn _mm_tzcnt_u64(x: u64) -> u64 {
     x.trailing_zeros() as u64
 }
 
-#[cfg(all(test, target_feature = "bmi", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
 
@@ -195,6 +195,7 @@ mod tests {
     }
 
     #[simd_test = "bmi"]
+    #[cfg(not(target_arch = "x86"))]
     fn _bextr_u64() {
         assert_eq!(bmi::_bextr_u64(0b0101_0000u64, 4, 4), 0b0000_0101u64);
     }
@@ -214,6 +215,7 @@ mod tests {
     }
 
     #[simd_test = "bmi"]
+    #[cfg(not(target_arch = "x86"))]
     fn _andn_u64() {
         assert_eq!(bmi::_andn_u64(0, 0), 0);
         assert_eq!(bmi::_andn_u64(0, 1), 1);
@@ -233,6 +235,7 @@ mod tests {
     }
 
     #[simd_test = "bmi"]
+    #[cfg(not(target_arch = "x86"))]
     fn _blsi_u64() {
         assert_eq!(bmi::_blsi_u64(0b1101_0000u64), 0b0001_0000u64);
     }
@@ -243,6 +246,7 @@ mod tests {
     }
 
     #[simd_test = "bmi"]
+    #[cfg(not(target_arch = "x86"))]
     fn _blsmsk_u64() {
         assert_eq!(bmi::_blsmsk_u64(0b0011_0000u64), 0b0001_1111u64);
     }
@@ -254,6 +258,7 @@ mod tests {
     }
 
     #[simd_test = "bmi"]
+    #[cfg(not(target_arch = "x86"))]
     fn _blsr_u64() {
         /// TODO: test the behavior when the input is 0
         assert_eq!(bmi::_blsr_u64(0b0011_0000u64), 0b0010_0000u64);
@@ -274,6 +279,7 @@ mod tests {
     }
 
     #[simd_test = "bmi"]
+    #[cfg(not(target_arch = "x86"))]
     fn _tzcnt_u64() {
         assert_eq!(bmi::_tzcnt_u64(0b0000_0001u64), 0u64);
         assert_eq!(bmi::_tzcnt_u64(0b0000_0000u64), 64u64);
