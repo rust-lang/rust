@@ -1,14 +1,11 @@
-error[E0281]: type mismatch: `[closure@$DIR/unboxed-closures-vtable-mismatch.rs:22:23: 22:73]` implements the trait `std::ops::FnMut<(usize, isize)>`, but the trait `std::ops::FnMut<(isize, isize)>` is required
+error[E0631]: type mismatch in closure arguments
   --> $DIR/unboxed-closures-vtable-mismatch.rs:25:13
    |
 22 |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
-   |                       -------------------------------------------------- implements `std::ops::FnMut<(usize, isize)>`
+   |                       -------------------------------------------------- found signature of `fn(usize, isize) -> _`
 ...
 25 |     let z = call_it(3, f);
-   |             ^^^^^^^
-   |             |
-   |             expected isize, found usize
-   |             requires `std::ops::FnMut<(isize, isize)>`
+   |             ^^^^^^^ expected signature of `fn(isize, isize) -> _`
    |
    = note: required by `call_it`
 

@@ -1105,11 +1105,13 @@ already specify all requirements that will be used for every type parameter.
 "##,
 
 E0281: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You tried to supply a type which doesn't implement some trait in a location
 which expected that trait. This error typically occurs when working with
 `Fn`-based types. Erroneous code example:
 
-```compile_fail,E0281
+```compile-fail
 fn foo<F: Fn(usize)>(x: F) { }
 
 fn main() {
@@ -2052,5 +2054,6 @@ register_diagnostics! {
     E0566, // conflicting representation hints
     E0623, // lifetime mismatch where both parameters are anonymous regions
     E0628, // generators cannot have explicit arguments
+    E0631, // type mismatch in closure arguments
     E0637, // "'_" is not a valid lifetime bound
 }
