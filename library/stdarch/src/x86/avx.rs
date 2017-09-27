@@ -1,7 +1,7 @@
 use v256::*;
 
 #[cfg(test)]
-use assert_instr::assert_instr;
+use stdsimd_test::assert_instr;
 
 /// Add packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
