@@ -15,12 +15,14 @@ use rustc::mir::{Mir, Location, Rvalue, BasicBlock, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::infer::{self, InferCtxt};
+use rustc::util::nodemap::FxHashSet;
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     lookup_map: HashMap<RegionVid, Lookup>,
+    regions: Vec<Region>,
     infcx: InferCtxt<'a, 'gcx, 'tcx>,
 }
 
@@ -29,6 +31,7 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
         NLLVisitor {
             infcx,
             lookup_map: HashMap::new(),
+            regions: vec![],
         }
     }
 
@@ -36,8 +39,9 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
         self.lookup_map
     }
 
-    fn renumber_regions<T>(&self, value: &T) -> T where T: TypeFoldable<'tcx> {
+    fn renumber_regions<T>(&mut self, value: &T) -> T where T: TypeFoldable<'tcx> {
         self.infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
+            self.regions.push(Region::default());
             self.infcx.next_region_var(infer::MiscVariable(DUMMY_SP))
         })
     }
@@ -143,4 +147,9 @@ impl MirPass for NLL {
             let _results = visitor.into_results();
         })
     }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct Region {
+    points: FxHashSet<Location>,
 }
