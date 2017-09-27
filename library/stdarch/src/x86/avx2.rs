@@ -459,15 +459,18 @@ pub unsafe fn _mm256_min_epu8(a: u8x32, b: u8x32) -> u8x32 {
     pminub(a, b)
 }
 
-/*** The following two functions fail in debug, but work in release
 
 /// Create mask from the most significant bit of each 8-bit element in `a`,
 /// return the result.
 #[inline(always)]
 #[target_feature = "+avx2"]
-pub fn _mm256_movemask_epi8(a: i8x32) -> i32 {
-    unsafe { pmovmskb(a) }
+#[cfg_attr(test, assert_instr(vpmovmskb))]
+pub unsafe fn _mm256_movemask_epi8(a: i8x32) -> i32 {
+    pmovmskb(a)
 }
+
+/*
+LLVM ERROR: Cannot select: intrinsic %llvm.x86.avx2.mpsadbw
 
 /// Compute the sum of absolute differences (SADs) of quadruplets of unsigned
 /// 8-bit integers in `a` compared to those in `b`, and store the 16-bit
@@ -478,11 +481,11 @@ pub fn _mm256_movemask_epi8(a: i8x32) -> i32 {
 /// starting at the offset specified in `imm8`.
 #[inline(always)]
 #[target_feature = "+avx2"]
-pub fn _mm256_mpsadbw_epu8(a: u8x32, b: u8x32, imm8: i32) -> u16x16 {
-    unsafe { mpsadbw(a, b, imm8) }
+#[cfg_attr(test, assert_instr(vmpsadbw))]
+pub unsafe fn _mm256_mpsadbw_epu8(a: u8x32, b: u8x32, imm8: i32) -> u16x16 {
+    mpsadbw(a, b, imm8)
 }
-
-***/
+*/
 
 /// Multiply the low 32-bit integers from each packed 64-bit element in
 /// `a` and `b`
@@ -1636,21 +1639,16 @@ mod tests {
         assert_eq!(r, a);
     }
 
-
-/**
-    // TODO this fails in debug but not release, why?
-    #[test]
-    #[target_feature ="+avx2"]
+    #[simd_test = "avx2"]
     unsafe fn _mm256_movemask_epi8() {
         let a = i8x32::splat(-1);
         let r = avx2::_mm256_movemask_epi8(a);
-        let e : i32 = -1;
+        let e = -1;
         assert_eq!(r, e);
     }
 
-    // TODO This fails in debug but not in release, whhhy?
-    #[test]
-    #[target_feature = "+avx2"]
+    /*
+    #[simd_test = "avx2"]
     unsafe fn _mm256_mpsadbw_epu8() {
         let a = u8x32::splat(2);
         let b = u8x32::splat(4);
@@ -1658,7 +1656,7 @@ mod tests {
         let e = u16x16::splat(8);
         assert_eq!(r, e);
     }
-**/
+    */
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_mul_epi32() {
