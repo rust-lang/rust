@@ -19,7 +19,7 @@ use rustc::util::common::time;
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
 use std::io::{self, Cursor, Write};

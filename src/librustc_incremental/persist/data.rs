@@ -70,14 +70,6 @@ impl SerializedDepGraph {
          RustcEncodable, RustcDecodable)]
 pub struct DepNodeIndex(pub u32);
 
-impl DepNodeIndex {
-    #[inline]
-    pub fn new(idx: usize) -> DepNodeIndex {
-        assert!(idx <= ::std::u32::MAX as usize);
-        DepNodeIndex(idx as u32)
-    }
-}
-
 impl Idx for DepNodeIndex {
     #[inline]
     fn new(idx: usize) -> Self {
