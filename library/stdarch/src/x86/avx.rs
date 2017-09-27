@@ -7,6 +7,7 @@ use stdsimd_test::assert_instr;
 /// in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vaddpd))]
 pub fn _mm256_add_pd(a: f64x4, b: f64x4) -> f64x4 {
     a + b
 }
@@ -14,6 +15,7 @@ pub fn _mm256_add_pd(a: f64x4, b: f64x4) -> f64x4 {
 /// Add packed single-precision (32-bit) floating-point elements in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vaddps))]
 pub fn _mm256_add_ps(a: f32x8, b: f32x8) -> f32x8 {
     a + b
 }
@@ -39,6 +41,7 @@ pub fn _mm256_mul_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// floating-point elements in `a` to/from packed elements in `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vaddsubpd))]
 pub fn _mm256_addsub_pd(a: f64x4, b: f64x4) -> f64x4 {
     unsafe { addsubpd256(a, b) }
 }
