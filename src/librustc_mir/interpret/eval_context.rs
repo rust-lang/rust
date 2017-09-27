@@ -877,8 +877,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
-                let ptr = M::box_alloc(self, ty)?;
-                self.write_primval(dest, ptr, dest_ty)?;
+                M::box_alloc(self, ty, dest)?;
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {

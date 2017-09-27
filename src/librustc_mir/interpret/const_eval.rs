@@ -240,7 +240,8 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     fn box_alloc<'a>(
         _ecx: &mut EvalContext<'a, 'tcx, Self>,
         _ty: ty::Ty<'tcx>,
-    ) -> EvalResult<'tcx, PrimVal> {
+        _dest: Lvalue,
+    ) -> EvalResult<'tcx> {
         Err(
             ConstEvalError::NeedsRfc("Heap allocations via `box` keyword".to_string()).into(),
         )
