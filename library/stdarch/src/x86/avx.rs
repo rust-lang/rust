@@ -54,8 +54,6 @@ pub fn _mm256_sub_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
 #[inline(always)]
 #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(vroundpd))]
-// TODO: Replace with assert_expanded_instr https://github.com/rust-lang-nursery/stdsimd/issues/49
 pub fn _mm256_round_pd(a: f64x4, b: i32) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => {
@@ -65,12 +63,18 @@ pub fn _mm256_round_pd(a: f64x4, b: i32) -> f64x4 {
     constify_imm8!(b, call)
 }
 
+#[cfg(test)]
+#[cfg_attr(test, assert_instr(vroundpd))]
+#[target_feature = "+avx"]
+fn test_mm256_round_pd(a: f64x4) -> f64x4 {
+    _mm256_round_pd(a, 0x3)
+}
+
 /// Round packed double-precision (64-bit) floating point elements in `a` toward
 /// positive infinity.
 #[inline(always)]
 #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(vroundpd))]
-// TODO: Replace with assert_expanded_instr https://github.com/rust-lang-nursery/stdsimd/issues/49
+#[cfg_attr(test, assert_instr(vroundpd))]
 pub fn _mm256_ceil_pd(a: f64x4) -> f64x4 {
     unsafe { roundpd256(a, 0x02) }
 }
@@ -79,8 +83,7 @@ pub fn _mm256_ceil_pd(a: f64x4) -> f64x4 {
 /// negative infinity.
 #[inline(always)]
 #[target_feature = "+avx"]
-// #[cfg_attr(test, assert_instr(vroundpd))]
-// TODO: Replace with assert_expanded_instr https://github.com/rust-lang-nursery/stdsimd/issues/49
+#[cfg_attr(test, assert_instr(vroundpd))]
 pub fn _mm256_floor_pd(a: f64x4) -> f64x4 {
     unsafe { roundpd256(a, 0x01) }
 }
@@ -94,7 +97,7 @@ extern "C" {
     fn roundpd256(a: f64x4, b: i32) -> f64x4;
 }
 
-#[cfg(all(test, target_feature = "avx", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
 
@@ -128,8 +131,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+avx"]
+    #[simd_test = "avx"]
     fn _mm256_sub_pd() {
         let a = f64x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f64x4::new(5.0, 6.0, 7.0, 8.0);
@@ -138,8 +140,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+avx"]
+    #[simd_test = "avx"]
     fn _mm256_sub_ps() {
         let a = f32x8::new(1.0, 2.0, 3.0, 4.0, -1.0, -2.0, -3.0, -4.0);
         let b = f32x8::new(5.0, 6.0, 7.0, 8.0, 3.0, 2.0, 1.0, 0.0);
@@ -148,9 +149,8 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[test]
-    #[target_feature = "+avx"]
-    pub fn _mm256_round_pd() {
+    #[simd_test = "avx"]
+    fn _mm256_round_pd() {
         let a = f64x4::new(1.55, 2.2, 3.99, -1.2);
         let result_closest = avx::_mm256_round_pd(a, 0b00000000);
         let result_down = avx::_mm256_round_pd(a, 0b00000001);
@@ -163,18 +163,16 @@ mod tests {
         assert_eq!(result_up, expected_up);
     }
 
-    #[test]
-    #[target_feature = "+avx"]
-    pub fn _mm256_floor_pd() {
+    #[simd_test = "avx"]
+    fn _mm256_floor_pd() {
         let a = f64x4::new(1.55, 2.2, 3.99, -1.2);
         let result_down = avx::_mm256_floor_pd(a);
         let expected_down = f64x4::new(1.0, 2.0, 3.0, -2.0);
         assert_eq!(result_down, expected_down);
     }
 
-    #[test]
-    #[target_feature = "+avx"]
-    pub fn _mm256_ceil_pd() {
+    #[simd_test = "avx"]
+    fn _mm256_ceil_pd() {
         let a = f64x4::new(1.55, 2.2, 3.99, -1.2);
         let result_up = avx::_mm256_ceil_pd(a, );
         let expected_up = f64x4::new(2.0, 3.0, 4.0, -1.0);
