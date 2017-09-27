@@ -20,5 +20,4 @@ build: false
 
 test_script:
   - cargo test --target %TARGET%
-  - set RUST_BACKTRACE=1
   - cargo test --target %TARGET% --release
