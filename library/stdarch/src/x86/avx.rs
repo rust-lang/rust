@@ -84,18 +84,12 @@ pub unsafe fn _mm256_sub_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// ```
 #[inline(always)]
 #[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vroundpd, b = 0x3))]
 pub unsafe fn _mm256_round_pd(a: f64x4, b: i32) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => { roundpd256(a, $imm8) }
     }
     constify_imm8!(b, call)
-}
-
-#[cfg(test)]
-#[cfg_attr(test, assert_instr(vroundpd))]
-#[target_feature = "+avx"]
-fn test_mm256_round_pd(a: f64x4) -> f64x4 {
-    unsafe { _mm256_round_pd(a, 0x3) }
 }
 
 /// Round packed double-precision (64-bit) floating point elements in `a` toward

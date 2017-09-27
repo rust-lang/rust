@@ -171,6 +171,7 @@ pub unsafe fn _mm_max_ps(a: f32x4, b: f32x4) -> f32x4 {
 /// `b`. Mask is split to 2 control bits each to index the element from inputs.
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(shufps, mask = 3))]
 pub unsafe fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: i32) -> f32x4 {
     let mask = (mask & 0xFF) as u8;
 
@@ -215,13 +216,6 @@ pub unsafe fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: i32) -> f32x4 {
         0b10 => shuffle_x23!(2),
         _ => shuffle_x23!(3),
     }
-}
-
-#[cfg(test)]
-#[target_feature = "+sse"]
-#[cfg_attr(test, assert_instr(shufps))]
-fn _test_mm_shuffle_ps(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { _mm_shuffle_ps(a, b, 3) }
 }
 
 /// Unpack and interleave single-precision (32-bit) floating-point elements

@@ -10,62 +10,125 @@
 
 #![feature(proc_macro)]
 
+extern crate proc_macro2;
 extern crate proc_macro;
+#[macro_use]
+extern crate quote;
+extern crate syn;
+#[macro_use]
+extern crate synom;
 
-use proc_macro::{TokenStream, Term, TokenNode, Delimiter};
+use proc_macro2::TokenStream;
 
 #[proc_macro_attribute]
-pub fn assert_instr(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let name = find_name(item.clone());
-    let tokens = attr.into_iter().collect::<Vec<_>>();
-    if tokens.len() != 1 {
-        panic!("expected #[assert_instr(foo)]");
-    }
-    let tokens = match tokens[0].kind {
-        TokenNode::Group(Delimiter::Parenthesis, ref rest) => rest.clone(),
-        _ => panic!("expected #[assert_instr(foo)]"),
-    };
-    let tokens = tokens.into_iter().collect::<Vec<_>>();
-    if tokens.len() != 1 {
-        panic!("expected #[assert_instr(foo)]");
-    }
-    let instr = match tokens[0].kind {
-        TokenNode::Term(term) => term,
-        _ => panic!("expected #[assert_instr(foo)]"),
+pub fn assert_instr(attr: proc_macro::TokenStream,
+                    item: proc_macro::TokenStream)
+    -> proc_macro::TokenStream
+{
+    let invoc = syn::parse::<Invoc>(attr)
+        .expect("expected #[assert_instr(instr, a = b, ...)]");
+    let item = syn::parse::<syn::Item>(item).expect("must be attached to an item");
+    let func = match item.node {
+        syn::ItemKind::Fn(ref f) => f,
+        _ => panic!("must be attached to a function"),
     };
 
-    let ignore = if cfg!(optimized) {
-        ""
+    let instr = &invoc.instr;
+    let maybe_ignore = if cfg!(optimized) {
+        TokenStream::empty()
     } else {
-        "#[ignore]"
+        (quote! { #[ignore] }).into()
     };
-    let test = format!("
+    let name = &func.ident;
+    let assert_name = syn::Ident::from(&format!("assert_{}", name.sym.as_str())[..]);
+    let shim_name = syn::Ident::from(&format!("{}_shim", name.sym.as_str())[..]);
+    let (to_test, test_name) = if invoc.args.len() == 0 {
+        (TokenStream::empty(), &func.ident)
+    } else {
+        let mut inputs = Vec::new();
+        let mut input_vals = Vec::new();
+        let ret = &func.decl.output;
+        for arg in func.decl.inputs.iter() {
+            let capture = match **arg.item() {
+                syn::FnArg::Captured(ref c) => c,
+                _ => panic!("arguments must not have patterns"),
+            };
+            let ident = match capture.pat {
+                syn::Pat::Ident(ref i) => &i.ident,
+                _ => panic!("must have bare arguments"),
+            };
+            match invoc.args.iter().find(|a| a.0 == ident.sym.as_str()) {
+                Some(&(_, ref tts)) => {
+                    input_vals.push(quote! { #tts });
+                }
+                None => {
+                    inputs.push(capture);
+                    input_vals.push(quote! { #ident });
+                }
+            };
+        }
+        let attrs = Append(&item.attrs);
+        (quote! {
+            #attrs
+            unsafe fn #shim_name(#(#inputs),*) #ret {
+                #name(#(#input_vals),*)
+            }
+        }.into(), &shim_name)
+    };
+
+    let tts: TokenStream = quote! {
         #[test]
         #[allow(non_snake_case)]
-        {ignore}
-        fn assert_instr_{name}() {{
-            ::stdsimd_test::assert({name} as usize,
-                                   \"{name}\",
-                                   \"{instr}\");
-        }}
-    ", name = name.as_str(), instr = instr.as_str(), ignore = ignore);
-    let test: TokenStream = test.parse().unwrap();
+        #maybe_ignore
+        fn #assert_name() {
+            #to_test
 
-    item.into_iter().chain(test.into_iter()).collect()
+            ::stdsimd_test::assert(#test_name as usize,
+                                   stringify!(#test_name),
+                                   stringify!(#instr));
+        }
+    }.into();
+    // why? necessary now to get tests to work?
+    let tts: TokenStream = tts.to_string().parse().unwrap();
+
+    let tts: TokenStream = quote! {
+        #item
+        #tts
+    }.into();
+    tts.into()
 }
 
-fn find_name(item: TokenStream) -> Term {
-    let mut tokens = item.into_iter();
-    while let Some(tok) = tokens.next() {
-        if let TokenNode::Term(word) = tok.kind {
-            if word.as_str() == "fn" {
-                break
-            }
-        }
-    }
+struct Invoc {
+    instr: syn::Ident,
+    args: Vec<(syn::Ident, syn::Expr)>,
+}
 
-    match tokens.next().map(|t| t.kind) {
-        Some(TokenNode::Term(word)) => word,
-        _ => panic!("failed to find function name"),
+impl synom::Synom for Invoc {
+    named!(parse -> Self, map!(parens!(do_parse!(
+        instr: syn!(syn::Ident) >>
+        args: many0!(do_parse!(
+            syn!(syn::tokens::Comma) >>
+            name: syn!(syn::Ident) >>
+            syn!(syn::tokens::Eq) >>
+            expr: syn!(syn::Expr) >>
+            (name, expr)
+        )) >>
+        (Invoc {
+            instr,
+            args,
+        })
+    )), |p| p.0));
+}
+
+struct Append<T>(T);
+
+impl<T> quote::ToTokens for Append<T>
+    where T: Clone + IntoIterator,
+          T::Item: quote::ToTokens
+{
+    fn to_tokens(&self, tokens: &mut quote::Tokens) {
+        for item in self.0.clone() {
+            item.to_tokens(tokens);
+        }
     }
 }
