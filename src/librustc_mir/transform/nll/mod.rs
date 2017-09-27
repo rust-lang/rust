@@ -16,13 +16,14 @@ use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::infer::{self, InferCtxt};
 use rustc::util::nodemap::FxHashSet;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     lookup_map: HashMap<RegionVid, Lookup>,
-    regions: Vec<Region>,
+    regions: IndexVec<RegionIndex, Region>,
     infcx: InferCtxt<'a, 'gcx, 'tcx>,
 }
 
@@ -31,7 +32,7 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
         NLLVisitor {
             infcx,
             lookup_map: HashMap::new(),
-            regions: vec![],
+            regions: IndexVec::new(),
         }
     }
 
@@ -152,4 +153,20 @@ impl MirPass for NLL {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct Region {
     points: FxHashSet<Location>,
+}
+
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub struct RegionIndex(pub u32);
+
+impl Idx for RegionIndex {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= ::std::u32::MAX as usize);
+        RegionIndex(idx as u32)
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.0 as usize
+    }
 }
