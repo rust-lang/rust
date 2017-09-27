@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd};
+use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
 use syntax::codemap::{self, BytePos, Span};
 use syntax::ptr;
 
@@ -58,31 +58,23 @@ impl Rewrite for Pat {
             } else {
                 None
             },
-            PatKind::Range(ref lhs, ref rhs, ref end_kind) => match *end_kind {
-                RangeEnd::Excluded => rewrite_pair(
+            PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
+                let infix = match *end_kind {
+                    RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
+                    RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
+                    RangeEnd::Excluded => "..",
+                };
+                rewrite_pair(
                     &**lhs,
                     &**rhs,
                     "",
-                    "..",
+                    infix,
                     "",
                     context,
                     shape,
                     SeparatorPlace::Front,
-                ),
-                // FIXME: Change _ to RangeEnd::Included(RangeSyntax::DotDotDot)
-                // and add RangeEnd::Included(RangeSyntax::DotDotEq)
-                // once rust PR #44709 gets merged
-                _ => rewrite_pair(
-                    &**lhs,
-                    &**rhs,
-                    "",
-                    "...",
-                    "",
-                    context,
-                    shape,
-                    SeparatorPlace::Front,
-                ),
-            },
+                )
+            }
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, shape)
