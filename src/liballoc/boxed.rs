@@ -269,7 +269,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        mem::transmute(raw)
+        Box(Unique::new_unchecked(raw))
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
@@ -295,7 +295,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        unsafe { mem::transmute(b) }
+        Box::into_unique(b).as_ptr()
     }
 
     /// Consumes the `Box`, returning the wrapped pointer as `Unique<T>`.
@@ -326,7 +326,9 @@ impl<T: ?Sized> Box<T> {
                issue = "27730")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        unsafe { mem::transmute(b) }
+        let u = b.0;
+        mem::forget(b);
+        u
     }
 }
 
