@@ -8,12 +8,12 @@ version = "0.1.0"
 cast = { version = "0.2.2", features = ["x128"], optional = true }
 rand = { version = "0.3.15", optional = true }
 
-[build-dependencies.gcc]
+[build-dependencies.cc]
 optional = true
-version = "0.3.53"
+version = "1.0"
 
 [features]
-c = ["gcc"]
+c = ["cc"]
 compiler-builtins = []
 default = ["compiler-builtins"]
 mem = []
