@@ -9,15 +9,15 @@ use stdsimd_test::assert_instr;
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(addss))]
-pub fn _mm_add_ss(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { addss(a, b) }
+pub unsafe fn _mm_add_ss(a: f32x4, b: f32x4) -> f32x4 {
+    addss(a, b)
 }
 
 /// Adds f32x4 vectors.
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(addps))]
-pub fn _mm_add_ps(a: f32x4, b: f32x4) -> f32x4 {
+pub unsafe fn _mm_add_ps(a: f32x4, b: f32x4) -> f32x4 {
     a + b
 }
 
@@ -26,15 +26,15 @@ pub fn _mm_add_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(subss))]
-pub fn _mm_sub_ss(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { subss(a, b) }
+pub unsafe fn _mm_sub_ss(a: f32x4, b: f32x4) -> f32x4 {
+    subss(a, b)
 }
 
 /// Subtracts f32x4 vectors.
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(subps))]
-pub fn _mm_sub_ps(a: f32x4, b: f32x4) -> f32x4 {
+pub unsafe fn _mm_sub_ps(a: f32x4, b: f32x4) -> f32x4 {
     a - b
 }
 
@@ -43,15 +43,15 @@ pub fn _mm_sub_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(mulss))]
-pub fn _mm_mul_ss(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { mulss(a, b) }
+pub unsafe fn _mm_mul_ss(a: f32x4, b: f32x4) -> f32x4 {
+    mulss(a, b)
 }
 
 /// Multiplies f32x4 vectors.
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(mulps))]
-pub fn _mm_mul_ps(a: f32x4, b: f32x4) -> f32x4 {
+pub unsafe fn _mm_mul_ps(a: f32x4, b: f32x4) -> f32x4 {
     a * b
 }
 
@@ -60,15 +60,15 @@ pub fn _mm_mul_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(divss))]
-pub fn _mm_div_ss(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { divss(a, b) }
+pub unsafe fn _mm_div_ss(a: f32x4, b: f32x4) -> f32x4 {
+    divss(a, b)
 }
 
 /// Divides f32x4 vectors.
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(divps))]
-pub fn _mm_div_ps(a: f32x4, b: f32x4) -> f32x4 {
+pub unsafe fn _mm_div_ps(a: f32x4, b: f32x4) -> f32x4 {
     a / b
 }
 
@@ -77,8 +77,8 @@ pub fn _mm_div_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(sqrtss))]
-pub fn _mm_sqrt_ss(a: f32x4) -> f32x4 {
-    unsafe { sqrtss(a) }
+pub unsafe fn _mm_sqrt_ss(a: f32x4) -> f32x4 {
+    sqrtss(a)
 }
 
 /// Return the square root of packed single-precision (32-bit) floating-point
@@ -86,8 +86,8 @@ pub fn _mm_sqrt_ss(a: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(sqrtps))]
-pub fn _mm_sqrt_ps(a: f32x4) -> f32x4 {
-    unsafe { sqrtps(a) }
+pub unsafe fn _mm_sqrt_ps(a: f32x4) -> f32x4 {
+    sqrtps(a)
 }
 
 /// Return the approximate reciprocal of the first single-precision
@@ -95,8 +95,8 @@ pub fn _mm_sqrt_ps(a: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(rcpss))]
-pub fn _mm_rcp_ss(a: f32x4) -> f32x4 {
-    unsafe { rcpss(a) }
+pub unsafe fn _mm_rcp_ss(a: f32x4) -> f32x4 {
+    rcpss(a)
 }
 
 /// Return the approximate reciprocal of packed single-precision (32-bit)
@@ -104,8 +104,8 @@ pub fn _mm_rcp_ss(a: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(rcpps))]
-pub fn _mm_rcp_ps(a: f32x4) -> f32x4 {
-    unsafe { rcpps(a) }
+pub unsafe fn _mm_rcp_ps(a: f32x4) -> f32x4 {
+    rcpps(a)
 }
 
 /// Return the approximate reciprocal square root of the fist single-precision
@@ -113,8 +113,8 @@ pub fn _mm_rcp_ps(a: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(rsqrtss))]
-pub fn _mm_rsqrt_ss(a: f32x4) -> f32x4 {
-    unsafe { rsqrtss(a) }
+pub unsafe fn _mm_rsqrt_ss(a: f32x4) -> f32x4 {
+    rsqrtss(a)
 }
 
 /// Return the approximate reciprocal square root of packed single-precision
@@ -122,8 +122,8 @@ pub fn _mm_rsqrt_ss(a: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(rsqrtps))]
-pub fn _mm_rsqrt_ps(a: f32x4) -> f32x4 {
-    unsafe { rsqrtps(a) }
+pub unsafe fn _mm_rsqrt_ps(a: f32x4) -> f32x4 {
+    rsqrtps(a)
 }
 
 /// Compare the first single-precision (32-bit) floating-point element of `a`
@@ -132,8 +132,8 @@ pub fn _mm_rsqrt_ps(a: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(minss))]
-pub fn _mm_min_ss(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { minss(a, b) }
+pub unsafe fn _mm_min_ss(a: f32x4, b: f32x4) -> f32x4 {
+    minss(a, b)
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in `a` and
@@ -141,8 +141,8 @@ pub fn _mm_min_ss(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(minps))]
-pub fn _mm_min_ps(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { minps(a, b) }
+pub unsafe fn _mm_min_ps(a: f32x4, b: f32x4) -> f32x4 {
+    minps(a, b)
 }
 
 /// Compare the first single-precision (32-bit) floating-point element of `a`
@@ -151,8 +151,8 @@ pub fn _mm_min_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(maxss))]
-pub fn _mm_max_ss(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { maxss(a, b) }
+pub unsafe fn _mm_max_ss(a: f32x4, b: f32x4) -> f32x4 {
+    maxss(a, b)
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in `a` and
@@ -160,24 +160,23 @@ pub fn _mm_max_ss(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(maxps))]
-pub fn _mm_max_ps(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { maxps(a, b) }
+pub unsafe fn _mm_max_ps(a: f32x4, b: f32x4) -> f32x4 {
+    maxps(a, b)
 }
 
-// Shuffle packed single-precision (32-bit) floating-point elements in `a` and `b`
-// using `mask`.
-// The lower half of result takes values from `a` and the higher half from `b`.
-// Mask is split to 2 control bits each to index the element from inputs.
+/// Shuffle packed single-precision (32-bit) floating-point elements in `a` and
+/// `b` using `mask`.
+///
+/// The lower half of result takes values from `a` and the higher half from
+/// `b`. Mask is split to 2 control bits each to index the element from inputs.
 #[inline(always)]
 #[target_feature = "+sse"]
-pub fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: i32) -> f32x4 {
+pub unsafe fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: i32) -> f32x4 {
     let mask = (mask & 0xFF) as u8;
 
     macro_rules! shuffle_done {
         ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
-            unsafe {
-                simd_shuffle4(a, b, [$x01, $x23, $x45, $x67])
-            }
+            simd_shuffle4(a, b, [$x01, $x23, $x45, $x67])
         }
     }
     macro_rules! shuffle_x67 {
@@ -219,10 +218,10 @@ pub fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: i32) -> f32x4 {
 }
 
 #[cfg(test)]
-#[cfg_attr(test, assert_instr(shufps))]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(shufps))]
 fn _test_mm_shuffle_ps(a: f32x4, b: f32x4) -> f32x4 {
-    _mm_shuffle_ps(a, b, 3)
+    unsafe { _mm_shuffle_ps(a, b, 3) }
 }
 
 /// Unpack and interleave single-precision (32-bit) floating-point elements
@@ -230,8 +229,8 @@ fn _test_mm_shuffle_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(unpckhps))]
-pub fn _mm_unpackhi_ps(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { simd_shuffle4(a, b, [2, 6, 3, 7]) }
+pub unsafe fn _mm_unpackhi_ps(a: f32x4, b: f32x4) -> f32x4 {
+    simd_shuffle4(a, b, [2, 6, 3, 7])
 }
 
 /// Unpack and interleave single-precision (32-bit) floating-point elements
@@ -239,8 +238,8 @@ pub fn _mm_unpackhi_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(unpcklps))]
-pub fn _mm_unpacklo_ps(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { simd_shuffle4(a, b, [0, 4, 1, 5]) }
+pub unsafe fn _mm_unpacklo_ps(a: f32x4, b: f32x4) -> f32x4 {
+    simd_shuffle4(a, b, [0, 4, 1, 5])
 }
 
 /// Combine higher half of `a` and `b`. The highwe half of `b` occupies the lower
@@ -249,9 +248,9 @@ pub fn _mm_unpacklo_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[target_feature = "+sse"]
 #[cfg_attr(all(test, not(windows)), assert_instr(movhlps))]
 #[cfg_attr(all(test, windows), assert_instr(unpckhpd))]
-pub fn _mm_movehl_ps(a: f32x4, b: f32x4) -> f32x4 {
+pub unsafe fn _mm_movehl_ps(a: f32x4, b: f32x4) -> f32x4 {
     // TODO; figure why this is a different instruction on Windows?
-    unsafe { simd_shuffle4(a, b, [6, 7, 2, 3]) }
+    simd_shuffle4(a, b, [6, 7, 2, 3])
 }
 
 /// Combine lower half of `a` and `b`. The lower half of `b` occupies the higher
@@ -259,8 +258,8 @@ pub fn _mm_movehl_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(unpcklpd))]
-pub fn _mm_movelh_ps(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { simd_shuffle4(a, b, [0, 1, 4, 5]) }
+pub unsafe fn _mm_movelh_ps(a: f32x4, b: f32x4) -> f32x4 {
+    simd_shuffle4(a, b, [0, 1, 4, 5])
 }
 
 /// Return a mask of the most significant bit of each element in `a`.
@@ -270,8 +269,8 @@ pub fn _mm_movelh_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(movmskps))]
-pub fn _mm_movemask_ps(a: f32x4) -> i32 {
-    unsafe { movmskps(a) }
+pub unsafe fn _mm_movemask_ps(a: f32x4) -> i32 {
+    movmskps(a)
 }
 
 #[allow(improper_ctypes)]
@@ -318,7 +317,7 @@ mod tests {
     fn _mm_add_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_add_ps(a, b);
+        let r = unsafe { sse::_mm_add_ps(a, b) };
         assert_eq!(r, f32x4::new(-101.0, 25.0, 0.0, -15.0));
     }
 
@@ -326,7 +325,7 @@ mod tests {
     fn _mm_add_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_add_ss(a, b);
+        let r = unsafe { sse::_mm_add_ss(a, b) };
         assert_eq!(r, f32x4::new(-101.0, 5.0, 0.0, -10.0));
     }
 
@@ -334,7 +333,7 @@ mod tests {
     fn _mm_sub_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_sub_ps(a, b);
+        let r = unsafe { sse::_mm_sub_ps(a, b) };
         assert_eq!(r, f32x4::new(99.0, -15.0, 0.0, -5.0));
     }
 
@@ -342,7 +341,7 @@ mod tests {
     fn _mm_sub_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_sub_ss(a, b);
+        let r = unsafe { sse::_mm_sub_ss(a, b) };
         assert_eq!(r, f32x4::new(99.0, 5.0, 0.0, -10.0));
     }
 
@@ -350,7 +349,7 @@ mod tests {
     fn _mm_mul_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_mul_ps(a, b);
+        let r = unsafe { sse::_mm_mul_ps(a, b) };
         assert_eq!(r, f32x4::new(100.0, 100.0, 0.0, 50.0));
     }
 
@@ -358,7 +357,7 @@ mod tests {
     fn _mm_mul_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_mul_ss(a, b);
+        let r = unsafe { sse::_mm_mul_ss(a, b) };
         assert_eq!(r, f32x4::new(100.0, 5.0, 0.0, -10.0));
     }
 
@@ -366,7 +365,7 @@ mod tests {
     fn _mm_div_ps() {
         let a = f32x4::new(-1.0, 5.0, 2.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.2, -5.0);
-        let r = sse::_mm_div_ps(a, b);
+        let r = unsafe { sse::_mm_div_ps(a, b) };
         assert_eq!(r, f32x4::new(0.01, 0.25, 10.0, 2.0));
     }
 
@@ -374,14 +373,14 @@ mod tests {
     fn _mm_div_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_div_ss(a, b);
+        let r = unsafe { sse::_mm_div_ss(a, b) };
         assert_eq!(r, f32x4::new(0.01, 5.0, 0.0, -10.0));
     }
 
     #[simd_test = "sse"]
     fn _mm_sqrt_ss() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
-        let r = sse::_mm_sqrt_ss(a);
+        let r = unsafe { sse::_mm_sqrt_ss(a) };
         let e = f32x4::new(2.0, 13.0, 16.0, 100.0);
         assert_eq!(r, e);
     }
@@ -389,7 +388,7 @@ mod tests {
     #[simd_test = "sse"]
     fn _mm_sqrt_ps() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
-        let r = sse::_mm_sqrt_ps(a);
+        let r = unsafe { sse::_mm_sqrt_ps(a) };
         let e = f32x4::new(2.0, 3.6055512, 4.0, 10.0);
         assert_eq!(r, e);
     }
@@ -397,7 +396,7 @@ mod tests {
     #[simd_test = "sse"]
     fn _mm_rcp_ss() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
-        let r = sse::_mm_rcp_ss(a);
+        let r = unsafe { sse::_mm_rcp_ss(a) };
         let e = f32x4::new(0.24993896, 13.0, 16.0, 100.0);
         assert_eq!(r, e);
     }
@@ -405,7 +404,7 @@ mod tests {
     #[simd_test = "sse"]
     fn _mm_rcp_ps() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
-        let r = sse::_mm_rcp_ps(a);
+        let r = unsafe { sse::_mm_rcp_ps(a) };
         let e = f32x4::new(0.24993896, 0.0769043, 0.06248474, 0.0099983215);
         assert_eq!(r, e);
     }
@@ -413,7 +412,7 @@ mod tests {
     #[simd_test = "sse"]
     fn _mm_rsqrt_ss() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
-        let r = sse::_mm_rsqrt_ss(a);
+        let r = unsafe { sse::_mm_rsqrt_ss(a) };
         let e = f32x4::new(0.49987793, 13.0, 16.0, 100.0);
         assert_eq!(r, e);
     }
@@ -421,7 +420,7 @@ mod tests {
     #[simd_test = "sse"]
     fn _mm_rsqrt_ps() {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
-        let r = sse::_mm_rsqrt_ps(a);
+        let r = unsafe { sse::_mm_rsqrt_ps(a) };
         let e = f32x4::new(0.49987793, 0.2772827, 0.24993896, 0.099990845);
         assert_eq!(r, e);
     }
@@ -430,7 +429,7 @@ mod tests {
     fn _mm_min_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_min_ss(a, b);
+        let r = unsafe { sse::_mm_min_ss(a, b) };
         assert_eq!(r, f32x4::new(-100.0, 5.0, 0.0, -10.0));
     }
 
@@ -438,7 +437,7 @@ mod tests {
     fn _mm_min_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_min_ps(a, b);
+        let r = unsafe { sse::_mm_min_ps(a, b) };
         assert_eq!(r, f32x4::new(-100.0, 5.0, 0.0, -10.0));
     }
 
@@ -446,7 +445,7 @@ mod tests {
     fn _mm_max_ss() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_max_ss(a, b);
+        let r = unsafe { sse::_mm_max_ss(a, b) };
         assert_eq!(r, f32x4::new(-1.0, 5.0, 0.0, -10.0));
     }
 
@@ -454,7 +453,7 @@ mod tests {
     fn _mm_max_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_max_ps(a, b);
+        let r = unsafe { sse::_mm_max_ps(a, b) };
         assert_eq!(r, f32x4::new(-1.0, 20.0, 0.0, -5.0));
     }
 
@@ -463,7 +462,7 @@ mod tests {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
         let mask = 0b00_01_01_11;
-        let r = sse::_mm_shuffle_ps(a, b, mask);
+        let r = unsafe { sse::_mm_shuffle_ps(a, b, mask) };
         assert_eq!(r, f32x4::new(4.0, 2.0, 6.0, 5.0));
     }
 
@@ -471,7 +470,7 @@ mod tests {
     fn _mm_unpackhi_ps() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
-        let r = sse::_mm_unpackhi_ps(a, b);
+        let r = unsafe { sse::_mm_unpackhi_ps(a, b) };
         assert_eq!(r, f32x4::new(3.0, 7.0, 4.0, 8.0));
     }
 
@@ -479,7 +478,7 @@ mod tests {
     fn _mm_unpacklo_ps() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
-        let r = sse::_mm_unpacklo_ps(a, b);
+        let r = unsafe { sse::_mm_unpacklo_ps(a, b) };
         assert_eq!(r, f32x4::new(1.0, 5.0, 2.0, 6.0));
     }
 
@@ -487,7 +486,7 @@ mod tests {
     fn _mm_movehl_ps() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
-        let r = sse::_mm_movehl_ps(a, b);
+        let r = unsafe { sse::_mm_movehl_ps(a, b) };
         assert_eq!(r, f32x4::new(7.0, 8.0, 3.0, 4.0));
     }
 
@@ -495,16 +494,20 @@ mod tests {
     fn _mm_movelh_ps() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
-        let r = sse::_mm_movelh_ps(a, b);
+        let r = unsafe { sse::_mm_movelh_ps(a, b) };
         assert_eq!(r, f32x4::new(1.0, 2.0, 5.0, 6.0));
     }
 
     #[simd_test = "sse"]
     fn _mm_movemask_ps() {
-        let r = sse::_mm_movemask_ps(f32x4::new(-1.0, 5.0, -5.0, 0.0));
+        let r = unsafe {
+            sse::_mm_movemask_ps(f32x4::new(-1.0, 5.0, -5.0, 0.0))
+        };
         assert_eq!(r, 0b0101);
 
-        let r = sse::_mm_movemask_ps(f32x4::new(-1.0, -5.0, -5.0, 0.0));
+        let r = unsafe {
+            sse::_mm_movemask_ps(f32x4::new(-1.0, -5.0, -5.0, 0.0))
+        };
         assert_eq!(r, 0b0111);
     }
 }

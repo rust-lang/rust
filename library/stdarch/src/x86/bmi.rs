@@ -10,20 +10,12 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-#[allow(dead_code)]
-extern "C" {
-    #[link_name="llvm.x86.bmi.bextr.32"]
-    fn x86_bmi_bextr_32(x: u32, y: u32) -> u32;
-    #[link_name="llvm.x86.bmi.bextr.64"]
-    fn x86_bmi_bextr_64(x: u64, y: u64) -> u64;
-}
-
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
-pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
+pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
     _bextr2_u32(a, (start & 0xffu32) | ((len & 0xffu32) << 8u32))
 }
 
@@ -33,7 +25,7 @@ pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
 #[cfg(not(target_arch = "x86"))]
-pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
+pub unsafe fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
     _bextr2_u64(a, (start & 0xffu64) | ((len & 0xffu64) << 8u64))
 }
 
@@ -45,8 +37,8 @@ pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
-pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
-    unsafe { x86_bmi_bextr_32(a, control) }
+pub unsafe fn _bextr2_u32(a: u32, control: u32) -> u32 {
+    x86_bmi_bextr_32(a, control)
 }
 
 /// Extracts bits of `a` specified by `control` into
@@ -58,15 +50,15 @@ pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
 #[cfg(not(target_arch = "x86"))]
-pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
-    unsafe { x86_bmi_bextr_64(a, control) }
+pub unsafe fn _bextr2_u64(a: u64, control: u64) -> u64 {
+    x86_bmi_bextr_64(a, control)
 }
 
 /// Bitwise logical `AND` of inverted `a` with `b`.
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(andn))]
-pub fn _andn_u32(a: u32, b: u32) -> u32 {
+pub unsafe fn _andn_u32(a: u32, b: u32) -> u32 {
     !a & b
 }
 
@@ -74,7 +66,7 @@ pub fn _andn_u32(a: u32, b: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(andn))]
-pub fn _andn_u64(a: u64, b: u64) -> u64 {
+pub unsafe fn _andn_u64(a: u64, b: u64) -> u64 {
     !a & b
 }
 
@@ -82,7 +74,7 @@ pub fn _andn_u64(a: u64, b: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsi))]
-pub fn _blsi_u32(x: u32) -> u32 {
+pub unsafe fn _blsi_u32(x: u32) -> u32 {
     x & x.wrapping_neg()
 }
 
@@ -91,7 +83,7 @@ pub fn _blsi_u32(x: u32) -> u32 {
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsi))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
-pub fn _blsi_u64(x: u64) -> u64 {
+pub unsafe fn _blsi_u64(x: u64) -> u64 {
     x & x.wrapping_neg()
 }
 
@@ -99,7 +91,7 @@ pub fn _blsi_u64(x: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsmsk))]
-pub fn _blsmsk_u32(x: u32) -> u32 {
+pub unsafe fn _blsmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_sub(1u32))
 }
 
@@ -108,7 +100,7 @@ pub fn _blsmsk_u32(x: u32) -> u32 {
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
-pub fn _blsmsk_u64(x: u64) -> u64 {
+pub unsafe fn _blsmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_sub(1u64))
 }
 
@@ -118,7 +110,7 @@ pub fn _blsmsk_u64(x: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsr))]
-pub fn _blsr_u32(x: u32) -> u32 {
+pub unsafe fn _blsr_u32(x: u32) -> u32 {
     x & (x.wrapping_sub(1))
 }
 
@@ -129,7 +121,7 @@ pub fn _blsr_u32(x: u32) -> u32 {
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsr))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
-pub fn _blsr_u64(x: u64) -> u64 {
+pub unsafe fn _blsr_u64(x: u64) -> u64 {
     x & (x.wrapping_sub(1))
 }
 
@@ -139,7 +131,7 @@ pub fn _blsr_u64(x: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub fn _tzcnt_u16(x: u16) -> u16 {
+pub unsafe fn _tzcnt_u16(x: u16) -> u16 {
     x.trailing_zeros() as u16
 }
 
@@ -149,7 +141,7 @@ pub fn _tzcnt_u16(x: u16) -> u16 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub fn _tzcnt_u32(x: u32) -> u32 {
+pub unsafe fn _tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
 }
 
@@ -159,7 +151,7 @@ pub fn _tzcnt_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub fn _tzcnt_u64(x: u64) -> u64 {
+pub unsafe fn _tzcnt_u64(x: u64) -> u64 {
     x.trailing_zeros() as u64
 }
 
@@ -169,7 +161,7 @@ pub fn _tzcnt_u64(x: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub fn _mm_tzcnt_u32(x: u32) -> u32 {
+pub unsafe fn _mm_tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
 }
 
@@ -179,8 +171,16 @@ pub fn _mm_tzcnt_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub fn _mm_tzcnt_u64(x: u64) -> u64 {
+pub unsafe fn _mm_tzcnt_u64(x: u64) -> u64 {
     x.trailing_zeros() as u64
+}
+
+#[allow(dead_code)]
+extern "C" {
+    #[link_name="llvm.x86.bmi.bextr.32"]
+    fn x86_bmi_bextr_32(x: u32, y: u32) -> u32;
+    #[link_name="llvm.x86.bmi.bextr.64"]
+    fn x86_bmi_bextr_64(x: u64, y: u64) -> u64;
 }
 
 #[cfg(test)]
@@ -191,98 +191,122 @@ mod tests {
 
     #[simd_test = "bmi"]
     fn _bextr_u32() {
-        assert_eq!(bmi::_bextr_u32(0b0101_0000u32, 4, 4), 0b0000_0101u32);
+        let r = unsafe { bmi::_bextr_u32(0b0101_0000u32, 4, 4) };
+        assert_eq!(r, 0b0000_0101u32);
     }
 
     #[simd_test = "bmi"]
     #[cfg(not(target_arch = "x86"))]
     fn _bextr_u64() {
-        assert_eq!(bmi::_bextr_u64(0b0101_0000u64, 4, 4), 0b0000_0101u64);
+        let r = unsafe { bmi::_bextr_u64(0b0101_0000u64, 4, 4) };
+        assert_eq!(r, 0b0000_0101u64);
     }
 
     #[simd_test = "bmi"]
     fn _andn_u32() {
-        assert_eq!(bmi::_andn_u32(0, 0), 0);
-        assert_eq!(bmi::_andn_u32(0, 1), 1);
-        assert_eq!(bmi::_andn_u32(1, 0), 0);
-        assert_eq!(bmi::_andn_u32(1, 1), 0);
+        assert_eq!(unsafe { bmi::_andn_u32(0, 0) }, 0);
+        assert_eq!(unsafe { bmi::_andn_u32(0, 1) }, 1);
+        assert_eq!(unsafe { bmi::_andn_u32(1, 0) }, 0);
+        assert_eq!(unsafe { bmi::_andn_u32(1, 1) }, 0);
 
-        assert_eq!(bmi::_andn_u32(0b0000_0000u32, 0b0000_0000u32), 0b0000_0000u32);
-        assert_eq!(bmi::_andn_u32(0b0000_0000u32, 0b1111_1111u32), 0b1111_1111u32);
-        assert_eq!(bmi::_andn_u32(0b1111_1111u32, 0b0000_0000u32), 0b0000_0000u32);
-        assert_eq!(bmi::_andn_u32(0b1111_1111u32, 0b1111_1111u32), 0b0000_0000u32);
-        assert_eq!(bmi::_andn_u32(0b0100_0000u32, 0b0101_1101u32), 0b0001_1101u32);
+        let r = unsafe { bmi::_andn_u32(0b0000_0000u32, 0b0000_0000u32) };
+        assert_eq!(r, 0b0000_0000u32);
+
+        let r = unsafe { bmi::_andn_u32(0b0000_0000u32, 0b1111_1111u32) };
+        assert_eq!(r, 0b1111_1111u32);
+
+        let r = unsafe { bmi::_andn_u32(0b1111_1111u32, 0b0000_0000u32) };
+        assert_eq!(r, 0b0000_0000u32);
+
+        let r = unsafe { bmi::_andn_u32(0b1111_1111u32, 0b1111_1111u32) };
+        assert_eq!(r, 0b0000_0000u32);
+
+        let r = unsafe { bmi::_andn_u32(0b0100_0000u32, 0b0101_1101u32) };
+        assert_eq!(r, 0b0001_1101u32);
     }
 
     #[simd_test = "bmi"]
     #[cfg(not(target_arch = "x86"))]
     fn _andn_u64() {
-        assert_eq!(bmi::_andn_u64(0, 0), 0);
-        assert_eq!(bmi::_andn_u64(0, 1), 1);
-        assert_eq!(bmi::_andn_u64(1, 0), 0);
-        assert_eq!(bmi::_andn_u64(1, 1), 0);
+        assert_eq!(unsafe { bmi::_andn_u64(0, 0) }, 0);
+        assert_eq!(unsafe { bmi::_andn_u64(0, 1) }, 1);
+        assert_eq!(unsafe { bmi::_andn_u64(1, 0) }, 0);
+        assert_eq!(unsafe { bmi::_andn_u64(1, 1) }, 0);
 
-        assert_eq!(bmi::_andn_u64(0b0000_0000u64, 0b0000_0000u64), 0b0000_0000u64);
-        assert_eq!(bmi::_andn_u64(0b0000_0000u64, 0b1111_1111u64), 0b1111_1111u64);
-        assert_eq!(bmi::_andn_u64(0b1111_1111u64, 0b0000_0000u64), 0b0000_0000u64);
-        assert_eq!(bmi::_andn_u64(0b1111_1111u64, 0b1111_1111u64), 0b0000_0000u64);
-        assert_eq!(bmi::_andn_u64(0b0100_0000u64, 0b0101_1101u64), 0b0001_1101u64);
+        let r = unsafe { bmi::_andn_u64(0b0000_0000u64, 0b0000_0000u64) };
+        assert_eq!(r, 0b0000_0000u64);
+
+        let r = unsafe { bmi::_andn_u64(0b0000_0000u64, 0b1111_1111u64) };
+        assert_eq!(r, 0b1111_1111u64);
+
+        let r = unsafe { bmi::_andn_u64(0b1111_1111u64, 0b0000_0000u64) };
+        assert_eq!(r, 0b0000_0000u64);
+
+        let r = unsafe { bmi::_andn_u64(0b1111_1111u64, 0b1111_1111u64) };
+        assert_eq!(r, 0b0000_0000u64);
+
+        let r = unsafe { bmi::_andn_u64(0b0100_0000u64, 0b0101_1101u64) };
+        assert_eq!(r, 0b0001_1101u64);
     }
 
     #[simd_test = "bmi"]
     fn _blsi_u32() {
-        assert_eq!(bmi::_blsi_u32(0b1101_0000u32), 0b0001_0000u32);
+        assert_eq!(unsafe { bmi::_blsi_u32(0b1101_0000u32) }, 0b0001_0000u32);
     }
 
     #[simd_test = "bmi"]
     #[cfg(not(target_arch = "x86"))]
     fn _blsi_u64() {
-        assert_eq!(bmi::_blsi_u64(0b1101_0000u64), 0b0001_0000u64);
+        assert_eq!(unsafe { bmi::_blsi_u64(0b1101_0000u64) }, 0b0001_0000u64);
     }
 
     #[simd_test = "bmi"]
     fn _blsmsk_u32() {
-        assert_eq!(bmi::_blsmsk_u32(0b0011_0000u32), 0b0001_1111u32);
+        let r = unsafe { bmi::_blsmsk_u32(0b0011_0000u32) };
+        assert_eq!(r, 0b0001_1111u32);
     }
 
     #[simd_test = "bmi"]
     #[cfg(not(target_arch = "x86"))]
     fn _blsmsk_u64() {
-        assert_eq!(bmi::_blsmsk_u64(0b0011_0000u64), 0b0001_1111u64);
+        let r = unsafe { bmi::_blsmsk_u64(0b0011_0000u64) };
+        assert_eq!(r, 0b0001_1111u64);
     }
 
     #[simd_test = "bmi"]
     fn _blsr_u32() {
-        /// TODO: test the behavior when the input is 0
-        assert_eq!(bmi::_blsr_u32(0b0011_0000u32), 0b0010_0000u32);
+        // TODO: test the behavior when the input is 0
+        let r = unsafe { bmi::_blsr_u32(0b0011_0000u32) };
+        assert_eq!(r, 0b0010_0000u32);
     }
 
     #[simd_test = "bmi"]
     #[cfg(not(target_arch = "x86"))]
     fn _blsr_u64() {
-        /// TODO: test the behavior when the input is 0
-        assert_eq!(bmi::_blsr_u64(0b0011_0000u64), 0b0010_0000u64);
+        // TODO: test the behavior when the input is 0
+        let r = unsafe { bmi::_blsr_u64(0b0011_0000u64) };
+        assert_eq!(r, 0b0010_0000u64);
     }
 
     #[simd_test = "bmi"]
     fn _tzcnt_u16() {
-        assert_eq!(bmi::_tzcnt_u16(0b0000_0001u16), 0u16);
-        assert_eq!(bmi::_tzcnt_u16(0b0000_0000u16), 16u16);
-        assert_eq!(bmi::_tzcnt_u16(0b1001_0000u16), 4u16);
+        assert_eq!(unsafe { bmi::_tzcnt_u16(0b0000_0001u16) }, 0u16);
+        assert_eq!(unsafe { bmi::_tzcnt_u16(0b0000_0000u16) }, 16u16);
+        assert_eq!(unsafe { bmi::_tzcnt_u16(0b1001_0000u16) }, 4u16);
     }
 
     #[simd_test = "bmi"]
     fn _tzcnt_u32() {
-        assert_eq!(bmi::_tzcnt_u32(0b0000_0001u32), 0u32);
-        assert_eq!(bmi::_tzcnt_u32(0b0000_0000u32), 32u32);
-        assert_eq!(bmi::_tzcnt_u32(0b1001_0000u32), 4u32);
+        assert_eq!(unsafe { bmi::_tzcnt_u32(0b0000_0001u32) }, 0u32);
+        assert_eq!(unsafe { bmi::_tzcnt_u32(0b0000_0000u32) }, 32u32);
+        assert_eq!(unsafe { bmi::_tzcnt_u32(0b1001_0000u32) }, 4u32);
     }
 
     #[simd_test = "bmi"]
     #[cfg(not(target_arch = "x86"))]
     fn _tzcnt_u64() {
-        assert_eq!(bmi::_tzcnt_u64(0b0000_0001u64), 0u64);
-        assert_eq!(bmi::_tzcnt_u64(0b0000_0000u64), 64u64);
-        assert_eq!(bmi::_tzcnt_u64(0b1001_0000u64), 4u64);
+        assert_eq!(unsafe { bmi::_tzcnt_u64(0b0000_0001u64) }, 0u64);
+        assert_eq!(unsafe { bmi::_tzcnt_u64(0b0000_0000u64) }, 64u64);
+        assert_eq!(unsafe { bmi::_tzcnt_u64(0b1001_0000u64) }, 4u64);
     }
 }

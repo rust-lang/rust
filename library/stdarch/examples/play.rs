@@ -24,9 +24,11 @@ mod example {
         haystack.resize(16, 0);
         let vhaystack = vendor::__m128i::from(s::u8x16::load(&haystack, 0));
 
-        vendor::_mm_cmpestri(
-            vneedle, needle_len as i32, vhaystack, hay_len as i32,
-            vendor::_SIDD_CMP_EQUAL_ORDERED) as usize
+        unsafe {
+            vendor::_mm_cmpestri(
+                vneedle, needle_len as i32, vhaystack, hay_len as i32,
+                vendor::_SIDD_CMP_EQUAL_ORDERED) as usize
+        }
     }
 
     pub fn main() {
