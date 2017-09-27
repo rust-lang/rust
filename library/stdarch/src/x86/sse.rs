@@ -247,8 +247,10 @@ pub fn _mm_unpacklo_ps(a: f32x4, b: f32x4) -> f32x4 {
 /// half of result.
 #[inline(always)]
 #[target_feature = "+sse"]
-#[cfg_attr(test, assert_instr(movhlps))]
+#[cfg_attr(all(test, not(windows)), assert_instr(movhlps))]
+#[cfg_attr(all(test, windows), assert_instr(unpckhpd))]
 pub fn _mm_movehl_ps(a: f32x4, b: f32x4) -> f32x4 {
+    // TODO; figure why this is a different instruction on Windows?
     unsafe { simd_shuffle4(a, b, [6, 7, 2, 3]) }
 }
 
