@@ -181,7 +181,7 @@ pub fn main() {
         return;
     }
 
-    if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
+    if "clippy" == std::env::args().nth(1).as_ref().expect("cargo-clippy should be called with at least one argument!") {
         // this arm is executed on the initial call to `cargo clippy`
 
         let manifest_path_arg = std::env::args()
@@ -285,7 +285,7 @@ pub fn main() {
             }
         }
     } else {
-        // this arm is executed when cargo-clippy runs `cargo rustc` with the `RUSTC`
+        // this arm is executed when cargo-clippy runs `cargo rustc` with the `RUSTC_WRAPPER`
         // env var set to itself
 
         let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
@@ -310,13 +310,17 @@ pub fn main() {
         };
 
         rustc_driver::in_rustc_thread(|| {
+            // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
+            // We're invoking the compiler programatically, so we ignore this/
+            let orig_args: Vec<String> = env::args().skip(1).collect();
+
             // this conditional check for the --sysroot flag is there so users can call
             // `cargo-clippy` directly
             // without having to pass --sysroot or anything
-            let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
-                env::args().collect()
+            let mut args: Vec<String> = if orig_args.iter().any(|s| s == "--sysroot") {
+                orig_args.clone()
             } else {
-                env::args()
+                orig_args.clone().into_iter()
                     .chain(Some("--sysroot".to_owned()))
                     .chain(Some(sys_root))
                     .collect()
@@ -325,7 +329,7 @@ pub fn main() {
             // this check ensures that dependencies are built but not linted and the final
             // crate is
             // linted but not built
-            let clippy_enabled = env::args().any(|s| s == "--emit=metadata");
+            let clippy_enabled = orig_args.iter().any(|s| s == "--emit=metadata");
 
             if clippy_enabled {
                 args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
@@ -361,7 +365,7 @@ where
     let path = std::env::current_exe().expect("current executable path invalid");
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
-        .env("RUSTC", path)
+        .env("RUSTC_WRAPPER", path)
         .spawn()
         .expect("could not run cargo")
         .wait()
