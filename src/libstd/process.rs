@@ -1142,7 +1142,7 @@ pub fn exit(code: i32) -> ! {
 /// }
 /// ```
 ///
-/// The [`abort`] function terminates the process, so the destructor will not
+/// The `abort` function terminates the process, so the destructor will not
 /// get run on the example below:
 ///
 /// ```no_run
