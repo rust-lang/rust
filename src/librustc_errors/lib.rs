@@ -431,6 +431,14 @@ impl Handler {
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Warning);
     }
+    pub fn mut_span_warn<'a, S: Into<MultiSpan>>(&'a self,
+                                                 sp: S,
+                                                 msg: &str)
+                                                 -> DiagnosticBuilder<'a> {
+        let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
+        result.set_span(sp);
+        result
+    }
     pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
         self.emit_with_code(&sp.into(), msg, code, Warning);
     }
