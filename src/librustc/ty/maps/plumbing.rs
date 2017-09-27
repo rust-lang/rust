@@ -672,7 +672,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::NeedsDrop |
         DepKind::Layout |
         DepKind::TraitSelect |
-        DepKind::ProjectionCache |
         DepKind::ConstEval |
 
         // We don't have enough information to reconstruct the query key of

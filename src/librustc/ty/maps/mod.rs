@@ -377,9 +377,9 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
+fn const_eval_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                              -> DepConstructor<'tcx> {
-    DepConstructor::ConstEval
+    DepConstructor::ConstEval { param_env }
 }
 
 fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
@@ -390,24 +390,24 @@ fn crate_variances<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::CrateVariances
 }
 
-fn is_copy_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::IsCopy
+fn is_copy_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsCopy { param_env }
 }
 
-fn is_sized_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::IsSized
+fn is_sized_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsSized { param_env }
 }
 
-fn is_freeze_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::IsFreeze
+fn is_freeze_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsFreeze { param_env }
 }
 
-fn needs_drop_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::NeedsDrop
+fn needs_drop_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::NeedsDrop { param_env }
 }
 
-fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::Layout
+fn layout_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::Layout { param_env }
 }
 
 fn lint_levels_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
