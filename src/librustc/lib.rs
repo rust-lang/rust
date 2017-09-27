@@ -71,7 +71,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate owning_ref;
 extern crate rustc_back;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
 extern crate rustc_const_math;
 extern crate rustc_errors as errors;
