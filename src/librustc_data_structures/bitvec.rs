@@ -138,7 +138,7 @@ impl FromIterator<bool> for BitVector {
 /// A "bit matrix" is basically a matrix of booleans represented as
 /// one gigantic bitvector. In other words, it is as if you have
 /// `rows` bitvectors, each of length `columns`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BitMatrix {
     columns: usize,
     vector: Vec<u64>,

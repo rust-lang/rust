@@ -293,7 +293,7 @@ impl Scope {
 }
 
 /// The region scope tree encodes information about region relationships.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ScopeTree {
     /// If not empty, this body is the root of this region hierarchy.
     root_body: Option<hir::HirId>,

@@ -315,7 +315,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeckTables<'tcx> {
     /// The HirId::owner all ItemLocalIds in this table are relative to.
     pub local_id_root: Option<DefId>,
