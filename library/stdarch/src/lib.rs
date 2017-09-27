@@ -82,6 +82,7 @@
 //! [vendor]: https://github.com/rust-lang-nursery/stdsimd/issues/40
 
 #![allow(dead_code)]
+#![allow(unused_features)]
 #![feature(
     const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd, simd_ffi,
     target_feature, cfg_target_feature, i128_type, asm, const_atomic_usize_new
