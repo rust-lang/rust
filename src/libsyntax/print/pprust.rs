@@ -11,7 +11,7 @@
 pub use self::AnnNode::*;
 
 use abi::{self, Abi};
-use ast::{self, BlockCheckMode, PatKind, RangeEnd};
+use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use util::parser::{self, AssocOp, Fixity};
@@ -203,6 +203,8 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Dot                  => ".".to_string(),
         token::DotDot               => "..".to_string(),
         token::DotDotDot            => "...".to_string(),
+        token::DotDotEq             => "..=".to_string(),
+        token::DotEq                => ".=".to_string(),
         token::Comma                => ",".to_string(),
         token::Semi                 => ";".to_string(),
         token::Colon                => ":".to_string(),
@@ -2588,7 +2590,8 @@ impl<'a> State<'a> {
                 self.print_expr(begin)?;
                 self.s.space()?;
                 match *end_kind {
-                    RangeEnd::Included => self.s.word("...")?,
+                    RangeEnd::Included(RangeSyntax::DotDotDot) => self.s.word("...")?,
+                    RangeEnd::Included(RangeSyntax::DotDotEq) => self.s.word("..=")?,
                     RangeEnd::Excluded => self.s.word("..")?,
                 }
                 self.print_expr(end)?;

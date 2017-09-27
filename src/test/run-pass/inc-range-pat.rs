@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Parsing of range patterns
+// Test old and new syntax for inclusive range patterns.
+#![feature(dotdoteq_in_patterns)]
+
 
 fn main() {
-    let 10 ..= 10 + 3 = 12; //~ expected one of `:`, `;`, or `=`, found `+`
+    assert!(match 42 { 0 ... 100 => true, _ => false });
+    assert!(match 42 { 0 ..= 100 => true, _ => false });
+
+    assert!(match 'x' { 'a' ... 'z' => true, _ => false });
+    assert!(match 'x' { 'a' ..= 'z' => true, _ => false });
 }
+

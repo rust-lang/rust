@@ -26,7 +26,7 @@ use self::AttributeType::*;
 use self::AttributeGate::*;
 
 use abi::Abi;
-use ast::{self, NodeId, PatKind, RangeEnd};
+use ast::{self, NodeId, PatKind, RangeEnd, RangeSyntax};
 use attr;
 use codemap::Spanned;
 use syntax_pos::Span;
@@ -261,7 +261,7 @@ declare_features! (
     // rustc internal
     (active, abi_vectorcall, "1.7.0", None),
 
-    // a...b and ...b
+    // a..=b and ..=b
     (active, inclusive_range_syntax, "1.7.0", Some(28237)),
 
     // X..Y patterns
@@ -392,6 +392,9 @@ declare_features! (
 
     // allow `'_` placeholder lifetimes
     (active, underscore_lifetimes, "1.22.0", Some(44524)),
+
+    // allow `..=` in patterns (RFC 1192)
+    (active, dotdoteq_in_patterns, "1.22.0", Some(28237)),
 );
 
 declare_features! (
@@ -1490,6 +1493,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             PatKind::Range(_, _, RangeEnd::Excluded) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
+            }
+            PatKind::Range(_, _, RangeEnd::Included(RangeSyntax::DotDotEq)) => {
+                gate_feature_post!(&self, dotdoteq_in_patterns, pattern.span,
+                                   "`..=` syntax in patterns is experimental");
             }
             _ => {}
         }

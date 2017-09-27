@@ -1131,6 +1131,9 @@ impl<'a> StringReader<'a> {
                     if self.ch_is('.') {
                         self.bump();
                         Ok(token::DotDotDot)
+                    } else if self.ch_is('=') {
+                        self.bump();
+                        Ok(token::DotDotEq)
                     } else {
                         Ok(token::DotDot)
                     }

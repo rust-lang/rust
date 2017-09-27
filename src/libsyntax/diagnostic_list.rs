@@ -291,7 +291,7 @@ Erroneous code example:
 
 fn main() {
     let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-    let x = &tmp[1...]; // error: inclusive range was used with no end
+    let x = &tmp[1..=]; // error: inclusive range was used with no end
 }
 ```
 
@@ -312,7 +312,7 @@ Or put an end to your inclusive range:
 
 fn main() {
     let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-    let x = &tmp[1...3]; // ok!
+    let x = &tmp[1..=3]; // ok!
 }
 ```
 "##,

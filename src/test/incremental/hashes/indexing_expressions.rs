@@ -153,5 +153,5 @@ fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
-    &slice[3...7]
+    &slice[3..=7]
 }

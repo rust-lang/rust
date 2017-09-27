@@ -1094,21 +1094,21 @@ fn test_range() {
 
 #[test]
 fn test_range_inclusive_exhaustion() {
-    let mut r = 10...10;
+    let mut r = 10..=10;
     assert_eq!(r.next(), Some(10));
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 1..=0);
 
-    let mut r = 10...10;
+    let mut r = 10..=10;
     assert_eq!(r.next_back(), Some(10));
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 1..=0);
 
-    let mut r = 10...12;
+    let mut r = 10..=12;
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 1..=0);
 
-    let mut r = 10...12;
+    let mut r = 10..=12;
     assert_eq!(r.nth(5), None);
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 1..=0);
 
 }
 
@@ -1145,20 +1145,20 @@ fn test_range_from_nth() {
 
 #[test]
 fn test_range_inclusive_nth() {
-    assert_eq!((10...15).nth(0), Some(10));
-    assert_eq!((10...15).nth(1), Some(11));
-    assert_eq!((10...15).nth(5), Some(15));
-    assert_eq!((10...15).nth(6), None);
+    assert_eq!((10..=15).nth(0), Some(10));
+    assert_eq!((10..=15).nth(1), Some(11));
+    assert_eq!((10..=15).nth(5), Some(15));
+    assert_eq!((10..=15).nth(6), None);
 
-    let mut r = 10_u8...20;
+    let mut r = 10_u8..=20;
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 13...20);
+    assert_eq!(r, 13..=20);
     assert_eq!(r.nth(2), Some(15));
-    assert_eq!(r, 16...20);
+    assert_eq!(r, 16..=20);
     assert_eq!(r.is_empty(), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, 1...0);  // We may not want to document/promise this detail
+    assert_eq!(r, 1..=0);  // We may not want to document/promise this detail
 }
 
 #[test]

@@ -1864,7 +1864,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_range_end(&mut self, e: &RangeEnd) -> hir::RangeEnd {
         match *e {
-            RangeEnd::Included => hir::RangeEnd::Included,
+            RangeEnd::Included(_) => hir::RangeEnd::Included,
             RangeEnd::Excluded => hir::RangeEnd::Excluded,
         }
     }
