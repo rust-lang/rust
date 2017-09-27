@@ -347,7 +347,7 @@ impl fmt::Debug for DepNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)?;
 
-        if !self.kind.has_params() {
+        if !self.kind.has_params() && !self.kind.is_anon() {
             return Ok(());
         }
 
@@ -356,14 +356,14 @@ impl fmt::Debug for DepNode {
         ::ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.item_path_str(def_id))?;
+                    write!(f, "{}", tcx.def_path(def_id).to_string(tcx))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
                     write!(f, "{}", s)?;
                 } else {
-                    write!(f, "{:?}", self.hash)?;
+                    write!(f, "{}", self.hash)?;
                 }
             } else {
-                write!(f, "{:?}", self.hash)?;
+                write!(f, "{}", self.hash)?;
             }
             Ok(())
         })?;
