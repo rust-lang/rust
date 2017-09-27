@@ -112,7 +112,8 @@ fn resolve_associated_item<'a, 'tcx>(
            def_id, trait_id, rcvr_substs);
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, ty::Binder(trait_ref));
+    let vtbl = tcx.trans_fulfill_obligation(
+        DUMMY_SP, ty::ParamEnv::empty(traits::Reveal::All), ty::Binder(trait_ref));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -226,7 +227,8 @@ pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         substs: tcx.mk_substs_trait(source_ty, &[target_ty])
     });
 
-    match tcx.trans_fulfill_obligation(DUMMY_SP, trait_ref) {
+    match tcx.trans_fulfill_obligation(
+        DUMMY_SP, ty::ParamEnv::empty(traits::Reveal::All), trait_ref) {
         traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
             tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap()
         }
