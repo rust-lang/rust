@@ -79,7 +79,7 @@ mod tests {
     use x86::sse41;
 
     #[simd_test = "sse4.1"]
-    fn _mm_blendv_epi8() {
+    unsafe fn _mm_blendv_epi8() {
         let a = i8x16::new(
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let b = i8x16::new(
@@ -88,22 +88,22 @@ mod tests {
             0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1);
         let e = i8x16::new(
             0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
-        assert_eq!(unsafe { sse41::_mm_blendv_epi8(a, b, mask) }, e);
+        assert_eq!(sse41::_mm_blendv_epi8(a, b, mask), e);
     }
 
     #[simd_test = "sse4.1"]
-    fn _mm_dp_pd() {
+    unsafe fn _mm_dp_pd() {
         let a = f64x2::new(2.0, 3.0);
         let b = f64x2::new(1.0, 4.0);
         let e = f64x2::new(14.0, 0.0);
-        assert_eq!(unsafe { sse41::_mm_dp_pd(a, b, 0b00110001) }, e);
+        assert_eq!(sse41::_mm_dp_pd(a, b, 0b00110001), e);
     }
 
     #[simd_test = "sse4.1"]
-    fn _mm_dp_ps() {
+    unsafe fn _mm_dp_ps() {
         let a = f32x4::new(2.0, 3.0, 1.0, 10.0);
         let b = f32x4::new(1.0, 4.0, 0.5, 10.0);
         let e = f32x4::new(14.5, 0.0, 14.5, 0.0);
-        assert_eq!(unsafe { sse41::_mm_dp_ps(a, b, 0b01110101) }, e);
+        assert_eq!(sse41::_mm_dp_ps(a, b, 0b01110101), e);
     }
 }

@@ -49,7 +49,7 @@ pub fn simd_test(attr: proc_macro::TokenStream,
         #[test]
         fn #name() {
             if cfg_feature_enabled!(#target_feature) {
-                return #name();
+                return unsafe { #name() };
             }
 
             #[target_feature = #enable_feature]

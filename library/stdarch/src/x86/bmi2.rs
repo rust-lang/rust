@@ -117,7 +117,7 @@ mod tests {
     use x86::bmi2;
 
     #[simd_test = "bmi2"]
-    fn _pext_u32() {
+    unsafe fn _pext_u32() {
         let n  = 0b1011_1110_1001_0011u32;
 
         let m0 = 0b0110_0011_1000_0101u32;
@@ -126,13 +126,13 @@ mod tests {
         let m1 = 0b1110_1011_1110_1111u32;
         let s1 = 0b0001_0111_0100_0011u32;
 
-        assert_eq!(unsafe { bmi2::_pext_u32(n, m0) }, s0);
-        assert_eq!(unsafe { bmi2::_pext_u32(n, m1) }, s1);
+        assert_eq!(bmi2::_pext_u32(n, m0), s0);
+        assert_eq!(bmi2::_pext_u32(n, m1), s1);
     }
 
     #[simd_test = "bmi2"]
     #[cfg(not(target_arch = "x86"))]
-    fn _pext_u64() {
+    unsafe fn _pext_u64() {
         let n  = 0b1011_1110_1001_0011u64;
 
         let m0 = 0b0110_0011_1000_0101u64;
@@ -141,12 +141,12 @@ mod tests {
         let m1 = 0b1110_1011_1110_1111u64;
         let s1 = 0b0001_0111_0100_0011u64;
 
-        assert_eq!(unsafe { bmi2::_pext_u64(n, m0) }, s0);
-        assert_eq!(unsafe { bmi2::_pext_u64(n, m1) }, s1);
+        assert_eq!(bmi2::_pext_u64(n, m0), s0);
+        assert_eq!(bmi2::_pext_u64(n, m1), s1);
     }
 
     #[simd_test = "bmi2"]
-    fn _pdep_u32() {
+    unsafe fn _pdep_u32() {
         let n  = 0b1011_1110_1001_0011u32;
 
         let m0 = 0b0110_0011_1000_0101u32;
@@ -155,13 +155,13 @@ mod tests {
         let m1 = 0b1110_1011_1110_1111u32;
         let s1 = 0b1110_1001_0010_0011u32;
 
-        assert_eq!(unsafe { bmi2::_pdep_u32(n, m0) }, s0);
-        assert_eq!(unsafe { bmi2::_pdep_u32(n, m1) }, s1);
+        assert_eq!(bmi2::_pdep_u32(n, m0), s0);
+        assert_eq!(bmi2::_pdep_u32(n, m1), s1);
     }
 
     #[simd_test = "bmi2"]
     #[cfg(not(target_arch = "x86"))]
-    fn _pdep_u64() {
+    unsafe fn _pdep_u64() {
         let n  = 0b1011_1110_1001_0011u64;
 
         let m0 = 0b0110_0011_1000_0101u64;
@@ -170,30 +170,30 @@ mod tests {
         let m1 = 0b1110_1011_1110_1111u64;
         let s1 = 0b1110_1001_0010_0011u64;
 
-        assert_eq!(unsafe { bmi2::_pdep_u64(n, m0) }, s0);
-        assert_eq!(unsafe { bmi2::_pdep_u64(n, m1) }, s1);
+        assert_eq!(bmi2::_pdep_u64(n, m0), s0);
+        assert_eq!(bmi2::_pdep_u64(n, m1), s1);
     }
 
     #[simd_test = "bmi2"]
-    fn _bzhi_u32() {
+    unsafe fn _bzhi_u32() {
         let n = 0b1111_0010u32;
         let s = 0b0001_0010u32;
-        assert_eq!(unsafe { bmi2::_bzhi_u32(n, 5) }, s);
+        assert_eq!(bmi2::_bzhi_u32(n, 5), s);
     }
 
     #[simd_test = "bmi2"]
     #[cfg(not(target_arch = "x86"))]
-    fn _bzhi_u64() {
+    unsafe fn _bzhi_u64() {
         let n = 0b1111_0010u64;
         let s = 0b0001_0010u64;
-        assert_eq!(unsafe { bmi2::_bzhi_u64(n, 5) }, s);
+        assert_eq!(bmi2::_bzhi_u64(n, 5), s);
     }
 
     #[simd_test = "bmi2"]
-    fn _mulx_u32() {
+    unsafe fn _mulx_u32() {
         let a: u32 = 4_294_967_200;
         let b: u32 = 2;
-        let (lo, hi): (u32, u32) = unsafe { bmi2::_mulx_u32(a, b) };
+        let (lo, hi): (u32, u32) = bmi2::_mulx_u32(a, b);
         // result = 8589934400
         //        = 0b0001_1111_1111_1111_1111_1111_1111_0100_0000u64
         //            ^~hi ^~lo~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,10 +203,10 @@ mod tests {
 
     #[simd_test = "bmi2"]
     #[cfg(not(target_arch = "x86"))]
-    fn _mulx_u64() {
+    unsafe fn _mulx_u64() {
         let a: u64 = 9_223_372_036_854_775_800;
         let b: u64 = 100;
-        let (lo, hi): (u64, u64) = unsafe { bmi2::_mulx_u64(a, b) };
+        let (lo, hi): (u64, u64) = bmi2::_mulx_u64(a, b);
         // result = 922337203685477580000
         //        = 0b00110001_11111111_11111111_11111111_11111111_11111111_11111111_11111100_11100000u128
         //            ^~hi~~~~ ^~lo~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

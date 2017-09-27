@@ -60,13 +60,13 @@ mod tests {
     use x86::ssse3 as ssse3;
 
     #[simd_test = "ssse3"]
-    fn _mm_abs_epi8() {
-        let r = unsafe { ssse3::_mm_abs_epi8(i8x16::splat(-5)) };
+    unsafe fn _mm_abs_epi8() {
+        let r = ssse3::_mm_abs_epi8(i8x16::splat(-5));
         assert_eq!(r, u8x16::splat(5));
     }
 
     #[simd_test = "ssse3"]
-    fn _mm_shuffle_epi8() {
+    unsafe fn _mm_shuffle_epi8() {
         let a = u8x16::new(
             1, 2, 3, 4,
             5, 6, 7, 8,
@@ -85,7 +85,7 @@ mod tests {
             13, 6, 6, 11,
             5, 2, 9, 1,
         );
-        let r = unsafe { ssse3::_mm_shuffle_epi8(a, b) };
+        let r = ssse3::_mm_shuffle_epi8(a, b);
         assert_eq!(r, expected);
     }
 }

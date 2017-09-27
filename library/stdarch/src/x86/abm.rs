@@ -48,22 +48,22 @@ mod tests {
     use x86::abm;
 
     #[simd_test = "lzcnt"]
-    fn _lzcnt_u32() {
-        assert_eq!(unsafe { abm::_lzcnt_u32(0b0101_1010u32) }, 25u32);
+    unsafe fn _lzcnt_u32() {
+        assert_eq!(abm::_lzcnt_u32(0b0101_1010u32), 25u32);
     }
 
     #[simd_test = "lzcnt"]
-    fn _lzcnt_u64() {
-        assert_eq!(unsafe { abm::_lzcnt_u64(0b0101_1010u64) }, 57u64);
+    unsafe fn _lzcnt_u64() {
+        assert_eq!(abm::_lzcnt_u64(0b0101_1010u64), 57u64);
     }
 
     #[simd_test = "popcnt"]
-    fn _popcnt32() {
-        assert_eq!(unsafe { abm::_popcnt32(0b0101_1010u32) }, 4);
+    unsafe fn _popcnt32() {
+        assert_eq!(abm::_popcnt32(0b0101_1010u32), 4);
     }
 
     #[simd_test = "popcnt"]
-    fn _popcnt64() {
-        assert_eq!(unsafe { abm::_popcnt64(0b0101_1010u64) }, 4);
+    unsafe fn _popcnt64() {
+        assert_eq!(abm::_popcnt64(0b0101_1010u64), 4);
     }
 }

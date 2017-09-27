@@ -260,186 +260,186 @@ mod tests {
 
     /*
     #[simd_test = "tbm"]
-    fn _bextr_u32() {
+    unsafe fn _bextr_u32() {
         assert_eq!(tbm::_bextr_u32(0b0101_0000u32, 4, 4), 0b0000_0101u32);
     }
 
     #[simd_test = "tbm"]
-    fn _bextr_u64() {
+    unsafe fn _bextr_u64() {
         assert_eq!(tbm::_bextr_u64(0b0101_0000u64, 4, 4), 0b0000_0101u64);
     }
     */
 
     #[simd_test = "tbm"]
-    fn _blcfill_u32() {
+    unsafe fn _blcfill_u32() {
         assert_eq!(
-            unsafe { tbm::_blcfill_u32(0b0101_0111u32) },
+            tbm::_blcfill_u32(0b0101_0111u32),
             0b0101_0000u32);
         assert_eq!(
-            unsafe { tbm::_blcfill_u32(0b1111_1111u32) },
+            tbm::_blcfill_u32(0b1111_1111u32),
             0u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _blcfill_u64() {
+    unsafe fn _blcfill_u64() {
         assert_eq!(
-            unsafe { tbm::_blcfill_u64(0b0101_0111u64) },
+            tbm::_blcfill_u64(0b0101_0111u64),
             0b0101_0000u64);
         assert_eq!(
-            unsafe { tbm::_blcfill_u64(0b1111_1111u64) },
+            tbm::_blcfill_u64(0b1111_1111u64),
             0u64);
     }
 
     #[simd_test = "tbm"]
-    fn _blci_u32() {
+    unsafe fn _blci_u32() {
         assert_eq!(
-            unsafe { tbm::_blci_u32(0b0101_0000u32) },
+            tbm::_blci_u32(0b0101_0000u32),
             0b1111_1111_1111_1111_1111_1111_1111_1110u32);
         assert_eq!(
-            unsafe { tbm::_blci_u32(0b1111_1111u32) },
+            tbm::_blci_u32(0b1111_1111u32),
             0b1111_1111_1111_1111_1111_1110_1111_1111u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _blci_u64() {
+    unsafe fn _blci_u64() {
         assert_eq!(
-            unsafe { tbm::_blci_u64(0b0101_0000u64) },
+            tbm::_blci_u64(0b0101_0000u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1110u64);
         assert_eq!(
-            unsafe { tbm::_blci_u64(0b1111_1111u64) },
+            tbm::_blci_u64(0b1111_1111u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1110_1111_1111u64);
     }
 
     #[simd_test = "tbm"]
-    fn _blcic_u32() {
+    unsafe fn _blcic_u32() {
         assert_eq!(
-            unsafe { tbm::_blcic_u32(0b0101_0001u32) },
+            tbm::_blcic_u32(0b0101_0001u32),
             0b0000_0010u32);
         assert_eq!(
-            unsafe { tbm::_blcic_u32(0b1111_1111u32) },
+            tbm::_blcic_u32(0b1111_1111u32),
             0b1_0000_0000u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _blcic_u64() {
+    unsafe fn _blcic_u64() {
         assert_eq!(
-            unsafe { tbm::_blcic_u64(0b0101_0001u64) },
+            tbm::_blcic_u64(0b0101_0001u64),
             0b0000_0010u64);
         assert_eq!(
-            unsafe { tbm::_blcic_u64(0b1111_1111u64) },
+            tbm::_blcic_u64(0b1111_1111u64),
             0b1_0000_0000u64);
     }
 
     #[simd_test = "tbm"]
-    fn _blcmsk_u32() {
+    unsafe fn _blcmsk_u32() {
         assert_eq!(
-            unsafe { tbm::_blcmsk_u32(0b0101_0001u32) },
+            tbm::_blcmsk_u32(0b0101_0001u32),
             0b0000_0011u32);
         assert_eq!(
-            unsafe { tbm::_blcmsk_u32(0b1111_1111u32) },
+            tbm::_blcmsk_u32(0b1111_1111u32),
             0b1_1111_1111u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _blcmsk_u64() {
+    unsafe fn _blcmsk_u64() {
         assert_eq!(
-            unsafe { tbm::_blcmsk_u64(0b0101_0001u64) },
+            tbm::_blcmsk_u64(0b0101_0001u64),
             0b0000_0011u64);
         assert_eq!(
-            unsafe { tbm::_blcmsk_u64(0b1111_1111u64) },
+            tbm::_blcmsk_u64(0b1111_1111u64),
             0b1_1111_1111u64);
     }
 
     #[simd_test = "tbm"]
-    fn _blcs_u32() {
-       assert_eq!(unsafe { tbm::_blcs_u32(0b0101_0001u32) }, 0b0101_0011u32);
-       assert_eq!(unsafe { tbm::_blcs_u32(0b1111_1111u32) }, 0b1_1111_1111u32);
+    unsafe fn _blcs_u32() {
+       assert_eq!(tbm::_blcs_u32(0b0101_0001u32), 0b0101_0011u32);
+       assert_eq!(tbm::_blcs_u32(0b1111_1111u32), 0b1_1111_1111u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _blcs_u64() {
-       assert_eq!(unsafe { tbm::_blcs_u64(0b0101_0001u64) }, 0b0101_0011u64);
-       assert_eq!(unsafe { tbm::_blcs_u64(0b1111_1111u64) }, 0b1_1111_1111u64);
+    unsafe fn _blcs_u64() {
+       assert_eq!(tbm::_blcs_u64(0b0101_0001u64), 0b0101_0011u64);
+       assert_eq!(tbm::_blcs_u64(0b1111_1111u64), 0b1_1111_1111u64);
     }
 
     #[simd_test = "tbm"]
-    fn _blsfill_u32() {
+    unsafe fn _blsfill_u32() {
         assert_eq!(
-            unsafe { tbm::_blsfill_u32(0b0101_0100u32) },
+            tbm::_blsfill_u32(0b0101_0100u32),
             0b0101_0111u32);
         assert_eq!(
-            unsafe { tbm::_blsfill_u32(0u32) },
+            tbm::_blsfill_u32(0u32),
             0b1111_1111_1111_1111_1111_1111_1111_1111u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _blsfill_u64() {
+    unsafe fn _blsfill_u64() {
         assert_eq!(
-            unsafe { tbm::_blsfill_u64(0b0101_0100u64) },
+            tbm::_blsfill_u64(0b0101_0100u64),
             0b0101_0111u64);
         assert_eq!(
-            unsafe { tbm::_blsfill_u64(0u64) },
+            tbm::_blsfill_u64(0u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111u64);
     }
 
     #[simd_test = "tbm"]
-    fn _blsic_u32() {
+    unsafe fn _blsic_u32() {
         assert_eq!(
-            unsafe { tbm::_blsic_u32(0b0101_0100u32) },
+            tbm::_blsic_u32(0b0101_0100u32),
             0b1111_1111_1111_1111_1111_1111_1111_1011u32);
         assert_eq!(
-            unsafe { tbm::_blsic_u32(0u32) },
+            tbm::_blsic_u32(0u32),
             0b1111_1111_1111_1111_1111_1111_1111_1111u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _blsic_u64() {
+    unsafe fn _blsic_u64() {
         assert_eq!(
-            unsafe { tbm::_blsic_u64(0b0101_0100u64) },
+            tbm::_blsic_u64(0b0101_0100u64),
             0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1011u64);
        assert_eq!(
-           unsafe { tbm::_blsic_u64(0u64) },
+           tbm::_blsic_u64(0u64),
            0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111u64);
     }
 
     #[simd_test = "tbm"]
-    fn _t1mskc_u32() {
+    unsafe fn _t1mskc_u32() {
        assert_eq!(
-           unsafe { tbm::_t1mskc_u32(0b0101_0111u32) },
+           tbm::_t1mskc_u32(0b0101_0111u32),
            0b1111_1111_1111_1111_1111_1111_1111_1000u32);
        assert_eq!(
-           unsafe { tbm::_t1mskc_u32(0u32) },
+           tbm::_t1mskc_u32(0u32),
            0b1111_1111_1111_1111_1111_1111_1111_1111u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _t1mksc_u64() {
+    unsafe fn _t1mksc_u64() {
        assert_eq!(
-           unsafe { tbm::_t1mskc_u64(0b0101_0111u64) },
+           tbm::_t1mskc_u64(0b0101_0111u64),
            0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1000u64);
        assert_eq!(
-           unsafe { tbm::_t1mskc_u64(0u64) },
+           tbm::_t1mskc_u64(0u64),
            0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111u64);
     }
 
     #[simd_test = "tbm"]
-    fn _tzmsk_u32() {
-        assert_eq!(unsafe { tbm::_tzmsk_u32(0b0101_1000u32) }, 0b0000_0111u32);
-        assert_eq!(unsafe { tbm::_tzmsk_u32(0b0101_1001u32) }, 0b0000_0000u32);
+    unsafe fn _tzmsk_u32() {
+        assert_eq!(tbm::_tzmsk_u32(0b0101_1000u32), 0b0000_0111u32);
+        assert_eq!(tbm::_tzmsk_u32(0b0101_1001u32), 0b0000_0000u32);
     }
 
     #[simd_test = "tbm"]
     #[cfg(not(target_arch = "x86"))]
-    fn _tzmsk_u64() {
-        assert_eq!(unsafe { tbm::_tzmsk_u64(0b0101_1000u64) }, 0b0000_0111u64);
-        assert_eq!(unsafe { tbm::_tzmsk_u64(0b0101_1001u64) }, 0b0000_0000u64);
+    unsafe fn _tzmsk_u64() {
+        assert_eq!(tbm::_tzmsk_u64(0b0101_1000u64), 0b0000_0111u64);
+        assert_eq!(tbm::_tzmsk_u64(0b0101_1001u64), 0b0000_0000u64);
     }
 }

@@ -56,15 +56,13 @@ mod tests {
     use x86::{__m128i, sse42};
 
     #[simd_test = "sse4.2"]
-    fn _mm_cmpestri() {
+    unsafe fn _mm_cmpestri() {
         let a = &b"bar             "[..];
         let b = &b"foobar          "[..];
         let va = __m128i::from(u8x16::load(a, 0));
         let vb = __m128i::from(u8x16::load(b, 0));
-        let i = unsafe {
-            sse42::_mm_cmpestri(
-                va, 3, vb, 6, sse42::_SIDD_CMP_EQUAL_ORDERED)
-        };
+        let i = sse42::_mm_cmpestri(
+                va, 3, vb, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(3, i);
     }
 }
