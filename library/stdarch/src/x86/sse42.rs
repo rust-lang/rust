@@ -22,6 +22,7 @@ pub const _SIDD_MOST_SIGNIFICANT: i8 = 0b01000000;
 
 #[inline(always)]
 #[target_feature = "+sse4.2"]
+#[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
 pub unsafe fn _mm_cmpestri(
     a: __m128i,
     la: i32,
@@ -33,13 +34,6 @@ pub unsafe fn _mm_cmpestri(
         ($imm8:expr) => { pcmpestri128(a, la, b, lb, $imm8) }
     }
     constify_imm8!(imm8, call)
-}
-
-#[cfg(test)]
-#[target_feature = "+sse4.2"]
-#[cfg_attr(test, assert_instr(pcmpestri))]
-fn _test_mm_cmpestri(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    unsafe { _mm_cmpestri(a, la, b, lb, 0) }
 }
 
 #[allow(improper_ctypes)]

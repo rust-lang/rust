@@ -314,6 +314,7 @@ pub unsafe fn _mm_subs_epu16(a: u16x8, b: u16x8) -> u16x8 {
 /// Shift `a` left by `imm8` bytes while shifting in zeros.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(pslldq, imm8 = 1))]
 pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (__m128i::splat(0), imm8 as u32);
     const fn sub(a: u32, b: u32) -> u32 { a - b }
@@ -344,39 +345,20 @@ pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
     }
 }
 
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(pslldq))]
-fn _test_mm_slli_si128(a: __m128i) -> __m128i {
-    unsafe { _mm_slli_si128(a, 1) }
-}
-
 /// Shift `a` left by `imm8` bytes while shifting in zeros.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(pslldq, imm8 = 1))]
 pub unsafe fn _mm_bslli_si128(a: __m128i, imm8: i32) -> __m128i {
     _mm_slli_si128(a, imm8)
-}
-
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(pslldq))]
-fn _test_mm_bslli_si128(a: __m128i) -> __m128i {
-    unsafe { _mm_bslli_si128(a, 1) }
 }
 
 /// Shift `a` right by `imm8` bytes while shifting in zeros.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(psrldq, imm8 = 1))]
 pub unsafe fn _mm_bsrli_si128(a: __m128i, imm8: i32) -> __m128i {
     _mm_srli_si128(a, imm8)
-}
-
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(psrldq))]
-fn _test_mm_bsrli_si128(a: __m128i) -> __m128i {
-    unsafe { _mm_bsrli_si128(a, 1) }
 }
 
 /// Shift packed 16-bit integers in `a` left by `imm8` while shifting in zeros.
@@ -469,6 +451,7 @@ pub unsafe fn _mm_sra_epi32(a: i32x4, count: i32x4) -> i32x4 {
 /// Shift `a` right by `imm8` bytes while shifting in zeros.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(psrldq, imm8 = 1))]
 pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (__m128i::splat(0), imm8 as u32);
     const fn add(a: u32, b: u32) -> u32 { a + b }
@@ -497,13 +480,6 @@ pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
         14 => shuffle!(14), 15 => shuffle!(15),
         _ => shuffle!(16),
     }
-}
-
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(psrldq))]
-fn _test_mm_srli_si128(a: __m128i) -> __m128i {
-    unsafe { _mm_srli_si128(a, 1) }
 }
 
 /// Shift packed 16-bit integers in `a` right by `imm8` while shifting in
@@ -1002,29 +978,17 @@ pub unsafe fn _mm_packus_epi16(a: i16x8, b: i16x8) -> u8x16 {
 /// Return the `imm8` element of `a`.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(pextrw, imm8 = 9))]
 pub unsafe fn _mm_extract_epi16(a: i16x8, imm8: i32) -> i32 {
     a.extract(imm8 as u32 & 0b111) as i32
-}
-
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(pextrw))]
-fn _test_mm_extract_epi16(a: i16x8) -> i32 {
-    unsafe { _mm_extract_epi16(a, 9) }
 }
 
 /// Return a new vector where the `imm8` element of `a` is replaced with `i`.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(pinsrw, imm8 = 9))]
 pub unsafe fn _mm_insert_epi16(a: i16x8, i: i32, imm8: i32) -> i16x8 {
     a.replace(imm8 as u32 & 0b111, i as i16)
-}
-
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(pinsrw))]
-fn _test_mm_insert_epi16(a: i16x8, i: i32) -> i16x8 {
-    unsafe { _mm_insert_epi16(a, i, 9) }
 }
 
 /// Return a mask of the most significant bit of each element in `a`.
@@ -1038,6 +1002,7 @@ pub unsafe fn _mm_movemask_epi8(a: i8x16) -> i32 {
 /// Shuffle 32-bit integers in `a` using the control in `imm8`.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(pshufd, imm8 = 9))]
 pub unsafe fn _mm_shuffle_epi32(a: i32x4, imm8: i32) -> i32x4 {
     // simd_shuffleX requires that its selector parameter be made up of
     // constant values, but we can't enforce that here. In spirit, we need
@@ -1091,13 +1056,6 @@ pub unsafe fn _mm_shuffle_epi32(a: i32x4, imm8: i32) -> i32x4 {
     }
 }
 
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(pshufd))]
-fn _test_mm_shuffle_epi32(a: i32x4) -> i32x4 {
-    unsafe { _mm_shuffle_epi32(a, 9) }
-}
-
 /// Shuffle 16-bit integers in the high 64 bits of `a` using the control in
 /// `imm8`.
 ///
@@ -1105,6 +1063,7 @@ fn _test_mm_shuffle_epi32(a: i32x4) -> i32x4 {
 /// bits being copied from from `a`.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(pshufhw, imm8 = 9))]
 pub unsafe fn _mm_shufflehi_epi16(a: i16x8, imm8: i32) -> i16x8 {
     // See _mm_shuffle_epi32.
     let imm8 = (imm8 & 0xFF) as u8;
@@ -1155,13 +1114,6 @@ pub unsafe fn _mm_shufflehi_epi16(a: i16x8, imm8: i32) -> i16x8 {
     }
 }
 
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(pshufhw))]
-fn _test_mm_shufflehi_epi16(a: i16x8) -> i16x8 {
-    unsafe { _mm_shufflehi_epi16(a, 9) }
-}
-
 /// Shuffle 16-bit integers in the low 64 bits of `a` using the control in
 /// `imm8`.
 ///
@@ -1169,6 +1121,7 @@ fn _test_mm_shufflehi_epi16(a: i16x8) -> i16x8 {
 /// bits being copied from from `a`.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(pshuflw, imm8 = 9))]
 pub unsafe fn _mm_shufflelo_epi16(a: i16x8, imm8: i32) -> i16x8 {
     // See _mm_shuffle_epi32.
     let imm8 = (imm8 & 0xFF) as u8;
@@ -1214,13 +1167,6 @@ pub unsafe fn _mm_shufflelo_epi16(a: i16x8, imm8: i32) -> i16x8 {
         0b10 => shuffle_x23!(2),
         _ => shuffle_x23!(3),
     }
-}
-
-#[cfg(test)]
-#[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(pshuflw))]
-fn _test_mm_shufflelo_epi16(a: i16x8) -> i16x8 {
-    unsafe { _mm_shufflelo_epi16(a, 9) }
 }
 
 /// Unpack and interleave 8-bit integers from the high half of `a` and `b`.

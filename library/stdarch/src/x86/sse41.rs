@@ -24,18 +24,12 @@ pub unsafe fn _mm_blendv_epi8(
 /// the broadcast mask bit is zero then the return component will be zero.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(dppd, imm8 = 0))]
 pub unsafe fn _mm_dp_pd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => { dppd(a, b, $imm8) }
     }
     constify_imm8!(imm8, call)
-}
-
-#[cfg(test)]
-#[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(dppd))]
-fn _test_mm_dp_pd(a: f64x2, b: f64x2) -> f64x2 {
-    unsafe { _mm_dp_pd(a, b, 0) }
 }
 
 /// Returns the dot product of two f32x4 vectors.
@@ -47,18 +41,12 @@ fn _test_mm_dp_pd(a: f64x2, b: f64x2) -> f64x2 {
 /// the broadcast mask bit is zero then the return component will be zero.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(dpps, imm8 = 0))]
 pub unsafe fn _mm_dp_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => { dpps(a, b, $imm8) }
     }
     constify_imm8!(imm8, call)
-}
-
-#[cfg(test)]
-#[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(dpps))]
-fn _test_mm_dp_ps(a: f32x4, b: f32x4) -> f32x4 {
-    unsafe { _mm_dp_ps(a, b, 0) }
 }
 
 #[allow(improper_ctypes)]
