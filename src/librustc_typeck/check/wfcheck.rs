@@ -13,7 +13,7 @@ use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Lift, Ty, TyCtxt};
 use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
@@ -224,10 +224,31 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let variants = lookup_fields(fcx);
+            let def_id = fcx.tcx.hir.local_def_id(item.id);
+            let packed = fcx.tcx.adt_def(def_id).repr.packed();
 
             for variant in &variants {
-                // For DST, all intermediate types must be sized.
-                let unsized_len = if all_sized || variant.fields.is_empty() { 0 } else { 1 };
+                // For DST, or when drop needs to copy things around, all
+                // intermediate types must be sized.
+                let needs_drop_copy = || {
+                    packed && {
+                        let ty = variant.fields.last().unwrap().ty;
+                        let ty = fcx.tcx.erase_regions(&ty).lift_to_tcx(this.tcx)
+                            .unwrap_or_else(|| {
+                                span_bug!(item.span, "inference variables in {:?}", ty)
+                            });
+                        ty.needs_drop(this.tcx, this.tcx.param_env(def_id))
+                    }
+                };
+                let unsized_len = if
+                    all_sized ||
+                    variant.fields.is_empty() ||
+                    needs_drop_copy()
+                {
+                    0
+                } else {
+                    1
+                };
                 for field in &variant.fields[..variant.fields.len() - unsized_len] {
                     fcx.register_bound(
                         field.ty,
@@ -246,7 +267,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 }
             }
 
-            let def_id = fcx.tcx.hir.local_def_id(item.id);
             let predicates = fcx.tcx.predicates_of(def_id).instantiate_identity(fcx.tcx);
             let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
             this.check_where_clauses(fcx, item.span, &predicates);
