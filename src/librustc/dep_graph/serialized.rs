@@ -19,14 +19,6 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
          RustcEncodable, RustcDecodable)]
 pub struct SerializedDepNodeIndex(pub u32);
 
-impl SerializedDepNodeIndex {
-    #[inline]
-    pub fn new(idx: usize) -> SerializedDepNodeIndex {
-        assert!(idx <= ::std::u32::MAX as usize);
-        SerializedDepNodeIndex(idx as u32)
-    }
-}
-
 impl Idx for SerializedDepNodeIndex {
     #[inline]
     fn new(idx: usize) -> Self {
