@@ -396,28 +396,34 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                             ReadKind::Copy =>
                                 this.report_use_while_mutably_borrowed(
                                     context, lvalue_span, borrow),
-                            ReadKind::Borrow(bk) =>
+                            ReadKind::Borrow(bk) => {
+                                let end_issued_loan_span =
+                                    flow_state.borrows.base_results.operator().region_span(
+                                        &borrow.region).end_point();
                                 this.report_conflicting_borrow(
-                                    context, lvalue_span,
-                                    common_prefix,
-                                    (lvalue_span.0, bk), (&borrow.lvalue, borrow.kind)),
+                                    context, common_prefix, lvalue_span, bk,
+                                    &borrow, end_issued_loan_span)
+                            }
                         }
                         Control::Break
                     }
                     (Write(kind), _) => {
                         match kind {
-                            WriteKind::MutableBorrow(bk) =>
+                            WriteKind::MutableBorrow(bk) => {
+                                let end_issued_loan_span =
+                                    flow_state.borrows.base_results.operator().region_span(
+                                        &borrow.region).end_point();
                                 this.report_conflicting_borrow(
-                                    context, lvalue_span,
-                                    common_prefix,
-                                    (lvalue_span.0, bk), (&borrow.lvalue, borrow.kind)),
+                                    context, common_prefix, lvalue_span, bk,
+                                    &borrow, end_issued_loan_span)
+                            }
                             WriteKind::StorageDead |
                             WriteKind::Mutate =>
                                 this.report_illegal_mutation_of_borrowed(
                                     context, lvalue_span, borrow),
                             WriteKind::Move =>
                                 this.report_move_out_while_borrowed(
-                                    context, lvalue_span, borrow),
+                                    context, lvalue_span, &borrow),
                         }
                         Control::Break
                     }
@@ -966,48 +972,49 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_conflicting_borrow(&mut self,
                                  _context: Context,
-                                 (lvalue, span): (&Lvalue, Span),
                                  common_prefix: &Lvalue,
-                                 loan1: (&Lvalue, BorrowKind),
-                                 loan2: (&Lvalue, BorrowKind)) {
+                                 (lvalue, span): (&Lvalue, Span),
+                                 gen_borrow_kind: BorrowKind,
+                                 issued_borrow: &BorrowData,
+                                 end_issued_loan_span: Span) {
         use self::prefixes::IsPrefixOf;
 
-        let (loan1_lvalue, loan1_kind) = loan1;
-        let (loan2_lvalue, loan2_kind) = loan2;
+        assert!(common_prefix.is_prefix_of(lvalue));
+        assert!(common_prefix.is_prefix_of(&issued_borrow.lvalue));
 
-        assert!(common_prefix.is_prefix_of(loan1_lvalue));
-        assert!(common_prefix.is_prefix_of(loan2_lvalue));
+        let issued_span = self.retrieve_borrow_span(issued_borrow);
 
         // FIXME: supply non-"" `opt_via` when appropriate
-        let mut err = match (loan1_kind, "immutable", "mutable",
-                             loan2_kind, "immutable", "mutable") {
+        let mut err = match (gen_borrow_kind, "immutable", "mutable",
+                             issued_borrow.kind, "immutable", "mutable") {
             (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt) |
             (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) =>
                 self.tcx.cannot_reborrow_already_borrowed(
-                    span, &self.describe_lvalue(lvalue),
-                    "", lft, "it", rgt, "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "", lft, issued_span,
+                    "it", rgt, "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Mut, _, _, BorrowKind::Mut, _, _) =>
                 self.tcx.cannot_mutably_borrow_multiply(
-                    span, &self.describe_lvalue(lvalue), "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "", issued_span,
+                    "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) =>
                 self.tcx.cannot_uniquely_borrow_by_two_closures(
-                    span, &self.describe_lvalue(lvalue), Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), issued_span,
+                    end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Unique, _, _, _, _, _) =>
                 self.tcx.cannot_uniquely_borrow_by_one_closure(
-                    span, &self.describe_lvalue(lvalue), "it", "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "",
+                    issued_span, "it", "", end_issued_loan_span, Origin::Mir),
 
             (_, _, _, BorrowKind::Unique, _, _) =>
                 self.tcx.cannot_reborrow_already_uniquely_borrowed(
-                    span, &self.describe_lvalue(lvalue), "it", "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "it", "",
+                    issued_span, "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) =>
                 unreachable!(),
-
-            // FIXME: add span labels for first and second mutable borrows, as well as
-            // end point for first.
         };
         err.emit();
     }

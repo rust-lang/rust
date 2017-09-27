@@ -88,50 +88,101 @@ pub trait BorrowckErrors {
     }
 
     fn cannot_mutably_borrow_multiply(&self,
-                                      span: Span,
+                                      new_loan_span: Span,
                                       desc: &str,
                                       opt_via: &str,
+                                      old_loan_span: Span,
+                                      old_opt_via: &str,
+                                      old_load_end_span:Span,
                                       o: Origin)
                                       -> DiagnosticBuilder
     {
-        struct_span_err!(self, span, E0499,
+        let mut err = struct_span_err!(self, new_loan_span, E0499,
                          "cannot borrow `{}`{} as mutable more than once at a time{OGN}",
-                         desc, opt_via, OGN=o)
+                         desc, opt_via, OGN=o);
+        if old_loan_span == new_loan_span {
+            // Both borrows are happening in the same place
+            // Meaning the borrow is occurring in a loop
+            err.span_label(new_loan_span,
+                           format!("mutable borrow starts here in previous \
+                                    iteration of loop{}", opt_via));
+            err.span_label(old_load_end_span, "mutable borrow ends here");
+        } else {
+            err.span_label(old_loan_span,
+                           format!("first mutable borrow occurs here{}", old_opt_via));
+            err.span_label(new_loan_span,
+                           format!("second mutable borrow occurs here{}", opt_via));
+            err.span_label(old_load_end_span, "first borrow ends here");
+        }
+        err
     }
 
-    fn cannot_uniquely_borrow_by_two_closures(&self, span: Span, desc: &str, o: Origin)
+    fn cannot_uniquely_borrow_by_two_closures(&self,
+                                              new_loan_span: Span,
+                                              desc: &str,
+                                              old_loan_span: Span,
+                                              old_load_end_span: Span,
+                                              o: Origin)
                                               -> DiagnosticBuilder
     {
-        struct_span_err!(self, span, E0524,
+        let mut err = struct_span_err!(self, new_loan_span, E0524,
                          "two closures require unique access to `{}` at the same time{OGN}",
-                         desc, OGN=o)
+                         desc, OGN=o);
+        err.span_label(
+            old_loan_span,
+            "first closure is constructed here");
+        err.span_label(
+            new_loan_span,
+            "second closure is constructed here");
+        err.span_label(
+            old_load_end_span,
+            "borrow from first closure ends here");
+        err
     }
 
     fn cannot_uniquely_borrow_by_one_closure(&self,
-                                             span: Span,
+                                             new_loan_span: Span,
                                              desc_new: &str,
+                                             opt_via: &str,
+                                             old_loan_span: Span,
                                              noun_old: &str,
-                                             msg_old: &str,
+                                             old_opt_via: &str,
+                                             previous_end_span: Span,
                                              o: Origin)
                                              -> DiagnosticBuilder
     {
-        struct_span_err!(self, span, E0500,
+        let mut err = struct_span_err!(self, new_loan_span, E0500,
                          "closure requires unique access to `{}` but {} is already borrowed{}{OGN}",
-                         desc_new, noun_old, msg_old, OGN=o)
+                         desc_new, noun_old, old_opt_via, OGN=o);
+        err.span_label(new_loan_span,
+                       format!("closure construction occurs here{}", opt_via));
+        err.span_label(old_loan_span,
+                       format!("borrow occurs here{}", old_opt_via));
+        err.span_label(previous_end_span, "borrow ends here");
+        err
     }
 
     fn cannot_reborrow_already_uniquely_borrowed(&self,
-                                                 span: Span,
+                                                 new_loan_span: Span,
                                                  desc_new: &str,
-                                                 msg_new: &str,
+                                                 opt_via: &str,
                                                  kind_new: &str,
+                                                 old_loan_span: Span,
+                                                 old_opt_via: &str,
+                                                 previous_end_span: Span,
                                                  o: Origin)
                                                  -> DiagnosticBuilder
     {
-        struct_span_err!(self, span, E0501,
+        let mut err = struct_span_err!(self, new_loan_span, E0501,
                          "cannot borrow `{}`{} as {} because previous closure \
                           requires unique access{OGN}",
-                         desc_new, msg_new, kind_new, OGN=o)
+                         desc_new, opt_via, kind_new, OGN=o);
+        err.span_label(new_loan_span,
+                       format!("borrow occurs here{}", opt_via));
+        err.span_label(old_loan_span,
+                       format!("closure construction occurs here{}", old_opt_via));
+        err.span_label(previous_end_span, "borrow from closure ends here");
+        err
     }
 
     fn cannot_reborrow_already_borrowed(&self,
@@ -139,15 +190,21 @@ pub trait BorrowckErrors {
                                         desc_new: &str,
                                         msg_new: &str,
                                         kind_new: &str,
+                                        old_span: Span,
                                         noun_old: &str,
                                         kind_old: &str,
                                         msg_old: &str,
+                                        old_load_end_span: Span,
                                         o: Origin)
                                         -> DiagnosticBuilder
     {
-        struct_span_err!(self, span, E0502,
+        let mut err = struct_span_err!(self, span, E0502,
                          "cannot borrow `{}`{} as {} because {} is also borrowed as {}{}{OGN}",
-                         desc_new, msg_new, kind_new, noun_old, kind_old, msg_old, OGN=o)
+                         desc_new, msg_new, kind_new, noun_old, kind_old, msg_old, OGN=o);
+        err.span_label(span, format!("{} borrow occurs here{}", kind_new, msg_new));
+        err.span_label(old_span, format!("{} borrow occurs here{}", kind_old, msg_old));
+        err.span_label(old_load_end_span, format!("{} borrow ends here", kind_old));
+        err
     }
 
     fn cannot_assign_to_borrowed(&self, span: Span, borrow_span: Span, desc: &str, o: Origin)

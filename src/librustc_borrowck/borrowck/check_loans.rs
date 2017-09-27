@@ -470,102 +470,29 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 old_loan.kill_scope.span(self.tcx(), &self.bccx.region_scope_tree).end_point();
 
             let mut err = match (new_loan.kind, old_loan.kind) {
-                (ty::MutBorrow, ty::MutBorrow) => {
-                    let mut err = self.bccx.cannot_mutably_borrow_multiply(
-                        new_loan.span, &nl, &new_loan_msg, Origin::Ast);
-
-                    if new_loan.span == old_loan.span {
-                        // Both borrows are happening in the same place
-                        // Meaning the borrow is occurring in a loop
-                        err.span_label(
-                                new_loan.span,
-                                format!("mutable borrow starts here in previous \
-                                        iteration of loop{}", new_loan_msg));
-                        err.span_label(
-                                previous_end_span,
-                                "mutable borrow ends here");
-                        err
-                    } else {
-                       err.span_label(
-                                old_loan.span,
-                                format!("first mutable borrow occurs here{}", old_loan_msg));
-                        err.span_label(
-                                new_loan.span,
-                                format!("second mutable borrow occurs here{}", new_loan_msg));
-                        err.span_label(
-                                previous_end_span,
-                                "first borrow ends here");
-                        err
-                    }
-                }
-
-                (ty::UniqueImmBorrow, ty::UniqueImmBorrow) => {
-                    let mut err = self.bccx.cannot_uniquely_borrow_by_two_closures(
-                        new_loan.span, &nl, Origin::Ast);
-                    err.span_label(
-                            old_loan.span,
-                            "first closure is constructed here");
-                    err.span_label(
-                            new_loan.span,
-                            "second closure is constructed here");
-                    err.span_label(
-                            previous_end_span,
-                            "borrow from first closure ends here");
-                    err
-                }
-
-                (ty::UniqueImmBorrow, _) => {
-                    let mut err = self.bccx.cannot_uniquely_borrow_by_one_closure(
-                        new_loan.span, &nl, &ol_pronoun, &old_loan_msg, Origin::Ast);
-                    err.span_label(
-                            new_loan.span,
-                            format!("closure construction occurs here{}", new_loan_msg));
-                    err.span_label(
-                            old_loan.span,
-                            format!("borrow occurs here{}", old_loan_msg));
-                    err.span_label(
-                            previous_end_span,
-                            "borrow ends here");
-                    err
-                }
-
+                (ty::MutBorrow, ty::MutBorrow) =>
+                    self.bccx.cannot_mutably_borrow_multiply(
+                        new_loan.span, &nl, &new_loan_msg, old_loan.span, &old_loan_msg,
+                        previous_end_span, Origin::Ast),
+                (ty::UniqueImmBorrow, ty::UniqueImmBorrow) =>
+                    self.bccx.cannot_uniquely_borrow_by_two_closures(
+                        new_loan.span, &nl, old_loan.span, previous_end_span, Origin::Ast),
+                (ty::UniqueImmBorrow, _) =>
+                    self.bccx.cannot_uniquely_borrow_by_one_closure(
+                        new_loan.span, &nl, &new_loan_msg,
+                        old_loan.span, &ol_pronoun, &old_loan_msg, previous_end_span, Origin::Ast),
                 (_, ty::UniqueImmBorrow) => {
                     let new_loan_str = &new_loan.kind.to_user_str();
-                    let mut err = self.bccx.cannot_reborrow_already_uniquely_borrowed(
-                        new_loan.span, &nl, &new_loan_msg, new_loan_str, Origin::Ast);
-                    err.span_label(
-                            new_loan.span,
-                            format!("borrow occurs here{}", new_loan_msg));
-                    err.span_label(
-                            old_loan.span,
-                            format!("closure construction occurs here{}", old_loan_msg));
-                    err.span_label(
-                            previous_end_span,
-                            "borrow from closure ends here");
-                    err
+                    self.bccx.cannot_reborrow_already_uniquely_borrowed(
+                        new_loan.span, &nl, &new_loan_msg, new_loan_str,
+                        old_loan.span, &old_loan_msg, previous_end_span, Origin::Ast)
                 }
-
-                (..) => {
-                    let mut err = self.bccx.cannot_reborrow_already_borrowed(
+                (..) =>
+                    self.bccx.cannot_reborrow_already_borrowed(
                         new_loan.span,
                         &nl, &new_loan_msg, &new_loan.kind.to_user_str(),
-                        &ol_pronoun, &old_loan.kind.to_user_str(), &old_loan_msg, Origin::Ast);
-                    err.span_label(
-                            new_loan.span,
-                            format!("{} borrow occurs here{}",
-                                     new_loan.kind.to_user_str(),
-                                     new_loan_msg));
-                    err.span_label(
-                            old_loan.span,
-                            format!("{} borrow occurs here{}",
-                                     old_loan.kind.to_user_str(),
-                                     old_loan_msg));
-                    err.span_label(
-                            previous_end_span,
-                            format!("{} borrow ends here",
-                                     old_loan.kind.to_user_str()));
-                    err
-                }
+                        old_loan.span, &ol_pronoun, &old_loan.kind.to_user_str(), &old_loan_msg,
+                        previous_end_span, Origin::Ast)
             };
 
             match new_loan.cause {
