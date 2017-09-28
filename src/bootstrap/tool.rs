@@ -126,6 +126,10 @@ pub fn prepare_tool_cargo(
         cargo.env("LIBZ_SYS_STATIC", "1");
     }
 
+    // if tools are using lzma we want to force the build script to build its
+    // own copy
+    cargo.env("LZMA_API_STATIC", "1");
+
     cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
     cargo.env("CFG_VERSION", build.rust_version());
 
@@ -454,7 +458,7 @@ impl Step for Rls {
             tool: "rls",
             mode: Mode::Librustc,
             path: "src/tools/rls",
-            expectation: BuildExpectation::None,
+            expectation: builder.build.config.toolstate.rls.passes(ToolState::Compiling),
         })
     }
 }
@@ -489,7 +493,7 @@ impl Step for Rustfmt {
             tool: "rustfmt",
             mode: Mode::Librustc,
             path: "src/tools/rustfmt",
-            expectation: BuildExpectation::None,
+            expectation: builder.build.config.toolstate.rustfmt.passes(ToolState::Compiling),
         })
     }
 }

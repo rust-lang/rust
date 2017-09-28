@@ -38,6 +38,8 @@ members = [
   "tools/rls/test_data/infer_custom_bin",
   "tools/rls/test_data/infer_lib",
   "tools/rls/test_data/omit_init_build",
+  "tools/rls/test_data/unicødë",
+  "tools/rls/test_data/workspace_symbol",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit
@@ -60,10 +62,5 @@ debug-assertions = false
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "tools/cargo" }
 
-# Override rustfmt dependencies both on the repo and the crate (the RLS
-# sometimes uses either).
-# FIXME should only need the crates.io patch, long term.
-[patch."https://github.com/rust-lang-nursery/rustfmt"]
-rustfmt-nightly = { path = "tools/rustfmt" }
 [patch.crates-io]
 rustfmt-nightly = { path = "tools/rustfmt" }
