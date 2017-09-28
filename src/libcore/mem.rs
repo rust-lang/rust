@@ -209,7 +209,7 @@ pub fn forget<T>(t: T) {
 /// The mutability of a pointer does not change its size. As such, `&T` and `&mut T`
 /// have the same size. Likewise for `*const T` and `*mut T`.
 ///
-/// # Size of #[repr(C)] items
+/// # Size of `#[repr(C)]` items
 ///
 /// The `C` representation for items has a defined layout. With this layout,
 /// the size of items is also stable as long as all fields have a stable size.
