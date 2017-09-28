@@ -31,7 +31,7 @@ extern "C" {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(rbit))]
 pub unsafe fn _rbit_u64(x: u64) -> u64 {
-    unsafe { rbit_u64(x as i64) as u64 }
+    rbit_u64(x as i64) as u64
 }
 
 /// Counts the leading most significant bits set.
