@@ -214,7 +214,7 @@ pub fn forget<T>(t: T) {
 /// The `C` representation for items has a defined layout. With this layout,
 /// the size of items is also stable as long as all fields have a stable size.
 ///
-/// ## Structs
+/// ## Size of Structs
 ///
 /// For `structs`, the size is determined by the following algorithm.
 ///
@@ -227,12 +227,12 @@ pub fn forget<T>(t: T) {
 ///
 /// Unlike `C`, zero sized structs are not rounded up to one byte in size.
 ///
-/// ## Enums
+/// ## Size of Enums
 ///
 /// Enums that carry no data other than the descriminant have the same size as C enums
 /// on the platform they are compiled for.
 ///
-/// ## Unions
+/// ## Size of Unions
 ///
 /// The size of a union is the size of its largest field.
 ///
