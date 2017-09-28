@@ -165,8 +165,6 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
         result
     }
-
-
 }
 
 fn resolve_closure<'a, 'tcx>(

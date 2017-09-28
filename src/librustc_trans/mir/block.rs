@@ -431,9 +431,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let (instance, mut llfn) = match callee.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
                         (Some(ty::Instance::resolve(bcx.ccx.tcx(),
-                        ty::ParamEnv::empty(traits::Reveal::All),
-                        def_id,
-                        substs).unwrap()),
+                                                    ty::ParamEnv::empty(traits::Reveal::All),
+                                                    def_id,
+                                                    substs).unwrap()),
                          None)
                     }
                     ty::TyFnPtr(_) => {

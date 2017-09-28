@@ -262,9 +262,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                  args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
                  -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
         let instance = ty::Instance::resolve(ccx.tcx(),
-        ty::ParamEnv::empty(traits::Reveal::All),
-        def_id,
-        substs).unwrap();
+                                             ty::ParamEnv::empty(traits::Reveal::All),
+                                             def_id,
+                                             substs).unwrap();
         let mir = ccx.tcx().instance_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }

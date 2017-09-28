@@ -181,7 +181,7 @@ pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     -> ValueRef
 {
     get_fn(ccx, ty::Instance::resolve(ccx.tcx(),
-    ty::ParamEnv::empty(traits::Reveal::All),
-    def_id,
-    substs).unwrap())
+           ty::ParamEnv::empty(traits::Reveal::All),
+           def_id,
+           substs).unwrap())
 }
