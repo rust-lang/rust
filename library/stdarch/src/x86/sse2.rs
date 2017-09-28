@@ -691,6 +691,15 @@ pub unsafe fn _mm_cvtepi32_ps(a: i32x4) -> f32x4 {
     cvtdq2ps(a)
 }
 
+/// Convert packed single-precision (32-bit) floating-point elements in `a`
+/// to packed 32-bit integers.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(cvtps2dq))]
+pub unsafe fn _mm_cvtps_epi32(a: f32x4) -> i32x4 {
+    cvtps2dq(a)
+}
+
 /// Return a vector whose lowest element is `a` and all higher elements are
 /// `0`.
 #[inline(always)]
@@ -1819,6 +1828,8 @@ extern {
     fn psrlq(a: i64x2, count: i64x2) -> i64x2;
     #[link_name = "llvm.x86.sse2.cvtdq2ps"]
     fn cvtdq2ps(a: i32x4) -> f32x4;
+    #[link_name = "llvm.x86.sse2.cvtps2dq"]
+    fn cvtps2dq(a: f32x4) -> i32x4;
     #[link_name = "llvm.x86.sse2.maskmov.dqu"]
     fn maskmovdqu(a: i8x16, mask: i8x16, mem_addr: *mut i8);
     #[link_name = "llvm.x86.sse2.packsswb.128"]
@@ -2563,6 +2574,13 @@ mod tests {
         let a = i32x4::new(1, 2, 3, 4);
         let r = sse2::_mm_cvtepi32_ps(a);
         assert_eq!(r, f32x4::new(1.0, 2.0, 3.0, 4.0));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_cvtps_epi32() {
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let r = sse2::_mm_cvtps_epi32(a);
+        assert_eq!(r, i32x4::new(1, 2, 3, 4));
     }
 
     #[simd_test = "sse2"]
