@@ -86,7 +86,6 @@ use fs;
 use hash::{Hash, Hasher};
 use io;
 use iter::{self, FusedIterator};
-use mem;
 use ops::{self, Deref};
 
 use ffi::{OsStr, OsString};
