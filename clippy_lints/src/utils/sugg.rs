@@ -312,7 +312,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
         AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_to_string(&token::BinOp(op)), rhs),
         AssocOp::As => format!("{} as {}", lhs, rhs),
         AssocOp::DotDot => format!("{}..{}", lhs, rhs),
-        AssocOp::DotDotEq => format!("{}...{}", lhs, rhs),
+        AssocOp::DotDotEq => format!("{}..={}", lhs, rhs),
         AssocOp::Colon => format!("{}: {}", lhs, rhs),
     };
 
