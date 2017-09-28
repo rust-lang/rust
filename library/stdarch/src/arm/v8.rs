@@ -10,14 +10,14 @@ use stdsimd_test::assert_instr;
 /// Reverse the order of the bytes.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(rev))]
-pub fn _rev_u64(x: u64) -> u64 {
+pub unsafe fn _rev_u64(x: u64) -> u64 {
     x.swap_bytes() as u64
 }
 
 /// Count Leading Zeros.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(clz))]
-pub fn _clz_u64(x: u64) -> u64 {
+pub unsafe fn _clz_u64(x: u64) -> u64 {
     x.leading_zeros() as u64
 }
 
@@ -30,7 +30,7 @@ extern "C" {
 /// Reverse the bit order.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(rbit))]
-pub fn _rbit_u64(x: u64) -> u64 {
+pub unsafe fn _rbit_u64(x: u64) -> u64 {
     unsafe { rbit_u64(x as i64) as u64 }
 }
 
@@ -41,7 +41,7 @@ pub fn _rbit_u64(x: u64) -> u64 {
 #[inline(always)]
 // LLVM Bug (should be cls): https://bugs.llvm.org/show_bug.cgi?id=31802
 #[cfg_attr(test, assert_instr(clz))]
-pub fn _cls_u32(x: u32) -> u32 {
+pub unsafe fn _cls_u32(x: u32) -> u32 {
     u32::leading_zeros(!x) as u32
 }
 
@@ -52,6 +52,6 @@ pub fn _cls_u32(x: u32) -> u32 {
 #[inline(always)]
 // LLVM Bug (should be cls): https://bugs.llvm.org/show_bug.cgi?id=31802
 #[cfg_attr(test, assert_instr(clz))]
-pub fn _cls_u64(x: u64) -> u64 {
+pub unsafe fn _cls_u64(x: u64) -> u64 {
     u64::leading_zeros(!x) as u64
 }

@@ -11,21 +11,21 @@ use stdsimd_test::assert_instr;
 /// Count Leading Zeros.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(clz))]
-pub fn _clz_u8(x: u8) -> u8 {
+pub unsafe fn _clz_u8(x: u8) -> u8 {
     x.leading_zeros() as u8
 }
 
 /// Count Leading Zeros.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(clz))]
-pub fn _clz_u16(x: u16) -> u16 {
+pub unsafe fn _clz_u16(x: u16) -> u16 {
     x.leading_zeros() as u16
 }
 
 /// Count Leading Zeros.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(clz))]
-pub fn _clz_u32(x: u32) -> u32 {
+pub unsafe fn _clz_u32(x: u32) -> u32 {
     x.leading_zeros() as u32
 }
 
