@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.7] 2017-09-21
+
+### Added
+
+- `binop_separator` configuration option (#1964).
+
+### Changed
+
+- Use horizontal layout for function call with a single argument.
+
+### Fixed
+
+- Fix panicking when calling `cargo fmt --all` (#1963).
+- Refactorings & faster rustfmt.
+
+## [0.2.6] 2017-09-14
+
+### Fixed
+
+- Fix a performance issue with nested block (#1940).
+- Refactorings & faster rustfmt.
+
 ## [0.2.5] 2017-08-31
 
 ### Added
