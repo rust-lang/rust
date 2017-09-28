@@ -126,7 +126,7 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::While(..) |
             ast::ExprKind::WhileLet(..) => Sugg::NonParen(snippet),
             ast::ExprKind::Range(.., RangeLimits::HalfOpen) => Sugg::BinOp(AssocOp::DotDot, snippet),
-            ast::ExprKind::Range(.., RangeLimits::Closed) => Sugg::BinOp(AssocOp::DotDotDot, snippet),
+            ast::ExprKind::Range(.., RangeLimits::Closed) => Sugg::BinOp(AssocOp::DotDotEq, snippet),
             ast::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
             ast::ExprKind::AssignOp(op, ..) => Sugg::BinOp(astbinop2assignop(op), snippet),
             ast::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(op.node), snippet),
@@ -165,7 +165,7 @@ impl<'a> Sugg<'a> {
     pub fn range(self, end: Self, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {
             ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, &end),
-            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotDot, &self, &end),
+            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, &end),
         }
     }
 
@@ -312,7 +312,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
         AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_to_string(&token::BinOp(op)), rhs),
         AssocOp::As => format!("{} as {}", lhs, rhs),
         AssocOp::DotDot => format!("{}..{}", lhs, rhs),
-        AssocOp::DotDotDot => format!("{}...{}", lhs, rhs),
+        AssocOp::DotDotEq => format!("{}...{}", lhs, rhs),
         AssocOp::Colon => format!("{}: {}", lhs, rhs),
     };
 
@@ -362,7 +362,7 @@ fn associativity(op: &AssocOp) -> Associativity {
         ShiftLeft |
         ShiftRight |
         Subtract => Associativity::Left,
-        DotDot | DotDotDot => Associativity::None,
+        DotDot | DotDotEq => Associativity::None,
     }
 }
 
