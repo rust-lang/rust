@@ -10,7 +10,6 @@
 
 use borrow::{Borrow, Cow};
 use fmt;
-use mem;
 use ops;
 use cmp;
 use hash::{Hash, Hasher};
