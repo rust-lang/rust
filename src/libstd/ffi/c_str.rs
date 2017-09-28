@@ -311,7 +311,7 @@ impl CString {
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
-        let slice = slice::from_raw_parts(ptr, len as usize);
+        let slice = slice::from_raw_parts_mut(ptr, len as usize);
         CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
     }
 
