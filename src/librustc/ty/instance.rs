@@ -118,7 +118,10 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
 
     /// The point where linking happens. Resolve a (def_id, substs)
     /// pair to an instance.
-    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                   param_env: ty::ParamEnv<'tcx>,
+                   def_id: DefId,
+                   substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
             debug!(" => associated item, attempting to find impl");
@@ -154,7 +157,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
                     }
                 }
             };
-            Some(Instance { 
+            Some(Instance {
                 def: def,
                 substs: substs
             })

@@ -91,7 +91,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                             let caller_def_id = self.tcx.hir.local_def_id(caller_id);
                             let param_env = self.tcx.param_env(caller_def_id);
 
-                            if let Some(instance) = Instance::resolve(self.tcx, param_env, callee_def_id, substs) {
+                            if let Some(instance) = Instance::resolve(self.tcx,
+                                                                      param_env,
+                                                                      callee_def_id,
+                                                                      substs) {
                                 callsites.push_back(CallSite {
                                     callee: instance.def_id(),
                                     substs: instance.substs,
