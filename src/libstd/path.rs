@@ -1341,7 +1341,8 @@ impl PathBuf {
 #[stable(feature = "box_from_path", since = "1.17.0")]
 impl<'a> From<&'a Path> for Box<Path> {
     fn from(path: &'a Path) -> Box<Path> {
-        let rw = Box::into_raw(Box::from(&path.inner)) as *mut Path;
+        let boxed: Box<OsStr> = path.inner.into();
+        let rw = Box::into_raw(boxed) as *mut Path;
         unsafe { Box::from_raw(rw) }
     }
 }
@@ -2313,7 +2314,8 @@ impl Path {
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
         let rw = Box::into_raw(self) as *mut OsStr;
-        unsafe { Box::from_raw(rw) }
+        let inner = unsafe { Box::from_raw(rw) };
+        PathBuf { inner: OsString::from(inner) }
     }
 }
 
