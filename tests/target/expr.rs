@@ -316,17 +316,17 @@ fn issue767() {
 fn ranges() {
     let x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let y =
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
-    let z = ...x;
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+    let z = ..=x;
 
     // #1766
     let x = [0. ..10.0];
-    let x = [0. ...10.0];
+    let x = [0. ..=10.0];
 
-    a...b
+    a..=b
 
-    // the expr below won't compile for some reason...
-    // let a = 0 ... ;
+    // the expr below won't compile because inclusive ranges need a defined end
+    // let a = 0 ..= ;
 }
 
 fn if_else() {

@@ -232,7 +232,7 @@ pub fn format_expr(
         ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
             let delim = match limits {
                 ast::RangeLimits::HalfOpen => "..",
-                ast::RangeLimits::Closed => "...",
+                ast::RangeLimits::Closed => "..=",
             };
 
             fn needs_space_before_range(context: &RewriteContext, lhs: &ast::Expr) -> bool {
