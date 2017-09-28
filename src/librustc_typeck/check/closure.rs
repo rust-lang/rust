@@ -56,11 +56,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                expected_sig);
 
         let expr_def_id = self.tcx.hir.local_def_id(expr.id);
-        let sig = AstConv::ty_of_closure(self,
-                                         hir::Unsafety::Normal,
-                                         decl,
-                                         Abi::RustCall,
-                                         expected_sig);
+        let sig = self.ty_of_closure(decl, expected_sig);
 
         debug!("check_closure: ty_of_closure returns {:?}", sig);
 
@@ -273,5 +269,73 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::TyInfer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
             _ => None,
         }
+    }
+
+    /// Invoked to compute the signature of a closure expression. This
+    /// combines any user-provided type annotations (e.g., `|x: u32|
+    /// -> u32 { .. }`) with the expected signature.
+    ///
+    /// The arguments here are a bit odd-ball:
+    ///
+    /// - `decl`: the HIR declaration of the closure
+    /// - `expected_sig`: the expected signature (if any). Note that
+    ///   this is missing a binder: that is, there may be late-bound
+    ///   regions with depth 1, which are bound then by the closure.
+    fn ty_of_closure(&self,
+                     decl: &hir::FnDecl,
+                     expected_sig: Option<ty::FnSig<'tcx>>)
+                     -> ty::PolyFnSig<'tcx>
+    {
+        let astconv: &AstConv = self;
+
+        debug!("ty_of_closure(expected_sig={:?})",
+               expected_sig);
+
+        let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
+            let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
+                // no guarantee that the correct number of expected args
+                // were supplied
+                if i < e.inputs().len() {
+                    Some(e.inputs()[i])
+                } else {
+                    None
+                }
+            });
+
+            let input_ty = astconv.ty_of_arg(a, expected_arg_ty);
+            debug!("ty_of_closure: i={} input_ty={:?} expected_arg_ty={:?}",
+                   i, input_ty, expected_arg_ty);
+
+            input_ty
+        });
+
+        let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
+
+        let output_ty = match decl.output {
+            hir::Return(ref output) => {
+                if let (&hir::TyInfer, Some(expected_ret_ty)) = (&output.node, expected_ret_ty) {
+                    astconv.record_ty(output.hir_id, expected_ret_ty, output.span);
+                    expected_ret_ty
+                } else {
+                    astconv.ast_ty_to_ty(&output)
+                }
+            }
+            hir::DefaultReturn(span) => {
+                if let Some(expected_ret_ty) = expected_ret_ty {
+                    expected_ret_ty
+                } else {
+                    astconv.ty_infer(span)
+                }
+            }
+        };
+
+        debug!("ty_of_closure: output_ty={:?}", output_ty);
+
+        ty::Binder(self.tcx.mk_fn_sig(
+            input_tys,
+            output_ty,
+            decl.variadic,
+            hir::Unsafety::Normal,
+            Abi::RustCall))
     }
 }
