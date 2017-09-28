@@ -19,6 +19,8 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
+use std::fmt::{self, Debug, Formatter};
+use std::u32;
 
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -155,18 +157,4 @@ struct Region {
     points: FxHashSet<Location>,
 }
 
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct RegionIndex(pub u32);
-
-impl Idx for RegionIndex {
-    #[inline]
-    fn new(idx: usize) -> Self {
-        assert!(idx <= ::std::u32::MAX as usize);
-        RegionIndex(idx as u32)
-    }
-
-    #[inline]
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+newtype_index!(RegionIndex, "region_index");

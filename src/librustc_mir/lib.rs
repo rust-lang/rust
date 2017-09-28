@@ -30,7 +30,8 @@ extern crate bitflags;
 extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
+extern crate serialize as rustc_serialize;
 extern crate rustc_errors;
 #[macro_use]
 extern crate syntax;
