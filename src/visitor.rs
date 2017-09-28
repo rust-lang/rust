@@ -16,6 +16,7 @@ use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
+use expr::rewrite_literal;
 use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, CommentCodeSlices,
@@ -810,7 +811,7 @@ impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
             ast::NestedMetaItemKind::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
-            ast::NestedMetaItemKind::Literal(..) => Some(context.snippet(self.span)),
+            ast::NestedMetaItemKind::Literal(ref l) => rewrite_literal(context, l, shape),
         }
     }
 }
