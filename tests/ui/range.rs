@@ -15,7 +15,7 @@ fn main() {
     let _ = (0..1).step_by(1);
 
     let _ = (1..).step_by(0);
-    let _ = (1...2).step_by(0);
+    let _ = (1..=2).step_by(0);
 
     let x = 0..1;
     let _ = x.step_by(0);
