@@ -51,7 +51,8 @@ macro_rules! newtype_index {
 
         impl $name {
             // HACK use for constants
-            pub const fn const_new(x: u32) -> Self {
+            #[allow(unused)]
+            const fn const_new(x: u32) -> Self {
                 $name(x)
             }
         }
