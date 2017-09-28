@@ -399,6 +399,7 @@ impl Step for Openssl {
         let os = match &*target {
             "aarch64-linux-android" => "linux-aarch64",
             "aarch64-unknown-linux-gnu" => "linux-aarch64",
+            "aarch64-unknown-linux-musl" => "linux-aarch64",
             "arm-linux-androideabi" => "android",
             "arm-unknown-linux-gnueabi" => "linux-armv4",
             "arm-unknown-linux-gnueabihf" => "linux-armv4",
