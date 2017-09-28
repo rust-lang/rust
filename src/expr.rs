@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{min, Ordering};
+use std::cmp::min;
 use std::borrow::Cow;
 use std::fmt::Write;
 use std::iter::{repeat, ExactSizeIterator};
@@ -2033,7 +2033,7 @@ pub fn rewrite_call(
         shape,
         context.config.fn_call_width(),
         force_trailing_comma,
-    ).ok()
+    )
 }
 
 pub fn rewrite_call_inner<'a, T>(
@@ -2044,7 +2044,7 @@ pub fn rewrite_call_inner<'a, T>(
     shape: Shape,
     args_max_width: usize,
     force_trailing_comma: bool,
-) -> Result<String, Ordering>
+) -> Option<String>
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
@@ -2055,22 +2055,19 @@ where
         1
     };
     let used_width = extra_offset(callee_str, shape);
-    let one_line_width = shape
-        .width
-        .checked_sub(used_width + 2 * paren_overhead)
-        .ok_or(Ordering::Greater)?;
+    let one_line_width = try_opt!(shape.width.checked_sub(used_width + 2 * paren_overhead));
 
-    let nested_shape = shape_from_fn_call_style(
+    let nested_shape = try_opt!(shape_from_fn_call_style(
         context,
         shape,
         used_width + 2 * paren_overhead,
         used_width + paren_overhead,
-    ).ok_or(Ordering::Greater)?;
+    ));
 
     let span_lo = context.codemap.span_after(span, "(");
     let args_span = mk_sp(span_lo, span.hi());
 
-    let (extendable, list_str) = rewrite_call_args(
+    let (extendable, list_str) = try_opt!(rewrite_call_args(
         context,
         args,
         args_span,
@@ -2078,7 +2075,7 @@ where
         one_line_width,
         args_max_width,
         force_trailing_comma,
-    ).ok_or(Ordering::Less)?;
+    ));
 
     if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
         let mut new_context = context.clone();
@@ -2094,10 +2091,8 @@ where
         );
     }
 
-    let args_shape = shape
-        .sub_width(last_line_width(callee_str))
-        .ok_or(Ordering::Less)?;
-    Ok(format!(
+    let args_shape = try_opt!(shape.sub_width(last_line_width(callee_str)));
+    Some(format!(
         "{}{}",
         callee_str,
         wrap_args_with_parens(context, &list_str, extendable, args_shape, nested_shape)
@@ -2805,7 +2800,7 @@ where
             shape,
             context.config.fn_call_width(),
             force_trailing_comma,
-        ).ok()
+        )
     } else {
         rewrite_tuple_in_visual_indent_style(context, items, span, shape)
     }

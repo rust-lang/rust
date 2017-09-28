@@ -1211,17 +1211,15 @@ fn format_tuple_struct(
         result.push(')');
     } else {
         // 3 = `();`
-        let body = try_opt!(
-            rewrite_call_inner(
-                context,
-                "",
-                &fields.iter().map(|field| field).collect::<Vec<_>>()[..],
-                span,
-                Shape::legacy(context.budget(last_line_width(&result) + 3), offset),
-                context.config.fn_call_width(),
-                false,
-            ).ok()
-        );
+        let body = try_opt!(rewrite_call_inner(
+            context,
+            "",
+            &fields.iter().map(|field| field).collect::<Vec<_>>()[..],
+            span,
+            Shape::legacy(context.budget(last_line_width(&result) + 3), offset),
+            context.config.fn_call_width(),
+            false,
+        ));
         result.push_str(&body);
     }
 
