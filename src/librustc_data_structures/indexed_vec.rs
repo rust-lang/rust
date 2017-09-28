@@ -49,6 +49,13 @@ macro_rules! newtype_index {
          RustcEncodable, RustcDecodable)]
         pub struct $name(u32);
 
+        impl $name {
+            // HACK use for constants
+            pub const fn const_new(x: u32) -> Self {
+                $name(x)
+            }
+        }
+
         impl Idx for $name {
             fn new(value: usize) -> Self {
                 assert!(value < (::std::u32::MAX) as usize);
