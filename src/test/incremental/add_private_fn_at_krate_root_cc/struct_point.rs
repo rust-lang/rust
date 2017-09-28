@@ -15,7 +15,6 @@
 // revisions:rpass1 rpass2
 // compile-flags: -Z query-dep-graph
 // aux-build:point.rs
-// ignore-test FIXME(#42293) this regressed in #44142 but should get fixed with red/green
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]

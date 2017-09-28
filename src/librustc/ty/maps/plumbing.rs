@@ -320,6 +320,10 @@ macro_rules! define_maps {
                                                                         dep_node_index)
                     }
 
+                    debug!("ty::queries::{}::try_get_with(key={:?}) - running try_mark_green",
+                           stringify!($name),
+                           key);
+
                     if let Some(dep_node_index) = tcx.dep_graph.try_mark_green(tcx, &dep_node) {
                         debug_assert!(tcx.dep_graph.is_green(dep_node_index));
                         profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
@@ -363,6 +367,10 @@ macro_rules! define_maps {
                     })
                 })?;
 
+                if tcx.sess.opts.debugging_opts.query_dep_graph {
+                    tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
+                }
+
                 let value = QueryValue::new(result, dep_node_index, diagnostics);
 
                 Ok((&tcx.maps
@@ -394,6 +402,10 @@ macro_rules! define_maps {
 
                 let ((result, dep_node_index), diagnostics) = res;
 
+                if tcx.sess.opts.debugging_opts.query_dep_graph {
+                    tcx.dep_graph.mark_loaded_from_cache(dep_node_index, false);
+                }
+
                 let value = QueryValue::new(result, dep_node_index, diagnostics);
 
                 Ok(((&tcx.maps
@@ -405,8 +417,6 @@ macro_rules! define_maps {
                          .value).clone(),
                    dep_node_index))
             }
-
-
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
                            -> Result<$V, DiagnosticBuilder<'a>> {

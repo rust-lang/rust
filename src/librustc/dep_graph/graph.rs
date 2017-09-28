@@ -67,6 +67,15 @@ pub enum DepNodeColor {
     Green(DepNodeIndex)
 }
 
+impl DepNodeColor {
+    pub fn is_green(self) -> bool {
+        match self {
+            DepNodeColor::Red => false,
+            DepNodeColor::Green(_) => true,
+        }
+    }
+}
+
 struct DepGraphData {
     /// The old, initial encoding of the dependency graph. This will soon go
     /// away.
@@ -94,6 +103,9 @@ struct DepGraphData {
     work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
 
     dep_node_debug: RefCell<FxHashMap<DepNode, String>>,
+
+    // Used for testing, only populated when -Zquery-dep-graph is specified.
+    loaded_from_cache: RefCell<FxHashMap<DepNodeIndexNew, bool>>,
 }
 
 impl DepGraph {
@@ -108,6 +120,7 @@ impl DepGraph {
                 current: RefCell::new(CurrentDepGraph::new()),
                 previous: prev_graph,
                 colors: RefCell::new(FxHashMap()),
+                loaded_from_cache: RefCell::new(FxHashMap()),
             })),
             fingerprints: Rc::new(RefCell::new(FxHashMap())),
         }
@@ -256,16 +269,9 @@ impl DepGraph {
             data.current.borrow_mut().push_anon_task();
             let result = op();
             let dep_node_index_legacy = data.edges.borrow_mut().pop_anon_task(dep_kind);
-            let (new_dep_node, dep_node_index_new) = data.current
-                                                         .borrow_mut()
-                                                         .pop_anon_task(dep_kind);
-            if let Some(new_dep_node) = new_dep_node {
-                assert!(data.colors
-                            .borrow_mut()
-                            .insert(new_dep_node, DepNodeColor::Red)
-                            .is_none());
-            }
-
+            let dep_node_index_new = data.current
+                                         .borrow_mut()
+                                         .pop_anon_task(dep_kind);
             (result, DepNodeIndex {
                 legacy: dep_node_index_legacy,
                 new: dep_node_index_new,
@@ -594,6 +600,25 @@ impl DepGraph {
             }
         }).unwrap_or(false)
     }
+
+    pub fn mark_loaded_from_cache(&self, dep_node: DepNodeIndex, state: bool) {
+        debug!("mark_loaded_from_cache({:?}, {})",
+               self.data.as_ref().unwrap().current.borrow().nodes[dep_node.new],
+               state);
+
+        self.data
+            .as_ref()
+            .unwrap()
+            .loaded_from_cache
+            .borrow_mut()
+            .insert(dep_node.new, state);
+    }
+
+    pub fn was_loaded_from_cache(&self, dep_node: &DepNode) -> Option<bool> {
+        let data = self.data.as_ref().unwrap();
+        let dep_node_index = data.current.borrow().node_to_node_index[dep_node];
+        data.loaded_from_cache.borrow().get(&dep_node_index).cloned()
+    }
 }
 
 /// A "work product" is an intermediate result that we save into the
@@ -630,11 +655,6 @@ impl DepGraph {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct WorkProduct {
     pub cgu_name: String,
-    /// Extra hash used to decide if work-product is still suitable;
-    /// note that this is *not* a hash of the work-product itself.
-    /// See documentation on `WorkProduct` type for an example.
-    pub input_hash: u64,
-
     /// Saved files associated with this CGU
     pub saved_files: Vec<(OutputType, String)>,
 }
@@ -644,15 +664,26 @@ pub(super) struct CurrentDepGraph {
     edges: IndexVec<DepNodeIndexNew, Vec<DepNodeIndexNew>>,
     node_to_node_index: FxHashMap<DepNode, DepNodeIndexNew>,
 
+    anon_id_seed: Fingerprint,
+
     task_stack: Vec<OpenTask>,
 }
 
 impl CurrentDepGraph {
     fn new() -> CurrentDepGraph {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let nanos = duration.as_secs() * 1_000_000_000 +
+                    duration.subsec_nanos() as u64;
+        let mut stable_hasher = StableHasher::new();
+        nanos.hash(&mut stable_hasher);
+
         CurrentDepGraph {
             nodes: IndexVec::new(),
             edges: IndexVec::new(),
             node_to_node_index: FxHashMap(),
+            anon_id_seed: stable_hasher.finish(),
             task_stack: Vec::new(),
         }
     }
@@ -696,14 +727,14 @@ impl CurrentDepGraph {
         });
     }
 
-    fn pop_anon_task(&mut self, kind: DepKind) -> (Option<DepNode>, DepNodeIndexNew) {
+    fn pop_anon_task(&mut self, kind: DepKind) -> DepNodeIndexNew {
         let popped_node = self.task_stack.pop().unwrap();
 
         if let OpenTask::Anon {
             read_set: _,
             reads
         } = popped_node {
-            let mut fingerprint = Fingerprint::zero();
+            let mut fingerprint = self.anon_id_seed;
             let mut hasher = StableHasher::new();
 
             for &read in reads.iter() {
@@ -725,9 +756,9 @@ impl CurrentDepGraph {
             };
 
             if let Some(&index) = self.node_to_node_index.get(&target_dep_node) {
-                (None, index)
+                index
             } else {
-                (Some(target_dep_node), self.alloc_node(target_dep_node, reads))
+                self.alloc_node(target_dep_node, reads)
             }
         } else {
             bug!("pop_anon_task() - Expected anonymous task to be popped")

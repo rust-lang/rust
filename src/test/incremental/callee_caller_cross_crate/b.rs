@@ -12,8 +12,6 @@
 // revisions:rpass1 rpass2
 // compile-flags:-Z query-dep-graph
 
-// ignore-test -- ignored until red/green restores cross-crate tracking fidelity
-
 #![feature(rustc_attrs)]
 
 extern crate a;

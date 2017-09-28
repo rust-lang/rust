@@ -99,6 +99,7 @@ fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
 /// variants that represent inputs (HIR and imported Metadata).
 fn does_still_exist(tcx: TyCtxt, dep_node: &DepNode) -> bool {
     match dep_node.kind {
+        DepKind::Krate |
         DepKind::Hir |
         DepKind::HirBody |
         DepKind::InScopeTraits |
@@ -258,33 +259,28 @@ fn transitive_dirty_nodes(serialized_dep_graph: &SerializedDepGraph,
 /// otherwise no longer applicable.
 fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      work_products: Vec<SerializedWorkProduct>,
-                                     clean_work_products: &FxHashSet<WorkProductId>) {
+                                     _clean_work_products: &FxHashSet<WorkProductId>) {
     debug!("reconcile_work_products({:?})", work_products);
     for swp in work_products {
-        if !clean_work_products.contains(&swp.id) {
-            debug!("reconcile_work_products: dep-node for {:?} is dirty", swp);
-            delete_dirty_work_product(tcx, swp);
-        } else {
-            let mut all_files_exist = true;
-            for &(_, ref file_name) in swp.work_product.saved_files.iter() {
-                let path = in_incr_comp_dir_sess(tcx.sess, file_name);
-                if !path.exists() {
-                    all_files_exist = false;
+        let mut all_files_exist = true;
+        for &(_, ref file_name) in swp.work_product.saved_files.iter() {
+            let path = in_incr_comp_dir_sess(tcx.sess, file_name);
+            if !path.exists() {
+                all_files_exist = false;
 
-                    if tcx.sess.opts.debugging_opts.incremental_info {
-                        eprintln!("incremental: could not find file for \
-                                   up-to-date work product: {}", path.display());
-                    }
+                if tcx.sess.opts.debugging_opts.incremental_info {
+                    eprintln!("incremental: could not find file for \
+                               up-to-date work product: {}", path.display());
                 }
             }
+        }
 
-            if all_files_exist {
-                debug!("reconcile_work_products: all files for {:?} exist", swp);
-                tcx.dep_graph.insert_previous_work_product(&swp.id, swp.work_product);
-            } else {
-                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
-                delete_dirty_work_product(tcx, swp);
-            }
+        if all_files_exist {
+            debug!("reconcile_work_products: all files for {:?} exist", swp);
+            tcx.dep_graph.insert_previous_work_product(&swp.id, swp.work_product);
+        } else {
+            debug!("reconcile_work_products: some file for {:?} does not exist", swp);
+            delete_dirty_work_product(tcx, swp);
         }
     }
 }
