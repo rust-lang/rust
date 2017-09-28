@@ -640,14 +640,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             UseOk => { }
             UseWhileBorrowed(loan_path, loan_span) => {
                 let desc = self.bccx.loan_path_to_string(copy_path);
-                self.bccx.cannot_use_when_mutably_borrowed(span, &desc, Origin::Ast)
-                    .span_label(loan_span,
-                               format!("borrow of `{}` occurs here",
-                                       &self.bccx.loan_path_to_string(&loan_path))
-                               )
-                    .span_label(span,
-                               format!("use of borrowed `{}`",
-                                        &self.bccx.loan_path_to_string(&loan_path)))
+                self.bccx.cannot_use_when_mutably_borrowed(
+                        span, &desc,
+                        loan_span, &self.bccx.loan_path_to_string(&loan_path),
+                        Origin::Ast)
                     .emit();
             }
         }
