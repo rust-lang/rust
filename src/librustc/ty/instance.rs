@@ -118,12 +118,12 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
 
     /// The point where linking happens. Resolve a (def_id, substs)
     /// pair to an instance.
-    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
             debug!(" => associated item, attempting to find impl");
             let item = tcx.associated_item(def_id);
-            resolve_associated_item(tcx, &item, trait_def_id, substs)
+            resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
         } else {
             let ty = tcx.type_of(def_id);
             let item_type = tcx.trans_apply_param_substs(substs, &ty);
@@ -184,6 +184,7 @@ fn resolve_closure<'a, 'tcx>(
 fn resolve_associated_item<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_item: &ty::AssociatedItem,
+    param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
     rcvr_substs: &'tcx Substs<'tcx>
     ) -> Option<Instance<'tcx>> {
@@ -194,7 +195,7 @@ fn resolve_associated_item<'a, 'tcx>(
            def_id, trait_id, rcvr_substs);
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, ty::Binder(trait_ref));
+    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, param_env, ty::Binder(trait_ref));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:

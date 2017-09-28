@@ -78,7 +78,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let mut callsites = VecDeque::new();
 
         // Only do inlining into fn bodies.
-        if let MirSource::Fn(_) = self.source {
+        if let MirSource::Fn(caller_id) = self.source {
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 // Don't inline calls that are in cleanup blocks.
                 if bb_data.is_cleanup { continue; }
@@ -88,7 +88,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
                         if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
-                            if let Some(instance) = Instance::resolve(self.tcx, callee_def_id, substs) {
+                            let caller_def_id = self.tcx.hir.local_def_id(caller_id);
+                            let param_env = self.tcx.param_env(caller_def_id);
+
+                            if let Some(instance) = Instance::resolve(self.tcx, param_env, callee_def_id, substs) {
                                 callsites.push_back(CallSite {
                                     callee: instance.def_id(),
                                     substs: instance.substs,
