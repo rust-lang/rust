@@ -2331,11 +2331,11 @@ impl u8 {
     /// let lowercase_a = 97u8;
     /// let uppercase_a = 65u8;
     ///
-    /// assert!(lowercase_a.eq_ignore_ascii_case(uppercase_a));
+    /// assert!(lowercase_a.eq_ignore_ascii_case(&uppercase_a));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: u8) -> bool {
+    pub fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
 
