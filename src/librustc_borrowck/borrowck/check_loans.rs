@@ -865,13 +865,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                    loan_path: &LoanPath<'tcx>,
                                    loan: &Loan) {
         self.bccx.cannot_assign_to_borrowed(
-            span, &self.bccx.loan_path_to_string(loan_path), Origin::Ast)
-            .span_label(loan.span,
-                       format!("borrow of `{}` occurs here",
-                               self.bccx.loan_path_to_string(loan_path)))
-            .span_label(span,
-                       format!("assignment to borrowed `{}` occurs here",
-                               self.bccx.loan_path_to_string(loan_path)))
+            span, loan.span, &self.bccx.loan_path_to_string(loan_path), Origin::Ast)
             .emit();
     }
 }

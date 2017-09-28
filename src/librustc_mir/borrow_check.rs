@@ -991,14 +991,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                            _: Context,
                                            (lvalue, span): (&Lvalue, Span),
                                            loan: &BorrowData) {
-        let describe_lvalue = self.describe_lvalue(lvalue);
-        let borrow_span = self.retrieve_borrow_span(loan);
-
         let mut err = self.tcx.cannot_assign_to_borrowed(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
-
-        err.span_label(borrow_span, format!("borrow of `{}` occurs here", describe_lvalue));
-        err.span_label(span, format!("assignment to borrowed `{}` occurs here", describe_lvalue));
+            span, self.retrieve_borrow_span(loan), &self.describe_lvalue(lvalue), Origin::Mir);
 
         err.emit();
     }
