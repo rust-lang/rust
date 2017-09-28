@@ -15,7 +15,7 @@ doctest = false
 core = { path = "../../libcore" }
 
 [build-dependencies]
-gcc = "0.3"
+cc = "1.0"
 
 [features]
 c = []
