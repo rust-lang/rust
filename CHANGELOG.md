@@ -1,7 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## Trunk
+## 0.0.165
+* Rust upgrade to rustc 1.22.0-nightly (0e6f4cf51 2017-09-27)
 * New lint: [`mut_range_bound`]
 
 ## 0.0.164

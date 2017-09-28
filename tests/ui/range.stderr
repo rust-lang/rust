@@ -15,7 +15,7 @@ error: Iterator::step_by(0) will panic at runtime
 error: Iterator::step_by(0) will panic at runtime
   --> $DIR/range.rs:18:13
    |
-18 |     let _ = (1...2).step_by(0);
+18 |     let _ = (1..=2).step_by(0);
    |             ^^^^^^^^^^^^^^^^^^
 
 error: Iterator::step_by(0) will panic at runtime
