@@ -501,7 +501,10 @@ impl DepGraph {
                         debug!("try_mark_green({:?}) --- trying to force \
                                 dependency {:?}", dep_node, dep_dep_node);
                         if ::ty::maps::force_from_dep_node(tcx, dep_dep_node) {
-                            let dep_dep_node_color = data.colors.borrow().get(dep_dep_node).cloned();
+                            let dep_dep_node_color = data.colors
+                                                         .borrow()
+                                                         .get(dep_dep_node)
+                                                         .cloned();
                             match dep_dep_node_color {
                                 Some(DepNodeColor::Green(node_index)) => {
                                     debug!("try_mark_green({:?}) --- managed to \

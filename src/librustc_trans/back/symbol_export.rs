@@ -77,8 +77,6 @@ pub fn provide_local(providers: &mut Providers) {
     };
 
     providers.is_exported_symbol = |tcx, id| {
-        // FIXME(#42293) needs red/green to not break a bunch of incremental
-        // tests
         tcx.exported_symbol_ids(id.krate).contains(&id)
     };
 
