@@ -506,7 +506,9 @@ impl DepGraph {
                 None => {
                     if dep_dep_node.kind.is_input() {
                         // This input does not exist anymore.
-                        debug_assert!(dep_dep_node.extract_def_id(tcx).is_none());
+                        debug_assert!(dep_dep_node.extract_def_id(tcx).is_none(),
+                                      "Encountered input {:?} without color",
+                                      dep_dep_node);
                         debug!("try_mark_green({:?}) - END - dependency {:?} \
                                 was deleted input", dep_node, dep_dep_node);
                         return None;

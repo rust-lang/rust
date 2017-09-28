@@ -32,7 +32,7 @@ mod persist;
 
 pub use assert_dep_graph::assert_dep_graph;
 pub use persist::load_dep_graph;
-pub use persist::load_dep_graph_new;
+pub use persist::dep_graph_tcx_init;
 pub use persist::save_dep_graph;
 pub use persist::save_trans_partition;
 pub use persist::save_work_products;
