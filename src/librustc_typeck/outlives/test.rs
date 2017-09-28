@@ -30,7 +30,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for OutlivesTest<'a, 'tcx> {
             let inferred_outlives_of = self.tcx.inferred_outlives_of(item_def_id);
             span_err!(self.tcx.sess,
                       item.span,
-                      E0628,
+                      E0640,
                       "{:?}",
                       inferred_outlives_of);
         }

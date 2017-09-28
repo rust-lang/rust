@@ -306,6 +306,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     })?;
 
     tcx.sess.track_errors(|| {
+        time(time_passes, "outlives testing", ||
+            outlives::test::test_inferred_outlives(tcx));
+    })?;
+
+    tcx.sess.track_errors(|| {
         time(time_passes, "impl wf inference", ||
              impl_wf_check::impl_wf_check(tcx));
     })?;
@@ -318,11 +323,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     tcx.sess.track_errors(|| {
         time(time_passes, "variance testing", ||
              variance::test::test_variance(tcx));
-    })?;
-
-    tcx.sess.track_errors(|| {
-        time(time_passes, "outlives testing", ||
-            outlives::test::test_inferred_outlives(tcx));
     })?;
 
     time(time_passes, "wf checking", || check::check_wf_new(tcx))?;
