@@ -250,11 +250,12 @@ impl<'a> FmtVisitor<'a> {
             true,
         ));
 
-        if force_newline_brace {
+        if self.config.fn_brace_style() == BraceStyle::AlwaysNextLine || force_newline_brace {
             newline_brace = true;
-        } else if self.config.fn_brace_style() != BraceStyle::AlwaysNextLine
-            && !result.contains('\n')
-        {
+        } else if last_line_width(&result) + 2 > self.shape().width {
+            // 2 = ` {`
+            newline_brace = true;
+        } else if !result.contains('\n') {
             newline_brace = false;
         }
 
