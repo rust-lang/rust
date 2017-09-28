@@ -140,7 +140,18 @@ impl DepGraph {
     }
 
     pub fn query(&self) -> DepGraphQuery {
-        self.data.as_ref().unwrap().edges.borrow().query()
+        let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
+        let nodes: Vec<_> = current_dep_graph.nodes.iter().cloned().collect();
+        let mut edges = Vec::new();
+        for (index, edge_targets) in current_dep_graph.edges.iter_enumerated() {
+            let from = current_dep_graph.nodes[index];
+            for &edge_target in edge_targets {
+                let to = current_dep_graph.nodes[edge_target];
+                edges.push((from, to));
+            }
+        }
+
+        DepGraphQuery::new(&nodes[..], &edges[..])
     }
 
     pub fn in_ignore<'graph>(&'graph self) -> Option<raii::IgnoreTask<'graph>> {

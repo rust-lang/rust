@@ -14,7 +14,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use std::env;
 use std::hash::Hash;
 use std::mem;
-use super::{DepGraphQuery, DepKind, DepNode};
+use super::{DepKind, DepNode};
 use super::debug::EdgeFilter;
 
 pub(super) struct DepGraphEdges {
@@ -87,10 +87,6 @@ impl DepGraphEdges {
             forbidden_edge,
             opened_once: FxHashSet(),
         }
-    }
-
-    fn id(&self, index: DepNodeIndex) -> DepNode {
-        self.nodes[index.index()]
     }
 
     pub fn push_ignore(&mut self) {
@@ -229,13 +225,6 @@ impl DepGraphEdges {
     pub fn read_index(&mut self, source: DepNodeIndex) {
         let dep_node = self.nodes[source.index()];
         self.read(dep_node);
-    }
-
-    pub fn query(&self) -> DepGraphQuery {
-        let edges: Vec<_> = self.edges.iter()
-                                      .map(|&(i, j)| (self.id(i), self.id(j)))
-                                      .collect();
-        DepGraphQuery::new(&self.nodes, &edges)
     }
 
     #[inline]
