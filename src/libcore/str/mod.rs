@@ -20,7 +20,8 @@ use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use char;
 use convert::TryFrom;
 use fmt;
-use iter::{Map, Cloned, FusedIterator};
+use iter::{Map, Cloned, FusedIterator, TrustedLen};
+use iter_private::TrustedRandomAccess;
 use slice::{self, SliceIndex};
 use mem;
 
@@ -817,6 +818,17 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a> FusedIterator for Bytes<'a> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a> TrustedLen for Bytes<'a> {}
+
+#[doc(hidden)]
+unsafe impl<'a> TrustedRandomAccess for Bytes<'a> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> u8 {
+        self.0.get_unchecked(i)
+    }
+    fn may_have_side_effect() -> bool { false }
+}
 
 /// This macro generates a Clone impl for string pattern API
 /// wrapper types of the form X<'a, P>
