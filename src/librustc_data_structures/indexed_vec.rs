@@ -47,7 +47,7 @@ macro_rules! newtype_index {
 
         impl Idx for $name {
             fn new(value: usize) -> Self {
-                assert!(value < (u32::MAX) as usize);
+                assert!(value < (::std::u32::MAX) as usize);
                 $name(value as u32)
             }
             fn index(self) -> usize {
@@ -55,8 +55,8 @@ macro_rules! newtype_index {
             }
         }
 
-        impl Debug for $name {
-            fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        impl ::std::fmt::Debug for $name {
+            fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 write!(fmt, "{}{}", $debug_name, self.0)
             }
         }

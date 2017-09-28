@@ -19,8 +19,6 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
-use std::fmt::{self, Debug, Formatter};
-use std::u32;
 
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
