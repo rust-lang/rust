@@ -4679,4 +4679,5 @@ register_diagnostics! {
     E0627, // yield statement outside of generator literal
     E0632, // cannot provide explicit type parameters when `impl Trait` is used in
            // argument position.
+    E0628, // infer outlives
 }
