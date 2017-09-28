@@ -1010,7 +1010,6 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn report_assignment_to_static(&mut self, _context: Context, (lvalue, span): (&Lvalue, Span)) {
         let mut err = self.tcx.cannot_assign_static(
             span, &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME: add span labels for borrow and assignment points
         err.emit();
     }
 }

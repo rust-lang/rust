@@ -179,11 +179,17 @@ pub trait BorrowckErrors {
                          desc, OGN=o)
     }
 
+    fn cannot_assign(&self, span: Span, desc: &str, o: Origin) -> DiagnosticBuilder
+    {
+        struct_span_err!(self, span, E0594,
+                         "cannot assign to {}{OGN}",
+                         desc, OGN=o)
+    }
+
     fn cannot_assign_static(&self, span: Span, desc: &str, o: Origin)
                             -> DiagnosticBuilder
     {
-        self.struct_span_err(span, &format!("cannot assign to immutable static item {}{OGN}",
-                                            desc, OGN=o))
+        self.cannot_assign(span, &format!("immutable static item `{}`", desc), o)
     }
 }
 

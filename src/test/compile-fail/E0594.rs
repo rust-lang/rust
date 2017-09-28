@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,15 +11,10 @@
 // revisions: ast mir
 //[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
 
-struct TrieMapIterator<'a> {
-    node: &'a usize
-}
+static NUM: i32 = 18;
 
 fn main() {
-    let a = 5;
-    let _iter = TrieMapIterator{node: &a};
-    _iter.node = & //[ast]~ ERROR cannot assign to immutable field
-                   //[mir]~^ ERROR cannot assign to immutable field `_iter.node` (Ast)
-                   // FIXME Error for MIR
-    panic!()
+    NUM = 20; //[ast]~ ERROR E0594
+              //[mir]~^ ERROR cannot assign to immutable static item (Ast)
+              //[mir]~| ERROR cannot assign to immutable static item `NUM` (Mir)
 }

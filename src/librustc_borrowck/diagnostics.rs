@@ -742,6 +742,5 @@ b.resume();
 
 register_diagnostics! {
 //    E0385, // {} in an aliasable location
-    E0594, // cannot assign to {}
     E0598, // lifetime of {} is too short to guarantee its contents can be...
 }
