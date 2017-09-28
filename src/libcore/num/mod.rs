@@ -2264,15 +2264,13 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let ascii = 97u8;
     /// let non_ascii = 150u8;
     ///
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         *self & 128 == 0
@@ -2288,15 +2286,13 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let lowercase_a = 97u8;
     ///
     /// assert_eq!(65, lowercase_a.to_ascii_uppercase());
     /// ```
     ///
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> u8 {
         ASCII_UPPERCASE_MAP[*self as usize]
@@ -2312,15 +2308,13 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = 65u8;
     ///
     /// assert_eq!(97, uppercase_a.to_ascii_lowercase());
     /// ```
     ///
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> u8 {
         ASCII_LOWERCASE_MAP[*self as usize]
@@ -2334,14 +2328,12 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let lowercase_a = 97u8;
     /// let uppercase_a = 65u8;
     ///
     /// assert!(lowercase_a.eq_ignore_ascii_case(uppercase_a));
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: u8) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
@@ -2358,8 +2350,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let mut byte = b'a';
     ///
     /// byte.make_ascii_uppercase();
@@ -2368,7 +2358,7 @@ impl u8 {
     /// ```
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
@@ -2385,8 +2375,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let mut byte = b'A';
     ///
     /// byte.make_ascii_lowercase();
@@ -2395,7 +2383,7 @@ impl u8 {
     /// ```
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
@@ -2409,8 +2397,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2431,7 +2417,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphabetic());
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_alphabetic(&self) -> bool {
         if *self >= 0x80 { return false; }
@@ -2447,8 +2433,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2469,7 +2453,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_uppercase());
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_uppercase(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2485,8 +2469,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2507,7 +2489,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_lowercase());
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_lowercase(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2525,8 +2507,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2547,7 +2527,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphanumeric());
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_alphanumeric(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2563,8 +2543,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2585,7 +2563,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_digit());
     /// assert!(!esc.is_ascii_digit());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_digit(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2603,8 +2581,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2625,7 +2601,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_hexdigit());
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_hexdigit(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2645,8 +2621,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2667,7 +2641,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_punctuation());
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_punctuation(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2683,8 +2657,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2705,7 +2677,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_graphic());
     /// assert!(!esc.is_ascii_graphic());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_graphic(&self) -> bool {
         if *self >= 0x80 { return false; }
@@ -2738,8 +2710,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2760,7 +2730,7 @@ impl u8 {
     /// assert!(lf.is_ascii_whitespace());
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_whitespace(&self) -> bool {
         if *self >= 0x80 { return false; }
@@ -2778,8 +2748,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_methods_on_intrinsics)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -2800,7 +2768,7 @@ impl u8 {
     /// assert!(lf.is_ascii_control());
     /// assert!(esc.is_ascii_control());
     /// ```
-    #[unstable(feature = "ascii_methods_on_intrinsics", issue = "0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
     pub fn is_ascii_control(&self) -> bool {
         if *self >= 0x80 { return false; }
