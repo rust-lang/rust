@@ -35,7 +35,7 @@ extend the functionality of Rust to include this ability.
    small crate as a dependency and be able to access the contents of the README
    without needing to go online to the repo to read it. This also would help
    with [this issue on
-   crates.io](https://github.com/rust-lang/crates.io/issues.81) by making it
+   crates.io](https://github.com/rust-lang/crates.io/issues/81) by making it
    easy to have the README in the crate and the crate root at the same.
 2. The feature would provide a way to have easier to read code for library
    maintainers. Sometimes doc comments are quite long in terms of line count
