@@ -155,7 +155,10 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                .filter(|&&r| !skol_resolution_map.contains_key(r))
                                .cloned()
                                .next()
-                               .expect("no representative region");
+                               .unwrap_or_else(|| {
+                                   bug!("no representative region for `{:?}` in `{:?}`",
+                                        skol, regions)
+                               });
 
                     (skol, representative)
                 })

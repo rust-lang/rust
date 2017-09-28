@@ -1226,7 +1226,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     None
                 }
             });
-            self.ty_of_arg(a, expected_arg_ty)
+
+            let input_ty = self.ty_of_arg(a, expected_arg_ty);
+            debug!("ty_of_closure: i={} input_ty={:?} expected_arg_ty={:?}",
+                   i, input_ty, expected_arg_ty);
+
+            input_ty
         });
 
         let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());

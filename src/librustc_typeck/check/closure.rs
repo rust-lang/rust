@@ -51,7 +51,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                      body: &'gcx hir::Body,
                      expected_sig: Option<ty::FnSig<'tcx>>)
                      -> Ty<'tcx> {
-        debug!("check_closure opt_kind={:?} expected_sig={:?}",
+        debug!("check_closure(opt_kind={:?}, expected_sig={:?})",
                opt_kind,
                expected_sig);
 
@@ -61,9 +61,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                          decl,
                                          Abi::RustCall,
                                          expected_sig);
+
+        debug!("check_closure: ty_of_closure returns {:?}", sig);
+
         // `deduce_expectations_from_expected_type` introduces late-bound
         // lifetimes defined elsewhere, which we need to anonymize away.
         let sig = self.tcx.anonymize_late_bound_regions(&sig);
+
+        debug!("check_closure: anonymized sig={:?}", sig);
 
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar
@@ -104,7 +109,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             sig.abi
         ));
 
-        debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
+        debug!("check_closure: expr_def_id={:?}, sig={:?}, opt_kind={:?}",
                expr_def_id,
                sig,
                opt_kind);
