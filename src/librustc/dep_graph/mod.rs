@@ -11,7 +11,6 @@
 pub mod debug;
 mod dep_node;
 mod dep_tracking_map;
-mod edges;
 mod graph;
 mod prev;
 mod query;

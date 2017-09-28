@@ -56,7 +56,10 @@ impl SerializedDepGraph {
         }
     }
 
-    pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> &[SerializedDepNodeIndex] {
+    #[inline]
+    pub fn edge_targets_from(&self,
+                             source: SerializedDepNodeIndex)
+                             -> &[SerializedDepNodeIndex] {
         let targets = self.edge_list_indices[source];
         &self.edge_list_data[targets.0 as usize..targets.1 as usize]
     }

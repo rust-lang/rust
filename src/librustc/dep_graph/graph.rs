@@ -14,6 +14,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
+use std::env;
 use std::hash::Hash;
 use std::rc::Rc;
 use ty::TyCtxt;
@@ -21,14 +22,13 @@ use util::common::{ProfileQueriesMsg, profq_msg};
 
 use ich::Fingerprint;
 
+use super::debug::EdgeFilter;
 use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
 use super::raii;
 use super::safe::DepGraphSafe;
-use super::edges::{self, DepGraphEdges};
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use super::prev::PreviousDepGraph;
-
 
 #[derive(Clone)]
 pub struct DepGraph {
@@ -44,20 +44,25 @@ pub struct DepGraph {
     fingerprints: Rc<RefCell<FxHashMap<DepNode, Fingerprint>>>
 }
 
-/// As a temporary measure, while transitioning to the new DepGraph
-/// implementation, we maintain the old and the new dep-graph encoding in
-/// parallel, so a DepNodeIndex actually contains two indices, one for each
-/// version.
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DepNodeIndex {
-    legacy: edges::DepNodeIndex,
-    new: DepNodeIndexNew,
+    index: u32,
+}
+
+impl Idx for DepNodeIndex {
+    fn new(idx: usize) -> Self {
+        assert!((idx & 0xFFFF_FFFF) == idx);
+        DepNodeIndex { index: idx as u32 }
+    }
+    fn index(self) -> usize {
+        self.index as usize
+    }
 }
 
 impl DepNodeIndex {
-    pub const INVALID: DepNodeIndex = DepNodeIndex {
-        legacy: edges::DepNodeIndex::INVALID,
-        new: DepNodeIndexNew::INVALID,
+    const INVALID: DepNodeIndex = DepNodeIndex {
+        index: ::std::u32::MAX,
     };
 }
 
@@ -77,10 +82,6 @@ impl DepNodeColor {
 }
 
 struct DepGraphData {
-    /// The old, initial encoding of the dependency graph. This will soon go
-    /// away.
-    edges: RefCell<DepGraphEdges>,
-
     /// The new encoding of the dependency graph, optimized for red/green
     /// tracking. The `current` field is the dependency graph of only the
     /// current compilation session: We don't merge the previous dep-graph into
@@ -105,7 +106,7 @@ struct DepGraphData {
     dep_node_debug: RefCell<FxHashMap<DepNode, String>>,
 
     // Used for testing, only populated when -Zquery-dep-graph is specified.
-    loaded_from_cache: RefCell<FxHashMap<DepNodeIndexNew, bool>>,
+    loaded_from_cache: RefCell<FxHashMap<DepNodeIndex, bool>>,
 }
 
 impl DepGraph {
@@ -115,7 +116,6 @@ impl DepGraph {
             data: Some(Rc::new(DepGraphData {
                 previous_work_products: RefCell::new(FxHashMap()),
                 work_products: RefCell::new(FxHashMap()),
-                edges: RefCell::new(DepGraphEdges::new()),
                 dep_node_debug: RefCell::new(FxHashMap()),
                 current: RefCell::new(CurrentDepGraph::new()),
                 previous: prev_graph,
@@ -155,8 +155,7 @@ impl DepGraph {
     }
 
     pub fn in_ignore<'graph>(&'graph self) -> Option<raii::IgnoreTask<'graph>> {
-        self.data.as_ref().map(|data| raii::IgnoreTask::new(&data.edges,
-                                                            &data.current))
+        self.data.as_ref().map(|data| raii::IgnoreTask::new(&data.current))
     }
 
     pub fn with_ignore<OP,R>(&self, op: OP) -> R
@@ -205,7 +204,6 @@ impl DepGraph {
         if let Some(ref data) = self.data {
             debug_assert!(!data.colors.borrow().contains_key(&key));
 
-            data.edges.borrow_mut().push_task(key);
             data.current.borrow_mut().push_task(key);
             if cfg!(debug_assertions) {
                 profq_msg(ProfileQueriesMsg::TaskBegin(key.clone()))
@@ -223,8 +221,7 @@ impl DepGraph {
                 profq_msg(ProfileQueriesMsg::TaskEnd)
             };
 
-            let dep_node_index_legacy = data.edges.borrow_mut().pop_task(key);
-            let dep_node_index_new = data.current.borrow_mut().pop_task(key);
+            let dep_node_index = data.current.borrow_mut().pop_task(key);
 
             let mut stable_hasher = StableHasher::new();
             result.hash_stable(&mut hcx, &mut stable_hasher);
@@ -239,20 +236,14 @@ impl DepGraph {
             let prev_fingerprint = data.previous.fingerprint_of(&key);
 
             let color = if Some(current_fingerprint) == prev_fingerprint {
-                DepNodeColor::Green(DepNodeIndex {
-                    legacy: dep_node_index_legacy,
-                    new: dep_node_index_new,
-                })
+                DepNodeColor::Green(dep_node_index)
             } else {
                 DepNodeColor::Red
             };
 
             assert!(data.colors.borrow_mut().insert(key, color).is_none());
 
-            (result, DepNodeIndex {
-                legacy: dep_node_index_legacy,
-                new: dep_node_index_new,
-            })
+            (result, dep_node_index)
         } else {
             if key.kind.fingerprint_needed_for_crate_hash() {
                 let mut hcx = cx.create_stable_hashing_context();
@@ -276,17 +267,12 @@ impl DepGraph {
         where OP: FnOnce() -> R
     {
         if let Some(ref data) = self.data {
-            data.edges.borrow_mut().push_anon_task();
             data.current.borrow_mut().push_anon_task();
             let result = op();
-            let dep_node_index_legacy = data.edges.borrow_mut().pop_anon_task(dep_kind);
-            let dep_node_index_new = data.current
-                                         .borrow_mut()
-                                         .pop_anon_task(dep_kind);
-            (result, DepNodeIndex {
-                legacy: dep_node_index_legacy,
-                new: dep_node_index_new,
-            })
+            let dep_node_index = data.current
+                                     .borrow_mut()
+                                     .pop_anon_task(dep_kind);
+            (result, dep_node_index)
         } else {
             (op(), DepNodeIndex::INVALID)
         }
@@ -295,11 +281,9 @@ impl DepGraph {
     #[inline]
     pub fn read(&self, v: DepNode) {
         if let Some(ref data) = self.data {
-            data.edges.borrow_mut().read(v);
-
             let mut current = data.current.borrow_mut();
-            if let Some(&dep_node_index_new) = current.node_to_node_index.get(&v) {
-                current.read_index(dep_node_index_new);
+            if let Some(&dep_node_index) = current.node_to_node_index.get(&v) {
+                current.read_index(dep_node_index);
             } else {
                 bug!("DepKind {:?} should be pre-allocated but isn't.", v.kind)
             }
@@ -307,22 +291,10 @@ impl DepGraph {
     }
 
     #[inline]
-    pub fn read_index(&self, v: DepNodeIndex) {
+    pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
-            data.edges.borrow_mut().read_index(v.legacy);
-            data.current.borrow_mut().read_index(v.new);
+            data.current.borrow_mut().read_index(dep_node_index);
         }
-    }
-
-    /// Only to be used during graph loading
-    #[inline]
-    pub fn add_edge_directly(&self, source: DepNode, target: DepNode) {
-        self.data.as_ref().unwrap().edges.borrow_mut().add_edge(source, target);
-    }
-
-    /// Only to be used during graph loading
-    pub fn add_node_directly(&self, node: DepNode) {
-        self.data.as_ref().unwrap().edges.borrow_mut().add_node(node);
     }
 
     pub fn fingerprint_of(&self, dep_node: &DepNode) -> Fingerprint {
@@ -567,18 +539,9 @@ impl DepGraph {
 
         // ... allocating an entry for it in the current dependency graph and
         // adding all the appropriate edges imported from the previous graph ...
-        let node_index_new = data.current
+        let dep_node_index = data.current
                                  .borrow_mut()
-                                 .alloc_node(*dep_node,
-                                             current_deps.iter().map(|n| n.new).collect());
-        let dep_node_index_legacy = {
-            let mut legacy_graph = data.edges.borrow_mut();
-            legacy_graph.push_task(*dep_node);
-            for node_index in current_deps.into_iter().map(|n| n.legacy) {
-                legacy_graph.read_index(node_index);
-            }
-            legacy_graph.pop_task(*dep_node)
-        };
+                                 .alloc_node(*dep_node, current_deps);
 
         // ... copying the fingerprint from the previous graph too, so we don't
         // have to recompute it ...
@@ -588,24 +551,19 @@ impl DepGraph {
                     .insert(*dep_node, fingerprint)
                     .is_none());
 
-        let node_index = DepNodeIndex {
-            legacy: dep_node_index_legacy,
-            new: node_index_new,
-        };
-
         // ... and finally storing a "Green" entry in the color map.
         assert!(data.colors
                     .borrow_mut()
-                    .insert(*dep_node, DepNodeColor::Green(node_index))
+                    .insert(*dep_node, DepNodeColor::Green(dep_node_index))
                     .is_none());
 
         debug!("try_mark_green({:?}) - END - successfully marked as green", dep_node.kind);
-        Some(node_index)
+        Some(dep_node_index)
     }
 
     // Used in various assertions
     pub fn is_green(&self, dep_node_index: DepNodeIndex) -> bool {
-        let dep_node = self.data.as_ref().unwrap().current.borrow().nodes[dep_node_index.new];
+        let dep_node = self.data.as_ref().unwrap().current.borrow().nodes[dep_node_index];
         self.data.as_ref().unwrap().colors.borrow().get(&dep_node).map(|&color| {
             match color {
                 DepNodeColor::Red => false,
@@ -614,9 +572,9 @@ impl DepGraph {
         }).unwrap_or(false)
     }
 
-    pub fn mark_loaded_from_cache(&self, dep_node: DepNodeIndex, state: bool) {
+    pub fn mark_loaded_from_cache(&self, dep_node_index: DepNodeIndex, state: bool) {
         debug!("mark_loaded_from_cache({:?}, {})",
-               self.data.as_ref().unwrap().current.borrow().nodes[dep_node.new],
+               self.data.as_ref().unwrap().current.borrow().nodes[dep_node_index],
                state);
 
         self.data
@@ -624,7 +582,7 @@ impl DepGraph {
             .unwrap()
             .loaded_from_cache
             .borrow_mut()
-            .insert(dep_node.new, state);
+            .insert(dep_node_index, state);
     }
 
     pub fn was_loaded_from_cache(&self, dep_node: &DepNode) -> Option<bool> {
@@ -673,13 +631,12 @@ pub struct WorkProduct {
 }
 
 pub(super) struct CurrentDepGraph {
-    nodes: IndexVec<DepNodeIndexNew, DepNode>,
-    edges: IndexVec<DepNodeIndexNew, Vec<DepNodeIndexNew>>,
-    node_to_node_index: FxHashMap<DepNode, DepNodeIndexNew>,
-
+    nodes: IndexVec<DepNodeIndex, DepNode>,
+    edges: IndexVec<DepNodeIndex, Vec<DepNodeIndex>>,
+    node_to_node_index: FxHashMap<DepNode, DepNodeIndex>,
     anon_id_seed: Fingerprint,
-
     task_stack: Vec<OpenTask>,
+    forbidden_edge: Option<EdgeFilter>,
 }
 
 impl CurrentDepGraph {
@@ -692,12 +649,27 @@ impl CurrentDepGraph {
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
 
+        let forbidden_edge = if cfg!(debug_assertions) {
+            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+                Ok(s) => {
+                    match EdgeFilter::new(&s) {
+                        Ok(f) => Some(f),
+                        Err(err) => bug!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+                    }
+                }
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+
         CurrentDepGraph {
             nodes: IndexVec::new(),
             edges: IndexVec::new(),
             node_to_node_index: FxHashMap(),
             anon_id_seed: stable_hasher.finish(),
             task_stack: Vec::new(),
+            forbidden_edge,
         }
     }
 
@@ -718,7 +690,7 @@ impl CurrentDepGraph {
         });
     }
 
-    pub(super) fn pop_task(&mut self, key: DepNode) -> DepNodeIndexNew {
+    pub(super) fn pop_task(&mut self, key: DepNode) -> DepNodeIndex {
         let popped_node = self.task_stack.pop().unwrap();
 
         if let OpenTask::Regular {
@@ -740,7 +712,7 @@ impl CurrentDepGraph {
         });
     }
 
-    fn pop_anon_task(&mut self, kind: DepKind) -> DepNodeIndexNew {
+    fn pop_anon_task(&mut self, kind: DepKind) -> DepNodeIndex {
         let popped_node = self.task_stack.pop().unwrap();
 
         if let OpenTask::Anon {
@@ -778,15 +750,26 @@ impl CurrentDepGraph {
         }
     }
 
-    fn read_index(&mut self, source: DepNodeIndexNew) {
+    fn read_index(&mut self, source: DepNodeIndex) {
         match self.task_stack.last_mut() {
             Some(&mut OpenTask::Regular {
                 ref mut reads,
                 ref mut read_set,
-                node: _,
+                node: ref target,
             }) => {
                 if read_set.insert(source) {
                     reads.push(source);
+
+                    if cfg!(debug_assertions) {
+                        if let Some(ref forbidden_edge) = self.forbidden_edge {
+                            let source = self.nodes[source];
+                            if forbidden_edge.test(&source, &target) {
+                                bug!("forbidden edge {:?} -> {:?} created",
+                                     source,
+                                     target)
+                            }
+                        }
+                    }
                 }
             }
             Some(&mut OpenTask::Anon {
@@ -805,12 +788,12 @@ impl CurrentDepGraph {
 
     fn alloc_node(&mut self,
                   dep_node: DepNode,
-                  edges: Vec<DepNodeIndexNew>)
-                  -> DepNodeIndexNew {
+                  edges: Vec<DepNodeIndex>)
+                  -> DepNodeIndex {
         debug_assert_eq!(self.edges.len(), self.nodes.len());
         debug_assert_eq!(self.node_to_node_index.len(), self.nodes.len());
         debug_assert!(!self.node_to_node_index.contains_key(&dep_node));
-        let dep_node_index = DepNodeIndexNew::new(self.nodes.len());
+        let dep_node_index = DepNodeIndex::new(self.nodes.len());
         self.nodes.push(dep_node);
         self.node_to_node_index.insert(dep_node, dep_node_index);
         self.edges.push(edges);
@@ -818,38 +801,16 @@ impl CurrentDepGraph {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct DepNodeIndexNew {
-    index: u32,
-}
-
-impl Idx for DepNodeIndexNew {
-    fn new(v: usize) -> DepNodeIndexNew {
-        assert!((v & 0xFFFF_FFFF) == v);
-        DepNodeIndexNew { index: v as u32 }
-    }
-
-    fn index(self) -> usize {
-        self.index as usize
-    }
-}
-
-impl DepNodeIndexNew {
-    const INVALID: DepNodeIndexNew = DepNodeIndexNew {
-        index: ::std::u32::MAX,
-    };
-}
-
 #[derive(Clone, Debug, PartialEq)]
 enum OpenTask {
     Regular {
         node: DepNode,
-        reads: Vec<DepNodeIndexNew>,
-        read_set: FxHashSet<DepNodeIndexNew>,
+        reads: Vec<DepNodeIndex>,
+        read_set: FxHashSet<DepNodeIndex>,
     },
     Anon {
-        reads: Vec<DepNodeIndexNew>,
-        read_set: FxHashSet<DepNodeIndexNew>,
+        reads: Vec<DepNodeIndex>,
+        read_set: FxHashSet<DepNodeIndex>,
     },
     Ignore,
 }

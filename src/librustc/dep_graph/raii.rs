@@ -8,33 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::edges::DepGraphEdges;
 use super::graph::CurrentDepGraph;
 
 use std::cell::RefCell;
 
 pub struct IgnoreTask<'graph> {
-    legacy_graph: &'graph RefCell<DepGraphEdges>,
-    new_graph: &'graph RefCell<CurrentDepGraph>,
+    graph: &'graph RefCell<CurrentDepGraph>,
 }
 
 impl<'graph> IgnoreTask<'graph> {
-    pub(super) fn new(legacy_graph: &'graph RefCell<DepGraphEdges>,
-                      new_graph: &'graph RefCell<CurrentDepGraph>)
-                      -> IgnoreTask<'graph> {
-        legacy_graph.borrow_mut().push_ignore();
-        new_graph.borrow_mut().push_ignore();
+    pub(super) fn new(graph: &'graph RefCell<CurrentDepGraph>) -> IgnoreTask<'graph> {
+        graph.borrow_mut().push_ignore();
         IgnoreTask {
-            legacy_graph,
-            new_graph,
+            graph,
         }
     }
 }
 
 impl<'graph> Drop for IgnoreTask<'graph> {
     fn drop(&mut self) {
-        self.legacy_graph.borrow_mut().pop_ignore();
-        self.new_graph.borrow_mut().pop_ignore();
+        self.graph.borrow_mut().pop_ignore();
     }
 }
 
