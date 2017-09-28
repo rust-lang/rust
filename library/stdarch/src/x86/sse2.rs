@@ -1726,6 +1726,14 @@ pub unsafe fn _mm_cvtpd_ps(a: f64x2) -> f32x4 {
     cvtpd2ps(a)
 }
 
+/// Convert packed double-precision (64-bit) floating-point elements in `a` to packed 32-bit integers.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(cvtpd2dq))]
+pub unsafe fn _mm_cvtpd_epi32(a: f64x2) -> i32x4 {
+    cvtpd2dq(a)
+}
+
 /// Return a mask of the most significant bit of each element in `a`.
 ///
 /// The mask is stored in the 2 least significant bits of the return value.
@@ -1892,6 +1900,8 @@ extern {
     fn movmskpd(a: f64x2) -> i32;
     #[link_name = "llvm.x86.sse2.cvtpd2ps"]
     fn cvtpd2ps(a: f64x2) -> f32x4;
+    #[link_name = "llvm.x86.sse2.cvtpd2dq"]
+    fn cvtpd2dq(a: f64x2) -> i32x4;
 }
 
 #[cfg(test)]
@@ -3432,5 +3442,25 @@ mod tests {
 
         let r = sse2::_mm_cvtpd_ps(f64x2::new(f32::MAX as f64, f32::MIN as f64));
         assert_eq!(r, f32x4::new(f32::MAX, f32::MIN, 0.0,0.0));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_cvtpd_epi32() {
+        use std::{f64, i32};
+
+        let r = sse2::_mm_cvtpd_epi32(f64x2::new(-1.0, 5.0));
+        assert_eq!(r, i32x4::new(-1, 5, 0, 0));
+
+        let r = sse2::_mm_cvtpd_epi32(f64x2::new(-1.0, -5.0));
+        assert_eq!(r, i32x4::new(-1, -5, 0, 0));
+
+        let r = sse2::_mm_cvtpd_epi32(f64x2::new(f64::MAX, f64::MIN));
+        assert_eq!(r, i32x4::new(i32::MIN, i32::MIN, 0, 0));
+
+        let r = sse2::_mm_cvtpd_epi32(f64x2::new(f64::INFINITY, f64::NEG_INFINITY));
+        assert_eq!(r, i32x4::new(i32::MIN, i32::MIN, 0, 0));
+
+        let r = sse2::_mm_cvtpd_epi32(f64x2::new(f64::NAN, f64::NAN));
+        assert_eq!(r, i32x4::new(i32::MIN, i32::MIN, 0, 0));
     }
 }
