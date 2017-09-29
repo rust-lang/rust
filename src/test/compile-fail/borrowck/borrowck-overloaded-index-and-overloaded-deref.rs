@@ -13,6 +13,9 @@
 // operator. The accounting of the all the implicit things going on
 // here is rather subtle. Issue #20232.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+
 use std::ops::{Deref, Index};
 
 struct MyVec<T> { x: T }
@@ -39,7 +42,9 @@ fn main() {
     let mut v = MyVec { x: MyPtr { x: Foo { f: 22 } } };
     let i = &v[0].f;
     v = MyVec { x: MyPtr { x: Foo { f: 23 } } };
-    //~^ ERROR cannot assign to `v`
+    //[ast]~^ ERROR cannot assign to `v`
+    //[mir]~^^ ERROR cannot assign to `v` because it is borrowed (Ast)
+    //[mir]~| ERROR cannot assign to `v` because it is borrowed (Mir)
     read(*i);
 }
 
