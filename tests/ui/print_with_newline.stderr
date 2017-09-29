@@ -1,0 +1,28 @@
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> $DIR/print_with_newline.rs:6:5
+  |
+6 |     print!("Hello/n");
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D print-with-newline` implied by `-D warnings`
+
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> $DIR/print_with_newline.rs:7:5
+  |
+7 |     print!("Hello {}/n", "world");
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> $DIR/print_with_newline.rs:8:5
+  |
+8 |     print!("Hello {} {}/n/n", "world", "#2");
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> $DIR/print_with_newline.rs:9:5
+  |
+9 |     print!("{}/n", 1265);
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
