@@ -56,6 +56,7 @@ use any::TypeId;
 use borrow::Cow;
 use cell;
 use char;
+use convert;
 use fmt::{self, Debug, Display};
 use mem::transmute;
 use num;
@@ -362,6 +363,13 @@ impl Error for char::ParseCharError {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl Error for convert::Infallible {
+    fn description(&self) -> &str {
+        match *self {
+        }
+    }
+}
 
 // copied from any.rs
 impl Error + 'static {

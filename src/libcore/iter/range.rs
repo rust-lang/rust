@@ -89,6 +89,7 @@ macro_rules! step_impl_unsigned {
             }
 
             #[inline]
+            #[allow(unreachable_patterns)]
             fn add_usize(&self, n: usize) -> Option<Self> {
                 match <$t>::try_from(n) {
                     Ok(n_as_t) => self.checked_add(n_as_t),
@@ -120,6 +121,7 @@ macro_rules! step_impl_signed {
             }
 
             #[inline]
+            #[allow(unreachable_patterns)]
             fn add_usize(&self, n: usize) -> Option<Self> {
                 match <$unsigned>::try_from(n) {
                     Ok(n_as_unsigned) => {
