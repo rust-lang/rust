@@ -177,7 +177,8 @@ impl_stable_hash_for!(struct hir::TyParam {
     bounds,
     default,
     span,
-    pure_wrt_drop
+    pure_wrt_drop,
+    synthetic
 });
 
 impl_stable_hash_for!(struct hir::Generics {
@@ -185,6 +186,10 @@ impl_stable_hash_for!(struct hir::Generics {
     ty_params,
     where_clause,
     span
+});
+
+impl_stable_hash_for!(enum hir::SyntheticTyParamKind {
+    ImplTrait
 });
 
 impl_stable_hash_for!(struct hir::WhereClause {

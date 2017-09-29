@@ -463,7 +463,8 @@ impl_stable_hash_for!(struct ty::TypeParameterDef {
     index,
     has_default,
     object_lifetime_default,
-    pure_wrt_drop
+    pure_wrt_drop,
+    synthetic
 });
 
 impl<'gcx, T> HashStable<StableHashingContext<'gcx>>

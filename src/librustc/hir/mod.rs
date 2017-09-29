@@ -351,6 +351,7 @@ pub struct TyParam {
     pub default: Option<P<Ty>>,
     pub span: Span,
     pub pure_wrt_drop: bool,
+    pub synthetic: Option<SyntheticTyParamKind>,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -417,6 +418,13 @@ impl Generics {
         }
         return None;
     }
+}
+
+/// Synthetic Type Parameters are converted to an other form during lowering, this allows
+/// to track the original form they had. Usefull for error messages.
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum SyntheticTyParamKind {
+    ImplTrait
 }
 
 /// A `where` clause in a definition

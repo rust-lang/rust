@@ -4647,6 +4647,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // a problem.
         self.check_path_parameter_count(span, &mut type_segment, false);
         self.check_path_parameter_count(span, &mut fn_segment, false);
+        self.check_impl_trait(span, &mut fn_segment);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4869,6 +4870,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .span_label(span, format!("expected {}", expected_text))
                 .emit();
         }
+    }
+
+    /// Report error if there is an explicit type parameter when using `impl Trait`.
+    fn check_impl_trait(&self,
+                        span: Span,
+                        segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
+        use hir::SyntheticTyParamKind::*;
+
+        segment.map(|(path_segment, generics)| {
+            let explicit = !path_segment.infer_types;
+            let impl_trait = generics.types.iter()
+                                           .any(|ty_param| {
+                                               match ty_param.synthetic {
+                                                   Some(ImplTrait) => true,
+                                                   _ => false,
+                                               }
+                                           });
+
+            if explicit && impl_trait {
+                let mut err = struct_span_err! {
+                    self.tcx.sess,
+                    span,
+                    E0632,
+                    "cannot provide explicit type parameters when `impl Trait` is \
+                    used in argument position."
+                };
+
+                err.emit();
+            }
+        });
     }
 
     fn structurally_resolve_type_or_else<F>(&self, sp: Span, ty: Ty<'tcx>, f: F)
