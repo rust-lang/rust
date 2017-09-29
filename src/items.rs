@@ -10,6 +10,7 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
+use std::borrow::Cow;
 use std::cmp::min;
 
 use syntax::{abi, ast, ptr, symbol};
@@ -126,7 +127,7 @@ impl Rewrite for ast::Local {
 #[allow(dead_code)]
 struct Item<'a> {
     keyword: &'static str,
-    abi: String,
+    abi: Cow<'static, str>,
     vis: Option<&'a ast::Visibility>,
     body: Vec<BodyElement<'a>>,
     span: Span,
@@ -134,14 +135,9 @@ struct Item<'a> {
 
 impl<'a> Item<'a> {
     fn from_foreign_mod(fm: &'a ast::ForeignMod, span: Span, config: &Config) -> Item<'a> {
-        let abi = if fm.abi == abi::Abi::C && !config.force_explicit_abi() {
-            "extern".into()
-        } else {
-            format!("extern {}", fm.abi)
-        };
         Item {
             keyword: "",
-            abi: abi,
+            abi: format_abi(fm.abi, config.force_explicit_abi(), true),
             vis: None,
             body: fm.items
                 .iter()

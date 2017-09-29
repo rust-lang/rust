@@ -88,8 +88,10 @@ pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
 }
 
 #[inline]
-pub fn format_abi(abi: abi::Abi, explicit_abi: bool) -> Cow<'static, str> {
-    if abi == abi::Abi::C && !explicit_abi {
+pub fn format_abi(abi: abi::Abi, explicit_abi: bool, is_mod: bool) -> Cow<'static, str> {
+    if abi == abi::Abi::Rust && !is_mod {
+        Cow::from("")
+    } else if abi == abi::Abi::C && !explicit_abi {
         Cow::from("extern ")
     } else {
         Cow::from(format!("extern {} ", abi))

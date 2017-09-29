@@ -11,7 +11,6 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
-use syntax::abi;
 use syntax::ast::{self, FunctionRetTy, Mutability};
 use syntax::codemap::{self, BytePos, Span};
 use syntax::print::pprust;
@@ -26,7 +25,7 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTac
             SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
-use utils::{colon_spaces, extra_offset, format_mutability, last_line_width, mk_sp};
+use utils::{colon_spaces, extra_offset, format_abi, format_mutability, last_line_width, mk_sp};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {
@@ -792,12 +791,11 @@ fn rewrite_bare_fn(
 
     result.push_str(::utils::format_unsafety(bare_fn.unsafety));
 
-    if bare_fn.abi != abi::Abi::Rust {
-        result.push_str(&::utils::format_abi(
-            bare_fn.abi,
-            context.config.force_explicit_abi(),
-        ));
-    }
+    result.push_str(&format_abi(
+        bare_fn.abi,
+        context.config.force_explicit_abi(),
+        false,
+    ));
 
     result.push_str("fn");
 
