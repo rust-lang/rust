@@ -50,8 +50,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id)),
                         match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1),
                         // ensure the format string is `"{..}"` with only one argument and no text
-                        check_static_str(cx, &args[0]),
+                        check_static_str(&args[0]),
                         // ensure the format argument is `{}` ie. Display with no fancy option
+                        // and that the argument is a string
                         check_arg_is_display(cx, &args[1])
                     ], {
                         span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
@@ -96,17 +97,19 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
     None
 }
 
-/// Checks if the expressions matches
-/// ```rust, ignore
-/// { static __STATIC_FMTSTR: &'static[&'static str] = &["a", "b", c];
-/// __STATIC_FMTSTR }
-/// ```
-fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
-    if let Some(expr) = get_argument_fmtstr_parts(cx, expr) {
-        expr.len() == 1 && expr[0].is_empty()
-    } else {
-        false
-    }
+/// Checks if the expressions matches `&[""]`
+fn check_static_str(expr: &Expr) -> bool {
+    if_let_chain! {[
+        let ExprAddrOf(_, ref expr) = expr.node, // &[""]
+        let ExprArray(ref exprs) = expr.node, // [""]
+        exprs.len() == 1,
+        let ExprLit(ref lit) = exprs[0].node,
+        let LitKind::Str(ref lit, _) = lit.node,
+    ], {
+        return lit.as_str().is_empty();
+    }}
+
+    false
 }
 
 /// Checks if the expressions matches
