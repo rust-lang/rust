@@ -1,7 +1,7 @@
+use std::mem;
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
-
-use std::mem;
 
 use v256::*;
 
