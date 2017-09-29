@@ -20,6 +20,48 @@ pub unsafe fn _mm256_add_ps(a: f32x8, b: f32x8) -> f32x8 {
     a + b
 }
 
+/// Compute the bitwise AND of a packed double-precision (64-bit) floating-point elements
+/// in `a` and `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vandpd))]
+pub unsafe fn _mm256_and_pd(a: f64x4, b: f64x4) -> f64x4 {
+    let a: u64x4 = a.into();
+    let b: u64x4 = b.into();
+    (a & b).into()
+}
+
+/// Compute the bitwise AND of packed single-precision (32-bit) floating-point elements in `a` and `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vandps))]
+pub unsafe fn _mm256_and_ps(a: f32x8, b: f32x8) -> f32x8 {
+    let a: u32x8 = a.into();
+    let b: u32x8 = b.into();
+    (a & b).into()
+}
+
+/// Compute the bitwise OR packed double-precision (64-bit) floating-point elements
+/// in `a` and `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vorpd))]
+pub unsafe fn _mm256_or_pd(a: f64x4, b: f64x4) -> f64x4 {
+    let a: u64x4 = a.into();
+    let b: u64x4 = b.into();
+    (a | b).into()
+}
+
+/// Compute the bitwise OR packed single-precision (32-bit) floating-point elements in `a` and `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vorps))]
+pub unsafe fn _mm256_or_ps(a: f32x8, b: f32x8) -> f32x8 {
+    let a: u32x8 = a.into();
+    let b: u32x8 = b.into();
+    (a | b).into()
+}
+
 /// Compare packed double-precision (64-bit) floating-point elements 
 /// in `a` and `b`, and return packed maximum values
 #[inline(always)]
@@ -249,6 +291,42 @@ mod tests {
         let b = f32x8::new(9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
         let r = avx::_mm256_add_ps(a, b);
         let e = f32x8::new(10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_and_pd() {
+        let a = f64x4::splat(1.0);
+        let b = f64x4::splat(0.6);
+        let r = avx::_mm256_and_pd(a, b);
+        let e = f64x4::splat(0.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_and_ps() {
+        let a = f32x8::splat(1.0);
+        let b = f32x8::splat(0.6);
+        let r = avx::_mm256_and_ps(a, b);
+        let e = f32x8::splat(0.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_or_pd() {
+        let a = f64x4::splat(1.0);
+        let b = f64x4::splat(0.6);
+        let r = avx::_mm256_or_pd(a, b);
+        let e = f64x4::splat(1.2);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_or_ps() {
+        let a = f32x8::splat(1.0);
+        let b = f32x8::splat(0.6);
+        let r = avx::_mm256_or_ps(a, b);
+        let e = f32x8::splat(1.2);
         assert_eq!(r, e);
     }
 
