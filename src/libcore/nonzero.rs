@@ -28,8 +28,7 @@ macro_rules! impl_zeroable_for_pointer_types {
             unsafe impl<T: ?Sized> Zeroable for $Ptr {
                 #[inline]
                 fn is_zero(&self) -> bool {
-                    // Cast because `is_null` is only available on thin pointers
-                    (*self as *mut u8).is_null()
+                    (*self).is_null()
                 }
             }
         )+

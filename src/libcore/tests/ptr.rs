@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::ptr::*;
+use core::slice;
 use core::cell::RefCell;
 
 #[test]
@@ -62,6 +63,28 @@ fn test_is_null() {
 
     let mq = unsafe { mp.offset(1) };
     assert!(!mq.is_null());
+
+    // Pointers to unsized types
+    let s: &mut [u8] = &mut [1, 2, 3];
+    let cs: *const [u8] = s;
+    assert!(!cs.is_null());
+
+    let ms: *mut [u8] = s;
+    assert!(!ms.is_null());
+
+    let cz: *const [u8] = &[];
+    assert!(!cz.is_null());
+
+    let mz: *mut [u8] = &mut [];
+    assert!(!mz.is_null());
+
+    unsafe {
+        let ncs: *const [u8] = slice::from_raw_parts(null(), 0);
+        assert!(ncs.is_null());
+
+        let nms: *mut [u8] = slice::from_raw_parts_mut(null_mut(), 0);
+        assert!(nms.is_null());
+    }
 }
 
 #[test]
@@ -85,6 +108,26 @@ fn test_as_ref() {
             let p = &u as *const isize;
             assert_eq!(p.as_ref().unwrap(), &2);
         }
+
+        // Pointers to unsized types
+        let s: &mut [u8] = &mut [1, 2, 3];
+        let cs: *const [u8] = s;
+        assert_eq!(cs.as_ref(), Some(&*s));
+
+        let ms: *mut [u8] = s;
+        assert_eq!(ms.as_ref(), Some(&*s));
+
+        let cz: *const [u8] = &[];
+        assert_eq!(cz.as_ref(), Some(&[][..]));
+
+        let mz: *mut [u8] = &mut [];
+        assert_eq!(mz.as_ref(), Some(&[][..]));
+
+        let ncs: *const [u8] = slice::from_raw_parts(null(), 0);
+        assert_eq!(ncs.as_ref(), None);
+
+        let nms: *mut [u8] = slice::from_raw_parts_mut(null_mut(), 0);
+        assert_eq!(nms.as_ref(), None);
     }
 }
 
@@ -103,6 +146,17 @@ fn test_as_mut() {
             let p = &mut u as *mut isize;
             assert!(p.as_mut().unwrap() == &mut 2);
         }
+
+        // Pointers to unsized types
+        let s: &mut [u8] = &mut [1, 2, 3];
+        let ms: *mut [u8] = s;
+        assert_eq!(ms.as_mut(), Some(s));
+
+        let mz: *mut [u8] = &mut [];
+        assert_eq!(mz.as_mut(), Some(&mut [][..]));
+
+        let nms: *mut [u8] = slice::from_raw_parts_mut(null_mut(), 0);
+        assert_eq!(nms.as_mut(), None);
     }
 }
 
