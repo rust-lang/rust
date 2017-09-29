@@ -1379,8 +1379,8 @@ pub unsafe fn _mm_sub_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(andps))]
 pub unsafe fn _mm_and_pd(a: f64x2, b: f64x2) -> f64x2 {
-    let a: i64x2 = mem::transmute(a);
-    let b: i64x2 = mem::transmute(b);
+    let a: u64x2 = mem::transmute(a);
+    let b: u64x2 = mem::transmute(b);
     mem::transmute(a & b)
 }
 
@@ -1389,8 +1389,8 @@ pub unsafe fn _mm_and_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(andnps))]
 pub unsafe fn _mm_andnot_pd(a: f64x2, b: f64x2) -> f64x2 {
-    let a: i64x2 = mem::transmute(a);
-    let b: i64x2 = mem::transmute(b);
+    let a: u64x2 = mem::transmute(a);
+    let b: u64x2 = mem::transmute(b);
     mem::transmute((!a) & b)
 }
 
@@ -1399,8 +1399,8 @@ pub unsafe fn _mm_andnot_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(orps))]
 pub unsafe fn _mm_or_pd(a: f64x2, b: f64x2) -> f64x2 {
-    let a: i64x2 = mem::transmute(a);
-    let b: i64x2 = mem::transmute(b);
+    let a: u64x2 = mem::transmute(a);
+    let b: u64x2 = mem::transmute(b);
     mem::transmute(a | b)
 }
 
@@ -1409,8 +1409,8 @@ pub unsafe fn _mm_or_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(xorps))]
 pub unsafe fn _mm_xor_pd(a: f64x2, b: f64x2) -> f64x2 {
-    let a: i64x2 = mem::transmute(a);
-    let b: i64x2 = mem::transmute(b);
+    let a: u64x2 = mem::transmute(a);
+    let b: u64x2 = mem::transmute(b);
     mem::transmute(a ^ b)
 }
 
@@ -3052,10 +3052,10 @@ mod tests {
     unsafe fn _mm_and_pd() {
         use std::mem::transmute;
 
-        let a: f64x2 = transmute(i64x2::splat(5));
-        let b: f64x2 = transmute(i64x2::splat(3));
+        let a: f64x2 = transmute(u64x2::splat(5));
+        let b: f64x2 = transmute(u64x2::splat(3));
         let r = sse2::_mm_and_pd(a, b);
-        let e: f64x2 = transmute(i64x2::splat(1));
+        let e: f64x2 = transmute(u64x2::splat(1));
         assert_eq!(r, e);
     }
 
@@ -3063,10 +3063,10 @@ mod tests {
     unsafe fn _mm_andnot_pd() {
         use std::mem::transmute;
 
-        let a: f64x2 = transmute(i64x2::splat(5));
-        let b: f64x2 = transmute(i64x2::splat(3));
+        let a: f64x2 = transmute(u64x2::splat(5));
+        let b: f64x2 = transmute(u64x2::splat(3));
         let r = sse2::_mm_andnot_pd(a, b);
-        let e: f64x2 = transmute(i64x2::splat(2));
+        let e: f64x2 = transmute(u64x2::splat(2));
         assert_eq!(r, e);
     }
 
@@ -3074,10 +3074,10 @@ mod tests {
     unsafe fn _mm_or_pd() {
         use std::mem::transmute;
 
-        let a: f64x2 = transmute(i64x2::splat(5));
-        let b: f64x2 = transmute(i64x2::splat(3));
+        let a: f64x2 = transmute(u64x2::splat(5));
+        let b: f64x2 = transmute(u64x2::splat(3));
         let r = sse2::_mm_or_pd(a, b);
-        let e: f64x2 = transmute(i64x2::splat(7));
+        let e: f64x2 = transmute(u64x2::splat(7));
         assert_eq!(r, e);
     }
 
@@ -3085,10 +3085,10 @@ mod tests {
     unsafe fn _mm_xor_pd() {
         use std::mem::transmute;
 
-        let a: f64x2 = transmute(i64x2::splat(5));
-        let b: f64x2 = transmute(i64x2::splat(3));
+        let a: f64x2 = transmute(u64x2::splat(5));
+        let b: f64x2 = transmute(u64x2::splat(3));
         let r = sse2::_mm_xor_pd(a, b);
-        let e: f64x2 = transmute(i64x2::splat(6));
+        let e: f64x2 = transmute(u64x2::splat(6));
         assert_eq!(r, e);
     }
 
