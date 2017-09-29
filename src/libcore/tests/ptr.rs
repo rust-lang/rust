@@ -8,9 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::mem;
 use core::ptr::*;
-use core::slice;
 use core::cell::RefCell;
+
+
+/// Create a null pointer to a mutable slice.  This is implemented like
+/// `slice::from_raw_parts_mut`, which we can't use directly because
+/// having a null `&mut [T]` even temporarily is UB.
+fn null_slice<T>() -> *mut [T] {
+    unsafe {
+        #[repr(C)]
+        struct Repr<T> {
+            pub data: *mut T,
+            pub len: usize,
+        }
+
+        mem::transmute(Repr { data: null_mut::<T>(), len: 0 })
+    }
+}
 
 #[test]
 fn test() {
@@ -78,13 +94,11 @@ fn test_is_null() {
     let mz: *mut [u8] = &mut [];
     assert!(!mz.is_null());
 
-    unsafe {
-        let ncs: *const [u8] = slice::from_raw_parts(null(), 0);
-        assert!(ncs.is_null());
+    let ncs: *const [u8] = null_slice();
+    assert!(ncs.is_null());
 
-        let nms: *mut [u8] = slice::from_raw_parts_mut(null_mut(), 0);
-        assert!(nms.is_null());
-    }
+    let nms: *mut [u8] = null_slice();
+    assert!(nms.is_null());
 }
 
 #[test]
@@ -123,10 +137,10 @@ fn test_as_ref() {
         let mz: *mut [u8] = &mut [];
         assert_eq!(mz.as_ref(), Some(&[][..]));
 
-        let ncs: *const [u8] = slice::from_raw_parts(null(), 0);
+        let ncs: *const [u8] = null_slice();
         assert_eq!(ncs.as_ref(), None);
 
-        let nms: *mut [u8] = slice::from_raw_parts_mut(null_mut(), 0);
+        let nms: *mut [u8] = null_slice();
         assert_eq!(nms.as_ref(), None);
     }
 }
@@ -155,7 +169,7 @@ fn test_as_mut() {
         let mz: *mut [u8] = &mut [];
         assert_eq!(mz.as_mut(), Some(&mut [][..]));
 
-        let nms: *mut [u8] = slice::from_raw_parts_mut(null_mut(), 0);
+        let nms: *mut [u8] = null_slice();
         assert_eq!(nms.as_mut(), None);
     }
 }
