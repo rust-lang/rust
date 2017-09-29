@@ -518,7 +518,7 @@ pub trait Iterator {
     ///       .for_each(|(i, x)| println!("{}:{}", i, x));
     /// ```
     #[inline]
-    #[stable(feature = "iterator_for_each", since = "1.22.0")]
+    #[stable(feature = "iterator_for_each", since = "1.21.0")]
     fn for_each<F>(self, mut f: F) where
         Self: Sized, F: FnMut(Self::Item),
     {

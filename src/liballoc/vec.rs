@@ -1950,7 +1950,7 @@ impl<T> Vec<T> {
     /// assert_eq!(u, &[1, 2]);
     /// ```
     #[inline]
-    #[stable(feature = "vec_splice", since = "1.22.0")]
+    #[stable(feature = "vec_splice", since = "1.21.0")]
     pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<I::IntoIter>
         where R: RangeArgument<usize>, I: IntoIterator<Item=T>
     {
@@ -2553,13 +2553,13 @@ impl<'a, T> InPlace<T> for PlaceBack<'a, T> {
 /// [`splice()`]: struct.Vec.html#method.splice
 /// [`Vec`]: struct.Vec.html
 #[derive(Debug)]
-#[stable(feature = "vec_splice", since = "1.22.0")]
+#[stable(feature = "vec_splice", since = "1.21.0")]
 pub struct Splice<'a, I: Iterator + 'a> {
     drain: Drain<'a, I::Item>,
     replace_with: I,
 }
 
-#[stable(feature = "vec_splice", since = "1.22.0")]
+#[stable(feature = "vec_splice", since = "1.21.0")]
 impl<'a, I: Iterator> Iterator for Splice<'a, I> {
     type Item = I::Item;
 
@@ -2572,18 +2572,18 @@ impl<'a, I: Iterator> Iterator for Splice<'a, I> {
     }
 }
 
-#[stable(feature = "vec_splice", since = "1.22.0")]
+#[stable(feature = "vec_splice", since = "1.21.0")]
 impl<'a, I: Iterator> DoubleEndedIterator for Splice<'a, I> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
-#[stable(feature = "vec_splice", since = "1.22.0")]
+#[stable(feature = "vec_splice", since = "1.21.0")]
 impl<'a, I: Iterator> ExactSizeIterator for Splice<'a, I> {}
 
 
-#[stable(feature = "vec_splice", since = "1.22.0")]
+#[stable(feature = "vec_splice", since = "1.21.0")]
 impl<'a, I: Iterator> Drop for Splice<'a, I> {
     fn drop(&mut self) {
         // exhaust drain first
