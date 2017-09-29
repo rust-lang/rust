@@ -175,6 +175,8 @@ define_Conf! {
     (enum_variant_name_threshold, "enum_variant_name_threshold", 3 => u64),
     /// Lint: LARGE_ENUM_VARIANT. The maximum size of a emum's variant to avoid box suggestion
     (enum_variant_size_threshold, "enum_variant_size_threshold", 200 => u64),
+    /// Lint: VERBOSE_BIT_MASK. The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
+    (verbose_bit_mask_threshold, "verbose_bit_mask_threshold", 1 => u64),
 }
 
 /// Search for the configuration file.
