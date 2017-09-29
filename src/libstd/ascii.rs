@@ -60,19 +60,10 @@ pub trait AsciiExt {
 
     /// Checks if the value is within the ASCII range.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let ascii = 'a';
-    /// let non_ascii = '❤';
-    /// let int_ascii = 97;
-    ///
-    /// assert!(ascii.is_ascii());
-    /// assert!(!non_ascii.is_ascii());
-    /// assert!(int_ascii.is_ascii());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
 
@@ -86,19 +77,10 @@ pub trait AsciiExt {
     /// To uppercase ASCII characters in addition to non-ASCII characters, use
     /// [`str::to_uppercase`].
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let ascii = 'a';
-    /// let non_ascii = '❤';
-    /// let int_ascii = 97;
-    ///
-    /// assert_eq!('A', ascii.to_ascii_uppercase());
-    /// assert_eq!('❤', non_ascii.to_ascii_uppercase());
-    /// assert_eq!(65, int_ascii.to_ascii_uppercase());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
     /// [`make_ascii_uppercase`]: #tymethod.make_ascii_uppercase
     /// [`str::to_uppercase`]: ../primitive.str.html#method.to_uppercase
@@ -115,19 +97,10 @@ pub trait AsciiExt {
     /// To lowercase ASCII characters in addition to non-ASCII characters, use
     /// [`str::to_lowercase`].
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let ascii = 'A';
-    /// let non_ascii = '❤';
-    /// let int_ascii = 65;
-    ///
-    /// assert_eq!('a', ascii.to_ascii_lowercase());
-    /// assert_eq!('❤', non_ascii.to_ascii_lowercase());
-    /// assert_eq!(97, int_ascii.to_ascii_lowercase());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
     /// [`make_ascii_lowercase`]: #tymethod.make_ascii_lowercase
     /// [`str::to_lowercase`]: ../primitive.str.html#method.to_lowercase
@@ -139,20 +112,10 @@ pub trait AsciiExt {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let ascii1 = 'A';
-    /// let ascii2 = 'a';
-    /// let ascii3 = 'A';
-    /// let ascii4 = 'z';
-    ///
-    /// assert!(ascii1.eq_ignore_ascii_case(&ascii2));
-    /// assert!(ascii1.eq_ignore_ascii_case(&ascii3));
-    /// assert!(!ascii1.eq_ignore_ascii_case(&ascii4));
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 
@@ -164,17 +127,10 @@ pub trait AsciiExt {
     /// To return a new uppercased value without modifying the existing one, use
     /// [`to_ascii_uppercase`].
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let mut ascii = 'a';
-    ///
-    /// ascii.make_ascii_uppercase();
-    ///
-    /// assert_eq!('A', ascii);
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
     /// [`to_ascii_uppercase`]: #tymethod.to_ascii_uppercase
     #[stable(feature = "ascii", since = "1.9.0")]
@@ -188,17 +144,10 @@ pub trait AsciiExt {
     /// To return a new lowercased value without modifying the existing one, use
     /// [`to_ascii_lowercase`].
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let mut ascii = 'A';
-    ///
-    /// ascii.make_ascii_lowercase();
-    ///
-    /// assert_eq!('a', ascii);
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
     /// [`to_ascii_lowercase`]: #tymethod.to_ascii_lowercase
     #[stable(feature = "ascii", since = "1.9.0")]
@@ -209,32 +158,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII alphabetic.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(A.is_ascii_alphabetic());
-    /// assert!(G.is_ascii_alphabetic());
-    /// assert!(a.is_ascii_alphabetic());
-    /// assert!(g.is_ascii_alphabetic());
-    /// assert!(!zero.is_ascii_alphabetic());
-    /// assert!(!percent.is_ascii_alphabetic());
-    /// assert!(!space.is_ascii_alphabetic());
-    /// assert!(!lf.is_ascii_alphabetic());
-    /// assert!(!esc.is_ascii_alphabetic());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_alphabetic(&self) -> bool { unimplemented!(); }
 
@@ -243,32 +170,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII uppercase.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(A.is_ascii_uppercase());
-    /// assert!(G.is_ascii_uppercase());
-    /// assert!(!a.is_ascii_uppercase());
-    /// assert!(!g.is_ascii_uppercase());
-    /// assert!(!zero.is_ascii_uppercase());
-    /// assert!(!percent.is_ascii_uppercase());
-    /// assert!(!space.is_ascii_uppercase());
-    /// assert!(!lf.is_ascii_uppercase());
-    /// assert!(!esc.is_ascii_uppercase());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_uppercase(&self) -> bool { unimplemented!(); }
 
@@ -277,32 +182,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII lowercase.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(!A.is_ascii_lowercase());
-    /// assert!(!G.is_ascii_lowercase());
-    /// assert!(a.is_ascii_lowercase());
-    /// assert!(g.is_ascii_lowercase());
-    /// assert!(!zero.is_ascii_lowercase());
-    /// assert!(!percent.is_ascii_lowercase());
-    /// assert!(!space.is_ascii_lowercase());
-    /// assert!(!lf.is_ascii_lowercase());
-    /// assert!(!esc.is_ascii_lowercase());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_lowercase(&self) -> bool { unimplemented!(); }
 
@@ -312,32 +195,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII alphanumeric.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(A.is_ascii_alphanumeric());
-    /// assert!(G.is_ascii_alphanumeric());
-    /// assert!(a.is_ascii_alphanumeric());
-    /// assert!(g.is_ascii_alphanumeric());
-    /// assert!(zero.is_ascii_alphanumeric());
-    /// assert!(!percent.is_ascii_alphanumeric());
-    /// assert!(!space.is_ascii_alphanumeric());
-    /// assert!(!lf.is_ascii_alphanumeric());
-    /// assert!(!esc.is_ascii_alphanumeric());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_alphanumeric(&self) -> bool { unimplemented!(); }
 
@@ -346,32 +207,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII digits.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(!A.is_ascii_digit());
-    /// assert!(!G.is_ascii_digit());
-    /// assert!(!a.is_ascii_digit());
-    /// assert!(!g.is_ascii_digit());
-    /// assert!(zero.is_ascii_digit());
-    /// assert!(!percent.is_ascii_digit());
-    /// assert!(!space.is_ascii_digit());
-    /// assert!(!lf.is_ascii_digit());
-    /// assert!(!esc.is_ascii_digit());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_digit(&self) -> bool { unimplemented!(); }
 
@@ -381,32 +220,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII hex digits.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(A.is_ascii_hexdigit());
-    /// assert!(!G.is_ascii_hexdigit());
-    /// assert!(a.is_ascii_hexdigit());
-    /// assert!(!g.is_ascii_hexdigit());
-    /// assert!(zero.is_ascii_hexdigit());
-    /// assert!(!percent.is_ascii_hexdigit());
-    /// assert!(!space.is_ascii_hexdigit());
-    /// assert!(!lf.is_ascii_hexdigit());
-    /// assert!(!esc.is_ascii_hexdigit());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_hexdigit(&self) -> bool { unimplemented!(); }
 
@@ -420,32 +237,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII punctuation.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(!A.is_ascii_punctuation());
-    /// assert!(!G.is_ascii_punctuation());
-    /// assert!(!a.is_ascii_punctuation());
-    /// assert!(!g.is_ascii_punctuation());
-    /// assert!(!zero.is_ascii_punctuation());
-    /// assert!(percent.is_ascii_punctuation());
-    /// assert!(!space.is_ascii_punctuation());
-    /// assert!(!lf.is_ascii_punctuation());
-    /// assert!(!esc.is_ascii_punctuation());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_punctuation(&self) -> bool { unimplemented!(); }
 
@@ -454,32 +249,10 @@ pub trait AsciiExt {
     /// For strings, true if all characters in the string are
     /// ASCII punctuation.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(A.is_ascii_graphic());
-    /// assert!(G.is_ascii_graphic());
-    /// assert!(a.is_ascii_graphic());
-    /// assert!(g.is_ascii_graphic());
-    /// assert!(zero.is_ascii_graphic());
-    /// assert!(percent.is_ascii_graphic());
-    /// assert!(!space.is_ascii_graphic());
-    /// assert!(!lf.is_ascii_graphic());
-    /// assert!(!esc.is_ascii_graphic());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_graphic(&self) -> bool { unimplemented!(); }
 
@@ -505,32 +278,10 @@ pub trait AsciiExt {
     /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
     /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(!A.is_ascii_whitespace());
-    /// assert!(!G.is_ascii_whitespace());
-    /// assert!(!a.is_ascii_whitespace());
-    /// assert!(!g.is_ascii_whitespace());
-    /// assert!(!zero.is_ascii_whitespace());
-    /// assert!(!percent.is_ascii_whitespace());
-    /// assert!(space.is_ascii_whitespace());
-    /// assert!(lf.is_ascii_whitespace());
-    /// assert!(!esc.is_ascii_whitespace());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_whitespace(&self) -> bool { unimplemented!(); }
 
@@ -539,32 +290,10 @@ pub trait AsciiExt {
     /// Note that most ASCII whitespace characters are control
     /// characters, but SPACE is not.
     ///
-    /// # Examples
+    /// # Note
     ///
-    /// ```
-    /// #![feature(ascii_ctype)]
-    /// # #![allow(non_snake_case)]
-    /// use std::ascii::AsciiExt;
-    /// let A = 'A';
-    /// let G = 'G';
-    /// let a = 'a';
-    /// let g = 'g';
-    /// let zero = '0';
-    /// let percent = '%';
-    /// let space = ' ';
-    /// let lf = '\n';
-    /// let esc = '\u{001b}';
-    ///
-    /// assert!(!A.is_ascii_control());
-    /// assert!(!G.is_ascii_control());
-    /// assert!(!a.is_ascii_control());
-    /// assert!(!g.is_ascii_control());
-    /// assert!(!zero.is_ascii_control());
-    /// assert!(!percent.is_ascii_control());
-    /// assert!(!space.is_ascii_control());
-    /// assert!(lf.is_ascii_control());
-    /// assert!(esc.is_ascii_control());
-    /// ```
+    /// This method will be deprecated in favor of the identically-named
+    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     fn is_ascii_control(&self) -> bool { unimplemented!(); }
 }
