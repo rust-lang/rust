@@ -1,87 +1,83 @@
 use float::Float;
 use int::{Int, CastInto};
 
-fn int_to_float<I: Int, F: Float>(i: I) -> F where
-    F::Int: CastInto<u32>,
-    F::Int: CastInto<I>,
-    I::UnsignedInt: CastInto<F::Int>,
-    u32: CastInto<F::Int>,
-{
-    if i == I::ZERO {
-        return F::ZERO;
-    }
+macro_rules! int_to_float {
+    ($i:expr, $ity:ty, $fty:ty) => ({
+        let i = $i;
+        if i == 0 {
+            return 0.0
+        }
 
-    let two = I::UnsignedInt::ONE + I::UnsignedInt::ONE;
-    let four = two + two;
-    let mant_dig = F::SIGNIFICAND_BITS + 1;
-    let exponent_bias = F::EXPONENT_BIAS;
+        let mant_dig = <$fty>::SIGNIFICAND_BITS + 1;
+        let exponent_bias = <$fty>::EXPONENT_BIAS;
 
-    let n = I::BITS;
-    let (s, a) = i.extract_sign();
-    let mut a = a;
+        let n = <$ity>::BITS;
+        let (s, a) = i.extract_sign();
+        let mut a = a;
 
-    // number of significant digits
-    let sd = n - a.leading_zeros();
+        // number of significant digits
+        let sd = n - a.leading_zeros();
 
-    // exponent
-    let mut e = sd - 1;
+        // exponent
+        let mut e = sd - 1;
 
-    if I::BITS < mant_dig {
-        return F::from_parts(s,
-            (e + exponent_bias).cast(),
-            a.cast() << (mant_dig - e - 1));
-    }
+        if <$ity>::BITS < mant_dig {
+            return <$fty>::from_parts(s,
+                (e + exponent_bias) as <$fty as Float>::Int,
+                (a as <$fty as Float>::Int) << (mant_dig - e - 1))
+        }
 
-    a = if sd > mant_dig {
-        /* start:  0000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQxxxxxxxxxxxxxxxxxx
-        *  finish: 000000000000000000000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQR
-        *                                                12345678901234567890123456
-        *  1 = msb 1 bit
-        *  P = bit MANT_DIG-1 bits to the right of 1
-        *  Q = bit MANT_DIG bits to the right of 1
-        *  R = "or" of all bits to the right of Q
-        */
-        let mant_dig_plus_one = mant_dig + 1;
-        let mant_dig_plus_two = mant_dig + 2;
-        a = if sd == mant_dig_plus_one {
-            a << 1
-        } else if sd == mant_dig_plus_two {
+        a = if sd > mant_dig {
+            /* start:  0000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQxxxxxxxxxxxxxxxxxx
+            *  finish: 000000000000000000000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQR
+            *                                                12345678901234567890123456
+            *  1 = msb 1 bit
+            *  P = bit MANT_DIG-1 bits to the right of 1
+            *  Q = bit MANT_DIG bits to the right of 1
+            *  R = "or" of all bits to the right of Q
+            */
+            let mant_dig_plus_one = mant_dig + 1;
+            let mant_dig_plus_two = mant_dig + 2;
+            a = if sd == mant_dig_plus_one {
+                a << 1
+            } else if sd == mant_dig_plus_two {
+                a
+            } else {
+                (a >> (sd - mant_dig_plus_two)) as <$ity as Int>::UnsignedInt |
+                ((a & <$ity as Int>::UnsignedInt::max_value()).wrapping_shl((n + mant_dig_plus_two) - sd) != 0) as <$ity as Int>::UnsignedInt
+            };
+
+            /* finish: */
+            a |= ((a & 4) != 0) as <$ity as Int>::UnsignedInt; /* Or P into R */
+            a += 1; /* round - this step may add a significant bit */
+            a >>= 2; /* dump Q and R */
+
+            /* a is now rounded to mant_dig or mant_dig+1 bits */
+            if (a & (1 << mant_dig)) != 0 {
+                a >>= 1; e += 1;
+            }
             a
+            /* a is now rounded to mant_dig bits */
         } else {
-            (a >> (sd - mant_dig_plus_two)) |
-            Int::from_bool((a & I::UnsignedInt::max_value()).wrapping_shl((n + mant_dig_plus_two) - sd) != Int::ZERO)
+            a.wrapping_shl(mant_dig - sd)
+            /* a is now rounded to mant_dig bits */
         };
 
-        /* finish: */
-        a |= Int::from_bool((a & four) != I::UnsignedInt::ZERO); /* Or P into R */
-        a += Int::ONE; /* round - this step may add a significant bit */
-        a >>= 2; /* dump Q and R */
-
-        /* a is now rounded to mant_dig or mant_dig+1 bits */
-        if (a & (I::UnsignedInt::ONE << mant_dig)) != Int::ZERO {
-            a >>= 1; e += 1;
-        }
-        a
-        /* a is now rounded to mant_dig bits */
-    } else {
-        a.wrapping_shl(mant_dig - sd)
-        /* a is now rounded to mant_dig bits */
-    };
-
-    F::from_parts(s,
-                 (e + exponent_bias).cast(),
-                 a.cast())
+        <$fty>::from_parts(s,
+            (e + exponent_bias) as <$fty as Float>::Int,
+            a as <$fty as Float>::Int)
+    })
 }
 
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_i2f]
     pub extern "C" fn __floatsisf(i: i32) -> f32 {
-        int_to_float(i)
+        int_to_float!(i, i32, f32)
     }
 
     #[arm_aeabi_alias = __aeabi_i2d]
     pub extern "C" fn __floatsidf(i: i32) -> f64 {
-        int_to_float(i)
+        int_to_float!(i, i32, f64)
     }
 
     #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
@@ -92,28 +88,28 @@ intrinsics! {
         if cfg!(target_arch = "x86_64") {
             i as f64
         } else {
-            int_to_float(i)
+            int_to_float!(i, i64, f64)
         }
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
-        int_to_float(i)
+        int_to_float!(i, i128, f32)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
-        int_to_float(i)
+        int_to_float!(i, i128, f64)
     }
 
     #[arm_aeabi_alias = __aeabi_ui2f]
     pub extern "C" fn __floatunsisf(i: u32) -> f32 {
-        int_to_float(i)
+        int_to_float!(i, u32, f32)
     }
 
     #[arm_aeabi_alias = __aeabi_ui2d]
     pub extern "C" fn __floatunsidf(i: u32) -> f64 {
-        int_to_float(i)
+        int_to_float!(i, u32, f64)
     }
 
     #[use_c_shim_if(all(not(target_env = "msvc"),
@@ -121,17 +117,17 @@ intrinsics! {
                             all(not(windows), target_arch = "x86_64"))))]
     #[arm_aeabi_alias = __aeabi_ul2d]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
-        int_to_float(i)
+        int_to_float!(i, u64, f64)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floatuntisf(i: u128) -> f32 {
-        int_to_float(i)
+        int_to_float!(i, u128, f32)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
-        int_to_float(i)
+        int_to_float!(i, u128, f64)
     }
 }
 
