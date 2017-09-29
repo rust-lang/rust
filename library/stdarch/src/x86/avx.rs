@@ -26,7 +26,9 @@ pub unsafe fn _mm256_add_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
-#[cfg_attr(test, assert_instr(vandpd))]
+// Should be 'vandpd' instuction.
+// See https://github.com/rust-lang-nursery/stdsimd/issues/71
+#[cfg_attr(test, assert_instr(vandps))]
 pub unsafe fn _mm256_and_pd(a: f64x4, b: f64x4) -> f64x4 {
     let a: u64x4 = mem::transmute(a);
     let b: u64x4 = mem::transmute(b);
@@ -47,7 +49,9 @@ pub unsafe fn _mm256_and_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
-#[cfg_attr(test, assert_instr(vorpd))]
+// Should be 'vorpd' instuction.
+// See https://github.com/rust-lang-nursery/stdsimd/issues/71
+#[cfg_attr(test, assert_instr(vorps))]
 pub unsafe fn _mm256_or_pd(a: f64x4, b: f64x4) -> f64x4 {
     let a: u64x4 = mem::transmute(a);
     let b: u64x4 = mem::transmute(b);
