@@ -2253,6 +2253,18 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     document(w, cx, it)
 }
 
+fn implementor2item<'a>(cache: &'a Cache, imp : &Implementor) -> Option<&'a clean::Item> {
+    if let Some(t_did) = imp.impl_.for_.def_id() {
+        if let Some(impl_item) = cache.impls.get(&t_did).and_then(|i| i.iter()
+            .find(|i| i.impl_item.def_id == imp.def_id))
+        {
+            let i = &impl_item.impl_item;
+            return Some(i);
+        }
+    }
+    None
+}
+
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut bounds = String::new();
@@ -2463,19 +2475,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             ")?;
 
             for implementor in foreign {
-                // need to get from a clean::Impl to a clean::Item so i can use render_impl
-                if let Some(t_did) = implementor.impl_.for_.def_id() {
-                    if let Some(impl_item) = cache.impls.get(&t_did).and_then(|i| i.iter()
-                        .find(|i| i.impl_item.def_id == implementor.def_id))
-                    {
-                        let i = &impl_item.impl_item;
-                        let impl_ = Impl { impl_item: i.clone() };
-                        let assoc_link = AssocItemLink::GotoSource(
-                            i.def_id, &implementor.impl_.provided_trait_methods
-                        );
-                        render_impl(w, cx, &impl_, assoc_link,
-                                    RenderMode::Normal, i.stable_since(), false)?;
-                    }
+                if let Some(i) = implementor2item(&cache, implementor) {
+                    let impl_ = Impl { impl_item: i.clone() };
+                    let assoc_link = AssocItemLink::GotoSource(
+                        i.def_id, &implementor.impl_.provided_trait_methods
+                    );
+                    render_impl(w, cx, &impl_, assoc_link,
+                                RenderMode::Normal, i.stable_since(), false)?;
                 }
             }
         }
