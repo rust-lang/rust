@@ -289,8 +289,56 @@ pub unsafe fn _mm_cmpestra(
     constify_imm8!(imm8, call)
 }
 
+/// Starting with the initial value in `crc`, return the accumulated
+/// CRC32 value for unsigned 8-bit integer `v`.
+#[inline(always)]
+#[target_feature = "+sse4.2"]
+#[cfg_attr(test, assert_instr(crc32))]
+pub unsafe fn _mm_crc32_u8(crc: u32, v: u8) -> u32 {
+    crc32_32_8(crc, v)
+}
+
+/// Starting with the initial value in `crc`, return the accumulated
+/// CRC32 value for unsigned 16-bit integer `v`.
+#[inline(always)]
+#[target_feature = "+sse4.2"]
+#[cfg_attr(test, assert_instr(crc32))]
+pub unsafe fn _mm_crc32_u16(crc: u32, v: u16) -> u32 {
+    crc32_32_16(crc, v)
+}
+
+/// Starting with the initial value in `crc`, return the accumulated
+/// CRC32 value for unsigned 32-bit integer `v`.
+#[inline(always)]
+#[target_feature = "+sse4.2"]
+#[cfg_attr(test, assert_instr(crc32))]
+pub unsafe fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
+    crc32_32_32(crc, v)
+}
+
+/// Starting with the initial value in `crc`, return the accumulated
+/// CRC32 value for unsigned 64-bit integer `v`.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+#[target_feature = "+sse4.2"]
+#[cfg_attr(test, assert_instr(crc32))]
+pub unsafe fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
+    crc32_64_64(crc, v)
+}
+
+/// Compare packed 64-bit integers in `a` and `b` for greater-than,
+/// return the results.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+#[target_feature = "+sse4.2"]
+#[cfg_attr(test, assert_instr(pcmpgtq))]
+pub unsafe fn _mm_cmpgt_epi64(a: i64x2, b: i64x2) -> i64x2 {
+    a.gt(b)
+}
+
 #[allow(improper_ctypes)]
 extern {
+    // SSE 4.2 string and text comparison ops
     #[link_name = "llvm.x86.sse42.pcmpestrm128"]
     fn pcmpestrm128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> u8x16;
     #[link_name = "llvm.x86.sse42.pcmpestri128"]
@@ -319,6 +367,15 @@ extern {
     fn pcmpistrio128(a: __m128i, b: __m128i, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistria128"]
     fn pcmpistria128(a: __m128i, b: __m128i, imm8: i8) -> i32;
+    // SSE 4.2 CRC instructions
+    #[link_name = "llvm.x86.sse42.crc32.32.8"]
+    fn crc32_32_8(crc: u32, v: u8) -> u32;
+    #[link_name = "llvm.x86.sse42.crc32.32.16"]
+    fn crc32_32_16(crc: u32, v: u16) -> u32;
+    #[link_name = "llvm.x86.sse42.crc32.32.32"]
+    fn crc32_32_32(crc: u32, v: u32) -> u32;
+    #[link_name = "llvm.x86.sse42.crc32.64.64"]
+    fn crc32_64_64(crc: u64, v: u64) -> u64;
 }
 
 #[cfg(test)]
@@ -469,5 +526,47 @@ mod tests {
         let i = sse42::_mm_cmpestra(
                 a, 14, b, 16, sse42::_SIDD_CMP_EQUAL_EACH | sse42::_SIDD_UNIT_MASK);
         assert_eq!(1, i);
+    }
+
+    #[simd_test = "sse4.2"]
+    unsafe fn _mm_crc32_u8() {
+        let crc = 0x2aa1e72b;
+        let v = 0x2a;
+        let i = sse42::_mm_crc32_u8(crc, v);
+        assert_eq!(i, 0xf24122e4);
+    }
+
+    #[simd_test = "sse4.2"]
+    unsafe fn _mm_crc32_u16() {
+        let crc = 0x8ecec3b5;
+        let v = 0x22b;
+        let i = sse42::_mm_crc32_u16(crc, v);
+        assert_eq!(i, 0x13bb2fb);
+    }
+
+    #[simd_test = "sse4.2"]
+    unsafe fn _mm_crc32_u32() {
+        let crc = 0xae2912c8;
+        let v = 0x845fed;
+        let i = sse42::_mm_crc32_u32(crc, v);
+        assert_eq!(i, 0xffae2ed1);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[simd_test = "sse4.2"]
+    unsafe fn _mm_crc32_u64() {
+        let crc = 0x7819dccd3e824;
+        let v = 0x2a22b845fed;
+        let i = sse42::_mm_crc32_u64(crc, v);
+        assert_eq!(i, 0xbb6cdc6c);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[simd_test = "sse4.2"]
+    unsafe fn _mm_cmpgt_epi64() {
+        let a = i64x2::splat(0x00).replace(1, 0x2a);
+        let b = i64x2::splat(0x00);
+        let i = sse42::_mm_cmpgt_epi64(a, b);
+        assert_eq!(i, i64x2::new(0x00, 0xffffffffffffffffu64 as i64));
     }
 }
