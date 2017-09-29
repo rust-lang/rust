@@ -1162,7 +1162,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     let strategy = if tcx.sess.opts.debugging_opts.incremental.is_some() {
         PartitioningStrategy::PerModule
     } else {
-        PartitioningStrategy::FixedUnitCount(tcx.sess.opts.cg.codegen_units)
+        PartitioningStrategy::FixedUnitCount(tcx.sess.opts.codegen_units)
     };
 
     let codegen_units = time(time_passes, "codegen unit partitioning", || {
@@ -1175,7 +1175,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
             .collect::<Vec<_>>()
     });
 
-    assert!(tcx.sess.opts.cg.codegen_units == codegen_units.len() ||
+    assert!(tcx.sess.opts.codegen_units == codegen_units.len() ||
             tcx.sess.opts.debugging_opts.incremental.is_some());
 
     let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
