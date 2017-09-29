@@ -2322,8 +2322,7 @@ impl u8 {
 
     /// Checks that two values are an ASCII case-insensitive match.
     ///
-    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
-    /// but without allocating and copying temporaries.
+    /// This is equivalent to `to_ascii_lowercase(a) == to_ascii_lowercase(b)`.
     ///
     /// # Examples
     ///
