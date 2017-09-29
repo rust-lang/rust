@@ -222,12 +222,26 @@ impl<'a> FnSig<'a> {
             _ => unreachable!(),
         }
     }
+
+    fn to_str(&self, context: &RewriteContext) -> String {
+        let mut result = String::with_capacity(128);
+        // Vis defaultness constness unsafety abi.
+        result.push_str(&*format_visibility(&self.visibility));
+        result.push_str(format_defaultness(self.defaultness));
+        result.push_str(format_constness(self.constness));
+        result.push_str(format_unsafety(self.unsafety));
+        result.push_str(&format_abi(
+            self.abi,
+            context.config.force_explicit_abi(),
+            false,
+        ));
+        result
+    }
 }
 
 impl<'a> FmtVisitor<'a> {
     fn format_item(&mut self, item: Item) {
         self.buffer.push_str(&item.abi);
-        self.buffer.push_str(" ");
 
         let snippet = self.snippet(item.span);
         let brace_pos = snippet.find_uncommented("{").unwrap();
@@ -1751,14 +1765,7 @@ fn rewrite_fn_base(
     let where_clause = &fn_sig.generics.where_clause;
 
     let mut result = String::with_capacity(1024);
-    // Vis defaultness constness unsafety abi.
-    result.push_str(&*format_visibility(&fn_sig.visibility));
-    result.push_str(format_defaultness(fn_sig.defaultness));
-    result.push_str(format_constness(fn_sig.constness));
-    result.push_str(format_unsafety(fn_sig.unsafety));
-    if fn_sig.abi != abi::Abi::Rust {
-        result.push_str(&format_abi(fn_sig.abi, context.config.force_explicit_abi()));
-    }
+    result.push_str(&fn_sig.to_str(context));
 
     // fn foo
     result.push_str("fn ");
