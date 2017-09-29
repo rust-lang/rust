@@ -33,6 +33,13 @@ pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.allocate_metadata_dep_nodes();
     tcx.precompute_in_scope_traits_hashes();
 
+    if tcx.sess.incr_comp_session_dir_opt().is_none() {
+        // If we are only building with -Zquery-dep-graph but without an actual
+        // incr. comp. session directory, we exit here. Otherwise we'd fail
+        // when trying to load work products.
+        return
+    }
+
     let work_products_path = work_products_path(tcx.sess);
     if let Some(work_products_data) = load_data(tcx.sess, &work_products_path) {
         // Decode the list of work_products
