@@ -1176,7 +1176,8 @@ impl char {
 
     /// Checks if the value is an ASCII alphanumeric character:
     ///
-    /// - U+0041 'A' ... U+005A 'Z', U+0061 'a' ... U+007A 'z', or
+    /// - U+0041 'A' ... U+005A 'Z', or
+    /// - U+0061 'a' ... U+007A 'z', or
     /// - U+0030 '0' ... U+0039 '9'.
     ///
     /// # Examples
@@ -1242,7 +1243,8 @@ impl char {
 
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
-    /// - U+0030 '0' ... U+0039 '9', U+0041 'A' ... U+0046 'F', or
+    /// - U+0030 '0' ... U+0039 '9', or
+    /// - U+0041 'A' ... U+0046 'F', or
     /// - U+0061 'a' ... U+0066 'f'.
     ///
     /// # Examples
