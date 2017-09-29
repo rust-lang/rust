@@ -157,6 +157,25 @@ pub unsafe fn _mm256_sub_ps(a: f32x8, b: f32x8) -> f32x8 {
     a - b
 }
 
+/// Compute the division of each of the 8 packed 32-bit floating-point elements
+/// in `a` by the corresponding packed elements in `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vdivps))]
+pub unsafe fn _mm256_div_ps(a: f32x8, b: f32x8) -> f32x8 {
+    a / b
+}
+
+/// Compute the division of each of the 4 packed 64-bit floating-point elements
+/// in `a` by the corresponding packed elements in `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vdivpd))]
+pub unsafe fn _mm256_div_pd(a: f64x4, b: f64x4) -> f64x4 {
+    a / b
+}
+
+
 /// Round packed double-precision (64-bit) floating point elements in `a`
 /// according to the flag `b`. The value of `b` may be as follows:
 ///
@@ -499,6 +518,24 @@ mod tests {
         let a = f32x8::new(4.0, 9.0, 16.0, 25.0, 4.0, 9.0, 16.0, 25.0);
         let r = avx::_mm256_sqrt_ps(a);
         let e = f32x8::new(2.0, 3.0, 4.0, 5.0, 2.0, 3.0, 4.0, 5.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_div_ps() {
+        let a = f32x8::new(4.0, 9.0, 16.0, 25.0, 4.0, 9.0, 16.0, 25.0);
+        let b = f32x8::new(4.0, 3.0, 2.0, 5.0, 8.0, 9.0, 64.0, 50.0);
+        let r = avx::_mm256_div_ps(a, b);
+        let e = f32x8::new(1.0, 3.0, 8.0, 5.0, 0.5, 1.0, 0.25, 0.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_div_pd() {
+        let a = f64x4::new(4.0, 9.0, 16.0, 25.0);
+        let b = f64x4::new(4.0, 3.0, 2.0, 5.0);
+        let r = avx::_mm256_div_pd(a, b);
+        let e = f64x4::new(1.0, 3.0, 8.0, 5.0);
         assert_eq!(r, e);
     }
 }
