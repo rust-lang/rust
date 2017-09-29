@@ -71,6 +71,10 @@ impl fmt::Display for TryFromSliceError {
 }
 
 impl TryFromSliceError {
+    #[unstable(feature = "array_error_internals",
+           reason = "available through Error trait and this method should not \
+                     be exposed publicly",
+           issue = "0")]
     #[inline]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
