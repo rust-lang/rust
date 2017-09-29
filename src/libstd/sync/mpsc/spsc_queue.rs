@@ -75,30 +75,6 @@ impl<T> Node<T> {
     }
 }
 
-impl<T> Queue<T> {
-    #[cfg(all(test, not(target_os = "emscripten")))]
-    /// Creates a new queue.
-    ///
-    /// This is unsafe as the type system doesn't enforce a single
-    /// consumer-producer relationship. It also allows the consumer to `pop`
-    /// items while there is a `peek` active due to all methods having a
-    /// non-mutable receiver.
-    ///
-    /// # Arguments
-    ///
-    ///   * `bound` - This queue implementation is implemented with a linked
-    ///               list, and this means that a push is always a malloc. In
-    ///               order to amortize this cost, an internal cache of nodes is
-    ///               maintained to prevent a malloc from always being
-    ///               necessary. This bound is the limit on the size of the
-    ///               cache (if desired). If the value is 0, then the cache has
-    ///               no bound. Otherwise, the cache will never grow larger than
-    ///               `bound` (although the queue itself could be much larger.
-    pub unsafe fn new(bound: usize) -> Queue<T> {
-        Self::with_additions(bound, (), ())
-    }
-}
-
 impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerAddition> {
 
     /// Creates a new queue. With given additional elements in the producer and
@@ -275,7 +251,7 @@ mod tests {
     #[test]
     fn smoke() {
         unsafe {
-            let queue = Queue::new(0);
+            let queue = Queue::with_additions(0, (), ());
             queue.push(1);
             queue.push(2);
             assert_eq!(queue.pop(), Some(1));
@@ -292,7 +268,7 @@ mod tests {
     #[test]
     fn peek() {
         unsafe {
-            let queue = Queue::new(0);
+            let queue = Queue::with_additions(0, (), ());
             queue.push(vec![1]);
 
             // Ensure the borrowchecker works
@@ -315,7 +291,7 @@ mod tests {
     #[test]
     fn drop_full() {
         unsafe {
-            let q: Queue<Box<_>> = Queue::new(0);
+            let q: Queue<Box<_>> = Queue::with_additions(0, (), ());
             q.push(box 1);
             q.push(box 2);
         }
@@ -324,7 +300,7 @@ mod tests {
     #[test]
     fn smoke_bound() {
         unsafe {
-            let q = Queue::new(0);
+            let q = Queue::with_additions(0, (), ());
             q.push(1);
             q.push(2);
             assert_eq!(q.pop(), Some(1));
@@ -346,7 +322,7 @@ mod tests {
         }
 
         unsafe fn stress_bound(bound: usize) {
-            let q = Arc::new(Queue::new(bound));
+            let q = Arc::new(Queue::with_additions(bound, (), ()));
 
             let (tx, rx) = channel();
             let q2 = q.clone();
