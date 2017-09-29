@@ -68,3 +68,22 @@ macro_rules! forward_ref_binop {
         }
     }
 }
+
+// implements "T op= &U", based on "T op= U"
+// where U is expected to be `Copy`able
+macro_rules! forward_ref_op_assign {
+    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
+        forward_ref_op_assign!(impl $imp, $method for $t, $u,
+                #[stable(feature = "op_assign_builtins_by_ref", since = "1.22.0")]);
+    };
+    (impl $imp:ident, $method:ident for $t:ty, $u:ty, #[$attr:meta]) => {
+        #[$attr]
+        impl<'a> $imp<&'a $u> for $t {
+            #[inline]
+            fn $method(&mut self, other: &'a $u) {
+                $imp::$method(self, *other);
+            }
+        }
+    }
+}
+
