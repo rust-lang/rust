@@ -10,7 +10,6 @@
 
 use test::Bencher;
 
-// FIXME #13642 (these benchmarks should be in another place)
 // Completely miscellaneous language-construct benchmarks.
 // Static/dynamic method dispatch
 
