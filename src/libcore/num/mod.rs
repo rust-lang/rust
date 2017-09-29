@@ -2664,12 +2664,12 @@ mod ptr_try_from_impls {
     try_from_both_bounded!(isize, i8, i16);
     try_from_unbounded!(isize, i32, i64, i128);
 
-    rev!(try_from_unbounded, usize, u8, u16, u32);
+    rev!(try_from_unbounded, usize, u16, u32);
     rev!(try_from_upper_bounded, usize, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32);
     rev!(try_from_both_bounded, usize, i64, i128);
 
-    rev!(try_from_unbounded, isize, u8, u16);
+    rev!(try_from_unbounded, isize, u16);
     rev!(try_from_upper_bounded, isize, u32, u64, u128);
     rev!(try_from_unbounded, isize, i8, i16, i32);
     rev!(try_from_both_bounded, isize, i64, i128);
