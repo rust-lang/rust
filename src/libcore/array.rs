@@ -63,6 +63,21 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromSliceError(());
 
+impl fmt::Display for TryFromSliceError {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self.__description())
+    }
+}
+
+impl TryFromSliceError {
+    #[inline]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        "could not convert slice to array"
+    }
+}
+
 macro_rules! __impl_slice_eq1 {
     ($Lhs: ty, $Rhs: ty) => {
         __impl_slice_eq1! { $Lhs, $Rhs, Sized }
