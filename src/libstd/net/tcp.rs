@@ -194,7 +194,7 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+    /// use std::net::{IpAddr, Ipv4Addr, TcpStream};
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
