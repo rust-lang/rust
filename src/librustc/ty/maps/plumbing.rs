@@ -651,7 +651,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
                 profq_msg!(tcx,
                     ProfileQueriesMsg::QueryBegin(
-                        span.clone(),
+                        span.data(),
                         ::ty::maps::QueryMsg::$query(profq_key!(tcx, $key))
                     )
                 );
