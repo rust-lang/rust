@@ -15,6 +15,7 @@ use std::cmp::min;
 use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::ImplItem;
 use syntax::codemap::{BytePos, Span};
+use syntax::visit;
 
 use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
@@ -157,6 +158,74 @@ enum BodyElement<'a> {
     // Variant(&'a ast::Variant),
     // Item(&'a ast::Item),
     ForeignItem(&'a ast::ForeignItem),
+}
+
+/// Represents a fn's signature.
+pub struct FnSig<'a> {
+    decl: &'a ast::FnDecl,
+    generics: &'a ast::Generics,
+    abi: abi::Abi,
+    constness: ast::Constness,
+    defaultness: ast::Defaultness,
+    unsafety: ast::Unsafety,
+    visibility: ast::Visibility,
+}
+
+impl<'a> FnSig<'a> {
+    pub fn new(
+        decl: &'a ast::FnDecl,
+        generics: &'a ast::Generics,
+        vis: ast::Visibility,
+    ) -> FnSig<'a> {
+        FnSig {
+            decl: decl,
+            generics: generics,
+            abi: abi::Abi::Rust,
+            constness: ast::Constness::NotConst,
+            defaultness: ast::Defaultness::Final,
+            unsafety: ast::Unsafety::Normal,
+            visibility: vis,
+        }
+    }
+
+    pub fn from_method_sig(method_sig: &'a ast::MethodSig) -> FnSig {
+        FnSig {
+            unsafety: method_sig.unsafety,
+            constness: method_sig.constness.node,
+            defaultness: ast::Defaultness::Final,
+            abi: method_sig.abi,
+            decl: &*method_sig.decl,
+            generics: &method_sig.generics,
+            visibility: ast::Visibility::Inherited,
+        }
+    }
+
+    pub fn from_fn_kind(
+        fn_kind: &'a visit::FnKind,
+        decl: &'a ast::FnDecl,
+        defualtness: ast::Defaultness,
+    ) -> FnSig<'a> {
+        match *fn_kind {
+            visit::FnKind::ItemFn(_, generics, unsafety, constness, abi, visibility, _) => FnSig {
+                decl: decl,
+                generics: generics,
+                abi: abi,
+                constness: constness.node,
+                defaultness: defualtness,
+                unsafety: unsafety,
+                visibility: visibility.clone(),
+            },
+            visit::FnKind::Method(_, ref method_sig, vis, _) => {
+                let mut fn_sig = FnSig::from_method_sig(method_sig);
+                fn_sig.defaultness = defualtness;
+                if let Some(vis) = vis {
+                    fn_sig.visibility = vis.clone();
+                }
+                fn_sig
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl<'a> FmtVisitor<'a> {
