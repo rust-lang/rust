@@ -285,13 +285,7 @@ impl<'a> FmtVisitor<'a> {
         &mut self,
         indent: Indent,
         ident: ast::Ident,
-        fd: &ast::FnDecl,
-        generics: &ast::Generics,
-        unsafety: ast::Unsafety,
-        constness: ast::Constness,
-        defaultness: ast::Defaultness,
-        abi: abi::Abi,
-        vis: &ast::Visibility,
+        fn_sig: &FnSig,
         span: Span,
         block: &ast::Block,
     ) -> Option<String> {
@@ -300,19 +294,14 @@ impl<'a> FmtVisitor<'a> {
         let block_snippet = self.snippet(mk_sp(block.span.lo(), block.span.hi()));
         let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty()
             || !context.config.fn_empty_single_line();
-        let mut newline_brace = newline_for_brace(self.config, &generics.where_clause, has_body);
+        let mut newline_brace =
+            newline_for_brace(self.config, &fn_sig.generics.where_clause, has_body);
 
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(
             &context,
             indent,
             ident,
-            fd,
-            generics,
-            unsafety,
-            constness,
-            defaultness,
-            abi,
-            vis,
+            fn_sig,
             span,
             newline_brace,
             has_body,
@@ -357,13 +346,7 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &sig.decl,
-            &sig.generics,
-            sig.unsafety,
-            sig.constness.node,
-            ast::Defaultness::Final,
-            sig.abi,
-            &ast::Visibility::Inherited,
+            &FnSig::from_method_sig(sig),
             span,
             false,
             false,
@@ -1765,13 +1748,7 @@ fn rewrite_fn_base(
     context: &RewriteContext,
     indent: Indent,
     ident: ast::Ident,
-    fd: &ast::FnDecl,
-    generics: &ast::Generics,
-    unsafety: ast::Unsafety,
-    constness: ast::Constness,
-    defaultness: ast::Defaultness,
-    abi: abi::Abi,
-    vis: &ast::Visibility,
+    fn_sig: &FnSig,
     span: Span,
     newline_brace: bool,
     has_body: bool,
@@ -1779,16 +1756,16 @@ fn rewrite_fn_base(
 ) -> Option<(String, bool)> {
     let mut force_new_line_for_brace = false;
 
-    let where_clause = &generics.where_clause;
+    let where_clause = &fn_sig.generics.where_clause;
 
     let mut result = String::with_capacity(1024);
     // Vis defaultness constness unsafety abi.
-    result.push_str(&*format_visibility(vis));
-    result.push_str(format_defaultness(defaultness));
-    result.push_str(format_constness(constness));
-    result.push_str(format_unsafety(unsafety));
-    if abi != abi::Abi::Rust {
-        result.push_str(&format_abi(abi, context.config.force_explicit_abi()));
+    result.push_str(&*format_visibility(&fn_sig.visibility));
+    result.push_str(format_defaultness(fn_sig.defaultness));
+    result.push_str(format_constness(fn_sig.constness));
+    result.push_str(format_unsafety(fn_sig.unsafety));
+    if fn_sig.abi != abi::Abi::Rust {
+        result.push_str(&format_abi(fn_sig.abi, context.config.force_explicit_abi()));
     }
 
     // fn foo
@@ -1810,8 +1787,9 @@ fn rewrite_fn_base(
         indent: indent,
         offset: used_width,
     };
+    let fd = fn_sig.decl;
     let g_span = mk_sp(span.lo(), fd.output.span().lo());
-    let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
+    let generics_str = try_opt!(rewrite_generics(context, fn_sig.generics, shape, g_span));
     result.push_str(&generics_str);
 
     let snuggle_angle_bracket = generics_str
@@ -1873,7 +1851,8 @@ fn rewrite_fn_base(
     }
 
     // A conservative estimation, to goal is to be over all parens in generics
-    let args_start = generics
+    let args_start = fn_sig
+        .generics
         .ty_params
         .last()
         .map_or(span.lo(), |tp| end_typaram(tp));
@@ -2826,15 +2805,7 @@ impl Rewrite for ast::ForeignItem {
                     context,
                     shape.indent,
                     self.ident,
-                    fn_decl,
-                    generics,
-                    ast::Unsafety::Normal,
-                    ast::Constness::NotConst,
-                    ast::Defaultness::Final,
-                    // These are not actually rust functions,
-                    // but we format them as such.
-                    abi::Abi::Rust,
-                    &self.vis,
+                    &FnSig::new(fn_decl, generics, self.vis.clone()),
                     span,
                     false,
                     false,
