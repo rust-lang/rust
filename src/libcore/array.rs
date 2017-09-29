@@ -66,7 +66,7 @@ pub struct TryFromSliceError(());
 impl fmt::Display for TryFromSliceError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self.__description())
+        fmt::Display::fmt(self.__description(), f)
     }
 }
 
