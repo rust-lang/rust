@@ -2734,7 +2734,7 @@ impl u8 {
     pub fn is_ascii_whitespace(&self) -> bool {
         if *self >= 0x80 { return false; }
         match ASCII_CHARACTER_CLASS[*self as usize] {
-            Cw|W => true,
+            Cw | W => true,
             _ => false
         }
     }
@@ -2772,7 +2772,7 @@ impl u8 {
     pub fn is_ascii_control(&self) -> bool {
         if *self >= 0x80 { return false; }
         match ASCII_CHARACTER_CLASS[*self as usize] {
-            C|Cw => true,
+            C | Cw => true,
             _ => false
         }
     }
