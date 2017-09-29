@@ -152,7 +152,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             any_lifetime_bounds = true;
                         }
                         TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) => {
-                            self.session.span_err(poly.span, "`?Trait` is not permitted in trait object types");
+                            self.session.span_err(poly.span,
+                                "`?Trait` is not permitted in trait object types");
                         }
                         _ => (),
                     }

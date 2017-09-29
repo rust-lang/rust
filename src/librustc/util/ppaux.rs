@@ -815,11 +815,13 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     write!(f, "impl")?;
                     for predicate in bounds.predicates {
                         if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
+                            let did = trait_ref.def_id();
+
                             // Don't print +Sized/DynSized, but rather +?Sized/DynSized if absent.
-                            if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
+                            if Some(did) == tcx.lang_items().sized_trait() {
                                 is_sized = true;
                                 continue;
-                            } else if Some(trait_ref.def_id()) == tcx.lang_items().dynsized_trait() {
+                            } else if Some(did) == tcx.lang_items().dynsized_trait() {
                                 is_dynsized = true;
                                 continue;
                             }
