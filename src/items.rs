@@ -291,9 +291,8 @@ impl<'a> FmtVisitor<'a> {
     ) -> Option<String> {
         let context = self.get_context();
 
-        let block_snippet = self.snippet(mk_sp(block.span.lo(), block.span.hi()));
-        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty()
-            || !context.config.fn_empty_single_line();
+        let has_body =
+            !is_empty_block(block, self.codemap) || !context.config.fn_empty_single_line();
         let mut newline_brace =
             newline_for_brace(self.config, &fn_sig.generics.where_clause, has_body);
 
