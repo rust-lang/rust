@@ -956,8 +956,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
-
     let ongoing_translation = write::start_async_translation(
         tcx,
         time_graph.clone(),
