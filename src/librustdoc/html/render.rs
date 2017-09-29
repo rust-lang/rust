@@ -2489,7 +2489,16 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "{}", impl_header)?;
 
         for implementor in local {
-            write!(w, "<li><code>")?;
+            write!(w, "<li>")?;
+            if let Some(item) = implementor2item(&cache, implementor) {
+                if let Some(l) = (Item { cx, item }).src_href() {
+                    write!(w, "<div class='out-of-band'>")?;
+                    write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                                l, "goto source code")?;
+                    write!(w, "</div>")?;
+                }
+            }
+            write!(w, "<code>")?;
             // If there's already another implementor that has the same abbridged name, use the
             // full path, for example in `std::iter::ExactSizeIterator`
             let use_absolute = match implementor.impl_.for_ {
