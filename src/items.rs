@@ -304,7 +304,6 @@ impl<'a> FmtVisitor<'a> {
             fn_sig,
             span,
             newline_brace,
-            has_body,
             true,
         ));
 
@@ -348,7 +347,6 @@ impl<'a> FmtVisitor<'a> {
             ident,
             &FnSig::from_method_sig(sig),
             span,
-            false,
             false,
             false,
         ));
@@ -1752,7 +1750,6 @@ fn rewrite_fn_base(
     span: Span,
     newline_brace: bool,
     has_body: bool,
-    has_braces: bool,
 ) -> Option<(String, bool)> {
     let mut force_new_line_for_brace = false;
 
@@ -1773,7 +1770,7 @@ fn rewrite_fn_base(
     result.push_str(&ident.to_string());
 
     // Generics.
-    let overhead = if has_braces && !newline_brace {
+    let overhead = if has_body && !newline_brace {
         // 4 = `() {`
         4
     } else {
@@ -1814,7 +1811,7 @@ fn rewrite_fn_base(
         indent,
         ret_str_len,
         newline_brace,
-        has_braces,
+        has_body,
         multi_line_ret_str,
     ));
 
@@ -2035,7 +2032,7 @@ fn rewrite_fn_base(
         }
     }
 
-    let option = WhereClauseOption::new(!has_braces, put_args_in_block && ret_str.is_empty());
+    let option = WhereClauseOption::new(!has_body, put_args_in_block && ret_str.is_empty());
     let where_clause_str = try_opt!(rewrite_where_clause(
         context,
         where_clause,
@@ -2807,7 +2804,6 @@ impl Rewrite for ast::ForeignItem {
                     self.ident,
                     &FnSig::new(fn_decl, generics, self.vis.clone()),
                     span,
-                    false,
                     false,
                     false,
                 ).map(|(s, _)| format!("{};", s))
