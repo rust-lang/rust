@@ -841,3 +841,129 @@ impl_stable_hash_for!(struct ::util::common::ErrorReported {});
 impl_stable_hash_for!(tuple_struct ::middle::reachable::ReachableSet {
     reachable_set
 });
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::Vtable<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::Vtable::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match self {
+            &VtableImpl(ref table_impl) => table_impl.hash_stable(hcx, hasher),
+            &VtableDefaultImpl(ref table_def_impl) => table_def_impl.hash_stable(hcx, hasher),
+            &VtableParam(ref table_param) => table_param.hash_stable(hcx, hasher),
+            &VtableObject(ref table_obj) => table_obj.hash_stable(hcx, hasher),
+            &VtableBuiltin(ref table_builtin) => table_builtin.hash_stable(hcx, hasher),
+            &VtableClosure(ref table_closure) => table_closure.hash_stable(hcx, hasher),
+            &VtableFnPointer(ref table_fn_pointer) => table_fn_pointer.hash_stable(hcx, hasher),
+            &VtableGenerator(ref table_generator) => table_generator.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableImplData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableImplData {
+            impl_def_id,
+            substs,
+            ref nested,
+        } = *self;
+        impl_def_id.hash_stable(hcx, hasher);
+        substs.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableDefaultImplData<N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableDefaultImplData {
+            trait_def_id,
+            ref nested,
+        } = *self;
+        trait_def_id.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableObjectData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableObjectData {
+            upcast_trait_ref,
+            vtable_base,
+            ref nested,
+        } = *self;
+        upcast_trait_ref.hash_stable(hcx, hasher);
+        vtable_base.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableBuiltinData<N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableBuiltinData {
+            ref nested,
+        } = *self;
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableClosureData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableClosureData {
+            closure_def_id,
+            substs,
+            ref nested,
+        } = *self;
+        closure_def_id.hash_stable(hcx, hasher);
+        substs.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableFnPointerData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableFnPointerData {
+            fn_ty,
+            ref nested,
+        } = *self;
+        fn_ty.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableGeneratorData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableGeneratorData {
+            closure_def_id,
+            substs,
+            ref nested,
+        } = *self;
+        closure_def_id.hash_stable(hcx, hasher);
+        substs.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}

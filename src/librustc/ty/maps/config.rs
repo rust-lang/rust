@@ -221,6 +221,12 @@ impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::trans_fulfill_obligation<'tcx> {
+    fn describe(tcx: TyCtxt, key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> String {
+        format!("checking if `{}` fulfills its obligations", tcx.item_path_str(key.1.def_id()))
+    }
+}
+
 impl<'tcx> QueryDescription for queries::trait_impls_of<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("trait impls of `{}`", tcx.item_path_str(def_id))
