@@ -2505,8 +2505,9 @@ impl fmt::Display for TryFromIntError {
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl From<Infallible> for TryFromIntError {
-    fn from(_: Infallible) -> TryFromIntError {
-        TryFromIntError(())
+    fn from(infallible: Infallible) -> TryFromIntError {
+        match infallible {
+        }
     }
 }
 
