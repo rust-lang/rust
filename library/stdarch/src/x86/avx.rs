@@ -1,6 +1,8 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+use std::mem;
+
 use v256::*;
 
 /// Add packed double-precision (64-bit) floating-point elements
@@ -26,9 +28,9 @@ pub unsafe fn _mm256_add_ps(a: f32x8, b: f32x8) -> f32x8 {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vandpd))]
 pub unsafe fn _mm256_and_pd(a: f64x4, b: f64x4) -> f64x4 {
-    let a: u64x4 = a.into();
-    let b: u64x4 = b.into();
-    (a & b).into()
+    let a: u64x4 = mem::transmute(a);
+    let b: u64x4 = mem::transmute(b);
+    mem::transmute(a & b)
 }
 
 /// Compute the bitwise AND of packed single-precision (32-bit) floating-point elements in `a` and `b`.
@@ -36,9 +38,9 @@ pub unsafe fn _mm256_and_pd(a: f64x4, b: f64x4) -> f64x4 {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vandps))]
 pub unsafe fn _mm256_and_ps(a: f32x8, b: f32x8) -> f32x8 {
-    let a: u32x8 = a.into();
-    let b: u32x8 = b.into();
-    (a & b).into()
+    let a: u32x8 = mem::transmute(a);
+    let b: u32x8 = mem::transmute(b);
+    mem::transmute(a & b)
 }
 
 /// Compute the bitwise OR packed double-precision (64-bit) floating-point elements
@@ -47,9 +49,9 @@ pub unsafe fn _mm256_and_ps(a: f32x8, b: f32x8) -> f32x8 {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vorpd))]
 pub unsafe fn _mm256_or_pd(a: f64x4, b: f64x4) -> f64x4 {
-    let a: u64x4 = a.into();
-    let b: u64x4 = b.into();
-    (a | b).into()
+    let a: u64x4 = mem::transmute(a);
+    let b: u64x4 = mem::transmute(b);
+    mem::transmute(a | b)
 }
 
 /// Compute the bitwise OR packed single-precision (32-bit) floating-point elements in `a` and `b`.
@@ -57,9 +59,9 @@ pub unsafe fn _mm256_or_pd(a: f64x4, b: f64x4) -> f64x4 {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vorps))]
 pub unsafe fn _mm256_or_ps(a: f32x8, b: f32x8) -> f32x8 {
-    let a: u32x8 = a.into();
-    let b: u32x8 = b.into();
-    (a | b).into()
+    let a: u32x8 = mem::transmute(a);
+    let b: u32x8 = mem::transmute(b);
+    mem::transmute(a | b)
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements 
