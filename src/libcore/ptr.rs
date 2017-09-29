@@ -476,6 +476,11 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.
     ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1108,6 +1113,11 @@ impl<T: ?Sized> *const T {
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
+    ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
     ///
     /// # Examples
     ///
