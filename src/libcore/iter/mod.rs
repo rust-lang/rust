@@ -558,7 +558,7 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
 
-/// An adapter for stepping iterators by a custom amount.
+/// An iterator for stepping iterators by a custom amount.
 ///
 /// This `struct` is created by the [`step_by`] method on [`Iterator`]. See
 /// its documentation for more.
