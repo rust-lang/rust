@@ -202,3 +202,16 @@ pub trait SomeTrait
     + FromStr {
     // comment
 }
+
+// #1995
+impl Foo {
+    fn f(
+        S {
+            aaaaaaaaaa: aaaaaaaaaa,
+            bbbbbbbbbb: bbbbbbbbbb,
+            cccccccccc: cccccccccc,
+        }: S,
+    ) -> u32 {
+        1
+    }
+}
