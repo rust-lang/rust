@@ -87,6 +87,15 @@ pub unsafe fn _mm_movehdup_ps(a: f32x4) -> f32x4 {
     simd_shuffle4(a, a, [1, 1, 3, 3])
 }
 
+/// Duplicate even-indexed single-precision (32-bit) floating-point elements
+/// from `a`.
+#[inline(always)]
+#[target_feature = "+sse3"]
+#[cfg_attr(test, assert_instr(movsldup))]
+pub unsafe fn _mm_moveldup_ps(a: f32x4) -> f32x4 {
+    simd_shuffle4(a, a, [0, 0, 2, 2])
+}
+
 #[allow(improper_ctypes)]
 extern {
     #[link_name = "llvm.x86.sse3.addsub.ps"]
@@ -180,5 +189,12 @@ mod tests {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let r = sse3::_mm_movehdup_ps(a);
         assert_eq!(r, f32x4::new(5.0, 5.0, -10.0, -10.0));
+    }
+
+    #[simd_test = "sse3"]
+    unsafe fn _mm_moveldup_ps() {
+        let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
+        let r = sse3::_mm_moveldup_ps(a);
+        assert_eq!(r, f32x4::new(-1.0, -1.0, 0.0, 0.0));
     }
 }
