@@ -456,7 +456,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert_eq!(2, 1.max(2));
     /// assert_eq!(2, 2.max(2));
     /// ```
-    #[stable(feature = "ord_max_min", since = "1.22.0")]
+    #[stable(feature = "ord_max_min", since = "1.21.0")]
     fn max(self, other: Self) -> Self
     where Self: Sized {
         if other >= self { other } else { self }
@@ -472,7 +472,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert_eq!(1, 1.min(2));
     /// assert_eq!(2, 2.min(2));
     /// ```
-    #[stable(feature = "ord_max_min", since = "1.22.0")]
+    #[stable(feature = "ord_max_min", since = "1.21.0")]
     fn min(self, other: Self) -> Self
     where Self: Sized {
         if self <= other { self } else { other }
