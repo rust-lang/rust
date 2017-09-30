@@ -1,3 +1,4 @@
+use simd_llvm::simd_shuffle32;
 use v256::*;
 use v128::*;
 use x86::__m256i;
@@ -93,7 +94,61 @@ pub unsafe fn _mm256_adds_epu16(a: u16x16, b: u16x16) -> u16x16 {
     paddusw(a, b)
 }
 
-// TODO _mm256_alignr_epi8
+/// Concatenate pairs of 16-byte blocks in `a` and `b` into a 32-byte temporary result,
+/// shift the result right by `n` bytes, and return the low 16 bytes.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpalignr, n = 15))]
+pub unsafe fn _mm256_alignr_epi8(a: i8x32, b: i8x32, n: i32) -> i8x32 {
+    let n = n as u32;
+    // If palignr is shifting the pair of vectors more than the size of two
+    // lanes, emit zero.
+    if n > 32 {
+        return i8x32::splat(0);
+    }
+    // If palignr is shifting the pair of input vectors more than one lane,
+    // but less than two lanes, convert to shifting in zeroes.
+    let (a, b, n) = if n > 16 {
+        (i8x32::splat(0), a, n - 16)
+    } else {
+        (a, b, n)
+    };
+
+    const fn add(a: u32, b: u32) -> u32 { a + b }
+    macro_rules! shuffle {
+        ($shift:expr) => {
+            simd_shuffle32(b, a, [
+                add(0, $shift), add(1, $shift),
+                add(2, $shift), add(3, $shift),
+                add(4, $shift), add(5, $shift),
+                add(6, $shift), add(7, $shift),
+                add(8, $shift), add(9, $shift),
+                add(10, $shift), add(11, $shift),
+                add(12, $shift), add(13, $shift),
+                add(14, $shift), add(15, $shift),
+                add(16, $shift), add(17, $shift),
+                add(18, $shift), add(19, $shift),
+                add(20, $shift), add(21, $shift),
+                add(22, $shift), add(23, $shift),
+                add(24, $shift), add(25, $shift),
+                add(26, $shift), add(27, $shift),
+                add(28, $shift), add(29, $shift),
+                add(30, $shift), add(31, $shift),
+            ])
+        }
+    }
+    match n {
+        0 => shuffle!(0), 1 => shuffle!(1),
+        2 => shuffle!(2), 3 => shuffle!(3),
+        4 => shuffle!(4), 5 => shuffle!(5),
+        6 => shuffle!(6), 7 => shuffle!(7),
+        8 => shuffle!(8), 9 => shuffle!(9),
+        10 => shuffle!(10), 11 => shuffle!(11),
+        12 => shuffle!(12), 13 => shuffle!(13),
+        14 => shuffle!(14), 15 => shuffle!(15),
+        _ => shuffle!(16),
+    }
+}
 
 /// Compute the bitwise AND of 256 bits (representing integer data)
 /// in `a` and `b`.
@@ -2102,5 +2157,48 @@ mod tests {
         let b = __m256i::splat(3);
         let r = avx2::_mm256_xor_si256(a, b);
         assert_eq!(r, __m256i::splat(6));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_alignr_epi8() {
+        let a = i8x32::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32);
+        let b = i8x32::new(
+            -1, -2, -3, -4, -5, -6, -7, -8,
+            -9, -10, -11, -12, -13, -14, -15, -16,
+            -17, -18, -19, -20, -21, -22, -23, -24,
+            -25, -26, -27, -28, -29, -30, -31, -32);
+        let r = avx2::_mm256_alignr_epi8(a, b, 33);
+        assert_eq!(r, i8x32::splat(0));
+
+        let r = avx2::_mm256_alignr_epi8(a, b, 17);
+        let expected = i8x32::new(
+            2, 3, 4, 5, 6, 7, 8, 9,
+            10, 11, 12, 13, 14, 15, 16, 17,
+            18, 19, 20, 21, 22, 23, 24, 25,
+            26, 27, 28, 29, 30, 31, 32, 0);
+        assert_eq!(r, expected);
+
+        let expected = i8x32::new(
+            -17, -18, -19, -20, -21, -22, -23, -24,
+            -25, -26, -27, -28, -29, -30, -31, -32,
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16);
+        let r = avx2::_mm256_alignr_epi8(a, b, 16);
+        assert_eq!(r, expected);
+
+        let r = avx2::_mm256_alignr_epi8(a, b, 15);
+        let expected = i8x32::new(
+            -16, -17, -18, -19, -20, -21, -22, -23,
+            -24, -25, -26, -27, -28, -29, -30, -31,
+            -32, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15);
+        assert_eq!(r, expected);
+
+        let r = avx2::_mm256_alignr_epi8(a, b, 0);
+        assert_eq!(r, b);
     }
 }
