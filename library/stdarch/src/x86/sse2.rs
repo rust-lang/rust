@@ -1766,7 +1766,6 @@ pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: f64x2) {
 /// into both elements of returned vector.
 #[inline(always)]
 #[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(movddup))]
 pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> f64x2 {
     let d = *mem_addr;
     f64x2::new(d, d)

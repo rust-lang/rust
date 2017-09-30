@@ -82,7 +82,6 @@ pub unsafe fn _mm_movedup_pd(a: f64x2) -> f64x2 {
 /// into both elements of return vector.
 #[inline(always)]
 #[target_feature = "+sse3"]
-#[cfg_attr(test, assert_instr(movddup))]
 pub unsafe fn _mm_loaddup_pd(mem_addr: *const f64) -> f64x2 {
     use x86::sse2::_mm_load1_pd;
     _mm_load1_pd(mem_addr)
