@@ -13,7 +13,7 @@ Language
   Example:
   ```rust
   fn main() {
-      let x: &'static u32 = 0;
+      let x: &'static u32 = &0;
   }
   ```
 
@@ -21,7 +21,8 @@ Compiler
 --------
 - [Upgraded jemalloc to 4.5.0][43911]
 - [Enabled unwinding panics on Redox][43917]
-- [Now emits a warning when you have an unused `extern crate`][42588]
+- [Now runs LLVM in parallel during translation phase.][43506]
+  This should reduce peak memory usage.
 
 Libraries
 ---------
@@ -33,6 +34,8 @@ Libraries
 
 Stabilized APIs
 ---------------
+
+[`std::mem::discriminant`]
 
 Cargo
 -----
@@ -56,6 +59,8 @@ Misc
   at [doc.rust-lang.org/rustdoc](https://doc.rust-lang.org/rustdoc)
 - [Added a preview of RLS has been made available through rustup][44204]
   Install with `rustup component add rls-preview`
+- [`std::os` documentation for Unix, Linux, and Windows now appears on doc.rust-lang.org][43348]
+  Previously only showed `std::os::unix`.
 
 Compatibility Notes
 -------------------
@@ -67,9 +72,10 @@ Compatibility Notes
 - [`unused_results` lint no longer ignores booleans][43728]
 
 [42565]: https://github.com/rust-lang/rust/pull/42565
-[42588]: https://github.com/rust-lang/rust/pull/42588
 [42973]: https://github.com/rust-lang/rust/pull/42973
+[43348]: https://github.com/rust-lang/rust/pull/43348
 [43459]: https://github.com/rust-lang/rust/pull/43459
+[43506]: https://github.com/rust-lang/rust/pull/43506
 [43540]: https://github.com/rust-lang/rust/pull/43540
 [43690]: https://github.com/rust-lang/rust/pull/43690
 [43728]: https://github.com/rust-lang/rust/pull/43728
@@ -88,6 +94,7 @@ Compatibility Notes
 [cargo/4400]: https://github.com/rust-lang/cargo/pull/4400
 [RFC 1969]: https://github.com/rust-lang/rfcs/pull/1969
 [info/43880]: https://github.com/rust-lang/rust/issues/44224#issuecomment-330058902
+[`std::mem::discriminant`]: https://doc.rust-lang.org/std/mem/fn.discriminant.html
 
 Version 1.20.0 (2017-08-31)
 ===========================
