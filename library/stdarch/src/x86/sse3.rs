@@ -22,6 +22,15 @@ pub unsafe fn _mm_addsub_pd(a: f64x2, b: f64x2) -> f64x2 {
     addsubpd(a, b)
 }
 
+/// Horizontally add adjacent pairs of double-precision (64-bit)
+/// floating-point elements in `a` and `b`, and pack the results.
+#[inline(always)]
+#[target_feature = "+sse3"]
+#[cfg_attr(test, assert_instr(hadd))]
+pub unsafe fn _mm_hadd_pd(a: f64x2, b: f64x2) -> f64x2 {
+    haddpd(a, b)
+}
+
 /// Load 128-bits of integer data from unaligned memory.
 /// This intrinsic may perform better than `_mm_loadu_si128`
 /// when the data crosses a cache line boundary.
@@ -38,6 +47,8 @@ extern {
     fn addsubps(a: f32x4, b: f32x4) -> f32x4;
     #[link_name = "llvm.x86.sse3.addsub.pd"]
     fn addsubpd(a: f64x2, b: f64x2) -> f64x2;
+    #[link_name = "llvm.x86.sse3.hadd.pd"]
+    fn haddpd(a: f64x2, b: f64x2) -> f64x2;
     #[link_name = "llvm.x86.sse3.ldu.dq"]
     fn lddqu(mem_addr: *const i8) -> __m128i;
 }
@@ -64,6 +75,14 @@ mod tests {
         let b = f64x2::new(-100.0, 20.0);
         let r = sse3::_mm_addsub_pd(a, b);
         assert_eq!(r, f64x2::new(99.0, 25.0));
+    }
+
+    #[simd_test = "sse3"]
+    unsafe fn _mm_hadd_pd() {
+        let a = f64x2::new(-1.0, 5.0);
+        let b = f64x2::new(-100.0, 20.0);
+        let r = sse3::_mm_hadd_pd(a, b);
+        assert_eq!(r, f64x2::new(4.0, -80.0));
     }
 
     #[simd_test = "sse3"]
