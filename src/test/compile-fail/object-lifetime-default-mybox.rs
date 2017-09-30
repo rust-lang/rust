@@ -34,7 +34,7 @@ fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
                 b: &'b MyBox<SomeTrait>)
                 -> &'b MyBox<SomeTrait>
 {
-    a //~ ERROR E0312
+    a //~ ERROR lifetime mismatch
 }
 
 fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {
