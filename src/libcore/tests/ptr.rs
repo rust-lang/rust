@@ -8,25 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::mem;
 use core::ptr::*;
 use core::cell::RefCell;
-
-
-/// Create a null pointer to a mutable slice.  This is implemented like
-/// `slice::from_raw_parts_mut`, which we can't use directly because
-/// having a null `&mut [T]` even temporarily is UB.
-fn null_slice<T>() -> *mut [T] {
-    unsafe {
-        #[repr(C)]
-        struct Repr<T> {
-            pub data: *mut T,
-            pub len: usize,
-        }
-
-        mem::transmute(Repr { data: null_mut::<T>(), len: 0 })
-    }
-}
 
 #[test]
 fn test() {
@@ -80,7 +63,7 @@ fn test_is_null() {
     let mq = unsafe { mp.offset(1) };
     assert!(!mq.is_null());
 
-    // Pointers to unsized types
+    // Pointers to unsized types -- slices
     let s: &mut [u8] = &mut [1, 2, 3];
     let cs: *const [u8] = s;
     assert!(!cs.is_null());
@@ -94,11 +77,24 @@ fn test_is_null() {
     let mz: *mut [u8] = &mut [];
     assert!(!mz.is_null());
 
-    let ncs: *const [u8] = null_slice();
+    let ncs: *const [u8] = null::<[u8; 3]>();
     assert!(ncs.is_null());
 
-    let nms: *mut [u8] = null_slice();
+    let nms: *mut [u8] = null_mut::<[u8; 3]>();
     assert!(nms.is_null());
+
+    // Pointers to unsized types -- trait objects
+    let ci: *const ToString = &3;
+    assert!(!ci.is_null());
+
+    let mi: *mut ToString = &mut 3;
+    assert!(!mi.is_null());
+
+    let nci: *const ToString = null::<isize>();
+    assert!(nci.is_null());
+
+    let nmi: *mut ToString = null_mut::<isize>();
+    assert!(nmi.is_null());
 }
 
 #[test]
@@ -123,7 +119,7 @@ fn test_as_ref() {
             assert_eq!(p.as_ref().unwrap(), &2);
         }
 
-        // Pointers to unsized types
+        // Pointers to unsized types -- slices
         let s: &mut [u8] = &mut [1, 2, 3];
         let cs: *const [u8] = s;
         assert_eq!(cs.as_ref(), Some(&*s));
@@ -137,11 +133,24 @@ fn test_as_ref() {
         let mz: *mut [u8] = &mut [];
         assert_eq!(mz.as_ref(), Some(&[][..]));
 
-        let ncs: *const [u8] = null_slice();
+        let ncs: *const [u8] = null::<[u8; 3]>();
         assert_eq!(ncs.as_ref(), None);
 
-        let nms: *mut [u8] = null_slice();
+        let nms: *mut [u8] = null_mut::<[u8; 3]>();
         assert_eq!(nms.as_ref(), None);
+
+        // Pointers to unsized types -- trait objects
+        let ci: *const ToString = &3;
+        assert!(ci.as_ref().is_some());
+
+        let mi: *mut ToString = &mut 3;
+        assert!(mi.as_ref().is_some());
+
+        let nci: *const ToString = null::<isize>();
+        assert!(nci.as_ref().is_none());
+
+        let nmi: *mut ToString = null_mut::<isize>();
+        assert!(nmi.as_ref().is_none());
     }
 }
 
@@ -161,7 +170,7 @@ fn test_as_mut() {
             assert!(p.as_mut().unwrap() == &mut 2);
         }
 
-        // Pointers to unsized types
+        // Pointers to unsized types -- slices
         let s: &mut [u8] = &mut [1, 2, 3];
         let ms: *mut [u8] = s;
         assert_eq!(ms.as_mut(), Some(s));
@@ -169,8 +178,15 @@ fn test_as_mut() {
         let mz: *mut [u8] = &mut [];
         assert_eq!(mz.as_mut(), Some(&mut [][..]));
 
-        let nms: *mut [u8] = null_slice();
+        let nms: *mut [u8] = null_mut::<[u8; 3]>();
         assert_eq!(nms.as_mut(), None);
+
+        // Pointers to unsized types -- trait objects
+        let mi: *mut ToString = &mut 3;
+        assert!(mi.as_mut().is_some());
+
+        let nmi: *mut ToString = null_mut::<isize>();
+        assert!(nmi.as_mut().is_none());
     }
 }
 
