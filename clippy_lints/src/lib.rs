@@ -97,6 +97,7 @@ pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
 pub mod infinite_iter;
 pub mod int_plus_one;
+pub mod invalid_ref;
 pub mod is_unit_expr;
 pub mod items_after_statements;
 pub mod large_enum_variant;
@@ -328,6 +329,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box use_self::UseSelf);
     reg.register_late_lint_pass(box bytecount::ByteCount);
     reg.register_late_lint_pass(box infinite_iter::Pass);
+    reg.register_late_lint_pass(box invalid_ref::InvalidRef);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -345,6 +347,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
         int_plus_one::INT_PLUS_ONE,
+        invalid_ref::INVALID_REF,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         matches::SINGLE_MATCH_ELSE,
         mem_forget::MEM_FORGET,

@@ -1,0 +1,51 @@
+error: reference to zeroed memory
+  --> $DIR/invalid_ref.rs:27:24
+   |
+27 |     let ref_zero: &T = std::mem::zeroed();     // warning
+   |                        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-ref` implied by `-D warnings`
+   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+
+error: reference to zeroed memory
+  --> $DIR/invalid_ref.rs:31:24
+   |
+31 |     let ref_zero: &T = core::mem::zeroed();   // warning
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+
+error: reference to zeroed memory
+  --> $DIR/invalid_ref.rs:35:24
+   |
+35 |     let ref_zero: &T = std::intrinsics::init();   // warning
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+
+error: reference to uninitialized memory
+  --> $DIR/invalid_ref.rs:39:26
+   |
+39 |     let ref_uninit: &T = std::mem::uninitialized();   // warning
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+
+error: reference to uninitialized memory
+  --> $DIR/invalid_ref.rs:43:26
+   |
+43 |     let ref_uninit: &T = core::mem::uninitialized();   // warning
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+
+error: reference to uninitialized memory
+  --> $DIR/invalid_ref.rs:47:26
+   |
+47 |     let ref_uninit: &T = std::intrinsics::uninit();   // warning
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+
+error: aborting due to 6 previous errors
+
