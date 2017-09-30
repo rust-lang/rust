@@ -650,10 +650,11 @@ impl EarlyLintPass for DeprecatedAttr {
                                              ref name,
                                              ref reason,
                                              _) = g {
-                    cx.span_lint(DEPRECATED,
-                                 attr.span,
-                                 &format!("use of deprecated attribute `{}`: {}. See {}",
-                                          name, reason, link));
+                    let msg = format!("use of deprecated attribute `{}`: {}. See {}",
+                                      name, reason, link);
+                    let mut err = cx.struct_span_lint(DEPRECATED, attr.span, &msg);
+                    err.span_suggestion_short(attr.span, "remove this attribute", "".to_owned());
+                    err.emit();
                 }
                 return;
             }
