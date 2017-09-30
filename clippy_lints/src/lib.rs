@@ -86,6 +86,7 @@ pub mod entry;
 pub mod enum_clike;
 pub mod enum_glob_use;
 pub mod enum_variants;
+pub mod erasing_op;
 pub mod eq_op;
 pub mod escape;
 pub mod eta_reduction;
@@ -246,6 +247,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box needless_continue::NeedlessContinue);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
+    reg.register_late_lint_pass(box erasing_op::ErasingOp);
     reg.register_early_lint_pass(box items_after_statements::ItemsAfterStatements);
     reg.register_late_lint_pass(box mut_mut::MutMut);
     reg.register_late_lint_pass(box mut_reference::UnnecessaryMutPassed);

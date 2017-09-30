@@ -6,6 +6,14 @@ error: &-masking with zero
    |
    = note: `-D bad-bit-mask` implied by `-D warnings`
 
+error: the operation is ineffective. Consider reducing it to `0`
+  --> $DIR/bit_masks.rs:12:5
+   |
+12 |     x & 0 == 0;
+   |     ^^^^^
+   |
+   = note: `-D erasing-op` implied by `-D warnings`
+
 error: incompatible bit mask: `_ & 2` can never be equal to `1`
   --> $DIR/bit_masks.rs:15:5
    |
@@ -47,6 +55,12 @@ error: &-masking with zero
    |
 35 |     0 & x == 0;
    |     ^^^^^^^^^^
+
+error: the operation is ineffective. Consider reducing it to `0`
+  --> $DIR/bit_masks.rs:35:5
+   |
+35 |     0 & x == 0;
+   |     ^^^^^
 
 error: incompatible bit mask: `_ | 2` will always be higher than `1`
   --> $DIR/bit_masks.rs:39:5

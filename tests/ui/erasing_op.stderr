@@ -1,0 +1,20 @@
+error: the operation is ineffective. Consider reducing it to `0`
+ --> $DIR/erasing_op.rs:9:5
+  |
+9 |     x * 0;
+  |     ^^^^^
+  |
+  = note: `-D erasing-op` implied by `-D warnings`
+
+error: the operation is ineffective. Consider reducing it to `0`
+  --> $DIR/erasing_op.rs:10:5
+   |
+10 |     0 & x;
+   |     ^^^^^
+
+error: the operation is ineffective. Consider reducing it to `0`
+  --> $DIR/erasing_op.rs:11:5
+   |
+11 |     0 / x;
+   |     ^^^^^
+
