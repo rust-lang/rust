@@ -141,7 +141,12 @@ impl Type {
     }
 
     pub fn c_int(ccx: &CrateContext) -> Type {
-        Type::i32(ccx)
+        match &ccx.tcx().sess.target.target.target_c_int_width[..] {
+            "16" => Type::i16(ccx),
+            "32" => Type::i32(ccx),
+            "64" => Type::i64(ccx),
+            width => bug!("Unsupported target_c_int_width: {}", width),
+        }
     }
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {

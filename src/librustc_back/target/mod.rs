@@ -239,6 +239,8 @@ pub struct Target {
     pub target_endian: String,
     /// String to use as the `target_pointer_width` `cfg` variable.
     pub target_pointer_width: String,
+    /// Width of c_int type
+    pub target_c_int_width: String,
     /// OS name to use for conditional compilation.
     pub target_os: String,
     /// Environment name to use for conditional compilation.
@@ -556,6 +558,7 @@ impl Target {
             llvm_target: get_req_field("llvm-target")?,
             target_endian: get_req_field("target-endian")?,
             target_pointer_width: get_req_field("target-pointer-width")?,
+            target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
             target_os: get_req_field("os")?,
@@ -860,6 +863,7 @@ impl ToJson for Target {
         target_val!(llvm_target);
         target_val!(target_endian);
         target_val!(target_pointer_width);
+        target_val!(target_c_int_width);
         target_val!(arch);
         target_val!(target_os, "os");
         target_val!(target_env, "env");

@@ -39,6 +39,7 @@ pub fn target() -> TargetResult {
         llvm_target: "le32-unknown-nacl".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
+        target_c_int_width: "32".to_string(),
         target_os: "nacl".to_string(),
         target_env: "newlib".to_string(),
         target_vendor: "unknown".to_string(),
