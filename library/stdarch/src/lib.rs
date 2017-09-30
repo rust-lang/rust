@@ -33,7 +33,7 @@
 //! ## Portability
 //!
 //! The `simd` module and its types should be portable to all platforms. The
-//! runtime characteristics of these types may vary per paltform and per CPU
+//! runtime characteristics of these types may vary per platform and per CPU
 //! feature enabled, but they should always have the most optimized
 //! implementation for the target at hand.
 //!
