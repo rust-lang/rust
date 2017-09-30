@@ -186,7 +186,7 @@ pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ccx.tcx(),
             ty::ParamEnv::empty(traits::Reveal::All),
             def_id,
-            substs,)
-        .unwrap()
+            substs,
+        ).unwrap()
     )
 }
