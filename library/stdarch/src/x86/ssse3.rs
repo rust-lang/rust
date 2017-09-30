@@ -1,6 +1,7 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+use simd_llvm::simd_shuffle16;
 use v128::*;
 
 /// Compute the absolute value of packed 8-bit signed integers in `a` and
@@ -59,6 +60,55 @@ pub unsafe fn _mm_abs_epi32(a: i32x4) -> u32x4 {
 #[cfg_attr(test, assert_instr(pshufb))]
 pub unsafe fn _mm_shuffle_epi8(a: u8x16, b: u8x16) -> u8x16 {
     pshufb128(a, b)
+}
+
+/// Concatenate the two 128-bit integer vector operands, and
+/// right-shifts the result by the number of bytes specified in the immediate
+/// operand.
+#[inline(always)]
+#[target_feature = "+ssse3"]
+#[cfg_attr(test, assert_instr(palignr, n = 15))]
+pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
+    let n = n as u32;
+    // If palignr is shifting the pair of vectors more than the size of two
+    // lanes, emit zero.
+    if n > 32 {
+        return i8x16::splat(0);
+    }
+    // If palignr is shifting the pair of input vectors more than one lane,
+    // but less than two lanes, convert to shifting in zeroes.
+    let (a, b, n) = if n > 16 {
+        (i8x16::splat(0), a, n - 16)
+    } else {
+        (a, b, n)
+    };
+
+    const fn add(a: u32, b: u32) -> u32 { a + b }
+    macro_rules! shuffle {
+        ($shift:expr) => {
+            simd_shuffle16(b, a, [
+                add(0, $shift), add(1, $shift),
+                add(2, $shift), add(3, $shift),
+                add(4, $shift), add(5, $shift),
+                add(6, $shift), add(7, $shift),
+                add(8, $shift), add(9, $shift),
+                add(10, $shift), add(11, $shift),
+                add(12, $shift), add(13, $shift),
+                add(14, $shift), add(15, $shift),
+            ])
+        }
+    }
+    match n {
+        0 => shuffle!(0), 1 => shuffle!(1),
+        2 => shuffle!(2), 3 => shuffle!(3),
+        4 => shuffle!(4), 5 => shuffle!(5),
+        6 => shuffle!(6), 7 => shuffle!(7),
+        8 => shuffle!(8), 9 => shuffle!(9),
+        10 => shuffle!(10), 11 => shuffle!(11),
+        12 => shuffle!(12), 13 => shuffle!(13),
+        14 => shuffle!(14), 15 => shuffle!(15),
+        _ => shuffle!(16),
+    }
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
@@ -268,6 +318,28 @@ mod tests {
         );
         let r = ssse3::_mm_shuffle_epi8(a, b);
         assert_eq!(r, expected);
+    }
+
+    #[simd_test = "ssse3"]
+    unsafe fn _mm_alignr_epi8() {
+        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b = i8x16::new(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        let r = ssse3::_mm_alignr_epi8(a, b, 33);
+        assert_eq!(r, i8x16::splat(0));
+
+        let r = ssse3::_mm_alignr_epi8(a, b, 17);
+        let expected = i8x16::new(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
+        assert_eq!(r, expected);
+
+        let r = ssse3::_mm_alignr_epi8(a, b, 16);
+        assert_eq!(r, a);
+
+        let r = ssse3::_mm_alignr_epi8(a, b, 15);
+        let expected = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        assert_eq!(r, expected);
+
+        let r = ssse3::_mm_alignr_epi8(a, b, 0);
+        assert_eq!(r, b);
     }
 
     #[simd_test = "ssse3"]
