@@ -1,5 +1,5 @@
 use x86::__m128i;
-use simd_llvm::simd_shuffle2;
+use simd_llvm::{simd_shuffle2, simd_shuffle4};
 use v128::*;
 
 #[cfg(test)]
@@ -76,6 +76,15 @@ pub unsafe fn _mm_lddqu_si128(mem_addr: *const __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(movddup))]
 pub unsafe fn _mm_movedup_pd(a: f64x2) -> f64x2 {
     simd_shuffle2(a, a, [0, 0])
+}
+
+/// Duplicate odd-indexed single-precision (32-bit) floating-point elements
+/// from `a`.
+#[inline(always)]
+#[target_feature = "+sse3"]
+#[cfg_attr(test, assert_instr(movshdup))]
+pub unsafe fn _mm_movehdup_ps(a: f32x4) -> f32x4 {
+    simd_shuffle4(a, a, [1, 1, 3, 3])
 }
 
 #[allow(improper_ctypes)]
@@ -164,5 +173,12 @@ mod tests {
         let a = f64x2::new(-1.0, 5.0);
         let r = sse3::_mm_movedup_pd(a);
         assert_eq!(r, f64x2::new(-1.0, -1.0));
+    }
+
+    #[simd_test = "sse3"]
+    unsafe fn _mm_movehdup_ps() {
+        let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
+        let r = sse3::_mm_movehdup_ps(a);
+        assert_eq!(r, f32x4::new(5.0, 5.0, -10.0, -10.0));
     }
 }
