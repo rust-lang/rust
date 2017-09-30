@@ -569,20 +569,6 @@ pub(super) struct DepNodeIndexNew {
 }
 
 impl Idx for DepNodeIndexNew {
-    fn new(idx: usize) -> Self {
-        DepNodeIndexNew::new(idx)
-    }
-    fn index(self) -> usize {
-        self.index()
-    }
-}
-
-impl DepNodeIndexNew {
-
-    const INVALID: DepNodeIndexNew = DepNodeIndexNew {
-        index: ::std::u32::MAX,
-    };
-
     fn new(v: usize) -> DepNodeIndexNew {
         assert!((v & 0xFFFF_FFFF) == v);
         DepNodeIndexNew { index: v as u32 }
@@ -591,6 +577,12 @@ impl DepNodeIndexNew {
     fn index(self) -> usize {
         self.index as usize
     }
+}
+
+impl DepNodeIndexNew {
+    const INVALID: DepNodeIndexNew = DepNodeIndexNew {
+        index: ::std::u32::MAX,
+    };
 }
 
 #[derive(Clone, Debug, PartialEq)]
