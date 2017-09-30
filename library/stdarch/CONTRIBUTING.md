@@ -9,6 +9,12 @@ $ cd stdsimd
 $ cargo +nightly test
 ```
 
+To run codegen tests, run in release mode:
+
+```
+$ cargo +nightly test --release
+```
+
 Remember that this repository requires the nightly channel of Rust! If any of
 the above steps don't work, [please let us know][new]!
 
