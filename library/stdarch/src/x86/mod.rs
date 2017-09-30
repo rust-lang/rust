@@ -1,5 +1,6 @@
 pub use self::sse::*;
 pub use self::sse2::*;
+pub use self::sse3::*;
 pub use self::ssse3::*;
 pub use self::sse41::*;
 pub use self::sse42::*;
@@ -25,6 +26,7 @@ mod runtime;
 
 mod sse;
 mod sse2;
+mod sse3;
 mod ssse3;
 mod sse41;
 mod sse42;
