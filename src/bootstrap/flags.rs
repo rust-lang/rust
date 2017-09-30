@@ -60,7 +60,9 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
     },
-    Clean,
+    Clean {
+        all: bool,
+    },
     Dist {
         paths: Vec<PathBuf>,
     },
@@ -147,6 +149,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
+            "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
             _ => { },
         };
 
@@ -250,7 +253,7 @@ Arguments:
             }
         });
 
-        // All subcommands can have an optional "Available paths" section
+        // All subcommands except `clean` can have an optional "Available paths" section
         if matches.opt_present("verbose") {
             let config = Config::parse(&["build".to_string()]);
             let mut build = Build::new(config);
@@ -258,9 +261,10 @@ Arguments:
 
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
             extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
-        } else {
-            extra_help.push_str(format!("Run `./x.py {} -h -v` to see a list of available paths.",
-                     subcommand).as_str());
+        } else if subcommand.as_str() != "clean" {
+            extra_help.push_str(format!(
+                "Run `./x.py {} -h -v` to see a list of available paths.",
+                subcommand).as_str());
         }
 
         // User passed in -h/--help?
@@ -290,10 +294,13 @@ Arguments:
             }
             "clean" => {
                 if paths.len() > 0 {
-                    println!("\nclean takes no arguments\n");
+                    println!("\nclean does not take a path argument\n");
                     usage(1, &opts, &subcommand_help, &extra_help);
                 }
-                Subcommand::Clean
+
+                Subcommand::Clean {
+                    all: matches.opt_present("all"),
+                }
             }
             "dist" => {
                 Subcommand::Dist {
