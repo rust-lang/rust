@@ -988,16 +988,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             }
             Def::Err => {
-                for segment in &path.segments {
-                    segment.with_parameters(|parameters| {
-                        for ty in &parameters.types {
-                            self.ast_ty_to_ty(ty);
-                        }
-                        for binding in &parameters.bindings {
-                            self.ast_ty_to_ty(&binding.ty);
-                        }
-                    });
-                }
                 self.set_tainted_by_errors();
                 return self.tcx().types.err;
             }
