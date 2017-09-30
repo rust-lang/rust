@@ -916,7 +916,6 @@ impl Stmt_ {
     }
 }
 
-// FIXME: local should really be a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Local {
