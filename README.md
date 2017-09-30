@@ -37,7 +37,7 @@ how to fix it, you could send a PR. :smile:
 ## Running tests
 
 ```sh
-cargo run --bin miri tests/run-pass/vecs.rs # Or whatever test you like.
+cargo run --bin miri tests/run-pass-fullmir/vecs.rs # Or whatever test you like.
 ```
 
 ## Debugging
