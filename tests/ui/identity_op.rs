@@ -27,4 +27,7 @@ fn main() {
 
     x & NEG_ONE;  //no error, as we skip lookups (for now)
     -1 & x;
+
+    let u : u8 = 0;
+    u & 255;
 }

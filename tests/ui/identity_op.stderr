@@ -42,3 +42,9 @@ error: the operation is ineffective. Consider reducing it to `x`
 29 |     -1 & x;
    |     ^^^^^^
 
+error: the operation is ineffective. Consider reducing it to `u`
+  --> $DIR/identity_op.rs:32:5
+   |
+32 |     u & 255;
+   |     ^^^^^^^
+
