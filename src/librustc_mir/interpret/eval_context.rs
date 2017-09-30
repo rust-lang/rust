@@ -6,6 +6,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
 use rustc::mir;
+use rustc::traits;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size, Align, HasDataLayout};
 use rustc::ty::subst::{Subst, Substs, Kind};
@@ -2411,7 +2412,7 @@ fn resolve_associated_item<'a, 'tcx>(
     );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, ty::Binder(trait_ref));
+    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, ty::ParamEnv::empty(traits::Reveal::All), ty::Binder(trait_ref));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
