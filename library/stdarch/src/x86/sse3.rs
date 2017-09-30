@@ -78,6 +78,16 @@ pub unsafe fn _mm_movedup_pd(a: f64x2) -> f64x2 {
     simd_shuffle2(a, a, [0, 0])
 }
 
+/// Load a double-precision (64-bit) floating-point element from memory
+/// into both elements of return vector.
+#[inline(always)]
+#[target_feature = "+sse3"]
+#[cfg_attr(test, assert_instr(movddup))]
+pub unsafe fn _mm_loaddup_pd(mem_addr: *const f64) -> f64x2 {
+    use x86::sse2::_mm_load1_pd;
+    _mm_load1_pd(mem_addr)
+}
+
 /// Duplicate odd-indexed single-precision (32-bit) floating-point elements
 /// from `a`.
 #[inline(always)]
@@ -196,5 +206,12 @@ mod tests {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let r = sse3::_mm_moveldup_ps(a);
         assert_eq!(r, f32x4::new(-1.0, -1.0, 0.0, 0.0));
+    }
+
+    #[simd_test = "sse3"]
+    unsafe fn _mm_loaddup_pd() {
+        let d = -5.0;
+        let r = sse3::_mm_loaddup_pd(&d);
+        assert_eq!(r, f64x2::new(d, d));
     }
 }

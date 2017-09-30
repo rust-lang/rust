@@ -1762,6 +1762,16 @@ pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: f64x2) {
     *(mem_addr as *mut f64x2) = a;
 }
 
+/// Load a double-precision (64-bit) floating-point element from memory
+/// into both elements of returned vector.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(movddup))]
+pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> f64x2 {
+    let d = *mem_addr;
+    f64x2::new(d, d)
+}
+
 #[allow(improper_ctypes)]
 extern {
     #[link_name = "llvm.x86.sse2.pause"]
@@ -3462,5 +3472,12 @@ mod tests {
 
         let r = sse2::_mm_cvtpd_epi32(f64x2::new(f64::NAN, f64::NAN));
         assert_eq!(r, i32x4::new(i32::MIN, i32::MIN, 0, 0));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_load1_pd() {
+        let d = -5.0;
+        let r = sse2::_mm_load1_pd(&d);
+        assert_eq!(r, f64x2::new(d, d));
     }
 }
