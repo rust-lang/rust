@@ -22,6 +22,7 @@ use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
 use syntax::symbol::keywords;
 use syntax::ptr::P;
+use syntax::print::pprust;
 use syntax::util::parser;
 use syntax_pos::Span;
 
@@ -325,9 +326,16 @@ impl UnusedParens {
             let necessary = struct_lit_needs_parens &&
                             parser::contains_exterior_struct_lit(&inner);
             if !necessary {
-                cx.span_lint(UNUSED_PARENS,
-                             value.span,
-                             &format!("unnecessary parentheses around {}", msg))
+                let span_msg = format!("unnecessary parentheses around {}", msg);
+                let mut err = cx.struct_span_lint(UNUSED_PARENS,
+                                                  value.span,
+                                                  &span_msg);
+                let parens_removed = pprust::expr_to_string(value)
+                    .trim_matches(|c| c == '(' || c == ')').to_owned();
+                err.span_suggestion_short(value.span,
+                                          "remove these parentheses",
+                                          parens_removed);
+                err.emit();
             }
         }
     }
