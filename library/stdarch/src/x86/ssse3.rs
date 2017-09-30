@@ -62,9 +62,8 @@ pub unsafe fn _mm_shuffle_epi8(a: u8x16, b: u8x16) -> u8x16 {
     pshufb128(a, b)
 }
 
-/// Concatenate the two 128-bit integer vector operands, and
-/// right-shifts the result by the number of bytes specified in the immediate
-/// operand.
+/// Concatenate 16-byte blocks in `a` and `b` into a 32-byte temporary result,
+/// shift the result right by `n` bytes, and return the low 16 bytes.
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(palignr, n = 15))]
