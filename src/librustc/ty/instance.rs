@@ -116,8 +116,24 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         self.def.def_id()
     }
 
-    /// The point where linking happens. Resolve a (def_id, substs)
-    /// pair to an instance.
+    /// Resolve a (def_id, substs) pair to an (optional) instance -- most commonly,
+    /// this is used to find the precise code that will run for a trait method invocation,
+    /// if known.
+    ///
+    /// Returns `None` if we cannot resolve `Instance` to a specific instance.
+    /// For example, in a context like this,
+    ///
+    /// ```
+    /// fn foo<T: Debug>(t: T) { ... }
+    /// ```
+    ///
+    /// trying to resolve `Debug::fmt` applied to `T` will yield `None`, because we do not
+    /// know what code ought to run. (Note that this setting is also affected by the
+    /// `RevealMode` in the parameter environment.)
+    ///
+    /// Presuming that coherence and type-check have succeeded, if this method is invoked
+    /// in a monomorphic context (i.e., like during trans), then it is guaranteed to return
+    /// `Some`.
     pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: ty::ParamEnv<'tcx>,
                    def_id: DefId,
