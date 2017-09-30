@@ -1332,6 +1332,12 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
 fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> ty::GenericPredicates<'tcx> {
+    explicit_predicates_of(tcx, def_id)
+}
+
+fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> ty::GenericPredicates<'tcx> {
     use rustc::hir::map::*;
     use rustc::hir::*;
 
