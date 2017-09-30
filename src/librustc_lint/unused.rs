@@ -334,8 +334,32 @@ impl UnusedParens {
                 let mut err = cx.struct_span_lint(UNUSED_PARENS,
                                                   value.span,
                                                   &span_msg);
+                // Remove exactly one pair of parentheses (rather than naïvely
+                // stripping all paren characters)
+                let mut ate_left_paren = false;
+                let mut ate_right_paren = false;
                 let parens_removed = pprust::expr_to_string(value)
-                    .trim_matches(|c| c == '(' || c == ')').to_owned();
+                    .trim_matches(|c| {
+                        match c {
+                            '(' => {
+                                if ate_left_paren {
+                                    false
+                                } else {
+                                    ate_left_paren = true;
+                                    true
+                                }
+                            },
+                            ')' => {
+                                if ate_right_paren {
+                                    false
+                                } else {
+                                    ate_right_paren = true;
+                                    true
+                                }
+                            },
+                            _ => false,
+                        }
+                    }).to_owned();
                 err.span_suggestion_short(value.span,
                                           "remove these parentheses",
                                           parens_removed);
