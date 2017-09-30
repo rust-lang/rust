@@ -1,7 +1,17 @@
 use x86::__m128i;
+use v128::f32x4;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
+
+/// Alternatively add and subtract packed single-precision (32-bit)
+/// floating-point elements in `a` to/from packed elements in `b`.
+#[inline(always)]
+#[target_feature = "+sse3"]
+#[cfg_attr(test, assert_instr(addsub))]
+pub unsafe fn _mm_addsub_ps(a: f32x4, b: f32x4) -> f32x4 {
+    addsubps(a, b)
+}
 
 /// Load 128-bits of integer data from unaligned memory.
 /// This intrinsic may perform better than `_mm_loadu_si128`
@@ -15,6 +25,8 @@ pub unsafe fn _mm_lddqu_si128(mem_addr: *const __m128i) -> __m128i {
 
 #[allow(improper_ctypes)]
 extern {
+    #[link_name = "llvm.x86.sse3.addsub.ps"]
+    fn addsubps(a: f32x4, b: f32x4) -> f32x4;
     #[link_name = "llvm.x86.sse3.ldu.dq"]
     fn lddqu(mem_addr: *const i8) -> __m128i;
 }
@@ -26,6 +38,14 @@ mod tests {
 
     use v128::*;
     use x86::sse3 as sse3;
+
+    #[simd_test = "sse3"]
+    unsafe fn _mm_addsub_ps() {
+        let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
+        let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
+        let r = sse3::_mm_addsub_ps(a, b);
+        assert_eq!(r, f32x4::new(99.0, 25.0, 0.0, -15.0));
+    }
 
     #[simd_test = "sse3"]
     unsafe fn _mm_lddqu_si128() {
