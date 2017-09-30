@@ -247,15 +247,17 @@ fn resolve_associated_item<'a, 'tcx>(
                 substs: rcvr_substs
             })
         }
-        traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items().clone_trait() => {
-            Some(Instance {
-                def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
-                substs: rcvr_substs
-            })
+        traits::VtableBuiltin(..) => {
+            if let Some(_) = tcx.lang_items().clone_trait() {
+                Some(Instance {
+                    def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
+                    substs: rcvr_substs
+                })
+            } else {
+                None
+            }
         }
-        _ => {
-            None
-        }
+        traits::VtableDefaultImpl(..) | traits::VtableParam(..) => None
     }
 }
 
@@ -287,8 +289,9 @@ fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
                 //
                 // These are both the same at trans time.
                 Ok(true)
-            }
-        _ => Err(()),
+        }
+        (ty::ClosureKind::FnMut, _) |
+        (ty::ClosureKind::FnOnce, _) => Err(())
     }
 }
 
