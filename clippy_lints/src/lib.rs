@@ -51,6 +51,7 @@ extern crate lazy_static;
 
 extern crate itertools;
 extern crate pulldown_cmark;
+extern crate url;
 
 macro_rules! declare_restriction_lint {
     { pub $name:tt, $description:tt } => {
