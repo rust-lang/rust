@@ -520,7 +520,7 @@ impl OsStr {
     /// Note: it is *crucial* that this API is private, to avoid
     /// revealing the internal, platform-specific encodings.
     fn bytes(&self) -> &[u8] {
-        &self.inner.inner
+        unsafe { &*(&self.inner as *const _ as *const [u8]) }
     }
 }
 
