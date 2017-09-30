@@ -68,17 +68,26 @@ pub use base::trans_crate;
 pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
+use std::any::Any;
+use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::mpsc;
 
+use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::CrateNum;
+use rustc::middle::cstore::MetadataLoader;
 use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
+use rustc::session::Session;
+use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::maps::Providers;
+use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
 mod diagnostics;
 
 pub mod back {
     mod archive;
+    mod bytecode;
     mod command;
     pub(crate) mod linker;
     pub mod link;
@@ -138,14 +147,6 @@ mod type_;
 mod type_of;
 mod value;
 
-use std::sync::mpsc;
-use std::any::Any;
-use rustc::ty::{self, TyCtxt};
-use rustc::session::Session;
-use rustc::session::config::OutputFilenames;
-use rustc::middle::cstore::MetadataLoader;
-use rustc::dep_graph::DepGraph;
-
 pub struct LlvmTransCrate(());
 
 impl LlvmTransCrate {
@@ -202,12 +203,13 @@ pub struct ModuleTranslation {
     /// something unique to this crate (e.g., a module path) as well
     /// as the crate name and disambiguator.
     name: String,
+    llmod_id: String,
     symbol_name_hash: u64,
     pub source: ModuleSource,
     pub kind: ModuleKind,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ModuleKind {
     Regular,
     Metadata,
@@ -215,35 +217,32 @@ pub enum ModuleKind {
 }
 
 impl ModuleTranslation {
-    pub fn into_compiled_module(self, emit_obj: bool, emit_bc: bool) -> CompiledModule {
+    pub fn llvm(&self) -> Option<&ModuleLlvm> {
+        match self.source {
+            ModuleSource::Translated(ref llvm) => Some(llvm),
+            ModuleSource::Preexisting(_) => None,
+        }
+    }
+
+    pub fn into_compiled_module(self,
+                                emit_obj: bool,
+                                emit_bc: bool,
+                                outputs: &OutputFilenames) -> CompiledModule {
         let pre_existing = match self.source {
             ModuleSource::Preexisting(_) => true,
             ModuleSource::Translated(_) => false,
         };
+        let object = outputs.temp_path(OutputType::Object, Some(&self.name));
 
         CompiledModule {
+            llmod_id: self.llmod_id,
             name: self.name.clone(),
             kind: self.kind,
             symbol_name_hash: self.symbol_name_hash,
             pre_existing,
             emit_obj,
             emit_bc,
-        }
-    }
-}
-
-impl Drop for ModuleTranslation {
-    fn drop(&mut self) {
-        match self.source {
-            ModuleSource::Preexisting(_) => {
-                // Nothing to dispose.
-            },
-            ModuleSource::Translated(llvm) => {
-                unsafe {
-                    llvm::LLVMDisposeModule(llvm.llmod);
-                    llvm::LLVMContextDispose(llvm.llcx);
-                }
-            },
+            object,
         }
     }
 }
@@ -251,6 +250,8 @@ impl Drop for ModuleTranslation {
 #[derive(Debug)]
 pub struct CompiledModule {
     pub name: String,
+    pub llmod_id: String,
+    pub object: PathBuf,
     pub kind: ModuleKind,
     pub symbol_name_hash: u64,
     pub pre_existing: bool,
@@ -258,7 +259,6 @@ pub struct CompiledModule {
     pub emit_bc: bool,
 }
 
-#[derive(Clone)]
 pub enum ModuleSource {
     /// Copy the `.o` files or whatever from the incr. comp. directory.
     Preexisting(WorkProduct),
@@ -267,14 +267,25 @@ pub enum ModuleSource {
     Translated(ModuleLlvm),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct ModuleLlvm {
     llcx: llvm::ContextRef,
     pub llmod: llvm::ModuleRef,
+    tm: llvm::TargetMachineRef,
 }
 
-unsafe impl Send for ModuleTranslation { }
-unsafe impl Sync for ModuleTranslation { }
+unsafe impl Send for ModuleLlvm { }
+unsafe impl Sync for ModuleLlvm { }
+
+impl Drop for ModuleLlvm {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMDisposeModule(self.llmod);
+            llvm::LLVMContextDispose(self.llcx);
+            llvm::LLVMRustDisposeTargetMachine(self.tm);
+        }
+    }
+}
 
 pub struct CrateTranslation {
     pub crate_name: Symbol,

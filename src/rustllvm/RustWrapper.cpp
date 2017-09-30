@@ -15,6 +15,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
+#include "llvm/Bitcode/BitcodeWriterPass.h"
 
 #include "llvm/IR/CallSite.h"
 
@@ -891,6 +892,23 @@ extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, char *BC,
   return true;
 }
 
+extern "C" bool LLVMRustLinkInParsedExternalBitcode(
+    LLVMModuleRef DstRef, LLVMModuleRef SrcRef) {
+#if LLVM_VERSION_GE(4, 0)
+  Module *Dst = unwrap(DstRef);
+  std::unique_ptr<Module> Src(unwrap(SrcRef));
+
+  if (Linker::linkModules(*Dst, std::move(Src))) {
+    LLVMRustSetLastError("failed to link modules");
+    return false;
+  }
+  return true;
+#else
+  LLVMRustSetLastError("can't link parsed modules on this LLVM");
+  return false;
+#endif
+}
+
 // Note that the two following functions look quite similar to the
 // LLVMGetSectionName function. Sadly, it appears that this function only
 // returns a char* pointer, which isn't guaranteed to be null-terminated. The
@@ -1402,4 +1420,48 @@ extern "C" LLVMValueRef LLVMRustBuildIntCast(LLVMBuilderRef B, LLVMValueRef Val,
 extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
                                       LLVMRustVisibility RustVisibility) {
   LLVMSetVisibility(V, fromRust(RustVisibility));
+}
+
+struct LLVMRustModuleBuffer {
+  std::string data;
+};
+
+extern "C" LLVMRustModuleBuffer*
+LLVMRustModuleBufferCreate(LLVMModuleRef M) {
+  auto Ret = llvm::make_unique<LLVMRustModuleBuffer>();
+  {
+    raw_string_ostream OS(Ret->data);
+    {
+      legacy::PassManager PM;
+      PM.add(createBitcodeWriterPass(OS));
+      PM.run(*unwrap(M));
+    }
+  }
+  return Ret.release();
+}
+
+extern "C" void
+LLVMRustModuleBufferFree(LLVMRustModuleBuffer *Buffer) {
+  delete Buffer;
+}
+
+extern "C" const void*
+LLVMRustModuleBufferPtr(const LLVMRustModuleBuffer *Buffer) {
+  return Buffer->data.data();
+}
+
+extern "C" size_t
+LLVMRustModuleBufferLen(const LLVMRustModuleBuffer *Buffer) {
+  return Buffer->data.length();
+}
+
+extern "C" uint64_t
+LLVMRustModuleCost(LLVMModuleRef M) {
+  Module &Mod = *unwrap(M);
+  uint64_t cost = 0;
+  for (auto &F : Mod.functions()) {
+    (void)F;
+    cost += 1;
+  }
+  return cost;
 }

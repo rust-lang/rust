@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 
+use back::bytecode::RLIB_BYTECODE_EXTENSION;
 use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
 use llvm::{self, ArchiveKind};
@@ -154,12 +155,9 @@ impl<'a> ArchiveBuilder<'a> {
         // might be also an extra name suffix
         let obj_start = format!("{}", name);
 
-        // Ignoring all bytecode files, no matter of
-        // name
-        let bc_ext = ".bytecode.deflate";
-
         self.add_archive(rlib, move |fname: &str| {
-            if fname.ends_with(bc_ext) || fname == METADATA_FILENAME {
+            // Ignore bytecode/metadata files, no matter the name.
+            if fname.ends_with(RLIB_BYTECODE_EXTENSION) || fname == METADATA_FILENAME {
                 return true
             }
 
