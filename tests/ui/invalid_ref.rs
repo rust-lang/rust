@@ -16,6 +16,10 @@ fn main() {
         ref_to_uninit_std(&x);
         ref_to_uninit_core(&x);
         ref_to_uninit_intr(&x);
+        some_ref();
+        std_zeroed_no_ref();
+        core_zeroed_no_ref();
+        intr_init_no_ref();
     }
 }
 
@@ -42,4 +46,21 @@ unsafe fn ref_to_uninit_core<T: ?Sized>(t: &T) {
 unsafe fn ref_to_uninit_intr<T: ?Sized>(t: &T) {
     let ref_uninit: &T = std::intrinsics::uninit();   // warning
 }
+
+fn some_ref() {
+    let some_ref = &1; 
+}
+
+unsafe fn std_zeroed_no_ref() {
+    let mem_zero: usize = std::mem::zeroed();  // no warning
+}
+
+unsafe fn core_zeroed_no_ref() {
+    let mem_zero: usize = core::mem::zeroed();  // no warning
+}
+
+unsafe fn intr_init_no_ref() {
+    let mem_zero: usize = std::intrinsics::init(); // no warning
+}
+
 
