@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -D while-true
+#![warn(unused_mut)] // UI tests pass `-A unused`—see Issue #43896
+#![feature(no_debug)]
+
+#[no_debug] // should suggest removal of deprecated attribute
 fn main() {
-  let mut i = 0;
-  while true  { //~ ERROR denote infinite loops with `loop
-    i += 1;
-    if i == 5 { break; }
-  }
+    while true { // should suggest `loop`
+        let mut a = (1); // should suggest no `mut`, no parens
+        println!("{}", a);
+    }
 }

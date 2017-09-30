@@ -71,9 +71,13 @@ impl UnusedMut {
         let used_mutables = cx.tcx.used_mut_nodes.borrow();
         for (_, v) in &mutables {
             if !v.iter().any(|e| used_mutables.contains(e)) {
-                cx.span_lint(UNUSED_MUT,
-                             cx.tcx.hir.span(v[0]),
-                             "variable does not need to be mutable");
+                let binding_span = cx.tcx.hir.span(v[0]);
+                let mut_span = cx.tcx.sess.codemap().span_until_char(binding_span, ' ');
+                let mut err = cx.struct_span_lint(UNUSED_MUT,
+                                                  binding_span,
+                                                  "variable does not need to be mutable");
+                err.span_suggestion_short(mut_span, "remove this `mut`", "".to_owned());
+                err.emit();
             }
         }
     }
