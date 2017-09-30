@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 use core::cmp::PartialEq;
 use core::fmt::Debug;
 use core::marker::Copy;
+use core::num::TryFromIntError;
 use core::ops::{Add, Sub, Mul, Div, Rem};
 use core::option::Option;
 use core::option::Option::{Some, None};
@@ -132,6 +133,13 @@ fn test_empty() {
     assert_eq!("-".parse::<i8>().ok(), None);
     assert_eq!("+".parse::<i8>().ok(), None);
     assert_eq!("".parse::<u8>().ok(), None);
+}
+
+#[test]
+fn test_infallible_try_from_int_error() {
+    let func = |x: i8| -> Result<i32, TryFromIntError> { Ok(x.try_into()?) };
+
+    assert!(func(0).is_ok());
 }
 
 macro_rules! test_impl_from {

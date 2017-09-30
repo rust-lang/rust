@@ -58,9 +58,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = this.source_info(expr_span);
 
         match expr.kind {
-            ExprKind::Scope { region_scope, value } => {
+            ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, block, |this| this.as_rvalue(block, scope, value))
+                this.in_scope(region_scope, lint_level, block,
+                              |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, scope, value));

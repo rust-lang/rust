@@ -27,7 +27,7 @@ use std::process::Command;
 
 use build_helper::output;
 use cmake;
-use gcc;
+use cc;
 
 use Build;
 use util;
@@ -289,7 +289,7 @@ impl Step for TestHelpers {
         let _folder = build.fold_output(|| "build_test_helpers");
         println!("Building test helpers");
         t!(fs::create_dir_all(&dst));
-        let mut cfg = gcc::Build::new();
+        let mut cfg = cc::Build::new();
 
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform gcc of these compilers. Note, though, that
@@ -367,7 +367,7 @@ impl Step for Openssl {
             if !ok {
                 panic!("failed to download openssl source")
             }
-            let mut shasum = if target.contains("apple") {
+            let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
                 let mut cmd = Command::new("shasum");
                 cmd.arg("-a").arg("256");
                 cmd
@@ -387,7 +387,7 @@ impl Step for Openssl {
         let dst = build.openssl_install_dir(target).unwrap();
         drop(fs::remove_dir_all(&obj));
         drop(fs::remove_dir_all(&dst));
-        build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
+        build.run(Command::new("tar").arg("zxf").arg(&tarball).current_dir(&out));
 
         let mut configure = Command::new("perl");
         configure.arg(obj.join("Configure"));
@@ -399,6 +399,7 @@ impl Step for Openssl {
         let os = match &*target {
             "aarch64-linux-android" => "linux-aarch64",
             "aarch64-unknown-linux-gnu" => "linux-aarch64",
+            "aarch64-unknown-linux-musl" => "linux-aarch64",
             "arm-linux-androideabi" => "android",
             "arm-unknown-linux-gnueabi" => "linux-armv4",
             "arm-unknown-linux-gnueabihf" => "linux-armv4",

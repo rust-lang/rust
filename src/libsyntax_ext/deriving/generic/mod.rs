@@ -428,8 +428,9 @@ impl<'a> TraitDef<'a> {
                         }
                     }
                     _ => {
-                        cx.span_err(mitem.span,
-                                    "`derive` may only be applied to structs, enums and unions");
+                        // Non-ADT derive is an error, but it should have been
+                        // set earlier; see
+                        // libsyntax/ext/expand.rs:MacroExpander::expand()
                         return;
                     }
                 };
@@ -448,8 +449,10 @@ impl<'a> TraitDef<'a> {
                 push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))
             }
             _ => {
-                cx.span_err(mitem.span,
-                            "`derive` may only be applied to structs and enums");
+                // Non-Item derive is an error, but it should have been
+                // set earlier; see
+                // libsyntax/ext/expand.rs:MacroExpander::expand()
+                return;
             }
         }
     }

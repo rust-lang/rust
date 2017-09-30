@@ -76,6 +76,8 @@ pub trait AstConv<'gcx, 'tcx> {
     /// used to help suppress derived errors typeck might otherwise
     /// report.
     fn set_tainted_by_errors(&self);
+
+    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
 }
 
 struct ConvertedBinding<'tcx> {
@@ -155,11 +157,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         item_segment: &hir::PathSegment)
         -> &'tcx Substs<'tcx>
     {
+
         let (substs, assoc_bindings) =
-            self.create_substs_for_ast_path(span,
-                                            def_id,
-                                            &item_segment.parameters,
-                                            None);
+            item_segment.with_parameters(|parameters| {
+                self.create_substs_for_ast_path(
+                    span,
+                    def_id,
+                    parameters,
+                    item_segment.infer_types,
+                    None)
+            });
 
         assoc_bindings.first().map(|b| self.prohibit_projection(b.span));
 
@@ -175,6 +182,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         span: Span,
         def_id: DefId,
         parameters: &hir::PathParameters,
+        infer_types: bool,
         self_ty: Option<Ty<'tcx>>)
         -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
     {
@@ -202,7 +210,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Check the number of type parameters supplied by the user.
         let ty_param_defs = &decl_generics.types[self_ty.is_some() as usize..];
-        if !parameters.infer_types || num_types_provided > ty_param_defs.len() {
+        if !infer_types || num_types_provided > ty_param_defs.len() {
             check_type_argument_count(tcx, span, num_types_provided, ty_param_defs);
         }
 
@@ -238,7 +246,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             if i < num_types_provided {
                 // A provided type parameter.
                 self.ast_ty_to_ty(&parameters.types[i])
-            } else if parameters.infer_types {
+            } else if infer_types {
                 // No type parameters were provided, we can infer all.
                 let ty_var = if !default_needs_object_self(def) {
                     self.ty_infer_for_def(def, substs, span)
@@ -388,7 +396,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let trait_def = self.tcx().trait_def(trait_def_id);
 
         if !self.tcx().sess.features.borrow().unboxed_closures &&
-           trait_segment.parameters.parenthesized != trait_def.paren_sugar {
+           trait_segment.with_parameters(|p| p.parenthesized) != trait_def.paren_sugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let msg = if trait_def.paren_sugar {
                 "the precise format of `Fn`-family traits' type parameters is subject to change. \
@@ -400,10 +408,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                              span, GateIssue::Language, msg);
         }
 
-        self.create_substs_for_ast_path(span,
-                                        trait_def_id,
-                                        &trait_segment.parameters,
-                                        Some(self_ty))
+        trait_segment.with_parameters(|parameters| {
+            self.create_substs_for_ast_path(span,
+                                            trait_def_id,
+                                            parameters,
+                                            trait_segment.infer_types,
+                                            Some(self_ty))
+        })
     }
 
     fn trait_defines_associated_type_named(&self,
@@ -874,25 +885,27 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
-            for typ in &segment.parameters.types {
-                struct_span_err!(self.tcx().sess, typ.span, E0109,
-                                 "type parameters are not allowed on this type")
-                    .span_label(typ.span, "type parameter not allowed")
-                    .emit();
-                break;
-            }
-            for lifetime in &segment.parameters.lifetimes {
-                struct_span_err!(self.tcx().sess, lifetime.span, E0110,
-                                 "lifetime parameters are not allowed on this type")
-                    .span_label(lifetime.span,
-                                "lifetime parameter not allowed on this type")
-                    .emit();
-                break;
-            }
-            for binding in &segment.parameters.bindings {
-                self.prohibit_projection(binding.span);
-                break;
-            }
+            segment.with_parameters(|parameters| {
+                for typ in &parameters.types {
+                    struct_span_err!(self.tcx().sess, typ.span, E0109,
+                                     "type parameters are not allowed on this type")
+                        .span_label(typ.span, "type parameter not allowed")
+                        .emit();
+                    break;
+                }
+                for lifetime in &parameters.lifetimes {
+                    struct_span_err!(self.tcx().sess, lifetime.span, E0110,
+                                     "lifetime parameters are not allowed on this type")
+                        .span_label(lifetime.span,
+                                    "lifetime parameter not allowed on this type")
+                        .emit();
+                    break;
+                }
+                for binding in &parameters.bindings {
+                    self.prohibit_projection(binding.span);
+                    break;
+                }
+            })
         }
     }
 
@@ -975,6 +988,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             }
             Def::Err => {
+                for segment in &path.segments {
+                    segment.with_parameters(|parameters| {
+                        for ty in &parameters.types {
+                            self.ast_ty_to_ty(ty);
+                        }
+                        for binding in &parameters.bindings {
+                            self.ast_ty_to_ty(&binding.ty);
+                        }
+                    });
+                }
                 self.set_tainted_by_errors();
                 return self.tcx().types.err;
             }
@@ -1115,6 +1138,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
         };
 
+        self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
         result_ty
     }
 
@@ -1124,8 +1148,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                      -> Ty<'tcx>
     {
         match ty.node {
-            hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
-            hir::TyInfer => self.ty_infer(ty.span),
+            hir::TyInfer if expected_ty.is_some() => {
+                self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
+                expected_ty.unwrap()
+            }
             _ => self.ast_ty_to_ty(ty),
         }
     }
@@ -1214,19 +1240,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
 
-        let is_infer = match decl.output {
-            hir::Return(ref output) if output.node == hir::TyInfer => true,
-            hir::DefaultReturn(..) => true,
-            _ => false
-        };
-
         let output_ty = match decl.output {
-            _ if is_infer && expected_ret_ty.is_some() =>
-                expected_ret_ty.unwrap(),
-            _ if is_infer => self.ty_infer(decl.output.span()),
-            hir::Return(ref output) =>
-                self.ast_ty_to_ty(&output),
-            hir::DefaultReturn(..) => bug!(),
+            hir::Return(ref output) => {
+                if let (&hir::TyInfer, Some(expected_ret_ty)) = (&output.node, expected_ret_ty) {
+                    self.record_ty(output.hir_id, expected_ret_ty, output.span);
+                    expected_ret_ty
+                } else {
+                    self.ast_ty_to_ty(&output)
+                }
+            }
+            hir::DefaultReturn(span) => {
+                if let Some(expected_ret_ty) = expected_ret_ty {
+                    expected_ret_ty
+                } else {
+                    self.ty_infer(span)
+                }
+            }
         };
 
         debug!("ty_of_closure: output_ty={:?}", output_ty);
@@ -1298,15 +1327,16 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 if Some(trait_did) == tcx.lang_items().send_trait() ||
                     Some(trait_did) == tcx.lang_items().sync_trait() {
                     let segments = &bound.trait_ref.path.segments;
-                    let parameters = &segments[segments.len() - 1].parameters;
-                    if !parameters.types.is_empty() {
-                        check_type_argument_count(tcx, bound.trait_ref.path.span,
-                                                  parameters.types.len(), &[]);
-                    }
-                    if !parameters.lifetimes.is_empty() {
-                        report_lifetime_number_error(tcx, bound.trait_ref.path.span,
-                                                     parameters.lifetimes.len(), 0);
-                    }
+                    segments[segments.len() - 1].with_parameters(|parameters| {
+                        if !parameters.types.is_empty() {
+                            check_type_argument_count(tcx, bound.trait_ref.path.span,
+                                                      parameters.types.len(), &[]);
+                        }
+                        if !parameters.lifetimes.is_empty() {
+                            report_lifetime_number_error(tcx, bound.trait_ref.path.span,
+                                                         parameters.lifetimes.len(), 0);
+                        }
+                    });
                     true
                 } else {
                     false

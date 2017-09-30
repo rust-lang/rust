@@ -145,7 +145,27 @@ pub struct Lifetime {
     /// HIR lowering inserts these placeholders in type paths that
     /// refer to type definitions needing lifetime parameters,
     /// `&T` and `&mut T`, and trait objects without `... + 'a`.
-    pub name: Name,
+    pub name: LifetimeName,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+pub enum LifetimeName {
+    Implicit,
+    Underscore,
+    Static,
+    Name(Name),
+}
+
+impl LifetimeName {
+    pub fn name(&self) -> Name {
+        use self::LifetimeName::*;
+        match *self {
+            Implicit => keywords::Invalid.name(),
+            Underscore => Symbol::intern("'_"),
+            Static => keywords::StaticLifetime.name(),
+            Name(name) => name,
+        }
+    }
 }
 
 impl fmt::Debug for Lifetime {
@@ -159,11 +179,15 @@ impl fmt::Debug for Lifetime {
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        self.name == keywords::Invalid.name()
+        use self::LifetimeName::*;
+        match self.name {
+            Implicit | Underscore => true,
+            Static | Name(_) => false,
+        }
     }
 
     pub fn is_static(&self) -> bool {
-        self.name == "'static"
+        self.name == LifetimeName::Static
     }
 }
 
@@ -212,7 +236,13 @@ pub struct PathSegment {
     /// this is more than just simple syntactic sugar; the use of
     /// parens affects the region binding rules, so we preserve the
     /// distinction.
-    pub parameters: PathParameters,
+    pub parameters: Option<P<PathParameters>>,
+
+    /// Whether to infer remaining type parameters, if any.
+    /// This only applies to expression and pattern paths, and
+    /// out of those only the segments with no type parameters
+    /// to begin with, e.g. `Vec::new` is `<Vec<..>>::new::<..>`.
+    pub infer_types: bool,
 }
 
 impl PathSegment {
@@ -220,8 +250,34 @@ impl PathSegment {
     pub fn from_name(name: Name) -> PathSegment {
         PathSegment {
             name,
-            parameters: PathParameters::none()
+            infer_types: true,
+            parameters: None
         }
+    }
+
+    pub fn new(name: Name, parameters: PathParameters, infer_types: bool) -> Self {
+        PathSegment {
+            name,
+            infer_types,
+            parameters: if parameters.is_empty() {
+                None
+            } else {
+                Some(P(parameters))
+            }
+        }
+    }
+
+    // FIXME: hack required because you can't create a static
+    // PathParameters, so you can't just return a &PathParameters.
+    pub fn with_parameters<F, R>(&self, f: F) -> R
+        where F: FnOnce(&PathParameters) -> R
+    {
+        let dummy = PathParameters::none();
+        f(if let Some(ref params) = self.parameters {
+            &params
+        } else {
+            &dummy
+        })
     }
 }
 
@@ -231,11 +287,6 @@ pub struct PathParameters {
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
     pub types: HirVec<P<Ty>>,
-    /// Whether to infer remaining type parameters, if any.
-    /// This only applies to expression and pattern paths, and
-    /// out of those only the segments with no type parameters
-    /// to begin with, e.g. `Vec::new` is `<Vec<..>>::new::<..>`.
-    pub infer_types: bool,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
@@ -250,10 +301,14 @@ impl PathParameters {
         Self {
             lifetimes: HirVec::new(),
             types: HirVec::new(),
-            infer_types: true,
             bindings: HirVec::new(),
             parenthesized: false,
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.lifetimes.is_empty() && self.types.is_empty() &&
+            self.bindings.is_empty() && !self.parenthesized
     }
 
     pub fn inputs(&self) -> &[P<Ty>] {
@@ -296,6 +351,7 @@ pub struct TyParam {
     pub default: Option<P<Ty>>,
     pub span: Span,
     pub pure_wrt_drop: bool,
+    pub synthetic: Option<SyntheticTyParamKind>,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -362,6 +418,13 @@ impl Generics {
         }
         return None;
     }
+}
+
+/// Synthetic Type Parameters are converted to an other form during lowering, this allows
+/// to track the original form they had. Usefull for error messages.
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum SyntheticTyParamKind {
+    ImplTrait
 }
 
 /// A `where` clause in a definition
@@ -1330,6 +1393,7 @@ pub struct Ty {
     pub id: NodeId,
     pub node: Ty_,
     pub span: Span,
+    pub hir_id: HirId,
 }
 
 impl fmt::Debug for Ty {

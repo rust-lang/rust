@@ -17,7 +17,7 @@ use std::mem;
 use super::{DepGraphQuery, DepKind, DepNode};
 use super::debug::EdgeFilter;
 
-pub struct DepGraphEdges {
+pub(super) struct DepGraphEdges {
     nodes: Vec<DepNode>,
     indices: FxHashMap<DepNode, DepNodeIndex>,
     edges: FxHashSet<(DepNodeIndex, DepNodeIndex)>,
@@ -31,8 +31,8 @@ pub struct DepGraphEdges {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DepNodeIndex {
-    index: u32
+pub(super) struct DepNodeIndex {
+    index: u32,
 }
 
 impl DepNodeIndex {
@@ -123,6 +123,7 @@ impl DepGraphEdges {
             reads
         } = popped_node {
             debug_assert_eq!(node, key);
+            debug_assert!(!node.kind.is_input() || reads.is_empty());
 
             let target_id = self.get_or_create_node(node);
 

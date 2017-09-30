@@ -95,7 +95,7 @@ pub struct DirBuilder { mode: mode_t }
 impl FileAttr {
     pub fn size(&self) -> u64 { self.stat.st_size as u64 }
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { mode: (self.stat.st_mode as mode_t) & 0o777 }
+        FilePermissions { mode: (self.stat.st_mode as mode_t) }
     }
 
     pub fn file_type(&self) -> FileType {

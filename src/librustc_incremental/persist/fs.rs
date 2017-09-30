@@ -114,15 +114,12 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
-use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
-use rustc::ty::TyCtxt;
 use rustc::util::fs as fs_util;
 use rustc_data_structures::{flock, base_n};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
-use std::ffi::OsString;
 use std::fs as std_fs;
 use std::io;
 use std::mem;
@@ -132,6 +129,7 @@ use std::__rand::{thread_rng, Rng};
 
 const LOCK_FILE_EXT: &'static str = ".lock";
 const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
+const DEP_GRAPH_NEW_FILENAME: &'static str = "dep-graph-new.bin";
 const WORK_PRODUCTS_FILENAME: &'static str = "work-products.bin";
 const METADATA_HASHES_FILENAME: &'static str = "metadata.bin";
 
@@ -145,16 +143,16 @@ pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
 }
 
+pub fn dep_graph_path_new(sess: &Session) -> PathBuf {
+    in_incr_comp_dir_sess(sess, DEP_GRAPH_NEW_FILENAME)
+}
+
 pub fn work_products_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
 }
 
 pub fn metadata_hash_export_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, METADATA_HASHES_FILENAME)
-}
-
-pub fn metadata_hash_import_path(import_session_dir: &Path) -> PathBuf {
-    import_session_dir.join(METADATA_HASHES_FILENAME)
 }
 
 pub fn lock_file_path(session_dir: &Path) -> PathBuf {
@@ -616,70 +614,6 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path_tcx(tcx: TyCtxt, cnum: CrateNum) -> PathBuf {
-    crate_path(tcx.sess, &tcx.crate_name(cnum).as_str(), &tcx.crate_disambiguator(cnum).as_str())
-}
-
-/// Finds the session directory containing the correct metadata hashes file for
-/// the given crate. In order to do that it has to compute the crate directory
-/// of the given crate, and in there, look for the session directory with the
-/// correct SVH in it.
-/// Note that we have to match on the exact SVH here, not just the
-/// crate's (name, disambiguator) pair. The metadata hashes are only valid for
-/// the exact version of the binary we are reading from now (i.e. the hashes
-/// are part of the dependency graph of a specific compilation session).
-pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: CrateNum) -> Option<PathBuf> {
-    let crate_directory = crate_path_tcx(tcx, cnum);
-
-    if !crate_directory.exists() {
-        return None
-    }
-
-    let dir_entries = match crate_directory.read_dir() {
-        Ok(dir_entries) => dir_entries,
-        Err(e) => {
-            tcx.sess
-               .err(&format!("incremental compilation: Could not read crate directory `{}`: {}",
-                             crate_directory.display(), e));
-            return None
-        }
-    };
-
-    let target_svh = tcx.crate_hash(cnum);
-    let target_svh = base_n::encode(target_svh.as_u64(), INT_ENCODE_BASE);
-
-    let sub_dir = find_metadata_hashes_iter(&target_svh, dir_entries.filter_map(|e| {
-        e.ok().map(|e| e.file_name().to_string_lossy().into_owned())
-    }));
-
-    sub_dir.map(|sub_dir_name| crate_directory.join(&sub_dir_name))
-}
-
-fn find_metadata_hashes_iter<'a, I>(target_svh: &str, iter: I) -> Option<OsString>
-    where I: Iterator<Item=String>
-{
-    for sub_dir_name in iter {
-        if !is_session_directory(&sub_dir_name) || !is_finalized(&sub_dir_name) {
-            // This is not a usable session directory
-            continue
-        }
-
-        let is_match = if let Some(last_dash_pos) = sub_dir_name.rfind("-") {
-            let candidate_svh = &sub_dir_name[last_dash_pos + 1 .. ];
-            target_svh == candidate_svh
-        } else {
-            // some kind of invalid directory name
-            continue
-        };
-
-        if is_match {
-            return Some(OsString::from(sub_dir_name))
-        }
-    }
-
-    None
-}
-
 fn crate_path(sess: &Session,
               crate_name: &str,
               crate_disambiguator: &str)
@@ -1018,53 +952,4 @@ fn test_find_source_directory_in_iter() {
              PathBuf::from("crate-dir/s-2234-0000-working"),
              PathBuf::from("crate-dir/s-1234-0000-working")].into_iter(), &already_visited),
         None);
-}
-
-#[test]
-fn test_find_metadata_hashes_iter()
-{
-    assert_eq!(find_metadata_hashes_iter("testsvh2",
-        vec![
-            String::from("s-timestamp1-testsvh1"),
-            String::from("s-timestamp2-testsvh2"),
-            String::from("s-timestamp3-testsvh3"),
-        ].into_iter()),
-        Some(OsString::from("s-timestamp2-testsvh2"))
-    );
-
-    assert_eq!(find_metadata_hashes_iter("testsvh2",
-        vec![
-            String::from("s-timestamp1-testsvh1"),
-            String::from("s-timestamp2-testsvh2"),
-            String::from("invalid-name"),
-        ].into_iter()),
-        Some(OsString::from("s-timestamp2-testsvh2"))
-    );
-
-    assert_eq!(find_metadata_hashes_iter("testsvh2",
-        vec![
-            String::from("s-timestamp1-testsvh1"),
-            String::from("s-timestamp2-testsvh2-working"),
-            String::from("s-timestamp3-testsvh3"),
-        ].into_iter()),
-        None
-    );
-
-    assert_eq!(find_metadata_hashes_iter("testsvh1",
-        vec![
-            String::from("s-timestamp1-random1-working"),
-            String::from("s-timestamp2-random2-working"),
-            String::from("s-timestamp3-random3-working"),
-        ].into_iter()),
-        None
-    );
-
-    assert_eq!(find_metadata_hashes_iter("testsvh2",
-        vec![
-            String::from("timestamp1-testsvh2"),
-            String::from("timestamp2-testsvh2"),
-            String::from("timestamp3-testsvh2"),
-        ].into_iter()),
-        None
-    );
 }

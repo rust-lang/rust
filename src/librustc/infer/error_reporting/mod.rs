@@ -72,6 +72,8 @@ use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{DiagnosticBuilder, DiagnosticStyledString};
 
+use rustc_data_structures::indexed_vec::Idx;
+
 mod note;
 
 mod need_type_info;
@@ -152,21 +154,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match scope {
-                    region::Scope::Node(_) => tag,
-                    region::Scope::CallSite(_) => {
+                let scope_decorated_tag = match scope.data() {
+                    region::ScopeData::Node(_) => tag,
+                    region::ScopeData::CallSite(_) => {
                         "scope of call-site for function"
                     }
-                    region::Scope::Arguments(_) => {
+                    region::ScopeData::Arguments(_) => {
                         "scope of function body"
                     }
-                    region::Scope::Destruction(_) => {
+                    region::ScopeData::Destruction(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::Scope::Remainder(r) => {
+                    region::ScopeData::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
-                                             r.first_statement_index);
+                                             r.first_statement_index.index());
                         &new_string[..]
                     }
                 };
@@ -333,11 +335,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             GenericBoundFailure(..) => true,
         };
 
-        if errors.iter().all(|e| is_bound_failure(e)) {
+
+        let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
             errors.clone()
         } else {
             errors.iter().filter(|&e| !is_bound_failure(e)).cloned().collect()
-        }
+        };
+
+        // sort the errors by span, for better error message stability.
+        errors.sort_by_key(|u| match *u {
+            ConcreteFailure(ref sro, _, _) => sro.span(),
+            GenericBoundFailure(ref sro, _, _) => sro.span(),
+            SubSupConflict(ref rvo, _, _, _, _) => rvo.span(),
+        });
+        errors
     }
 
     /// Adds a note if the types come from similarly named crates
@@ -774,10 +785,44 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     bound_kind: GenericKind<'tcx>,
                                     sub: Region<'tcx>)
     {
-        // FIXME: it would be better to report the first error message
-        // with the span of the parameter itself, rather than the span
-        // where the error was detected. But that span is not readily
-        // accessible.
+        // Attempt to obtain the span of the parameter so we can
+        // suggest adding an explicit lifetime bound to it.
+        let type_param_span = match (self.in_progress_tables, bound_kind) {
+            (Some(ref table), GenericKind::Param(ref param)) => {
+                let table = table.borrow();
+                table.local_id_root.and_then(|did| {
+                    let generics = self.tcx.generics_of(did);
+                    // Account for the case where `did` corresponds to `Self`, which doesn't have
+                    // the expected type argument.
+                    if generics.types.len() > 0 {
+                        let type_param = generics.type_param(param);
+                        let hir = &self.tcx.hir;
+                        hir.as_local_node_id(type_param.def_id).map(|id| {
+                            // Get the `hir::TyParam` to verify wether it already has any bounds.
+                            // We do this to avoid suggesting code that ends up as `T: 'a'b`,
+                            // instead we suggest `T: 'a + 'b` in that case.
+                            let has_lifetimes = if let hir_map::NodeTyParam(ref p) = hir.get(id) {
+                                p.bounds.len() > 0
+                            } else {
+                                false
+                            };
+                            let sp = hir.span(id);
+                            // `sp` only covers `T`, change it so that it covers
+                            // `T:` when appropriate
+                            let sp = if has_lifetimes {
+                                sp.to(sp.next_point().next_point())
+                            } else {
+                                sp
+                            };
+                            (sp, has_lifetimes)
+                        })
+                    } else {
+                        None
+                    }
+                })
+            }
+            _ => None,
+        };
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) =>
@@ -799,6 +844,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
+        fn binding_suggestion<'tcx, S: fmt::Display>(err: &mut DiagnosticBuilder<'tcx>,
+                                                     type_param_span: Option<(Span, bool)>,
+                                                     bound_kind: GenericKind<'tcx>,
+                                                     sub: S) {
+            let consider = &format!("consider adding an explicit lifetime bound `{}: {}`...",
+                                    bound_kind,
+                                    sub);
+            if let Some((sp, has_lifetimes)) = type_param_span {
+                let tail = if has_lifetimes {
+                    " + "
+                } else {
+                    ""
+                };
+                let suggestion = format!("{}: {}{}", bound_kind, sub, tail);
+                err.span_suggestion_short(sp, consider, suggestion);
+            } else {
+                err.help(consider);
+            }
+        }
+
         let mut err = match *sub {
             ty::ReEarlyBound(_) |
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
@@ -808,9 +873,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                E0309,
                                                "{} may not live long enough",
                                                labeled_user_string);
-                err.help(&format!("consider adding an explicit lifetime bound `{}: {}`...",
-                         bound_kind,
-                         sub));
+                binding_suggestion(&mut err, type_param_span, bound_kind, sub);
                 err
             }
 
@@ -821,9 +884,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                E0310,
                                                "{} may not live long enough",
                                                labeled_user_string);
-                err.help(&format!("consider adding an explicit lifetime \
-                                   bound `{}: 'static`...",
-                                  bound_kind));
+                binding_suggestion(&mut err, type_param_span, bound_kind, "'static");
                 err
             }
 

@@ -8,14 +8,13 @@ error[E0599]: no method named `count` found for type `std::iter::Filter<std::ite
            `std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]> : std::iter::Iterator`
            `&mut std::iter::Filter<std::iter::Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:17:39: 17:53]> : std::iter::Iterator`
 
-error[E0281]: type mismatch: `[closure@$DIR/issue-36053-2.rs:17:39: 17:53]` implements the trait `for<'r> std::ops::FnMut<(&'r str,)>`, but the trait `for<'r> std::ops::FnMut<(&'r &str,)>` is required
+error[E0631]: type mismatch in closure arguments
   --> $DIR/issue-36053-2.rs:17:32
    |
 17 |     once::<&str>("str").fuse().filter(|a: &str| true).count();
-   |                                ^^^^^^ -------------- implements `for<'r> std::ops::FnMut<(&'r str,)>`
+   |                                ^^^^^^ -------------- found signature of `for<'r> fn(&'r str) -> _`
    |                                |
-   |                                expected &str, found str
-   |                                requires `for<'r> std::ops::FnMut<(&'r &str,)>`
+   |                                expected signature of `for<'r> fn(&'r &str) -> _`
 
 error: aborting due to 2 previous errors
 

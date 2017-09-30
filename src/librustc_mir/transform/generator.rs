@@ -301,6 +301,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
         ty: ret_ty,
         name: None,
         source_info: source_info(mir),
+        lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -443,14 +444,15 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &mut Mir<'tcx>,
                            cases: Vec<(u32, BasicBlock)>,
-                           transform: &TransformVisitor<'a, 'tcx>) {
-    let return_block = insert_return_block(mir);
+                           transform: &TransformVisitor<'a, 'tcx>,
+                           default: TerminatorKind<'tcx>) {
+    let default_block = insert_term_block(mir, default);
 
     let switch = TerminatorKind::SwitchInt {
         discr: Operand::Consume(transform.make_field(transform.state_field, tcx.types.u32)),
         switch_ty: tcx.types.u32,
         values: Cow::from(cases.iter().map(|&(i, _)| ConstInt::U32(i)).collect::<Vec<_>>()),
-        targets: cases.iter().map(|&(_, d)| d).chain(once(return_block)).collect(),
+        targets: cases.iter().map(|&(_, d)| d).chain(once(default_block)).collect(),
     };
 
     let source_info = source_info(mir);
@@ -542,7 +544,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
     // The returned state (1) and the poisoned state (2) falls through to
     // the default case which is just to return
 
-    insert_switch(tcx, &mut mir, cases, &transform);
+    insert_switch(tcx, &mut mir, cases, &transform, TerminatorKind::Return);
 
     for block in mir.basic_blocks_mut() {
         let kind = &mut block.terminator_mut().kind;
@@ -558,6 +560,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         ty: tcx.mk_nil(),
         name: None,
         source_info,
+        lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -573,6 +576,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         }),
         name: None,
         source_info,
+        lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -588,18 +592,18 @@ fn create_generator_drop_shim<'a, 'tcx>(
     mir
 }
 
-fn insert_return_block<'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
-    let return_block = BasicBlock::new(mir.basic_blocks().len());
+fn insert_term_block<'tcx>(mir: &mut Mir<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
+    let term_block = BasicBlock::new(mir.basic_blocks().len());
     let source_info = source_info(mir);
     mir.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
         terminator: Some(Terminator {
             source_info,
-            kind: TerminatorKind::Return,
+            kind,
         }),
         is_cleanup: false,
     });
-    return_block
+    term_block
 }
 
 fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -659,7 +663,7 @@ fn create_generator_resume_function<'a, 'tcx>(
     // Panic when resumed on the poisoned (2) state
     cases.insert(2, (2, insert_panic_block(tcx, mir, AssertMessage::GeneratorResumedAfterPanic)));
 
-    insert_switch(tcx, mir, cases, &transform);
+    insert_switch(tcx, mir, cases, &transform, TerminatorKind::Unreachable);
 
     make_generator_state_argument_indirect(tcx, def_id, mir);
 
@@ -680,7 +684,7 @@ fn source_info<'a, 'tcx>(mir: &Mir<'tcx>) -> SourceInfo {
 }
 
 fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
-    let return_block = insert_return_block(mir);
+    let return_block = insert_term_block(mir, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(mir.basic_blocks().len());

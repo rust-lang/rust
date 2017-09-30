@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Debugging code to test the state of the dependency graph just
-//! after it is loaded from disk and just after it has been saved.
+//! Debugging code to test fingerprints computed for query results.
 //! For each node marked with `#[rustc_clean]` or `#[rustc_dirty]`,
-//! we will check that a suitable node for that item either appears
-//! or does not appear in the dep-graph, as appropriate:
+//! we will compare the fingerprint from the current and from the previous
+//! compilation session as appropriate:
 //!
 //! - `#[rustc_dirty(label="TypeckTables", cfg="rev2")]` if we are
-//!   in `#[cfg(rev2)]`, then there MUST NOT be a node
-//!   `DepNode::TypeckTables(X)` where `X` is the def-id of the
-//!   current node.
+//!   in `#[cfg(rev2)]`, then the fingerprints associated with
+//!   `DepNode::TypeckTables(X)` must be DIFFERENT (`X` is the def-id of the
+//!   current node).
 //! - `#[rustc_clean(label="TypeckTables", cfg="rev2")]` same as above,
-//!   except that the node MUST exist.
+//!   except that the fingerprints must be the SAME.
 //!
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
@@ -40,9 +39,7 @@
 //! previous revision to compare things to.
 //!
 
-use super::data::DepNodeIndex;
-use super::load::DirtyNodes;
-use rustc::dep_graph::{DepGraphQuery, DepNode, DepKind};
+use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -51,41 +48,22 @@ use rustc::ich::{Fingerprint, ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA,
                  ATTR_CLEAN_METADATA};
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc_data_structures::indexed_vec::IndexVec;
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
 
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
-pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               nodes: &IndexVec<DepNodeIndex, DepNode>,
-                                               dirty_inputs: &DirtyNodes) {
+pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.sess.features.borrow().rustc_attrs {
         return;
     }
 
     let _ignore = tcx.dep_graph.in_ignore();
-    let dirty_inputs: FxHashSet<DepNode> =
-        dirty_inputs.keys()
-                    .filter_map(|dep_node_index| {
-                        let dep_node = nodes[*dep_node_index];
-                        if dep_node.extract_def_id(tcx).is_some() {
-                            Some(dep_node)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-    let query = tcx.dep_graph.query();
-    debug!("query-nodes: {:?}", query.nodes());
     let krate = tcx.hir.krate();
     let mut dirty_clean_visitor = DirtyCleanVisitor {
         tcx,
-        query: &query,
-        dirty_inputs,
         checked_attrs: FxHashSet(),
     };
     krate.visit_all_item_likes(&mut dirty_clean_visitor);
@@ -105,8 +83,6 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    query: &'a DepGraphQuery,
-    dirty_inputs: FxHashSet<DepNode>,
     checked_attrs: FxHashSet<ast::AttrId>,
 }
 
@@ -143,59 +119,28 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     fn assert_dirty(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_dirty({:?})", dep_node);
 
-        match dep_node.kind {
-            DepKind::Krate |
-            DepKind::Hir |
-            DepKind::HirBody => {
-                // HIR nodes are inputs, so if we are asserting that the HIR node is
-                // dirty, we check the dirty input set.
-                if !self.dirty_inputs.contains(&dep_node) {
-                    let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item_span,
-                        &format!("`{}` not found in dirty set, but should be dirty",
-                                 dep_node_str));
-                }
-            }
-            _ => {
-                // Other kinds of nodes would be targets, so check if
-                // the dep-graph contains the node.
-                if self.query.contains_node(&dep_node) {
-                    let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item_span,
-                        &format!("`{}` found in dep graph, but should be dirty", dep_node_str));
-                }
-            }
+        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(&dep_node);
+        let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
+
+        if current_fingerprint == prev_fingerprint {
+            let dep_node_str = self.dep_node_str(&dep_node);
+            self.tcx.sess.span_err(
+                item_span,
+                &format!("`{}` should be dirty but is not", dep_node_str));
         }
     }
 
     fn assert_clean(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_clean({:?})", dep_node);
 
-        match dep_node.kind {
-            DepKind::Krate |
-            DepKind::Hir |
-            DepKind::HirBody => {
-                // For HIR nodes, check the inputs.
-                if self.dirty_inputs.contains(&dep_node) {
-                    let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item_span,
-                        &format!("`{}` found in dirty-node set, but should be clean",
-                                 dep_node_str));
-                }
-            }
-            _ => {
-                // Otherwise, check if the dep-node exists.
-                if !self.query.contains_node(&dep_node) {
-                    let dep_node_str = self.dep_node_str(&dep_node);
-                    self.tcx.sess.span_err(
-                        item_span,
-                        &format!("`{}` not found in dep graph, but should be clean",
-                                 dep_node_str));
-                }
-            }
+        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(&dep_node);
+        let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
+
+        if current_fingerprint != prev_fingerprint {
+            let dep_node_str = self.dep_node_str(&dep_node);
+            self.tcx.sess.span_err(
+                item_span,
+                &format!("`{}` should be clean but is not", dep_node_str));
         }
     }
 

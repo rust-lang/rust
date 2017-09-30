@@ -306,7 +306,7 @@ impl<'a> Builder<'a> {
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
-            Subcommand::Clean => panic!(),
+            Subcommand::Clean { .. } => panic!(),
         };
 
         let builder = Builder {
@@ -531,7 +531,10 @@ impl<'a> Builder<'a> {
         // For other crates, however, we know that we've already got a standard
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
-        if mode == Mode::Libstd {
+        //
+        // If LLVM support is disabled we need to use the snapshot compiler to compile
+        // build scripts, as the new compiler doesnt support executables.
+        if mode == Mode::Libstd || !self.build.config.llvm_enabled {
             cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {

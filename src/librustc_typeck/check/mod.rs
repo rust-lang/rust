@@ -1665,6 +1665,10 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn set_tainted_by_errors(&self) {
         self.infcx.set_tainted_by_errors()
     }
+
+    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, _span: Span) {
+        self.write_ty(hir_id, ty)
+    }
 }
 
 /// Controls whether the arguments are tupled. This is used for the call
@@ -2231,7 +2235,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                base_expr,
                adjusted_ty,
                index_ty);
-
 
         // First, try built-in indexing.
         match (adjusted_ty.builtin_index(), &index_ty.sty) {
@@ -4644,6 +4647,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // a problem.
         self.check_path_parameter_count(span, &mut type_segment, false);
         self.check_path_parameter_count(span, &mut fn_segment, false);
+        self.check_impl_trait(span, &mut fn_segment);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4664,7 +4668,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let lifetimes = segment.map_or(&[][..], |(s, _)| &s.parameters.lifetimes[..]);
+            let lifetimes = segment.map_or(&[][..], |(s, _)| {
+                s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
+            });
 
             if let Some(lifetime) = lifetimes.get(i) {
                 AstConv::ast_region_to_region(self, lifetime, Some(def))
@@ -4688,7 +4694,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 fn_segment
             };
             let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
-                (&s.parameters.types[..], s.parameters.infer_types)
+                (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
             });
 
             // Skip over the lifetimes in the same segment.
@@ -4765,8 +4771,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   is_method_call: bool) {
         let (lifetimes, types, infer_types, bindings) = segment.map_or(
             (&[][..], &[][..], true, &[][..]),
-            |(s, _)| (&s.parameters.lifetimes[..], &s.parameters.types[..],
-                      s.parameters.infer_types, &s.parameters.bindings[..]));
+            |(s, _)| s.parameters.as_ref().map_or(
+                (&[][..], &[][..], s.infer_types, &[][..]),
+                |p| (&p.lifetimes[..], &p.types[..],
+                     s.infer_types, &p.bindings[..])));
         let infer_lifetimes = lifetimes.len() == 0;
 
         let count_lifetime_params = |n| {
@@ -4862,6 +4870,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .span_label(span, format!("expected {}", expected_text))
                 .emit();
         }
+    }
+
+    /// Report error if there is an explicit type parameter when using `impl Trait`.
+    fn check_impl_trait(&self,
+                        span: Span,
+                        segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
+        use hir::SyntheticTyParamKind::*;
+
+        segment.map(|(path_segment, generics)| {
+            let explicit = !path_segment.infer_types;
+            let impl_trait = generics.types.iter()
+                                           .any(|ty_param| {
+                                               match ty_param.synthetic {
+                                                   Some(ImplTrait) => true,
+                                                   _ => false,
+                                               }
+                                           });
+
+            if explicit && impl_trait {
+                let mut err = struct_span_err! {
+                    self.tcx.sess,
+                    span,
+                    E0632,
+                    "cannot provide explicit type parameters when `impl Trait` is \
+                    used in argument position."
+                };
+
+                err.emit();
+            }
+        });
     }
 
     fn structurally_resolve_type_or_else<F>(&self, sp: Span, ty: Ty<'tcx>, f: F)

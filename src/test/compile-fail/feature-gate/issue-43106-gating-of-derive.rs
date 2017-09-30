@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// `#![derive]` is interpreted (and raises errors) when it occurs at
-// contexts other than ADT definitions. This test checks cases where
-// the derive-macro exists.
+// `#![derive]` raises errors when it occurs at contexts other than ADT
+// definitions.
 
 #![derive(Debug)]
 //~^ ERROR `derive` may only be applied to structs, enums and unions

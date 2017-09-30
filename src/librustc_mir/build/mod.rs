@@ -11,6 +11,7 @@
 
 use build;
 use hair::cx::Cx;
+use hair::LintLevel;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
@@ -71,14 +72,14 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             // is a constant "initializer" expression.
             match expr.node {
                 hir::ExprClosure(_, _, body, _, _) => body,
-                _ => hir::BodyId { node_id: expr.id }
+                _ => hir::BodyId { node_id: expr.id },
             }
         }
         hir::map::NodeVariant(variant) =>
             return create_constructor_shim(tcx, id, &variant.node.data),
         hir::map::NodeStructCtor(ctor) =>
             return create_constructor_shim(tcx, id, ctor),
-        _ => unsupported()
+        _ => unsupported(),
     };
 
     let src = MirSource::from_node(tcx, id);
@@ -108,6 +109,12 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                 _ => None,
             };
 
+            // FIXME: safety in closures
+            let safety = match fn_sig.unsafety {
+                hir::Unsafety::Normal => Safety::Safe,
+                hir::Unsafety::Unsafe => Safety::FnUnsafe,
+            };
+
             let body = tcx.hir.body(body_id);
             let explicit_arguments =
                 body.arguments
@@ -126,7 +133,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                 (None, fn_sig.output())
             };
 
-            build::construct_fn(cx, id, arguments, abi, return_ty, yield_ty, body)
+            build::construct_fn(cx, id, arguments, safety, abi,
+                                return_ty, yield_ty, body)
         } else {
             build::construct_const(cx, body_id)
         };
@@ -270,6 +278,13 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
 
+    /// The current unsafe block in scope, even if it is hidden by
+    /// a PushUnsafeBlock
+    unpushed_unsafe: Safety,
+
+    /// The number of `push_unsafe_block` levels in scope
+    push_unsafe_count: usize,
+
     /// the current set of breakables; see the `scope` module for more
     /// details
     breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
@@ -277,6 +292,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later
     visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+    visibility_scope_info: IndexVec<VisibilityScope, VisibilityScopeInfo>,
     visibility_scope: VisibilityScope,
 
     /// Maps node ids of variable bindings to the `Local`s created for them.
@@ -358,6 +374,7 @@ macro_rules! unpack {
 fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    fn_id: ast::NodeId,
                                    arguments: A,
+                                   safety: Safety,
                                    abi: Abi,
                                    return_ty: Ty<'gcx>,
                                    yield_ty: Option<Ty<'gcx>>,
@@ -372,14 +389,17 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let mut builder = Builder::new(hir.clone(),
         span,
         arguments.len(),
+        safety,
         return_ty);
 
     let call_site_scope = region::Scope::CallSite(body.value.hir_id.local_id);
     let arg_scope = region::Scope::Arguments(body.value.hir_id.local_id);
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
-    unpack!(block = builder.in_scope((call_site_scope, source_info), block, |builder| {
-        unpack!(block = builder.in_scope((arg_scope, source_info), block, |builder| {
+    let call_site_s = (call_site_scope, source_info);
+    unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
+        let arg_scope_s = (arg_scope, source_info);
+        unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
         // Attribute epilogue to function's closing brace
@@ -440,7 +460,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir.body_owner(body_id);
     let span = tcx.hir.span(owner_id);
-    let mut builder = Builder::new(hir.clone(), span, 0, ty);
+    let mut builder = Builder::new(hir.clone(), span, 0, Safety::Safe, ty);
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
@@ -456,11 +476,12 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
 }
 
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                       body_id: hir::BodyId)
-                                       -> Mir<'tcx> {
-    let span = hir.tcx().hir.span(hir.tcx().hir.body_owner(body_id));
+                                   body_id: hir::BodyId)
+                                   -> Mir<'tcx> {
+    let owner_id = hir.tcx().hir.body_owner(body_id);
+    let span = hir.tcx().hir.span(owner_id);
     let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, ty);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     builder.finish(vec![], ty, None)
@@ -470,8 +491,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn new(hir: Cx<'a, 'gcx, 'tcx>,
            span: Span,
            arg_count: usize,
+           safety: Safety,
            return_ty: Ty<'tcx>)
            -> Builder<'a, 'gcx, 'tcx> {
+        let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
             hir,
             cfg: CFG { basic_blocks: IndexVec::new() },
@@ -480,6 +503,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
+            visibility_scope_info: IndexVec::new(),
+            push_unsafe_count: 0,
+            unpushed_unsafe: safety,
             breakable_scopes: vec![],
             local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty,
                                                                              span), 1),
@@ -490,7 +516,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
-        assert_eq!(builder.new_visibility_scope(span), ARGUMENT_VISIBILITY_SCOPE);
+        assert_eq!(
+            builder.new_visibility_scope(span, lint_level, Some(safety)),
+            ARGUMENT_VISIBILITY_SCOPE);
         builder.visibility_scopes[ARGUMENT_VISIBILITY_SCOPE].parent_scope = None;
 
         builder
@@ -509,6 +537,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         Mir::new(self.cfg.basic_blocks,
                  self.visibility_scopes,
+                 ClearOnDecode::Set(self.visibility_scope_info),
                  IndexVec::new(),
                  return_ty,
                  yield_ty,
@@ -543,6 +572,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
                     span: pattern.map_or(self.fn_span, |pat| pat.span)
                 },
+                lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
                 name,
                 internal: false,
                 is_user_variable: false,
@@ -557,7 +587,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
-                scope = self.declare_bindings(scope, ast_body.span, &pattern);
+                scope = self.declare_bindings(scope, ast_body.span,
+                                              LintLevel::Inherited, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }
 

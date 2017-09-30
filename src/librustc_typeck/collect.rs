@@ -221,6 +221,10 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     fn set_tainted_by_errors(&self) {
         // no obvious place to track this, just let it go
     }
+
+    fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
+        // no place to record types from signatures?
+    }
 }
 
 fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -918,6 +922,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         has_default: false,
                         object_lifetime_default: rl::Set1::Empty,
                         pure_wrt_drop: false,
+                        synthetic: None,
                     });
 
                     allow_defaults = true;
@@ -953,7 +958,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     let regions = early_lifetimes.enumerate().map(|(i, l)| {
         ty::RegionParameterDef {
-            name: l.lifetime.name,
+            name: l.lifetime.name.name(),
             index: own_start + i as u32,
             def_id: tcx.hir.local_def_id(l.lifetime.id),
             pure_wrt_drop: l.pure_wrt_drop,
@@ -989,6 +994,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             object_lifetime_default:
                 object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
             pure_wrt_drop: p.pure_wrt_drop,
+            synthetic: p.synthetic,
         }
     });
     let mut types: Vec<_> = opt_self.into_iter().chain(types).collect();
@@ -1005,6 +1011,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
                 pure_wrt_drop: false,
+                synthetic: None,
             }));
         });
     }
@@ -1325,6 +1332,12 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
 fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> ty::GenericPredicates<'tcx> {
+    explicit_predicates_of(tcx, def_id)
+}
+
+fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> ty::GenericPredicates<'tcx> {
     use rustc::hir::map::*;
     use rustc::hir::*;
 
@@ -1423,7 +1436,7 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: tcx.hir.local_def_id(param.lifetime.id),
             index,
-            name: param.lifetime.name
+            name: param.lifetime.name.name(),
         }));
         index += 1;
 

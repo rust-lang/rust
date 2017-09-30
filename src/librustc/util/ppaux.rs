@@ -26,6 +26,7 @@ use std::fmt;
 use std::usize;
 
 use rustc_const_math::ConstInt;
+use rustc_data_structures::indexed_vec::Idx;
 use syntax::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::Symbol;
@@ -530,17 +531,17 @@ impl fmt::Display for ty::RegionKind {
                 write!(f, "{}", br)
             }
             ty::ReScope(scope) if identify_regions() => {
-                match scope {
-                    region::Scope::Node(id) =>
+                match scope.data() {
+                    region::ScopeData::Node(id) =>
                         write!(f, "'{}s", id.as_usize()),
-                    region::Scope::CallSite(id) =>
+                    region::ScopeData::CallSite(id) =>
                         write!(f, "'{}cs", id.as_usize()),
-                    region::Scope::Arguments(id) =>
+                    region::ScopeData::Arguments(id) =>
                         write!(f, "'{}as", id.as_usize()),
-                    region::Scope::Destruction(id) =>
+                    region::ScopeData::Destruction(id) =>
                         write!(f, "'{}ds", id.as_usize()),
-                    region::Scope::Remainder(BlockRemainder { block, first_statement_index }) =>
-                        write!(f, "'{}_{}rs", block.as_usize(), first_statement_index),
+                    region::ScopeData::Remainder(BlockRemainder { block, first_statement_index }) =>
+                        write!(f, "'{}_{}rs", block.as_usize(), first_statement_index.index()),
                 }
             }
             ty::ReVar(region_vid) if identify_regions() => {
@@ -671,6 +672,12 @@ impl<'tcx> fmt::Display for ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<
 }
 
 impl<'tcx> fmt::Display for ty::Binder<ty::TraitRef<'tcx>> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
+    }
+}
+
+impl<'tcx> fmt::Display for ty::Binder<ty::FnSig<'tcx>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }

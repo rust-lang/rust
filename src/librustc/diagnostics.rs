@@ -479,40 +479,6 @@ fn main() {
 ```
 "##,
 
-E0133: r##"
-Unsafe code was used outside of an unsafe function or block.
-
-Erroneous code example:
-
-```compile_fail,E0133
-unsafe fn f() { return; } // This is the unsafe code
-
-fn main() {
-    f(); // error: call to unsafe function requires unsafe function or block
-}
-```
-
-Using unsafe functionality is potentially dangerous and disallowed by safety
-checks. Examples:
-
-* Dereferencing raw pointers
-* Calling functions via FFI
-* Calling functions marked unsafe
-
-These safety checks can be relaxed for a section of the code by wrapping the
-unsafe instructions with an `unsafe` block. For instance:
-
-```
-unsafe fn f() { return; }
-
-fn main() {
-    unsafe { f(); } // ok!
-}
-```
-
-See also https://doc.rust-lang.org/book/first-edition/unsafe.html
-"##,
-
 // This shouldn't really ever trigger since the repeated value error comes first
 E0136: r##"
 A binary can only have one entry point, and by default that entry point is the
@@ -1139,11 +1105,13 @@ already specify all requirements that will be used for every type parameter.
 "##,
 
 E0281: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You tried to supply a type which doesn't implement some trait in a location
 which expected that trait. This error typically occurs when working with
 `Fn`-based types. Erroneous code example:
 
-```compile_fail,E0281
+```compile-fail
 fn foo<F: Fn(usize)>(x: F) { }
 
 fn main() {
@@ -1381,74 +1349,6 @@ struct Foo<T: 'static> {
     foo: &'static T
 }
 ```
-"##,
-
-E0312: r##"
-A lifetime of reference outlives lifetime of borrowed content.
-
-Erroneous code example:
-
-```compile_fail,E0312
-fn make_child<'tree, 'human>(
-  x: &'human i32,
-  y: &'tree i32
-) -> &'human i32 {
-    if x > y
-       { x }
-    else
-       { y }
-       // error: lifetime of reference outlives lifetime of borrowed content
-}
-```
-
-The function declares that it returns a reference with the `'human`
-lifetime, but it may return data with the `'tree` lifetime. As neither
-lifetime is declared longer than the other, this results in an
-error. Sometimes, this error is because the function *body* is
-incorrect -- that is, maybe you did not *mean* to return data from
-`y`. In that case, you should fix the function body.
-
-Often, however, the body is correct. In that case, the function
-signature needs to be altered to match the body, so that the caller
-understands that data from either `x` or `y` may be returned. The
-simplest way to do this is to give both function parameters the *same*
-named lifetime:
-
-```
-fn make_child<'human>(
-  x: &'human i32,
-  y: &'human i32
-) -> &'human i32 {
-    if x > y
-       { x }
-    else
-       { y } // ok!
-}
-```
-
-However, in some cases, you may prefer to explicitly declare that one lifetime
-outlives another using a `where` clause:
-
-```
-fn make_child<'tree, 'human>(
-  x: &'human i32,
-  y: &'tree i32
-) -> &'human i32
-where
-  'tree: 'human
-{
-    if x > y
-       { x }
-    else
-       { y } // ok!
-}
-```
-
-Here, the where clause `'tree: 'human` can be read as "the lifetime
-'tree outlives the lifetime 'human" -- meaning, references with the
-`'tree` lifetime live *at least as long as* references with the
-`'human` lifetime. Therefore, it is safe to return data with lifetime
-`'tree` when data with the lifetime `'human` is needed.
 "##,
 
 E0317: r##"
@@ -2060,6 +1960,7 @@ register_diagnostics! {
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
     E0311, // thing may not live long enough
+    E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
@@ -2086,4 +1987,6 @@ register_diagnostics! {
     E0566, // conflicting representation hints
     E0623, // lifetime mismatch where both parameters are anonymous regions
     E0628, // generators cannot have explicit arguments
+    E0631, // type mismatch in closure arguments
+    E0637, // "'_" is not a valid lifetime bound
 }

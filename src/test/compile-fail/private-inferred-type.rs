@@ -103,10 +103,11 @@ mod adjust {
 
 fn main() {
     let _: m::Alias; //~ ERROR type `m::Priv` is private
-    let _: <m::Alias as m::TraitWithAssocTy>::AssocTy; // FIXME
+                     //~^ ERROR type `m::Priv` is private
+    let _: <m::Alias as m::TraitWithAssocTy>::AssocTy; //~ ERROR type `m::Priv` is private
     m::Alias {}; //~ ERROR type `m::Priv` is private
     m::Pub { 0: m::Alias {} }; //~ ERROR type `m::Priv` is private
-    m::Pub { 0: loop {} }; // FIXME
+    m::Pub { 0: loop {} }; // OK, `m::Pub` is in value context, so it means Pub<_>, not Pub<Priv>
     m::Pub::static_method; //~ ERROR type `m::Priv` is private
     m::Pub::INHERENT_ASSOC_CONST; //~ ERROR type `m::Priv` is private
     m::Pub(0u8).method_with_substs::<m::Alias>(); //~ ERROR type `m::Priv` is private

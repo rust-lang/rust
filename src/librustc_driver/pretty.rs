@@ -20,7 +20,6 @@ use {abort_on_err, driver};
 use rustc::ty::{self, TyCtxt, GlobalArenas, Resolutions};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
-use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::session::config::{Input, OutputFilenames};
@@ -237,7 +236,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  output_filenames,
-                                                                 |tcx, _, _, _, _| {
+                                                                 |tcx, _, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx,
@@ -848,9 +847,6 @@ pub fn print_after_parsing(sess: &Session,
                            krate: &ast::Crate,
                            ppm: PpMode,
                            ofile: Option<&Path>) {
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
-
     let (src, src_name) = get_source(input, sess);
 
     let mut rdr = &*src;
@@ -893,9 +889,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 output_filenames: &OutputFilenames,
                                                 opt_uii: Option<UserIdentifiedItem>,
                                                 ofile: Option<&Path>) {
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
-
     if ppm.needs_analysis() {
         print_with_analysis(sess,
                             cstore,
@@ -1036,7 +1029,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      arenas,
                                                      crate_name,
                                                      output_filenames,
-                                                     |tcx, _, _, _, _| {
+                                                     |tcx, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {

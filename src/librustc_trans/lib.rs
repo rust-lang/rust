@@ -50,6 +50,7 @@ extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
+extern crate rustc_trans_utils;
 extern crate rustc_demangle;
 extern crate jobserver;
 extern crate num_cpus;
@@ -60,7 +61,7 @@ extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
 #[cfg(windows)]
-extern crate gcc; // Used to locate MSVC, not gcc :)
+extern crate cc; // Used to locate MSVC
 
 pub use base::trans_crate;
 
@@ -136,6 +137,63 @@ mod tvec;
 mod type_;
 mod type_of;
 mod value;
+
+use std::sync::mpsc;
+use std::any::Any;
+use rustc::ty::{self, TyCtxt};
+use rustc::session::Session;
+use rustc::session::config::OutputFilenames;
+use rustc::middle::cstore::MetadataLoader;
+use rustc::dep_graph::DepGraph;
+
+pub struct LlvmTransCrate(());
+
+impl LlvmTransCrate {
+    pub fn new() -> Self {
+        LlvmTransCrate(())
+    }
+}
+
+impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
+    type MetadataLoader = metadata::LlvmMetadataLoader;
+    type OngoingCrateTranslation = back::write::OngoingCrateTranslation;
+    type TranslatedCrate = CrateTranslation;
+
+    fn metadata_loader() -> Box<MetadataLoader> {
+        box metadata::LlvmMetadataLoader
+    }
+
+    fn provide_local(providers: &mut ty::maps::Providers) {
+        provide_local(providers);
+    }
+
+    fn provide_extern(providers: &mut ty::maps::Providers) {
+        provide_extern(providers);
+    }
+
+    fn trans_crate<'a, 'tcx>(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        rx: mpsc::Receiver<Box<Any + Send>>
+    ) -> Self::OngoingCrateTranslation {
+        base::trans_crate(tcx, rx)
+    }
+
+    fn join_trans(
+        trans: Self::OngoingCrateTranslation,
+        sess: &Session,
+        dep_graph: &DepGraph
+    ) -> Self::TranslatedCrate {
+        trans.join(sess, dep_graph)
+    }
+
+    fn link_binary(sess: &Session, trans: &Self::TranslatedCrate, outputs: &OutputFilenames) {
+        back::link::link_binary(sess, trans, outputs, &trans.crate_name.as_str());
+    }
+
+    fn dump_incremental_data(trans: &Self::TranslatedCrate) {
+        back::write::dump_incremental_data(trans);
+    }
+}
 
 pub struct ModuleTranslation {
     /// The name of the module. When the crate may be saved between

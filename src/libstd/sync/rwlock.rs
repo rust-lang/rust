@@ -24,19 +24,24 @@ use sys_common::rwlock as sys;
 /// of the underlying data (exclusive access) and the read portion of this lock
 /// typically allows for read-only access (shared access).
 ///
+/// In comparison, a [`Mutex`] does not distinguish between readers or writers
+/// that aquire the lock, therefore blocking any threads waiting for the lock to
+/// become available. An `RwLock` will allow any number of readers to aquire the
+/// lock as long as a writer is not holding the lock.
+///
 /// The priority policy of the lock is dependent on the underlying operating
 /// system's implementation, and this type does not guarantee that any
 /// particular policy will be used.
 ///
 /// The type parameter `T` represents the data that this lock protects. It is
-/// required that `T` satisfies `Send` to be shared across threads and `Sync` to
-/// allow concurrent access through readers. The RAII guards returned from the
-/// locking methods implement `Deref` (and `DerefMut` for the `write` methods)
-/// to allow access to the contained of the lock.
+/// required that `T` satisfies [`Send`] to be shared across threads and
+/// [`Sync`] to allow concurrent access through readers. The RAII guards
+/// returned from the locking methods implement [`Deref`][] (and [`DerefMut`]
+/// for the `write` methods) to allow access to the contained of the lock.
 ///
 /// # Poisoning
 ///
-/// An `RwLock`, like `Mutex`, will become poisoned on a panic. Note, however,
+/// An `RwLock`, like [`Mutex`], will become poisoned on a panic. Note, however,
 /// that an `RwLock` may only be poisoned if a panic occurs while it is locked
 /// exclusively (write mode). If a panic occurs in any reader, then the lock
 /// will not be poisoned.
@@ -63,6 +68,12 @@ use sys_common::rwlock as sys;
 ///     assert_eq!(*w, 6);
 /// } // write lock is dropped here
 /// ```
+///
+/// [`Deref`]: ../../std/ops/trait.Deref.html
+/// [`DerefMut`]: ../../std/ops/trait.DerefMut.html
+/// [`Send`]: ../../std/marker/trait.Send.html
+/// [`Sync`]: ../../std/marker/trait.Sync.html
+/// [`Mutex`]: struct.Mutex.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
     inner: Box<sys::RWLock>,
@@ -154,6 +165,24 @@ impl<T: ?Sized> RwLock<T> {
     /// # Panics
     ///
     /// This function might panic when called if the lock is already held by the current thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, RwLock};
+    /// use std::thread;
+    ///
+    /// let lock = Arc::new(RwLock::new(1));
+    /// let c_lock = lock.clone();
+    ///
+    /// let n = lock.read().unwrap();
+    /// assert_eq!(*n, 1);
+    ///
+    /// thread::spawn(move || {
+    ///     let r = c_lock.read();
+    ///     assert!(r.is_ok());
+    /// }).join().unwrap();
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
@@ -180,6 +209,19 @@ impl<T: ?Sized> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::RwLock;
+    ///
+    /// let lock = RwLock::new(1);
+    ///
+    /// match lock.try_read() {
+    ///     Ok(n) => assert_eq!(*n, 1),
+    ///     Err(_) => unreachable!(),
+    /// };
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
@@ -210,6 +252,19 @@ impl<T: ?Sized> RwLock<T> {
     /// # Panics
     ///
     /// This function might panic when called if the lock is already held by the current thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::RwLock;
+    ///
+    /// let lock = RwLock::new(1);
+    ///
+    /// let mut n = lock.write().unwrap();
+    /// *n = 2;
+    ///
+    /// assert!(lock.try_read().is_err());
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
@@ -236,6 +291,19 @@ impl<T: ?Sized> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::RwLock;
+    ///
+    /// let lock = RwLock::new(1);
+    ///
+    /// let n = lock.read().unwrap();
+    /// assert_eq!(*n, 1);
+    ///
+    /// assert!(lock.try_write().is_err());
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
@@ -253,6 +321,22 @@ impl<T: ?Sized> RwLock<T> {
     /// If another thread is active, the lock can still become poisoned at any
     /// time.  You should not trust a `false` value for program correctness
     /// without additional synchronization.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, RwLock};
+    /// use std::thread;
+    ///
+    /// let lock = Arc::new(RwLock::new(0));
+    /// let c_lock = lock.clone();
+    ///
+    /// let _ = thread::spawn(move || {
+    ///     let _lock = c_lock.write().unwrap();
+    ///     panic!(); // the lock gets poisoned
+    /// }).join();
+    /// assert_eq!(lock.is_poisoned(), true);
+    /// ```
     #[inline]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn is_poisoned(&self) -> bool {
@@ -267,6 +351,19 @@ impl<T: ?Sized> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::RwLock;
+    ///
+    /// let lock = RwLock::new(String::new());
+    /// {
+    ///     let mut s = lock.write().unwrap();
+    ///     *s = "modified".to_owned();
+    /// }
+    /// assert_eq!(lock.into_inner().unwrap(), "modified");
+    /// ```
     #[stable(feature = "rwlock_into_inner", since = "1.6.0")]
     pub fn into_inner(self) -> LockResult<T> where T: Sized {
         // We know statically that there are no outstanding references to
@@ -282,7 +379,7 @@ impl<T: ?Sized> RwLock<T> {
                 (ptr::read(inner), ptr::read(poison), ptr::read(data))
             };
             mem::forget(self);
-            inner.destroy();  // Keep in sync with the `Drop` impl.
+            inner.destroy(); // Keep in sync with the `Drop` impl.
             drop(inner);
 
             poison::map_result(poison.borrow(), |_| data.into_inner())
@@ -300,6 +397,16 @@ impl<T: ?Sized> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::RwLock;
+    ///
+    /// let mut lock = RwLock::new(0);
+    /// *lock.get_mut().unwrap() = 10;
+    /// assert_eq!(*lock.read().unwrap(), 10);
+    /// ```
     #[stable(feature = "rwlock_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         // We know statically that there are no other references to `self`, so
@@ -486,7 +593,7 @@ mod tests {
     fn test_rw_arc_poison_wr() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _: Result<(), _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.write().unwrap();
             panic!();
         }).join();
@@ -498,7 +605,7 @@ mod tests {
         let arc = Arc::new(RwLock::new(1));
         assert!(!arc.is_poisoned());
         let arc2 = arc.clone();
-        let _: Result<(), _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.write().unwrap();
             panic!();
         }).join();
@@ -510,7 +617,7 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _: Result<(), _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.read().unwrap();
             panic!();
         }).join();
@@ -521,7 +628,7 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _: Result<(), _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move || {
             let _lock = arc2.read().unwrap();
             panic!()
         }).join();
@@ -535,7 +642,7 @@ mod tests {
         let arc2 = arc.clone();
         let (tx, rx) = channel();
 
-        thread::spawn(move|| {
+        thread::spawn(move || {
             let mut lock = arc2.write().unwrap();
             for _ in 0..10 {
                 let tmp = *lock;
@@ -550,7 +657,7 @@ mod tests {
         let mut children = Vec::new();
         for _ in 0..5 {
             let arc3 = arc.clone();
-            children.push(thread::spawn(move|| {
+            children.push(thread::spawn(move || {
                 let lock = arc3.read().unwrap();
                 assert!(*lock >= 0);
             }));
@@ -571,7 +678,7 @@ mod tests {
     fn test_rw_arc_access_in_unwind() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _ = thread::spawn(move|| -> () {
+        let _ = thread::spawn(move || -> () {
             struct Unwinder {
                 i: Arc<RwLock<isize>>,
             }

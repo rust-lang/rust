@@ -26,7 +26,7 @@ use self::AttributeType::*;
 use self::AttributeGate::*;
 
 use abi::Abi;
-use ast::{self, NodeId, PatKind, RangeEnd};
+use ast::{self, NodeId, PatKind, RangeEnd, RangeSyntax};
 use attr;
 use codemap::Spanned;
 use syntax_pos::Span;
@@ -261,7 +261,7 @@ declare_features! (
     // rustc internal
     (active, abi_vectorcall, "1.7.0", None),
 
-    // a...b and ...b
+    // a..=b and ..=b
     (active, inclusive_range_syntax, "1.7.0", Some(28237)),
 
     // X..Y patterns
@@ -380,7 +380,7 @@ declare_features! (
     // #[doc(masked)]
     (active, doc_masked, "1.21.0", None),
 
-    // allow `#[must_use]` on functions (RFC 1940)
+    // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),
 
     // allow '|' at beginning of match arms (RFC 1925)
@@ -389,6 +389,12 @@ declare_features! (
     // Copy/Clone closures (RFC 2132)
     (active, clone_closures, "1.22.0", Some(44490)),
     (active, copy_closures, "1.22.0", Some(44490)),
+
+    // allow `'_` placeholder lifetimes
+    (active, underscore_lifetimes, "1.22.0", Some(44524)),
+
+    // allow `..=` in patterns (RFC 1192)
+    (active, dotdoteq_in_patterns, "1.22.0", Some(28237)),
 );
 
 declare_features! (
@@ -716,6 +722,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                    and will never be stable",
                                                   cfg_fn!(rustc_attrs))),
     ("rustc_partition_translated", Whitelisted, Gated(Stability::Unstable,
+                                                      "rustc_attrs",
+                                                      "this attribute \
+                                                       is just used for rustc unit tests \
+                                                       and will never be stable",
+                                                      cfg_fn!(rustc_attrs))),
+    ("rustc_synthetic", Whitelisted, Gated(Stability::Unstable,
                                                       "rustc_attrs",
                                                       "this attribute \
                                                        is just used for rustc unit tests \
@@ -1488,6 +1500,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
             }
+            PatKind::Range(_, _, RangeEnd::Included(RangeSyntax::DotDotEq)) => {
+                gate_feature_post!(&self, dotdoteq_in_patterns, pattern.span,
+                                   "`..=` syntax in patterns is experimental");
+            }
             _ => {}
         }
         visit::walk_pat(self, pattern)
@@ -1571,6 +1587,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                "attributes on lifetime bindings are experimental");
         }
         visit::walk_lifetime_def(self, lifetime_def)
+    }
+
+    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
+        if lt.ident.name == "'_" {
+            gate_feature_post!(&self, underscore_lifetimes, lt.span,
+                               "underscore lifetimes are unstable");
+        }
+        visit::walk_lifetime(self, lt)
     }
 }
 

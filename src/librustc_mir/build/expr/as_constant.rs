@@ -29,7 +29,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let Expr { ty, temp_lifetime: _, span, kind }
             = expr;
         match kind {
-            ExprKind::Scope { region_scope: _, value } =>
+            ExprKind::Scope { region_scope: _, lint_level: _, value } =>
                 this.as_constant(value),
             ExprKind::Literal { literal } =>
                 Constant { span: span, ty: ty, literal: literal },

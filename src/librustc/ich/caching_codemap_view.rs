@@ -22,6 +22,7 @@ struct CacheEntry {
     file_index: usize,
 }
 
+#[derive(Clone)]
 pub struct CachingCodemapView<'cm> {
     codemap: &'cm CodeMap,
     line_cache: [CacheEntry; 3],

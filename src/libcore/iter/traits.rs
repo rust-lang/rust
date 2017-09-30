@@ -415,6 +415,70 @@ pub trait DoubleEndedIterator: Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
+    /// An iterator method that reduces the iterator's elements to a single,
+    /// final value, starting from the back.
+    ///
+    /// This is the reverse version of [`fold()`]: it takes elements starting from
+    /// the back of the iterator.
+    ///
+    /// `rfold()` takes two arguments: an initial value, and a closure with two
+    /// arguments: an 'accumulator', and an element. The closure returns the value that
+    /// the accumulator should have for the next iteration.
+    ///
+    /// The initial value is the value the accumulator will have on the first
+    /// call.
+    ///
+    /// After applying this closure to every element of the iterator, `rfold()`
+    /// returns the accumulator.
+    ///
+    /// This operation is sometimes called 'reduce' or 'inject'.
+    ///
+    /// Folding is useful whenever you have a collection of something, and want
+    /// to produce a single value from it.
+    ///
+    /// [`fold()`]: trait.Iterator.html#method.fold
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_rfold)]
+    /// let a = [1, 2, 3];
+    ///
+    /// // the sum of all of the elements of a
+    /// let sum = a.iter()
+    ///            .rfold(0, |acc, &x| acc + x);
+    ///
+    /// assert_eq!(sum, 6);
+    /// ```
+    ///
+    /// This example builds a string, starting with an initial value
+    /// and continuing with each element from the back until the front:
+    ///
+    /// ```
+    /// #![feature(iter_rfold)]
+    /// let numbers = [1, 2, 3, 4, 5];
+    ///
+    /// let zero = "0".to_string();
+    ///
+    /// let result = numbers.iter().rfold(zero, |acc, &x| {
+    ///     format!("({} + {})", x, acc)
+    /// });
+    ///
+    /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_rfold", issue = "44705")]
+    fn rfold<B, F>(mut self, mut accum: B, mut f: F) -> B where
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
+    {
+        while let Some(x) = self.next_back() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+
     /// Searches for an element of an iterator from the right that satisfies a predicate.
     ///
     /// `rfind()` takes a closure that returns `true` or `false`. It applies

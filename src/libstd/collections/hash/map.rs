@@ -691,6 +691,17 @@ impl<K, V, S> HashMap<K, V, S>
     /// Returns a reference to the map's [`BuildHasher`].
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// let hasher = RandomState::new();
+    /// let map: HashMap<isize, isize> = HashMap::with_hasher(hasher);
+    /// let hasher: &RandomState = map.hasher();
+    /// ```
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         &self.hash_builder
@@ -2190,6 +2201,36 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// The key was retained for further use.
     fn take_key(&mut self) -> Option<K> {
         self.key.take()
+    }
+
+    /// Replaces the entry, returning the old key and value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_entry_replace)]
+    /// use std::collections::HashMap;
+    /// use std::collections::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.insert("poneyland".to_string(), 15);
+    ///
+    /// if let Entry::Occupied(entry) = map.entry("poneyland".to_string()) {
+    ///     let (old_key, old_value): (String, u32) = entry.replace(16);
+    ///     assert_eq!(old_key, "poneyland");
+    ///     assert_eq!(old_value, 15);
+    /// }
+    ///
+    /// assert_eq!(map.get("poneyland"), Some(&16));
+    /// ```
+    #[unstable(feature = "map_entry_replace", issue = "44286")]
+    pub fn replace(mut self, value: V) -> (K, V) {
+        let (old_key, old_value) = self.elem.read_mut();
+
+        let old_key = mem::replace(old_key, self.key.unwrap());
+        let old_value = mem::replace(old_value, value);
+
+        (old_key, old_value)
     }
 }
 

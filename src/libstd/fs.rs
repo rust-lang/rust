@@ -1595,9 +1595,9 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// Notable exception is made for situations where any of the directories
 /// specified in the `path` could not be created as it was being created concurrently.
-/// Such cases are considered success. In other words: calling `create_dir_all`
-/// concurrently from multiple threads or processes is guaranteed to not fail
-/// due to race itself.
+/// Such cases are considered to be successful. That is, calling `create_dir_all`
+/// concurrently from multiple threads or processes is guaranteed not to fail
+/// due to a race condition with itself.
 ///
 /// # Examples
 ///
@@ -2158,6 +2158,27 @@ mod tests {
             assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
         }
         check!(fs::remove_file(&filename));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn set_get_unix_permissions() {
+        use os::unix::fs::PermissionsExt;
+
+        let tmpdir = tmpdir();
+        let filename = &tmpdir.join("set_get_unix_permissions");
+        check!(fs::create_dir(filename));
+        let mask = 0o7777;
+
+        check!(fs::set_permissions(filename,
+                                   fs::Permissions::from_mode(0)));
+        let metadata0 = check!(fs::metadata(filename));
+        assert_eq!(mask & metadata0.permissions().mode(), 0);
+
+        check!(fs::set_permissions(filename,
+                                   fs::Permissions::from_mode(0o1777)));
+        let metadata1 = check!(fs::metadata(filename));
+        assert_eq!(mask & metadata1.permissions().mode(), 0o1777);
     }
 
     #[test]

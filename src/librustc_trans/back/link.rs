@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rustc_trans_utils;
-
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::linker::Linker;
 use super::command::Command;
@@ -20,17 +18,14 @@ use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, Pri
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
-use rustc::middle::cstore::{LinkMeta, NativeLibrary, LibSource, NativeLibraryKind};
+use rustc::middle::cstore::{NativeLibrary, LibSource, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
 use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
-use rustc::dep_graph::{DepKind, DepNode};
 use rustc::hir::def_id::CrateNum;
-use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_back::{PanicStrategy, RelroLevel};
-use rustc_incremental::IncrementalHashesMap;
 use context::get_reloc_model;
 use llvm;
 
@@ -89,17 +84,9 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
 pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
-pub use self::rustc_trans_utils::link::{find_crate_name, filename_for_input,
-                                        default_output_for_target, invalid_output_for_target};
-
-pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
-    let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
-    let r = LinkMeta {
-        crate_hash: Svh::new(incremental_hashes_map[krate_dep_node].to_smaller_hash()),
-    };
-    info!("{:?}", r);
-    return r;
-}
+pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
+                                  invalid_output_for_target, build_link_meta, out_filename,
+                                  check_file_is_writeable};
 
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
@@ -138,7 +125,7 @@ pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>
 
 #[cfg(windows)]
 pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
-    use gcc::windows_registry;
+    use cc::windows_registry;
 
     let target = &sess.opts.target_triple;
     let tool = windows_registry::find_tool(target, "link.exe");
@@ -227,13 +214,6 @@ pub fn link_binary(sess: &Session,
     out_filenames
 }
 
-fn is_writeable(p: &Path) -> bool {
-    match p.metadata() {
-        Err(..) => true,
-        Ok(m) => !m.permissions().readonly()
-    }
-}
-
 fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilenames) -> PathBuf {
     let out_filename = outputs.single_output_file.clone()
         .unwrap_or(outputs
@@ -295,32 +275,6 @@ pub fn ignored_for_lto(info: &CrateInfo, cnum: CrateNum) -> bool {
     // Similarly `#![compiler_builtins]` doesn't participate because we want
     // those builtins!
     info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum)
-}
-
-fn out_filename(sess: &Session,
-                crate_type: config::CrateType,
-                outputs: &OutputFilenames,
-                crate_name: &str)
-                -> PathBuf {
-    let default_filename = filename_for_input(sess, crate_type, crate_name, outputs);
-    let out_filename = outputs.outputs.get(&OutputType::Exe)
-                              .and_then(|s| s.to_owned())
-                              .or_else(|| outputs.single_output_file.clone())
-                              .unwrap_or(default_filename);
-
-    check_file_is_writeable(&out_filename, sess);
-
-    out_filename
-}
-
-// Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
-// check this already -- however, the Linux linker will happily overwrite a
-// read-only file.  We should be consistent.
-fn check_file_is_writeable(file: &Path, sess: &Session) {
-    if !is_writeable(file) {
-        sess.fatal(&format!("output file {} is not writeable -- check its \
-                            permissions", file.display()));
-    }
 }
 
 fn link_binary_output(sess: &Session,
@@ -555,7 +509,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 // of when we do and don't keep .#module-name#.bc files around.
                 let user_wants_numbered_bitcode =
                         sess.opts.output_types.contains_key(&OutputType::Bitcode) &&
-                        sess.opts.cg.codegen_units > 1;
+                        sess.opts.codegen_units > 1;
                 if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
                     remove(sess, &bc_filename);
                 }

@@ -18,9 +18,9 @@ use self::pattern::Pattern;
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char;
-use convert::TryFrom;
 use fmt;
-use iter::{Map, Cloned, FusedIterator};
+use iter::{Map, Cloned, FusedIterator, TrustedLen};
+use iter_private::TrustedRandomAccess;
 use slice::{self, SliceIndex};
 use mem;
 
@@ -818,6 +818,17 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a> FusedIterator for Bytes<'a> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a> TrustedLen for Bytes<'a> {}
+
+#[doc(hidden)]
+unsafe impl<'a> TrustedRandomAccess for Bytes<'a> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> u8 {
+        self.0.get_unchecked(i)
+    }
+    fn may_have_side_effect() -> bool { false }
+}
+
 /// This macro generates a Clone impl for string pattern API
 /// wrapper types of the form X<'a, P>
 macro_rules! derive_pattern_clone {
@@ -1399,9 +1410,6 @@ Section: Comparing strings
 */
 
 /// Bytewise slice equality
-/// NOTE: This function is (ab)used in rustc::middle::trans::_match
-/// to compare &[u8] byte slices that are not necessarily valid UTF-8.
-#[lang = "str_eq"]
 #[inline]
 fn eq_slice(a: &str, b: &str) -> bool {
     a.as_bytes() == b.as_bytes()
@@ -2189,7 +2197,7 @@ pub trait StrExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn is_empty(&self) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
-    fn parse<'a, T: TryFrom<&'a str>>(&'a self) -> Result<T, T::Error>;
+    fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
 }
 
 // truncate `&str` to length at most equal to `max`
@@ -2509,9 +2517,7 @@ impl StrExt for str {
     fn is_empty(&self) -> bool { self.len() == 0 }
 
     #[inline]
-    fn parse<'a, T>(&'a self) -> Result<T, T::Error> where T: TryFrom<&'a str> {
-        T::try_from(self)
-    }
+    fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

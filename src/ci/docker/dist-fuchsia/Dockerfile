@@ -1,27 +1,26 @@
 FROM ubuntu:16.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y \
+  build-essential \
+  bzip2 \
+  ca-certificates \
+  cmake \
+  curl \
+  file \
   g++ \
+  gdb \
+  git \
+  libedit-dev \
   make \
   ninja-build \
-  file \
-  curl \
-  ca-certificates \
+  nodejs \
   python2.7-dev \
-  git \
   sudo \
-  bzip2 \
   xz-utils \
-  swig \
-  libedit-dev \
-  libncurses5-dev \
-  patch
-
-RUN curl -L https://cmake.org/files/v3.8/cmake-3.8.0-rc1-Linux-x86_64.tar.gz | \
-      tar xzf - -C /usr/local --strip-components=1
+  unzip
 
 WORKDIR /tmp
-COPY dist-fuchsia/shared.sh dist-fuchsia/build-toolchain.sh dist-fuchsia/compiler-rt-dso-handle.patch /tmp/
+COPY dist-fuchsia/shared.sh dist-fuchsia/build-toolchain.sh /tmp/
 RUN /tmp/build-toolchain.sh
 
 COPY scripts/sccache.sh /scripts/

@@ -123,6 +123,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItemId {
     }
 }
 
+impl_stable_hash_for!(enum hir::LifetimeName {
+    Implicit,
+    Underscore,
+    Static,
+    Name(name)
+});
+
 impl_stable_hash_for!(struct hir::Lifetime {
     id,
     span,
@@ -143,13 +150,13 @@ impl_stable_hash_for!(struct hir::Path {
 
 impl_stable_hash_for!(struct hir::PathSegment {
     name,
+    infer_types,
     parameters
 });
 
 impl_stable_hash_for!(struct hir::PathParameters {
     lifetimes,
     types,
-    infer_types,
     bindings,
     parenthesized
 });
@@ -170,7 +177,8 @@ impl_stable_hash_for!(struct hir::TyParam {
     bounds,
     default,
     span,
-    pure_wrt_drop
+    pure_wrt_drop,
+    synthetic
 });
 
 impl_stable_hash_for!(struct hir::Generics {
@@ -178,6 +186,10 @@ impl_stable_hash_for!(struct hir::Generics {
     ty_params,
     where_clause,
     span
+});
+
+impl_stable_hash_for!(enum hir::SyntheticTyParamKind {
+    ImplTrait
 });
 
 impl_stable_hash_for!(struct hir::WhereClause {
@@ -238,6 +250,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Ty {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty {
                 id: _,
+                hir_id: _,
                 ref node,
                 ref span,
             } = *self;
@@ -691,7 +704,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItem {
-            id,
+            id: _,
             hir_id: _,
             name,
             ref attrs,
@@ -700,7 +713,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
         } = *self;
 
         hcx.hash_hir_item_like(attrs, |hcx| {
-            id.hash_stable(hcx, hasher);
             name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
@@ -725,7 +737,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItem {
-            id,
+            id: _,
             hir_id: _,
             name,
             ref vis,
@@ -736,7 +748,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
         } = *self;
 
         hcx.hash_hir_item_like(attrs, |hcx| {
-            id.hash_stable(hcx, hasher);
             name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
@@ -1159,6 +1170,25 @@ for hir::TraitCandidate {
         });
     }
 }
+
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for hir::TraitCandidate {
+    type KeyType = (DefPathHash, Option<(DefPathHash, hir::ItemLocalId)>);
+
+    fn to_stable_hash_key(&self,
+                          hcx: &StableHashingContext<'gcx>)
+                          -> Self::KeyType {
+        let hir::TraitCandidate {
+            def_id,
+            import_id,
+        } = *self;
+
+        let import_id = import_id.map(|node_id| hcx.node_to_hir_id(node_id))
+                                 .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
+                                                hir_id.local_id));
+        (hcx.def_path_hash(def_id), import_id)
+    }
+}
+
 
 impl_stable_hash_for!(struct hir::Freevar {
     def,

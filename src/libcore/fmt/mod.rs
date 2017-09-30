@@ -488,13 +488,14 @@ impl<'a> Display for Arguments<'a> {
 /// The origin is: Point { x: 0, y: 0 }
 /// ```
 ///
-/// There are a number of `debug_*` methods on `Formatter` to help you with manual
+/// There are a number of `debug_*` methods on [`Formatter`] to help you with manual
 /// implementations, such as [`debug_struct`][debug_struct].
 ///
 /// `Debug` implementations using either `derive` or the debug builder API
-/// on `Formatter` support pretty printing using the alternate flag: `{:#?}`.
+/// on [`Formatter`] support pretty printing using the alternate flag: `{:#?}`.
 ///
 /// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
+/// [`Formatter`]: ../../std/fmt/struct.Formatter.html
 ///
 /// Pretty printing with `#?`:
 ///
@@ -1321,8 +1322,11 @@ impl<'a> Formatter<'a> {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }
 
-    /// Creates a `DebugStruct` builder designed to assist with creation of
-    /// `fmt::Debug` implementations for structs.
+    /// Creates a [`DebugStruct`] builder designed to assist with creation of
+    /// [`fmt::Debug`] implementations for structs.
+    ///
+    /// [`DebugStruct`]: ../../std/fmt/struct.DebugStruct.html
+    /// [`fmt::Debug`]: ../../std/fmt/trait.Debug.html
     ///
     /// # Examples
     ///
@@ -1700,8 +1704,18 @@ impl<T: ?Sized + Debug> Debug for RefCell<T> {
                     .finish()
             }
             Err(_) => {
+                // The RefCell is mutably borrowed so we can't look at its value
+                // here. Show a placeholder instead.
+                struct BorrowedPlaceholder;
+
+                impl Debug for BorrowedPlaceholder {
+                    fn fmt(&self, f: &mut Formatter) -> Result {
+                        f.write_str("<borrowed>")
+                    }
+                }
+
                 f.debug_struct("RefCell")
-                    .field("value", &"<borrowed>")
+                    .field("value", &BorrowedPlaceholder)
                     .finish()
             }
         }

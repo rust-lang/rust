@@ -26,6 +26,7 @@ use transform;
 
 pub mod add_validation;
 pub mod clean_end_regions;
+pub mod check_unsafety;
 pub mod simplify_branches;
 pub mod simplify;
 pub mod erase_regions;
@@ -46,6 +47,7 @@ pub mod nll;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
+    self::check_unsafety::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_const,
@@ -116,6 +118,7 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         // directly need the result or `mir_const_qualif`, so we can just force it.
         ty::queries::mir_const_qualif::force(tcx, DUMMY_SP, def_id);
     }
+    ty::queries::unsafety_violations::force(tcx, DUMMY_SP, def_id);
 
     let mut mir = tcx.mir_const(def_id).steal();
     transform::run_suite(tcx, source, MIR_VALIDATED, &mut mir);

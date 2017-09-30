@@ -132,7 +132,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             !input_parameters.contains(&param)
         {
             report_unused_parameter(tcx, lifetime.lifetime.span,
-                                    "lifetime", &lifetime.lifetime.name.to_string());
+                                    "lifetime", &lifetime.lifetime.name.name().to_string());
         }
     }
 

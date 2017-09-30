@@ -783,6 +783,10 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.parse_sess.span_diagnostic.span_err(sp, msg);
     }
+    pub fn mut_span_err(&self, sp: Span, msg: &str)
+                        -> DiagnosticBuilder<'a> {
+        self.parse_sess.span_diagnostic.mut_span_err(sp, msg)
+    }
     pub fn span_warn(&self, sp: Span, msg: &str) {
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }

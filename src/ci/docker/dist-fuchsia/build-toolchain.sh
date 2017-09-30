@@ -14,105 +14,44 @@
 set -ex
 source shared.sh
 
+ZIRCON=e9a26dbc70d631029f8ee9763103910b7e3a2fe1
+
+mkdir -p zircon
+pushd zircon > /dev/null
+
 # Download sources
-SRCS=(
-  "https://fuchsia.googlesource.com/magenta magenta d17073dc8de344ead3b65e8cc6a12280dec38c84"
-  "https://llvm.googlesource.com/llvm llvm 3f58a16d8eec385e2b3ebdfbb84ff9d3bf27e025"
-  "https://llvm.googlesource.com/clang llvm/tools/clang 727ea63e6e82677f6e10e05e08bc7d6bdbae3111"
-  "https://llvm.googlesource.com/lld llvm/tools/lld a31286c1366e5e89b8872803fded13805a1a084b"
-  "https://llvm.googlesource.com/lldb llvm/tools/lldb 0b2384abec4cb99ad66687712e07dee4dd9d187e"
-  "https://llvm.googlesource.com/compiler-rt llvm/runtimes/compiler-rt 9093a35c599fe41278606a20b51095ea8bd5a081"
-  "https://llvm.googlesource.com/libcxx llvm/runtimes/libcxx 607e0c71ec4f7fd377ad3f6c47b08dbe89f66eaa"
-  "https://llvm.googlesource.com/libcxxabi llvm/runtimes/libcxxabi 0a3a1a8a5ca5ef69e0f6b7d5b9d13e63e6fd2c19"
-  "https://llvm.googlesource.com/libunwind llvm/runtimes/libunwind e128003563d99d9ee62247c4cee40f07d21c03e3"
-)
+git init
+git remote add origin https://fuchsia.googlesource.com/zircon
+git fetch --depth=1 origin $ZIRCON
+git reset --hard FETCH_HEAD
 
-fetch() {
-  mkdir -p $2
-  pushd $2 > /dev/null
-  git init
-  git remote add origin $1
-  git fetch --depth=1 origin $3
-  git reset --hard FETCH_HEAD
-  popd > /dev/null
-}
+# Download toolchain
+./scripts/download-toolchain
+chmod -R a+rx prebuilt/downloads/clang+llvm-x86_64-linux
+cp -a prebuilt/downloads/clang+llvm-x86_64-linux/. /usr/local
 
-for i in "${SRCS[@]}"; do
-  fetch $i
-done
-
-# Remove this once https://reviews.llvm.org/D28791 is resolved
-cd llvm/runtimes/compiler-rt
-patch -Np1 < /tmp/compiler-rt-dso-handle.patch
-cd ../../..
-
-# Build toolchain
-cd llvm
-mkdir build
-cd build
-hide_output cmake -GNinja \
-  -DFUCHSIA_SYSROOT=${PWD}/../../magenta/third_party/ulib/musl \
-  -DLLVM_ENABLE_LTO=OFF \
-  -DCLANG_BOOTSTRAP_PASSTHROUGH=LLVM_ENABLE_LTO \
-  -C ../tools/clang/cmake/caches/Fuchsia.cmake \
-  ..
-hide_output ninja stage2-distribution
-hide_output ninja stage2-install-distribution
-cd ../..
-
-# Build sysroot
-rm -rf llvm/runtimes/compiler-rt
-./magenta/scripts/download-toolchain
-
-build_sysroot() {
+build() {
   local arch="$1"
 
   case "${arch}" in
-    x86_64) tgt="magenta-pc-x86-64" ;;
-    aarch64) tgt="magenta-qemu-arm64" ;;
+    x86_64) tgt="zircon-pc-x86-64" ;;
+    aarch64) tgt="zircon-qemu-arm64" ;;
   esac
 
-  hide_output make -C magenta -j$(getconf _NPROCESSORS_ONLN) $tgt
+  hide_output make -j$(getconf _NPROCESSORS_ONLN) $tgt
   dst=/usr/local/${arch}-unknown-fuchsia
   mkdir -p $dst
-  cp -r magenta/build-${tgt}/sysroot/include $dst/
-  cp -r magenta/build-${tgt}/sysroot/lib $dst/
-
-  cd llvm
-  mkdir build-runtimes-${arch}
-  cd build-runtimes-${arch}
-  hide_output cmake -GNinja \
-    -DCMAKE_C_COMPILER=clang \
-    -DCMAKE_CXX_COMPILER=clang++ \
-    -DCMAKE_AR=/usr/local/bin/llvm-ar \
-    -DCMAKE_RANLIB=/usr/local/bin/llvm-ranlib \
-    -DCMAKE_INSTALL_PREFIX= \
-    -DLLVM_MAIN_SRC_DIR=${PWD}/.. \
-    -DLLVM_BINARY_DIR=${PWD}/../build \
-    -DLLVM_ENABLE_WERROR=OFF \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DLLVM_INCLUDE_TESTS=ON \
-    -DCMAKE_SYSTEM_NAME=Fuchsia \
-    -DCMAKE_C_COMPILER_TARGET=${arch}-fuchsia \
-    -DCMAKE_CXX_COMPILER_TARGET=${arch}-fuchsia \
-    -DUNIX=1 \
-    -DLIBCXX_HAS_MUSL_LIBC=ON \
-    -DLIBCXXABI_USE_LLVM_UNWINDER=ON \
-    -DCMAKE_SYSROOT=${dst} \
-    -DCMAKE_C_COMPILER_FORCED=TRUE \
-    -DCMAKE_CXX_COMPILER_FORCED=TRUE \
-    -DLLVM_ENABLE_LIBCXX=ON \
-    -DCMAKE_EXE_LINKER_FLAGS="-nodefaultlibs -lc" \
-    -DCMAKE_SHARED_LINKER_FLAGS="$(clang --target=${arch}-fuchsia -print-libgcc-file-name)" \
-    ../runtimes
-  hide_output env DESTDIR="${dst}" ninja install
-  cd ../..
+  cp -a build-${tgt}/sysroot/include $dst/
+  cp -a build-${tgt}/sysroot/lib $dst/
 }
 
-build_sysroot "x86_64"
-build_sysroot "aarch64"
+# Build sysroot
+for arch in x86_64 aarch64; do
+  build ${arch}
+done
 
-rm -rf magenta llvm
+popd > /dev/null
+rm -rf zircon
 
 for arch in x86_64 aarch64; do
   for tool in clang clang++; do

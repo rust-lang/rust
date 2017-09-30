@@ -15,26 +15,27 @@ use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHashes;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc::util::common::time;
+use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 use std::path::PathBuf;
 
-use IncrementalHashesMap;
 use super::data::*;
-use super::hash::*;
 use super::preds::*;
 use super::fs::*;
 use super::dirty_clean;
 use super::file_format;
 use super::work_product;
 
+use super::load::load_prev_metadata_hashes;
+
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                incremental_hashes_map: IncrementalHashesMap,
                                 metadata_hashes: &EncodedMetadataHashes,
                                 svh: Svh) {
     debug!("save_dep_graph()");
@@ -44,15 +45,14 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
-    let query = tcx.dep_graph.query();
+    // We load the previous metadata hashes now before overwriting the file
+    // (if we need them for testing).
+    let prev_metadata_hashes = if tcx.sess.opts.debugging_opts.query_dep_graph {
+        load_prev_metadata_hashes(tcx)
+    } else {
+        DefIdMap()
+    };
 
-    if tcx.sess.opts.debugging_opts.incremental_info {
-        eprintln!("incremental: {} nodes in dep-graph", query.graph.len_nodes());
-        eprintln!("incremental: {} edges in dep-graph", query.graph.len_edges());
-    }
-
-    let mut hcx = HashContext::new(tcx, &incremental_hashes_map);
-    let preds = Predecessors::new(&query, &mut hcx);
     let mut current_metadata_hashes = FxHashMap();
 
     // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
@@ -69,13 +69,29 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            e));
     }
 
-    save_in(sess,
-            dep_graph_path(sess),
-            |e| encode_dep_graph(tcx, &preds, e));
+    time(sess.time_passes(), "persist dep-graph (old)", || {
+        let query = tcx.dep_graph.query();
 
-    let prev_metadata_hashes = incremental_hashes_map.prev_metadata_hashes.borrow();
+        if tcx.sess.opts.debugging_opts.incremental_info {
+            eprintln!("incremental: {} nodes in dep-graph", query.graph.len_nodes());
+            eprintln!("incremental: {} edges in dep-graph", query.graph.len_edges());
+        }
+
+        let preds = Predecessors::new(tcx, &query);
+        save_in(sess,
+                dep_graph_path(sess),
+                |e| encode_dep_graph(tcx, &preds, e));
+    });
+
+    time(sess.time_passes(), "persist dep-graph (new)", || {
+        save_in(sess,
+                dep_graph_path_new(sess),
+                |e| encode_dep_graph_new(tcx, e));
+    });
+
+    dirty_clean::check_dirty_clean_annotations(tcx);
     dirty_clean::check_dirty_clean_metadata(tcx,
-                                            &*prev_metadata_hashes,
+                                            &prev_metadata_hashes,
                                             &current_metadata_hashes);
 }
 
@@ -164,6 +180,19 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
             return;
         }
     }
+}
+
+fn encode_dep_graph_new(tcx: TyCtxt,
+                        encoder: &mut Encoder)
+                        -> io::Result<()> {
+    // First encode the commandline arguments hash
+    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
+
+    // Encode the graph data.
+    let serialized_graph = tcx.dep_graph.serialize();
+    serialized_graph.encode(encoder)?;
+
+    Ok(())
 }
 
 pub fn encode_dep_graph(tcx: TyCtxt,

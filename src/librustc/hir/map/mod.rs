@@ -57,6 +57,7 @@ pub enum Node<'hir> {
     NodePat(&'hir Pat),
     NodeBlock(&'hir Block),
     NodeLocal(&'hir Local),
+    NodeMacroDef(&'hir MacroDef),
 
     /// NodeStructCtor represents a tuple struct.
     NodeStructCtor(&'hir VariantData),
@@ -93,6 +94,8 @@ enum MapEntry<'hir> {
     EntryVisibility(NodeId, DepNodeIndex, &'hir Visibility),
     EntryLocal(NodeId, DepNodeIndex, &'hir Local),
 
+    EntryMacroDef(DepNodeIndex, &'hir MacroDef),
+
     /// Roots for node trees. The DepNodeIndex is the dependency node of the
     /// crate's root module.
     RootCrate(DepNodeIndex),
@@ -127,6 +130,7 @@ impl<'hir> MapEntry<'hir> {
             EntryLocal(id, _, _) => id,
 
             NotPresent |
+            EntryMacroDef(..) |
             RootCrate(_) => return None,
         })
     }
@@ -151,6 +155,7 @@ impl<'hir> MapEntry<'hir> {
             EntryTyParam(_, _, n) => NodeTyParam(n),
             EntryVisibility(_, _, n) => NodeVisibility(n),
             EntryLocal(_, _, n) => NodeLocal(n),
+            EntryMacroDef(_, n) => NodeMacroDef(n),
 
             NotPresent |
             RootCrate(_) => return None
@@ -285,20 +290,12 @@ impl<'hir> Map<'hir> {
             EntryVisibility(_, dep_node_index, _) |
             EntryExpr(_, dep_node_index, _) |
             EntryLocal(_, dep_node_index, _) |
+            EntryMacroDef(dep_node_index, _) |
             RootCrate(dep_node_index) => {
                 self.dep_graph.read_index(dep_node_index);
             }
             NotPresent => {
-                // Some nodes, notably macro definitions, are not
-                // present in the map for whatever reason, but
-                // they *do* have def-ids. So if we encounter an
-                // empty hole, check for that case.
-                if let Some(def_index) = self.definitions.opt_def_index(id) {
-                    let def_path_hash = self.definitions.def_path_hash(def_index);
-                    self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
-                } else {
-                    bug!("called HirMap::read() with invalid NodeId")
-                }
+                bug!("called HirMap::read() with invalid NodeId")
             }
         }
     }
@@ -805,7 +802,7 @@ impl<'hir> Map<'hir> {
             NodeTraitItem(ti) => ti.name,
             NodeVariant(v) => v.node.name,
             NodeField(f) => f.name,
-            NodeLifetime(lt) => lt.name,
+            NodeLifetime(lt) => lt.name.name(),
             NodeTyParam(tp) => tp.name,
             NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
@@ -875,20 +872,11 @@ impl<'hir> Map<'hir> {
             Some(EntryVisibility(_, _, &Visibility::Restricted { ref path, .. })) => path.span,
             Some(EntryVisibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
             Some(EntryLocal(_, _, local)) => local.span,
+            Some(EntryMacroDef(_, macro_def)) => macro_def.span,
 
             Some(RootCrate(_)) => self.forest.krate.span,
             Some(NotPresent) | None => {
-                // Some nodes, notably macro definitions, are not
-                // present in the map for whatever reason, but
-                // they *do* have def-ids. So if we encounter an
-                // empty hole, check for that case.
-                if let Some(def_index) = self.definitions.opt_def_index(id) {
-                    let def_path_hash = self.definitions.def_path_hash(def_index);
-                    self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
-                    DUMMY_SP
-                } else {
-                    bug!("hir::map::Map::span: id not in map: {:?}", id)
-                }
+                bug!("hir::map::Map::span: id not in map: {:?}", id)
             }
         }
     }
@@ -1012,15 +1000,22 @@ impl Named for StructField { fn name(&self) -> Name { self.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
-pub fn map_crate<'hir>(forest: &'hir mut Forest,
+pub fn map_crate<'hir>(sess: &::session::Session,
+                       cstore: &::middle::cstore::CrateStore,
+                       forest: &'hir mut Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
     let map = {
+        let hcx = ::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
+
         let mut collector = NodeCollector::root(&forest.krate,
                                                 &forest.dep_graph,
-                                                &definitions);
+                                                &definitions,
+                                                hcx);
         intravisit::walk_crate(&mut collector, &forest.krate);
-        collector.into_map()
+
+        let crate_disambiguator = sess.local_crate_disambiguator().as_str();
+        collector.finalize_and_compute_crate_hash(&crate_disambiguator)
     };
 
     if log_enabled!(::log::LogLevel::Debug) {
@@ -1103,6 +1098,7 @@ impl<'a> print::State<'a> {
             // printing.
             NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
             NodeLocal(a)       => self.print_local_decl(&a),
+            NodeMacroDef(_)    => bug!("cannot print MacroDef"),
         }
     }
 }
@@ -1218,6 +1214,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeVisibility(ref vis)) => {
             format!("visibility {:?}{}", vis, id_str)
+        }
+        Some(NodeMacroDef(_)) => {
+            format!("macro {}{}",  path_str(), id_str)
         }
         None => {
             format!("unknown node{}", id_str)

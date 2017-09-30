@@ -122,14 +122,6 @@ impl<'a> AstValidator<'a> {
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
-    fn visit_lifetime(&mut self, lt: &'a Lifetime) {
-        if lt.ident.name == "'_" {
-            self.err_handler().span_err(lt.span, &format!("invalid lifetime name `{}`", lt.ident));
-        }
-
-        visit::walk_lifetime(self, lt)
-    }
-
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
             ExprKind::While(.., Some(ident)) |
