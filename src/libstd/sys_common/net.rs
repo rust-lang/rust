@@ -175,10 +175,15 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
             },
             #[cfg(unix)]
             Err(e) => {
-                // The lookup failure could be caused by using a stale /etc/resolv.conf.
-                // See https://github.com/rust-lang/rust/issues/41570.
-                // We therefore force a reload of the nameserver information.
-                c::res_init();
+                // If we're running glibc prior to version 2.26, the lookup
+                // failure could be caused by caching a stale /etc/resolv.conf.
+                // We need to call libc::res_init() to clear the cache. But we
+                // shouldn't call it in on any other platform, because other
+                // res_init implementations aren't thread-safe. See
+                // https://github.com/rust-lang/rust/issues/41570 and
+                // https://github.com/rust-lang/rust/issues/43592.
+                use sys::net::res_init_if_glibc_before_2_26;
+                let _ = res_init_if_glibc_before_2_26();
                 Err(e)
             },
             // the cfg is needed here to avoid an "unreachable pattern" warning
