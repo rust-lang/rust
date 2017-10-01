@@ -507,13 +507,9 @@ impl<T> Vec<T> {
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
-    /// Note that this will drop any excess capacity. Calling this and
-    /// converting back to a vector with [`into_vec`] is equivalent to calling
-    /// [`shrink_to_fit`].
+    /// Note that this will drop any excess capacity.
     ///
     /// [owned slice]: ../../std/boxed/struct.Box.html
-    /// [`into_vec`]: ../../std/primitive.slice.html#method.into_vec
-    /// [`shrink_to_fit`]: #method.shrink_to_fit
     ///
     /// # Examples
     ///
