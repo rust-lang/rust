@@ -822,10 +822,11 @@ impl Rewrite for ast::MetaItem {
             ast::MetaItemKind::Word => String::from(&*self.name.as_str()),
             ast::MetaItemKind::List(ref list) => {
                 let name = self.name.as_str();
-                // 3 = `#[` and `(`, 2 = `]` and `)`
+                // 1 = `(`, 2 = `]` and `)`
                 let item_shape = try_opt!(
                     shape
-                        .shrink_left(name.len() + 3)
+                        .visual_indent(0)
+                        .shrink_left(name.len() + 1)
                         .and_then(|s| s.sub_width(2))
                 );
                 let items = itemize_list(
@@ -854,18 +855,10 @@ impl Rewrite for ast::MetaItem {
             }
             ast::MetaItemKind::NameValue(ref literal) => {
                 let name = self.name.as_str();
-                let value = context.snippet(literal.span);
-                if &*name == "doc" && contains_comment(&value) {
-                    let doc_shape = Shape {
-                        width: cmp::min(shape.width, context.config.comment_width())
-                            .checked_sub(shape.indent.width())
-                            .unwrap_or(0),
-                        ..shape
-                    };
-                    try_opt!(rewrite_comment(&value, false, doc_shape, context.config))
-                } else {
-                    format!("{} = {}", name, value)
-                }
+                // 3 = ` = `
+                let lit_shape = try_opt!(shape.shrink_left(name.len() + 3));
+                let value = try_opt!(rewrite_literal(context, literal, lit_shape));
+                format!("{} = {}", name, value)
             }
         })
     }
@@ -873,22 +866,29 @@ impl Rewrite for ast::MetaItem {
 
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        try_opt!(self.meta())
-            .rewrite(context, shape)
-            .map(|rw| if self.is_sugared_doc {
-                rw
-            } else {
-                let original = context.snippet(self.span);
-                let prefix = match self.style {
-                    ast::AttrStyle::Inner => "#!",
-                    ast::AttrStyle::Outer => "#",
-                };
-                if contains_comment(&original) {
-                    original
-                } else {
-                    format!("{}[{}]", prefix, rw)
-                }
-            })
+        let prefix = match self.style {
+            ast::AttrStyle::Inner => "#!",
+            ast::AttrStyle::Outer => "#",
+        };
+        let snippet = context.snippet(self.span);
+        if self.is_sugared_doc {
+            let doc_shape = Shape {
+                width: cmp::min(shape.width, context.config.comment_width())
+                    .checked_sub(shape.indent.width())
+                    .unwrap_or(0),
+                ..shape
+            };
+            rewrite_comment(&snippet, false, doc_shape, context.config)
+        } else {
+            if contains_comment(&snippet) {
+                return Some(snippet);
+            }
+            // 1 = `[`
+            let shape = try_opt!(shape.offset_left(prefix.len() + 1));
+            try_opt!(self.meta())
+                .rewrite(context, shape)
+                .map(|rw| format!("{}[{}]", prefix, rw))
+        }
     }
 }
 
