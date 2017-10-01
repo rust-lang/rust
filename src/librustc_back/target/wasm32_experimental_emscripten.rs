@@ -46,6 +46,7 @@ pub fn target() -> Result<Target, String> {
         llvm_target: "wasm32-unknown-unknown".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
+        target_c_int_width: "32".to_string(),
         target_os: "emscripten".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),

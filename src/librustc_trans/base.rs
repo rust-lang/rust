@@ -77,7 +77,6 @@ use value::Value;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
-use libc::c_uint;
 use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
@@ -692,7 +691,8 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                        sp: Span,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func(&[ccx.isize_ty(), Type::i8p(ccx).ptr_to()], &ccx.isize_ty());
+        // Signature of native main(), corresponding to C's `int main(int, char **)`
+        let llfty = Type::func(&[Type::c_int(ccx), Type::i8p(ccx).ptr_to()], &Type::c_int(ccx));
 
         if declare::get_defined_value(ccx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -711,19 +711,27 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
         debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx, &bld);
 
+        // Params from native main() used as args for rust start function
+        let param_argc = get_param(llfn, 0);
+        let param_argv = get_param(llfn, 1);
+        let arg_argc = bld.intcast(param_argc, ccx.isize_ty(), true);
+        let arg_argv = param_argv;
+
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
             let start_instance = Instance::mono(ccx.tcx(), start_def_id);
             let start_fn = callee::get_fn(ccx, start_instance);
-            (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()), get_param(llfn, 0),
-                get_param(llfn, 1)])
+            (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()),
+                            arg_argc, arg_argv])
         } else {
             debug!("using user-defined start fn");
-            (rust_main, vec![get_param(llfn, 0 as c_uint), get_param(llfn, 1 as c_uint)])
+            (rust_main, vec![arg_argc, arg_argv])
         };
 
         let result = bld.call(start_fn, &args, None);
-        bld.ret(result);
+
+        // Return rust start function's result from native main()
+        bld.ret(bld.intcast(result, Type::c_int(ccx), true));
     }
 }
 
