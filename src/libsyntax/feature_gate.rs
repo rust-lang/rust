@@ -35,7 +35,6 @@ use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use symbol::Symbol;
 
-use std::ascii::AsciiExt;
 use std::env;
 
 macro_rules! set {

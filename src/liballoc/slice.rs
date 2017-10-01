@@ -1533,7 +1533,7 @@ impl<T> [T] {
     }
 }
 
-// TODO(LukasKalbertodt): the `not(stage0)` constraint can be removed in the
+// FIXME(LukasKalbertodt): the `not(stage0)` constraint can be removed in the
 // future once the stage0 compiler is new enough to know about the `slice_u8`
 // lang item.
 #[lang = "slice_u8"]

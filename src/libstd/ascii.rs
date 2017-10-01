@@ -298,6 +298,10 @@ pub trait AsciiExt {
     fn is_ascii_control(&self) -> bool { unimplemented!(); }
 }
 
+// FIXME(LukasKalbertodt): this impl block can be removed in the future. This is
+// possible once the stage0 compiler is new enough to contain the inherent
+// ascii methods for `[str]`. See FIXME comment further down.
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for str {
     type Owned = String;
@@ -389,9 +393,9 @@ impl AsciiExt for str {
     }
 }
 
-// TODO(LukasKalbertodt): this impl block can be removed in the future. This is
+// FIXME(LukasKalbertodt): this impl block can be removed in the future. This is
 // possible once the stage0 compiler is new enough to contain the inherent
-// ascii methods for `[u8]`. See TODO comment further down.
+// ascii methods for `[u8]`. See FIXME comment further down.
 #[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for [u8] {
@@ -546,11 +550,17 @@ macro_rules! impl_by_delegating {
 impl_by_delegating!(u8, u8);
 impl_by_delegating!(char, char);
 
-// TODO(LukasKalbertodt): the macro invocation should replace the impl block
+// FIXME(LukasKalbertodt): the macro invocation should replace the impl block
 // for `[u8]` above. But this is not possible until the stage0 compiler is new
 // enough to contain the inherent ascii methods for `[u8]`.
 #[cfg(not(stage0))]
 impl_by_delegating!([u8], Vec<u8>);
+
+// FIXME(LukasKalbertodt): the macro invocation should replace the impl block
+// for `str` above. But this is not possible until the stage0 compiler is new
+// enough to contain the inherent ascii methods for `str`.
+#[cfg(not(stage0))]
+impl_by_delegating!(str, String);
 
 /// An iterator over the escaped version of a byte.
 ///
