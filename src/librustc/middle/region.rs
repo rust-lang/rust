@@ -413,7 +413,7 @@ pub struct ScopeTree {
 
     /// The number of visit_expr and visit_pat calls done in the body.
     /// Used to sanity check visit_expr/visit_pat call count when
-    /// calculating geneartor interiors.
+    /// calculating generator interiors.
     body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
 
@@ -785,7 +785,7 @@ impl<'tcx> ScopeTree {
 
     /// Gives the number of expressions visited in a body.
     /// Used to sanity check visit_expr call count when
-    /// calculating geneartor interiors.
+    /// calculating generator interiors.
     pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
         self.body_expr_count.get(&body_id).map(|r| *r)
     }
