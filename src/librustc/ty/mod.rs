@@ -755,11 +755,19 @@ impl<'a, 'gcx, 'tcx> Generics {
         }
     }
 
+    /// Returns the `TypeParameterDef` associated with this `ParamTy`, or `None`
+    /// if `param` is `self`.
     pub fn type_param(&'tcx self,
                       param: &ParamTy,
-                      tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &TypeParameterDef {
+                      tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                      -> Option<&TypeParameterDef> {
         if let Some(idx) = param.idx.checked_sub(self.parent_count() as u32) {
-            &self.types[idx as usize - self.has_self as usize - self.regions.len()]
+            let type_param_start = (self.has_self as usize) + self.regions.len();
+            if let Some(idx) = (idx as usize).checked_sub(type_param_start) {
+                Some(&self.types[idx])
+            } else {
+                None
+            }
         } else {
             tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
                 .type_param(param, tcx)
