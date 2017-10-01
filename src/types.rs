@@ -463,7 +463,7 @@ impl Rewrite for ast::WherePredicate {
                     let used_width = type_str.len() + colon.len();
                     let ty_shape = match context.config.where_style() {
                         Style::Legacy => try_opt!(shape.block_left(used_width)),
-                        Style::Rfc => shape.block_indent(context.config.tab_spaces()),
+                        Style::Rfc => shape,
                     };
                     let bounds: Vec<_> = try_opt!(
                         bounds
