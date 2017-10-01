@@ -29,6 +29,20 @@ pub struct StringFormat<'a> {
     pub config: &'a Config,
 }
 
+impl<'a> StringFormat<'a> {
+    pub fn new(shape: Shape, config: &'a Config) -> StringFormat<'a> {
+        StringFormat {
+            opener: "\"",
+            closer: "\"",
+            line_start: " ",
+            line_end: "\\",
+            shape: shape,
+            trim_end: false,
+            config: config,
+        }
+    }
+}
+
 // FIXME: simplify this!
 pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> {
     // Strip line breaks.
@@ -133,16 +147,7 @@ mod test {
     #[test]
     fn issue343() {
         let config = Default::default();
-        let fmt = StringFormat {
-            opener: "\"",
-            closer: "\"",
-            line_start: " ",
-            line_end: "\\",
-            shape: Shape::legacy(2, Indent::empty()),
-            trim_end: false,
-            config: &config,
-        };
-
+        let fmt = StringFormat::new(Shape::legacy(2, Indent::empty()), &config);
         rewrite_string("eq_", &fmt);
     }
 }
