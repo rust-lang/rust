@@ -184,7 +184,7 @@ impl OpenOptions {
             access_mode: None,
             share_mode: c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
             attributes: 0,
-            security_qos_flags: 0,
+            security_qos_flags: c::SECURITY_SQOS_PRESENT | c::SECURITY_IDENTIFICATION,
             security_attributes: 0,
         }
     }
