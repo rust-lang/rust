@@ -57,3 +57,8 @@ fn issue_1282() {
         }
     }
 }
+
+// #1987
+#[link_args = "-s NO_FILESYSTEM=1 -s NO_EXIT_RUNTIME=1 -s EXPORTED_RUNTIME_METHODS=[\"_malloc\"] \
+               -s NO_DYNAMIC_EXECUTION=1 -s ELIMINATE_DUPLICATE_FUNCTIONS=1 -s EVAL_CTORS=1"]
+extern "C" {}
