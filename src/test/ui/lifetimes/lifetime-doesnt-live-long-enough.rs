@@ -28,4 +28,14 @@ struct Foo<T> {
     foo: &'static T
 }
 
+trait X<T> {}
+
+struct Nested<K>(K);
+impl<K> Nested<K> {
+    fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
+    }
+    fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
+    }
+}
+
 fn main() {}

@@ -729,7 +729,7 @@ pub struct Generics {
     pub has_late_bound_regions: Option<Span>,
 }
 
-impl Generics {
+impl<'a, 'gcx, 'tcx> Generics {
     pub fn parent_count(&self) -> usize {
         self.parent_regions as usize + self.parent_types as usize
     }
@@ -742,14 +742,28 @@ impl Generics {
         self.parent_count() + self.own_count()
     }
 
-    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef {
-        assert_eq!(self.parent_count(), 0);
-        &self.regions[param.index as usize - self.has_self as usize]
+    pub fn region_param(&'tcx self,
+                        param: &EarlyBoundRegion,
+                        tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                        -> &'tcx RegionParameterDef
+    {
+        if let Some(index) = param.index.checked_sub(self.parent_count() as u32) {
+            &self.regions[index as usize - self.has_self as usize]
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+                .region_param(param, tcx)
+        }
     }
 
-    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef {
-        assert_eq!(self.parent_count(), 0);
-        &self.types[param.idx as usize - self.has_self as usize - self.regions.len()]
+    pub fn type_param(&'tcx self,
+                      param: &ParamTy,
+                      tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &TypeParameterDef {
+        if let Some(idx) = param.idx.checked_sub(self.parent_count() as u32) {
+            &self.types[idx as usize - self.has_self as usize - self.regions.len()]
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+                .type_param(param, tcx)
+        }
     }
 }
 
