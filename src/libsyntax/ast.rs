@@ -1927,9 +1927,9 @@ pub enum ItemKind {
     ///
     /// E.g. `trait Foo { .. }` or `trait Foo<T> { .. }`
     Trait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
-    /// Default trait implementation.
+    /// Auto trait implementation.
     ///
-    /// E.g. `default impl Trait for .. {}` or `default impl<T> Trait<T> for .. {}`
+    /// E.g. `impl Trait for .. {}` or `impl<T> Trait<T> for .. {}`
     DefaultImpl(Unsafety, TraitRef),
     /// An implementation.
     ///
