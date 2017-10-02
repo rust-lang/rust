@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This module provides utilities to handle C-like strings.  It is
-//! mainly of use for FFI (Foreign Function Interface) bindings and
-//! code that needs to exchange C-like strings with other languages.
+//! This module provides utilities to handle data across non-Rust
+//! interfaces, like other programming languages and the underlying
+//! operating system.  It is mainly of use for FFI (Foreign Function
+//! Interface) bindings and code that needs to exchange C-like strings
+//! with other languages.
 //!
 //! # Overview
 //!
@@ -18,68 +20,74 @@
 //! borrowed slices of strings with the [`str`] primitive.  Both are
 //! always in UTF-8 encoding, and may contain nul bytes in the middle,
 //! i.e. if you look at the bytes that make up the string, there may
-//! be a `0` among them.  Both `String` and `str` know their length;
-//! there are no nul terminators at the end of strings like in C.
+//! be a `\0` among them.  Both `String` and `str` store their length
+//! explicitly; there are no nul terminators at the end of strings
+//! like in C.
 //!
 //! C strings are different from Rust strings:
 //!
-//! * **Encodings** - C strings may have different encodings.  If
-//! you are bringing in strings from C APIs, you should check what
-//! encoding you are getting.  Rust strings are always UTF-8.
+//! * **Encodings** - Rust strings are UTF-8, but C strings may use
+//! other encodings.  If you are using a string from C, you should
+//! check its encoding explicitly, rather than just assuming that it
+//! is UTF-8 like you can do in Rust.
 //!
-//! * **Character width** - C strings may use "normal" or "wide"
-//! characters, i.e. `char` or `wchar_t`, respectively.  The C
-//! standard leaves the actual sizes of those types open to
+//! * **Character size** - C strings may use `char` or `wchar_t`-sized
+//! characters; please **note** that C's `char` is different from Rust's.
+//! The C standard leaves the actual sizes of those types open to
 //! interpretation, but defines different APIs for strings made up of
 //! each character type.  Rust strings are always UTF-8, so different
 //! Unicode characters will be encoded in a variable number of bytes
-//! each.  The Rust type [`char`] represents a '[Unicode
-//! scalar value]', which is similar to, but not the same as, a
-//! '[Unicode code point]'.
+//! each.  The Rust type [`char`] represents a '[Unicode scalar
+//! value]', which is similar to, but not the same as, a '[Unicode
+//! code point]'.
 //!
 //! * **Nul terminators and implicit string lengths** - Often, C
-//! strings are nul-terminated, i.e. they have a `0` character at the
-//! end.  The length of a string buffer is not known *a priori*;
-//! instead, to compute the length of a string, C code must manually
-//! call a function like `strlen()` for `char`-based strings, or
-//! `wcslen()` for `wchar_t`-based ones.  Those functions return the
-//! number of characters in the string excluding the nul terminator,
-//! so the buffer length is really `len+1` characters.  Rust strings
-//! don't have a nul terminator, and they always know their length.
+//! strings are nul-terminated, i.e. they have a `\0` character at the
+//! end.  The length of a string buffer is not stored, but has to be
+//! calculated; to compute the length of a string, C code must
+//! manually call a function like `strlen()` for `char`-based strings,
+//! or `wcslen()` for `wchar_t`-based ones.  Those functions return
+//! the number of characters in the string excluding the nul
+//! terminator, so the buffer length is really `len+1` characters.
+//! Rust strings don't have a nul terminator; their length is always
+//! stored and does not need to be calculated.  While in Rust
+//! accessing a string's length is a O(1) operation (becasue the
+//! length is stored); in C it is an O(length) operation because the
+//! length needs to be computed by scanning the string for the nul
+//! terminator.
 //!
-//! * **No nul characters in the middle of the string** - When C
-//! strings have a nul terminator character, this usually means that
-//! they cannot have nul characters in the middle — a nul character
-//! would essentially truncate the string.  Rust strings *can* have
-//! nul characters in the middle, since they don't use nul
-//! terminators.
+//! * **Internal nul characters** - When C strings have a nul
+//! terminator character, this usually means that they cannot have nul
+//! characters in the middle — a nul character would essentially
+//! truncate the string.  Rust strings *can* have nul characters in
+//! the middle, because nul does not have to mark the end of the
+//! string in Rust.
 //!
 //! # Representations of non-Rust strings
 //!
 //! [`CString`] and [`CStr`] are useful when you need to transfer
-//! UTF-8 strings to and from C, respectively:
+//! UTF-8 strings to and from languages with a C ABI, like Python.
 //!
 //! * **From Rust to C:** [`CString`] represents an owned, C-friendly
-//! UTF-8 string:  it is valid UTF-8, it is nul-terminated, and has no
-//! nul characters in the middle.  Rust code can create a `CString`
-//! out of a normal string (provided that the string doesn't have nul
-//! characters in the middle), and then use a variety of methods to
-//! obtain a raw `*mut u8` that can then be passed as an argument to C
-//! functions.
+//! string: it is nul-terminated, and has no internal nul characters.
+//! Rust code can create a `CString` out of a normal string (provided
+//! that the string doesn't have nul characters in the middle), and
+//! then use a variety of methods to obtain a raw `*mut u8` that can
+//! then be passed as an argument to functions which use the C
+//! conventions for strings.
 //!
 //! * **From C to Rust:** [`CStr`] represents a borrowed C string; it
 //! is what you would use to wrap a raw `*const u8` that you got from
-//! a C function.  A `CStr` is just guaranteed to be a nul-terminated
-//! array of bytes; the UTF-8 validation step only happens when you
-//! request to convert it to a `&str`.
+//! a C function.  A `CStr` is guaranteed to be a nul-terminated array
+//! of bytes.  Once you have a `CStr`, you can convert it to a Rust
+//! `&str` if it's valid UTF-8, or lossily convert it by adding
+//! replacement characters.
 //!
 //! [`OsString`] and [`OsStr`] are useful when you need to transfer
-//! strings to and from operating system calls.  If you need Rust
-//! strings out of them, they can take care of conversion to and from
-//! the operating system's preferred form for strings — of course, it
-//! may not be possible to convert all valid operating system strings
-//! into valid UTF-8; the `OsString` and `OsStr` functions let you know
-//! when this is the case.
+//! strings to and from the operating system itself, or when capturing
+//! the output of external commands.  Conversions between `OsString`,
+//! `OsStr` and Rust strings work similarly to those for [`CString`]
+//! and [`CStr`].
 //!
 //! * [`OsString`] represents an owned string in whatever
 //! representation the operating system prefers.  In the Rust standard
@@ -101,9 +109,10 @@
 //!
 //! ## On Unix
 //!
-//! On Unix, [`OsStr`] implements the `std::os::unix:ffi::`[`OsStrExt`][unix.OsStrExt] trait, which
-//! augments it with two methods, [`from_bytes`] and [`as_bytes`].  These do inexpensive conversions
-//! from and to UTF-8 byte slices.
+//! On Unix, [`OsStr`] implements the
+//! `std::os::unix:ffi::`[`OsStrExt`][unix.OsStrExt] trait, which
+//! augments it with two methods, [`from_bytes`] and [`as_bytes`].
+//! These do inexpensive conversions from and to UTF-8 byte slices.
 //!
 //! Additionally, on Unix [`OsString`] implements the
 //! `std::os::unix:ffi::`[`OsStringExt`][unix.OsStringExt] trait,
@@ -112,14 +121,16 @@
 //!
 //! ## On Windows
 //!
-//! On Windows, [`OsStr`] implements the `std::os::windows::ffi::`[`OsStrExt`][windows.OsStrExt]
-//! trait, which provides an [`encode_wide`] method.  This provides an iterator that can be
-//! [`collect`]ed into a vector of [`u16`].
+//! On Windows, [`OsStr`] implements the
+//! `std::os::windows::ffi::`[`OsStrExt`][windows.OsStrExt] trait,
+//! which provides an [`encode_wide`] method.  This provides an
+//! iterator that can be [`collect`]ed into a vector of [`u16`].
 //!
 //! Additionally, on Windows [`OsString`] implements the
-//! `std::os::windows:ffi::`[`OsStringExt`][windows.OsStringExt] trait, which provides a
-//! [`from_wide`] method.  The result of this method is an `OsString` which can be round-tripped to
-//! a Windows string losslessly.
+//! `std::os::windows:ffi::`[`OsStringExt`][windows.OsStringExt]
+//! trait, which provides a [`from_wide`] method.  The result of this
+//! method is an `OsString` which can be round-tripped to a Windows
+//! string losslessly.
 //!
 //! [`String`]: ../string/struct.String.html
 //! [`str`]: ../primitive.str.html
