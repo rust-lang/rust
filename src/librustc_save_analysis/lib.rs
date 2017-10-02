@@ -721,6 +721,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Enum(def_id) |
             HirDef::TyAlias(def_id) |
             HirDef::TyForeign(def_id) |
+            HirDef::TraitAlias(def_id) |
             HirDef::AssociatedTy(def_id) |
             HirDef::Trait(def_id) |
             HirDef::TyParam(def_id) => {

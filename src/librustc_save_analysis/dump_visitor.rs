@@ -285,6 +285,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             HirDef::Enum(..) |
             HirDef::TyAlias(..) |
             HirDef::TyForeign(..) |
+            HirDef::TraitAlias(..) |
             HirDef::Trait(_) => {
                 let span = self.span_from_span(sub_span.expect("No span found for type ref"));
                 self.dumper.dump_ref(Ref {
