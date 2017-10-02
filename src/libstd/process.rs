@@ -1129,7 +1129,8 @@ pub fn exit(code: i32) -> ! {
 /// This is in contrast to the default behaviour of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
 /// When `panic="abort"` is set, either as an argument to `rustc` or in a
-/// crate's Cargo.toml, [`panic!`] and `abort` are equivalent.
+/// crate's Cargo.toml, [`panic!`] and `abort` are similar. However,
+/// [`panic!`] will still call the [panic hook] while `abort` will not.
 ///
 /// If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
@@ -1171,6 +1172,7 @@ pub fn exit(code: i32) -> ! {
 /// ```
 ///
 /// [`panic!`]: ../../std/macro.panic.html
+/// [panic hook]: ../../std/panic/fn.set_hook.html
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     unsafe { ::sys::abort_internal() };
