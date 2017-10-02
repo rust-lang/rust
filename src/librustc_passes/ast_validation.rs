@@ -283,6 +283,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
+            ItemKind::TraitAlias(Generics { ref ty_params, .. }, ..) => {
+                for &TyParam { ref bounds, ref default, span, .. } in ty_params {
+                    if !bounds.is_empty() {
+                        self.err_handler().span_err(span,
+                                                    "type parameters on the left side of a \
+                                                     trait alias cannot be bounded");
+                    }
+                    if !default.is_none() {
+                        self.err_handler().span_err(span,
+                                                    "type parameters on the left side of a \
+                                                     trait alias cannot have defaults");
+                    }
+                }
+            }
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");

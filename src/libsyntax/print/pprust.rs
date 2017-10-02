@@ -1381,6 +1381,27 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
+            ast::ItemKind::TraitAlias(ref generics, ref bounds) => {
+                self.head("")?;
+                self.print_visibility(&item.vis)?;
+                self.word_nbsp("trait")?;
+                self.print_ident(item.ident)?;
+                self.print_generics(generics)?;
+                let mut real_bounds = Vec::with_capacity(bounds.len());
+                // FIXME(durka) this seems to be some quite outdated syntax
+                for b in bounds.iter() {
+                    if let TraitTyParamBound(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
+                        self.s.space()?;
+                        self.word_space("for ?")?;
+                        self.print_trait_ref(&ptr.trait_ref)?;
+                    } else {
+                        real_bounds.push(b.clone());
+                    }
+                }
+                self.print_bounds(" = ", &real_bounds[..])?;
+                self.print_where_clause(&generics.where_clause)?;
+                self.s.word(";")?;
+            }
             ast::ItemKind::Mac(codemap::Spanned { ref node, .. }) => {
                 self.print_path(&node.path, false, 0, false)?;
                 self.s.word("! ")?;

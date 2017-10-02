@@ -1929,6 +1929,10 @@ pub enum ItemKind {
     ///
     /// E.g. `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`
     Trait(IsAuto, Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
+    /// Trait alias
+    ///
+    /// E.g. `trait Foo = Bar + Quux;`
+    TraitAlias(Generics, TyParamBounds),
     /// Auto trait implementation.
     ///
     /// E.g. `impl Trait for .. {}` or `impl<T> Trait<T> for .. {}`
@@ -1968,6 +1972,7 @@ impl ItemKind {
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
+            ItemKind::TraitAlias(..) => "trait alias",
             ItemKind::Mac(..) |
             ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |

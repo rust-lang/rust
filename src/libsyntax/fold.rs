@@ -921,6 +921,9 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             folder.fold_bounds(bounds),
             items.move_flat_map(|item| folder.fold_trait_item(item)),
         ),
+        ItemKind::TraitAlias(generics, bounds) => ItemKind::TraitAlias(
+            folder.fold_generics(generics),
+            folder.fold_bounds(bounds)),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
         ItemKind::MacroDef(def) => ItemKind::MacroDef(folder.fold_macro_def(def)),
     }
