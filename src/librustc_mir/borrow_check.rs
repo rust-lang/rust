@@ -1053,12 +1053,12 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     // End-user visible description of `lvalue`
     fn describe_lvalue(&self, lvalue: &Lvalue) -> String {
         let mut buf = String::new();
-        self.append_lvalue_to_string(lvalue, &mut buf);
+        self.append_lvalue_to_string(lvalue, &mut buf, None);
         buf
     }
 
     // Appends end-user visible description of `lvalue` to `buf`.
-    fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String) {
+    fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String, autoderef: Option<bool>) {
         match *lvalue {
             Lvalue::Local(local) => {
                 let local = &self.mir.local_decls[local];
@@ -1071,15 +1071,25 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
             }
             Lvalue::Projection(ref proj) => {
+                let mut autoderef = autoderef.unwrap_or(false);
                 let (prefix, suffix, index_operand) = match proj.elem {
-                    ProjectionElem::Deref =>
-                        ("(*", format!(")"), None),
+                    ProjectionElem::Deref => {
+                        if autoderef {
+                            ("", format!(""), None)
+                        } else {
+                            ("(*", format!(")"), None)
+                        }
+                    },
                     ProjectionElem::Downcast(..) =>
                         ("",   format!(""), None), // (dont emit downcast info)
-                    ProjectionElem::Field(field, _ty) =>
-                        ("",   format!(".{}", field.index()), None), // FIXME: report name of field
-                    ProjectionElem::Index(index) =>
-                        ("",   format!(""), Some(index)),
+                    ProjectionElem::Field(field, _ty) => {
+                        autoderef = true;
+                        ("", format!(".{}", self.describe_field(&proj.base, field.index())), None)
+                    },
+                    ProjectionElem::Index(index) => {
+                        autoderef = true;
+                        ("",   format!(""), Some(index))
+                    },
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
                         ("",   format!("[{} of {}]", offset, min_length), None),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
@@ -1092,13 +1102,84 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         ("",   format!("[{}:-{}]", from, to), None),
                 };
                 buf.push_str(prefix);
-                self.append_lvalue_to_string(&proj.base, buf);
+                self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
                 if let Some(index) = index_operand {
                     buf.push_str("[");
-                    self.append_lvalue_to_string(&Lvalue::Local(index), buf);
+                    self.append_lvalue_to_string(&Lvalue::Local(index), buf, None);
                     buf.push_str("]");
                 } else {
                     buf.push_str(&suffix);
+                }
+            }
+        }
+    }
+
+    // End-user visible description of the `field_index`nth field of `base`
+    fn describe_field(&self, base: &Lvalue, field_index: usize) -> String {
+        match *base {
+            Lvalue::Local(local) => {
+                let local = &self.mir.local_decls[local];
+                self.describe_field_from_ty(&local.ty, field_index)
+            },
+            Lvalue::Static(ref static_) => {
+                self.describe_field_from_ty(&static_.ty, field_index)
+            },
+            Lvalue::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Deref =>
+                        self.describe_field(&proj.base, field_index),
+                    ProjectionElem::Downcast(..) => {
+                        debug!("End-user description not implemented for field of projection {:?}",
+                               proj);
+                        format!("<downcast>{}", field_index)
+                    },
+                    ProjectionElem::Field(..) => {
+                        debug!("End-user description not implemented for field of projection {:?}",
+                               proj);
+                        format!("<field>{}", field_index)
+                    },
+                    ProjectionElem::Index(..) => {
+                        debug!("End-user description not implemented for field of projection {:?}",
+                               proj);
+                        format!("<index>{}", field_index)
+                    },
+                    ProjectionElem::ConstantIndex { .. } => {
+                        debug!("End-user description not implemented for field of projection {:?}",
+                               proj);
+                        format!("<constant_index>{}", field_index)
+                    },
+                    ProjectionElem::Subslice { .. } => {
+                        debug!("End-user description not implemented for field of projection {:?}",
+                               proj);
+                        format!("<subslice>{}", field_index)
+                    }
+                }
+            }
+        }
+    }
+
+    // End-user visible description of the `field_index`nth field of `ty`
+    fn describe_field_from_ty(&self, ty: &ty::Ty, field_index: usize) -> String {
+        if ty.is_box() {
+            // If the type is a box, the field is described from the boxed type
+            self.describe_field_from_ty(&ty.boxed_ty(), field_index)
+        }
+        else {
+            match ty.sty {
+                ty::TyAdt(def, _) => {
+                    if def.is_enum() {
+                        format!("{}", field_index)
+                    }
+                    else {
+                        format!("{}", def.struct_variant().fields[field_index].name)
+                    }
+                },
+                ty::TyTuple(_, _) => {
+                    format!("{}", field_index)
+                },
+                _ => {
+                    debug!("End-user description not implemented for field of type {:?}", ty.sty);
+                    format!("<ty>{}", field_index)
                 }
             }
         }
