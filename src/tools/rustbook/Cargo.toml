@@ -8,5 +8,5 @@ license = "MIT/Apache-2.0"
 clap = "2.25.0"
 
 [dependencies.mdbook]
-version = "0.0.25"
+version = "0.0.26"
 default-features = false
