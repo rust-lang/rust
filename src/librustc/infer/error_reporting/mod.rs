@@ -794,8 +794,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let generics = self.tcx.generics_of(did);
                     // Account for the case where `did` corresponds to `Self`, which doesn't have
                     // the expected type argument.
-                    if generics.types.len() > 0 {
-                        let type_param = generics.type_param(param);
+                    if !param.is_self() {
+                        let type_param = generics.type_param(param, self.tcx);
                         let hir = &self.tcx.hir;
                         hir.as_local_node_id(type_param.def_id).map(|id| {
                             // Get the `hir::TyParam` to verify wether it already has any bounds.
