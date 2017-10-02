@@ -553,7 +553,12 @@ impl EmitterWriter {
                                code_offset + annotation.start_col,
                                style);
                 }
-                _ => (),
+                _ => {
+                    buffer.set_style_range(line_offset,
+                                           code_offset + annotation.start_col,
+                                           code_offset + annotation.end_col,
+                                           Style::Highlight);
+               }
             }
         }
 
