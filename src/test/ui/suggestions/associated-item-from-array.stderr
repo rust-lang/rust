@@ -1,0 +1,11 @@
+error: expected one of `.`, `;`, `?`, or an operator, found `::`
+  --> $DIR/associated-item-from-array.rs:13:21
+   |
+13 |     let _ = [i32; 3]::clone(&a);
+   |             --------^^
+   |             |       |
+   |             |       expected one of `.`, `;`, `?`, or an operator here
+   |             help: did you mean to use an associated type?: `<[i32; 3]>::`
+
+error: aborting due to previous error
+
