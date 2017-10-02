@@ -158,7 +158,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             // Other `pub` items inherit levels from parents
             hir::ItemConst(..) | hir::ItemEnum(..) | hir::ItemExternCrate(..) |
             hir::ItemGlobalAsm(..) | hir::ItemFn(..) | hir::ItemMod(..) |
-            hir::ItemStatic(..) | hir::ItemStruct(..) | hir::ItemTrait(..) |
+            hir::ItemStatic(..) | hir::ItemStruct(..) |
+            hir::ItemTrait(..) | hir::ItemTraitAlias(..) |
             hir::ItemTy(..) | hir::ItemUnion(..) | hir::ItemUse(..) => {
                 if item.vis == hir::Public { self.prev_level } else { None }
             }
@@ -212,7 +213,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemUse(..) | hir::ItemStatic(..) | hir::ItemConst(..) |
-            hir::ItemGlobalAsm(..) | hir::ItemTy(..) | hir::ItemMod(..) |
+            hir::ItemGlobalAsm(..) | hir::ItemTy(..) | hir::ItemMod(..) | hir::ItemTraitAlias(..) |
             hir::ItemFn(..) | hir::ItemExternCrate(..) | hir::ItemAutoImpl(..) => {}
         }
 
@@ -250,6 +251,11 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                             reach.ty();
                         }
                     }
+                }
+            }
+            hir::ItemTraitAlias(..) => {
+                if item_level.is_some() {
+                    self.reach(item.id).generics().predicates();
                 }
             }
             // Visit everything except for private impl items
@@ -1497,6 +1503,9 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                         check.ty();
                     }
                 }
+            }
+            hir::ItemTraitAlias(..) => {
+                self.check(item.id, item_visibility).generics().predicates();
             }
             hir::ItemEnum(ref def, _) => {
                 self.check(item.id, item_visibility).generics().predicates();

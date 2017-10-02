@@ -106,7 +106,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_data = match i.node {
             ItemKind::AutoImpl(..) | ItemKind::Impl(..) =>
                 DefPathData::Impl,
-            ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) | ItemKind::Trait(..) |
+            ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
+            ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
                 DefPathData::TypeNs(i.ident.name.as_str()),
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {

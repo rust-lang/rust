@@ -469,6 +469,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             | hir::ItemStruct(_, ref generics)
             | hir::ItemUnion(_, ref generics)
             | hir::ItemTrait(_, _, ref generics, ..)
+            | hir::ItemTraitAlias(ref generics, ..)
             | hir::ItemImpl(_, _, _, ref generics, ..) => {
                 // These kinds of items have only early bound lifetime parameters.
                 let mut index = if let hir::ItemTrait(..) = item.node {

@@ -268,7 +268,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemExternCrate(_) | hir::ItemUse(..) |
                     hir::ItemTy(..) | hir::ItemStatic(..) |
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
-                    hir::ItemImpl(..) | hir::ItemTrait(..) |
+                    hir::ItemImpl(..) | hir::ItemTrait(..) | hir::ItemTraitAlias(..) |
                     hir::ItemStruct(..) | hir::ItemEnum(..) |
                     hir::ItemUnion(..) | hir::ItemAutoImpl(..) |
                     hir::ItemGlobalAsm(..) => {}

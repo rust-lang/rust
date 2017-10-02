@@ -526,6 +526,11 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
+        ItemTraitAlias(ref generics, ref bounds) => {
+            visitor.visit_id(item.id);
+            visitor.visit_generics(generics);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+        }
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }

@@ -894,6 +894,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemTy(..)          |
             hir::ItemAutoImpl(..) |
             hir::ItemTrait(..)       |
+            hir::ItemTraitAlias(..)  |
             hir::ItemMod(..)         => {
                 // Nothing to do, just keep recursing...
             }

@@ -979,6 +979,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 EntryKind::Trait(self.lazy(&data))
             }
             hir::ItemExternCrate(_) |
+            hir::ItemTraitAlias(..) |
             hir::ItemUse(..) => bug!("cannot encode info for item {:?}", item),
         };
 
@@ -1526,7 +1527,8 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
             hir::ItemAutoImpl(..) |
-            hir::ItemTy(..) => {
+            hir::ItemTy(..) |
+            hir::ItemTraitAlias(..) => {
                 // no sub-item recording needed in these cases
             }
             hir::ItemEnum(..) => {

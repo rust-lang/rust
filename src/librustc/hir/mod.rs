@@ -1888,6 +1888,8 @@ pub enum Item_ {
     ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
     ItemTrait(IsAuto, Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
+    /// Represents a Trait Alias Declaration
+    ItemTraitAlias(Generics, TyParamBounds),
 
     /// Auto trait implementations
     ///
@@ -1919,6 +1921,7 @@ impl Item_ {
             ItemStruct(..) => "struct",
             ItemUnion(..) => "union",
             ItemTrait(..) => "trait",
+            ItemTraitAlias(..) => "trait alias",
             ItemImpl(..) |
             ItemAutoImpl(..) => "item",
         }
