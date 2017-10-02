@@ -848,6 +848,18 @@ pub fn park_timeout(dur: Duration) {
     *guard = false;
 }
 
+/// Set the name of the current thread
+///
+/// **Panics** if name contains any null bytes
+///
+/// **TODO:** set foreign threads when it is supported on every platform.
+/// Current blockers macOS, redox
+#[unstable(feature = "libstd_thread_rename", issue = "44258")]
+pub fn set_os_name(name: &str) {
+    let cname = CString::new(name).expect("thread name must not contain interior null bytes");
+    imp::Thread::set_name(&cname);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // ThreadId
 ////////////////////////////////////////////////////////////////////////////////
@@ -947,7 +959,7 @@ pub struct Thread {
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
-    // Panics if the name contains nuls.
+    // Panics if the name contains nulls.
     pub(crate) fn new(name: Option<String>) -> Thread {
         let cname = name.map(|n| {
             CString::new(n).expect("thread name may not contain interior null bytes")
@@ -1060,6 +1072,7 @@ impl Thread {
     ///
     /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.22.0", reason = "use os_name() instead")]
     pub fn name(&self) -> Option<&str> {
         self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) } )
     }
@@ -1077,23 +1090,21 @@ impl Thread {
     ///     .name("foo".into());
     ///
     /// let handler = builder.spawn(|| {
-    ///     assert_eq!(thread::current().name(), Some("foo"));
-    ///     thread::current().set_name("bar");
-    ///     assert_eq!(thread::current().name(), Some("bar"));
+    ///     assert_eq!(thread::current().os_name(), Some("foo".to_string()));
+    ///
+    ///     // set a new name
+    ///     thread::set_os_name("bar");
+    ///     assert_eq!(thread::current().os_name(), Some("bar"));
     /// }).unwrap();
     ///
     /// handler.join().unwrap();
     /// ```
-    #[unstable(feature = "thread_rename", reason = "the compiler threw an error at me ;)",
-               issue = "27802")]
-    pub fn set_name(&mut self, name: &str) {
-        let cname = CString::new(name).expect("thread name may not contain interior null bytes");
-        imp::Thread::set_name(&cname);
-        let target: *const Option<CString> = &self.inner.name;
-        unsafe {
-            let target = ::mem::transmute::<*const Option<CString>, &mut Option<CString>>(target);
-            *target = Some(cname);
-        }
+    #[unstable(feature = "libstd_thread_rename", issue = "44258")]
+    pub fn os_name(&self) -> String {
+        let name = unsafe {
+            imp::Thread::get_name()
+        };
+        String::from_utf8_lossy(name)
     }
 }
 

@@ -10,7 +10,7 @@
 
 use alloc::boxed::FnBox;
 use cmp;
-use ffi::CStr;
+use ffi::{CStr, CString};
 use io;
 use libc;
 use mem;
@@ -107,6 +107,20 @@ impl Thread {
             libc::prctl(PR_SET_NAME, name.as_ptr() as libc::c_ulong, 0, 0, 0);
         }
     }
+    #[cfg(any(target_os = "linux",
+              target_os = "android"))]
+    pub fn get_name() -> CString {
+        unsafe {
+            const max_len: usize = 255;
+            let name = [0u8; max_len];
+            let rc: libc::c_int = libc::pthread_getname_np(libc::pthread_self(), name.as_ptr());
+            if rc != 0 {
+                panic!("get_name failed: {}", rc);
+            }
+            name[max_len - 1] = 0;
+            CString::from_bytes_with_nul(&name).unwrap()
+        }
+    }
 
     #[cfg(any(target_os = "freebsd",
               target_os = "dragonfly",
@@ -141,6 +155,14 @@ impl Thread {
               target_os = "emscripten"))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Illumos, Haiku, and Emscripten have no way to set a thread name.
+    }
+    #[cfg(any(target_env = "newlib",
+              target_os = "solaris",
+              target_os = "haiku",
+              target_os = "l4re",
+              target_os = "emscripten"))]
+    pub fn get_name(_name: &CStr) {
+        // Newlib, Illumos, Haiku, and Emscripten have no way to get a thread name.
     }
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(_name: &CStr) {
