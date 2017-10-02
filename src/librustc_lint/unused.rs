@@ -22,6 +22,7 @@ use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
 use syntax::symbol::keywords;
 use syntax::ptr::P;
+use syntax::print::pprust;
 use syntax::util::parser;
 use syntax_pos::Span;
 
@@ -70,9 +71,13 @@ impl UnusedMut {
         let used_mutables = cx.tcx.used_mut_nodes.borrow();
         for (_, v) in &mutables {
             if !v.iter().any(|e| used_mutables.contains(e)) {
-                cx.span_lint(UNUSED_MUT,
-                             cx.tcx.hir.span(v[0]),
-                             "variable does not need to be mutable");
+                let binding_span = cx.tcx.hir.span(v[0]);
+                let mut_span = cx.tcx.sess.codemap().span_until_char(binding_span, ' ');
+                let mut err = cx.struct_span_lint(UNUSED_MUT,
+                                                  binding_span,
+                                                  "variable does not need to be mutable");
+                err.span_suggestion_short(mut_span, "remove this `mut`", "".to_owned());
+                err.emit();
             }
         }
     }
@@ -325,9 +330,40 @@ impl UnusedParens {
             let necessary = struct_lit_needs_parens &&
                             parser::contains_exterior_struct_lit(&inner);
             if !necessary {
-                cx.span_lint(UNUSED_PARENS,
-                             value.span,
-                             &format!("unnecessary parentheses around {}", msg))
+                let span_msg = format!("unnecessary parentheses around {}", msg);
+                let mut err = cx.struct_span_lint(UNUSED_PARENS,
+                                                  value.span,
+                                                  &span_msg);
+                // Remove exactly one pair of parentheses (rather than naïvely
+                // stripping all paren characters)
+                let mut ate_left_paren = false;
+                let mut ate_right_paren = false;
+                let parens_removed = pprust::expr_to_string(value)
+                    .trim_matches(|c| {
+                        match c {
+                            '(' => {
+                                if ate_left_paren {
+                                    false
+                                } else {
+                                    ate_left_paren = true;
+                                    true
+                                }
+                            },
+                            ')' => {
+                                if ate_right_paren {
+                                    false
+                                } else {
+                                    ate_right_paren = true;
+                                    true
+                                }
+                            },
+                            _ => false,
+                        }
+                    }).to_owned();
+                err.span_suggestion_short(value.span,
+                                          "remove these parentheses",
+                                          parens_removed);
+                err.emit();
             }
         }
     }
