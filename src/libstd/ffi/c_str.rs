@@ -23,10 +23,11 @@ use ptr;
 use slice;
 use str::{self, Utf8Error};
 
-/// A type representing an owned, C-compatible, UTF-8 string.
+/// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
+/// middle.
 ///
 /// This type serves the purpose of being able to safely generate a
-/// C-compatible UTF-8 string from a Rust byte slice or vector. An instance of this
+/// C-compatible string from a Rust byte slice or vector. An instance of this
 /// type is a static guarantee that the underlying bytes contain no interior 0
 /// bytes ("nul characters") and that the final byte is 0 ("nul terminator").
 ///
@@ -443,7 +444,7 @@ impl CString {
         Box::into_raw(self.into_inner()) as *mut c_char
     }
 
-    /// Converts the `CString` into a [`String`] if it contains valid Unicode data.
+    /// Converts the `CString` into a [`String`] if it contains valid UTF-8 data.
     ///
     /// On failure, ownership of the original `CString` is returned.
     ///
