@@ -38,8 +38,8 @@ use iter::FusedIterator;
 /// ```
 /// use std::ascii::AsciiExt;
 ///
-/// assert_eq!("café".to_ascii_uppercase(), "CAFÉ");
-/// assert_eq!("café".to_ascii_uppercase(), "CAFé");
+/// assert_eq!(AsciiExt::to_ascii_uppercase("café"), "CAFÉ");
+/// assert_eq!(AsciiExt::to_ascii_uppercase("café"), "CAFé");
 /// ```
 ///
 /// In the first example, the lowercased string is represented `"cafe\u{301}"`
@@ -681,7 +681,9 @@ impl fmt::Debug for EscapeDefault {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    //! Note that most of these tests are not testing `AsciiExt` methods, but
+    //! test inherent ascii methods of char, u8, str and [u8]. `AsciiExt` is
+    //! just using those methods, though.
     use char::from_u32;
 
     #[test]

@@ -15,6 +15,7 @@
 use std::mem;
 use std::fmt::{self, Write};
 use std::ops;
+#[cfg(stage0)]
 use std::ascii::AsciiExt;
 
 use syntax::symbol::Symbol;

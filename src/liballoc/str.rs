@@ -390,8 +390,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut v = String::from("hello");
     /// // correct length
     /// assert!(v.get_mut(0..5).is_some());
@@ -617,8 +615,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut s = "Per Martin-Löf".to_string();
     /// {
     ///     let (first, last) = s.split_at_mut(3);

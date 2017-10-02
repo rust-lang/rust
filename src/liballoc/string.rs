@@ -773,8 +773,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut s = String::from("foobar");
     /// let s_mut_str = s.as_mut_str();
     ///

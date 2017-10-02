@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::mem::size_of;
 use std::panic;
@@ -966,5 +965,3 @@ fn drain_filter_complex() {
         assert_eq!(vec, vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     }
 }
-
-
