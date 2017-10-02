@@ -13,22 +13,12 @@
 #![crate_name = "foo"]
 
 pub trait SomeTrait {}
-
 pub struct SomeStruct;
 
-//
+// @has foo/trait.SomeTrait.html '//a/@href' '../src/foo/issue-43893.rs.html#19'
+impl SomeTrait for usize {}
 
-// dummy
-// @has foo/trait.SomeTrait.html '//a/@href' '../src/foo/issue-43893.rs.html#23-26'
-impl SomeTrait for usize {
-
-
-}
-
-// @has foo/trait.SomeTrait.html '//a/@href' '../src/foo/issue-43893.rs.html#29-32'
+// @has foo/trait.SomeTrait.html '//a/@href' '../src/foo/issue-43893.rs.html#22-24'
 impl SomeTrait for SomeStruct {
-
-
+    // deliberately multi-line impl
 }
-
-// some trailer
