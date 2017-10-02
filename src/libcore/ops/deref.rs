@@ -40,7 +40,7 @@
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`DerefMut`]: trait.DerefMut.html
 /// [more]: #more-on-deref-coercion
-/// [ref-deref-op]: ../../reference/expressions.html#the-dereference-operator
+/// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
 /// [ref-deref-trait]: ../../reference/the-deref-trait.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///
@@ -127,7 +127,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`Deref`]: trait.Deref.html
 /// [more]: #more-on-deref-coercion
-/// [ref-deref-op]: ../../reference/expressions.html#the-dereference-operator
+/// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
 /// [ref-deref-trait]: ../../reference/the-deref-trait.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///
