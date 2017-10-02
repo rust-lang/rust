@@ -70,9 +70,9 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// [`u8`]: ../primitive.u8.html
 /// [`u16`]: ../primitive.u16.html
 /// [String.push_str]: ../string/struct.String.html#method.push_str
-/// [`new`]: #struct.OsString.html#method.new
-/// [`push`]: #struct.OsString.html#method.push
-/// [`as_os_str`]: #struct.OsString.html#method.as_os_str
+/// [`new`]: #method.new
+/// [`push`]: #method.push
+/// [`as_os_str`]: #method.as_os_str
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
