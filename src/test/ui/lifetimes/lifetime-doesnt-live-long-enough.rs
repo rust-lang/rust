@@ -28,7 +28,11 @@ struct Foo<T> {
     foo: &'static T
 }
 
-trait X<T> {}
+trait X<K>: Sized {
+    fn foo<'a, L: X<&'a Nested<K>>>();
+    // check that we give a sane error for `Self`
+    fn bar<'a, L: X<&'a Nested<Self>>>();
+}
 
 struct Nested<K>(K);
 impl<K> Nested<K> {

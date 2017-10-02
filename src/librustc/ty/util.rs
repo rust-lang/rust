@@ -519,9 +519,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 } else if let Some(&ty::TyS {
                     sty: ty::TypeVariants::TyParam(ref pt), ..
                 }) = k.as_type() {
-                    !impl_generics.type_param(pt, self)
-                        .expect("drop impl param doesn't have a ParameterDef?")
-                        .pure_wrt_drop
+                    !impl_generics.type_param(pt, self).pure_wrt_drop
                 } else {
                     // not a type or region param - this should be reported
                     // as an error.
