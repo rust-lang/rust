@@ -474,6 +474,7 @@ impl<'a> PathSource<'a> {
             },
             PathSource::Trait => match def {
                 Def::Trait(..) => true,
+                Def::TraitAlias(..) => true,
                 _ => false,
             },
             PathSource::Expr(..) => match def {
@@ -1931,6 +1932,17 @@ impl<'a> Resolver<'a> {
                                 };
                             });
                         }
+                    });
+                });
+            }
+
+            ItemKind::TraitAlias(ref generics, ref bounds) => {
+                // Create a new rib for the trait-wide type parameters.
+                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+                    let local_def_id = this.definitions.local_def_id(item.id);
+                    this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
+                        this.visit_generics(generics);
+                        walk_list!(this, visit_ty_param_bound, bounds);
                     });
                 });
             }

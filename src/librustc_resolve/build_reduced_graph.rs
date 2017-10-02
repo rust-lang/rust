@@ -344,6 +344,11 @@ impl<'a> Resolver<'a> {
                 }
             }
 
+            ItemKind::TraitAlias(..) => {
+                let def = Def::TraitAlias(self.definitions.local_def_id(item.id));
+                self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
+            }
+
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref struct_def, _) => {
                 // Define a name in the type namespace.
@@ -411,6 +416,7 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.current_module = module;
             }
+
             ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
         }
     }
