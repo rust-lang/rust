@@ -10,17 +10,13 @@
 
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
+// use std::mem;
+// use blake2b::Blake2bHasher;
+// use rustc_serialize::leb128;
+
+use std::num::Wrapping;
 use std::mem;
-use blake2b::Blake2bHasher;
-use rustc_serialize::leb128;
-
-fn write_unsigned_leb128_to_buf(buf: &mut [u8; 16], value: u64) -> usize {
-    leb128::write_unsigned_leb128_to(value as u128, |i, v| buf[i] = v)
-}
-
-fn write_signed_leb128_to_buf(buf: &mut [u8; 16], value: i64) -> usize {
-    leb128::write_signed_leb128_to(value as i128, |i, v| buf[i] = v)
-}
+use std::ptr;
 
 /// When hashing something that ends up affecting properties like symbol names. We
 /// want these symbol names to be calculated independent of other factors like
@@ -41,14 +37,14 @@ fn write_signed_leb128_to_buf(buf: &mut [u8; 16], value: i64) -> usize {
 /// and allows for variable output lengths through its type
 /// parameter.
 pub struct StableHasher<W> {
-    state: Blake2bHasher,
+    state: MetroHash128,
     bytes_hashed: u64,
     width: PhantomData<W>,
 }
 
 impl<W: StableHasherResult> ::std::fmt::Debug for StableHasher<W> {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "{:?}", self.state)
+        write!(f, "{:?}", self.state.v)
     }
 }
 
@@ -59,7 +55,7 @@ pub trait StableHasherResult: Sized {
 impl<W: StableHasherResult> StableHasher<W> {
     pub fn new() -> Self {
         StableHasher {
-            state: Blake2bHasher::new(mem::size_of::<W>(), &[]),
+            state: MetroHash128::new(),
             bytes_hashed: 0,
             width: PhantomData,
         }
@@ -71,56 +67,64 @@ impl<W: StableHasherResult> StableHasher<W> {
 }
 
 impl StableHasherResult for [u8; 20] {
-    fn finish(mut hasher: StableHasher<Self>) -> Self {
-        let mut result: [u8; 20] = [0; 20];
-        result.copy_from_slice(hasher.state.finalize());
-        result
+    fn finish(hasher: StableHasher<Self>) -> Self {
+        let hash = hasher.state.finish128();
+
+        [
+            (hash.0 <<  0) as u8,
+            (hash.0 <<  8) as u8,
+            (hash.0 << 16) as u8,
+            (hash.0 << 24) as u8,
+            (hash.0 << 32) as u8,
+            (hash.0 << 40) as u8,
+            (hash.0 << 48) as u8,
+            (hash.0 << 56) as u8,
+
+            13,
+            29,
+            119,
+            231,
+
+            (hash.1 <<  0) as u8,
+            (hash.1 <<  8) as u8,
+            (hash.1 << 16) as u8,
+            (hash.1 << 24) as u8,
+            (hash.1 << 32) as u8,
+            (hash.1 << 40) as u8,
+            (hash.1 << 48) as u8,
+            (hash.1 << 56) as u8,
+        ]
     }
 }
 
 impl StableHasherResult for u128 {
-    fn finish(mut hasher: StableHasher<Self>) -> Self {
-        let hash_bytes: &[u8] = hasher.finalize();
-        assert!(hash_bytes.len() >= mem::size_of::<u128>());
-
-        unsafe {
-            ::std::ptr::read_unaligned(hash_bytes.as_ptr() as *const u128)
-        }
+    fn finish(hasher: StableHasher<Self>) -> Self {
+        let (_0, _1) = hasher.state.finish128();
+        (_0 as u128) | ((_1 as u128) << 64)
     }
 }
 
 impl StableHasherResult for u64 {
-    fn finish(mut hasher: StableHasher<Self>) -> Self {
-        hasher.state.finalize();
-        hasher.state.finish()
+    fn finish(hasher: StableHasher<Self>) -> Self {
+        hasher.state.finish128().0
+    }
+}
+
+impl StableHasherResult for (u64, u64) {
+    fn finish(hasher: StableHasher<Self>) -> Self {
+        hasher.state.finish128()
     }
 }
 
 impl<W> StableHasher<W> {
     #[inline]
-    pub fn finalize(&mut self) -> &[u8] {
-        self.state.finalize()
+    pub fn finalize(&mut self) -> (u64, u64) {
+        self.state.finish128()
     }
 
     #[inline]
     pub fn bytes_hashed(&self) -> u64 {
         self.bytes_hashed
-    }
-
-    #[inline]
-    fn write_uleb128(&mut self, value: u64) {
-        let mut buf = [0; 16];
-        let len = write_unsigned_leb128_to_buf(&mut buf, value);
-        self.state.write(&buf[..len]);
-        self.bytes_hashed += len as u64;
-    }
-
-    #[inline]
-    fn write_ileb128(&mut self, value: i64) {
-        let mut buf = [0; 16];
-        let len = write_signed_leb128_to_buf(&mut buf, value);
-        self.state.write(&buf[..len]);
-        self.bytes_hashed += len as u64;
     }
 }
 
@@ -146,22 +150,33 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.write_uleb128(i as u64);
+        self.state.write_u16(i.to_le());
+        self.bytes_hashed += 2;
+
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.write_uleb128(i as u64);
+        self.state.write_u32(i.to_le());
+        self.bytes_hashed += 4;
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.write_uleb128(i);
+        self.state.write_u64(i.to_le());
+        self.bytes_hashed += 8;
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.state.write_u128(i.to_le());
+        self.bytes_hashed += 16;
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.write_uleb128(i as u64);
+        self.state.write_usize(i.to_le());
+        self.bytes_hashed += 8;
     }
 
     #[inline]
@@ -172,22 +187,32 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.write_ileb128(i as i64);
+        self.state.write_i16(i.to_le());
+        self.bytes_hashed += 2;
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.write_ileb128(i as i64);
+        self.state.write_i32(i.to_le());
+        self.bytes_hashed += 4;
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.write_ileb128(i);
+        self.state.write_i64(i.to_le());
+        self.bytes_hashed += 8;
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.state.write_i128(i.to_le());
+        self.bytes_hashed += 16;
     }
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        self.write_ileb128(i as i64);
+        self.state.write_isize(i.to_le());
+        self.bytes_hashed += 8;
     }
 }
 
@@ -590,5 +615,204 @@ impl<T, HCX> HashStable<HCX> for StableVec<T>
                                   .collect();
         sorted.sort_unstable();
         sorted.hash_stable(hcx, hasher);
+    }
+}
+
+
+
+
+
+
+macro_rules! impl_read {
+    ($fn_name: ident, $ty: ty) => (
+        #[inline(always)]
+        pub fn $fn_name(ptr_addr: usize) -> Wrapping<u64> {
+            let ptr: *const $ty = ptr_addr as *const $ty;
+            Wrapping(unsafe { *ptr as u64 })
+        }
+    )
+}
+
+impl_read!(read_u64, u64);
+impl_read!(read_u32, u32);
+impl_read!(read_u16, u16);
+impl_read!(read_u8, u8);
+
+#[inline(always)]
+pub fn rotate_right(v: Wrapping<u64>, k: u32) -> Wrapping<u64> {
+    Wrapping(v.0.rotate_right(k))
+}
+
+
+const K0: Wrapping<u64> = Wrapping(0xC83A91E1);
+const K1: Wrapping<u64> = Wrapping(0x8648DBDB);
+const K2: Wrapping<u64> = Wrapping(0x7BDEC03B);
+const K3: Wrapping<u64> = Wrapping(0x2F5870A5);
+
+pub struct MetroHash128 {
+    v: [Wrapping<u64>; 4],
+    b: [u64; 4],
+    bytes: usize,
+}
+
+impl Default for MetroHash128 {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MetroHash128 {
+    #[inline]
+    pub fn new() -> MetroHash128 {
+        Self::with_seed(0)
+    }
+
+    #[inline]
+    pub fn with_seed(seed: u64) -> MetroHash128 {
+        let seed = Wrapping(seed);
+        MetroHash128 {
+            b: unsafe { mem::uninitialized() },
+            v: [(seed - K0) * K3,
+                (seed + K1) * K2,
+                (seed + K0) * K2,
+                (seed - K1) * K3],
+            bytes: 0,
+        }
+    }
+
+    #[inline]
+    fn finish128(&self) -> (u64, u64) {
+        // copy internal state
+        let mut v = self.v;
+
+        // finalize bulk loop, if used
+        if self.bytes >= 32 {
+            v[2] = v[2] ^ (rotate_right(((v[0] + v[3]) * K0) + v[1], 21) * K1);
+            v[3] = v[3] ^ (rotate_right(((v[1] + v[2]) * K1) + v[0], 21) * K0);
+            v[0] = v[0] ^ (rotate_right(((v[0] + v[2]) * K0) + v[3], 21) * K1);
+            v[1] = v[1] ^ (rotate_right(((v[1] + v[3]) * K1) + v[2], 21) * K0);
+        }
+
+        // process any self.bytes remaining in the input buffer
+        let mut ptr = &self.b as *const _ as usize;
+        let end = ptr + self.bytes % 32;
+
+        if (end - ptr) >= 16 {
+            v[0] = v[0] + (read_u64(ptr) * K2);
+            ptr += 8;
+            v[0] = rotate_right(v[0], 33) * K3;
+            v[1] = v[1] + (read_u64(ptr) * K2);
+            ptr += 8;
+            v[1] = rotate_right(v[1], 33) * K3;
+            v[0] = v[0] ^ (rotate_right((v[0] * K2) + v[1], 45) * K1);
+            v[1] = v[1] ^ (rotate_right((v[1] * K3) + v[0], 45) * K0);
+        }
+
+        if (end - ptr) >= 8 {
+            v[0] = v[0] + (read_u64(ptr) * K2);
+            ptr += 8;
+            v[0] = rotate_right(v[0], 33) * K3;
+            v[0] = v[0] ^ (rotate_right((v[0] * K2) + v[1], 27) * K1);
+        }
+
+        if (end - ptr) >= 4 {
+            v[1] = v[1] + (read_u32(ptr) * K2);
+            ptr += 4;
+            v[1] = rotate_right(v[1], 33) * K3;
+            v[1] = v[1] ^ (rotate_right((v[1] * K3) + v[0], 46) * K0);
+        }
+
+        if (end - ptr) >= 2 {
+            v[0] = v[0] + (read_u16(ptr) * K2);
+            ptr += 2;
+            v[0] = rotate_right(v[0], 33) * K3;
+            v[0] = v[0] ^ (rotate_right((v[0] * K2) + v[1], 22) * K1);
+        }
+
+        if (end - ptr) >= 1 {
+            v[1] = v[1] + (read_u8(ptr) * K2);
+            v[1] = rotate_right(v[1], 33) * K3;
+            v[1] = v[1] ^ (rotate_right((v[1] * K3) + v[0], 58) * K0);
+        }
+
+        v[0] = v[0] + (rotate_right((v[0] * K0) + v[1], 13));
+        v[1] = v[1] + (rotate_right((v[1] * K1) + v[0], 37));
+        v[0] = v[0] + (rotate_right((v[0] * K2) + v[1], 13));
+        v[1] = v[1] + (rotate_right((v[1] * K3) + v[0], 37));
+
+        (v[0].0, v[1].0)
+    }
+}
+
+impl Hasher for MetroHash128 {
+    #[inline]
+    fn write(&mut self, bytes: &[u8]) {
+        let mut ptr = bytes.as_ptr() as usize;
+        let end = ptr + bytes.len();
+        // input buffer may be partially filled
+        if self.bytes % 32 != 0 {
+            let mut fill = 32 - (self.bytes % 32);
+            if fill > bytes.len() {
+                fill = bytes.len();
+            }
+
+            unsafe {
+                ptr::copy_nonoverlapping(ptr as *const u8,
+                                         (&mut self.b[0] as *mut _ as *mut u8).offset((self.bytes %
+                                                                                       32) as
+                                                                                      isize),
+                                         fill);
+            }
+            ptr += fill;
+            self.bytes += fill;
+
+            // input buffer is still partially filled
+            if self.bytes % 32 != 0 {
+                return;
+            }
+
+            // process full input buffer
+            self.v[0] = self.v[0] + (read_u64(&self.b[0] as *const _ as usize) * K0);
+            self.v[0] = rotate_right(self.v[0], 29) + self.v[2];
+            self.v[1] = self.v[1] + (read_u64(&self.b[1] as *const _ as usize) * K1);
+            self.v[1] = rotate_right(self.v[1], 29) + self.v[3];
+            self.v[2] = self.v[2] + (read_u64(&self.b[2] as *const _ as usize) * K2);
+            self.v[2] = rotate_right(self.v[2], 29) + self.v[0];
+            self.v[3] = self.v[3] + (read_u64(&self.b[3] as *const _ as usize) * K3);
+            self.v[3] = rotate_right(self.v[3], 29) + self.v[1];
+        }
+
+        // bulk update
+        self.bytes += end - ptr;
+        while ptr + 32 <= end {
+            // process directly from the source, bypassing the input buffer
+            self.v[0] = self.v[0] + (read_u64(ptr) * K0);
+            ptr += 8;
+            self.v[0] = rotate_right(self.v[0], 29) + self.v[2];
+            self.v[1] = self.v[1] + (read_u64(ptr) * K1);
+            ptr += 8;
+            self.v[1] = rotate_right(self.v[1], 29) + self.v[3];
+            self.v[2] = self.v[2] + (read_u64(ptr) * K2);
+            ptr += 8;
+            self.v[2] = rotate_right(self.v[2], 29) + self.v[0];
+            self.v[3] = self.v[3] + (read_u64(ptr) * K3);
+            ptr += 8;
+            self.v[3] = rotate_right(self.v[3], 29) + self.v[1];
+        }
+
+        // store remaining self.bytes in input buffer
+        if ptr < end {
+            unsafe {
+                ptr::copy_nonoverlapping(ptr as *const u8,
+                                         &mut self.b[0] as *mut _ as *mut u8,
+                                         end - ptr);
+            }
+        }
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.finish128().0
     }
 }
