@@ -203,6 +203,26 @@ pub trait BorrowckErrors {
             format!("cannot move out of {}", move_from_desc));
         err
     }
+
+    fn cannot_move_out_of_interior_noncopy(&self,
+                                           move_from_span: Span,
+                                           ty: ty::Ty,
+                                           is_index: bool,
+                                           o: Origin)
+                                           -> DiagnosticBuilder
+    {
+        let type_name = match (&ty.sty, is_index) {
+            (&ty::TyArray(_, _), true) => "array",
+            (&ty::TySlice(_),    _) => "slice",
+            _ => span_bug!(move_from_span, "this path should not cause illegal move"),
+        };
+        let mut err = struct_span_err!(self, move_from_span, E0508,
+                                       "cannot move out of type `{}`, \
+                                        a non-copy {}{OGN}",
+                                       ty, type_name, OGN=o);
+        err.span_label(move_from_span, "cannot move out of here");
+        err
+    }
 }
 
 impl<'b, 'tcx, 'gcx> BorrowckErrors for TyCtxt<'b, 'tcx, 'gcx> {

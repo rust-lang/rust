@@ -147,19 +147,8 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
                 move_from.span, &move_from.descriptive_string(bccx.tcx), Origin::Ast)
         }
         Categorization::Interior(ref b, mc::InteriorElement(ik)) => {
-            let type_name = match (&b.ty.sty, ik) {
-                (&ty::TyArray(_, _), Kind::Index) => "array",
-                (&ty::TySlice(_), _) => "slice",
-                _ => {
-                    span_bug!(move_from.span, "this path should not cause illegal move");
-                },
-            };
-            let mut err = struct_span_err!(bccx, move_from.span, E0508,
-                                           "cannot move out of type `{}`, \
-                                            a non-copy {}",
-                                           b.ty, type_name);
-            err.span_label(move_from.span, "cannot move out of here");
-            err
+            bccx.cannot_move_out_of_interior_noncopy(
+                move_from.span, b.ty, ik == Kind::Index, Origin::Ast)
         }
 
         Categorization::Downcast(ref b, _) |
