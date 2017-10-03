@@ -15,7 +15,7 @@
 #![feature(custom_attribute)]
 
 pub struct S {
-  _field: [i64; 4],
+  _field: [i32; 8],
 }
 
 pub struct UnsafeInner {
@@ -66,7 +66,7 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 pub fn mutable_borrow(_: &mut i32) {
 }
 
-// CHECK: @indirect_struct(%S* noalias nocapture dereferenceable(32) %arg0)
+// CHECK: @indirect_struct(%S* noalias nocapture align 4 dereferenceable(32) %arg0)
 #[no_mangle]
 pub fn indirect_struct(_: S) {
 }
@@ -77,17 +77,17 @@ pub fn indirect_struct(_: S) {
 pub fn borrowed_struct(_: &S) {
 }
 
-// CHECK: noalias dereferenceable(4) i32* @_box(i32* noalias dereferenceable(4) %x)
+// CHECK: noalias align 4 dereferenceable(4) i32* @_box(i32* noalias dereferenceable(4) %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
   x
 }
 
-// CHECK: @struct_return(%S* noalias nocapture sret dereferenceable(32))
+// CHECK: @struct_return(%S* noalias nocapture sret align 4 dereferenceable(32))
 #[no_mangle]
 pub fn struct_return() -> S {
   S {
-    _field: [0, 0, 0, 0]
+    _field: [0, 0, 0, 0, 0, 0, 0, 0]
   }
 }
 

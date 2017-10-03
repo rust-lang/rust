@@ -718,7 +718,9 @@ extern "C" {
                                        FunctionTy: TypeRef)
                                        -> ValueRef;
     pub fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
+    pub fn LLVMRustAddAlignmentAttr(Fn: ValueRef, index: c_uint, bytes: u32);
     pub fn LLVMRustAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: u64);
+    pub fn LLVMRustAddDereferenceableOrNullAttr(Fn: ValueRef, index: c_uint, bytes: u64);
     pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
                                               index: c_uint,
@@ -748,7 +750,11 @@ extern "C" {
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: c_uint);
     pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: Attribute);
+    pub fn LLVMRustAddAlignmentCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u32);
     pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u64);
+    pub fn LLVMRustAddDereferenceableOrNullCallSiteAttr(Instr: ValueRef,
+                                                        index: c_uint,
+                                                        bytes: u64);
 
     // Operations on load/store instructions (only)
     pub fn LLVMSetVolatile(MemoryAccessInst: ValueRef, volatile: Bool);

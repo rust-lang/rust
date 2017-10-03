@@ -96,20 +96,24 @@ impl ArgAttribute {
 
 /// A compact representation of LLVM attributes (at least those relevant for this module)
 /// that can be manipulated without interacting with LLVM's Attribute machinery.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct ArgAttributes {
     regular: ArgAttribute,
-    dereferenceable_bytes: u64,
+    pointee_size: Size,
+    pointee_align: Option<Align>
 }
 
 impl ArgAttributes {
-    pub fn set(&mut self, attr: ArgAttribute) -> &mut Self {
-        self.regular = self.regular | attr;
-        self
+    fn new() -> Self {
+        ArgAttributes {
+            regular: ArgAttribute::default(),
+            pointee_size: Size::from_bytes(0),
+            pointee_align: None,
+        }
     }
 
-    pub fn set_dereferenceable(&mut self, size: Size) -> &mut Self {
-        self.dereferenceable_bytes = size.bytes();
+    pub fn set(&mut self, attr: ArgAttribute) -> &mut Self {
+        self.regular = self.regular | attr;
         self
     }
 
@@ -118,24 +122,52 @@ impl ArgAttributes {
     }
 
     pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+        let mut regular = self.regular;
         unsafe {
-            self.regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
-            if self.dereferenceable_bytes != 0 {
-                llvm::LLVMRustAddDereferenceableAttr(llfn,
-                                                     idx.as_uint(),
-                                                     self.dereferenceable_bytes);
+            let deref = self.pointee_size.bytes();
+            if deref != 0 {
+                if regular.contains(ArgAttribute::NonNull) {
+                    llvm::LLVMRustAddDereferenceableAttr(llfn,
+                                                         idx.as_uint(),
+                                                         deref);
+                } else {
+                    llvm::LLVMRustAddDereferenceableOrNullAttr(llfn,
+                                                               idx.as_uint(),
+                                                               deref);
+                }
+                regular -= ArgAttribute::NonNull;
             }
+            if let Some(align) = self.pointee_align {
+                llvm::LLVMRustAddAlignmentAttr(llfn,
+                                               idx.as_uint(),
+                                               align.abi() as u32);
+            }
+            regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
         }
     }
 
     pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
+        let mut regular = self.regular;
         unsafe {
-            self.regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
-            if self.dereferenceable_bytes != 0 {
-                llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite,
-                                                             idx.as_uint(),
-                                                             self.dereferenceable_bytes);
+            let deref = self.pointee_size.bytes();
+            if deref != 0 {
+                if regular.contains(ArgAttribute::NonNull) {
+                    llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite,
+                                                                 idx.as_uint(),
+                                                                 deref);
+                } else {
+                    llvm::LLVMRustAddDereferenceableOrNullCallSiteAttr(callsite,
+                                                                       idx.as_uint(),
+                                                                       deref);
+                }
+                regular -= ArgAttribute::NonNull;
             }
+            if let Some(align) = self.pointee_align {
+                llvm::LLVMRustAddAlignmentCallSiteAttr(callsite,
+                                                       idx.as_uint(),
+                                                       align.abi() as u32);
+            }
+            regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
         }
     }
 }
@@ -439,12 +471,20 @@ pub struct ArgType<'tcx> {
 
 impl<'a, 'tcx> ArgType<'tcx> {
     fn new(layout: TyLayout<'tcx>) -> ArgType<'tcx> {
+        let mut attrs = ArgAttributes::new();
+
+        if let layout::Abi::Scalar(ref scalar) = layout.abi {
+            if scalar.is_bool() {
+                attrs.set(ArgAttribute::ZExt);
+            }
+        }
+
         ArgType {
             kind: ArgKind::Direct,
             layout,
             cast: None,
             pad: None,
-            attrs: ArgAttributes::default(),
+            attrs,
             nested: vec![]
         }
     }
@@ -454,14 +494,16 @@ impl<'a, 'tcx> ArgType<'tcx> {
         assert_eq!(self.kind, ArgKind::Direct);
 
         // Wipe old attributes, likely not valid through indirection.
-        self.attrs = ArgAttributes::default();
+        self.attrs = ArgAttributes::new();
 
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
         // program-invisible so can't possibly capture
         self.attrs.set(ArgAttribute::NoAlias)
                   .set(ArgAttribute::NoCapture)
-                  .set_dereferenceable(self.layout.size);
+                  .set(ArgAttribute::NonNull);
+        self.attrs.pointee_size = self.layout.size;
+        self.attrs.pointee_align = Some(self.layout.align);
 
         self.kind = ArgKind::Indirect;
     }
@@ -470,6 +512,22 @@ impl<'a, 'tcx> ArgType<'tcx> {
         assert!(self.nested.is_empty());
         assert_eq!(self.kind, ArgKind::Direct);
         self.kind = ArgKind::Ignore;
+    }
+
+    fn safe_pointee(&mut self, layout: TyLayout) {
+        match self.layout.abi {
+            layout::Abi::Scalar(layout::Scalar {
+                value: layout::Pointer,
+                ref valid_range
+            }) => {
+                if valid_range.start > 0 {
+                    self.attrs.set(ArgAttribute::NonNull);
+                }
+                self.attrs.pointee_size = layout.size;
+                self.attrs.pointee_align = Some(layout.align);
+            }
+            _ => bug!("ArgType::safe_pointee({:#?}): not a pointer", self.layout)
+        }
     }
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
@@ -694,13 +752,85 @@ impl<'a, 'tcx> FnType<'tcx> {
             _ => false
         };
 
+        // Handle safe Rust thin and fat pointers.
+        let adjust_for_rust_type = |arg: &mut ArgType<'tcx>, is_return: bool| {
+            // We only handle thin pointers here.
+            match arg.layout.abi {
+                layout::Abi::Scalar(layout::Scalar { value: layout::Pointer, .. }) => {}
+                _ => return
+            }
+
+            let mut ty = arg.layout.ty;
+
+            // FIXME(eddyb) detect more nested cases than `Option<&T>` here.
+            match arg.layout.variants {
+                layout::Variants::NicheFilling { dataful_variant, .. } => {
+                    let variant = arg.layout.for_variant(ccx, dataful_variant);
+                    for i in 0..variant.fields.count() {
+                        let field = variant.field(ccx, i);
+                        match field.abi {
+                            layout::Abi::Scalar(layout::Scalar { value: layout::Pointer, .. }) => {
+                                // We found the pointer field, use its type.
+                                ty = field.ty;
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            match ty.sty {
+                // `Box` pointer parameters never alias because ownership is transferred
+                ty::TyAdt(def, _) if def.is_box() => {
+                    arg.attrs.set(ArgAttribute::NoAlias);
+
+                    arg.safe_pointee(ccx.layout_of(ty.boxed_ty()));
+                }
+
+                ty::TyRef(_, mt) => {
+                    // `&mut` pointer parameters never alias other parameters,
+                    // or mutable global data
+                    //
+                    // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
+                    // and can be marked as both `readonly` and `noalias`, as
+                    // LLVM's definition of `noalias` is based solely on memory
+                    // dependencies rather than pointer equality
+                    let is_freeze = ccx.shared().type_is_freeze(mt.ty);
+
+                    let no_alias_is_safe =
+                        if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias ||
+                           ccx.shared().tcx().sess.panic_strategy() == PanicStrategy::Abort {
+                            // Mutable refrences or immutable shared references
+                            mt.mutbl == hir::MutMutable || is_freeze
+                        } else {
+                            // Only immutable shared references
+                            mt.mutbl != hir::MutMutable && is_freeze
+                        };
+
+                    if no_alias_is_safe {
+                        arg.attrs.set(ArgAttribute::NoAlias);
+                    }
+
+                    if mt.mutbl == hir::MutImmutable && is_freeze && !is_return {
+                        arg.attrs.set(ArgAttribute::ReadOnly);
+                    }
+
+                    arg.safe_pointee(ccx.layout_of(mt.ty));
+                }
+                _ => {}
+            }
+
+            // HACK(eddyb) LLVM inserts `llvm.assume` calls when inlining functions
+            // with align attributes, and those calls later block optimizations.
+            if !is_return {
+                arg.attrs.pointee_align = None;
+            }
+        };
+
         let arg_of = |ty: Ty<'tcx>, is_return: bool| {
             let mut arg = ArgType::new(ccx.layout_of(ty));
-            if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
-                if scalar.is_bool() {
-                    arg.attrs.set(ArgAttribute::ZExt);
-                }
-            }
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
@@ -710,107 +840,27 @@ impl<'a, 'tcx> FnType<'tcx> {
                     arg.ignore();
                 }
             }
+
+            // FIXME(eddyb) other ABIs don't have logic for nested.
+            if !is_return && type_is_fat_ptr(ccx, arg.layout.ty) && rust_abi {
+                arg.nested = vec![
+                    ArgType::new(arg.layout.field(ccx, 0)),
+                    ArgType::new(arg.layout.field(ccx, 1))
+                ];
+                adjust_for_rust_type(&mut arg.nested[0], false);
+                adjust_for_rust_type(&mut arg.nested[1], false);
+            } else {
+                adjust_for_rust_type(&mut arg, is_return);
+            }
+
             arg
         };
 
-        let ret_ty = sig.output();
-        let mut ret = arg_of(ret_ty, true);
-
-        if !type_is_fat_ptr(ccx, ret_ty) {
-            // The `noalias` attribute on the return value is useful to a
-            // function ptr caller.
-            if ret_ty.is_box() {
-                // `Box` pointer return values never alias because ownership
-                // is transferred
-                ret.attrs.set(ArgAttribute::NoAlias);
-            }
-
-            // We can also mark the return value as `dereferenceable` in certain cases
-            match ret_ty.sty {
-                // These are not really pointers but pairs, (pointer, len)
-                ty::TyRef(_, ty::TypeAndMut { ty, .. }) => {
-                    ret.attrs.set_dereferenceable(ccx.size_of(ty));
-                }
-                ty::TyAdt(def, _) if def.is_box() => {
-                    ret.attrs.set_dereferenceable(ccx.size_of(ret_ty.boxed_ty()));
-                }
-                _ => {}
-            }
-        }
-
-        let mut args = Vec::with_capacity(inputs.len() + extra_args.len());
-
-        // Handle safe Rust thin and fat pointers.
-        let rust_ptr_attrs = |ty: Ty<'tcx>, arg: &mut ArgType| match ty.sty {
-            // `Box` pointer parameters never alias because ownership is transferred
-            ty::TyAdt(def, _) if def.is_box() => {
-                arg.attrs.set(ArgAttribute::NoAlias);
-                Some(ty.boxed_ty())
-            }
-
-            ty::TyRef(_, mt) => {
-                // `&mut` pointer parameters never alias other parameters, or mutable global data
-                //
-                // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
-                // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
-                // on memory dependencies rather than pointer equality
-                let is_freeze = ccx.shared().type_is_freeze(mt.ty);
-
-                let no_alias_is_safe =
-                    if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias ||
-                       ccx.shared().tcx().sess.panic_strategy() == PanicStrategy::Abort {
-                        // Mutable refrences or immutable shared references
-                        mt.mutbl == hir::MutMutable || is_freeze
-                    } else {
-                        // Only immutable shared references
-                        mt.mutbl != hir::MutMutable && is_freeze
-                    };
-
-                if no_alias_is_safe {
-                    arg.attrs.set(ArgAttribute::NoAlias);
-                }
-
-                if mt.mutbl == hir::MutImmutable && is_freeze {
-                    arg.attrs.set(ArgAttribute::ReadOnly);
-                }
-
-                Some(mt.ty)
-            }
-            _ => None
-        };
-
-        for ty in inputs.iter().chain(extra_args.iter()) {
-            let mut arg = arg_of(ty, false);
-
-            if type_is_fat_ptr(ccx, ty) {
-                let mut data = ArgType::new(arg.layout.field(ccx, 0));
-                let mut info = ArgType::new(arg.layout.field(ccx, 1));
-
-                if let Some(inner) = rust_ptr_attrs(ty, &mut data) {
-                    data.attrs.set(ArgAttribute::NonNull);
-                    if ccx.tcx().struct_tail(inner).is_trait() {
-                        // vtables can be safely marked non-null, readonly
-                        // and noalias.
-                        info.attrs.set(ArgAttribute::NonNull);
-                        info.attrs.set(ArgAttribute::ReadOnly);
-                        info.attrs.set(ArgAttribute::NoAlias);
-                    }
-                }
-                // FIXME(eddyb) other ABIs don't have logic for nested.
-                if rust_abi {
-                    arg.nested = vec![data, info];
-                }
-            } else {
-                if let Some(inner) = rust_ptr_attrs(ty, &mut arg) {
-                    arg.attrs.set_dereferenceable(ccx.size_of(inner));
-                }
-            }
-            args.push(arg);
-        }
-
         FnType {
-            args,
-            ret,
+            ret: arg_of(sig.output(), true),
+            args: inputs.iter().chain(extra_args.iter()).map(|ty| {
+                arg_of(ty, false)
+            }).collect(),
             variadic: sig.variadic,
             cconv,
         }
