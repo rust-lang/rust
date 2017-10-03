@@ -199,7 +199,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.crate_root = std_inject::injected_crate_name(&krate);
         let mut module = ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
-            directory: self.cx.codemap().span_to_path(krate.span),
+            directory: self.cx.codemap().span_to_unmapped_path(krate.span),
         };
         module.directory.pop();
         self.cx.current_expansion.module = Rc::new(module);
@@ -951,7 +951,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         module.directory.push(&*item.ident.name.as_str());
                     }
                 } else {
-                    let mut path = self.cx.parse_sess.codemap().span_to_path(inner);
+                    let mut path = self.cx.parse_sess.codemap().span_to_unmapped_path(inner);
                     let directory_ownership = match path.file_name().unwrap().to_str() {
                         Some("mod.rs") => DirectoryOwnership::Owned,
                         _ => DirectoryOwnership::UnownedViaMod(false),

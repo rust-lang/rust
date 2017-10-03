@@ -502,8 +502,9 @@ pub struct FileMap {
     pub name: FileName,
     /// True if the `name` field above has been modified by -Zremap-path-prefix
     pub name_was_remapped: bool,
-    /// The path of the file that the source came from.
-    pub path: PathBuf,
+    /// The unmapped path of the file that the source came from.
+    /// Set to `None` if the FileMap was imported from an external crate.
+    pub unmapped_path: Option<PathBuf>,
     /// Indicates which crate this FileMap was imported from.
     pub crate_of_origin: u32,
     /// The complete source code
@@ -629,7 +630,7 @@ impl Decodable for FileMap {
             Ok(FileMap {
                 name,
                 name_was_remapped,
-                path: PathBuf::new(),
+                unmapped_path: None,
                 // `crate_of_origin` has to be set by the importer.
                 // This value matches up with rustc::hir::def_id::INVALID_CRATE.
                 // That constant is not available here unfortunately :(
@@ -655,7 +656,7 @@ impl fmt::Debug for FileMap {
 impl FileMap {
     pub fn new(name: FileName,
                name_was_remapped: bool,
-               path: PathBuf,
+               unmapped_path: PathBuf,
                mut src: String,
                start_pos: BytePos) -> FileMap {
         remove_bom(&mut src);
@@ -669,7 +670,7 @@ impl FileMap {
         FileMap {
             name,
             name_was_remapped,
-            path,
+            unmapped_path: Some(unmapped_path),
             crate_of_origin: 0,
             src: Some(Rc::new(src)),
             src_hash,
