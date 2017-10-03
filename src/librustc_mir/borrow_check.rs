@@ -385,7 +385,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         // borrow of immutable ref, moves through non-`Box`-ref)
         let (sd, rw) = kind;
         self.each_borrow_involving_path(
-            context, (sd, lvalue_span.0), flow_state, |this, _index, borrow| {
+            context, (sd, lvalue_span.0), flow_state, |this, _index, borrow, common_prefix| {
                 match (rw, borrow.kind) {
                     (Read(_), BorrowKind::Shared) => {
                         Control::Continue
@@ -399,6 +399,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                             ReadKind::Borrow(bk) =>
                                 this.report_conflicting_borrow(
                                     context, lvalue_span,
+                                    common_prefix,
                                     (lvalue_span.0, bk), (&borrow.lvalue, borrow.kind)),
                         }
                         Control::Break
@@ -408,6 +409,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                             WriteKind::MutableBorrow(bk) =>
                                 this.report_conflicting_borrow(
                                     context, lvalue_span,
+                                    common_prefix,
                                     (lvalue_span.0, bk), (&borrow.lvalue, borrow.kind)),
                             WriteKind::StorageDead |
                             WriteKind::Mutate =>
@@ -704,7 +706,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                      access_lvalue: (ShallowOrDeep, &Lvalue<'gcx>),
                                      flow_state: &InProgress<'b, 'gcx>,
                                      mut op: F)
-        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'gcx>) -> Control
+        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'gcx>, &Lvalue) -> Control
     {
         let (access, lvalue) = access_lvalue;
 
@@ -726,9 +728,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             // to #38899. Will probably need back-compat mode flag.
             for accessed_prefix in self.prefixes(lvalue, PrefixSet::All) {
                 if *accessed_prefix == borrowed.lvalue {
-                    // FIXME: pass in prefix here too? And/or enum
-                    // describing case we are in?
-                    let ctrl = op(self, i, borrowed);
+                    // FIXME: pass in enum describing case we are in?
+                    let ctrl = op(self, i, borrowed, accessed_prefix);
                     if ctrl == Control::Break { return; }
                 }
             }
@@ -753,9 +754,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
             for borrowed_prefix in self.prefixes(&borrowed.lvalue, prefix_kind) {
                 if borrowed_prefix == lvalue {
-                    // FIXME: pass in prefix here too? And/or enum
-                    // describing case we are in?
-                    let ctrl = op(self, i, borrowed);
+                    // FIXME: pass in enum describing case we are in?
+                    let ctrl = op(self, i, borrowed, borrowed_prefix);
                     if ctrl == Control::Break { return; }
                 }
             }
@@ -779,6 +779,30 @@ mod prefixes {
     use rustc::hir;
     use rustc::ty::{self, TyCtxt};
     use rustc::mir::{Lvalue, Mir, ProjectionElem};
+
+    pub trait IsPrefixOf<'tcx> {
+        fn is_prefix_of(&self, other: &Lvalue<'tcx>) -> bool;
+    }
+
+    impl<'tcx> IsPrefixOf<'tcx> for Lvalue<'tcx> {
+        fn is_prefix_of(&self, other: &Lvalue<'tcx>) -> bool {
+            let mut cursor = other;
+            loop {
+                if self == cursor {
+                    return true;
+                }
+
+                match *cursor {
+                    Lvalue::Local(_) |
+                    Lvalue::Static(_) => return false,
+                    Lvalue::Projection(ref proj) => {
+                        cursor = &proj.base;
+                    }
+                }
+            }
+        }
+    }
+
 
     pub(super) struct Prefixes<'c, 'tcx: 'c> {
         mir: &'c Mir<'tcx>,
@@ -946,12 +970,16 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn report_conflicting_borrow(&mut self,
                                  _context: Context,
                                  (lvalue, span): (&Lvalue, Span),
+                                 common_prefix: &Lvalue,
                                  loan1: (&Lvalue, BorrowKind),
                                  loan2: (&Lvalue, BorrowKind)) {
+        use self::prefixes::IsPrefixOf;
+
         let (loan1_lvalue, loan1_kind) = loan1;
         let (loan2_lvalue, loan2_kind) = loan2;
-        // FIXME: obviously falsifiable. Generalize for non-eq lvalues later.
-        assert_eq!(loan1_lvalue, loan2_lvalue);
+
+        assert!(common_prefix.is_prefix_of(loan1_lvalue));
+        assert!(common_prefix.is_prefix_of(loan2_lvalue));
 
         // FIXME: supply non-"" `opt_via` when appropriate
         let mut err = match (loan1_kind, "immutable", "mutable",
