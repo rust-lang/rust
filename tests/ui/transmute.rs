@@ -118,4 +118,21 @@ fn crosspointer() {
     }
 }
 
+#[warn(transmute_int_to_char)]
+fn int_to_char() {
+    let _: char = unsafe { std::mem::transmute(0_u32) };
+    let _: char = unsafe { std::mem::transmute(0_i32) };
+}
+
+#[warn(transmute_int_to_bool)]
+fn int_to_bool() {
+    let _: bool = unsafe { std::mem::transmute(0_u8) };
+}
+
+#[warn(transmute_int_to_float)]
+fn int_to_float() {
+    let _: f32 = unsafe { std::mem::transmute(0_u32) };
+    let _: f32 = unsafe { std::mem::transmute(0_i32) };
+}
+
 fn main() { }
