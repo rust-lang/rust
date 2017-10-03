@@ -701,11 +701,11 @@ pub mod tests {
 
     /// A wrapper for `Span` that can be randomly generated.
     #[derive(Clone, Debug)]
-    pub struct Span_(Span);
+    pub struct Span_(u32, u32);
 
     impl Span_ {
         pub fn inner(self) -> Span {
-            self.0
+            Span::new(BytePos(self.0), BytePos(self.1), SyntaxContext::empty())
         }
     }
 
@@ -713,7 +713,7 @@ pub mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Span_ {
             let a: u32 = Arbitrary::arbitrary(g);
             let b: u32 = Arbitrary::arbitrary(g);
-            Span_(Span::new(BytePos(min(a, b)), BytePos(max(a, b)), SyntaxContext::empty()))
+            Span_(min(a, b), max(a, b))
         }
     }
 
