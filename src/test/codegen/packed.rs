@@ -39,7 +39,7 @@ pub struct BigPacked {
 #[no_mangle]
 pub fn call_pkd(f: fn() -> Array) -> BigPacked {
 // CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca %Array
-// CHECK: call void %{{.*}}(%Array* noalias nocapture sret dereferenceable(32) [[ALLOCA]])
+// CHECK: call void %{{.*}}(%Array* noalias nocapture sret align 4 dereferenceable(32) [[ALLOCA]])
 // CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{.*}}, i8* %{{.*}}, i{{[0-9]+}} 32, i32 1, i1 false)
     // check that calls whose destination is a field of a packed struct
     // go through an alloca rather than calling the function with an
