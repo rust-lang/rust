@@ -38,5 +38,3 @@ error: this pattern creates a reference to a reference
 50 |     let _ = v.iter().filter(|&ref a| a.is_empty());
    |                               ^^^^^ help: change this to: `a`
 
-error: aborting due to 6 previous errors
-

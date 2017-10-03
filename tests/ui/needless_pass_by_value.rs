@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(needless_pass_by_value)]
 #![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names)]

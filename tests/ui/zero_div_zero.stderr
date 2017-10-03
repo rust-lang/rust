@@ -57,5 +57,3 @@ error: constant division of 0.0 with 0.0 will always result in NaN
    |
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 
-error: aborting due to 8 previous errors
-

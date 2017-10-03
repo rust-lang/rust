@@ -18,5 +18,3 @@ error: useless use of `format!`
 15 |     format!("{}", arg);
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
-

@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(absurd_extreme_comparisons)]
 #![allow(unused, eq_op, no_effect, unnecessary_operation, needless_pass_by_value)]

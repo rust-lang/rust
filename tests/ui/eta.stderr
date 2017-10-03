@@ -32,5 +32,3 @@ error: redundant closure found
 18 |     let e = Some(1u8).map(|a| generic(a));
    |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `generic`
 
-error: aborting due to 5 previous errors
-

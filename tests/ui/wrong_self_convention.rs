@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(wrong_self_convention)]
 #![warn(wrong_pub_self_convention)]

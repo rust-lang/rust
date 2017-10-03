@@ -30,5 +30,3 @@ error: Try not to call a closure in the expression where it is declared.
 12 |  k = (|a,b| a*b)(1,5);
    |      ^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
-

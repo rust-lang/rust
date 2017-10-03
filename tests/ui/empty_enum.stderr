@@ -11,5 +11,3 @@ help: consider using the uninhabited type `!` or a wrapper around it
 7 | enum Empty {}
   | ^^^^^^^^^^^^^
 
-error: aborting due to previous error
-

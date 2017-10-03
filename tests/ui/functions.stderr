@@ -75,5 +75,3 @@ error: this public function dereferences a raw pointer but is not marked `unsafe
 63 |         unsafe { std::ptr::read(p) };
    |                                 ^
 
-error: aborting due to 12 previous errors
-

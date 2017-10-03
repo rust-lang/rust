@@ -36,5 +36,3 @@ error: useless use of `vec!`
 49 |     for a in vec![1, 2, 3] {
    |              ^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
 
-error: aborting due to 6 previous errors
-

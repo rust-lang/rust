@@ -130,5 +130,3 @@ help: try
 39 |     let _ = !(a == b && c == d);
    |             ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
-

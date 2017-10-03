@@ -72,5 +72,3 @@ error: methods called `from_*` usually take no self; consider choosing a less am
 54 |     pub fn from_i64(self) {}
    |                     ^^^^
 
-error: aborting due to 12 previous errors
-

@@ -17,5 +17,3 @@ error[E0308]: mismatched types
   = note: expected type `u32`
              found type `{integer}`
 
-error: aborting due to 2 previous errors
-

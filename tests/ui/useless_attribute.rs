@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(useless_attribute)]
 
 #[allow(dead_code, unused_extern_crates)]

@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(nonminimal_bool, logic_bug)]
 
 #[allow(unused, many_single_char_names)]

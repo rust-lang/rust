@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(integer_arithmetic, float_arithmetic)]
 #![allow(unused, shadow_reuse, shadow_unrelated, no_effect, unnecessary_operation)]

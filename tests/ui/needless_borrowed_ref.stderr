@@ -24,5 +24,3 @@ error: this pattern takes a reference on something that is being de-referenced
 42 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
    |                                      ^^^^^^ help: try removing the `&ref` part and just keep: `k`
 
-error: aborting due to 4 previous errors
-

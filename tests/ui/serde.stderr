@@ -10,5 +10,3 @@ error: you should not implement `visit_string` without also implementing `visit_
    |
    = note: `-D serde-api-misuse` implied by `-D warnings`
 
-error: aborting due to previous error
-

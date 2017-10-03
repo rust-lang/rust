@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(serde_api_misuse)]
 #![allow(dead_code)]
 

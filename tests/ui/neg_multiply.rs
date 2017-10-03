@@ -1,6 +1,6 @@
-#![feature(plugin)]
 
-#![plugin(clippy)]
+
+
 #![warn(neg_multiply)]
 #![allow(no_effect, unnecessary_operation)]
 

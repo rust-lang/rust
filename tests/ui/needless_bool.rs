@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(needless_bool)]
 
 #[allow(if_same_then_else)]

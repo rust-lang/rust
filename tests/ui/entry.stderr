@@ -42,5 +42,3 @@ error: usage of `contains_key` followed by `insert` on a `BTreeMap`
 37 |     if !m.contains_key(&k) { foo(); m.insert(k, v) } else { None };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `m.entry(k)`
 
-error: aborting due to 7 previous errors
-

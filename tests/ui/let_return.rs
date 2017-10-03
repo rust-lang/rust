@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(unused)]
 
 #![warn(let_and_return)]

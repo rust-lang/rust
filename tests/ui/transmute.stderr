@@ -154,5 +154,3 @@ error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
 117 |         let _: *mut Usize = core::intrinsics::transmute(my_int());
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
-

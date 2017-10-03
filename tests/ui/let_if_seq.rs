@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![allow(unused_variables, unused_assignments, similar_names, blacklisted_name)]
 #![warn(useless_let_if_seq)]

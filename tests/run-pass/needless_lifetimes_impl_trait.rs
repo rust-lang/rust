@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![feature(conservative_impl_trait)]
 #![deny(needless_lifetimes)]
 #![allow(dead_code)]

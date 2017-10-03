@@ -1,5 +1,5 @@
 #![feature(inclusive_range_syntax, plugin)]
-#![plugin(clippy)]
+
 
 #![warn(indexing_slicing)]
 #![warn(out_of_bounds_indexing)]

@@ -15,5 +15,3 @@ error: All the struct fields are matched to a wildcard pattern, consider using `
    |
    = help: Try with `Foo { .. }` instead
 
-error: aborting due to 2 previous errors
-

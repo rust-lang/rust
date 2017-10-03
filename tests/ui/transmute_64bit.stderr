@@ -12,5 +12,3 @@ error: transmute from a `f64` to a pointer
 11 |         let _: *mut usize = std::mem::transmute(6.0f64);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
-

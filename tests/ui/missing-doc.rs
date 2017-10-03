@@ -11,8 +11,8 @@
  *   except according to those terms.
  */
 
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(missing_docs_in_private_items)]
 
 // When denying at the crate level, be sure to not get random warnings from the

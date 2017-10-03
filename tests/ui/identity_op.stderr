@@ -42,5 +42,3 @@ error: the operation is ineffective. Consider reducing it to `x`
 29 |     -1 & x;
    |     ^^^^^^
 
-error: aborting due to 7 previous errors
-

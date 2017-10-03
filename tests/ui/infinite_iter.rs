@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+#![feature(iterator_for_each)]
+
 use std::iter::repeat;
 
 fn square_is_lower_64(x: &u32) -> bool { x * x < 64 }

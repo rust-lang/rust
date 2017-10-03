@@ -24,5 +24,3 @@ error: redundant pattern matching, consider using `is_some()`
 17 |     if let Some(_) = Some(42) {
    |     -------^^^^^^^----------- help: try this: `if Some(42).is_some()`
 
-error: aborting due to 4 previous errors
-

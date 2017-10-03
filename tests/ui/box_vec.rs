@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(clippy)]
 #![allow(boxed_local, needless_pass_by_value)]

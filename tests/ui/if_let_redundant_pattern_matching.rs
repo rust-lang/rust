@@ -1,6 +1,6 @@
-#![feature(plugin)]
 
-#![plugin(clippy)]
+
+
 #![warn(clippy)]
 #![warn(if_let_redundant_pattern_matching)]
 

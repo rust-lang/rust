@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(cast_precision_loss, cast_possible_truncation, cast_sign_loss, cast_possible_wrap, cast_lossless)]
 #[allow(no_effect, unnecessary_operation)]

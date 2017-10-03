@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(while_let_loop, empty_loop, while_let_on_iterator)]
 #![allow(dead_code, never_loop, unused, cyclomatic_complexity)]

@@ -1,7 +1,7 @@
 #![feature(plugin, alloc)]
 #![feature(associated_type_defaults)]
 
-#![plugin(clippy)]
+
 #![warn(clippy)]
 #![allow(dead_code, needless_pass_by_value)]
 

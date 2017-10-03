@@ -55,5 +55,3 @@ error: There is no need for an explicit `else` block for this `if` expression
            println!("Jabber");
            ...
 
-error: aborting due to 2 previous errors
-

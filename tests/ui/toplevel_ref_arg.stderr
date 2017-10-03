@@ -30,5 +30,3 @@ error: `ref` on an entire `let` pattern is discouraged, take a reference with `&
 24 |   let ref mut z = 1 + 2;
    |   ----^^^^^^^^^--------- help: try: `let z = &mut (1 + 2);`
 
-error: aborting due to 5 previous errors
-

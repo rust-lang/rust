@@ -87,5 +87,3 @@ help: if you mean to use an octal constant, use `0o`
 30 |     let fail8 = 0o123;
    |                 ^^^^^
 
-error: aborting due to 11 previous errors
-

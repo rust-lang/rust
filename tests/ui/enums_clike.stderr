@@ -48,5 +48,3 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
 37 |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
-

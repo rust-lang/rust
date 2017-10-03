@@ -149,5 +149,3 @@ error: trivial regex
    |
    = help: consider using consider using `str::is_empty`
 
-error: aborting due to 21 previous errors
-

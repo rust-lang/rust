@@ -266,5 +266,3 @@ error: statement can be reduced
 83 |     {get_number()};
    |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
-error: aborting due to 44 previous errors
-

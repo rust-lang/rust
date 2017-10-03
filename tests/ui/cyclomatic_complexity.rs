@@ -1,5 +1,5 @@
 #![feature(plugin, custom_attribute)]
-#![plugin(clippy)]
+
 #![allow(clippy)]
 #![warn(cyclomatic_complexity)]
 #![allow(unused)]

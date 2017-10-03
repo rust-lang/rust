@@ -1,3 +1,5 @@
+warning: running cargo clippy on a crate that also imports the clippy plugin
+
 error: attempt to mutate range bound within loop; note that the range of the loop is unchanged
   --> $DIR/mut_range_bound.rs:18:21
    |
@@ -29,6 +31,4 @@ error: attempt to mutate range bound within loop; note that the range of the loo
    |
 40 |         let n = &mut m;  // warning
    |                      ^
-
-error: aborting due to 5 previous errors
 

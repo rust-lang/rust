@@ -143,5 +143,3 @@ error: <-comparison of unit values detected. This will always be false
    |
    = note: `-D unit-cmp` implied by `-D warnings`
 
-error: aborting due to 18 previous errors
-

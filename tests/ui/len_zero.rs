@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(len_without_is_empty, len_zero)]
 #![allow(dead_code, unused)]

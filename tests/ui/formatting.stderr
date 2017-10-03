@@ -86,5 +86,3 @@ error: possibly missing a comma here
    |
    = note: to remove this lint, add a comma or write the expr in a single line
 
-error: aborting due to 10 previous errors
-

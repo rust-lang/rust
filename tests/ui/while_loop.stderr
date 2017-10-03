@@ -110,5 +110,3 @@ error: this loop could be written as a `for` loop
 184 | |         }
     | |_________^ help: try: `for v in y { .. }`
 
-error: aborting due to 11 previous errors
-

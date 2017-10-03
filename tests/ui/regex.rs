@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![allow(unused)]
 #![warn(invalid_regex, trivial_regex, regex_macro)]

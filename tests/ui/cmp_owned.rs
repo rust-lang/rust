@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(cmp_owned)]
 #[allow(unnecessary_operation)]

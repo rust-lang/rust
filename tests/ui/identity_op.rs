@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 const ONE : i64 = 1;
 const NEG_ONE : i64 = -1;

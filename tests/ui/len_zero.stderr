@@ -94,5 +94,3 @@ error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_e
 191 | | }
     | |_^
 
-error: aborting due to 12 previous errors
-

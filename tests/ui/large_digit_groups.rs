@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #[warn(large_digit_groups)]
 #[allow(unused_variables)]
 fn main() {

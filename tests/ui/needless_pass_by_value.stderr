@@ -56,5 +56,3 @@ help: consider taking a reference instead
 56 |     let Wrapper(_) = *y; // still not moved
    |
 
-error: aborting due to 7 previous errors
-

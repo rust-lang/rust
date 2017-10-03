@@ -47,5 +47,3 @@ error: digit groups should be smaller
   |
   = help: consider: 123_456.123_456_f32
 
-error: aborting due to 6 previous errors
-
