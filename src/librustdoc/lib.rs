@@ -14,6 +14,7 @@
        html_playground_url = "https://play.rust-lang.org/")]
 #![deny(warnings)]
 
+#![feature(ascii_ctype)]
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]

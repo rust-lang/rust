@@ -1631,7 +1631,7 @@ impl [u8] {
     ///
     /// - U+0041 'A' ... U+005A 'Z', or
     /// - U+0061 'a' ... U+007A 'z'.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_alphabetic(&self) -> bool {
         self.iter().all(|b| b.is_ascii_alphabetic())
@@ -1639,7 +1639,7 @@ impl [u8] {
 
     /// Checks if all bytes of this slice are ASCII uppercase characters:
     /// U+0041 'A' ... U+005A 'Z'.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_uppercase(&self) -> bool {
         self.iter().all(|b| b.is_ascii_uppercase())
@@ -1647,7 +1647,7 @@ impl [u8] {
 
     /// Checks if all bytes of this slice are ASCII lowercase characters:
     /// U+0061 'a' ... U+007A 'z'.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_lowercase(&self) -> bool {
         self.iter().all(|b| b.is_ascii_lowercase())
@@ -1658,7 +1658,7 @@ impl [u8] {
     /// - U+0041 'A' ... U+005A 'Z', or
     /// - U+0061 'a' ... U+007A 'z', or
     /// - U+0030 '0' ... U+0039 '9'.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_alphanumeric(&self) -> bool {
         self.iter().all(|b| b.is_ascii_alphanumeric())
@@ -1666,7 +1666,7 @@ impl [u8] {
 
     /// Checks if all bytes of this slice are ASCII decimal digit:
     /// U+0030 '0' ... U+0039 '9'.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_digit(&self) -> bool {
         self.iter().all(|b| b.is_ascii_digit())
@@ -1677,7 +1677,7 @@ impl [u8] {
     /// - U+0030 '0' ... U+0039 '9', or
     /// - U+0041 'A' ... U+0046 'F', or
     /// - U+0061 'a' ... U+0066 'f'.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_hexdigit(&self) -> bool {
         self.iter().all(|b| b.is_ascii_hexdigit())
@@ -1689,7 +1689,7 @@ impl [u8] {
     /// - U+003A ... U+0040 `: ; < = > ? @`, or
     /// - U+005B ... U+0060 `[ \\ ] ^ _ \``, or
     /// - U+007B ... U+007E `{ | } ~`
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_punctuation(&self) -> bool {
         self.iter().all(|b| b.is_ascii_punctuation())
@@ -1697,7 +1697,7 @@ impl [u8] {
 
     /// Checks if all bytes of this slice are ASCII graphic characters:
     /// U+0021 '@' ... U+007E '~'.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_graphic(&self) -> bool {
         self.iter().all(|b| b.is_ascii_graphic())
@@ -1722,7 +1722,7 @@ impl [u8] {
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
     /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
     /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_whitespace(&self) -> bool {
         self.iter().all(|b| b.is_ascii_whitespace())
@@ -1735,7 +1735,7 @@ impl [u8] {
     ///
     /// Note that most ASCII whitespace characters are control
     /// characters, but SPACE is not.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[inline]
     pub fn is_ascii_control(&self) -> bool {
         self.iter().all(|b| b.is_ascii_control())

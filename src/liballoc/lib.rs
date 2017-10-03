@@ -83,6 +83,7 @@
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(rand, test))]
 #![feature(allow_internal_unstable)]
+#![feature(ascii_ctype)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
