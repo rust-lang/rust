@@ -153,7 +153,7 @@ take:
     - LLVM then runs its various optimizations, which produces a number of `.o` files
       (one for each "codegen unit").
 6. **Linking**
-    - Finally, those `.o` files are linke together.
+    - Finally, those `.o` files are linked together.
 
 Glossary
 ========
