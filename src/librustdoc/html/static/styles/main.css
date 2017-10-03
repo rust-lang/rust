@@ -235,3 +235,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 .information > .ignore:hover {
 	color: rgba(255,142,0,1);
 }
+
+.search-failed > a {
+	color: #0089ff;
+}

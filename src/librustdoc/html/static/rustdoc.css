@@ -866,3 +866,29 @@ span.since {
 pre.rust {
 	position: relative;
 }
+
+.search-failed {
+	text-align: center;
+	margin-top: 20px;
+}
+
+#titles {
+	height: 35px;
+}
+
+#titles > div {
+	float: left;
+	width: 33.3%;
+	text-align: center;
+	border-bottom: 1px solid #ccc;
+	font-size: 18px;
+	cursor: pointer;
+}
+
+#titles > div.selected {
+	border-bottom: 3px solid #0078ee;
+}
+
+#titles > div:hover {
+	border-bottom: 3px solid #0089ff;
+}
