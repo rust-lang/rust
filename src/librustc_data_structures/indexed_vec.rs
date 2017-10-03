@@ -40,6 +40,10 @@ impl Idx for u32 {
 
 #[macro_export]
 macro_rules! newtype_index {
+    ($name:ident) => (
+        newtype_index!($name, unsafe { ::std::intrinsics::type_name::<$name>() });
+    );
+
     ($name:ident, $debug_name:expr) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
          RustcEncodable, RustcDecodable)]

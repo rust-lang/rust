@@ -155,4 +155,4 @@ struct Region {
     points: FxHashSet<Location>,
 }
 
-newtype_index!(RegionIndex, "region_index");
+newtype_index!(RegionIndex);
