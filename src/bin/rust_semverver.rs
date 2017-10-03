@@ -3,6 +3,8 @@
 
 extern crate env_logger;
 extern crate getopts;
+#[macro_use]
+extern crate log;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -90,6 +92,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                       descriptions: &rustc_errors::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
+        debug!("running rust-semverver early_callback");
         self.default
             .early_callback(matches, sopts, cfg, descriptions, output)
     }
@@ -102,6 +105,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                 ofile: &Option<PathBuf>,
                 descriptions: &rustc_errors::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
+        debug!("running rust-semverver no_input");
         self.default
             .no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
@@ -114,6 +118,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
+        debug!("running rust-semverver late_callback");
         self.default
             .late_callback(matches, sess, cstore, input, odir, ofile)
     }
@@ -128,6 +133,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
         let version = self.version.clone();
 
         controller.after_analysis.callback = box move |state| {
+            debug!("running rust-semverver after_analysis callback");
             callback(state, &version);
             old_callback(state);
         };
@@ -145,6 +151,8 @@ fn main() {
     if env_logger::init().is_err() {
         eprintln!("ERROR: could not initialize logger");
     }
+
+    debug!("running rust-semverver compiler driver");
 
     let home = option_env!("RUSTUP_HOME");
     let toolchain = option_env!("RUSTUP_TOOLCHAIN");
