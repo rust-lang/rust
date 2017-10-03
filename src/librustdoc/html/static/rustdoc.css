@@ -111,7 +111,10 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 h3.impl, h3.method, h3.type {
 	margin-top: 15px;
 }
-h1, h2, h3, h4, .sidebar, a.source, .search-input, .content table :not(code)>a, .collapse-toggle {
+
+h1, h2, h3, h4,
+.sidebar, a.source, .search-input, .content table :not(code)>a,
+.collapse-toggle, ul.item-list > li > .out-of-band {
 	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -307,6 +310,10 @@ h3.impl > .out-of-band {
 }
 
 h4.method > .out-of-band {
+	font-size: 19px;
+}
+
+ul.item-list > li > .out-of-band {
 	font-size: 19px;
 }
 
