@@ -2059,14 +2059,23 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return Ordering::Equal,
-                (None, _   ) => return Ordering::Less,
-                (_   , None) => return Ordering::Greater,
-                (Some(x), Some(y)) => match x.cmp(&y) {
-                    Ordering::Equal => (),
-                    non_eq => return non_eq,
+            let x = match self.next() {
+                None => if other.next().is_none() {
+                    return Ordering::Equal
+                } else {
+                    return Ordering::Less
                 },
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return Ordering::Greater,
+                Some(val) => val,
+            };
+
+            match x.cmp(&y) {
+                Ordering::Equal => (),
+                non_eq => return non_eq,
             }
         }
     }
@@ -2082,14 +2091,23 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return Some(Ordering::Equal),
-                (None, _   ) => return Some(Ordering::Less),
-                (_   , None) => return Some(Ordering::Greater),
-                (Some(x), Some(y)) => match x.partial_cmp(&y) {
-                    Some(Ordering::Equal) => (),
-                    non_eq => return non_eq,
+            let x = match self.next() {
+                None => if other.next().is_none() {
+                    return Some(Ordering::Equal)
+                } else {
+                    return Some(Ordering::Less)
                 },
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return Some(Ordering::Greater),
+                Some(val) => val,
+            };
+
+            match x.partial_cmp(&y) {
+                Some(Ordering::Equal) => (),
+                non_eq => return non_eq,
             }
         }
     }
@@ -2105,11 +2123,17 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return true,
-                (None, _) | (_, None) => return false,
-                (Some(x), Some(y)) => if x != y { return false },
-            }
+            let x = match self.next() {
+                None => return other.next().is_none(),
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return false,
+                Some(val) => val,
+            };
+
+            if x != y { return false }
         }
     }
 
@@ -2124,11 +2148,17 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _) | (_, None) => return true,
-                (Some(x), Some(y)) => if x.ne(&y) { return true },
-            }
+            let x = match self.next() {
+                None => return other.next().is_some(),
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return true,
+                Some(val) => val,
+            };
+
+            if x != y { return true }
         }
     }
 
@@ -2143,18 +2173,21 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _   ) => return true,
-                (_   , None) => return false,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return true,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return false,
-                        None => return false,
-                    }
-                },
+            let x = match self.next() {
+                None => return other.next().is_some(),
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return false,
+                Some(val) => val,
+            };
+
+            match x.partial_cmp(&y) {
+                Some(Ordering::Less) => return true,
+                Some(Ordering::Equal) => (),
+                Some(Ordering::Greater) => return false,
+                None => return false,
             }
         }
     }
@@ -2170,18 +2203,21 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return true,
-                (None, _   ) => return true,
-                (_   , None) => return false,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return true,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return false,
-                        None => return false,
-                    }
-                },
+            let x = match self.next() {
+                None => { other.next(); return true; },
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return false,
+                Some(val) => val,
+            };
+
+            match x.partial_cmp(&y) {
+                Some(Ordering::Less) => return true,
+                Some(Ordering::Equal) => (),
+                Some(Ordering::Greater) => return false,
+                None => return false,
             }
         }
     }
@@ -2197,18 +2233,21 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return false,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return true,
-                        None => return false,
-                    }
-                }
+            let x = match self.next() {
+                None => { other.next(); return false; },
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return true,
+                Some(val) => val,
+            };
+
+            match x.partial_cmp(&y) {
+                Some(Ordering::Less) => return false,
+                Some(Ordering::Equal) => (),
+                Some(Ordering::Greater) => return true,
+                None => return false,
             }
         }
     }
@@ -2224,18 +2263,21 @@ pub trait Iterator {
         let mut other = other.into_iter();
 
         loop {
-            match (self.next(), other.next()) {
-                (None, None) => return true,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return false,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return true,
-                        None => return false,
-                    }
-                },
+            let x = match self.next() {
+                None => return other.next().is_none(),
+                Some(val) => val,
+            };
+
+            let y = match other.next() {
+                None => return true,
+                Some(val) => val,
+            };
+
+            match x.partial_cmp(&y) {
+                Some(Ordering::Less) => return false,
+                Some(Ordering::Equal) => (),
+                Some(Ordering::Greater) => return true,
+                None => return false,
             }
         }
     }
