@@ -23,5 +23,6 @@
     "relocation-model": "static",
     "target-endian": "little",
     "target-pointer-width": "32",
+    "target-c-int-width": "32",
     "vendor": ""
 }
