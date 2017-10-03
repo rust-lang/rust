@@ -223,6 +223,20 @@ pub trait BorrowckErrors {
         err.span_label(move_from_span, "cannot move out of here");
         err
     }
+
+    fn cannot_move_out_of_interior_of_drop(&self,
+                                           move_from_span: Span,
+                                           container_ty: ty::Ty,
+                                           o: Origin)
+                                           -> DiagnosticBuilder
+    {
+        let mut err = struct_span_err!(self, move_from_span, E0509,
+                                       "cannot move out of type `{}`, \
+                                        which implements the `Drop` trait{OGN}",
+                                       container_ty, OGN=o);
+        err.span_label(move_from_span, "cannot move out of here");
+        err
+    }
 }
 
 impl<'b, 'tcx, 'gcx> BorrowckErrors for TyCtxt<'b, 'tcx, 'gcx> {

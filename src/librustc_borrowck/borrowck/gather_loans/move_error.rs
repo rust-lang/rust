@@ -155,13 +155,9 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
         Categorization::Interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
                 ty::TyAdt(def, _) if def.has_dtor(bccx.tcx) => {
-                    let mut err = struct_span_err!(bccx, move_from.span, E0509,
-                                                   "cannot move out of type `{}`, \
-                                                   which implements the `Drop` trait",
-                                                   b.ty);
-                    err.span_label(move_from.span, "cannot move out of here");
-                    err
-                },
+                    bccx.cannot_move_out_of_interior_of_drop(
+                        move_from.span, b.ty, Origin::Ast)
+                }
                 _ => {
                     span_bug!(move_from.span, "this path should not cause illegal move");
                 }
