@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-The `use … (… as …)` syntax can now accept a wildcard `_` as alias to a trait to only import the
+The `use …::{… as …}` syntax can now accept `_` as alias to a trait to only import the
 implementations of such a trait.
 
 # Motivation
@@ -88,7 +88,30 @@ The `_` means that you “don’t care about the name rustc will use for that qu
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-To be defined.
+`use Trait as _` needs to desugar into `use Trait as SomeGenSym`. With this scheme, global imports
+and exports can work properly with such items, i.e. import / re-export them.
+
+```rust
+mod m {
+  pub use Trait as _;
+
+  // `Trait` is in scope
+}
+
+use m::*;
+
+// `Trait` is in scope too
+```
+
+In the case where the symbol is not a *trait*, it works the exact same way. However, a warning must
+be emitted by the compiler to state the unused import (as types don’t have `impl`!).
+
+In the same way, it’s possible to use the same mechanism with `extern crate` for linking-only
+crates:
+
+```rust
+extern crate my_crate as _;
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
