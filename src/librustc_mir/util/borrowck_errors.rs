@@ -57,12 +57,22 @@ pub trait BorrowckErrors {
                          desc, OGN=o)
     }
 
-    fn cannot_use_when_mutably_borrowed(&self, span: Span, desc: &str, o: Origin)
+    fn cannot_use_when_mutably_borrowed(&self,
+                                        span: Span,
+                                        desc: &str,
+                                        borrow_span: Span,
+                                        borrow_desc: &str,
+                                        o: Origin)
                                         -> DiagnosticBuilder
     {
-        struct_span_err!(self, span, E0503,
+        let mut err = struct_span_err!(self, span, E0503,
                          "cannot use `{}` because it was mutably borrowed{OGN}",
-                         desc, OGN=o)
+                         desc, OGN=o);
+
+        err.span_label(borrow_span, format!("borrow of `{}` occurs here", borrow_desc));
+        err.span_label(span, format!("use of borrowed `{}`", borrow_desc));
+
+        err
     }
 
     fn cannot_act_on_uninitialized_variable(&self,
@@ -140,12 +150,17 @@ pub trait BorrowckErrors {
                          desc_new, msg_new, kind_new, noun_old, kind_old, msg_old, OGN=o)
     }
 
-    fn cannot_assign_to_borrowed(&self, span: Span, desc: &str, o: Origin)
+    fn cannot_assign_to_borrowed(&self, span: Span, borrow_span: Span, desc: &str, o: Origin)
                                  -> DiagnosticBuilder
     {
-        struct_span_err!(self, span, E0506,
+        let mut err = struct_span_err!(self, span, E0506,
                          "cannot assign to `{}` because it is borrowed{OGN}",
-                         desc, OGN=o)
+                         desc, OGN=o);
+
+        err.span_label(borrow_span, format!("borrow of `{}` occurs here", desc));
+        err.span_label(span, format!("assignment to borrowed `{}` occurs here", desc));
+
+        err
     }
 
     fn cannot_move_into_closure(&self, span: Span, desc: &str, o: Origin)
@@ -164,11 +179,17 @@ pub trait BorrowckErrors {
                          desc, OGN=o)
     }
 
+    fn cannot_assign(&self, span: Span, desc: &str, o: Origin) -> DiagnosticBuilder
+    {
+        struct_span_err!(self, span, E0594,
+                         "cannot assign to {}{OGN}",
+                         desc, OGN=o)
+    }
+
     fn cannot_assign_static(&self, span: Span, desc: &str, o: Origin)
                             -> DiagnosticBuilder
     {
-        self.struct_span_err(span, &format!("cannot assign to immutable static item {}{OGN}",
-                                            desc, OGN=o))
+        self.cannot_assign(span, &format!("immutable static item `{}`", desc), o)
     }
 }
 

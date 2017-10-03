@@ -759,11 +759,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 let mut db = match err.cause {
                     MutabilityViolation => {
-                        struct_span_err!(self.tcx.sess,
-                                         error_span,
-                                         E0594,
-                                         "cannot assign to {}",
-                                         descr)
+                        self.cannot_assign(error_span, &descr, Origin::Ast)
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
                         struct_span_err!(self.tcx.sess, error_span, E0595,

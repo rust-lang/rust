@@ -1005,5 +1005,6 @@ register_diagnostics! {
     E0493, // destructors cannot be evaluated at compile-time
     E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
+    E0594, // cannot assign to {}
     E0625, // thread-local statics cannot be accessed at compile-time
 }
