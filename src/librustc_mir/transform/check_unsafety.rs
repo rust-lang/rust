@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 
 use rustc::ty::maps::Providers;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::lint::builtin::{SAFE_EXTERN_STATICS, UNUSED_UNSAFE};
@@ -22,16 +22,13 @@ use rustc::mir::visit::{LvalueContext, Visitor};
 use syntax::ast;
 
 use std::rc::Rc;
-
+use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     visibility_scope_info: &'a IndexVec<VisibilityScope, VisibilityScopeInfo>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
-    // true if an a part of this *memory block* of this expression
-    // is being borrowed, used for repr(packed) checking.
-    need_check_packed: bool,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     used_unsafe: FxHashSet<ast::NodeId>,
@@ -53,7 +50,6 @@ impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
             },
             tcx,
             param_env,
-            need_check_packed: false,
             used_unsafe: FxHashSet(),
             inherited_blocks: vec![],
         }
@@ -142,11 +138,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     lvalue: &Lvalue<'tcx>,
                     context: LvalueContext<'tcx>,
                     location: Location) {
-        let old_need_check_packed = self.need_check_packed;
         if let LvalueContext::Borrow { .. } = context {
-            let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
-            if !self.has_align_1(ty) {
-                self.need_check_packed = true;
+            if util::is_disaligned(self.tcx, self.mir, self.param_env, lvalue) {
+                self.require_unsafe("borrow of packed field")
             }
         }
 
@@ -162,9 +156,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         // desugaring, rather than the source info of the RHS.
                         self.source_info = self.mir.local_decls[local].source_info;
                     }
-                }
-                if let &ProjectionElem::Deref = elem {
-                    self.need_check_packed = false;
                 }
                 let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
                 match base_ty.sty {
@@ -194,9 +185,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                 self.require_unsafe("access to union field")
                             }
                         }
-                        if adt.repr.packed() && self.need_check_packed {
-                            self.require_unsafe("borrow of packed field")
-                        }
                     }
                     _ => {}
                 }
@@ -221,19 +209,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
         };
         self.super_lvalue(lvalue, context, location);
-        self.need_check_packed = old_need_check_packed;
     }
 }
 
 impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
-
-    fn has_align_1(&self, ty: Ty<'tcx>) -> bool {
-        self.tcx.at(self.source_info.span)
-            .layout_raw(self.param_env.and(ty))
-            .map(|layout| layout.align.abi() == 1)
-            .unwrap_or(false)
-    }
-
     fn require_unsafe(&mut self,
                       description: &'static str)
     {
