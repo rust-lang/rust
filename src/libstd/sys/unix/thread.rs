@@ -110,6 +110,7 @@ impl Thread {
     #[cfg(any(target_os = "linux",
               target_os = "android"))]
     pub fn get_name() -> CString {
+        // maybe use weak!{ ... } for older glibc
         unsafe {
             const max_len: usize = 255;
             let name = [0u8; max_len];

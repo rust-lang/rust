@@ -1101,10 +1101,8 @@ impl Thread {
     /// ```
     #[unstable(feature = "libstd_thread_rename", issue = "44258")]
     pub fn os_name(&self) -> String {
-        let name = unsafe {
-            imp::Thread::get_name()
-        };
-        String::from_utf8_lossy(name)
+        let name = imp::Thread::get_name();
+        name.into()
     }
 }
 
