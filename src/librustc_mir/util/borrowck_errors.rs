@@ -191,6 +191,18 @@ pub trait BorrowckErrors {
     {
         self.cannot_assign(span, &format!("immutable static item `{}`", desc), o)
     }
+
+    fn cannot_move_out_of(&self, move_from_span: Span, move_from_desc: &str, o: Origin)
+                          -> DiagnosticBuilder
+    {
+        let mut err = struct_span_err!(self, move_from_span, E0507,
+                                       "cannot move out of {}{OGN}",
+                                       move_from_desc, OGN=o);
+        err.span_label(
+            move_from_span,
+            format!("cannot move out of {}", move_from_desc));
+        err
+    }
 }
 
 impl<'b, 'tcx, 'gcx> BorrowckErrors for TyCtxt<'b, 'tcx, 'gcx> {
