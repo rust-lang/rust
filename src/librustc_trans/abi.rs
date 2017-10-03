@@ -760,7 +760,16 @@ impl<'a, 'tcx> FnType<'tcx> {
                 // on memory dependencies rather than pointer equality
                 let is_freeze = ccx.shared().type_is_freeze(mt.ty);
 
-                if mt.mutbl != hir::MutMutable && is_freeze {
+                let no_alias_is_safe =
+                    if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias {
+                        // Mutable refrences or immutable shared references
+                        mt.mutbl == hir::MutMutable || is_freeze
+                    } else {
+                        // Only immutable shared references
+                        mt.mutbl != hir::MutMutable && is_freeze
+                    };
+
+                if no_alias_is_safe {
                     arg.attrs.set(ArgAttribute::NoAlias);
                 }
 
