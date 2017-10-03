@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::Abi;
-use common::*;
-
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::DropInPlaceFnLangItem;
 use rustc::traits;
@@ -99,115 +96,6 @@ pub fn resolve_closure<'a, 'tcx> (
     }
 }
 
-fn resolve_associated_item<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    trait_item: &ty::AssociatedItem,
-    trait_id: DefId,
-    rcvr_substs: &'tcx Substs<'tcx>
-) -> Instance<'tcx> {
-    let def_id = trait_item.def_id;
-    debug!("resolve_associated_item(trait_item={:?}, \
-                                    trait_id={:?}, \
-                                    rcvr_substs={:?})",
-           def_id, trait_id, rcvr_substs);
-
-    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.trans_fulfill_obligation(
-        DUMMY_SP, ty::ParamEnv::empty(traits::Reveal::All), ty::Binder(trait_ref));
-
-    // Now that we know which impl is being used, we can dispatch to
-    // the actual function:
-    match vtbl {
-        traits::VtableImpl(impl_data) => {
-            let (def_id, substs) = traits::find_associated_item(
-                tcx, trait_item, rcvr_substs, &impl_data);
-            let substs = tcx.erase_regions(&substs);
-            ty::Instance::new(def_id, substs)
-        }
-        traits::VtableGenerator(closure_data) => {
-            Instance {
-                def: ty::InstanceDef::Item(closure_data.closure_def_id),
-                substs: closure_data.substs.substs
-            }
-        }
-        traits::VtableClosure(closure_data) => {
-            let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
-            resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
-                            trait_closure_kind)
-        }
-        traits::VtableFnPointer(ref data) => {
-            Instance {
-                def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
-                substs: rcvr_substs
-            }
-        }
-        traits::VtableObject(ref data) => {
-            let index = tcx.get_vtable_index_of_object_method(data, def_id);
-            Instance {
-                def: ty::InstanceDef::Virtual(def_id, index),
-                substs: rcvr_substs
-            }
-        }
-        traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items().clone_trait() => {
-            Instance {
-                def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
-                substs: rcvr_substs
-            }
-        }
-        _ => {
-            bug!("static call to invalid vtable: {:?}", vtbl)
-        }
-    }
-}
-
-/// The point where linking happens. Resolve a (def_id, substs)
-/// pair to an instance.
-pub fn resolve<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
-    substs: &'tcx Substs<'tcx>
-) -> Instance<'tcx> {
-    debug!("resolve(def_id={:?}, substs={:?})",
-           def_id, substs);
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
-        debug!(" => associated item, attempting to find impl");
-        let item = tcx.associated_item(def_id);
-        resolve_associated_item(tcx, &item, trait_def_id, substs)
-    } else {
-        let item_type = def_ty(tcx, def_id, substs);
-        let def = match item_type.sty {
-            ty::TyFnDef(..) if {
-                    let f = item_type.fn_sig(tcx);
-                    f.abi() == Abi::RustIntrinsic ||
-                    f.abi() == Abi::PlatformIntrinsic
-                } =>
-            {
-                debug!(" => intrinsic");
-                ty::InstanceDef::Intrinsic(def_id)
-            }
-            _ => {
-                if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
-                    let ty = substs.type_at(0);
-                    if type_needs_drop(tcx, ty) {
-                        debug!(" => nontrivial drop glue");
-                        ty::InstanceDef::DropGlue(def_id, Some(ty))
-                    } else {
-                        debug!(" => trivial drop glue");
-                        ty::InstanceDef::DropGlue(def_id, None)
-                    }
-                } else {
-                    debug!(" => free item");
-                    ty::InstanceDef::Item(def_id)
-                }
-            }
-        };
-        Instance { def, substs }
-    };
-    debug!("resolve(def_id={:?}, substs={:?}) = {}",
-           def_id, substs, result);
-    result
-}
-
 pub fn resolve_drop_in_place<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>)
@@ -215,7 +103,7 @@ pub fn resolve_drop_in_place<'a, 'tcx>(
 {
     let def_id = tcx.require_lang_item(DropInPlaceFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(ty)]);
-    resolve(tcx, def_id, substs)
+    Instance::resolve(tcx, ty::ParamEnv::empty(traits::Reveal::All), def_id, substs).unwrap()
 }
 
 pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
