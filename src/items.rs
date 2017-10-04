@@ -10,11 +10,13 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
+use std::borrow::Cow;
 use std::cmp::min;
 
 use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::ImplItem;
 use syntax::codemap::{BytePos, Span};
+use syntax::visit;
 
 use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
@@ -125,7 +127,7 @@ impl Rewrite for ast::Local {
 #[allow(dead_code)]
 struct Item<'a> {
     keyword: &'static str,
-    abi: String,
+    abi: Cow<'static, str>,
     vis: Option<&'a ast::Visibility>,
     body: Vec<BodyElement<'a>>,
     span: Span,
@@ -133,14 +135,9 @@ struct Item<'a> {
 
 impl<'a> Item<'a> {
     fn from_foreign_mod(fm: &'a ast::ForeignMod, span: Span, config: &Config) -> Item<'a> {
-        let abi = if fm.abi == abi::Abi::C && !config.force_explicit_abi() {
-            "extern".into()
-        } else {
-            format!("extern {}", fm.abi)
-        };
         Item {
             keyword: "",
-            abi: abi,
+            abi: format_abi(fm.abi, config.force_explicit_abi(), true),
             vis: None,
             body: fm.items
                 .iter()
@@ -159,10 +156,92 @@ enum BodyElement<'a> {
     ForeignItem(&'a ast::ForeignItem),
 }
 
+/// Represents a fn's signature.
+pub struct FnSig<'a> {
+    decl: &'a ast::FnDecl,
+    generics: &'a ast::Generics,
+    abi: abi::Abi,
+    constness: ast::Constness,
+    defaultness: ast::Defaultness,
+    unsafety: ast::Unsafety,
+    visibility: ast::Visibility,
+}
+
+impl<'a> FnSig<'a> {
+    pub fn new(
+        decl: &'a ast::FnDecl,
+        generics: &'a ast::Generics,
+        vis: ast::Visibility,
+    ) -> FnSig<'a> {
+        FnSig {
+            decl: decl,
+            generics: generics,
+            abi: abi::Abi::Rust,
+            constness: ast::Constness::NotConst,
+            defaultness: ast::Defaultness::Final,
+            unsafety: ast::Unsafety::Normal,
+            visibility: vis,
+        }
+    }
+
+    pub fn from_method_sig(method_sig: &'a ast::MethodSig) -> FnSig {
+        FnSig {
+            unsafety: method_sig.unsafety,
+            constness: method_sig.constness.node,
+            defaultness: ast::Defaultness::Final,
+            abi: method_sig.abi,
+            decl: &*method_sig.decl,
+            generics: &method_sig.generics,
+            visibility: ast::Visibility::Inherited,
+        }
+    }
+
+    pub fn from_fn_kind(
+        fn_kind: &'a visit::FnKind,
+        decl: &'a ast::FnDecl,
+        defualtness: ast::Defaultness,
+    ) -> FnSig<'a> {
+        match *fn_kind {
+            visit::FnKind::ItemFn(_, generics, unsafety, constness, abi, visibility, _) => FnSig {
+                decl: decl,
+                generics: generics,
+                abi: abi,
+                constness: constness.node,
+                defaultness: defualtness,
+                unsafety: unsafety,
+                visibility: visibility.clone(),
+            },
+            visit::FnKind::Method(_, ref method_sig, vis, _) => {
+                let mut fn_sig = FnSig::from_method_sig(method_sig);
+                fn_sig.defaultness = defualtness;
+                if let Some(vis) = vis {
+                    fn_sig.visibility = vis.clone();
+                }
+                fn_sig
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn to_str(&self, context: &RewriteContext) -> String {
+        let mut result = String::with_capacity(128);
+        // Vis defaultness constness unsafety abi.
+        result.push_str(&*format_visibility(&self.visibility));
+        result.push_str(format_defaultness(self.defaultness));
+        result.push_str(format_constness(self.constness));
+        result.push_str(format_unsafety(self.unsafety));
+        result.push_str(&format_abi(
+            self.abi,
+            context.config.force_explicit_abi(),
+            false,
+        ));
+        result
+    }
+}
+
 impl<'a> FmtVisitor<'a> {
     fn format_item(&mut self, item: Item) {
         self.buffer.push_str(&item.abi);
-        self.buffer.push_str(" ");
 
         let snippet = self.snippet(item.span);
         let brace_pos = snippet.find_uncommented("{").unwrap();
@@ -216,37 +295,24 @@ impl<'a> FmtVisitor<'a> {
         &mut self,
         indent: Indent,
         ident: ast::Ident,
-        fd: &ast::FnDecl,
-        generics: &ast::Generics,
-        unsafety: ast::Unsafety,
-        constness: ast::Constness,
-        defaultness: ast::Defaultness,
-        abi: abi::Abi,
-        vis: &ast::Visibility,
+        fn_sig: &FnSig,
         span: Span,
         block: &ast::Block,
     ) -> Option<String> {
         let context = self.get_context();
 
-        let block_snippet = self.snippet(mk_sp(block.span.lo(), block.span.hi()));
-        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty()
-            || !context.config.fn_empty_single_line();
-        let mut newline_brace = newline_for_brace(self.config, &generics.where_clause, has_body);
+        let has_body =
+            !is_empty_block(block, self.codemap) || !context.config.fn_empty_single_line();
+        let mut newline_brace =
+            newline_for_brace(self.config, &fn_sig.generics.where_clause, has_body);
 
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(
             &context,
             indent,
             ident,
-            fd,
-            generics,
-            unsafety,
-            constness,
-            defaultness,
-            abi,
-            vis,
+            fn_sig,
             span,
             newline_brace,
-            has_body,
             true,
         ));
 
@@ -289,15 +355,8 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &sig.decl,
-            &sig.generics,
-            sig.unsafety,
-            sig.constness.node,
-            ast::Defaultness::Final,
-            sig.abi,
-            &ast::Visibility::Inherited,
+            &FnSig::from_method_sig(sig),
             span,
-            false,
             false,
             false,
         ));
@@ -1696,38 +1755,24 @@ fn rewrite_fn_base(
     context: &RewriteContext,
     indent: Indent,
     ident: ast::Ident,
-    fd: &ast::FnDecl,
-    generics: &ast::Generics,
-    unsafety: ast::Unsafety,
-    constness: ast::Constness,
-    defaultness: ast::Defaultness,
-    abi: abi::Abi,
-    vis: &ast::Visibility,
+    fn_sig: &FnSig,
     span: Span,
     newline_brace: bool,
     has_body: bool,
-    has_braces: bool,
 ) -> Option<(String, bool)> {
     let mut force_new_line_for_brace = false;
 
-    let where_clause = &generics.where_clause;
+    let where_clause = &fn_sig.generics.where_clause;
 
     let mut result = String::with_capacity(1024);
-    // Vis defaultness constness unsafety abi.
-    result.push_str(&*format_visibility(vis));
-    result.push_str(format_defaultness(defaultness));
-    result.push_str(format_constness(constness));
-    result.push_str(format_unsafety(unsafety));
-    if abi != abi::Abi::Rust {
-        result.push_str(&format_abi(abi, context.config.force_explicit_abi()));
-    }
+    result.push_str(&fn_sig.to_str(context));
 
     // fn foo
     result.push_str("fn ");
     result.push_str(&ident.to_string());
 
     // Generics.
-    let overhead = if has_braces && !newline_brace {
+    let overhead = if has_body && !newline_brace {
         // 4 = `() {`
         4
     } else {
@@ -1741,8 +1786,9 @@ fn rewrite_fn_base(
         indent: indent,
         offset: used_width,
     };
+    let fd = fn_sig.decl;
     let g_span = mk_sp(span.lo(), fd.output.span().lo());
-    let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
+    let generics_str = try_opt!(rewrite_generics(context, fn_sig.generics, shape, g_span));
     result.push_str(&generics_str);
 
     let snuggle_angle_bracket = generics_str
@@ -1767,7 +1813,7 @@ fn rewrite_fn_base(
         indent,
         ret_str_len,
         newline_brace,
-        has_braces,
+        has_body,
         multi_line_ret_str,
     ));
 
@@ -1804,7 +1850,8 @@ fn rewrite_fn_base(
     }
 
     // A conservative estimation, to goal is to be over all parens in generics
-    let args_start = generics
+    let args_start = fn_sig
+        .generics
         .ty_params
         .last()
         .map_or(span.lo(), |tp| end_typaram(tp));
@@ -1987,7 +2034,7 @@ fn rewrite_fn_base(
         }
     }
 
-    let option = WhereClauseOption::new(!has_braces, put_args_in_block && ret_str.is_empty());
+    let option = WhereClauseOption::new(!has_body, put_args_in_block && ret_str.is_empty());
     let where_clause_str = try_opt!(rewrite_where_clause(
         context,
         where_clause,
@@ -2757,17 +2804,8 @@ impl Rewrite for ast::ForeignItem {
                     context,
                     shape.indent,
                     self.ident,
-                    fn_decl,
-                    generics,
-                    ast::Unsafety::Normal,
-                    ast::Constness::NotConst,
-                    ast::Defaultness::Final,
-                    // These are not actually rust functions,
-                    // but we format them as such.
-                    abi::Abi::Rust,
-                    &self.vis,
+                    &FnSig::new(fn_decl, generics, self.vis.clone()),
                     span,
-                    false,
                     false,
                     false,
                 ).map(|(s, _)| format!("{};", s))

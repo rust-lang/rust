@@ -24,7 +24,7 @@ use comment::rewrite_comment;
 use config::{BraceStyle, Config};
 use items::{format_impl, format_struct, format_struct_struct, format_trait,
             rewrite_associated_impl_type, rewrite_associated_type, rewrite_static,
-            rewrite_type_alias};
+            rewrite_type_alias, FnSig};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
@@ -237,34 +237,22 @@ impl<'a> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, generics, unsafety, constness, abi, vis, b) => {
+            visit::FnKind::ItemFn(ident, _, _, _, _, _, b) => {
                 block = b;
                 self.rewrite_fn(
                     indent,
                     ident,
-                    fd,
-                    generics,
-                    unsafety,
-                    constness.node,
-                    defaultness,
-                    abi,
-                    vis,
+                    &FnSig::from_fn_kind(&fk, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                     b,
                 )
             }
-            visit::FnKind::Method(ident, sig, vis, b) => {
+            visit::FnKind::Method(ident, _, _, b) => {
                 block = b;
                 self.rewrite_fn(
                     indent,
                     ident,
-                    fd,
-                    &sig.generics,
-                    sig.unsafety,
-                    sig.constness.node,
-                    defaultness,
-                    sig.abi,
-                    vis.unwrap_or(&ast::Visibility::Inherited),
+                    &FnSig::from_fn_kind(&fk, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                     b,
                 )
