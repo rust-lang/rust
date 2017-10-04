@@ -13,7 +13,7 @@ use rustc::ty::subst::Substs;
 
 use semcheck::mapping::IdMapping;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 /// A relation searching for items appearing at the same spot in a type.
 ///
@@ -27,6 +27,10 @@ pub struct MismatchRelation<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     item_queue: VecDeque<(DefId, DefId)>,
     /// The id mapping to use.
     id_mapping: &'a mut IdMapping,
+    /// Type cache holding all old types currently being processed to avoid loops.
+    current_old_types: HashSet<Ty<'tcx>>,
+    /// Type cache holding all new types currently being processed to avoid loops.
+    current_new_types: HashSet<Ty<'tcx>>,
 }
 
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
@@ -37,6 +41,8 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
             tcx: tcx,
             item_queue: id_mapping.toplevel_queue(),
             id_mapping: id_mapping,
+            current_old_types: Default::default(),
+            current_new_types: Default::default(),
         }
     }
 
@@ -99,6 +105,13 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use rustc::ty::TypeVariants::*;
+
+        if self.current_old_types.contains(a) || self.current_new_types.contains(b) {
+            return Ok(self.tcx.types.err);
+        }
+
+        self.current_old_types.insert(a);
+        self.current_new_types.insert(b);
 
         debug!("tys: mismatch relation: a: {:?}, b: {:?}", a, b);
         let matching = match (&a.sty, &b.sty) {
@@ -192,6 +205,9 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
             },
             _ => None,
         };
+
+        self.current_old_types.remove(a);
+        self.current_new_types.remove(b);
 
         if let Some((old_def_id, new_def_id)) = matching {
             if !self.id_mapping.contains_old_id(old_def_id) &&
