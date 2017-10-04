@@ -577,7 +577,7 @@ impl DepGraph {
                       "DepGraph::try_mark_green() - Duplicate DepNodeColor \
                       insertion for {:?}", dep_node);
 
-        debug!("try_mark_green({:?}) - END - successfully marked as green", dep_node.kind);
+        debug!("try_mark_green({:?}) - END - successfully marked as green", dep_node);
         Some(dep_node_index)
     }
 
