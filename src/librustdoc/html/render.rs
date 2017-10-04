@@ -2629,7 +2629,8 @@ fn render_introduced_cfg_features(w: &mut fmt::Write, def_id: DefId) -> fmt::Res
         features.pop();
         features.pop();
         write!(w,
-            "<div class='cfg-feature cfg-feature-introduced' title='Requires feature{0} {1}'>{1}</div>",
+            "<div class='cfg-feature cfg-feature-introduced' \
+                title='Requires feature{0} {1}'>{1}</div>",
             s, features)?;
     }
 
