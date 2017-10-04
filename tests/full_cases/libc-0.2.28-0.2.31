@@ -1,0 +1,867 @@
+version bump: 0.2.28 -> (breaking) -> 1.0.0
+warning: path changes to `INADDR_LOOPBACK`
+   --> libc-0.2.31/src/unix/mod.rs:227:1
+    |
+227 | pub const INADDR_LOOPBACK: in_addr_t = 2130706433;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `INADDR_ANY`
+   --> libc-0.2.31/src/unix/mod.rs:228:1
+    |
+228 | pub const INADDR_ANY: in_addr_t = 0;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `INADDR_BROADCAST`
+   --> libc-0.2.31/src/unix/mod.rs:229:1
+    |
+229 | pub const INADDR_BROADCAST: in_addr_t = 4294967295;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `INADDR_NONE`
+   --> libc-0.2.31/src/unix/mod.rs:230:1
+    |
+230 | pub const INADDR_NONE: in_addr_t = 4294967295;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `F_CANCELLK`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:214:1
+    |
+214 | pub const F_CANCELLK: ::c_int = 1029;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `F_ADD_SEALS`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:218:1
+    |
+218 | pub const F_ADD_SEALS: ::c_int = 1033;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `F_GET_SEALS`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:219:1
+    |
+219 | pub const F_GET_SEALS: ::c_int = 1034;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `F_SEAL_SEAL`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:221:1
+    |
+221 | pub const F_SEAL_SEAL: ::c_int = 0x0001;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `F_SEAL_SHRINK`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:222:1
+    |
+222 | pub const F_SEAL_SHRINK: ::c_int = 0x0002;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `F_SEAL_GROW`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:223:1
+    |
+223 | pub const F_SEAL_GROW: ::c_int = 0x0004;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `F_SEAL_WRITE`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:224:1
+    |
+224 | pub const F_SEAL_WRITE: ::c_int = 0x0008;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `MADV_FREE`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:418:1
+    |
+418 | pub const MADV_FREE: ::c_int = 8;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `MADV_SOFT_OFFLINE`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:429:1
+    |
+429 | pub const MADV_SOFT_OFFLINE: ::c_int = 101;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_O_MASK`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:740:1
+    |
+740 | pub const PTRACE_O_MASK: ::c_int = 0x003000ff;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_EVENT_FORK`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:743:1
+    |
+743 | pub const PTRACE_EVENT_FORK: ::c_int = 1;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_EVENT_VFORK`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:744:1
+    |
+744 | pub const PTRACE_EVENT_VFORK: ::c_int = 2;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_EVENT_CLONE`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:745:1
+    |
+745 | pub const PTRACE_EVENT_CLONE: ::c_int = 3;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_EVENT_EXEC`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:746:1
+    |
+746 | pub const PTRACE_EVENT_EXEC: ::c_int = 4;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_EVENT_VFORK_DONE`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:747:1
+    |
+747 | pub const PTRACE_EVENT_VFORK_DONE: ::c_int = 5;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_EVENT_EXIT`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:748:1
+    |
+748 | pub const PTRACE_EVENT_EXIT: ::c_int = 6;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `PTRACE_EVENT_SECCOMP`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:749:1
+    |
+749 | pub const PTRACE_EVENT_SECCOMP: ::c_int = 7;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `statfs64`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:882:5
+    |
+882 |     pub fn statfs64(path: *const ::c_char, buf: *mut statfs64) -> ::c_int;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `fstatfs64`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:884:5
+    |
+884 |     pub fn fstatfs64(fd: ::c_int, buf: *mut statfs64) -> ::c_int;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `statvfs64`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:885:5
+    |
+885 |     pub fn statvfs64(path: *const ::c_char, buf: *mut statvfs64) -> ::c_int;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `fstatvfs64`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:886:5
+    |
+886 |     pub fn fstatvfs64(fd: ::c_int, buf: *mut statvfs64) -> ::c_int;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IFF_LOWER_UP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:629:1
+    |
+629 | pub const IFF_LOWER_UP: ::c_int = 0x10000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IFF_DORMANT`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:630:1
+    |
+630 | pub const IFF_DORMANT: ::c_int = 0x20000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IFF_ECHO`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:631:1
+    |
+631 | pub const IFF_ECHO: ::c_int = 0x40000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_HOPOPTS`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:683:1
+    |
+683 | pub const IPPROTO_HOPOPTS: ::c_int = 0;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_IGMP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:686:1
+    |
+686 | pub const IPPROTO_IGMP: ::c_int = 2;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_IPIP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:688:1
+    |
+688 | pub const IPPROTO_IPIP: ::c_int = 4;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_EGP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:691:1
+    |
+691 | pub const IPPROTO_EGP: ::c_int = 8;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_PUP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:693:1
+    |
+693 | pub const IPPROTO_PUP: ::c_int = 12;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_IDP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:696:1
+    |
+696 | pub const IPPROTO_IDP: ::c_int = 22;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_TP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:698:1
+    |
+698 | pub const IPPROTO_TP: ::c_int = 29;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_DCCP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:700:1
+    |
+700 | pub const IPPROTO_DCCP: ::c_int = 33;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_ROUTING`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:703:1
+    |
+703 | pub const IPPROTO_ROUTING: ::c_int = 43;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_FRAGMENT`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:705:1
+    |
+705 | pub const IPPROTO_FRAGMENT: ::c_int = 44;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_RSVP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:707:1
+    |
+707 | pub const IPPROTO_RSVP: ::c_int = 46;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_GRE`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:709:1
+    |
+709 | pub const IPPROTO_GRE: ::c_int = 47;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_ESP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:711:1
+    |
+711 | pub const IPPROTO_ESP: ::c_int = 50;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_AH`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:713:1
+    |
+713 | pub const IPPROTO_AH: ::c_int = 51;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_NONE`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:716:1
+    |
+716 | pub const IPPROTO_NONE: ::c_int = 59;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_DSTOPTS`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:718:1
+    |
+718 | pub const IPPROTO_DSTOPTS: ::c_int = 60;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_MTP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:719:1
+    |
+719 | pub const IPPROTO_MTP: ::c_int = 92;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_BEETPH`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:720:1
+    |
+720 | pub const IPPROTO_BEETPH: ::c_int = 94;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_ENCAP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:722:1
+    |
+722 | pub const IPPROTO_ENCAP: ::c_int = 98;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_PIM`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:724:1
+    |
+724 | pub const IPPROTO_PIM: ::c_int = 103;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_COMP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:726:1
+    |
+726 | pub const IPPROTO_COMP: ::c_int = 108;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_SCTP`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:728:1
+    |
+728 | pub const IPPROTO_SCTP: ::c_int = 132;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_MH`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:729:1
+    |
+729 | pub const IPPROTO_MH: ::c_int = 135;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_UDPLITE`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:730:1
+    |
+730 | pub const IPPROTO_UDPLITE: ::c_int = 136;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_MPLS`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:731:1
+    |
+731 | pub const IPPROTO_MPLS: ::c_int = 137;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `IPPROTO_MAX`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:734:1
+    |
+734 | pub const IPPROTO_MAX: ::c_int = 256;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `TFD_CLOEXEC`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:970:1
+    |
+970 | pub const TFD_CLOEXEC: ::c_int = O_CLOEXEC;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `TFD_NONBLOCK`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:971:1
+    |
+971 | pub const TFD_NONBLOCK: ::c_int = O_NONBLOCK;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `TFD_TIMER_ABSTIME`
+   --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:972:1
+    |
+972 | pub const TFD_TIMER_ABSTIME: ::c_int = 1;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^^
+
+warning: path changes to `timerfd_create`
+    --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:1148:5
+     |
+1148 |     pub fn timerfd_create(clockid: ::c_int, flags: ::c_int) -> ::c_int;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^^
+
+warning: path changes to `timerfd_gettime`
+    --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:1149:5
+     |
+1149 | /     pub fn timerfd_gettime(fd: ::c_int,
+1150 | |                            curr_value: *mut itimerspec) -> ::c_int;
+     | |___________________________________________________________________^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^^
+
+warning: path changes to `timerfd_settime`
+    --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:1151:5
+     |
+1151 | /     pub fn timerfd_settime(fd: ::c_int,
+1152 | |                            flags: ::c_int,
+1153 | |                            new_value: *const itimerspec,
+1154 | |                            old_value: *mut itimerspec) -> ::c_int;
+     | |__________________________________________________________________^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^^
+
+warning: path changes to `getgrgid_r`
+    --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:1385:5
+     |
+1385 | /     pub fn getgrgid_r(uid: ::uid_t,
+1386 | |                       grp: *mut ::group,
+1387 | |                       buf: *mut ::c_char,
+1388 | |                       buflen: ::size_t,
+1389 | |                       result: *mut *mut ::group) -> ::c_int;
+     | |____________________________________________________________^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^^
+
+warning: path changes to `getgrnam_r`
+    --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:1398:5
+     |
+1398 | /     pub fn getgrnam_r(name: *const ::c_char,
+1399 | |                       grp: *mut ::group,
+1400 | |                       buf: *mut ::c_char,
+1401 | |                       buflen: ::size_t,
+1402 | |                       result: *mut *mut ::group) -> ::c_int;
+     | |____________________________________________________________^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^^
+
+warning: path changes to `getgrouplist`
+    --> libc-0.2.31/src/unix/notbsd/linux/mod.rs:1436:5
+     |
+1436 | /     pub fn getgrouplist(user: *const ::c_char,
+1437 | |                         group: ::gid_t,
+1438 | |                         groups: *mut ::gid_t,
+1439 | |                         ngroups: *mut ::c_int) -> ::c_int;
+     | |__________________________________________________________^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^^
+
+error: path changes to `forkpty`
+    --> libc-0.2.28/src/unix/notbsd/mod.rs:1035:5
+     |
+1035 | /     pub fn forkpty(amaster: *mut ::c_int,
+1036 | |                 name: *mut ::c_char,
+1037 | |                 termp: *const termios,
+1038 | |                 winp: *const ::winsize) -> ::pid_t;
+     | |___________________________________________________^
+     |
+warning: removed path (breaking)
+    --> libc-0.2.28/src/lib.rs:275:17
+     |
+275  |         pub use unix::*;
+     |                 ^^^^^^^^
+
+error: breaking changes in `PTRACE_O_EXITKILL`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:738:1
+    |
+738 | pub const PTRACE_O_EXITKILL: ::c_int = 0x00100000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACECLONE`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:733:1
+    |
+733 | pub const PTRACE_O_TRACECLONE: ::c_int = 0x00000008;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACEEXEC`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:734:1
+    |
+734 | pub const PTRACE_O_TRACEEXEC: ::c_int = 0x00000010;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACEEXIT`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:736:1
+    |
+736 | pub const PTRACE_O_TRACEEXIT: ::c_int = 0x00000040;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACEFORK`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:731:1
+    |
+731 | pub const PTRACE_O_TRACEFORK: ::c_int = 0x00000002;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACESYSGOOD`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:730:1
+    |
+730 | pub const PTRACE_O_TRACESYSGOOD: ::c_int = 0x00000001;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACEVFORK`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:732:1
+    |
+732 | pub const PTRACE_O_TRACEVFORK: ::c_int = 0x00000004;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACEVFORKDONE`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:735:1
+    |
+735 | pub const PTRACE_O_TRACEVFORKDONE: ::c_int = 0x00000020;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_TRACESECCOMP`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:737:1
+    |
+737 | pub const PTRACE_O_TRACESECCOMP: ::c_int = 0x00000080;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
+error: breaking changes in `PTRACE_O_SUSPEND_SECCOMP`
+   --> libc-0.2.31/src/unix/notbsd/mod.rs:739:1
+    |
+739 | pub const PTRACE_O_SUSPEND_SECCOMP: ::c_int = 0x00200000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected u32, found i32 (breaking)
+
