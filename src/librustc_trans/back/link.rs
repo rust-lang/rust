@@ -467,7 +467,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 // of when we do and don't keep .#module-name#.bc files around.
                 let user_wants_numbered_bitcode =
                         sess.opts.output_types.contains_key(&OutputType::Bitcode) &&
-                        sess.opts.codegen_units > 1;
+                        sess.codegen_units() > 1;
                 if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
                     remove(sess, &bc_filename);
                 }

@@ -1037,10 +1037,10 @@ fn produce_final_output_artifacts(sess: &Session,
         let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
 
         let keep_numbered_bitcode = needs_crate_bitcode ||
-                (user_wants_bitcode && sess.opts.codegen_units > 1);
+                (user_wants_bitcode && sess.codegen_units() > 1);
 
         let keep_numbered_objects = needs_crate_object ||
-                (user_wants_objects && sess.opts.codegen_units > 1);
+                (user_wants_objects && sess.codegen_units() > 1);
 
         for module in compiled_modules.modules.iter() {
             let module_name = Some(&module.name[..]);
@@ -2052,7 +2052,7 @@ impl OngoingCrateTranslation {
 
         // FIXME: time_llvm_passes support - does this use a global context or
         // something?
-        if sess.opts.codegen_units == 1 && sess.time_llvm_passes() {
+        if sess.codegen_units() == 1 && sess.time_llvm_passes() {
             unsafe { llvm::LLVMRustPrintPassTimings(); }
         }
 
