@@ -22,17 +22,15 @@ use std::mem;
 use super::abs_domain::Lift;
 
 use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, MoveOut, MoveOutIndex};
+use super::{MoveError};
+use super::IllegalMoveOriginKind::*;
 
-pub(super) struct MoveDataBuilder<'a, 'tcx: 'a> {
+struct MoveDataBuilder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
-}
-
-pub enum MovePathError {
-    IllegalMove,
-    UnionMove { path: MovePathIndex },
+    errors: Vec<MoveError<'tcx>>,
 }
 
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
@@ -47,6 +45,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             mir,
             tcx,
             param_env,
+            errors: Vec::new(),
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(mir),
@@ -94,13 +93,12 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, lval: &Lvalue<'tcx>)
-                     -> Result<MovePathIndex, MovePathError>
+                     -> Result<MovePathIndex, MoveError<'tcx>>
     {
         debug!("lookup({:?})", lval);
         match *lval {
             Lvalue::Local(local) => Ok(self.data.rev_lookup.locals[local]),
-            // error: can't move out of a static
-            Lvalue::Static(..) => Err(MovePathError::IllegalMove),
+            Lvalue::Static(..) => Err(MoveError::cannot_move_out_of(Static)),
             Lvalue::Projection(ref proj) => {
                 self.move_path_for_projection(lval, proj)
             }
@@ -116,25 +114,32 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn move_path_for_projection(&mut self,
                                 lval: &Lvalue<'tcx>,
                                 proj: &LvalueProjection<'tcx>)
-                                -> Result<MovePathIndex, MovePathError>
+                                -> Result<MovePathIndex, MoveError<'tcx>>
     {
         let base = try!(self.move_path_for(&proj.base));
         let lv_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
         match lv_ty.sty {
-            // error: can't move out of borrowed content
-            ty::TyRef(..) | ty::TyRawPtr(..) => return Err(MovePathError::IllegalMove),
-            // error: can't move out of struct with destructor
+            ty::TyRef(..) | ty::TyRawPtr(..) =>
+                return Err(MoveError::cannot_move_out_of(BorrowedContent)),
             ty::TyAdt(adt, _) if adt.has_dtor(self.tcx) && !adt.is_box() =>
-                return Err(MovePathError::IllegalMove),
+                return Err(MoveError::cannot_move_out_of(InteriorOfTypeWithDestructor {
+                    container_ty: lv_ty
+                })),
             // move out of union - always move the entire union
             ty::TyAdt(adt, _) if adt.is_union() =>
-                return Err(MovePathError::UnionMove { path: base }),
-            // error: can't move out of a slice
-            ty::TySlice(..) =>
-                return Err(MovePathError::IllegalMove),
-            ty::TyArray(..) => match proj.elem {
-                // error: can't move out of an array
-                ProjectionElem::Index(..) => return Err(MovePathError::IllegalMove),
+                return Err(MoveError::UnionMove { path: base }),
+            ty::TySlice(elem_ty) =>
+                return Err(MoveError::cannot_move_out_of(InteriorOfSlice {
+                    elem_ty, is_index: match proj.elem {
+                        ProjectionElem::Index(..) => true,
+                        _ => false
+                    },
+                })),
+            ty::TyArray(elem_ty, _num_elems) => match proj.elem {
+                ProjectionElem::Index(..) =>
+                    return Err(MoveError::cannot_move_out_of(InteriorOfArray {
+                        elem_ty, is_index: true
+                    })),
                 _ => {
                     // FIXME: still badly broken
                 }
@@ -156,7 +161,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         }
     }
 
-    fn finalize(self) -> MoveData<'tcx> {
+    fn finalize(self) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
         debug!("{}", {
             debug!("moves for {:?}:", self.mir.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -168,14 +173,20 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             }
             "done dumping moves"
         });
-        self.data
+
+        if self.errors.len() > 0 {
+            Err((self.data, self.errors))
+        } else {
+            Ok(self.data)
+        }
     }
 }
 
 pub(super) fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>,
                                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      param_env: ty::ParamEnv<'tcx>)
-                                     -> MoveData<'tcx> {
+                                     -> Result<MoveData<'tcx>,
+                                               (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
     let mut builder = MoveDataBuilder::new(mir, tcx, param_env);
 
     for (bb, block) in mir.basic_blocks().iter_enumerated() {
@@ -317,13 +328,10 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         }
 
         let path = match self.move_path_for(lval) {
-            Ok(path) | Err(MovePathError::UnionMove { path }) => path,
-            Err(MovePathError::IllegalMove) => {
-                // Moving out of a bad path. Eventually, this should be a MIR
-                // borrowck error instead of a bug.
-                span_bug!(self.mir.span,
-                          "Broken MIR: moving out of lvalue {:?}: {:?} at {:?}",
-                          lval, lv_ty, loc);
+            Ok(path) | Err(MoveError::UnionMove { path }) => path,
+            Err(error @ MoveError::IllegalMove { .. }) => {
+                self.errors.push(error);
+                return;
             }
         };
         let move_out = self.data.moves.push(MoveOut { path: path, source: loc });
