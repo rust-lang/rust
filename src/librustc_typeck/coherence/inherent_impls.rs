@@ -117,6 +117,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
             ty::TyAdt(def, _) => {
                 self.check_def_id(item, def.did);
             }
+            ty::TyForeign(did) => {
+                self.check_def_id(item, did);
+            }
             ty::TyDynamic(ref data, ..) if data.principal().is_some() => {
                 self.check_def_id(item, data.principal().unwrap().def_id());
             }

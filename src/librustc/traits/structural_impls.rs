@@ -211,6 +211,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::SizedReturnType => Some(super::SizedReturnType),
             super::RepeatVec => Some(super::RepeatVec),
             super::FieldSized(item) => Some(super::FieldSized(item)),
+            super::FieldDynSized => Some(super::FieldDynSized),
             super::ConstSized => Some(super::ConstSized),
             super::SharedStatic => Some(super::SharedStatic),
             super::BuiltinDerivedObligation(ref cause) => {
@@ -531,6 +532,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized(_) |
+            super::FieldDynSized |
             super::ConstSized |
             super::SharedStatic |
             super::BlockTailExpression(_) |
@@ -579,6 +581,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized(_) |
+            super::FieldDynSized |
             super::ConstSized |
             super::SharedStatic |
             super::BlockTailExpression(_) |

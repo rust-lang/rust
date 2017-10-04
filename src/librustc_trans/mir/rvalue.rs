@@ -364,7 +364,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // Note: lvalues are indirect, so storing the `llval` into the
                 // destination effectively creates a reference.
-                let operand = if bcx.ccx.shared().type_is_sized(ty) {
+                let operand = if !bcx.ccx.shared().type_has_metadata(ty) {
                     OperandRef {
                         val: OperandValue::Immediate(tr_lvalue.llval),
                         ty: ref_ty,

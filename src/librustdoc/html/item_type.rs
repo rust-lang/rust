@@ -41,6 +41,7 @@ pub enum ItemType {
     Constant        = 17,
     AssociatedConst = 18,
     Union           = 19,
+    ForeignType     = 20,
 }
 
 
@@ -82,6 +83,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::AssociatedConstItem(..) => ItemType::AssociatedConst,
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
             clean::DefaultImplItem(..)     => ItemType::Impl,
+            clean::ForeignTypeItem         => ItemType::ForeignType,
             clean::StrippedItem(..)        => unreachable!(),
         }
     }
@@ -100,6 +102,7 @@ impl From<clean::TypeKind> for ItemType {
             clean::TypeKind::Const    => ItemType::Constant,
             clean::TypeKind::Variant  => ItemType::Variant,
             clean::TypeKind::Typedef  => ItemType::Typedef,
+            clean::TypeKind::Foreign  => ItemType::ForeignType,
         }
     }
 }
@@ -127,6 +130,7 @@ impl ItemType {
             ItemType::AssociatedType  => "associatedtype",
             ItemType::Constant        => "constant",
             ItemType::AssociatedConst => "associatedconstant",
+            ItemType::ForeignType     => "foreigntype",
         }
     }
 
@@ -139,7 +143,8 @@ impl ItemType {
             ItemType::Typedef |
             ItemType::Trait |
             ItemType::Primitive |
-            ItemType::AssociatedType => NameSpace::Type,
+            ItemType::AssociatedType |
+            ItemType::ForeignType => NameSpace::Type,
 
             ItemType::ExternCrate |
             ItemType::Import |

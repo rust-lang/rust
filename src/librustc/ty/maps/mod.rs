@@ -100,6 +100,7 @@ define_maps! { <'tcx>
     [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
     [] fn adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] fn adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
+    [] fn adt_dynsized_constraint: DynSizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
     [] fn adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
 
     /// True if this is a const fn
@@ -244,6 +245,7 @@ define_maps! { <'tcx>
     // `ty.is_copy()`, etc, since that will prune the environment where possible.
     [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] fn is_dynsized_raw: is_dynsized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
@@ -396,6 +398,10 @@ fn is_copy_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<
 
 fn is_sized_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
     DepConstructor::IsSized
+}
+
+fn is_dynsized_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsDynSized
 }
 
 fn is_freeze_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {

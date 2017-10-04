@@ -239,6 +239,17 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                                      })));
                 }
 
+                // Last field must be DynSized.
+                if !all_sized && !variant.fields.is_empty() {
+                    let field = &variant.fields[variant.fields.len() - 1];
+                    fcx.register_bound(
+                        field.ty,
+                        fcx.tcx.require_lang_item(lang_items::DynSizedTraitLangItem),
+                        traits::ObligationCause::new(field.span,
+                                                     fcx.body_id,
+                                                     traits::FieldDynSized));
+                }
+
                 // All field types must be well-formed.
                 for field in &variant.fields {
                     fcx.register_wf_obligation(field.ty, field.span, this.code.clone())

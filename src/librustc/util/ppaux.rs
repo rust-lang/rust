@@ -17,7 +17,7 @@ use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::{TyClosure, TyGenerator, TyProjection, TyAnon};
+use ty::{TyClosure, TyGenerator, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
@@ -788,6 +788,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyAdt(def, substs) => parameterized(f, substs, def.did, &[]),
+            TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
             TyDynamic(data, r) => {
                 write!(f, "{}", data)?;
                 let r = r.to_string();
@@ -810,12 +811,18 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
 
                     let mut first = true;
                     let mut is_sized = false;
+                    let mut is_dynsized = false;
                     write!(f, "impl")?;
                     for predicate in bounds.predicates {
                         if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
-                            // Don't print +Sized, but rather +?Sized if absent.
-                            if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
+                            let did = trait_ref.def_id();
+
+                            // Don't print +Sized/DynSized, but rather +?Sized/DynSized if absent.
+                            if Some(did) == tcx.lang_items().sized_trait() {
                                 is_sized = true;
+                                continue;
+                            } else if Some(did) == tcx.lang_items().dynsized_trait() {
+                                is_dynsized = true;
                                 continue;
                             }
 
@@ -823,7 +830,9 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                             first = false;
                         }
                     }
-                    if !is_sized {
+                    if !is_dynsized {
+                        write!(f, "{}?DynSized", if first { " " } else { "+" })?;
+                    } else if !is_sized {
                         write!(f, "{}?Sized", if first { " " } else { "+" })?;
                     }
                     Ok(())

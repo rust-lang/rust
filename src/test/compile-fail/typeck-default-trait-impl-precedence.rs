@@ -13,9 +13,11 @@
 // other words, the `..` impl only applies if there are no existing
 // impls whose types unify.
 
-#![feature(optin_builtin_traits)]
+#![feature(dynsized, optin_builtin_traits)]
 
-trait Defaulted { }
+use std::marker::DynSized;
+
+trait Defaulted: ?DynSized { }
 impl Defaulted for .. { }
 impl<'a,T:Signed> Defaulted for &'a T { }
 impl<'a,T:Signed> Defaulted for &'a mut T { }

@@ -12,11 +12,11 @@
 // the `PhantomData<T>` type itself (which almost always implements a "default" trait
 // (`impl Trait for ..`))
 
-#![feature(optin_builtin_traits)]
+#![feature(dynsized, optin_builtin_traits)]
 
-use std::marker::{PhantomData};
+use std::marker::{DynSized, PhantomData};
 
-unsafe trait Zen {}
+unsafe trait Zen: ?DynSized {}
 
 unsafe impl Zen for .. {}
 

@@ -553,7 +553,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let result = match ty.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
-            ty::TyFloat(_) | ty::TyStr | ty::TyNever |
+            ty::TyFloat(_) | ty::TyStr | ty::TyNever | ty::TyForeign(..) |
             ty::TyRawPtr(..) | ty::TyRef(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                 // these types never have a destructor
                 Ok(ty::DtorckConstraint::empty())
@@ -714,6 +714,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyAnon(def_id, _) |
             TyFnDef(def_id, _) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
+            TyForeign(def_id) => self.def_id(def_id),
             TyFnPtr(f) => {
                 self.hash(f.unsafety());
                 self.hash(f.abi());
@@ -798,9 +799,17 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     pub fn is_sized(&'tcx self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     param_env: ty::ParamEnv<'tcx>,
-                    span: Span)-> bool
+                    span: Span) -> bool
     {
         tcx.at(span).is_sized_raw(param_env.and(self))
+    }
+
+    pub fn is_dynsized(&'tcx self,
+                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                param_env: ty::ParamEnv<'tcx>,
+                                span: Span) -> bool
+    {
+        tcx.at(span).is_dynsized_raw(param_env.and(self))
     }
 
     pub fn is_freeze(&'tcx self,
@@ -1063,6 +1072,20 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                        DUMMY_SP))
 }
 
+fn is_dynsized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+                          -> bool
+{
+    let (param_env, ty) = query.into_parts();
+    let trait_def_id = tcx.require_lang_item(lang_items::DynSizedTraitLangItem);
+    tcx.infer_ctxt()
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
+}
+
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                            -> bool
@@ -1108,6 +1131,9 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
         ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
         ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
+
+        // Foreign types can never have destructors
+        ty::TyForeign(..) => false,
 
         // Issue #22536: We first query type_moves_by_default.  It sees a
         // normalized version of the type, and therefore will definitely
@@ -1178,6 +1204,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         is_copy_raw,
         is_sized_raw,
+        is_dynsized_raw,
         is_freeze_raw,
         needs_drop_raw,
         layout_raw,

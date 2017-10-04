@@ -137,6 +137,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// Types of fields (other than the last) in a struct must be sized.
     FieldSized(AdtKind),
 
+    /// Last field of a struct must be DynSized.
+    FieldDynSized,
+
     /// Constant expressions must be sized.
     ConstSized,
 

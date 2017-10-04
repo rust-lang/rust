@@ -230,6 +230,7 @@ language_item_table! {
 
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
+    DynSizedTraitLangItem,           "dynsized",                dynsized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
     CloneTraitLangItem,              "clone",                   clone_trait;

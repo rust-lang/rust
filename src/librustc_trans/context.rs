@@ -297,8 +297,16 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         common::type_is_sized(self.tcx, ty)
     }
 
+    pub fn type_is_dynsized(&self, ty: Ty<'tcx>) -> bool {
+        common::type_is_dynsized(self.tcx, ty)
+    }
+
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         common::type_is_freeze(self.tcx, ty)
+    }
+
+    pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
+        common::type_has_metadata(self.tcx, ty)
     }
 
     pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {

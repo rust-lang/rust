@@ -59,7 +59,7 @@
 #![cfg_attr(stage0, feature(const_fn))]
 #![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
 
-#![recursion_limit="256"]
+#![recursion_limit="512"]
 
 extern crate arena;
 #[macro_use] extern crate bitflags;

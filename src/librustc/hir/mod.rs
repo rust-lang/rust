@@ -1912,6 +1912,8 @@ pub enum ForeignItem_ {
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
     ForeignItemStatic(P<Ty>, bool),
+    /// A foreign type
+    ForeignItemType,
 }
 
 impl ForeignItem_ {
@@ -1919,6 +1921,7 @@ impl ForeignItem_ {
         match *self {
             ForeignItemFn(..) => "foreign function",
             ForeignItemStatic(..) => "foreign static item",
+            ForeignItemType => "foreign type",
         }
     }
 }

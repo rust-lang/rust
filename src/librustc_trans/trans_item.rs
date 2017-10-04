@@ -411,6 +411,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyUint(ast::UintTy::U128)  => output.push_str("u128"),
             ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
             ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
+            ty::TyForeign(def_id) => self.push_def_path(def_id, output),
             ty::TyAdt(adt_def, substs) => {
                 self.push_def_path(adt_def.did, output);
                 self.push_type_params(substs, iter::empty(), output);

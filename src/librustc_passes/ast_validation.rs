@@ -81,19 +81,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn no_questions_in_bounds(&self, bounds: &TyParamBounds, where_: &str, is_trait: bool) {
-        for bound in bounds {
-            if let TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) = *bound {
-                let mut err = self.err_handler().struct_span_err(poly.span,
-                                    &format!("`?Trait` is not permitted in {}", where_));
-                if is_trait {
-                    err.note(&format!("traits are `?{}` by default", poly.trait_ref.path));
-                }
-                err.emit();
-            }
-        }
-    }
-
     /// matches '-' lit | lit (cf. parser::Parser::parse_pat_literal_maybe_minus),
     /// or path for ranges.
     ///
@@ -155,16 +142,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             TyKind::TraitObject(ref bounds) => {
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
-                    if let RegionTyParamBound(ref lifetime) = *bound {
-                        if any_lifetime_bounds {
-                            span_err!(self.session, lifetime.span, E0226,
-                                      "only a single explicit lifetime bound is permitted");
-                            break;
+                    match *bound {
+                        RegionTyParamBound(ref lifetime) => {
+                            if any_lifetime_bounds {
+                                span_err!(self.session, lifetime.span, E0226,
+                                          "only a single explicit lifetime bound is permitted");
+                                break;
+                            }
+                            any_lifetime_bounds = true;
                         }
-                        any_lifetime_bounds = true;
+                        TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) => {
+                            self.session.span_err(poly.span,
+                                "`?Trait` is not permitted in trait object types");
+                        }
+                        _ => (),
                     }
                 }
-                self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             TyKind::ImplTrait(ref bounds) => {
                 if !bounds.iter()
@@ -229,8 +222,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(.., ref bounds, ref trait_items) => {
-                self.no_questions_in_bounds(bounds, "supertraits", true);
+            ItemKind::Trait(.., ref trait_items) => {
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
                         self.check_trait_fn_not_const(sig.constness);
@@ -288,7 +280,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     err.emit();
                 });
             }
-            ForeignItemKind::Static(..) => {}
+            ForeignItemKind::Static(..) | ForeignItemKind::Ty => {}
         }
 
         visit::walk_foreign_item(self, fi)

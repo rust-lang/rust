@@ -147,26 +147,22 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         //   * Packed struct - There is no alignment padding
         //   * Field is sized - pointer is properly aligned already
         if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
-            bcx.ccx.shared().type_is_sized(fty) {
-                return (bcx.struct_gep(
-                        ptr_val, adt::struct_llfields_index(st, ix)), alignment);
-            }
+            bcx.ccx.shared().type_is_sized(fty)
+        {
+            return (bcx.struct_gep(
+                    ptr_val, adt::struct_llfields_index(st, ix)), alignment);
+        }
 
         // If the type of the last field is [T] or str, then we don't need to do
-        // any adjusments
+        // any adjusments. Otherwise it must a trait object.
         match fty.sty {
             ty::TySlice(..) | ty::TyStr => {
                 return (bcx.struct_gep(
                         ptr_val, adt::struct_llfields_index(st, ix)), alignment);
             }
-            _ => ()
-        }
 
-        // There's no metadata available, log the case and just do the GEP.
-        if !self.has_extra() {
-            debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
-                ix, Value(ptr_val));
-            return (bcx.struct_gep(ptr_val, adt::struct_llfields_index(st, ix)), alignment);
+            ty::TyDynamic(..) => (),
+            _ => bug!("unexpected DST tail: {:?}", fty.sty),
         }
 
         // We need to get the pointer manually now.
@@ -328,7 +324,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let ((llprojected, align), llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let llextra = if self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx)) {
+                        let has_metadata = self.ccx.shared()
+                            .type_has_metadata(projected_ty.to_ty(tcx));
+                        let llextra = if !has_metadata {
                             ptr::null_mut()
                         } else {
                             tr_base.llextra
@@ -415,3 +413,4 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         self.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }
+

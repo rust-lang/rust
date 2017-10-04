@@ -428,11 +428,11 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     .projection_ty(tcx, &projection.elem);
                 let base = tr_base.to_const(span);
                 let projected_ty = self.monomorphize(&projected_ty).to_ty(tcx);
-                let is_sized = self.ccx.shared().type_is_sized(projected_ty);
+                let has_metadata = self.ccx.shared().type_has_metadata(projected_ty);
 
                 let (projected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
-                        let (base, extra) = if is_sized {
+                        let (base, extra) = if !has_metadata {
                             (base.llval, ptr::null_mut())
                         } else {
                             base.get_fat_ptr()
@@ -463,7 +463,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::ProjectionElem::Field(ref field, _) => {
                         let llprojected = adt::const_get_field(self.ccx, tr_base.ty, base.llval,
                                                                field.index());
-                        let llextra = if is_sized {
+                        let llextra = if !has_metadata {
                             ptr::null_mut()
                         } else {
                             tr_base.llextra

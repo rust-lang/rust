@@ -173,6 +173,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
+            // FIXME(plietar): needs a new DefKind in rls-data
+            ast::ForeignItemKind::Ty => None,
         }
     }
 
@@ -642,6 +644,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Union(def_id) |
             HirDef::Enum(def_id) |
             HirDef::TyAlias(def_id) |
+            HirDef::TyForeign(def_id) |
             HirDef::AssociatedTy(def_id) |
             HirDef::Trait(def_id) |
             HirDef::TyParam(def_id) => {

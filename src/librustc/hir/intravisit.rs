@@ -704,6 +704,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
             }
         }
         ForeignItemStatic(ref typ, _) => visitor.visit_ty(typ),
+        ForeignItemType => (),
     }
 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);

@@ -27,7 +27,7 @@
 use astconv::{AstConv, Bounds};
 use lint;
 use constrained_type_params as ctp;
-use middle::lang_items::SizedTraitLangItem;
+use middle::lang_items::{DynSizedTraitLangItem, SizedTraitLangItem};
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
 use rustc::traits::Reveal;
@@ -936,7 +936,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeForeignItem(item) => {
             match item.node {
                 ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics
+                ForeignItemFn(_, _, ref generics) => generics,
+                ForeignItemType => &no_generics,
             }
         }
 
@@ -1114,7 +1115,8 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)
                 }
-                ForeignItemStatic(ref t, _) => icx.to_ty(t)
+                ForeignItemStatic(ref t, _) => icx.to_ty(t),
+                ForeignItemType => tcx.mk_foreign(def_id),
             }
         }
 
@@ -1266,10 +1268,35 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-// Is it marked with ?Sized
-fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                ast_bounds: &[hir::TyParamBound],
-                                span: Span) -> bool
+// Implicit sizing constraint in bounds.
+// This only takes into account defaults and ?Trait bounds,
+// not positive bounds such as trait Tr: Sized { }
+enum ImplicitSizing {
+    Sized,
+    DynSized,
+    None,
+}
+
+impl ImplicitSizing {
+    fn implicitly_sized(&self) -> bool {
+        match *self {
+            ImplicitSizing::Sized => true,
+            ImplicitSizing::DynSized | ImplicitSizing::None => false,
+        }
+    }
+
+    fn implicitly_dynsized(&self) -> bool {
+        match *self {
+            ImplicitSizing::Sized | ImplicitSizing::DynSized => true,
+            ImplicitSizing::None => false,
+        }
+    }
+}
+
+fn find_implicit_sizing<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                          ast_bounds: &[hir::TyParamBound],
+                                          span: Span,
+                                          sized_by_default: SizedByDefault) -> ImplicitSizing
 {
     let tcx = astconv.tcx();
 
@@ -1287,27 +1314,36 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
         }
     }
 
-    let kind_id = tcx.lang_items().require(SizedTraitLangItem);
-    match unbound {
-        Some(ref tpb) => {
-            // FIXME(#8559) currently requires the unbound to be built-in.
-            if let Ok(kind_id) = kind_id {
-                if tpb.path.def != Def::Trait(kind_id) {
-                    tcx.sess.span_warn(span,
-                                       "default bound relaxed for a type parameter, but \
-                                       this does nothing because the given bound is not \
-                                       a default. Only `?Sized` is supported");
-                }
+    let sized_trait = tcx.lang_items().require(SizedTraitLangItem).map(Def::Trait);
+    let dynsized_trait = tcx.lang_items().require(DynSizedTraitLangItem).map(Def::Trait);
+
+    let mut sizing = match sized_by_default {
+        SizedByDefault::Yes => ImplicitSizing::Sized,
+        SizedByDefault::No => ImplicitSizing::DynSized,
+    };
+
+    if let Some(ref tpb) = unbound {
+        if Ok(tpb.path.def) == sized_trait {
+            if sized_by_default == SizedByDefault::No {
+                let mut err = tcx.sess.struct_span_err(span,
+                                    "`?Sized` is not permitted in supertraits");
+
+                err.note("traits are `?Sized` by default");
+                err.emit();
             }
+
+            sizing = ImplicitSizing::DynSized;
+        } else if Ok(tpb.path.def) == dynsized_trait {
+            sizing = ImplicitSizing::None;
+        } else {
+            tcx.sess.span_warn(span,
+                               "default bound relaxed for a type parameter, but \
+                                this does nothing because the given bound is not \
+                                a default. Only `?Sized` and `?DynSized` are supported");
         }
-        _ if kind_id.is_ok() => {
-            return false;
-        }
-        // No lang item for Sized, so we can't add it as a bound.
-        None => {}
     }
 
-    true
+    sizing
 }
 
 /// Returns the early-bound lifetimes declared in this generics
@@ -1389,7 +1425,8 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeForeignItem(item) => {
             match item.node {
                 ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics
+                ForeignItemFn(_, _, ref generics) => generics,
+                ForeignItemType => &no_generics,
             }
         }
 
@@ -1558,17 +1595,17 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub enum SizedByDefault { Yes, No, }
+#[derive(PartialEq, Eq)]
+enum SizedByDefault { Yes, No }
 
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
-pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                        param_ty: Ty<'tcx>,
-                                        ast_bounds: &[hir::TyParamBound],
-                                        sized_by_default: SizedByDefault,
-                                        span: Span)
-                                        -> Bounds<'tcx>
+fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                    param_ty: Ty<'tcx>,
+                                    ast_bounds: &[hir::TyParamBound],
+                                    sized_by_default: SizedByDefault,
+                                    span: Span) -> Bounds<'tcx>
 {
     let mut region_bounds = vec![];
     let mut trait_bounds = vec![];
@@ -1598,15 +1635,12 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 
     trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
 
-    let implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
-        !is_unsized(astconv, ast_bounds, span)
-    } else {
-        false
-    };
+    let sizing = find_implicit_sizing(astconv, ast_bounds, span, sized_by_default);
 
     Bounds {
         region_bounds,
-        implicitly_sized,
+        implicitly_sized: sizing.implicitly_sized(),
+        implicitly_dynsized: sizing.implicitly_dynsized(),
         trait_bounds,
         projection_bounds,
     }

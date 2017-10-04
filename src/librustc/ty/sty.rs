@@ -105,6 +105,8 @@ pub enum TypeVariants<'tcx> {
     /// definition and not a concrete use of it.
     TyAdt(&'tcx AdtDef, &'tcx Substs<'tcx>),
 
+    TyForeign(DefId),
+
     /// The pointee of a string slice. Written as `str`.
     TyStr,
 
@@ -1165,13 +1167,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_structural(&self) -> bool {
-        match self.sty {
-            TyAdt(..) | TyTuple(..) | TyArray(..) | TyClosure(..) => true,
-            _ => self.is_slice() | self.is_trait(),
-        }
-    }
-
     #[inline]
     pub fn is_simd(&self) -> bool {
         match self.sty {
@@ -1395,6 +1390,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             TyDynamic(ref tt, ..) => tt.principal().map(|p| p.def_id()),
             TyAdt(def, _) => Some(def.did),
+            TyForeign(did) => Some(did),
             TyClosure(id, _) => Some(id),
             _ => None,
         }
@@ -1444,6 +1440,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyRawPtr(_) |
             TyNever |
             TyTuple(..) |
+            TyForeign(..) |
             TyParam(_) |
             TyInfer(_) |
             TyError => {

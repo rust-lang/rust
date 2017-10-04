@@ -928,7 +928,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let span = path.span;
         match path.def {
-            Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) | Def::Union(did) => {
+            Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) |
+            Def::Union(did) | Def::TyForeign(did) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_type_params(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())
@@ -1417,6 +1418,7 @@ fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected
 pub struct Bounds<'tcx> {
     pub region_bounds: Vec<ty::Region<'tcx>>,
     pub implicitly_sized: bool,
+    pub implicitly_dynsized: bool,
     pub trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
     pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
 }
@@ -1432,6 +1434,16 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
             if let Some(sized) = tcx.lang_items().sized_trait() {
                 let trait_ref = ty::TraitRef {
                     def_id: sized,
+                    substs: tcx.mk_substs_trait(param_ty, &[])
+                };
+                vec.push(trait_ref.to_predicate());
+            }
+        }
+
+        if self.implicitly_dynsized {
+            if let Some(dynsized) = tcx.lang_items().dynsized_trait() {
+                let trait_ref = ty::TraitRef {
+                    def_id: dynsized,
                     substs: tcx.mk_substs_trait(param_ty, &[])
                 };
                 vec.push(trait_ref.to_predicate());
