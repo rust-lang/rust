@@ -750,9 +750,7 @@ impl<'a, 'tcx> FnType<'tcx> {
                 Some(ty.boxed_ty())
             }
 
-            ty::TyRef(b, mt) => {
-                use rustc::ty::{BrAnon, ReLateBound};
-
+            ty::TyRef(_, mt) => {
                 // `&mut` pointer parameters never alias other parameters, or mutable global data
                 //
                 // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
@@ -766,13 +764,6 @@ impl<'a, 'tcx> FnType<'tcx> {
 
                 if mt.mutbl == hir::MutImmutable && is_freeze {
                     arg.attrs.set(ArgAttribute::ReadOnly);
-                }
-
-                // When a reference in an argument has no named lifetime, it's
-                // impossible for that reference to escape this function
-                // (returned or stored beyond the call by a closure).
-                if let ReLateBound(_, BrAnon(_)) = *b {
-                    arg.attrs.set(ArgAttribute::NoCapture);
                 }
 
                 Some(mt.ty)
