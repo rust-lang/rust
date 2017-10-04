@@ -8,22 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:attr-on-trait.rs
-// ignore-stage1
-
-#![feature(proc_macro)]
-
-extern crate attr_on_trait;
-
-trait Foo {
-    #[attr_on_trait::foo]
-    fn foo() {}
-}
-
-impl Foo for i32 {
-    fn foo(&self) {}
-}
+fn f(x: &mut u32) {}
 
 fn main() {
-    3i32.foo();
+    let x = Box::new(3);
+    f(&mut *x);
 }
