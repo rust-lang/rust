@@ -17,11 +17,16 @@ use u64;
 
 use libc::{c_int, c_void};
 
-pub type zx_handle_t = i32;
+pub type zx_handle_t = u32;
 pub type zx_vaddr_t = usize;
 pub type zx_rights_t = u32;
 pub type zx_status_t = i32;
 
+// TODO(raggi): zx_size_t was removed from Zircon. various syscall API docs use size_t here, but
+// don't define that well at the ABI level yet, as the C spec definition of size_t isn't what is
+// meant. In the future Zirocn will define size_t more strictly for it's ABI. At that time,
+// zx_size_t should be removed here, and replaced with an appropriately sized type with a
+// sufficiently strict definition.
 pub type zx_size_t = usize;
 
 pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
