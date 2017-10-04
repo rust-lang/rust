@@ -10,28 +10,13 @@
 # except according to those terms.
 
 set -ex
+source shared.sh
 
 ARCH=$1
 LIB_ARCH=$2
 APT_ARCH=$3
 BINUTILS=2.28.1
 GCC=6.4.0
-
-hide_output() {
-  set +x
-  on_err="
-echo ERROR: An error was encountered with the build.
-cat /tmp/build.log
-exit 1
-"
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  set -x
-}
 
 # First up, build binutils
 mkdir binutils
