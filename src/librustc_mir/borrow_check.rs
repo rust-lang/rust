@@ -1178,8 +1178,10 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                     format!("{}", field_index)
                 },
                 _ => {
-                    debug!("End-user description not implemented for field of type {:?}", ty.sty);
-                    format!("<ty>{}", field_index)
+                    // Might need a revision when the fields in trait RFC is implemented
+                    // (https://github.com/rust-lang/rfcs/pull/1546)
+                    bug!("Field access unsupported for non-box types that are neither Adt (struct, \
+                         enum, union) nor tuples");
                 }
             }
         }
