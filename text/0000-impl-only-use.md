@@ -49,7 +49,7 @@ struct Zoo { // wait, what happens here?
 
 fn main() {
   let x = "foo";
-  let y = x.zoo(); // won’t compile because `zoo::Zoo` not in scope
+  let y = x.zoo();
 }
 ```
 
@@ -57,7 +57,7 @@ However, you can see that we’ll hit a problem here, because we define an ambig
 two solutions:
 
 - Change the name of the `struct` to something else.
-- Qualified the `use`.
+- Qualify the `use`.
 
 The problem is that if we qualify the `use`, what name do we give the trait? We’re not even
 referring to it directly.
@@ -118,7 +118,7 @@ extern crate my_crate as _;
 
 This RFC tries to solve a very specific problem (when you *must* alias a trait use). It’s just a
 nit to make the syntax more *“rust-ish”* (it’s very easy to think such a thing would work given the
-way `_` works pretty much everywhere else.
+way `_` works pretty much everywhere else).
 
 # Rationale and alternatives
 [alternatives]: #alternatives
