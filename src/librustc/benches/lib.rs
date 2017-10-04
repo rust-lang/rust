@@ -16,4 +16,4 @@
 extern crate test;
 
 mod dispatch;
-mod match;
+mod pattern;
