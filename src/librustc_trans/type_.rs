@@ -17,7 +17,7 @@ use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 use context::CrateContext;
 
 use syntax::ast;
-use rustc::ty::layout;
+use rustc::ty::layout::{self, Align};
 
 use std::ffi::CString;
 use std::fmt;
@@ -273,6 +273,17 @@ impl Type {
             I32 => Type::i32(cx),
             I64 => Type::i64(cx),
             I128 => Type::i128(cx),
+        }
+    }
+
+    /// Return a LLVM type that has at most the required alignment,
+    /// as a conservative approximation for unknown pointee types.
+    pub fn pointee_for_abi_align(ccx: &CrateContext, align: Align) -> Type {
+        if let Some(ity) = layout::Integer::for_abi_align(ccx, align) {
+            Type::from_integer(ccx, ity)
+        } else {
+            // FIXME(eddyb) We could find a better approximation here.
+            Type::i8(ccx)
         }
     }
 }

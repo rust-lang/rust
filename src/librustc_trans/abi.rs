@@ -32,13 +32,11 @@ use cabi_nvptx64;
 use cabi_hexagon;
 use mir::lvalue::LvalueRef;
 use type_::Type;
-use type_of::LayoutLlvmExt;
+use type_of::{LayoutLlvmExt, PointerKind};
 
-use rustc::hir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
-use rustc_back::PanicStrategy;
 
 use libc::c_uint;
 use std::{cmp, iter};
@@ -514,22 +512,6 @@ impl<'a, 'tcx> ArgType<'tcx> {
         self.kind = ArgKind::Ignore;
     }
 
-    fn safe_pointee(&mut self, layout: TyLayout) {
-        match self.layout.abi {
-            layout::Abi::Scalar(layout::Scalar {
-                value: layout::Pointer,
-                ref valid_range
-            }) => {
-                if valid_range.start > 0 {
-                    self.attrs.set(ArgAttribute::NonNull);
-                }
-                self.attrs.pointee_size = layout.size;
-                self.attrs.pointee_align = Some(layout.align);
-            }
-            _ => bug!("ArgType::safe_pointee({:#?}): not a pointer", self.layout)
-        }
-    }
-
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         if let layout::Abi::Scalar(ref scalar) = self.layout.abi {
@@ -754,42 +736,30 @@ impl<'a, 'tcx> FnType<'tcx> {
 
         // Handle safe Rust thin and fat pointers.
         let adjust_for_rust_type = |arg: &mut ArgType<'tcx>, is_return: bool| {
-            // We only handle thin pointers here.
             match arg.layout.abi {
-                layout::Abi::Scalar(layout::Scalar { value: layout::Pointer, .. }) => {}
-                _ => return
-            }
-
-            let mut ty = arg.layout.ty;
-
-            // FIXME(eddyb) detect more nested cases than `Option<&T>` here.
-            match arg.layout.variants {
-                layout::Variants::NicheFilling { dataful_variant, .. } => {
-                    let variant = arg.layout.for_variant(ccx, dataful_variant);
-                    for i in 0..variant.fields.count() {
-                        let field = variant.field(ccx, i);
-                        match field.abi {
-                            layout::Abi::Scalar(layout::Scalar { value: layout::Pointer, .. }) => {
-                                // We found the pointer field, use its type.
-                                ty = field.ty;
-                                break;
-                            }
-                            _ => {}
-                        }
+                layout::Abi::Scalar(layout::Scalar {
+                    value: layout::Pointer,
+                    ref valid_range
+                }) => {
+                    if valid_range.start > 0 && valid_range.start < valid_range.end {
+                        arg.attrs.set(ArgAttribute::NonNull);
                     }
                 }
                 _ => {}
             }
 
-            match ty.sty {
-                // `Box` pointer parameters never alias because ownership is transferred
-                ty::TyAdt(def, _) if def.is_box() => {
-                    arg.attrs.set(ArgAttribute::NoAlias);
+            if let Some(pointee) = arg.layout.pointee_info(ccx) {
+                if let Some(kind) = pointee.safe {
+                    arg.attrs.pointee_size = pointee.size;
+                    arg.attrs.pointee_align = Some(pointee.align);
 
-                    arg.safe_pointee(ccx.layout_of(ty.boxed_ty()));
-                }
+                    // HACK(eddyb) LLVM inserts `llvm.assume` calls when inlining functions
+                    // with align attributes, and those calls later block optimizations.
+                    if !is_return {
+                        arg.attrs.pointee_align = None;
+                    }
 
-                ty::TyRef(_, mt) => {
+                    // `Box` pointer parameters never alias because ownership is transferred
                     // `&mut` pointer parameters never alias other parameters,
                     // or mutable global data
                     //
@@ -797,35 +767,19 @@ impl<'a, 'tcx> FnType<'tcx> {
                     // and can be marked as both `readonly` and `noalias`, as
                     // LLVM's definition of `noalias` is based solely on memory
                     // dependencies rather than pointer equality
-                    let is_freeze = ccx.shared().type_is_freeze(mt.ty);
-
-                    let no_alias_is_safe =
-                        if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias ||
-                           ccx.shared().tcx().sess.panic_strategy() == PanicStrategy::Abort {
-                            // Mutable refrences or immutable shared references
-                            mt.mutbl == hir::MutMutable || is_freeze
-                        } else {
-                            // Only immutable shared references
-                            mt.mutbl != hir::MutMutable && is_freeze
-                        };
-
-                    if no_alias_is_safe {
+                    let no_alias = match kind {
+                        PointerKind::Shared => false,
+                        PointerKind::Frozen | PointerKind::UniqueOwned => true,
+                        PointerKind::UniqueBorrowed => !is_return
+                    };
+                    if no_alias {
                         arg.attrs.set(ArgAttribute::NoAlias);
                     }
 
-                    if mt.mutbl == hir::MutImmutable && is_freeze && !is_return {
+                    if kind == PointerKind::Frozen && !is_return {
                         arg.attrs.set(ArgAttribute::ReadOnly);
                     }
-
-                    arg.safe_pointee(ccx.layout_of(mt.ty));
                 }
-                _ => {}
-            }
-
-            // HACK(eddyb) LLVM inserts `llvm.assume` calls when inlining functions
-            // with align attributes, and those calls later block optimizations.
-            if !is_return {
-                arg.attrs.pointee_align = None;
             }
         };
 

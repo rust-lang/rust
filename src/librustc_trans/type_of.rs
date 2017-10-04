@@ -10,8 +10,10 @@
 
 use abi::FnType;
 use common::*;
+use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, HasDataLayout, Align, LayoutOf, Size, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
+use rustc_back::PanicStrategy;
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
@@ -148,12 +150,35 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum PointerKind {
+    /// Most general case, we know no restrictions to tell LLVM.
+    Shared,
+
+    /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
+    Frozen,
+
+    /// `&mut T`, when we know `noalias` is safe for LLVM.
+    UniqueBorrowed,
+
+    /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.
+    UniqueOwned
+}
+
+#[derive(Copy, Clone)]
+pub struct PointeeInfo {
+    pub size: Size,
+    pub align: Align,
+    pub safe: Option<PointerKind>,
+}
+
 pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
     fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn over_align(&self) -> Option<Align>;
     fn llvm_field_index(&self, index: usize) -> u64;
+    fn pointee_info<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<PointeeInfo>;
 }
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
@@ -202,7 +227,14 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                             let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
                             FnType::new(ccx, sig, &[]).llvm_type(ccx)
                         }
-                        _ => Type::i8(ccx)
+                        _ => {
+                            // If we know the alignment, pick something better than i8.
+                            if let Some(pointee) = self.pointee_info(ccx) {
+                                Type::pointee_for_abi_align(ccx, pointee.align)
+                            } else {
+                                Type::i8(ccx)
+                            }
+                        }
                     };
                     pointee.ptr_to()
                 }
@@ -284,5 +316,109 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 1 + (self.fields.memory_index(index) as u64) * 2
             }
         }
+    }
+
+    fn pointee_info<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<PointeeInfo> {
+        // We only handle thin pointers here.
+        match self.abi {
+            layout::Abi::Scalar(layout::Scalar { value: layout::Pointer, .. }) => {}
+            _ => return None
+        }
+
+        if let Some(&pointee) = ccx.pointee_infos().borrow().get(&self.ty) {
+            return pointee;
+        }
+
+        let mut result = None;
+        match self.ty.sty {
+            ty::TyRawPtr(mt) => {
+                let (size, align) = ccx.size_and_align_of(mt.ty);
+                result = Some(PointeeInfo {
+                    size,
+                    align,
+                    safe: None
+                });
+            }
+
+            ty::TyRef(_, mt) => {
+                let (size, align) = ccx.size_and_align_of(mt.ty);
+
+                let kind = match mt.mutbl {
+                    hir::MutImmutable => if ccx.shared().type_is_freeze(mt.ty) {
+                        PointerKind::Frozen
+                    } else {
+                        PointerKind::Shared
+                    },
+                    hir::MutMutable => {
+                        if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias ||
+                           ccx.shared().tcx().sess.panic_strategy() == PanicStrategy::Abort {
+                            PointerKind::UniqueBorrowed
+                        } else {
+                            PointerKind::Shared
+                        }
+                    }
+                };
+
+                result = Some(PointeeInfo {
+                    size,
+                    align,
+                    safe: Some(kind)
+                });
+            }
+
+            ty::TyAdt(def, _) if def.is_box() => {
+                let (size, align) = ccx.size_and_align_of(self.ty.boxed_ty());
+                result = Some(PointeeInfo {
+                    size,
+                    align,
+                    safe: Some(PointerKind::UniqueOwned)
+                });
+            }
+
+            _ => {
+                let mut data_variant = match self.variants {
+                    layout::Variants::NicheFilling { dataful_variant, .. } => {
+                        // Only look for a pointer if it matches the niche itself.
+                        if self.fields.offset(0).bytes() == 0 {
+                            Some(self.for_variant(ccx, dataful_variant))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => Some(*self)
+                };
+
+                if let Some(variant) = data_variant {
+                    // We're not interested in any unions.
+                    if let layout::FieldPlacement::Union(_) = variant.fields {
+                        data_variant = None;
+                    }
+                }
+
+                if let Some(variant) = data_variant {
+                    for i in 0..variant.fields.count() {
+                        let field = variant.field(ccx, i);
+                        if field.size == self.size {
+                            // We found the pointer field, use its information.
+                            result = field.pointee_info(ccx);
+                            break;
+                        }
+                    }
+                }
+
+                if let ty::TyAdt(def, _) = self.ty.sty {
+                    if Some(def.did) == ccx.tcx().lang_items().non_zero() {
+                        // FIXME(eddyb) Don't treat NonZero<*T> as
+                        // as containing &T in ty::layout.
+                        if let Some(ref mut pointee) = result {
+                            pointee.safe = None;
+                        }
+                    }
+                }
+            }
+        }
+
+        ccx.pointee_infos().borrow_mut().insert(self.ty, result);
+        result
     }
 }

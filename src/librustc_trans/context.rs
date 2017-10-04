@@ -24,6 +24,7 @@ use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
 use type_::Type;
+use type_of::PointeeInfo;
 
 use rustc_data_structures::base_n;
 use rustc::middle::trans::Stats;
@@ -101,6 +102,7 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
 
     lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
     scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
+    pointee_infos: RefCell<FxHashMap<Ty<'tcx>, Option<PointeeInfo>>>,
     isize_ty: Type,
 
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
@@ -358,6 +360,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
                 scalar_lltypes: RefCell::new(FxHashMap()),
+                pointee_infos: RefCell::new(FxHashMap()),
                 isize_ty: Type::from_ref(ptr::null_mut()),
                 dbg_cx,
                 eh_personality: Cell::new(None),
@@ -491,6 +494,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn scalar_lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
         &self.local().scalar_lltypes
+    }
+
+    pub fn pointee_infos<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Option<PointeeInfo>>> {
+        &self.local().pointee_infos
     }
 
     pub fn stats<'a>(&'a self) -> &'a RefCell<Stats> {
