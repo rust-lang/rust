@@ -13,7 +13,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::{Span};
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
@@ -250,8 +250,8 @@ pub enum MoveError<'tcx> {
 }
 
 impl<'tcx> MoveError<'tcx> {
-    fn cannot_move_out_of(kind: IllegalMoveOriginKind<'tcx>) -> Self {
-        let origin = IllegalMoveOrigin { span: DUMMY_SP, kind: kind, };
+    fn cannot_move_out_of(span: Span, kind: IllegalMoveOriginKind<'tcx>) -> Self {
+        let origin = IllegalMoveOrigin { span, kind };
         MoveError::IllegalMove { cannot_move_out_of: origin }
     }
 }
