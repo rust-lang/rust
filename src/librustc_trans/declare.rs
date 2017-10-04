@@ -24,6 +24,7 @@ use llvm::{self, ValueRef};
 use llvm::AttributePlace::Function;
 use rustc::ty::Ty;
 use rustc::session::config::Sanitizer;
+use rustc_back::PanicStrategy;
 use abi::{Abi, FnType};
 use attributes;
 use context::CrateContext;
@@ -96,6 +97,10 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
         },
         _ => {},
+    }
+
+    if ccx.tcx().sess.panic_strategy() != PanicStrategy::Unwind {
+        attributes::unwind(llfn, false);
     }
 
     llfn

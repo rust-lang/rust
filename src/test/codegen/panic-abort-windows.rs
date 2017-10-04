@@ -28,7 +28,7 @@
 
 #![crate_type = "lib"]
 
-// CHECK: Function Attrs: uwtable
+// CHECK: Function Attrs: nounwind uwtable
 // CHECK-NEXT: define void @normal_uwtable()
 #[no_mangle]
 pub fn normal_uwtable() {
