@@ -12,6 +12,8 @@
 // dep-node.
 
 // revisions:rpass1 rpass2
+// compile-flags: -Z query-dep-graph
+
 
 #![feature(rustc_attrs)]
 

@@ -204,7 +204,6 @@ pub struct ModuleTranslation {
     /// as the crate name and disambiguator.
     name: String,
     llmod_id: String,
-    symbol_name_hash: u64,
     pub source: ModuleSource,
     pub kind: ModuleKind,
 }
@@ -238,7 +237,6 @@ impl ModuleTranslation {
             llmod_id: self.llmod_id,
             name: self.name.clone(),
             kind: self.kind,
-            symbol_name_hash: self.symbol_name_hash,
             pre_existing,
             emit_obj,
             emit_bc,
@@ -253,7 +251,6 @@ pub struct CompiledModule {
     pub llmod_id: String,
     pub object: PathBuf,
     pub kind: ModuleKind,
-    pub symbol_name_hash: u64,
     pub pre_existing: bool,
     pub emit_obj: bool,
     pub emit_bc: bool,

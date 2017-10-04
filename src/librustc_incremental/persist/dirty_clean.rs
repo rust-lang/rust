@@ -122,7 +122,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         let current_fingerprint = self.tcx.dep_graph.fingerprint_of(&dep_node);
         let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
 
-        if current_fingerprint == prev_fingerprint {
+        if Some(current_fingerprint) == prev_fingerprint {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx.sess.span_err(
                 item_span,
@@ -136,7 +136,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         let current_fingerprint = self.tcx.dep_graph.fingerprint_of(&dep_node);
         let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
 
-        if current_fingerprint != prev_fingerprint {
+        if Some(current_fingerprint) != prev_fingerprint {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx.sess.span_err(
                 item_span,

@@ -21,11 +21,9 @@ use std::fs as std_fs;
 pub fn save_trans_partition(sess: &Session,
                             dep_graph: &DepGraph,
                             cgu_name: &str,
-                            partition_hash: u64,
                             files: &[(OutputType, PathBuf)]) {
-    debug!("save_trans_partition({:?},{},{:?})",
+    debug!("save_trans_partition({:?},{:?})",
            cgu_name,
-           partition_hash,
            files);
     if sess.opts.incremental.is_none() {
         return;
@@ -57,7 +55,6 @@ pub fn save_trans_partition(sess: &Session,
 
     let work_product = WorkProduct {
         cgu_name: cgu_name.to_string(),
-        input_hash: partition_hash,
         saved_files,
     };
 

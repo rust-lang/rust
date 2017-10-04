@@ -296,26 +296,22 @@ pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  mode: TransItemCollectionMode)
                                                  -> (FxHashSet<TransItem<'tcx>>,
                                                      InliningMap<'tcx>) {
-    // We are not tracking dependencies of this pass as it has to be re-executed
-    // every time no matter what.
-    tcx.dep_graph.with_ignore(|| {
-        let roots = collect_roots(tcx, mode);
+    let roots = collect_roots(tcx, mode);
 
-        debug!("Building translation item graph, beginning at roots");
-        let mut visited = FxHashSet();
-        let mut recursion_depths = DefIdMap();
-        let mut inlining_map = InliningMap::new();
+    debug!("Building translation item graph, beginning at roots");
+    let mut visited = FxHashSet();
+    let mut recursion_depths = DefIdMap();
+    let mut inlining_map = InliningMap::new();
 
-        for root in roots {
-            collect_items_rec(tcx,
-                              root,
-                              &mut visited,
-                              &mut recursion_depths,
-                              &mut inlining_map);
-        }
+    for root in roots {
+        collect_items_rec(tcx,
+                          root,
+                          &mut visited,
+                          &mut recursion_depths,
+                          &mut inlining_map);
+    }
 
-        (visited, inlining_map)
-    })
+    (visited, inlining_map)
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to

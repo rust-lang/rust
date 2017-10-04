@@ -15,8 +15,6 @@
 // compile-flags: -Z query-dep-graph
 // aux-build:point.rs
 
-// ignore-test -- ignored until red/green restores cross-crate tracking fidelity
-
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]

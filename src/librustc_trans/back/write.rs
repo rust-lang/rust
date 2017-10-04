@@ -884,7 +884,6 @@ fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
         save_trans_partition(sess,
                              dep_graph,
                              &module.name,
-                             module.symbol_name_hash,
                              &files);
     }
 }
@@ -1134,7 +1133,6 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
             name: module_name,
             kind: ModuleKind::Regular,
             pre_existing: true,
-            symbol_name_hash: mtrans.symbol_name_hash,
             emit_bc: config.emit_bc,
             emit_obj: config.emit_obj,
         }))

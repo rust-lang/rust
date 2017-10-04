@@ -28,7 +28,7 @@ use super::ModuleSource;
 use super::ModuleTranslation;
 use super::ModuleKind;
 
-use assert_module_sources::{self, Disposition};
+use assert_module_sources;
 use back::link;
 use back::symbol_export;
 use back::write::{self, OngoingCrateTranslation, create_target_machine};
@@ -41,7 +41,7 @@ use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::dep_graph::{DepNode, DepKind};
+use rustc::dep_graph::{DepNode, DepKind, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo};
@@ -78,7 +78,6 @@ use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use std::any::Any;
-use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::str;
 use std::sync::Arc;
@@ -904,7 +903,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let metadata_module = ModuleTranslation {
         name: link::METADATA_MODULE_NAME.to_string(),
         llmod_id: llmod_id.to_string(),
-        symbol_name_hash: 0, // we always rebuild metadata, at least for now
         source: ModuleSource::Translated(ModuleLlvm {
             llcx: metadata_llcx,
             llmod: metadata_llmod,
@@ -947,6 +945,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         shared_ccx.tcx().collect_and_partition_translation_items(LOCAL_CRATE).1;
     let codegen_units = (*codegen_units).clone();
 
+    // Force all codegen_unit queries so they are already either red or green
+    // when compile_codegen_unit accesses them. We are not able to re-execute
+    // the codegen_unit query from just the DepNode, so an unknown color would
+    // lead to having to re-execute compile_codegen_unit, possibly
+    // unnecessarily.
+    if tcx.dep_graph.is_fully_enabled() {
+        for cgu in &codegen_units {
+            tcx.codegen_unit(cgu.name().clone());
+        }
+    }
+
     let ongoing_translation = write::start_async_translation(
         tcx,
         time_graph.clone(),
@@ -972,7 +981,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(ModuleTranslation {
                 name: link::ALLOCATOR_MODULE_NAME.to_string(),
                 llmod_id: llmod_id.to_string(),
-                symbol_name_hash: 0, // we always rebuild allocator shims
                 source: ModuleSource::Translated(modules),
                 kind: ModuleKind::Allocator,
             })
@@ -1004,6 +1012,50 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ongoing_translation.wait_for_signal_to_translate_item();
         ongoing_translation.check_for_errors(tcx.sess);
 
+        // First, if incremental compilation is enabled, we try to re-use the
+        // codegen unit from the cache.
+        if tcx.dep_graph.is_fully_enabled() {
+            let cgu_id = cgu.work_product_id();
+
+            // Check whether there is a previous work-product we can
+            // re-use.  Not only must the file exist, and the inputs not
+            // be dirty, but the hash of the symbols we will generate must
+            // be the same.
+            if let Some(buf) = tcx.dep_graph.previous_work_product(&cgu_id) {
+                let dep_node = &DepNode::new(tcx,
+                    DepConstructor::CompileCodegenUnit(cgu.name().clone()));
+
+                // We try to mark the DepNode::CompileCodegenUnit green. If we
+                // succeed it means that none of the dependencies has changed
+                // and we can safely re-use.
+                if let Some(dep_node_index) = tcx.dep_graph.try_mark_green(tcx, dep_node) {
+                    // Append ".rs" to LLVM module identifier.
+                    //
+                    // LLVM code generator emits a ".file filename" directive
+                    // for ELF backends. Value of the "filename" is set as the
+                    // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
+                    // crashes if the module identifier is same as other symbols
+                    // such as a function name in the module.
+                    // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
+                    let llmod_id = format!("{}.rs", cgu.name());
+
+                    let module = ModuleTranslation {
+                        name: cgu.name().to_string(),
+                        source: ModuleSource::Preexisting(buf),
+                        kind: ModuleKind::Regular,
+                        llmod_id,
+                    };
+                    tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
+                    write::submit_translated_module_to_llvm(tcx, module, 0);
+                    // Continue to next cgu, this one is done.
+                    continue
+                }
+            } else {
+                // This can happen if files were  deleted from the cache
+                // directory for some reason. We just re-compile then.
+            }
+        }
+
         let _timing_guard = time_graph.as_ref().map(|time_graph| {
             time_graph.start(write::TRANS_WORKER_TIMELINE,
                              write::TRANS_WORK_PACKAGE_KIND,
@@ -1024,9 +1076,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             total_trans_time);
 
     if tcx.sess.opts.incremental.is_some() {
-        DISPOSITIONS.with(|d| {
-            assert_module_sources::assert_module_sources(tcx, &d.borrow());
-        });
+        assert_module_sources::assert_module_sources(tcx);
     }
 
     symbol_names_test::report_symbol_names(tcx);
@@ -1060,10 +1110,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               link_meta);
     ongoing_translation
 }
-
-// FIXME(#42293) hopefully once red/green is enabled we're testing everything
-// via a method that doesn't require this!
-thread_local!(static DISPOSITIONS: RefCell<Vec<(String, Disposition)>> = Default::default());
 
 fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        metadata_incr_hashes: EncodedMetadataHashes,
@@ -1288,37 +1334,18 @@ impl CrateInfo {
 }
 
 fn is_translated_function(tcx: TyCtxt, id: DefId) -> bool {
-    // FIXME(#42293) needs red/green tracking to avoid failing a bunch of
-    // existing tests
-    tcx.dep_graph.with_ignore(|| {
-        let (all_trans_items, _) =
-            tcx.collect_and_partition_translation_items(LOCAL_CRATE);
-        all_trans_items.contains(&id)
-    })
+    let (all_trans_items, _) =
+        tcx.collect_and_partition_translation_items(LOCAL_CRATE);
+    all_trans_items.contains(&id)
 }
 
 fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   cgu: InternedString) -> Stats {
-    // FIXME(#42293) needs red/green tracking to avoid failing a bunch of
-    // existing tests
-    let cgu = tcx.dep_graph.with_ignore(|| {
-        tcx.codegen_unit(cgu)
-    });
+    let cgu = tcx.codegen_unit(cgu);
 
     let start_time = Instant::now();
-    let dep_node = cgu.work_product_dep_node();
-    let ((stats, module), _) =
-        tcx.dep_graph.with_task(dep_node,
-                                tcx,
-                                cgu,
-                                module_translation);
+    let (stats, module) = module_translation(tcx, cgu);
     let time_to_translate = start_time.elapsed();
-
-    if tcx.sess.opts.incremental.is_some() {
-        DISPOSITIONS.with(|d| {
-            d.borrow_mut().push(module.disposition());
-        });
-    }
 
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for translating it.
@@ -1336,8 +1363,6 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         -> (Stats, ModuleTranslation)
     {
         let cgu_name = cgu.name().to_string();
-        let cgu_id = cgu.work_product_id();
-        let symbol_name_hash = cgu.compute_symbol_name_hash(tcx);
 
         // Append ".rs" to LLVM module identifier.
         //
@@ -1348,40 +1373,6 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // such as a function name in the module.
         // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
         let llmod_id = format!("{}.rs", cgu.name());
-
-        // Check whether there is a previous work-product we can
-        // re-use.  Not only must the file exist, and the inputs not
-        // be dirty, but the hash of the symbols we will generate must
-        // be the same.
-        let previous_work_product =
-            tcx.dep_graph.previous_work_product(&cgu_id).and_then(|work_product| {
-                if work_product.input_hash == symbol_name_hash {
-                    debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
-                    Some(work_product)
-                } else {
-                    if tcx.sess.opts.debugging_opts.incremental_info {
-                        eprintln!("incremental: CGU `{}` invalidated because of \
-                                   changed partitioning hash.",
-                                   cgu.name());
-                    }
-                    debug!("trans_reuse_previous_work_products: \
-                            not reusing {:?} because hash changed to {:?}",
-                           work_product, symbol_name_hash);
-                    None
-                }
-            });
-
-        if let Some(buf) = previous_work_product {
-            // Don't need to translate this module.
-            let module = ModuleTranslation {
-                llmod_id: llmod_id,
-                name: cgu_name,
-                symbol_name_hash,
-                source: ModuleSource::Preexisting(buf.clone()),
-                kind: ModuleKind::Regular,
-            };
-            return (Stats::default(), module);
-        }
 
         // Instantiate translation items without filling out definitions yet...
         let scx = SharedCrateContext::new(tcx);
@@ -1448,7 +1439,6 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             ModuleTranslation {
                 name: cgu_name,
-                symbol_name_hash,
                 source: ModuleSource::Translated(llvm_module),
                 kind: ModuleKind::Regular,
                 llmod_id,

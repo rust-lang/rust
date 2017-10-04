@@ -129,7 +129,6 @@ use std::__rand::{thread_rng, Rng};
 
 const LOCK_FILE_EXT: &'static str = ".lock";
 const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
-const DEP_GRAPH_NEW_FILENAME: &'static str = "dep-graph-new.bin";
 const WORK_PRODUCTS_FILENAME: &'static str = "work-products.bin";
 const METADATA_HASHES_FILENAME: &'static str = "metadata.bin";
 
@@ -141,10 +140,6 @@ const INT_ENCODE_BASE: u64 = 36;
 
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
-}
-
-pub fn dep_graph_path_new(sess: &Session) -> PathBuf {
-    in_incr_comp_dir_sess(sess, DEP_GRAPH_NEW_FILENAME)
 }
 
 pub fn work_products_path(sess: &Session) -> PathBuf {

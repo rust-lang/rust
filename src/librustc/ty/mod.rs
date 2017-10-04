@@ -1298,6 +1298,22 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     }
 }
 
+impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for ParamEnvAnd<'gcx, T>
+    where T: HashStable<StableHashingContext<'gcx>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ParamEnvAnd {
+            ref param_env,
+            ref value
+        } = *self;
+
+        param_env.hash_stable(hcx, hasher);
+        value.hash_stable(hcx, hasher);
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Destructor {
     /// The def-id of the destructor method

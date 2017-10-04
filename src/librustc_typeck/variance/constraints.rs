@@ -14,7 +14,7 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::dep_graph::{DepGraphSafe, DepKind};
+use rustc::dep_graph::{DepGraphSafe, DepKind, DepNodeColor};
 use rustc::ich::StableHashingContext;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -162,10 +162,22 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         // See README.md for a detailed discussion
         // on dep-graph management.
         let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-        tcx.dep_graph.with_task(dep_node,
-                                self,
-                                def_id,
-                                visit_item_task);
+
+        if let Some(DepNodeColor::Green(_)) = tcx.dep_graph.node_color(&dep_node) {
+            // If the corresponding node has already been marked as green, the
+            // appropriate portion of the DepGraph has already been loaded from
+            // the previous graph, so we don't do any dep-tracking. Since we
+            // don't cache any values though, we still have to re-run the
+            // computation.
+            tcx.dep_graph.with_ignore(|| {
+                self.build_constraints_for_item(def_id);
+            });
+        } else {
+            tcx.dep_graph.with_task(dep_node,
+                                    self,
+                                    def_id,
+                                    visit_item_task);
+        }
 
         fn visit_item_task<'a, 'tcx>(ccx: &mut ConstraintContext<'a, 'tcx>,
                                      def_id: DefId)
