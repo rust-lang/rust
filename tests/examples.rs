@@ -101,6 +101,7 @@ test!(addition);
 test!(addition_path);
 test!(addition_use);
 test!(bounds);
+test!(circular);
 test!(consts);
 test!(enums);
 test!(func);
