@@ -609,10 +609,19 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
     use ty::maps::keys::Key;
     use hir::def_id::LOCAL_CRATE;
 
-    // We should never get into the situation of having to force this from the DepNode.
-    // Since we cannot reconstruct the query key, we would always end up having to evaluate
-    // the first caller of this query that *is* reconstructible. This might very well be
-    // compile_codegen_unit() in which case we'd lose all re-use.
+    // We must avoid ever having to call force_from_dep_node() for a
+    // DepNode::CodegenUnit:
+    // Since we cannot reconstruct the query key of a DepNode::CodegenUnit, we
+    // would always end up having to evaluate the first caller of the
+    // `codegen_unit` query that *is* reconstructible. This might very well be
+    // the `compile_codegen_unit` query, thus re-translating the whole CGU just
+    // to re-trigger calling the `codegen_unit` query with the right key. At
+    // that point we would already have re-done all the work we are trying to
+    // avoid doing in the first place.
+    // The solution is simple: Just explicitly call the `codegen_unit` query for
+    // each CGU, right after partitioning. This way `try_mark_green` will always
+    // hit the cache instead of having to go through `force_from_dep_node`.
+    // This assertion makes sure, we actually keep applying the solution above.
     debug_assert!(dep_node.kind != DepKind::CodegenUnit,
                   "calling force_from_dep_node() on DepKind::CodegenUnit");
 
@@ -666,6 +675,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         }
     };
 
+    // FIXME(#45015): We should try move this boilerplate code into a macro
+    //                somehow.
     match dep_node.kind {
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already
@@ -695,13 +706,13 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CodegenUnit |
         DepKind::CompileCodegenUnit |
 
-        // This one is just odd
+        // These are just odd
         DepKind::Null |
         DepKind::WorkProduct => {
             bug!("force_from_dep_node() - Encountered {:?}", dep_node.kind)
         }
 
-        // These is not a queries
+        // These are not queries
         DepKind::CoherenceCheckTrait |
         DepKind::ItemVarianceConstraints => {
             return false

@@ -52,7 +52,7 @@ pub struct DepNodeIndex {
 
 impl Idx for DepNodeIndex {
     fn new(idx: usize) -> Self {
-        assert!((idx & 0xFFFF_FFFF) == idx);
+        debug_assert!((idx & 0xFFFF_FFFF) == idx);
         DepNodeIndex { index: idx as u32 }
     }
     fn index(self) -> usize {
@@ -228,20 +228,31 @@ impl DepGraph {
 
             let current_fingerprint = stable_hasher.finish();
 
-            assert!(self.fingerprints
-                        .borrow_mut()
-                        .insert(key, current_fingerprint)
-                        .is_none());
+            // Store the current fingerprint
+            {
+                let old_value = self.fingerprints
+                                    .borrow_mut()
+                                    .insert(key, current_fingerprint);
+                debug_assert!(old_value.is_none(),
+                              "DepGraph::with_task() - Duplicate fingerprint \
+                               insertion for {:?}", key);
+            }
 
-            let prev_fingerprint = data.previous.fingerprint_of(&key);
+            // Determine the color of the new DepNode.
+            {
+                let prev_fingerprint = data.previous.fingerprint_of(&key);
 
-            let color = if Some(current_fingerprint) == prev_fingerprint {
-                DepNodeColor::Green(dep_node_index)
-            } else {
-                DepNodeColor::Red
-            };
+                let color = if Some(current_fingerprint) == prev_fingerprint {
+                    DepNodeColor::Green(dep_node_index)
+                } else {
+                    DepNodeColor::Red
+                };
 
-            assert!(data.colors.borrow_mut().insert(key, color).is_none());
+                let old_value = data.colors.borrow_mut().insert(key, color);
+                debug_assert!(old_value.is_none(),
+                              "DepGraph::with_task() - Duplicate DepNodeColor \
+                               insertion for {:?}", key);
+            }
 
             (result, dep_node_index)
         } else {
@@ -250,10 +261,12 @@ impl DepGraph {
                 let result = task(cx, arg);
                 let mut stable_hasher = StableHasher::new();
                 result.hash_stable(&mut hcx, &mut stable_hasher);
-                assert!(self.fingerprints
-                            .borrow_mut()
-                            .insert(key, stable_hasher.finish())
-                            .is_none());
+                let old_value = self.fingerprints
+                                    .borrow_mut()
+                                    .insert(key, stable_hasher.finish());
+                debug_assert!(old_value.is_none(),
+                              "DepGraph::with_task() - Duplicate fingerprint \
+                               insertion for {:?}", key);
                 (result, DepNodeIndex::INVALID)
             } else {
                 (task(cx, arg), DepNodeIndex::INVALID)
@@ -549,16 +562,20 @@ impl DepGraph {
         // ... copying the fingerprint from the previous graph too, so we don't
         // have to recompute it ...
         let fingerprint = data.previous.fingerprint_by_index(prev_dep_node_index);
-        assert!(self.fingerprints
-                    .borrow_mut()
-                    .insert(*dep_node, fingerprint)
-                    .is_none());
+        let old_fingerprint = self.fingerprints
+                                  .borrow_mut()
+                                  .insert(*dep_node, fingerprint);
+        debug_assert!(old_fingerprint.is_none(),
+                      "DepGraph::try_mark_green() - Duplicate fingerprint \
+                      insertion for {:?}", dep_node);
 
         // ... and finally storing a "Green" entry in the color map.
-        assert!(data.colors
-                    .borrow_mut()
-                    .insert(*dep_node, DepNodeColor::Green(dep_node_index))
-                    .is_none());
+        let old_color = data.colors
+                            .borrow_mut()
+                            .insert(*dep_node, DepNodeColor::Green(dep_node_index));
+        debug_assert!(old_color.is_none(),
+                      "DepGraph::try_mark_green() - Duplicate DepNodeColor \
+                      insertion for {:?}", dep_node);
 
         debug!("try_mark_green({:?}) - END - successfully marked as green", dep_node.kind);
         Some(dep_node_index)
@@ -637,9 +654,21 @@ pub(super) struct CurrentDepGraph {
     nodes: IndexVec<DepNodeIndex, DepNode>,
     edges: IndexVec<DepNodeIndex, Vec<DepNodeIndex>>,
     node_to_node_index: FxHashMap<DepNode, DepNodeIndex>,
-    anon_id_seed: Fingerprint,
     task_stack: Vec<OpenTask>,
     forbidden_edge: Option<EdgeFilter>,
+
+    // Anonymous DepNodes are nodes the ID of which we compute from the list of
+    // their edges. This has the beneficial side-effect that multiple anonymous
+    // nodes can be coalesced into one without changing the semantics of the
+    // dependency graph. However, the merging of nodes can lead to a subtle
+    // problem during red-green marking: The color of an anonymous node from
+    // the current session might "shadow" the color of the node with the same
+    // ID from the previous session. In order to side-step this problem, we make
+    // sure that anon-node IDs allocated in different sessions don't overlap.
+    // This is implemented by mixing a session-key into the ID fingerprint of
+    // each anon node. The session-key is just a random number generated when
+    // the DepGraph is created.
+    anon_id_seed: Fingerprint,
 }
 
 impl CurrentDepGraph {
