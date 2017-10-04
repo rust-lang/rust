@@ -1816,7 +1816,8 @@ fn plain_summary_line(s: Option<&str>) -> String {
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     document_stability(w, cx, item)?;
-    let prefix = render_assoc_const_value(item);
+    let mut prefix = render_assoc_const_value(item);
+    prefix.push_str(&render_spotlight_traits(item)?);
     document_full(w, item, cx, &prefix)?;
     Ok(())
 }
@@ -2603,10 +2604,10 @@ fn assoc_const(w: &mut fmt::Formatter,
     Ok(())
 }
 
-fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
-              bounds: &Vec<clean::TyParamBound>,
-              default: Option<&clean::Type>,
-              link: AssocItemLink) -> fmt::Result {
+fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
+                             bounds: &Vec<clean::TyParamBound>,
+                             default: Option<&clean::Type>,
+                             link: AssocItemLink) -> fmt::Result {
     write!(w, "type <a href='{}' class=\"type\">{}</a>",
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
@@ -3236,6 +3237,62 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
     }
 }
 
+fn render_spotlight_traits(item: &clean::Item) -> Result<String, fmt::Error> {
+    let mut out = String::new();
+
+    match item.inner {
+        clean::FunctionItem(clean::Function { ref decl, .. }) |
+        clean::TyMethodItem(clean::TyMethod { ref decl, .. }) |
+        clean::MethodItem(clean::Method { ref decl, .. }) |
+        clean::ForeignFunctionItem(clean::Function { ref decl, .. }) => {
+            out = spotlight_decl(decl)?;
+        }
+        _ => {}
+    }
+
+    Ok(out)
+}
+
+fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
+    let mut out = String::new();
+
+    if let Some(did) = decl.output.def_id() {
+        let c = cache();
+        if let Some(impls) = c.impls.get(&did) {
+            for i in impls {
+                let impl_ = i.inner_impl();
+                if impl_.trait_.def_id().and_then(|d| c.traits.get(&d))
+                                        .map_or(false, |t| t.is_spotlight) {
+                    if out.is_empty() {
+                        out.push_str("<span class=\"docblock autohide\">");
+                        out.push_str(&format!("<h3>Important traits for {}</h3>", impl_.for_));
+                        out.push_str("<code class=\"spotlight\">");
+                    }
+
+                    //use the "where" class here to make it small
+                    out.push_str(&format!("<span class=\"where fmt-newline\">{}</span>", impl_));
+                    let t_did = impl_.trait_.def_id().unwrap();
+                    for it in &impl_.items {
+                        if let clean::TypedefItem(ref tydef, _) = it.inner {
+                            out.push_str("<span class=\"where fmt-newline\">    ");
+                            assoc_type(&mut out, it, &vec![],
+                                       Some(&tydef.type_),
+                                       AssocItemLink::GotoSource(t_did, &FxHashSet()))?;
+                            out.push_str(";</span>");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if !out.is_empty() {
+        out.push_str("</code></span>");
+    }
+
+    Ok(out)
+}
+
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
                render_mode: RenderMode, outer_version: Option<&str>,
                show_def_docs: bool) -> fmt::Result {
@@ -3270,6 +3327,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                      trait_: Option<&clean::Trait>, show_def_docs: bool) -> fmt::Result {
         let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
+        let mut method_prefix: Option<String> = None;
 
         let render_method_item: bool = match render_mode {
             RenderMode::Normal => true,
@@ -3277,7 +3335,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         };
 
         match item.inner {
-            clean::MethodItem(..) | clean::TyMethodItem(..) => {
+            clean::MethodItem(clean::Method { ref decl, .. }) |
+            clean::TyMethodItem(clean::TyMethod{ ref decl, .. }) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = derive_id(format!("{}.{}", item_type, name));
@@ -3297,6 +3356,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     }
                     write!(w, "</span></h4>\n")?;
+                    method_prefix = Some(spotlight_decl(decl)?);
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
@@ -3328,7 +3388,12 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
 
         if render_method_item || render_mode == RenderMode::Normal {
-            let prefix = render_assoc_const_value(item);
+            let mut prefix = render_assoc_const_value(item);
+
+            if let Some(method_prefix) = method_prefix {
+                prefix.push_str(&method_prefix);
+            }
+
             if !is_default_item {
                 if let Some(t) = trait_ {
                     // The trait item may have been stripped so we might not

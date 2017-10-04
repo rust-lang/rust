@@ -1624,9 +1624,7 @@
     }
 
     onEach(document.getElementById('main').getElementsByClassName('docblock'), function(e) {
-        if (e.parentNode.id === "main") {
-            e.parentNode.insertBefore(createToggle(), e);
-        }
+        e.parentNode.insertBefore(createToggle(), e);
     });
 
     onEach(document.getElementsByClassName('docblock'), function(e) {
