@@ -10,7 +10,6 @@
 
 use borrow::{Borrow, Cow};
 use fmt;
-use mem;
 use ops;
 use cmp;
 use hash::{Hash, Hasher};
@@ -260,7 +259,8 @@ impl OsString {
     /// ```
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
-        unsafe { mem::transmute(self.inner.into_box()) }
+        let rw = Box::into_raw(self.inner.into_box()) as *mut OsStr;
+        unsafe { Box::from_raw(rw) }
     }
 }
 
@@ -394,7 +394,7 @@ impl OsStr {
     }
 
     fn from_inner(inner: &Slice) -> &OsStr {
-        unsafe { mem::transmute(inner) }
+        unsafe { &*(inner as *const Slice as *const OsStr) }
     }
 
     /// Yields a [`&str`] slice if the `OsStr` is valid Unicode.
@@ -511,8 +511,8 @@ impl OsStr {
     /// [`OsString`]: struct.OsString.html
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
-        let inner: Box<Slice> = unsafe { mem::transmute(self) };
-        OsString { inner: Buf::from_box(inner) }
+        let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
+        OsString { inner: Buf::from_box(boxed) }
     }
 
     /// Gets the underlying byte representation.
@@ -520,14 +520,15 @@ impl OsStr {
     /// Note: it is *crucial* that this API is private, to avoid
     /// revealing the internal, platform-specific encodings.
     fn bytes(&self) -> &[u8] {
-        unsafe { mem::transmute(&self.inner) }
+        unsafe { &*(&self.inner as *const _ as *const [u8]) }
     }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
 impl<'a> From<&'a OsStr> for Box<OsStr> {
     fn from(s: &'a OsStr) -> Box<OsStr> {
-        unsafe { mem::transmute(s.inner.into_box()) }
+        let rw = Box::into_raw(s.inner.into_box()) as *mut OsStr;
+        unsafe { Box::from_raw(rw) }
     }
 }
 
@@ -548,7 +549,8 @@ impl From<OsString> for Box<OsStr> {
 #[stable(feature = "box_default_extra", since = "1.17.0")]
 impl Default for Box<OsStr> {
     fn default() -> Box<OsStr> {
-        unsafe { mem::transmute(Slice::empty_box()) }
+        let rw = Box::into_raw(Slice::empty_box()) as *mut OsStr;
+        unsafe { Box::from_raw(rw) }
     }
 }
 

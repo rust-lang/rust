@@ -311,8 +311,8 @@ impl CString {
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
-        let slice = slice::from_raw_parts(ptr, len as usize);
-        CString { inner: mem::transmute(slice) }
+        let slice = slice::from_raw_parts_mut(ptr, len as usize);
+        CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
     }
 
     /// Transfers ownership of the string to a C caller.
@@ -480,7 +480,7 @@ impl CString {
     /// ```
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
-        unsafe { mem::transmute(self.into_inner()) }
+        unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
     }
 
     // Bypass "move out of struct which implements [`Drop`] trait" restriction.
@@ -569,7 +569,7 @@ impl Borrow<CStr> for CString {
 impl<'a> From<&'a CStr> for Box<CStr> {
     fn from(s: &'a CStr) -> Box<CStr> {
         let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
-        unsafe { mem::transmute(boxed) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
     }
 }
 
@@ -593,7 +593,7 @@ impl From<CString> for Box<CStr> {
 impl Default for Box<CStr> {
     fn default() -> Box<CStr> {
         let boxed: Box<[u8]> = Box::from([0]);
-        unsafe { mem::transmute(boxed) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
     }
 }
 
@@ -817,7 +817,7 @@ impl CStr {
     #[inline]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        mem::transmute(bytes)
+        &*(bytes as *const [u8] as *const CStr)
     }
 
     /// Returns the inner pointer to this C string.
@@ -913,7 +913,7 @@ impl CStr {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
-        unsafe { mem::transmute(&self.inner) }
+        unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
     }
 
     /// Yields a [`&str`] slice if the `CStr` contains valid UTF-8.
@@ -1005,7 +1005,8 @@ impl CStr {
     /// ```
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_c_string(self: Box<CStr>) -> CString {
-        unsafe { mem::transmute(self) }
+        let raw = Box::into_raw(self) as *mut [u8];
+        CString { inner: unsafe { Box::from_raw(raw) } }
     }
 }
 
