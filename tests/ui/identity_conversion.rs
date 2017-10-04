@@ -28,6 +28,11 @@ fn main() {
     let _: String = "foo".into();
     let _: String = From::from("foo");
     let _ = String::from("foo");
+    #[allow(identity_conversion)]
+    {
+        let _: String = "foo".into();
+        let _ = String::from("foo");
+    }
 
     let _: String = "foo".to_string().into();
     let _: String = From::from("foo".to_string());
