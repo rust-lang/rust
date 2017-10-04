@@ -31,8 +31,8 @@ use types::join_bounds;
 use utils::{colon_spaces, contains_skip, end_typaram, first_line_width, format_abi,
             format_constness, format_defaultness, format_mutability, format_unsafety,
             format_visibility, is_attributes_extendable, last_line_contains_single_line_comment,
-            last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, stmt_expr,
-            trim_newlines, trimmed_last_line_width};
+            last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, starts_with_newline,
+            stmt_expr, trim_newlines, trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -1940,7 +1940,7 @@ fn rewrite_fn_base(
             // Try to preserve the layout of the original snippet.
             let original_starts_with_newline = snippet
                 .find(|c| c != ' ')
-                .map_or(false, |i| snippet[i..].starts_with('\n'));
+                .map_or(false, |i| starts_with_newline(&snippet[i..]));
             let original_ends_with_newline = snippet
                 .rfind(|c| c != ' ')
                 .map_or(false, |i| snippet[i..].ends_with('\n'));

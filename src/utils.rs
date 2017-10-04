@@ -493,3 +493,7 @@ pub fn isatty() -> bool {
         kernel32::GetConsoleMode(handle, &mut out) != 0
     }
 }
+
+pub fn starts_with_newline(s: &str) -> bool {
+    s.starts_with('\n') || s.starts_with("\r\n")
+}
