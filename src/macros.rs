@@ -202,7 +202,7 @@ pub fn rewrite_macro(
         MacroStyle::Parens => {
             // Format macro invocation as function call, forcing no trailing
             // comma because not all macros support them.
-            let rw = rewrite_call_inner(
+            rewrite_call_inner(
                 context,
                 &macro_name,
                 &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..],
@@ -210,8 +210,7 @@ pub fn rewrite_macro(
                 shape,
                 context.config.fn_call_width(),
                 trailing_comma,
-            );
-            rw.ok().map(|rw| match position {
+            ).map(|rw| match position {
                 MacroPosition::Item => format!("{};", rw),
                 _ => rw,
             })

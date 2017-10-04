@@ -346,7 +346,7 @@ fn rewrite_tuple_pat(
         shape,
         shape.width,
         add_comma,
-    ).ok()
+    )
 }
 
 fn count_wildcard_suffix_len(
