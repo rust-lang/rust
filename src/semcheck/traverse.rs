@@ -36,20 +36,25 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     let mut id_mapping = IdMapping::new(old.krate, new.krate);
 
     // first pass
+    debug!("first pass started");
     diff_structure(&mut changes, &mut id_mapping, tcx, old, new);
 
     // second pass
+    debug!("second pass started");
     {
         let mut mismatch = MismatchRelation::new(tcx, &mut id_mapping);
+        debug!("constructed mismatch relation");
         mismatch.process();
     }
 
     // third pass
+    debug!("third pass started");
     for (old, new) in id_mapping.items() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
     // fourth pass on impls
+    debug!("fourth pass started");
     diff_inherent_impls(&mut changes, &id_mapping, tcx);
     diff_trait_impls(&mut changes, &id_mapping, tcx);
 

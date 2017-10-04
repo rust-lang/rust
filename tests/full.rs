@@ -27,8 +27,7 @@ macro_rules! full_test {
     # sanitize paths
     gsub(/-->.*"#, $crate_name, r#"/, "--> "#, $crate_name, r#"", $0);
     print;
-}
-                               "#, $crate_name, $crate_name);
+}"#, $crate_name, $crate_name);
             let out_file = Path::new("tests/full_cases")
                 .join(concat!($crate_name, "-", $old_version, "-", $new_version));
 

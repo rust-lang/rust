@@ -31,7 +31,6 @@ use syntax::ast;
 /// find their root modules and then proceed to walk their module trees.
 fn callback(state: &driver::CompileState, version: &str) {
     let tcx = state.tcx.unwrap();
-    // let cstore = &tcx.sess.cstore;
 
     let cnums = tcx
         .crates()
@@ -61,6 +60,7 @@ fn callback(state: &driver::CompileState, version: &str) {
         return;
     };
 
+    debug!("running semver analysis");
     let changes = run_analysis(tcx, old_def_id, new_def_id);
 
     changes.output(tcx.sess, version);
@@ -135,6 +135,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
         controller.after_analysis.callback = box move |state| {
             debug!("running rust-semverver after_analysis callback");
             callback(state, &version);
+            debug!("running other after_analysis callback");
             old_callback(state);
         };
         controller.after_analysis.stop = Compilation::Stop;

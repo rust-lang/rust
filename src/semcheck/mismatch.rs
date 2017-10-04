@@ -45,6 +45,8 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
         use rustc::hir::def::Def::*;
 
         while let Some((old_def_id, new_def_id)) = self.item_queue.pop_front() {
+            debug!("processing mismatch item pair, remaining: {}", self.item_queue.len());
+            debug!("old: {:?}, new: {:?}", old_def_id, new_def_id);
             match self.tcx.describe_def(old_def_id) {
                 Some(Trait(_)) | Some(Macro(_, _)) => continue,
                 _ => (),
@@ -52,6 +54,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
 
             let old_ty = self.tcx.type_of(old_def_id);
             let new_ty = self.tcx.type_of(new_def_id);
+            debug!("relating item pair");
             let _ = self.relate(&old_ty, &new_ty);
         }
     }
@@ -90,12 +93,14 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
     }
 
     fn relate<T: Relate<'tcx>>(&mut self, a: &T, b: &T) -> RelateResult<'tcx, T> {
+        debug!("relate: mismatch relation: a: {:?}, b: {:?}", a, b);
         Relate::relate(self, a, b)
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use rustc::ty::TypeVariants::*;
 
+        debug!("tys: mismatch relation: a: {:?}, b: {:?}", a, b);
         let matching = match (&a.sty, &b.sty) {
             (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {

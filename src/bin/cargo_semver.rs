@@ -135,6 +135,7 @@ impl<'a> WorkInfo<'a> {
 /// and/or defaults, and dispatch the actual analysis.
 // TODO: possibly reduce the complexity by finding where some info can be taken from directly
 fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
+    debug!("running cargo-semver");
     fn parse_arg(opt: &str) -> CargoResult<NameAndVersion> {
         let mut split = opt.split('-');
         let name = if let Some(n) = split.next() {
@@ -195,6 +196,8 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
                  current_deps_output.display());
         return Ok(());
     }
+
+    debug!("running rust-semverver on compiled crates");
 
     let mut child = Command::new("rust-semverver")
         .arg("--crate-type=lib")
