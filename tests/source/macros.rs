@@ -189,3 +189,12 @@ fn __bindgen_test_layout_HandleWithDtor_open0_int_close0_instantiation() {
     );
     assert_eq ! ( :: std :: mem :: align_of :: < HandleWithDtor < :: std :: os :: raw :: c_int > > ( ) , 8usize , concat ! ( "Alignment of template specialization: " , stringify ! ( HandleWithDtor < :: std :: os :: raw :: c_int > ) ) );
 }
+
+// #878
+macro_rules! try_opt {
+    ($expr:expr) => (match $expr {  
+        Some(val) => val,
+          
+        None => { return None; }
+    })
+}
