@@ -475,11 +475,9 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             bcx.set_value_name(llarg, &name);
             llarg_idx += 1;
-            let operand = OperandRef {
-                val: OperandValue::Immediate(llarg),
-                layout: arg.layout
-            };
-            return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
+            return LocalRef::Operand(Some(
+                OperandRef::from_immediate_or_packed_pair(bcx, llarg, arg.layout)
+            ));
         } else {
             let tmp = LvalueRef::alloca(bcx, arg.layout, &name);
             arg.store_fn_arg(bcx, &mut llarg_idx, tmp);

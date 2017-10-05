@@ -135,11 +135,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 if let Some((ret_dest, target)) = destination {
                     let ret_bcx = this.get_builder(target);
                     this.set_debug_loc(&ret_bcx, terminator.source_info);
-                    let op = OperandRef {
-                        val: Immediate(invokeret),
-                        layout: fn_ty.ret.layout,
-                    };
-                    this.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
+                    this.store_return(&ret_bcx, ret_dest, &fn_ty.ret, invokeret);
                 }
             } else {
                 let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
@@ -153,11 +149,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 if let Some((ret_dest, target)) = destination {
-                    let op = OperandRef {
-                        val: Immediate(llret),
-                        layout: fn_ty.ret.layout,
-                    };
-                    this.store_return(&bcx, ret_dest, &fn_ty.ret, op);
+                    this.store_return(&bcx, ret_dest, &fn_ty.ret, llret);
                     funclet_br(this, bcx, target);
                 } else {
                     bcx.unreachable();
@@ -252,7 +244,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     if let Ref(llval, align) = op.val {
                         bcx.load(llval, align.non_abi())
                     } else {
-                        op.pack_if_pair(&bcx).immediate()
+                        op.immediate_or_packed_pair(&bcx)
                     }
                 };
                 bcx.ret(llval);
@@ -545,12 +537,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                          terminator.source_info.span);
 
                     if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                        // Make a fake operand for store_return
-                        let op = OperandRef {
-                            val: Ref(dst.llval, Alignment::AbiAligned),
-                            layout: fn_ty.ret.layout,
-                        };
-                        self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
+                        self.store_return(&bcx, ret_dest, &fn_ty.ret, dst.llval);
                     }
 
                     if let Some((_, target)) = *destination {
@@ -649,7 +636,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     op.val.store(bcx, scratch);
                     (scratch.llval, Alignment::AbiAligned, true)
                 } else {
-                    (op.pack_if_pair(bcx).immediate(), Alignment::AbiAligned, false)
+                    (op.immediate_or_packed_pair(bcx), Alignment::AbiAligned, false)
                 }
             }
             Ref(llval, align @ Alignment::Packed(_)) if arg.is_indirect() => {
@@ -915,12 +902,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     bcx: &Builder<'a, 'tcx>,
                     dest: ReturnDest<'tcx>,
                     ret_ty: &ArgType<'tcx>,
-                    op: OperandRef<'tcx>) {
+                    llval: ValueRef) {
         use self::ReturnDest::*;
 
         match dest {
             Nothing => (),
-            Store(dst) => ret_ty.store(bcx, op.immediate(), dst),
+            Store(dst) => ret_ty.store(bcx, llval, dst),
             IndirectOperand(tmp, index) => {
                 let op = tmp.load(bcx);
                 tmp.storage_dead(bcx);
@@ -929,14 +916,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
                 let op = if ret_ty.cast.is_some() {
-                    let tmp = LvalueRef::alloca(bcx, op.layout, "tmp_ret");
+                    let tmp = LvalueRef::alloca(bcx, ret_ty.layout, "tmp_ret");
                     tmp.storage_live(bcx);
-                    ret_ty.store(bcx, op.immediate(), tmp);
+                    ret_ty.store(bcx, llval, tmp);
                     let op = tmp.load(bcx);
                     tmp.storage_dead(bcx);
                     op
                 } else {
-                    op.unpack_if_pair(bcx)
+                    OperandRef::from_immediate_or_packed_pair(bcx, llval, ret_ty.layout)
                 };
                 self.locals[index] = LocalRef::Operand(Some(op));
             }

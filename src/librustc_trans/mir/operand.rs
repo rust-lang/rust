@@ -15,7 +15,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{self, CrateContext, C_undef};
+use common::{CrateContext, C_undef};
 use builder::Builder;
 use value::Value;
 use type_of::LayoutLlvmExt;
@@ -24,7 +24,6 @@ use std::fmt;
 use std::ptr;
 
 use super::{MirContext, LocalRef};
-use super::constant::Const;
 use super::lvalue::{Alignment, LvalueRef};
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -84,10 +83,10 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
                    layout: TyLayout<'tcx>) -> OperandRef<'tcx> {
         assert!(layout.is_zst());
-        let llty = layout.llvm_type(ccx);
-        // FIXME(eddyb) ZSTs should always be immediate, not pairs.
-        // This hack only exists to unpack a constant undef pair.
-        Const::new(C_undef(llty), layout.ty).to_operand(ccx)
+        OperandRef {
+            val: OperandValue::Immediate(C_undef(layout.llvm_type(ccx))),
+            layout
+        }
     }
 
     /// Asserts that this operand refers to a scalar and returns
@@ -115,12 +114,13 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
     }
 
-    /// If this operand is a Pair, we return an
-    /// Immediate aggregate with the two values.
-    pub fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
+    /// If this operand is a `Pair`, we return an aggregate with the two values.
+    /// For other cases, see `immediate`.
+    pub fn immediate_or_packed_pair(self, bcx: &Builder<'a, 'tcx>) -> ValueRef {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = self.layout.llvm_type(bcx.ccx);
-            debug!("Operand::pack_if_pair: packing {:?} into {:?}", self, llty);
+            debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
+                   self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = C_undef(llty);
             let elems = [a, b];
@@ -128,29 +128,33 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 let elem = base::from_immediate(bcx, elems[i]);
                 llpair = bcx.insert_value(llpair, elem, self.layout.llvm_field_index(i));
             }
-            self.val = OperandValue::Immediate(llpair);
+            llpair
+        } else {
+            self.immediate()
         }
-        self
     }
 
-    /// If this operand is a pair in an Immediate,
-    /// we return a Pair with the two halves.
-    pub fn unpack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
-        if let OperandValue::Immediate(llval) = self.val {
+    /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
+    pub fn from_immediate_or_packed_pair(bcx: &Builder<'a, 'tcx>,
+                                         llval: ValueRef,
+                                         layout: TyLayout<'tcx>)
+                                         -> OperandRef<'tcx> {
+        let val = if layout.is_llvm_scalar_pair(bcx.ccx) {
+            debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}",
+                    llval, layout);
+
             // Deconstruct the immediate aggregate.
-            if common::type_is_imm_pair(bcx.ccx, self.layout.ty) {
-                debug!("Operand::unpack_if_pair: unpacking {:?}", self);
+            let a = bcx.extract_value(llval, layout.llvm_field_index(0));
+            let a = base::to_immediate(bcx, a, layout.field(bcx.ccx, 0));
 
-                let a = bcx.extract_value(llval, self.layout.llvm_field_index(0));
-                let a = base::to_immediate(bcx, a, self.layout.field(bcx.ccx, 0));
+            let b = bcx.extract_value(llval, layout.llvm_field_index(1));
+            let b = base::to_immediate(bcx, b, layout.field(bcx.ccx, 1));
 
-                let b = bcx.extract_value(llval, self.layout.llvm_field_index(1));
-                let b = base::to_immediate(bcx, b, self.layout.field(bcx.ccx, 1));
-
-                self.val = OperandValue::Pair(a, b);
-            }
-        }
-        self
+            OperandValue::Pair(a, b)
+        } else {
+            OperandValue::Immediate(llval)
+        };
+        OperandRef { val, layout }
     }
 }
 
@@ -170,16 +174,9 @@ impl<'a, 'tcx> OperandValue {
                 bcx.store(base::from_immediate(bcx, s), dest.llval, dest.alignment.non_abi());
             }
             OperandValue::Pair(a, b) => {
-                // See comment above about zero-sized values.
-                let dest_a = dest.project_field(bcx, 0);
-                if !dest_a.layout.is_zst() {
-                    let a = base::from_immediate(bcx, a);
-                    bcx.store(a, dest_a.llval, dest_a.alignment.non_abi());
-                }
-                let dest_b = dest.project_field(bcx, 1);
-                if !dest_b.layout.is_zst() {
-                    let b = base::from_immediate(bcx, b);
-                    bcx.store(b, dest_b.llval, dest_b.alignment.non_abi());
+                for (i, &x) in [a, b].iter().enumerate() {
+                    OperandValue::Immediate(x)
+                        .store(bcx, dest.project_field(bcx, i));
                 }
             }
         }
@@ -218,13 +215,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         (OperandValue::Pair(a, b),
                          &mir::ProjectionElem::Field(ref f, ty)) => {
                             let llval = [a, b][f.index()];
-                            let op = OperandRef {
+                            return OperandRef {
                                 val: OperandValue::Immediate(llval),
                                 layout: bcx.ccx.layout_of(self.monomorphize(&ty))
                             };
-
-                            // Handle nested pairs.
-                            return op.unpack_if_pair(bcx);
                         }
                         _ => {}
                     }

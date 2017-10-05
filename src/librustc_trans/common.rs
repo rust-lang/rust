@@ -28,7 +28,7 @@ use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf};
+use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::hir;
 
@@ -49,25 +49,6 @@ pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
         }
         ty::TyAdt(def, _) if def.is_box() => {
             !ccx.shared().type_is_sized(ty.boxed_ty())
-        }
-        _ => false
-    }
-}
-
-/// Returns true if the type is represented as a pair of immediates.
-pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
-                                  -> bool {
-    let layout = ccx.layout_of(ty);
-    match layout.fields {
-        layout::FieldPlacement::Arbitrary { .. } => {
-            // There must be only 2 fields.
-            if layout.fields.count() != 2 {
-                return false;
-            }
-
-            // The two fields must be both immediates.
-            layout.field(ccx, 0).is_llvm_immediate() &&
-            layout.field(ccx, 1).is_llvm_immediate()
         }
         _ => false
     }

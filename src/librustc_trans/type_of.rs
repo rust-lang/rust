@@ -174,6 +174,7 @@ pub struct PointeeInfo {
 
 pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
+    fn is_llvm_scalar_pair<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> bool;
     fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn over_align(&self) -> Option<Align>;
@@ -189,6 +190,24 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             layout::Abi::Vector => true,
 
             layout::Abi::Aggregate { .. } => self.is_zst()
+        }
+    }
+
+    fn is_llvm_scalar_pair<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> bool {
+        match self.fields {
+            layout::FieldPlacement::Arbitrary { .. } => {
+                // There must be only 2 fields.
+                if self.fields.count() != 2 {
+                    return false;
+                }
+
+                // The two fields must be both scalars.
+                match (&self.field(ccx, 0).abi, &self.field(ccx, 1).abi) {
+                    (&layout::Abi::Scalar(_), &layout::Abi::Scalar(_)) => true,
+                    _ => false
+                }
+            }
+            _ => false
         }
     }
 
