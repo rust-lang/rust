@@ -268,6 +268,259 @@ pub unsafe fn _mm_movemask_ps(a: f32x4) -> i32 {
     movmskps(a)
 }
 
+/// Perform a serializing operation on all store-to-memory instructions that
+/// were issued prior to this instruction.
+///
+/// Guarantees that every store instruction that precedes, in program order, is
+/// globally visible before any store instruction which follows the fence in
+/// program order.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(sfence))]
+pub unsafe fn _mm_sfence() {
+    sfence()
+}
+
+/// Get the unsigned 32-bit value of the MXCSR control and status register.
+///
+/// For more info see [`_mm_setcsr`](fn._mm_setcsr.html)
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(stmxcsr))]
+pub unsafe fn _mm_getcsr() -> u32 {
+    let mut result = 0i32;
+    stmxcsr((&mut result) as *mut _ as *mut i8);
+    result as u32
+}
+
+/// Set the MXCSR register with the 32-bit unsigned integer value.
+///
+/// This register constrols how SIMD instructions handle floating point
+/// operations. Modifying this register only affects the current thread.
+///
+/// It contains several groups of flags:
+///
+/// * *Exception flags* report which exceptions occurred since last they were
+/// reset.
+///
+/// * *Masking flags* can be used to mask (ignore) certain exceptions. By default
+/// these flags are all set to 1, so all exceptions are masked. When an
+/// an exception is masked, the processor simply sets the exception flag and
+/// continues the operation. If the exception is unmasked, the flag is also set
+/// but additionally an exception handler is invoked.
+///
+/// * *Rounding mode flags* control the rounding mode of floating point
+/// instructions.
+///
+/// * The *denormals-are-zero mode flag* turns all numbers which would be
+/// denormalized (exponent bits are all zeros) into zeros.
+///
+/// ## Exception Flags
+///
+/// * `_MM_EXCEPT_INVALID`: An invalid operation was performed (e.g., dividing
+///   Infinity by Infinity).
+///
+/// * `_MM_EXCEPT_DENORM`: An operation attempted to operate on a denormalized
+///   number. Mainly this can cause loss of precision.
+///
+/// * `_MM_EXCEPT_DIV_ZERO`: Division by zero occured.
+///
+/// * `_MM_EXCEPT_OVERFLOW`: A numeric overflow exception occured, i.e., a
+///   result was too large to be represented (e.g., an `f32` with absolute value
+///   greater than `2^128`).
+///
+/// * `_MM_EXCEPT_UNDERFLOW`: A numeric underflow exception occured, i.e., a
+///   result was too small to be represented in a normalized way (e.g., an `f32`
+///   with absulte value smaller than `2^-126`.)
+///
+/// * `_MM_EXCEPT_INEXACT`: An inexact-result exception occured (a.k.a.
+///   precision exception). This means some precision was lost due to rounding.
+///   For example, the fraction `1/3` cannot be represented accurately in a
+///   32 or 64 bit float and computing it would cause this exception to be
+///   raised. Precision exceptions are very common, so they are usually masked.
+///
+/// Exception flags can be read and set using the convenience functions
+/// `_MM_GET_EXCEPTION_STATE` and `_MM_SET_EXCEPTION_STATE`. For example, to
+/// check if an operation caused some overflow:
+///
+/// ```rust,ignore
+/// _MM_SET_EXCEPTION_STATE(0);  // clear all exception flags
+/// // perform calculations
+/// if _MM_GET_EXCEPTION_STATE() & _MM_EXCEPT_OVERFLOW != 0 {
+///     // handle overflow
+/// }
+/// ```
+///
+/// ## Masking Flags
+///
+/// There is one masking flag for each exception flag: `_MM_MASK_INVALID`,
+/// `_MM_MASK_DENORM`, `_MM_MASK_DIV_ZERO`, `_MM_MASK_OVERFLOW`,
+/// `_MM_MASK_UNDERFLOW`, `_MM_MASK_INEXACT`.
+///
+/// A single masking bit can be set via
+///
+/// ```rust,ignore
+/// _MM_SET_EXCEPTION_MASK(_MM_MASK_UNDERFLOW);
+/// ```
+///
+/// However, since mask bits are by default all set to 1, it is more common to
+/// want to *disable* certain bits. For example, to unmask the underflow
+/// exception, use:
+///
+/// ```rust,ignore
+/// _mm_setcsr(_mm_getcsr() & !_MM_MASK_UNDERFLOW);  // unmask underflow exception
+/// ```
+///
+/// Warning: an unmasked exception will cause an exception handler to be called.
+/// The standard handler will simply terminate the process. So, in this case
+/// any underflow exception would terminate the current process with something
+/// like `signal: 8, SIGFPE: erroneous arithmetic operation`.
+///
+/// ## Rounding Mode
+///
+/// The rounding mode is describe using two bits. It can be read and set using
+/// the convenience wrappers `_MM_GET_ROUNDING_MODE()` and
+/// `_MM_SET_ROUNDING_MODE(mode)`.
+///
+/// The rounding modes are:
+///
+/// * `_MM_ROUND_NEAREST`: (default) Round to closest to the infinite precision
+///   value. If two values are equally close, round to even (i.e., least
+///   significant bit will be zero).
+///
+/// * `_MM_ROUND_DOWN`: Round toward negative Infinity.
+///
+/// * `_MM_ROUND_UP`: Round toward positive Infinity.
+///
+/// * `_MM_ROUND_TOWARD_ZERO`: Round towards zero (truncate).
+///
+/// Example:
+///
+/// ```rust,ignore
+/// _MM_SET_ROUNDING_MODE(_MM_ROUND_DOWN)
+/// ```
+///
+/// ## Denormals-are-zero/Flush-to-zero Mode
+///
+/// If this bit is set, values that would be denormalized will be set to zero
+/// instead. This is turned off by default.
+///
+/// You can read and enable/disable this mode via the helper functions
+/// `_MM_GET_FLUSH_ZERO_MODE()` and `_MM_SET_FLUSH_ZERO_MODE()`:
+///
+/// ```rust,ignore
+/// _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_OFF);  // turn off (default)
+/// _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);  // turn on
+/// ```
+///
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(ldmxcsr))]
+pub unsafe fn _mm_setcsr(val: u32) {
+    ldmxcsr(&val as *const _ as *const i8);
+}
+
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_EXCEPT_INVALID: u32    = 0x0001;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_EXCEPT_DENORM: u32     = 0x0002;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_EXCEPT_DIV_ZERO: u32   = 0x0004;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_EXCEPT_OVERFLOW: u32   = 0x0008;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_EXCEPT_UNDERFLOW: u32  = 0x0010;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_EXCEPT_INEXACT: u32    = 0x0020;
+pub const _MM_EXCEPT_MASK: u32       = 0x003f;
+
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_MASK_INVALID: u32      = 0x0080;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_MASK_DENORM: u32       = 0x0100;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_MASK_DIV_ZERO: u32     = 0x0200;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_MASK_OVERFLOW: u32     = 0x0400;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_MASK_UNDERFLOW: u32    = 0x0800;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_MASK_INEXACT: u32      = 0x1000;
+pub const _MM_MASK_MASK: u32         = 0x1f80;
+
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_ROUND_NEAREST: u32     = 0x0000;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_ROUND_DOWN: u32        = 0x2000;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_ROUND_UP: u32          = 0x4000;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_ROUND_TOWARD_ZERO: u32 = 0x6000;
+pub const _MM_ROUND_MASK: u32        = 0x6000;
+
+pub const _MM_FLUSH_ZERO_MASK: u32   = 0x8000;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_FLUSH_ZERO_ON: u32     = 0x8000;
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
+pub const _MM_FLUSH_ZERO_OFF: u32    = 0x0000;
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
+    _mm_getcsr() & _MM_MASK_MASK
+}
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
+    _mm_getcsr() & _MM_EXCEPT_MASK
+}
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
+    _mm_getcsr() & _MM_FLUSH_ZERO_MASK
+}
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
+    _mm_getcsr() & _MM_ROUND_MASK
+}
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
+    _mm_setcsr((_mm_getcsr() & !_MM_MASK_MASK) | x)
+}
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
+    _mm_setcsr((_mm_getcsr() & !_MM_EXCEPT_MASK) | x)
+}
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
+    let val = (_mm_getcsr() & !_MM_FLUSH_ZERO_MASK) | x;
+    //println!("setting csr={:x}", val);
+    _mm_setcsr(val)
+}
+
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_SET_ROUNDING_MODE(x: u32) {
+    _mm_setcsr((_mm_getcsr() & !_MM_ROUND_MASK) | x)
+}
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
 pub const _MM_HINT_T0: i8 = 3;
@@ -374,6 +627,12 @@ extern {
     fn maxps(a: f32x4, b: f32x4) -> f32x4;
     #[link_name = "llvm.x86.sse.movmsk.ps"]
     fn movmskps(a: f32x4) -> i32;
+    #[link_name = "llvm.x86.sse.sfence"]
+    fn sfence();
+    #[link_name = "llvm.x86.sse.stmxcsr"]
+    fn stmxcsr(p: *mut i8);
+    #[link_name = "llvm.x86.sse.ldmxcsr"]
+    fn ldmxcsr(p: *const i8);
     #[link_name = "llvm.prefetch"]
     fn prefetch(p: *const c_void, rw: i32, loc: i32, ty: i32);
 }
@@ -383,6 +642,7 @@ mod tests {
     use v128::*;
     use x86::sse;
     use stdsimd_test::simd_test;
+    use test::black_box;  // Used to inhibit constant-folding.
 
     #[simd_test = "sse"]
     unsafe fn _mm_add_ps() {
@@ -576,5 +836,63 @@ mod tests {
 
         let r = sse::_mm_movemask_ps(f32x4::new(-1.0, -5.0, -5.0, 0.0));
         assert_eq!(r, 0b0111);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_sfence() {
+        sse::_mm_sfence();
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_getcsr_setcsr_1() {
+        let saved_csr = sse::_mm_getcsr();
+
+        let a = f32x4::new(1.1e-36, 0.0, 0.0, 1.0);
+        let b = f32x4::new(0.001, 0.0, 0.0, 1.0);
+
+        sse::_MM_SET_FLUSH_ZERO_MODE(sse::_MM_FLUSH_ZERO_ON);
+        let r = sse::_mm_mul_ps(black_box(a), black_box(b));
+
+        sse::_mm_setcsr(saved_csr);
+
+        let exp = f32x4::new(0.0, 0.0, 0.0, 1.0);
+        assert_eq!(r, exp);  // first component is a denormalized f32
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_getcsr_setcsr_2() {
+        // Same as _mm_setcsr_1 test, but with opposite flag value.
+
+        let saved_csr = sse::_mm_getcsr();
+
+        let a = f32x4::new(1.1e-36, 0.0, 0.0, 1.0);
+        let b = f32x4::new(0.001, 0.0, 0.0, 1.0);
+
+        sse::_MM_SET_FLUSH_ZERO_MODE(sse::_MM_FLUSH_ZERO_OFF);
+        let r = sse::_mm_mul_ps(black_box(a), black_box(b));
+
+        sse::_mm_setcsr(saved_csr);
+
+        let exp = f32x4::new(1.1e-39, 0.0, 0.0, 1.0);
+        assert_eq!(r, exp);  // first component is a denormalized f32
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_getcsr_setcsr_underflow() {
+        sse::_MM_SET_EXCEPTION_STATE(0);
+
+        let a = f32x4::new(1.1e-36, 0.0, 0.0, 1.0);
+        let b = f32x4::new(1e-5, 0.0, 0.0, 1.0);
+
+        assert_eq!(sse::_MM_GET_EXCEPTION_STATE(), 0);  // just to be sure
+
+        let r = sse::_mm_mul_ps(black_box(a), black_box(b));
+
+        let exp = f32x4::new(1.1e-41, 0.0, 0.0, 1.0);
+        assert_eq!(r, exp);
+
+        let underflow =
+            sse::_MM_GET_EXCEPTION_STATE() & sse::_MM_EXCEPT_UNDERFLOW != 0;
+        assert_eq!(underflow, true);
     }
 }
