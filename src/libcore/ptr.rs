@@ -27,8 +27,6 @@ use nonzero::NonZero;
 
 use cmp::Ordering::{self, Less, Equal, Greater};
 
-// FIXME #19649: intrinsic docs don't render, so these have no docs :(
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::copy_nonoverlapping;
 

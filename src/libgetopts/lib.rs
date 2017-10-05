@@ -731,7 +731,9 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             }
         }
 
-        // FIXME: #5516 should be graphemes not codepoints
+        // FIXME(https://github.com/rust-lang-nursery/getopts/issues/7)
+        // should be graphemes not codepoints
+        //
         // here we just need to indent the start of the description
         let rowlen = row.chars().count();
         if rowlen < 24 {
@@ -749,14 +751,17 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
             desc_normalized_whitespace.push(' ');
         }
 
-        // FIXME: #5516 should be graphemes not codepoints
+        // FIXME(https://github.com/rust-lang-nursery/getopts/issues/7)
+        // should be graphemes not codepoints
         let mut desc_rows = Vec::new();
         each_split_within(&desc_normalized_whitespace[..], 54, |substr| {
             desc_rows.push(substr.to_owned());
             true
         });
 
-        // FIXME: #5516 should be graphemes not codepoints
+        // FIXME(https://github.com/rust-lang-nursery/getopts/issues/7)
+        // should be graphemes not codepoints
+        //
         // wrapped description
         row.push_str(&desc_rows.join(&desc_sep[..]));
 

@@ -12,7 +12,6 @@
 
 #![allow(deprecated)]
 
-// FIXME: #6220 Implement floating point formatting
 
 use fmt;
 use ops::{Div, Rem, Sub};
