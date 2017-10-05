@@ -378,7 +378,7 @@ declare_features! (
     // #[doc(cfg(...))]
     (active, doc_cfg, "1.21.0", Some(43781)),
     // #[doc(masked)]
-    (active, doc_masked, "1.21.0", None),
+    (active, doc_masked, "1.21.0", Some(44027)),
 
     // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),

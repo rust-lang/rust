@@ -1,4 +1,5 @@
 # Contributing to Rust
+[contributing-to-rust]: #contributing-to-rust
 
 Thank you for your interest in contributing to Rust! There are many ways to
 contribute, and we appreciate all of them. This document is a bit long, so here's
@@ -18,11 +19,12 @@ hop on [#rust-internals][pound-rust-internals].
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
-[pound-rust-internals]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
+[pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
 [coc]: https://www.rust-lang.org/conduct.html
 
 ## Feature Requests
+[feature-requests]: #feature-requests
 
 To request a change to the way that the Rust language works, please open an
 issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
@@ -30,6 +32,7 @@ rather than this one. New features and other significant language changes
 must go through the RFC process.
 
 ## Bug Reports
+[bug-reports]: #bug-reports
 
 While bugs are unfortunate, they're a reality in software. We can't fix what we
 don't know about, so please report liberally. If you're not sure if something
@@ -80,6 +83,7 @@ $ RUST_BACKTRACE=1 rustc ...
 ```
 
 ## The Build System
+[the-build-system]: #the-build-system
 
 Rust's build system allows you to bootstrap the compiler, run tests &
 benchmarks, generate documentation, install a fresh build of Rust, and more.
@@ -94,6 +98,7 @@ system internals, try asking in [`#rust-internals`][pound-rust-internals].
 [bootstrap]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/
 
 ### Configuration
+[configuration]: #configuration
 
 Before you can start building the compiler you need to configure the build for
 your system. In most cases, that will just mean using the defaults provided
@@ -125,6 +130,11 @@ file. If you still have a `config.mk` file in your directory - from
 `./configure` - you may need to delete it for `config.toml` to work.
 
 ### Building
+[building]: #building
+
+Dependencies
+- [build dependencies](README.md#building-from-source)
+- `gdb` 6.2.0 minimum, 7.1 or later recommended for test builds
 
 The build system uses the `x.py` script to control the build process. This script
 is used to build, test, and document various parts of the compiler. You can
@@ -194,6 +204,7 @@ Note: Previously `./configure` and `make` were used to build this project.
 They are still available, but `x.py` is the recommended build system.
 
 ### Useful commands
+[useful-commands]: #useful-commands
 
 Some common invocations of `x.py` are:
 
@@ -234,6 +245,7 @@ Some common invocations of `x.py` are:
   code.
 
 ### Using your local build
+[using-local-build]: #using-local-build
 
 If you use Rustup to manage your rust install, it has a feature called ["custom
 toolchains"][toolchain-link] that you can use to access your newly-built compiler
@@ -262,6 +274,7 @@ stage 1. `python x.py build --stage 1 src/libstd src/tools/rustdoc` will build
 rustdoc and libstd, which will allow rustdoc to be run with that toolchain.)
 
 ## Pull Requests
+[pull-requests]: #pull-requests
 
 Pull requests are the primary mechanism we use to change Rust. GitHub itself
 has some [great documentation][pull-requests] on using the Pull Request feature.
@@ -326,6 +339,7 @@ it can be found
 [here](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-testsuite.md).
 
 ### External Dependencies
+[external-dependencies]: #external-dependencies
 
 Currently building Rust will also build the following external projects:
 
@@ -333,13 +347,24 @@ Currently building Rust will also build the following external projects:
 * [miri](https://github.com/solson/miri)
 
 If your changes break one of these projects, you need to fix them by opening
-a pull request against the broken project. When you have opened a pull request,
-you can disable the tool via `src/tools/toolstate.toml`.
+a pull request against the broken project asking to put the fix on a branch.
+Then you can disable the tool building via `src/tools/toolstate.toml`.
+Once the branch containing your fix is likely to be merged, you can point
+the affected submodule at this branch.
+
+Don't forget to also add your changes with
+
+```
+git add path/to/submodule
+```
+
+outside the submodule.
 
 It can also be more convenient during development to set `submodules = false`
 in the `config.toml` to prevent `x.py` from resetting to the original branch.
 
 ## Writing Documentation
+[writing-documentation]: #writing-documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
 is located in `src/doc` in the tree, and standard API documentation is generated
@@ -370,6 +395,7 @@ reference to `doc/reference.html`. The CSS might be messed up, but you can
 verify that the HTML is right.
 
 ## Issue Triage
+[issue-triage]: #issue-triage
 
 Sometimes, an issue will stay open, even though the bug has been fixed. And
 sometimes, the original bug may go stale because something has changed in the
@@ -437,6 +463,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 [rfcbot]: https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md
 
 ## Out-of-tree Contributions
+[out-of-tree-contributions]: #out-of-tree-contributions
 
 There are a number of other ways to contribute to Rust that don't deal with
 this repository.
@@ -456,6 +483,7 @@ valuable!
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
 
 ## Helpful Links and Information
+[helpful-info]: #helpful-info
 
 For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information

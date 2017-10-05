@@ -145,11 +145,11 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
         });
         match stmt.kind {
             mir::StatementKind::EndRegion(region_scope) => {
-                let borrow_indexes = self.region_map.get(&ReScope(region_scope)).unwrap_or_else(|| {
-                    panic!("could not find BorrowIndexs for region scope {:?}", region_scope);
-                });
-
-                for idx in borrow_indexes { sets.kill(&idx); }
+                if let Some(borrow_indexes) = self.region_map.get(&ReScope(region_scope)) {
+                    for idx in borrow_indexes { sets.kill(&idx); }
+                } else {
+                    // (if there is no entry, then there are no borrows to be tracked)
+                }
             }
 
             mir::StatementKind::Assign(_, ref rhs) => {
