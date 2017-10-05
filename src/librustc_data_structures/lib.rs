@@ -28,6 +28,7 @@
 #![feature(fn_traits)]
 #![feature(unsize)]
 #![feature(i128_type)]
+#![feature(i128)]
 #![feature(conservative_impl_trait)]
 #![feature(specialization)]
 
@@ -40,6 +41,8 @@ extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
+
+extern crate siphasher;
 
 pub use rustc_serialize::hex::ToHex;
 
