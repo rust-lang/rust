@@ -1,5 +1,6 @@
 use simd_llvm::simd_shuffle4;
 use v128::*;
+use std::os::raw::c_void;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -267,6 +268,80 @@ pub unsafe fn _mm_movemask_ps(a: f32x4) -> i32 {
     movmskps(a)
 }
 
+
+/// See [`_mm_prefetch`](fn._mm_prefetch.html).
+pub const _MM_HINT_T0: i8 = 3;
+
+/// See [`_mm_prefetch`](fn._mm_prefetch.html).
+pub const _MM_HINT_T1: i8 = 2;
+
+/// See [`_mm_prefetch`](fn._mm_prefetch.html).
+pub const _MM_HINT_T2: i8 = 1;
+
+/// See [`_mm_prefetch`](fn._mm_prefetch.html).
+pub const _MM_HINT_NTA: i8 = 0;
+
+
+/// Fetch the cache line that contains address `p` using the given `strategy`.
+///
+/// The `strategy` must be one of:
+///
+/// * [`_MM_HINT_T0`](constant._MM_HINT_T0.html): Fetch into all levels of the
+///   cache hierachy.
+///
+/// * [`_MM_HINT_T1`](constant._MM_HINT_T1.html): Fetch into L2 and higher.
+///
+/// * [`_MM_HINT_T2`](constant._MM_HINT_T2.html): Fetch into L3 and higher or an
+///   implementation-specific choice (e.g., L2 if there is no L3).
+///
+/// * [`_MM_HINT_NTA`](constant._MM_HINT_NTA.html): Fetch data using the
+///   non-temporal access (NTA) hint. It may be a place closer than main memory
+///   but outside of the cache hierarchy. This is used to reduce access latency
+///   without polluting the cache.
+///
+/// The actual implementation depends on the particular CPU. This instruction
+/// is considered a hint, so the CPU is also free to simply ignore the request.
+///
+/// The amount of prefetched data depends on the cache line size of the specific
+/// CPU, but it will be at least 32 bytes.
+///
+/// Common caveats:
+///
+/// * Most modern CPUs already automatically prefetch data based on predicted
+///   access patterns.
+///
+/// * Data is usually not fetched if this would cause a TLB miss or a page
+///   fault.
+///
+/// * Too much prefetching can cause unnecessary cache evictions.
+///
+/// * Prefetching may also fail if there are not enough memory-subsystem
+///   resources (e.g., request buffers).
+///
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(prefetcht0, strategy = _MM_HINT_T0))]
+// #[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
+// #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
+// #[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
+pub unsafe fn _mm_prefetch(p: *const c_void, strategy: i8) {
+    // The `strategy` must be a compile-time constant, so we use a short form of
+    // `constify_imm8!` for now.
+    // We use the `llvm.prefetch` instrinsic with `rw` = 0 (read), and
+    // `cache type` = 1 (data cache). `locality` is based on our `strategy`.
+    macro_rules! pref {
+        ($imm8:expr) => {
+            match $imm8 {
+                0 => prefetch(p, 0, 0, 1),
+                1 => prefetch(p, 0, 1, 1),
+                2 => prefetch(p, 0, 2, 1),
+                _ => prefetch(p, 0, 3, 1),
+            }
+        }
+    }
+    pref!(strategy)
+}
+
 #[allow(improper_ctypes)]
 extern {
     #[link_name = "llvm.x86.sse.add.ss"]
@@ -299,6 +374,8 @@ extern {
     fn maxps(a: f32x4, b: f32x4) -> f32x4;
     #[link_name = "llvm.x86.sse.movmsk.ps"]
     fn movmskps(a: f32x4) -> i32;
+    #[link_name = "llvm.prefetch"]
+    fn prefetch(p: *const c_void, rw: i32, loc: i32, ty: i32);
 }
 
 #[cfg(test)]
