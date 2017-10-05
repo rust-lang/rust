@@ -105,6 +105,7 @@ test!(circular);
 test!(consts);
 test!(enums);
 test!(func);
+test!(func_local_items);
 test!(infer);
 test!(infer_regress);
 test!(inherent_impls);
