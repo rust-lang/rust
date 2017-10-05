@@ -333,6 +333,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box infinite_iter::Pass);
     reg.register_late_lint_pass(box invalid_ref::InvalidRef);
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
+    reg.register_late_lint_pass(box types::ImplicitHasher);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -555,6 +556,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::BOX_VEC,
         types::CAST_LOSSLESS,
         types::CHAR_LIT_AS_U8,
+        types::IMPLICIT_HASHER,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
         types::TYPE_COMPLEXITY,
