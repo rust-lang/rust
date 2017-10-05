@@ -68,8 +68,7 @@ pub struct Session {
     pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
     // The name of the root source file of the crate, in the local file system.
-    // The path is always expected to be absolute. `None` means that there is no
-    // source file.
+    // `None` means that there is no source file.
     pub local_crate_source_file: Option<String>,
     // The directory the compiler has been executed in plus a flag indicating
     // if the value stored here has been affected by path remapping.
@@ -722,7 +721,6 @@ pub fn build_session_(sopts: config::Options,
 
     let file_path_mapping = sopts.file_path_mapping();
 
-    // Make the path absolute, if necessary
     let local_crate_source_file = local_crate_source_file.map(|path| {
         file_path_mapping.map_prefix(path.to_string_lossy().into_owned()).0
     });

@@ -525,7 +525,7 @@ impl<'a> Parser<'a> {
         if let Some(directory) = directory {
             parser.directory = directory;
         } else if parser.span != syntax_pos::DUMMY_SP {
-            parser.directory.path = PathBuf::from(sess.codemap().span_to_filename(parser.span));
+            parser.directory.path = sess.codemap().span_to_unmapped_path(parser.span);
             parser.directory.path.pop();
         }
 

@@ -184,6 +184,8 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = make_test(test, Some(cratename), as_test_harness, opts);
+    // FIXME(#44940): if doctests ever support path remapping, then this filename
+    // needs to be the result of CodeMap::span_to_unmapped_path
     let input = config::Input::Str {
         name: filename.to_owned(),
         input: test.to_owned(),

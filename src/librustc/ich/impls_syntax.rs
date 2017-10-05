@@ -354,6 +354,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
         let FileMap {
             ref name,
             name_was_remapped,
+            unmapped_path: _,
             crate_of_origin,
             // Do not hash the source as it is not encoded
             src: _,
