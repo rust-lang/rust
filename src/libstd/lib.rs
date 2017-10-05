@@ -329,6 +329,7 @@
 #![feature(vec_push_all)]
 #![feature(doc_cfg)]
 #![feature(doc_masked)]
+#![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(const_atomic_ptr_new))]
 
