@@ -30,3 +30,7 @@ fn break_meee() {
         };
     }
 }
+
+// #2018
+pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
+    "Unsized tuple coercion is not stable enough for use and is subject to change";

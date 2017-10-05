@@ -2882,7 +2882,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
     let rhs = try_opt!(choose_rhs(
         context,
         ex,
-        shape,
+        orig_shape,
         ex.rewrite(context, orig_shape)
     ));
     Some(lhs + &rhs)
@@ -2895,7 +2895,9 @@ fn choose_rhs(
     orig_rhs: Option<String>,
 ) -> Option<String> {
     match orig_rhs {
-        Some(ref new_str) if !new_str.contains('\n') => Some(format!(" {}", new_str)),
+        Some(ref new_str) if !new_str.contains('\n') && new_str.len() <= shape.width => {
+            Some(format!(" {}", new_str))
+        }
         _ => {
             // Expression did not fit on the same line as the identifier.
             // Try splitting the line and see if that works better.

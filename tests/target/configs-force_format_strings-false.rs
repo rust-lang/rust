@@ -5,5 +5,6 @@
 // Force format strings
 
 fn main() {
-    let lorem = "ipsum dolor sit amet consectetur adipiscing elit lorem ipsum dolor sit";
+    let lorem =
+        "ipsum dolor sit amet consectetur adipiscing elit lorem ipsum dolor sit";
 }
