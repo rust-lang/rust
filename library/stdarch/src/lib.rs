@@ -67,32 +67,28 @@
 //! to enable a given feature and use the desired intrinsic.
 //!
 //! ```
-//! #![feature(cfg_target_feature)]
-//! #![feature(target_feature)]
+//! # #![feature(cfg_target_feature)]
+//! # #![feature(target_feature)]
+//! # #[macro_use]
+//! # extern crate stdsimd;
+//! # fn main() {
+//! #     if cfg_feature_enabled!("avx2") {
+//! // avx2 specific code may be used in this function
+//! #[target_feature = "+avx2"]
+//! fn and_256() {
+//!     // avx2 feature specific intrinsics will work here!
+//!     use stdsimd::vendor::{__m256i, _mm256_and_si256};
 //!
-//! #[macro_use]
-//! extern crate stdsimd;
+//!     let a = __m256i::splat(5);
+//!     let b = __m256i::splat(3);
 //!
-//! fn main() {
-//!     if cfg_feature_enabled!("avx2") {
+//!     let got = unsafe { _mm256_and_si256(a, b) };
 //!
-//!         // avx2 will work. It is safe to use avx2 specific code here.
-//!         #[target_feature = "+avx2"]
-//!         fn and_256() {
-//!             // avx2 feature specific intrinsics will work here!
-//!             use stdsimd::vendor::{__m256i, _mm256_and_si256};
-//!
-//!             let a = __m256i::splat(5);
-//!             let b = __m256i::splat(3);
-//!             let got = unsafe { _mm256_and_si256(a, b) };
-//!             assert_eq!(got, __m256i::splat(1));
-//!         }
-//!
-//!         and_256();
-//!     } else {
-//!         println!("avx2 intrinsics will not work, they may generate SIGILL");
-//!     }
+//!     assert_eq!(got, __m256i::splat(1));
 //! }
+//! #         and_256();
+//! #     }
+//! # }
 //! ```
 //!
 //! # Status
