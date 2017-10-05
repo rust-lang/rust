@@ -113,3 +113,17 @@ where
         + FromStr,
 {
 }
+
+// #2020
+impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
+    fn elaborate_bounds<F>(&mut self, bounds: &[ty::PolyTraitRef<'tcx>], mut mk_cand: F)
+    where
+        F: for<'b> FnMut(
+            &mut ProbeContext<'b, 'gcx, 'tcx>,
+            ty::PolyTraitRef<'tcx>,
+            ty::AssociatedItem,
+        ),
+    {
+        // ...
+    }
+}

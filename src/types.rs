@@ -438,7 +438,7 @@ impl Rewrite for ast::WherePredicate {
 
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
-                    let ty_shape = try_opt!(shape.block_left(used_width));
+                    let ty_shape = try_opt!(shape.offset_left(used_width));
                     let bounds: Vec<_> = try_opt!(
                         bounds
                             .iter()
@@ -462,7 +462,7 @@ impl Rewrite for ast::WherePredicate {
                     let used_width = type_str.len() + colon.len();
                     let ty_shape = match context.config.where_style() {
                         Style::Legacy => try_opt!(shape.block_left(used_width)),
-                        Style::Rfc => shape.block_indent(context.config.tab_spaces()),
+                        Style::Rfc => shape,
                     };
                     let bounds: Vec<_> = try_opt!(
                         bounds
@@ -552,10 +552,9 @@ impl Rewrite for ast::TyParamBound {
                 tref.rewrite(context, shape)
             }
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
-                let budget = try_opt!(shape.width.checked_sub(1));
                 Some(format!(
                     "?{}",
-                    try_opt!(tref.rewrite(context, Shape::legacy(budget, shape.indent + 1)))
+                    try_opt!(tref.rewrite(context, try_opt!(shape.offset_left(1))))
                 ))
             }
             ast::TyParamBound::RegionTyParamBound(ref l) => l.rewrite(context, shape),
@@ -623,11 +622,10 @@ impl Rewrite for ast::PolyTraitRef {
 
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
-            let max_path_width = try_opt!(shape.width.checked_sub(extra_offset));
-            let path_str = try_opt!(self.trait_ref.rewrite(
-                context,
-                Shape::legacy(max_path_width, shape.indent + extra_offset),
-            ));
+            let path_str = try_opt!(
+                self.trait_ref
+                    .rewrite(context, try_opt!(shape.offset_left(extra_offset)))
+            );
 
             Some(
                 if context.config.spaces_within_angle_brackets() && !lifetime_str.is_empty() {

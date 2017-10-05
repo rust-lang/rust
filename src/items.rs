@@ -2529,7 +2529,9 @@ fn rewrite_where_clause_rfc_style(
         "\n".to_owned() + &block_shape.indent.to_string(context.config)
     };
 
-    let clause_shape = block_shape.block_indent(context.config.tab_spaces());
+    let clause_shape = try_opt!(block_shape.block_left(context.config.tab_spaces()));
+    // 1 = `,`
+    let clause_shape = try_opt!(clause_shape.sub_width(1));
     // each clause on one line, trailing comma (except if suppress_comma)
     let span_start = where_clause.predicates[0].span().lo();
     // If we don't have the start of the next span, then use the end of the
@@ -2543,7 +2545,7 @@ fn rewrite_where_clause_rfc_style(
         terminator,
         |pred| pred.span().lo(),
         |pred| pred.span().hi(),
-        |pred| pred.rewrite(context, block_shape),
+        |pred| pred.rewrite(context, clause_shape),
         span_start,
         span_end,
         false,
