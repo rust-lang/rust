@@ -406,7 +406,7 @@ impl DepGraph {
         for (current_dep_node_index, edges) in current_dep_graph.edges.iter_enumerated() {
             let start = edge_list_data.len() as u32;
             // This should really just be a memcpy :/
-            edge_list_data.extend(edges.iter().map(|i| SerializedDepNodeIndex(i.index)));
+            edge_list_data.extend(edges.iter().map(|i| SerializedDepNodeIndex::new(i.index())));
             let end = edge_list_data.len() as u32;
 
             debug_assert_eq!(current_dep_node_index.index(), edge_list_indices.len());

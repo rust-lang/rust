@@ -14,23 +14,7 @@ use dep_graph::DepNode;
 use ich::Fingerprint;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
-/// The index of a DepNode in the SerializedDepGraph::nodes array.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug,
-         RustcEncodable, RustcDecodable)]
-pub struct SerializedDepNodeIndex(pub u32);
-
-impl Idx for SerializedDepNodeIndex {
-    #[inline]
-    fn new(idx: usize) -> Self {
-        assert!(idx <= ::std::u32::MAX as usize);
-        SerializedDepNodeIndex(idx as u32)
-    }
-
-    #[inline]
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+newtype_index!(SerializedDepNodeIndex);
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
