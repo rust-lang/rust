@@ -854,13 +854,21 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                               id_mapping: &IdMapping,
                               tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    use rustc::hir::def::Def;
     let to_new = TranslationContext::target_new(tcx, id_mapping, false);
     let to_old = TranslationContext::target_old(tcx, id_mapping, false);
 
     for old_impl_def_id in tcx.all_trait_implementations(id_mapping.get_old_crate()).iter() {
         let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
 
-        if !to_new.can_translate(old_trait_def_id) {
+        let old_impl_parent_def =
+            tcx.parent_def_id(*old_impl_def_id).and_then(|did| tcx.describe_def(did));
+        let old_impl_parent_is_fn = match old_impl_parent_def {
+            Some(Def::Fn(_)) | Some(Def::Method(_)) => true,
+            _ => false,
+        };
+
+        if !to_new.can_translate(old_trait_def_id) || old_impl_parent_is_fn {
             continue;
         }
 
@@ -875,7 +883,14 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     for new_impl_def_id in tcx.all_trait_implementations(id_mapping.get_new_crate()).iter() {
         let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
 
-        if !to_old.can_translate(new_trait_def_id) {
+        let new_impl_parent_def =
+            tcx.parent_def_id(*new_impl_def_id).and_then(|did| tcx.describe_def(did));
+        let new_impl_parent_is_fn = match new_impl_parent_def {
+            Some(Def::Fn(_)) | Some(Def::Method(_)) => true,
+            _ => false,
+        };
+
+        if !to_old.can_translate(new_trait_def_id) || new_impl_parent_is_fn {
             continue;
         }
 
