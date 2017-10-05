@@ -152,7 +152,7 @@ pub fn combine_strs_with_missing_comments(
         last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
 
     let indent_str = shape.indent.to_string(context.config);
-    let missing_comment = try_opt!(rewrite_missing_comment(span, shape, context));
+    let missing_comment = rewrite_missing_comment(span, shape, context)?;
 
     if missing_comment.is_empty() {
         if allow_extend && prev_str.len() + first_sep.len() + next_str.len() <= shape.width {
@@ -254,13 +254,7 @@ fn identify_comment(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let first_group_str = try_opt!(rewrite_comment_inner(
-        &first_group,
-        block_style,
-        style,
-        shape,
-        config,
-    ));
+    let first_group_str = rewrite_comment_inner(&first_group, block_style, style, shape, config)?;
     if rest.is_empty() {
         Some(first_group_str)
     } else {
@@ -380,7 +374,7 @@ pub fn recover_missing_comment_in_span(
     context: &RewriteContext,
     used_width: usize,
 ) -> Option<String> {
-    let missing_comment = try_opt!(rewrite_missing_comment(span, shape, context));
+    let missing_comment = rewrite_missing_comment(span, shape, context)?;
     if missing_comment.is_empty() {
         Some(String::new())
     } else {
@@ -641,7 +635,7 @@ where
     type Item = (FullCodeCharKind, T::Item);
 
     fn next(&mut self) -> Option<(FullCodeCharKind, T::Item)> {
-        let item = try_opt!(self.base.next());
+        let item = self.base.next()?;
         let chr = item.get_char();
         let mut char_kind = FullCodeCharKind::Normal;
         self.status = match self.status {
@@ -749,7 +743,7 @@ impl<'a> Iterator for UngroupedCommentCodeSlices<'a> {
     type Item = (CodeCharKind, usize, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (kind, (start_idx, _)) = try_opt!(self.iter.next());
+        let (kind, (start_idx, _)) = self.iter.next()?;
         match kind {
             FullCodeCharKind::Normal | FullCodeCharKind::InString => {
                 // Consume all the Normal code
@@ -933,14 +927,14 @@ impl<'a> Iterator for CommentReducer<'a> {
     type Item = char;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let mut c = try_opt!(self.iter.next());
+            let mut c = self.iter.next()?;
             if self.is_block && self.at_start_line {
                 while c.is_whitespace() {
-                    c = try_opt!(self.iter.next());
+                    c = self.iter.next()?;
                 }
                 // Ignore leading '*'
                 if c == '*' {
-                    c = try_opt!(self.iter.next());
+                    c = self.iter.next()?;
                 }
             } else if c == '\n' {
                 self.at_start_line = true;

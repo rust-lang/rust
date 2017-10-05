@@ -48,7 +48,7 @@ impl AlignedItem for ast::StructField {
     }
 
     fn rewrite_prefix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
+        let attrs_str = self.attrs.rewrite(context, shape)?;
         let missing_span = if self.attrs.is_empty() {
             mk_sp(self.span.lo(), self.span.lo())
         } else {
@@ -88,7 +88,7 @@ impl AlignedItem for ast::Field {
     }
 
     fn rewrite_prefix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
+        let attrs_str = self.attrs.rewrite(context, shape)?;
         let name = &self.ident.node.to_string();
         let missing_span = if self.attrs.is_empty() {
             mk_sp(self.span.lo(), self.span.lo())
@@ -166,24 +166,13 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
     };
     let init_span = mk_sp(span.lo(), init_last_pos);
     let one_line_width = if rest.is_empty() { one_line_width } else { 0 };
-    let result = try_opt!(rewrite_aligned_items_inner(
-        context,
-        init,
-        init_span,
-        shape.indent,
-        one_line_width,
-    ));
+    let result =
+        rewrite_aligned_items_inner(context, init, init_span, shape.indent, one_line_width)?;
     if rest.is_empty() {
         Some(result + spaces)
     } else {
         let rest_span = mk_sp(init_last_pos, span.hi());
-        let rest_str = try_opt!(rewrite_with_alignment(
-            rest,
-            context,
-            shape,
-            rest_span,
-            one_line_width,
-        ));
+        let rest_str = rewrite_with_alignment(rest, context, shape, rest_span, one_line_width)?;
         Some(
             result + spaces + "\n"
                 + &shape
@@ -228,7 +217,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
 ) -> Option<String> {
     let item_indent = offset.block_indent(context.config);
     // 1 = ","
-    let item_shape = try_opt!(Shape::indented(item_indent, context.config).sub_width(1));
+    let item_shape = Shape::indented(item_indent, context.config).sub_width(1)?;
     let (mut field_prefix_max_width, field_prefix_min_width) =
         struct_field_preix_max_min_width(context, fields, item_shape);
     let max_diff = field_prefix_max_width

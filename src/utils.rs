@@ -343,15 +343,6 @@ macro_rules! impl_enum_serialize_and_deserialize {
     };
 }
 
-// Same as try!, but for Option
-#[macro_export]
-macro_rules! try_opt {
-    ($expr:expr) => (match $expr {
-        Some(val) => val,
-        None => { return None; }
-    })
-}
-
 macro_rules! msg {
     ($($arg:tt)*) => (
         match writeln!(&mut ::std::io::stderr(), $($arg)* ) {

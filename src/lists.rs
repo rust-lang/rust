@@ -275,7 +275,7 @@ where
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
     while let Some((i, item)) = iter.next() {
         let item = item.as_ref();
-        let inner_item = try_opt!(item.item.as_ref());
+        let inner_item = item.item.as_ref()?;
         let first = i == 0;
         let last = iter.peek().is_none();
         let mut separate = !last || trailing_separator;
@@ -336,12 +336,8 @@ where
             // Block style in non-vertical mode.
             let block_mode = tactic != DefinitiveListTactic::Vertical;
             // Width restriction is only relevant in vertical mode.
-            let comment = try_opt!(rewrite_comment(
-                comment,
-                block_mode,
-                formatting.shape,
-                formatting.config,
-            ));
+            let comment =
+                rewrite_comment(comment, block_mode, formatting.shape, formatting.config)?;
             result.push_str(&comment);
 
             if tactic == DefinitiveListTactic::Vertical {
@@ -377,12 +373,12 @@ where
         // Post-comments
         if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
-            let formatted_comment = try_opt!(rewrite_comment(
+            let formatted_comment = rewrite_comment(
                 comment,
                 true,
                 Shape::legacy(formatting.shape.width, Indent::empty()),
                 formatting.config,
-            ));
+            )?;
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -423,7 +419,7 @@ where
                 rewrite_comment(comment, block_style, comment_shape, formatting.config)
             };
 
-            let mut formatted_comment = try_opt!(rewrite_post_comment(&mut item_max_width));
+            let mut formatted_comment = rewrite_post_comment(&mut item_max_width)?;
 
             if !starts_with_newline(&formatted_comment) {
                 let mut comment_alignment =
@@ -432,7 +428,7 @@ where
                     + comment_alignment + 1 > formatting.config.max_width()
                 {
                     item_max_width = None;
-                    formatted_comment = try_opt!(rewrite_post_comment(&mut item_max_width));
+                    formatted_comment = rewrite_post_comment(&mut item_max_width)?;
                     comment_alignment = post_comment_alignment(item_max_width, inner_item.len());
                 }
                 for _ in 0..(comment_alignment + 1) {
@@ -742,9 +738,10 @@ pub fn struct_lit_shape(
     suffix_width: usize,
 ) -> Option<(Option<Shape>, Shape)> {
     let v_shape = match context.config.struct_lit_style() {
-        IndentStyle::Visual => try_opt!(
-            try_opt!(shape.visual_indent(0).shrink_left(prefix_width)).sub_width(suffix_width)
-        ),
+        IndentStyle::Visual => shape
+            .visual_indent(0)
+            .shrink_left(prefix_width)?
+            .sub_width(suffix_width)?,
         IndentStyle::Block => {
             let shape = shape.block_indent(context.config.tab_spaces());
             Shape {
