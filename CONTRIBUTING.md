@@ -333,8 +333,18 @@ Currently building Rust will also build the following external projects:
 * [miri](https://github.com/solson/miri)
 
 If your changes break one of these projects, you need to fix them by opening
-a pull request against the broken project. When you have opened a pull request,
-you can disable the tool via `src/tools/toolstate.toml`.
+a pull request against the broken project asking to put the fix on a branch.
+Then you can disable the tool building via `src/tools/toolstate.toml`.
+Once the branch containing your fix is likely to be merged, you can point
+the affected submodule at this branch.
+
+Don't forget to also add your changes with
+
+```
+git add path/to/submodule
+```
+
+outside the submodule.
 
 It can also be more convenient during development to set `submodules = false`
 in the `config.toml` to prevent `x.py` from resetting to the original branch.
