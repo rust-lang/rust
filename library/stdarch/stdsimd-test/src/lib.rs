@@ -271,7 +271,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         }
     }
 
-    let probably_only_one_instruction = function.instrs.len() < 20;
+    let probably_only_one_instruction = function.instrs.len() < 30;
 
     if found && probably_only_one_instruction {
         return
