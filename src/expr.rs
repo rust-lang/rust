@@ -72,12 +72,7 @@ pub fn format_expr(
             shape,
             false,
         ),
-        ast::ExprKind::Lit(ref l) => match l.node {
-            ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
-                rewrite_string_lit(context, l.span, shape)
-            }
-            _ => Some(context.snippet(expr.span)),
-        },
+        ast::ExprKind::Lit(ref l) => rewrite_literal(context, l, shape),
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
             let callee_str = try_opt!(callee.rewrite(context, shape));
@@ -1938,6 +1933,13 @@ fn rewrite_pat_expr(
         .map(|expr_rw| format!("\n{}{}", nested_indent_str, expr_rw))
 }
 
+pub fn rewrite_literal(context: &RewriteContext, l: &ast::Lit, shape: Shape) -> Option<String> {
+    match l.node {
+        ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
+        _ => Some(context.snippet(l.span)),
+    }
+}
+
 fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Option<String> {
     let string_lit = context.snippet(span);
 
@@ -1974,20 +1976,10 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
         return Some(string_lit);
     }
 
-    let fmt = StringFormat {
-        opener: "\"",
-        closer: "\"",
-        line_start: " ",
-        line_end: "\\",
-        shape: shape,
-        trim_end: false,
-        config: context.config,
-    };
-
     // Remove the quote characters.
     let str_lit = &string_lit[1..string_lit.len() - 1];
 
-    rewrite_string(str_lit, &fmt)
+    rewrite_string(str_lit, &StringFormat::new(shape, context.config))
 }
 
 fn string_requires_rewrite(

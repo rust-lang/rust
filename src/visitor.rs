@@ -16,6 +16,7 @@ use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
+use expr::rewrite_literal;
 use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, CommentCodeSlices,
@@ -798,7 +799,7 @@ impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
             ast::NestedMetaItemKind::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
-            ast::NestedMetaItemKind::Literal(..) => Some(context.snippet(self.span)),
+            ast::NestedMetaItemKind::Literal(ref l) => rewrite_literal(context, l, shape),
         }
     }
 }
@@ -809,10 +810,11 @@ impl Rewrite for ast::MetaItem {
             ast::MetaItemKind::Word => String::from(&*self.name.as_str()),
             ast::MetaItemKind::List(ref list) => {
                 let name = self.name.as_str();
-                // 3 = `#[` and `(`, 2 = `]` and `)`
+                // 1 = `(`, 2 = `]` and `)`
                 let item_shape = try_opt!(
                     shape
-                        .shrink_left(name.len() + 3)
+                        .visual_indent(0)
+                        .shrink_left(name.len() + 1)
                         .and_then(|s| s.sub_width(2))
                 );
                 let items = itemize_list(
@@ -841,18 +843,10 @@ impl Rewrite for ast::MetaItem {
             }
             ast::MetaItemKind::NameValue(ref literal) => {
                 let name = self.name.as_str();
-                let value = context.snippet(literal.span);
-                if &*name == "doc" && contains_comment(&value) {
-                    let doc_shape = Shape {
-                        width: cmp::min(shape.width, context.config.comment_width())
-                            .checked_sub(shape.indent.width())
-                            .unwrap_or(0),
-                        ..shape
-                    };
-                    try_opt!(rewrite_comment(&value, false, doc_shape, context.config))
-                } else {
-                    format!("{} = {}", name, value)
-                }
+                // 3 = ` = `
+                let lit_shape = try_opt!(shape.shrink_left(name.len() + 3));
+                let value = try_opt!(rewrite_literal(context, literal, lit_shape));
+                format!("{} = {}", name, value)
             }
         })
     }
@@ -860,22 +854,29 @@ impl Rewrite for ast::MetaItem {
 
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        try_opt!(self.meta())
-            .rewrite(context, shape)
-            .map(|rw| if self.is_sugared_doc {
-                rw
-            } else {
-                let original = context.snippet(self.span);
-                let prefix = match self.style {
-                    ast::AttrStyle::Inner => "#!",
-                    ast::AttrStyle::Outer => "#",
-                };
-                if contains_comment(&original) {
-                    original
-                } else {
-                    format!("{}[{}]", prefix, rw)
-                }
-            })
+        let prefix = match self.style {
+            ast::AttrStyle::Inner => "#!",
+            ast::AttrStyle::Outer => "#",
+        };
+        let snippet = context.snippet(self.span);
+        if self.is_sugared_doc {
+            let doc_shape = Shape {
+                width: cmp::min(shape.width, context.config.comment_width())
+                    .checked_sub(shape.indent.width())
+                    .unwrap_or(0),
+                ..shape
+            };
+            rewrite_comment(&snippet, false, doc_shape, context.config)
+        } else {
+            if contains_comment(&snippet) {
+                return Some(snippet);
+            }
+            // 1 = `[`
+            let shape = try_opt!(shape.offset_left(prefix.len() + 1));
+            try_opt!(self.meta())
+                .rewrite(context, shape)
+                .map(|rw| format!("{}[{}]", prefix, rw))
+        }
     }
 }
 
