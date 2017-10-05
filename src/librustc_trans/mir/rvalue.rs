@@ -65,9 +65,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // `CoerceUnsized` can be passed by a where-clause,
                 // so the (generic) MIR may not be able to expand it.
                 let operand = self.trans_operand(&bcx, source);
-                let operand = operand.pack_if_pair(&bcx);
                 match operand.val {
-                    OperandValue::Pair(..) => bug!(),
+                    OperandValue::Pair(..) |
                     OperandValue::Immediate(_) => {
                         // unsize from an immediate structure. We don't
                         // really need a temporary alloca here, but

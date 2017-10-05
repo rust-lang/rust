@@ -138,13 +138,14 @@ impl<'a, 'tcx> Const<'tcx> {
     }
 
     pub fn to_operand(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
-        let llty = ccx.layout_of(self.ty).immediate_llvm_type(ccx);
+        let layout = ccx.layout_of(self.ty);
+        let llty = layout.immediate_llvm_type(ccx);
         let llvalty = val_ty(self.llval);
 
-        let val = if llty == llvalty && common::type_is_imm_pair(ccx, self.ty) {
+        let val = if llty == llvalty && layout.is_llvm_scalar_pair(ccx) {
             let (a, b) = self.get_pair(ccx);
             OperandValue::Pair(a, b)
-        } else if llty == llvalty && ccx.layout_of(self.ty).is_llvm_immediate() {
+        } else if llty == llvalty && layout.is_llvm_immediate() {
             // If the types match, we can use the value directly.
             OperandValue::Immediate(self.llval)
         } else {

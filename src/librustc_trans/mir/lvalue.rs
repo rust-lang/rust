@@ -16,7 +16,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, C_uint_big};
+use common::{CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, C_uint_big};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -175,10 +175,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 load
             };
             OperandValue::Immediate(base::to_immediate(bcx, llval, self.layout))
-        } else if common::type_is_imm_pair(bcx.ccx, self.layout.ty) {
+        } else if self.layout.is_llvm_scalar_pair(bcx.ccx) {
             OperandValue::Pair(
-                self.project_field(bcx, 0).load(bcx).pack_if_pair(bcx).immediate(),
-                self.project_field(bcx, 1).load(bcx).pack_if_pair(bcx).immediate())
+                self.project_field(bcx, 0).load(bcx).immediate(),
+                self.project_field(bcx, 1).load(bcx).immediate())
         } else {
             OperandValue::Ref(self.llval, self.alignment)
         };

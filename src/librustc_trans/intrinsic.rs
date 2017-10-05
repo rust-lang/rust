@@ -675,10 +675,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let ptr = bcx.pointercast(llresult, ty.llvm_type(ccx).ptr_to());
             bcx.store(llval, ptr, Some(ccx.align_of(ret_ty)));
         } else {
-            OperandRef {
-                val: OperandValue::Immediate(llval),
-                layout: result.layout
-            }.unpack_if_pair(bcx).val.store(bcx, result);
+            OperandRef::from_immediate_or_packed_pair(bcx, llval, result.layout)
+                .val.store(bcx, result);
         }
     }
 }

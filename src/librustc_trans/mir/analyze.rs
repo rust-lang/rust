@@ -19,7 +19,6 @@ use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use rustc::ty;
 use rustc::ty::layout::LayoutOf;
-use common;
 use type_of::LayoutLlvmExt;
 use super::MirContext;
 
@@ -32,10 +31,11 @@ pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
     for (index, ty) in mir.local_decls.iter().map(|l| l.ty).enumerate() {
         let ty = mircx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
-        if mircx.ccx.layout_of(ty).is_llvm_immediate() {
+        let layout = mircx.ccx.layout_of(ty);
+        if layout.is_llvm_immediate() {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
-        } else if common::type_is_imm_pair(mircx.ccx, ty) {
+        } else if layout.is_llvm_scalar_pair(mircx.ccx) {
             // We allow pairs and uses of any of their 2 fields.
         } else {
             // These sorts of types require an alloca. Note that
@@ -145,7 +145,8 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                         let ty = proj.base.ty(self.cx.mir, self.cx.ccx.tcx());
 
                         let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
-                        if common::type_is_imm_pair(self.cx.ccx, ty) {
+                        let layout = self.cx.ccx.layout_of(ty);
+                        if layout.is_llvm_scalar_pair(self.cx.ccx) {
                             return;
                         }
                     }
