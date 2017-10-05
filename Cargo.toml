@@ -27,7 +27,6 @@ env_logger = "0.4.3"
 log = "0.3.6"
 log_settings = "0.1.1"
 cargo_metadata = { version = "0.2", optional = true }
-rustc_miri = { path = "src/librustc_mir" }
 
 [features]
 cargo_miri = ["cargo_metadata"]

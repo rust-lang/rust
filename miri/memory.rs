@@ -9,8 +9,8 @@ pub enum MemoryKind {
     Env,
 }
 
-impl Into<::rustc_miri::interpret::MemoryKind<MemoryKind>> for MemoryKind {
-    fn into(self) -> ::rustc_miri::interpret::MemoryKind<MemoryKind> {
-        ::rustc_miri::interpret::MemoryKind::Machine(self)
+impl Into<::rustc::mir::interpret::MemoryKind<MemoryKind>> for MemoryKind {
+    fn into(self) -> ::rustc::mir::interpret::MemoryKind<MemoryKind> {
+        ::rustc::mir::interpret::MemoryKind::Machine(self)
     }
 }

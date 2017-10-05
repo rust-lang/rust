@@ -7,7 +7,8 @@ use syntax::codemap::Span;
 
 use std::mem;
 
-use rustc_miri::interpret::*;
+use rustc::mir::interpret::*;
+use rustc::traits;
 
 use super::{TlsKey, EvalContext};
 
@@ -109,7 +110,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.memory.pointer_size();
-                    let ptr = self.memory.allocate(size, align, MemoryKind::C.into())?;
+                    let ptr = self.memory.allocate(size, align, Some(MemoryKind::C.into()))?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -305,7 +306,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     let value_copy = self.memory.allocate(
                         (value.len() + 1) as u64,
                         1,
-                        MemoryKind::Env.into(),
+                        Some(MemoryKind::Env.into()),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(value.len() as u64, &self)?.into();
@@ -381,9 +382,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                         };
                         // compute global if not cached
                         let val = match self.globals.get(&cid).cloned() {
-                            Some(ptr) => self.value_to_primval(ValTy { value: Value::ByRef(ptr), ty: args[0].ty })?.to_u64()?,
-                            None => eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
+                            Some(ptr) => ptr,
+                            None => eval_body(self.tcx, instance, ty::ParamEnv::empty(traits::Reveal::All))?.0,
                         };
+                        let val = self.value_to_primval(ValTy { value: Value::ByRef(val), ty: args[0].ty })?.to_u64()?;
                         if val == name {
                             result = Some(path_value);
                             break;
@@ -558,7 +560,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, MemoryKind::Rust.into())?;
+                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_alloc_zeroed" => {
@@ -570,7 +572,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, MemoryKind::Rust.into())?;
+                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
                 self.memory.write_repeat(ptr.into(), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }

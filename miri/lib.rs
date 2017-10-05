@@ -14,15 +14,14 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::Layout;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
+use rustc::traits;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
 use std::collections::{HashMap, BTreeMap};
 
-#[macro_use]
-extern crate rustc_miri;
-pub use rustc_miri::interpret::*;
+pub use rustc::mir::interpret::*;
 
 mod fn_call;
 mod operator;
@@ -43,7 +42,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     limits: ResourceLimits,
 ) {
     fn run_main<'a, 'tcx: 'a>(
-        ecx: &mut rustc_miri::interpret::EvalContext<'a, 'tcx, Evaluator>,
+        ecx: &mut rustc::mir::interpret::EvalContext<'a, 'tcx, Evaluator>,
         main_id: DefId,
         start_wrapper: Option<DefId>,
     ) -> EvalResult<'tcx> {
@@ -72,7 +71,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             // Return value
             let size = ecx.tcx.data_layout.pointer_size.bytes();
             let align = ecx.tcx.data_layout.pointer_align.abi();
-            let ret_ptr = ecx.memory_mut().allocate(size, align, MemoryKind::Stack)?;
+            let ret_ptr = ecx.memory_mut().allocate(size, align, Some(MemoryKind::Stack))?;
             cleanup_ptr = Some(ret_ptr);
 
             // Push our stack frame
@@ -108,9 +107,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
             // Third argument (argv): &[b"foo"]
             let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-            let foo = ecx.memory.allocate_cached(b"foo\0")?;
+            let foo = ecx.memory.allocate_cached(b"foo\0");
             let ptr_size = ecx.memory.pointer_size();
-            let foo_ptr = ecx.memory.allocate(ptr_size * 1, ptr_size, MemoryKind::UninitializedStatic)?;
+            let foo_ptr = ecx.memory.allocate(ptr_size * 1, ptr_size, None)?;
             ecx.memory.write_primval(foo_ptr.into(), PrimVal::Ptr(foo.into()), ptr_size, false)?;
             ecx.memory.mark_static_initalized(foo_ptr.alloc_id, Mutability::Immutable)?;
             ecx.write_ptr(dest, foo_ptr.into(), ty)?;
@@ -186,6 +185,12 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     type MemoryData = MemoryData<'tcx>;
     type MemoryKinds = memory::MemoryKind;
 
+    fn param_env<'a>(
+        _: &EvalContext<'a, 'tcx, Self>,
+    ) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::empty(traits::Reveal::All)
+    }
+
     /// Returns Ok() when the function was handled, fail otherwise
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
@@ -199,7 +204,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     }
 
     fn call_intrinsic<'a>(
-        ecx: &mut rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
+        ecx: &mut rustc::mir::interpret::EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
         dest: Lvalue,
@@ -211,7 +216,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     }
 
     fn try_ptr_op<'a>(
-        ecx: &rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
+        ecx: &rustc::mir::interpret::EvalContext<'a, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: PrimVal,
         left_ty: ty::Ty<'tcx>,
@@ -292,7 +297,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         let ptr = ecx.memory.allocate(
             ptr_size,
             ptr_size,
-            MemoryKind::UninitializedStatic,
+            None,
         )?;
         ecx.memory.write_ptr_sized_unsigned(ptr, PrimVal::Bytes(0))?;
         ecx.memory.mark_static_initalized(ptr.alloc_id, mutability)?;

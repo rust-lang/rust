@@ -3,7 +3,7 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::Layout;
 use rustc::ty::{self, Ty};
 
-use rustc_miri::interpret::{EvalResult, Lvalue, LvalueExtra, PrimVal, PrimValKind, Value, Pointer,
+use rustc::mir::interpret::{EvalResult, Lvalue, LvalueExtra, PrimVal, PrimValKind, Value, Pointer,
                             HasMemory, AccessKind, EvalContext, PtrAndAlign, ValTy};
 
 use helpers::EvalContextExt as HelperEvalContextExt;
@@ -654,7 +654,7 @@ fn numeric_intrinsic<'tcx>(
 ) -> EvalResult<'tcx, PrimVal> {
     macro_rules! integer_intrinsic {
         ($method:ident) => ({
-            use rustc_miri::interpret::PrimValKind::*;
+            use rustc::mir::interpret::PrimValKind::*;
             let result_bytes = match kind {
                 I8 => (bytes as i8).$method() as u128,
                 U8 => (bytes as u8).$method() as u128,

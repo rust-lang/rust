@@ -1,4 +1,4 @@
-use rustc_miri::interpret::{Pointer, EvalResult, PrimVal, EvalContext};
+use rustc::mir::interpret::{Pointer, EvalResult, PrimVal, EvalContext};
 
 use rustc::ty::Ty;
 
