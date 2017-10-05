@@ -216,7 +216,7 @@ pub fn rewrite_macro(
             })
         }
         MacroStyle::Brackets => {
-            let mac_shape = try_opt!(shape.offset_left(macro_name.len()));
+            let mac_shape = shape.offset_left(macro_name.len())?;
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
                 let (lbr, rbr) = if context.config.spaces_within_square_brackets() {
@@ -227,8 +227,8 @@ pub fn rewrite_macro(
                 // 6 = `vec!` + `; `
                 let total_overhead = lbr.len() + rbr.len() + 6;
                 let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
-                let lhs = try_opt!(arg_vec[0].rewrite(context, nested_shape));
-                let rhs = try_opt!(arg_vec[1].rewrite(context, nested_shape));
+                let lhs = arg_vec[0].rewrite(context, nested_shape)?;
+                let rhs = arg_vec[1].rewrite(context, nested_shape)?;
                 if !lhs.contains('\n') && !rhs.contains('\n')
                     && lhs.len() + rhs.len() + total_overhead <= shape.width
                 {
@@ -271,13 +271,8 @@ pub fn rewrite_macro(
                         .span_after(mac.span, original_style.opener()),
                     mac.span.hi() - BytePos(1),
                 );
-                let rewrite = try_opt!(rewrite_array(
-                    expr_vec.iter(),
-                    sp,
-                    context,
-                    mac_shape,
-                    trailing_comma,
-                ));
+                let rewrite =
+                    rewrite_array(expr_vec.iter(), sp, context, mac_shape, trailing_comma)?;
 
                 Some(format!("{}{}", macro_name, rewrite))
             }
@@ -299,7 +294,7 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
 
         Some(ast::Expr {
             id: ast::NodeId::new(0), // dummy value
-            node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
+            node: ast::ExprKind::Try(parser.parse_expr().ok()?),
             span: mac.span, // incorrect span, but shouldn't matter too much
             attrs: ThinVec::new(),
         })
@@ -354,22 +349,20 @@ fn indent_macro_snippet(
     indent: Indent,
 ) -> Option<String> {
     let mut lines = macro_str.lines();
-    let first_line = try_opt!(lines.next().map(|s| s.trim_right()));
+    let first_line = lines.next().map(|s| s.trim_right())?;
     let mut trimmed_lines = Vec::with_capacity(16);
 
-    let min_prefix_space_width = try_opt!(
-        lines
-            .filter_map(|line| {
-                let prefix_space_width = if is_empty_line(line) {
-                    None
-                } else {
-                    Some(get_prefix_space_width(context, line))
-                };
-                trimmed_lines.push((line.trim(), prefix_space_width));
-                prefix_space_width
-            })
-            .min()
-    );
+    let min_prefix_space_width = lines
+        .filter_map(|line| {
+            let prefix_space_width = if is_empty_line(line) {
+                None
+            } else {
+                Some(get_prefix_space_width(context, line))
+            };
+            trimmed_lines.push((line.trim(), prefix_space_width));
+            prefix_space_width
+        })
+        .min()?;
 
     Some(
         String::from(first_line) + "\n"

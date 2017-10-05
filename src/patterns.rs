@@ -38,14 +38,12 @@ impl Rewrite for Pat {
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 3 - ` @ `.
-                        let width = try_opt!(
-                            shape
-                                .width
-                                .checked_sub(prefix.len() + mut_infix.len() + id_str.len() + 3)
-                        );
+                        let width = shape
+                            .width
+                            .checked_sub(prefix.len() + mut_infix.len() + id_str.len() + 3)?;
                         format!(
                             " @ {}",
-                            try_opt!(p.rewrite(context, Shape::legacy(width, shape.indent)))
+                            p.rewrite(context, Shape::legacy(width, shape.indent))?
                         )
                     }
                     None => "".to_owned(),
@@ -86,8 +84,7 @@ impl Rewrite for Pat {
                 rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
             }
             PatKind::TupleStruct(ref path, ref pat_vec, dotdot_pos) => {
-                let path_str =
-                    try_opt!(rewrite_path(context, PathContext::Expr, None, path, shape));
+                let path_str = rewrite_path(context, PathContext::Expr, None, path, shape)?;
                 rewrite_tuple_pat(
                     pat_vec,
                     dotdot_pos,
@@ -101,9 +98,9 @@ impl Rewrite for Pat {
             PatKind::Slice(ref prefix, ref slice_pat, ref suffix) => {
                 // Rewrite all the sub-patterns.
                 let prefix = prefix.iter().map(|p| p.rewrite(context, shape));
-                let slice_pat = slice_pat.as_ref().map(|p| {
-                    Some(format!("{}..", try_opt!(p.rewrite(context, shape))))
-                });
+                let slice_pat = slice_pat
+                    .as_ref()
+                    .map(|p| Some(format!("{}..", p.rewrite(context, shape)?)));
                 let suffix = suffix.iter().map(|p| p.rewrite(context, shape));
 
                 // Munge them together.
@@ -111,7 +108,7 @@ impl Rewrite for Pat {
                     prefix.chain(slice_pat.into_iter()).chain(suffix).collect();
 
                 // Check that all the rewrites succeeded, and if not return None.
-                let pats = try_opt!(pats);
+                let pats = pats?;
 
                 // Unwrap all the sub-strings and join them with commas.
                 let result = if context.config.spaces_within_square_brackets() {
@@ -139,14 +136,8 @@ fn rewrite_struct_pat(
     shape: Shape,
 ) -> Option<String> {
     // 2 =  ` {`
-    let path_shape = try_opt!(shape.sub_width(2));
-    let path_str = try_opt!(rewrite_path(
-        context,
-        PathContext::Expr,
-        None,
-        path,
-        path_shape,
-    ));
+    let path_shape = shape.sub_width(2)?;
+    let path_str = rewrite_path(context, PathContext::Expr, None, path, path_shape)?;
 
     if fields.is_empty() && !elipses {
         return Some(format!("{} {{}}", path_str));
@@ -155,12 +146,8 @@ fn rewrite_struct_pat(
     let (elipses_str, terminator) = if elipses { (", ..", "..") } else { ("", "}") };
 
     // 3 = ` { `, 2 = ` }`.
-    let (h_shape, v_shape) = try_opt!(struct_lit_shape(
-        shape,
-        context,
-        path_str.len() + 3,
-        elipses_str.len() + 2,
-    ));
+    let (h_shape, v_shape) =
+        struct_lit_shape(shape, context, path_str.len() + 3, elipses_str.len() + 2)?;
 
     let items = itemize_list(
         context.codemap,
@@ -179,7 +166,7 @@ fn rewrite_struct_pat(
     let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
     let fmt = struct_lit_formatting(nested_shape, tactic, context, false);
 
-    let mut fields_str = try_opt!(write_list(&item_vec, &fmt));
+    let mut fields_str = write_list(&item_vec, &fmt)?;
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
 
     if elipses {
@@ -215,14 +202,14 @@ impl Rewrite for FieldPat {
         if self.is_shorthand {
             pat
         } else {
-            let pat_str = try_opt!(pat);
+            let pat_str = pat?;
             let id_str = self.ident.to_string();
             let one_line_width = id_str.len() + 2 + pat_str.len();
             if one_line_width <= shape.width {
                 Some(format!("{}: {}", id_str, pat_str))
             } else {
                 let nested_shape = shape.block_indent(context.config.tab_spaces());
-                let pat_str = try_opt!(self.pat.rewrite(context, nested_shape));
+                let pat_str = self.pat.rewrite(context, nested_shape)?;
                 Some(format!(
                     "{}:\n{}{}",
                     id_str,

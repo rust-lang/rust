@@ -110,11 +110,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     } else {
         shape
     };
-    let parent_rewrite = try_opt!(
-        parent
-            .rewrite(context, parent_shape)
-            .map(|parent_rw| parent_rw + &repeat_try(prefix_try_num))
-    );
+    let parent_rewrite = parent
+        .rewrite(context, parent_shape)
+        .map(|parent_rw| parent_rw + &repeat_try(prefix_try_num))?;
     let parent_rewrite_contains_newline = parent_rewrite.contains('\n');
     let is_small_parent = parent_rewrite.len() <= context.config.tab_spaces();
 
@@ -146,8 +144,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         let overhead = last_line_width(&parent_rewrite);
         let offset = parent_rewrite.lines().rev().next().unwrap().trim().len();
         match context.config.chain_indent() {
-            IndentStyle::Visual => try_opt!(parent_shape.offset_left(overhead)),
-            IndentStyle::Block => try_opt!(parent_shape.block().offset_left(offset)),
+            IndentStyle::Visual => parent_shape.offset_left(overhead)?,
+            IndentStyle::Block => parent_shape.block().offset_left(offset)?,
         }
     } else {
         other_child_shape
@@ -165,11 +163,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let last_subexpr = &subexpr_list[suffix_try_num];
     let subexpr_list = &subexpr_list[suffix_try_num..subexpr_num - prefix_try_num];
     let iter = subexpr_list.iter().skip(1).rev().zip(child_shape_iter);
-    let mut rewrites = try_opt!(
-        iter.map(|(e, shape)| {
-            rewrite_chain_subexpr(e, total_span, context, shape)
-        }).collect::<Option<Vec<_>>>()
-    );
+    let mut rewrites = iter.map(|(e, shape)| {
+        rewrite_chain_subexpr(e, total_span, context, shape)
+    }).collect::<Option<Vec<_>>>()?;
 
     // Total of all items excluding the last.
     let extend_last_subexr = last_line_extendable(&parent_rewrite) && rewrites.is_empty();
@@ -187,7 +183,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         && rewrites.iter().all(|s| !s.contains('\n'))
         && almost_total < one_line_budget;
     let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, nested_shape);
-    let (last_subexpr_str, fits_single_line) = try_opt!(if all_in_one_line || extend_last_subexr {
+    let (last_subexpr_str, fits_single_line) = if all_in_one_line || extend_last_subexr {
         parent_shape.offset_left(almost_total).map(|shape| {
             if let Some(rw) = rewrite_chain_subexpr(last_subexpr, total_span, context, shape) {
                 let line_count = rw.lines().count();
@@ -207,11 +203,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
             } else {
                 (rewrite_last(), false)
             }
-        })
+        })?
     } else {
-        Some((rewrite_last(), false))
-    });
-    rewrites.push(try_opt!(last_subexpr_str));
+        (rewrite_last(), false)
+    };
+    rewrites.push(last_subexpr_str?);
 
     let connector = if fits_single_line && !parent_rewrite_contains_newline {
         // Yay, we can put everything on one line.
@@ -288,7 +284,7 @@ fn rewrite_try(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let sub_expr = try_opt!(expr.rewrite(context, try_opt!(shape.sub_width(try_count))));
+    let sub_expr = expr.rewrite(context, shape.sub_width(try_count)?)?;
     Some(format!("{}{}", sub_expr, repeat_try(try_count)))
 }
 
@@ -472,8 +468,10 @@ fn rewrite_method_call(
     let (lo, type_str) = if types.is_empty() {
         (args[0].span.hi(), String::new())
     } else {
-        let type_list: Vec<_> =
-            try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
+        let type_list = types
+            .iter()
+            .map(|ty| ty.rewrite(context, shape))
+            .collect::<Option<Vec<_>>>()?;
 
         let type_str = if context.config.spaces_within_angle_brackets() && !type_list.is_empty() {
             format!("::< {} >", type_list.join(", "))

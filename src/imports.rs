@@ -140,21 +140,9 @@ fn rewrite_view_path_prefix(
             span: path.span,
             segments: path.segments[..path.segments.len() - 1].to_owned(),
         };
-        try_opt!(rewrite_path(
-            context,
-            PathContext::Import,
-            None,
-            path,
-            shape,
-        ))
+        rewrite_path(context, PathContext::Import, None, path, shape)?
     } else {
-        try_opt!(rewrite_path(
-            context,
-            PathContext::Import,
-            None,
-            path,
-            shape,
-        ))
+        rewrite_path(context, PathContext::Import, None, path, shape)?
     };
     Some(path_str)
 }
@@ -167,15 +155,15 @@ impl Rewrite for ast::ViewPath {
             }
             ast::ViewPath_::ViewPathGlob(ref path) => {
                 // 4 = "::*".len()
-                let prefix_shape = try_opt!(shape.sub_width(3));
-                let path_str = try_opt!(rewrite_view_path_prefix(path, context, prefix_shape));
+                let prefix_shape = shape.sub_width(3)?;
+                let path_str = rewrite_view_path_prefix(path, context, prefix_shape)?;
                 Some(format!("{}::*", path_str))
             }
             ast::ViewPath_::ViewPathSimple(ident, ref path) => {
                 let ident_str = ident.to_string();
                 // 4 = " as ".len()
-                let prefix_shape = try_opt!(shape.sub_width(ident_str.len() + 4));
-                let path_str = try_opt!(rewrite_view_path_prefix(path, context, prefix_shape));
+                let prefix_shape = shape.sub_width(ident_str.len() + 4)?;
+                let path_str = rewrite_view_path_prefix(path, context, prefix_shape)?;
 
                 Some(if path.segments.last().unwrap().identifier == ident {
                     path_str
@@ -228,7 +216,7 @@ fn rewrite_imports(
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| {
-            let attrs_str = try_opt!(item.attrs.rewrite(context, shape));
+            let attrs_str = item.attrs.rewrite(context, shape)?;
 
             let missed_span = if item.attrs.is_empty() {
                 mk_sp(item.span.lo(), item.span.lo())
@@ -238,9 +226,9 @@ fn rewrite_imports(
 
             let item_str = match item.node {
                 ast::ItemKind::Use(ref vp) => {
-                    try_opt!(rewrite_import(context, &item.vis, vp, &item.attrs, shape))
+                    rewrite_import(context, &item.vis, vp, &item.attrs, shape)?
                 }
-                ast::ItemKind::ExternCrate(..) => try_opt!(rewrite_extern_crate(context, item)),
+                ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item)?,
                 _ => return None,
             };
 
@@ -428,13 +416,7 @@ fn rewrite_use_list(
     context: &RewriteContext,
 ) -> Option<String> {
     // Returns a different option to distinguish `::foo` and `foo`
-    let path_str = try_opt!(rewrite_path(
-        context,
-        PathContext::Import,
-        None,
-        path,
-        shape,
-    ));
+    let path_str = rewrite_path(context, PathContext::Import, None, path, shape)?;
 
     match path_list.len() {
         0 => {
@@ -521,7 +503,7 @@ fn rewrite_use_list(
         preserve_newline: true,
         config: context.config,
     };
-    let list_str = try_opt!(write_list(&items[first_index..], &fmt));
+    let list_str = write_list(&items[first_index..], &fmt)?;
 
     let result = if list_str.contains('\n') && context.config.imports_indent() == IndentStyle::Block
     {

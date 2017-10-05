@@ -811,12 +811,10 @@ impl Rewrite for ast::MetaItem {
             ast::MetaItemKind::List(ref list) => {
                 let name = self.name.as_str();
                 // 1 = `(`, 2 = `]` and `)`
-                let item_shape = try_opt!(
-                    shape
-                        .visual_indent(0)
-                        .shrink_left(name.len() + 1)
-                        .and_then(|s| s.sub_width(2))
-                );
+                let item_shape = shape
+                    .visual_indent(0)
+                    .shrink_left(name.len() + 1)
+                    .and_then(|s| s.sub_width(2))?;
                 let items = itemize_list(
                     context.codemap,
                     list.iter(),
@@ -839,13 +837,13 @@ impl Rewrite for ast::MetaItem {
                     preserve_newline: false,
                     config: context.config,
                 };
-                format!("{}({})", name, try_opt!(write_list(&item_vec, &fmt)))
+                format!("{}({})", name, write_list(&item_vec, &fmt)?)
             }
             ast::MetaItemKind::NameValue(ref literal) => {
                 let name = self.name.as_str();
                 // 3 = ` = `
-                let lit_shape = try_opt!(shape.shrink_left(name.len() + 3));
-                let value = try_opt!(rewrite_literal(context, literal, lit_shape));
+                let lit_shape = shape.shrink_left(name.len() + 3)?;
+                let value = rewrite_literal(context, literal, lit_shape)?;
                 format!("{} = {}", name, value)
             }
         })
@@ -872,8 +870,8 @@ impl Rewrite for ast::Attribute {
                 return Some(snippet);
             }
             // 1 = `[`
-            let shape = try_opt!(shape.offset_left(prefix.len() + 1));
-            try_opt!(self.meta())
+            let shape = shape.offset_left(prefix.len() + 1)?;
+            self.meta()?
                 .rewrite(context, shape)
                 .map(|rw| format!("{}[{}]", prefix, rw))
         }
@@ -894,7 +892,7 @@ impl<'a> Rewrite for [ast::Attribute] {
         let mut insert_new_line = true;
         let mut is_prev_sugared_doc = false;
         while let Some((i, a)) = iter.next() {
-            let a_str = try_opt!(a.rewrite(context, shape));
+            let a_str = a.rewrite(context, shape)?;
 
             // Write comments and blank lines between attributes.
             if i > 0 {
@@ -926,12 +924,12 @@ impl<'a> Rewrite for [ast::Attribute] {
                     (false, false)
                 };
 
-                let comment = try_opt!(recover_missing_comment_in_span(
+                let comment = recover_missing_comment_in_span(
                     mk_sp(self[i - 1].span.hi(), a.span.lo()),
                     shape.with_max_width(context.config),
                     context,
                     0,
-                ));
+                )?;
 
                 if !comment.is_empty() {
                     if multi_line_before {
@@ -966,7 +964,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                         Some(&(_, next_attr)) if is_derive(next_attr) => insert_new_line = false,
                         // If not, rewrite the merged derives.
                         _ => {
-                            result.push_str(&try_opt!(format_derive(context, &derive_args, shape)));
+                            result.push_str(&format_derive(context, &derive_args, shape)?);
                             derive_args.clear();
                         }
                     }
@@ -988,7 +986,7 @@ fn format_derive(context: &RewriteContext, derive_args: &[String], shape: Shape)
     let mut result = String::with_capacity(128);
     result.push_str("#[derive(");
     // 11 = `#[derive()]`
-    let initial_budget = try_opt!(shape.width.checked_sub(11));
+    let initial_budget = shape.width.checked_sub(11)?;
     let mut budget = initial_budget;
     let num = derive_args.len();
     for (i, a) in derive_args.iter().enumerate() {

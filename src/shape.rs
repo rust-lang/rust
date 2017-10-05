@@ -229,14 +229,14 @@ impl Shape {
 
     pub fn sub_width(&self, width: usize) -> Option<Shape> {
         Some(Shape {
-            width: try_opt!(self.width.checked_sub(width)),
+            width: self.width.checked_sub(width)?,
             ..*self
         })
     }
 
     pub fn shrink_left(&self, width: usize) -> Option<Shape> {
         Some(Shape {
-            width: try_opt!(self.width.checked_sub(width)),
+            width: self.width.checked_sub(width)?,
             indent: self.indent + width,
             offset: self.offset + width,
         })
