@@ -45,8 +45,12 @@ apt-get download           \
   libm-dev:$APT_ARCH       \
   libpthread:$APT_ARCH     \
   libpthread-dev:$APT_ARCH \
+  libresolv:$APT_ARCH      \
+  libresolv-dev:$APT_ARCH  \
   librt:$APT_ARCH          \
   librt-dev:$APT_ARCH      \
+  libsocket:$APT_ARCH      \
+  libsocket-dev:$APT_ARCH  \
   system-crt:$APT_ARCH     \
   system-header:$APT_ARCH
 
