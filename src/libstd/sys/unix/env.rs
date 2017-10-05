@@ -118,27 +118,6 @@ pub mod os {
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-#[cfg(all(target_os = "nacl", not(target_arch = "le32")))]
-pub mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "nacl";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".so";
-    pub const DLL_EXTENSION: &'static str = "so";
-    pub const EXE_SUFFIX: &'static str = ".nexe";
-    pub const EXE_EXTENSION: &'static str = "nexe";
-}
-#[cfg(all(target_os = "nacl", target_arch = "le32"))]
-pub mod os {
-    pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "pnacl";
-    pub const DLL_PREFIX: &'static str = "lib";
-    pub const DLL_SUFFIX: &'static str = ".pso";
-    pub const DLL_EXTENSION: &'static str = "pso";
-    pub const EXE_SUFFIX: &'static str = ".pexe";
-    pub const EXE_EXTENSION: &'static str = "pexe";
-}
-
 #[cfg(target_os = "haiku")]
 pub mod os {
     pub const FAMILY: &'static str = "unix";

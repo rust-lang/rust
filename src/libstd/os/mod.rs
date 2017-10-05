@@ -38,7 +38,6 @@ pub mod linux;
 #[cfg(all(not(dox), target_os = "haiku"))]      pub mod haiku;
 #[cfg(all(not(dox), target_os = "ios"))]        pub mod ios;
 #[cfg(all(not(dox), target_os = "macos"))]      pub mod macos;
-#[cfg(all(not(dox), target_os = "nacl"))]       pub mod nacl;
 #[cfg(all(not(dox), target_os = "netbsd"))]     pub mod netbsd;
 #[cfg(all(not(dox), target_os = "openbsd"))]    pub mod openbsd;
 #[cfg(all(not(dox), target_os = "solaris"))]    pub mod solaris;

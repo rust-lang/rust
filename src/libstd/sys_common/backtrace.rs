@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(target_os = "nacl", allow(dead_code))]
-
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
 

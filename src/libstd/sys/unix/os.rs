@@ -483,12 +483,10 @@ pub fn home_dir() -> Option<PathBuf> {
 
     #[cfg(any(target_os = "android",
               target_os = "ios",
-              target_os = "nacl",
               target_os = "emscripten"))]
     unsafe fn fallback() -> Option<OsString> { None }
     #[cfg(not(any(target_os = "android",
                   target_os = "ios",
-                  target_os = "nacl",
                   target_os = "emscripten")))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {

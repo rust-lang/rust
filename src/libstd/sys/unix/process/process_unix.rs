@@ -184,8 +184,8 @@ impl Command {
             *sys::os::environ() = envp.as_ptr();
         }
 
-        // NaCl has no signal support.
-        #[cfg(not(any(target_os = "nacl", target_os = "emscripten")))]
+        // emscripten has no signal support.
+        #[cfg(not(any(target_os = "emscripten")))]
         {
             use mem;
             // Reset signal handling so the child process starts in a
