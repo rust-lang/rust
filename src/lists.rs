@@ -17,7 +17,7 @@ use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
-use utils::{first_line_width, last_line_width, mk_sp};
+use utils::{first_line_width, last_line_width, mk_sp, starts_with_newline};
 
 /// Formatting tactic for lists. This will be cast down to a
 /// `DefinitiveListTactic` depending on the number and length of the items and
@@ -425,7 +425,7 @@ where
 
             let mut formatted_comment = try_opt!(rewrite_post_comment(&mut item_max_width));
 
-            if !formatted_comment.starts_with('\n') {
+            if !starts_with_newline(&formatted_comment) {
                 let mut comment_alignment =
                     post_comment_alignment(item_max_width, inner_item.len());
                 if first_line_width(&formatted_comment) + last_line_width(&result)
