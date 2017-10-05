@@ -19,7 +19,7 @@ hop on [#rust-internals][pound-rust-internals].
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
-[pound-rust-internals]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
+[pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
 [coc]: https://www.rust-lang.org/conduct.html
 
