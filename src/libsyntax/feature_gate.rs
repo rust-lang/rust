@@ -382,7 +382,7 @@ declare_features! (
     // #[doc(masked)]
     (active, doc_masked, "1.21.0", Some(44027)),
     // #[doc(spotlight)]
-    (active, doc_spotlight, "1.22.0", None),
+    (active, doc_spotlight, "1.22.0", Some(45040)),
 
     // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),

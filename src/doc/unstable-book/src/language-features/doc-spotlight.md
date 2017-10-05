@@ -1,6 +1,6 @@
 # `doc_spotlight`
 
-The tracking issue for this feature is: [TODO]
+The tracking issue for this feature is: [#45040]
 
 The `doc_spotlight` feature allows the use of the `spotlight` parameter to the `#[doc]` attribute,
 to "spotlight" a specific trait on the return values of functions. Adding a `#[doc(spotlight)]`
@@ -24,4 +24,7 @@ impl MyTrait for MyStruct {}
 pub fn my_fn() -> MyStruct { MyStruct }
 ```
 
-This feature was originally implemented in PR [TODO].
+This feature was originally implemented in PR [#45039].
+
+[#45040]: https://github.com/rust-lang/rust/issues/45040
+[#45039]: https://github.com/rust-lang/rust/pull/45039
