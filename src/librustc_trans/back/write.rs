@@ -1636,9 +1636,9 @@ fn start_executing_work(tcx: TyCtxt,
                     needs_lto.push(result);
                 }
                 Message::Done { result: Err(()), worker_id: _ } => {
-                    shared_emitter.fatal("aborting due to worker thread panic");
+                    shared_emitter.fatal("aborting due to worker thread failure");
                     // Exit the coordinator thread
-                    panic!("aborting due to worker thread panic")
+                    panic!("aborting due to worker thread failure")
                 }
                 Message::TranslateItem => {
                     bug!("the coordinator should not receive translation requests")
@@ -1739,23 +1739,16 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // Execute the work itself, and if it finishes successfully then flag
         // ourselves as a success as well.
         //
-        // Note that we ignore the result coming out of `execute_work_item`
-        // which will tell us if the worker failed with a `FatalError`. If that
-        // has happened, however, then a diagnostic was sent off to the main
-        // thread, along with an `AbortIfErrors` message. In that case the main
-        // thread is already exiting anyway most likely.
-        //
-        // In any case, there's no need for us to take further action here, so
-        // we just ignore the result and then send off our message saying that
-        // we're done, which if `execute_work_item` failed is unlikely to be
-        // seen by the main thread, but hey we might as well try anyway.
+        // Note that we ignore any `FatalError` coming out of `execute_work_item`,
+        // as a diagnostic was already sent off to the main thread - just
+        // surface that there was an error in this worker.
         bomb.result = {
             let _timing_guard = cgcx.time_graph.as_ref().map(|tg| {
                 tg.start(time_graph::TimelineId(cgcx.worker),
                          LLVM_WORK_PACKAGE_KIND,
                          &work.name())
             });
-            Some(execute_work_item(&cgcx, work).unwrap())
+            execute_work_item(&cgcx, work).ok()
         };
     });
 }
