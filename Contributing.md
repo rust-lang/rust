@@ -184,13 +184,13 @@ places) is for the caller to shuffle around some of its other items to make
 more width, then call the function again with more space.
 
 Since it is common for callers to bail out when a callee fails, we often use a
-`try_opt!` macro to make this pattern more succinct.
+`?` operator to make this pattern more succinct.
 
 One way we might find out that we don't have enough space is when computing how much
 space we have. Something like `available_space = budget - overhead`. Since
 widths are unsized integers, this would cause underflow. Therefore we use
-checked subtraction: `available_space = try_opt!(budget.checked_sub(overhead))`.
-`checked_sub` returns an `Option`, and if we would underflow `try_opt!` returns
+checked subtraction: `available_space = budget.checked_sub(overhead)?`.
+`checked_sub` returns an `Option`, and if we would underflow `?` returns
 `None`, otherwise we proceed with the computed space.
 
 Much syntax in Rust is lists: lists of arguments, lists of fields, lists of
