@@ -10,7 +10,6 @@
 
 use std::cmp::min;
 use std::borrow::Cow;
-use std::fmt::Write;
 use std::iter::{repeat, ExactSizeIterator};
 
 use syntax::{ast, ptr};
@@ -1351,14 +1350,14 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 ControlBraceStyle::AlwaysNextLine if last_in_chain => &*alt_block_sep,
                 _ => " ",
             };
-            write!(
-                &mut result,
+
+            result.push_str(&format!(
                 "{}else{}",
                 between_kwd_else_block_comment
                     .as_ref()
                     .map_or(between_sep, |s| &**s),
-                after_else_comment.as_ref().map_or(after_sep, |s| &**s)
-            ).ok()?;
+                after_else_comment.as_ref().map_or(after_sep, |s| &**s),
+            ));
             result.push_str(&rewrite?);
         }
 
