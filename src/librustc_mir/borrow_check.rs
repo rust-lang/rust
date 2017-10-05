@@ -1090,10 +1090,14 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         autoderef = true;
                         ("",   format!(""), Some(index))
                     },
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
-                        ("",   format!("[{} of {}]", offset, min_length), None),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
-                        ("",   format!("[-{} of {}]", offset, min_length), None),
+                    ProjectionElem::ConstantIndex { offset, from_end: false, .. } => {
+                        autoderef = true;
+                        ("",   format!("[{}]", offset), None)
+                    },
+                    ProjectionElem::ConstantIndex { offset, from_end: true, .. } => {
+                        autoderef = true;
+                        ("",   format!("[-{}]", offset), None)
+                    },
                     ProjectionElem::Subslice { from, to: 0 } =>
                         ("",   format!("[{}:]", from), None),
                     ProjectionElem::Subslice { from: 0, to } =>

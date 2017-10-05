@@ -11,6 +11,8 @@
 // revisions: ast mir
 //[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
 
+#![feature(advanced_slice_patterns)]
+
 pub struct Foo {
   x: u32
 }
@@ -162,5 +164,38 @@ fn main() {
         u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowed
              //[mir]~^ ERROR cannot use `u.a` because it was mutably borrowed (Ast)
              //[mir]~| ERROR cannot use `u.a` because it was mutably borrowed (Mir)
+    }
+    // Constant index
+    {
+        let mut v = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let _v = &mut v;
+        match v {
+            &[x, _, .., _, _] => println!("{}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[0]` because it was mutably borrowed (Mir)
+                            _ => panic!("other case"),
+        }
+        match v {
+            &[_, x, .., _, _] => println!("{}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[1]` because it was mutably borrowed (Mir)
+                            _ => panic!("other case"),
+        }
+        match v {
+            &[_, _, .., x, _] => println!("{}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[-2]` because it was mutably borrowed (Mir)
+                            _ => panic!("other case"),
+        }
+        match v {
+            &[_, _, .., _, x] => println!("{}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[-1]` because it was mutably borrowed (Mir)
+                            _ => panic!("other case"),
+        }
     }
 }
