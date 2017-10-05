@@ -1,3 +1,101 @@
+Version 1.21.0 (2017-10-12)
+==========================
+
+Language
+--------
+- [Relaxed path syntax. You can now add type parameters to values][43540]
+  Example:
+  ```rust
+  my_macro!(Vec<i32>::new); // Always worked
+  my_macro!(Vec::<i32>::new); // Now works
+  ```
+- [You can now use static references for literals.][43838]
+  Example:
+  ```rust
+  fn main() {
+      let x: &'static u32 = &0;
+  }
+  ```
+
+Compiler
+--------
+- [Upgraded jemalloc to 4.5.0][43911]
+- [Enabled unwinding panics on Redox][43917]
+- [Now runs LLVM in parallel during translation phase.][43506]
+  This should reduce peak memory usage.
+
+Libraries
+---------
+- [Generate builtin impls for `Clone` for all arrays and tuples that
+  are `T: Clone`][43690]
+- [`Stdin`, `Stdout`, and `Stderr` now implement `AsRawFd`.][43459]
+- [`Rc` and `Arc` now implement `From<&[T]> where T: Clone`, `From<str>`,
+  `From<String>`, `From<Box<T>> where T: ?Sized`, and `From<Vec<T>>`.][42565]
+
+Stabilized APIs
+---------------
+
+[`std::mem::discriminant`]
+
+Cargo
+-----
+- [You can now call `cargo install` with multiple package names][cargo/4216]
+- [Cargo commands inside a virtual workspace will now implicitly
+  pass `--all`][cargo/4335]
+- [Added a `[patch]` section to `Cargo.toml` to handle
+  prepublication dependencies][cargo/4123] [RFC 1969]
+- [`include` & `exclude` fields in `Cargo.toml` now accept gitignore
+  like patterns][cargo/4270]
+- [Added the `--all-targets` option][cargo/4400]
+- [Using required dependencies as a feature is now deprecated and emits
+  a warning][cargo/4364]
+
+
+Misc
+----
+- [Cargo docs are moving][43916]
+  to [doc.rust-lang.org/cargo](https://doc.rust-lang.org/cargo)
+- [The rustdoc book is now available][43863]
+  at [doc.rust-lang.org/rustdoc](https://doc.rust-lang.org/rustdoc)
+- [Added a preview of RLS has been made available through rustup][44204]
+  Install with `rustup component add rls-preview`
+- [`std::os` documentation for Unix, Linux, and Windows now appears on doc.rust-lang.org][43348]
+  Previously only showed `std::os::unix`.
+
+Compatibility Notes
+-------------------
+- [Changes in method matching against higher-ranked types][43880] This may cause
+  breakage in subtyping corner cases. [A more in-depth explanation is available.][info/43880]
+- [rustc's JSON error output's byte position start at top of file.][42973]
+  Was previously relative to the rustc's internal `CodeMap` struct which
+  required the unstable library `libsyntax` to correctly use.
+- [`unused_results` lint no longer ignores booleans][43728]
+
+[42565]: https://github.com/rust-lang/rust/pull/42565
+[42973]: https://github.com/rust-lang/rust/pull/42973
+[43348]: https://github.com/rust-lang/rust/pull/43348
+[43459]: https://github.com/rust-lang/rust/pull/43459
+[43506]: https://github.com/rust-lang/rust/pull/43506
+[43540]: https://github.com/rust-lang/rust/pull/43540
+[43690]: https://github.com/rust-lang/rust/pull/43690
+[43728]: https://github.com/rust-lang/rust/pull/43728
+[43838]: https://github.com/rust-lang/rust/pull/43838
+[43863]: https://github.com/rust-lang/rust/pull/43863
+[43880]: https://github.com/rust-lang/rust/pull/43880
+[43911]: https://github.com/rust-lang/rust/pull/43911
+[43916]: https://github.com/rust-lang/rust/pull/43916
+[43917]: https://github.com/rust-lang/rust/pull/43917
+[44204]: https://github.com/rust-lang/rust/pull/44204
+[cargo/4123]: https://github.com/rust-lang/cargo/pull/4123
+[cargo/4216]: https://github.com/rust-lang/cargo/pull/4216
+[cargo/4270]: https://github.com/rust-lang/cargo/pull/4270
+[cargo/4335]: https://github.com/rust-lang/cargo/pull/4335
+[cargo/4364]: https://github.com/rust-lang/cargo/pull/4364
+[cargo/4400]: https://github.com/rust-lang/cargo/pull/4400
+[RFC 1969]: https://github.com/rust-lang/rfcs/pull/1969
+[info/43880]: https://github.com/rust-lang/rust/issues/44224#issuecomment-330058902
+[`std::mem::discriminant`]: https://doc.rust-lang.org/std/mem/fn.discriminant.html
+
 Version 1.20.0 (2017-08-31)
 ===========================
 
@@ -110,7 +208,7 @@ Compatibility Notes
 - [Functions with `'static` in their return types will now not be as usable as
   if they were using lifetime parameters instead.][42417]
 - [The reimplementation of `{f32, f64}::is_sign_{negative, positive}` now
-  takes the sign of NaN into account where previously didn't.][42430] 
+  takes the sign of NaN into account where previously didn't.][42430]
 
 [42033]: https://github.com/rust-lang/rust/pull/42033
 [42155]: https://github.com/rust-lang/rust/pull/42155
