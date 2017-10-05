@@ -18,8 +18,8 @@ use syntax::parse::ParseSess;
 
 use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, CommentCodeSlices,
-              FindUncommented};
+use comment::{contains_comment, recover_missing_comment_in_span, remove_trailing_white_spaces,
+              CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
 use items::{format_impl, format_struct, format_struct_struct, format_trait,
@@ -470,7 +470,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::MacroDef(..) => {
                 // FIXME(#1539): macros 2.0
-                let mac_snippet = Some(self.snippet(item.span));
+                let mac_snippet = Some(remove_trailing_white_spaces(&self.snippet(item.span)));
                 self.push_rewrite(item.span, mac_snippet);
             }
         }
