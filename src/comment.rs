@@ -464,7 +464,7 @@ impl FindUncommented for str {
                     return Some(i - pat.len());
                 }
                 Some(c) => match kind {
-                    FullCodeCharKind::Normal if b == c => {}
+                    FullCodeCharKind::Normal | FullCodeCharKind::InString if b == c => {}
                     _ => {
                         needle_iter = pat.chars();
                     }
@@ -487,7 +487,7 @@ impl FindUncommented for str {
 pub fn find_comment_end(s: &str) -> Option<usize> {
     let mut iter = CharClasses::new(s.char_indices());
     for (kind, (i, _c)) in &mut iter {
-        if kind == FullCodeCharKind::Normal {
+        if kind == FullCodeCharKind::Normal || kind == FullCodeCharKind::InString {
             return Some(i);
         }
     }
@@ -503,6 +503,35 @@ pub fn find_comment_end(s: &str) -> Option<usize> {
 /// Returns true if text contains any comment.
 pub fn contains_comment(text: &str) -> bool {
     CharClasses::new(text.chars()).any(|(kind, _)| kind.is_comment())
+}
+
+/// Remove trailing spaces from the specified snippet. We do not remove spaces
+/// inside strings or comments.
+pub fn remove_trailing_white_spaces(text: &str) -> String {
+    let mut buffer = String::with_capacity(text.len());
+    let mut space_buffer = String::with_capacity(128);
+    for (char_kind, c) in CharClasses::new(text.chars()) {
+        match c {
+            '\n' => {
+                if char_kind == FullCodeCharKind::InString {
+                    buffer.push_str(&space_buffer);
+                }
+                space_buffer.clear();
+                buffer.push('\n');
+            }
+            _ if c.is_whitespace() => {
+                space_buffer.push(c);
+            }
+            _ => {
+                if !space_buffer.is_empty() {
+                    buffer.push_str(&space_buffer);
+                    space_buffer.clear();
+                }
+                buffer.push(c);
+            }
+        }
+    }
+    buffer
 }
 
 struct CharClasses<T>
@@ -568,15 +597,17 @@ enum FullCodeCharKind {
     InComment,
     /// Last character of a comment, '\n' for a line comment, '/' for a block comment.
     EndComment,
+    /// Inside a string.
+    InString,
 }
 
 impl FullCodeCharKind {
     fn is_comment(&self) -> bool {
         match *self {
-            FullCodeCharKind::Normal => false,
             FullCodeCharKind::StartComment |
             FullCodeCharKind::InComment |
             FullCodeCharKind::EndComment => true,
+            _ => false,
         }
     }
 
@@ -612,13 +643,23 @@ where
     fn next(&mut self) -> Option<(FullCodeCharKind, T::Item)> {
         let item = try_opt!(self.base.next());
         let chr = item.get_char();
+        let mut char_kind = FullCodeCharKind::Normal;
         self.status = match self.status {
             CharClassesStatus::LitString => match chr {
                 '"' => CharClassesStatus::Normal,
-                '\\' => CharClassesStatus::LitStringEscape,
-                _ => CharClassesStatus::LitString,
+                '\\' => {
+                    char_kind = FullCodeCharKind::InString;
+                    CharClassesStatus::LitStringEscape
+                }
+                _ => {
+                    char_kind = FullCodeCharKind::InString;
+                    CharClassesStatus::LitString
+                }
             },
-            CharClassesStatus::LitStringEscape => CharClassesStatus::LitString,
+            CharClassesStatus::LitStringEscape => {
+                char_kind = FullCodeCharKind::InString;
+                CharClassesStatus::LitString
+            }
             CharClassesStatus::LitChar => match chr {
                 '\\' => CharClassesStatus::LitCharEscape,
                 '\'' => CharClassesStatus::Normal,
@@ -626,7 +667,10 @@ where
             },
             CharClassesStatus::LitCharEscape => CharClassesStatus::LitChar,
             CharClassesStatus::Normal => match chr {
-                '"' => CharClassesStatus::LitString,
+                '"' => {
+                    char_kind = FullCodeCharKind::InString;
+                    CharClassesStatus::LitString
+                }
                 '\'' => CharClassesStatus::LitChar,
                 '/' => match self.base.peek() {
                     Some(next) if next.get_char() == '*' => {
@@ -680,7 +724,7 @@ where
                 }
             },
         };
-        Some((FullCodeCharKind::Normal, item))
+        Some((char_kind, item))
     }
 }
 
@@ -707,9 +751,12 @@ impl<'a> Iterator for UngroupedCommentCodeSlices<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let (kind, (start_idx, _)) = try_opt!(self.iter.next());
         match kind {
-            FullCodeCharKind::Normal => {
+            FullCodeCharKind::Normal | FullCodeCharKind::InString => {
                 // Consume all the Normal code
-                while let Some(&(FullCodeCharKind::Normal, (_, _))) = self.iter.peek() {
+                while let Some(&(char_kind, _)) = self.iter.peek() {
+                    if char_kind.is_comment() {
+                        break;
+                    }
                     let _ = self.iter.next();
                 }
             }
@@ -1032,7 +1079,7 @@ mod test {
     fn uncommented(text: &str) -> String {
         CharClasses::new(text.chars())
             .filter_map(|(s, c)| match s {
-                FullCodeCharKind::Normal => Some(c),
+                FullCodeCharKind::Normal | FullCodeCharKind::InString => Some(c),
                 _ => None,
             })
             .collect()
