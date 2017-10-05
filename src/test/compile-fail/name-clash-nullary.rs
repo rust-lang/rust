@@ -11,7 +11,7 @@
 use std::option::*;
 
 fn main() {
-  let None: isize = 42; //~ ERROR let bindings cannot shadow unit variants
+  let None: isize = 42; //~ ERROR mismatched types
   log(debug, None);
   //~^ ERROR cannot find function `log` in this scope
   //~| ERROR cannot find value `debug` in this scope
