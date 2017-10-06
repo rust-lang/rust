@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for formatting and printing `String`s
+//! Utilities for formatting and printing `String`s.
 //!
 //! This module contains the runtime support for the [`format!`] syntax extension.
 //! This macro is implemented in the compiler to emit calls to this module in
