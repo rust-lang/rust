@@ -13,13 +13,21 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv::AstConv;
+use rustc::hir::def_id::DefId;
+use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
 use rustc::ty::subst::Substs;
+use rustc::ty::TypeFoldable;
 use std::cmp;
 use std::iter;
 use syntax::abi::Abi;
 use rustc::hir;
+
+struct ClosureSignatures<'tcx> {
+    bound_sig: ty::PolyFnSig<'tcx>,
+    liberated_sig: ty::FnSig<'tcx>,
+}
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_expr_closure(&self,
@@ -56,15 +64,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                expected_sig);
 
         let expr_def_id = self.tcx.hir.local_def_id(expr.id);
-        let sig = self.ty_of_closure(decl, expected_sig);
 
-        debug!("check_closure: ty_of_closure returns {:?}", sig);
+        let ClosureSignatures { bound_sig, liberated_sig } =
+            self.sig_of_closure(expr_def_id, decl, body, expected_sig);
 
-        // `deduce_expectations_from_expected_type` introduces late-bound
-        // lifetimes defined elsewhere, which we need to anonymize away.
-        let sig = self.tcx.anonymize_late_bound_regions(&sig);
+        debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
-        debug!("check_closure: anonymized sig={:?}", sig);
+        let interior = check_fn(self, self.param_env, liberated_sig, decl, expr.id, body, true).1;
 
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar
@@ -75,14 +81,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 |_, _| span_bug!(expr.span, "closure has region param"),
                 |_, _| self.infcx.next_ty_var(TypeVariableOrigin::TransformedUpvar(expr.span))
         );
-
-        let fn_sig = self.liberate_late_bound_regions(expr_def_id, &sig);
-        let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
-                                                            body.value.id,
-                                                            self.param_env,
-                                                            &fn_sig);
-
-        let interior = check_fn(self, self.param_env, fn_sig, decl, expr.id, body, true).1;
+        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         if let Some(interior) = interior {
             let closure_substs = ty::ClosureSubsts {
@@ -91,13 +90,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return self.tcx.mk_generator(expr_def_id, closure_substs, interior);
         }
 
-        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
-
         debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
-        let sig = sig.map_bound(|sig| self.tcx.mk_fn_sig(
+        let sig = bound_sig.map_bound(|sig| self.tcx.mk_fn_sig(
             iter::once(self.tcx.intern_tup(sig.inputs(), false)),
             sig.output(),
             sig.variadic,
@@ -271,71 +268,214 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn sig_of_closure(&self,
+                      expr_def_id: DefId,
+                      decl: &hir::FnDecl,
+                      body: &hir::Body,
+                      expected_sig: Option<ty::FnSig<'tcx>>)
+                      -> ClosureSignatures<'tcx>
+    {
+        if let Some(e) = expected_sig {
+            self.sig_of_closure_with_expectation(expr_def_id, decl, body, e)
+        } else {
+            self.sig_of_closure_no_expectation(expr_def_id, decl, body)
+        }
+    }
+
+    /// If there is no expected signature, then we will convert the
+    /// types that the user gave into a signature.
+    fn sig_of_closure_no_expectation(&self,
+                                     expr_def_id: DefId,
+                                     decl: &hir::FnDecl,
+                                     body: &hir::Body)
+                                     -> ClosureSignatures<'tcx>
+    {
+        debug!("sig_of_closure_no_expectation()");
+
+        let bound_sig = self.supplied_sig_of_closure(decl);
+
+        self.closure_sigs(expr_def_id, body, bound_sig)
+    }
+
     /// Invoked to compute the signature of a closure expression. This
     /// combines any user-provided type annotations (e.g., `|x: u32|
     /// -> u32 { .. }`) with the expected signature.
     ///
-    /// The arguments here are a bit odd-ball:
+    /// The approach is as follows:
     ///
+    /// - Let `S` be the (higher-ranked) signature that we derive from the user's annotations.
+    /// - Let `E` be the (higher-ranked) signature that we derive from the expectations, if any.
+    ///   - If we have no expectation `E`, then the signature of the closure is `S`.
+    ///   - Otherwise, the signature of the closure is E. Moreover:
+    ///     - Skolemize the late-bound regions in `E`, yielding `E'`.
+    ///     - Instantiate all the late-bound regions bound in the closure within `S`
+    ///       with fresh (existential) variables, yielding `S'`
+    ///     - Require that `E' = S'`
+    ///       - We could use some kind of subtyping relationship here,
+    ///         I imagine, but equality is easier and works fine for
+    ///         our purposes.
+    ///
+    /// The key intuition here is that the user's types must be valid
+    /// from "the inside" of the closure, but the expectation
+    /// ultimately drives the overall signature.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn with_closure<F>(_: F)
+    ///   where F: Fn(&u32) -> &u32 { .. }
+    ///
+    /// with_closure(|x: &u32| { ... })
+    /// ```
+    ///
+    /// Here:
+    /// - E would be `fn(&u32) -> &u32`.
+    /// - S would be `fn(&u32) ->
+    /// - E' is `&'!0 u32 -> &'!0 u32`
+    /// - S' is `&'?0 u32 -> ?T`
+    ///
+    /// S' can be unified with E' with `['?0 = '!0, ?T = &'!10 u32]`.
+    ///
+    /// # Arguments
+    ///
+    /// - `expr_def_id`: the def-id of the closure expression
     /// - `decl`: the HIR declaration of the closure
+    /// - `body`: the body of the closure
     /// - `expected_sig`: the expected signature (if any). Note that
     ///   this is missing a binder: that is, there may be late-bound
     ///   regions with depth 1, which are bound then by the closure.
-    fn ty_of_closure(&self,
-                     decl: &hir::FnDecl,
-                     expected_sig: Option<ty::FnSig<'tcx>>)
-                     -> ty::PolyFnSig<'tcx>
+    fn sig_of_closure_with_expectation(&self,
+                                       expr_def_id: DefId,
+                                       decl: &hir::FnDecl,
+                                       body: &hir::Body,
+                                       expected_sig: ty::FnSig<'tcx>)
+                                       -> ClosureSignatures<'tcx>
+    {
+        debug!("sig_of_closure_with_expectation(expected_sig={:?})", expected_sig);
+
+        // Watch out for some surprises and just ignore the
+        // expectation if things don't see to match up with what we
+        // expect.
+        if expected_sig.variadic != decl.variadic {
+            return self.sig_of_closure_no_expectation(expr_def_id, decl, body);
+        } else if expected_sig.inputs_and_output.len() != decl.inputs.len() + 1 {
+            // we could probably handle this case more gracefully
+            return self.sig_of_closure_no_expectation(expr_def_id, decl, body);
+        }
+
+        // Create a `PolyFnSig`. Note the oddity that late bound
+        // regions appearing free in `expected_sig` are now bound up
+        // in this binder we are creating.
+        assert!(!expected_sig.has_regions_escaping_depth(1));
+        let bound_sig =
+            ty::Binder(self.tcx.mk_fn_sig(
+                expected_sig.inputs().iter().cloned(),
+                expected_sig.output(),
+                decl.variadic,
+                hir::Unsafety::Normal,
+                Abi::RustCall));
+
+        // `deduce_expectations_from_expected_type` introduces
+        // late-bound lifetimes defined elsewhere, which we now
+        // anonymize away, so as not to confuse the user.
+        let bound_sig = self.tcx.anonymize_late_bound_regions(&bound_sig);
+
+        let closure_sigs = self.closure_sigs(expr_def_id, body, bound_sig);
+
+        // Up till this point, we have ignored the annotations that the user
+        // gave. This function will check that they unify successfully.
+        // Along the way, it also writes out entries for types that the user
+        // wrote into our tables, which are then later used by the privacy
+        // check.
+        self.check_supplied_sig_against_expectation(decl, &closure_sigs);
+
+        closure_sigs
+    }
+
+    /// Enforce the user's types against the expectation.  See
+    /// `sig_of_closure_with_expectation` for details on the overall
+    /// strategy.
+    fn check_supplied_sig_against_expectation(&self,
+                                              decl: &hir::FnDecl,
+                                              expected_sigs: &ClosureSignatures<'tcx>)
+    {
+        // Get the signature S that the user gave.
+        //
+        // (See comment on `sig_of_closure_with_expectation` for the
+        // meaning of these letters.)
+        let supplied_sig = self.supplied_sig_of_closure(decl);
+
+        debug!("check_supplied_sig_against_expectation: supplied_sig={:?}",
+               supplied_sig);
+
+        // The liberated version of this signature should be be a subtype
+        // of the liberated form of the expectation.
+        for ((hir_ty, &supplied_ty), expected_ty) in
+            decl.inputs.iter()
+            .zip(*supplied_sig.inputs().skip_binder()) // binder moved to (*) below
+            .zip(expected_sigs.liberated_sig.inputs()) // `liberated_sig` is E'.
+        {
+            // Instantiate (this part of..) S to S', i.e., with fresh variables.
+            let (supplied_ty, _) = self.infcx.replace_late_bound_regions_with_fresh_var(
+                hir_ty.span,
+                LateBoundRegionConversionTime::FnCall,
+                &ty::Binder(supplied_ty)); // recreated from (*) above
+
+            // Check that E' = S'.
+            self.demand_eqtype(hir_ty.span, expected_ty, supplied_ty);
+        }
+
+        let (supplied_output_ty, _) = self.infcx.replace_late_bound_regions_with_fresh_var(
+            decl.output.span(),
+            LateBoundRegionConversionTime::FnCall,
+            &supplied_sig.output());
+        self.demand_eqtype(decl.output.span(),
+                           expected_sigs.liberated_sig.output(),
+                           supplied_output_ty);
+    }
+
+    /// If there is no expected signature, then we will convert the
+    /// types that the user gave into a signature.
+    fn supplied_sig_of_closure(&self,
+                               decl: &hir::FnDecl)
+                               -> ty::PolyFnSig<'tcx>
     {
         let astconv: &AstConv = self;
 
-        debug!("ty_of_closure(expected_sig={:?})",
-               expected_sig);
-
-        let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
-            let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
-                // no guarantee that the correct number of expected args
-                // were supplied
-                if i < e.inputs().len() {
-                    Some(e.inputs()[i])
-                } else {
-                    None
-                }
-            });
-
-            let input_ty = astconv.ty_of_arg(a, expected_arg_ty);
-            debug!("ty_of_closure: i={} input_ty={:?} expected_arg_ty={:?}",
-                   i, input_ty, expected_arg_ty);
-
-            input_ty
-        });
-
-        let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
-
-        let output_ty = match decl.output {
-            hir::Return(ref output) => {
-                if let (&hir::TyInfer, Some(expected_ret_ty)) = (&output.node, expected_ret_ty) {
-                    astconv.record_ty(output.hir_id, expected_ret_ty, output.span);
-                    expected_ret_ty
-                } else {
-                    astconv.ast_ty_to_ty(&output)
-                }
-            }
-            hir::DefaultReturn(span) => {
-                if let Some(expected_ret_ty) = expected_ret_ty {
-                    expected_ret_ty
-                } else {
-                    astconv.ty_infer(span)
-                }
-            }
+        // First, convert the types that the user supplied (if any).
+        let supplied_arguments =
+            decl.inputs
+                .iter()
+                .map(|a| astconv.ast_ty_to_ty(a));
+        let supplied_return = match decl.output {
+            hir::Return(ref output) => astconv.ast_ty_to_ty(&output),
+            hir::DefaultReturn(_) => astconv.ty_infer(decl.output.span()),
         };
 
-        debug!("ty_of_closure: output_ty={:?}", output_ty);
-
-        ty::Binder(self.tcx.mk_fn_sig(
-            input_tys,
-            output_ty,
+        let result = ty::Binder(self.tcx.mk_fn_sig(
+            supplied_arguments,
+            supplied_return,
             decl.variadic,
             hir::Unsafety::Normal,
-            Abi::RustCall))
+            Abi::RustCall));
+
+        debug!("supplied_sig_of_closure: result={:?}", result);
+
+        result
+    }
+
+    fn closure_sigs(&self,
+                    expr_def_id: DefId,
+                    body: &hir::Body,
+                    bound_sig: ty::PolyFnSig<'tcx>)
+                    -> ClosureSignatures<'tcx>
+    {
+        let liberated_sig = self.liberate_late_bound_regions(expr_def_id, &bound_sig);
+        let liberated_sig = self.inh.normalize_associated_types_in(body.value.span,
+                                                                   body.value.id,
+                                                                   self.param_env,
+                                                                   &liberated_sig);
+        ClosureSignatures { bound_sig, liberated_sig }
     }
 }
+
