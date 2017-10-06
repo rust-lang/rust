@@ -1090,20 +1090,13 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         autoderef = true;
                         ("",   format!(""), Some(index))
                     },
-                    ProjectionElem::ConstantIndex { offset, from_end: false, .. } => {
+                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                         autoderef = true;
-                        ("",   format!("[{}]", offset), None)
+                        // Since it isn't possible to borrow an element on a particular index and
+                        // then use another while the borrow is held, don't output indices details
+                        // to avoid confusing the end-user
+                        ("",   format!("[..]"), None)
                     },
-                    ProjectionElem::ConstantIndex { offset, from_end: true, .. } => {
-                        autoderef = true;
-                        ("",   format!("[-{}]", offset), None)
-                    },
-                    ProjectionElem::Subslice { from, to: 0 } =>
-                        ("",   format!("[{}:]", from), None),
-                    ProjectionElem::Subslice { from: 0, to } =>
-                        ("",   format!("[:-{}]", to), None),
-                    ProjectionElem::Subslice { from, to } =>
-                        ("",   format!("[{}:-{}]", from, to), None),
                 };
                 buf.push_str(prefix);
                 self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));

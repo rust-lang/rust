@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
 // revisions: ast mir
 //[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
 
+#![feature(slice_patterns)]
 #![feature(advanced_slice_patterns)]
 
 pub struct Foo {
@@ -173,29 +175,62 @@ fn main() {
             &[x, _, .., _, _] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
-                //[mir]~| ERROR cannot use `v[0]` because it was mutably borrowed (Mir)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
                             _ => panic!("other case"),
         }
         match v {
             &[_, x, .., _, _] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
-                //[mir]~| ERROR cannot use `v[1]` because it was mutably borrowed (Mir)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
                             _ => panic!("other case"),
         }
         match v {
             &[_, _, .., x, _] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
-                //[mir]~| ERROR cannot use `v[-2]` because it was mutably borrowed (Mir)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
                             _ => panic!("other case"),
         }
         match v {
             &[_, _, .., _, x] => println!("{}", x),
                 //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
                 //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
-                //[mir]~| ERROR cannot use `v[-1]` because it was mutably borrowed (Mir)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
                             _ => panic!("other case"),
+        }
+    }
+    // Subslices
+    {
+        let mut v = &[1, 2, 3, 4, 5];
+        let _v = &mut v;
+        match v {
+            &[x..] => println!("{:?}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
+            _ => panic!("other case"),
+        }
+        match v {
+            &[_, x..] => println!("{:?}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
+            _ => panic!("other case"),
+        }
+        match v {
+            &[x.., _] => println!("{:?}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
+            _ => panic!("other case"),
+        }
+        match v {
+            &[_, x.., _] => println!("{:?}", x),
+                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed (Ast)
+                //[mir]~| ERROR cannot use `v[..]` because it was mutably borrowed (Mir)
+            _ => panic!("other case"),
         }
     }
 }
