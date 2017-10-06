@@ -3671,12 +3671,17 @@ impl<'a> Parser<'a> {
             None
         };
         let init = self.parse_initializer()?;
+        let hi = if self.token == token::Semi {
+            self.span
+        } else {
+            self.prev_span
+        };
         Ok(P(ast::Local {
             ty,
             pat,
             init,
             id: ast::DUMMY_NODE_ID,
-            span: lo.to(self.prev_span),
+            span: lo.to(hi),
             attrs,
         }))
     }
