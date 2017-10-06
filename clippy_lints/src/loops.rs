@@ -378,7 +378,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         match expr.node {
             ExprWhile(_, ref block, _) |
             ExprLoop(ref block, _, _) => {
-                if never_loop(block, &expr.id) {
+                if never_loop(block, expr.id) {
                     span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
                 }
             },
@@ -485,11 +485,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn never_loop(block: &Block, id: &NodeId) -> bool {
-    !contains_continue_block(block, id) && loop_exit_block(block)
+fn never_loop(block: &Block, id: NodeId) -> bool {
+    !contains_continue_block(block, Some(id)) && loop_exit_block(block, &mut vec![id])
 }
 
-fn contains_continue_block(block: &Block, dest: &NodeId) -> bool {
+fn contains_continue_block(block: &Block, dest: Option<NodeId>) -> bool {
     block.stmts.iter().any(|e| contains_continue_stmt(e, dest)) ||
         block.expr.as_ref().map_or(
             false,
@@ -497,7 +497,7 @@ fn contains_continue_block(block: &Block, dest: &NodeId) -> bool {
         )
 }
 
-fn contains_continue_stmt(stmt: &Stmt, dest: &NodeId) -> bool {
+fn contains_continue_stmt(stmt: &Stmt, dest: Option<NodeId>) -> bool {
     match stmt.node {
         StmtSemi(ref e, _) |
         StmtExpr(ref e, _) => contains_continue_expr(e, dest),
@@ -505,7 +505,7 @@ fn contains_continue_stmt(stmt: &Stmt, dest: &NodeId) -> bool {
     }
 }
 
-fn contains_continue_decl(decl: &Decl, dest: &NodeId) -> bool {
+fn contains_continue_decl(decl: &Decl, dest: Option<NodeId>) -> bool {
     match decl.node {
         DeclLocal(ref local) => {
             local.init.as_ref().map_or(
@@ -517,7 +517,7 @@ fn contains_continue_decl(decl: &Decl, dest: &NodeId) -> bool {
     }
 }
 
-fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
+fn contains_continue_expr(expr: &Expr, dest: Option<NodeId>) -> bool {
     match expr.node {
         ExprRet(Some(ref e)) |
         ExprBox(ref e) |
@@ -555,31 +555,32 @@ fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
                 |e| contains_continue_expr(e, dest),
             )
         },
-        ExprAgain(d) => d.target_id.opt_id().map_or(false, |id| id == *dest),
+        ExprAgain(d) => dest.map_or(true, |dest| d.target_id.opt_id().map_or(false, |id| id == dest)),
         _ => false,
     }
 }
 
-fn loop_exit_block(block: &Block) -> bool {
-    block.stmts.iter().any(|e| loop_exit_stmt(e)) || block.expr.as_ref().map_or(false, |e| loop_exit_expr(e))
+fn loop_exit_block(block: &Block, loops: &mut Vec<NodeId>) -> bool {
+    block.stmts.iter().take_while(|s| !contains_continue_stmt(s, None)).any(|s| loop_exit_stmt(s, loops))
+        || block.expr.as_ref().map_or(false, |e| loop_exit_expr(e, loops))
 }
 
-fn loop_exit_stmt(stmt: &Stmt) -> bool {
+fn loop_exit_stmt(stmt: &Stmt, loops: &mut Vec<NodeId>) -> bool {
     match stmt.node {
         StmtSemi(ref e, _) |
-        StmtExpr(ref e, _) => loop_exit_expr(e),
-        StmtDecl(ref d, _) => loop_exit_decl(d),
+        StmtExpr(ref e, _) => loop_exit_expr(e, loops),
+        StmtDecl(ref d, _) => loop_exit_decl(d, loops),
     }
 }
 
-fn loop_exit_decl(decl: &Decl) -> bool {
+fn loop_exit_decl(decl: &Decl, loops: &mut Vec<NodeId>) -> bool {
     match decl.node {
-        DeclLocal(ref local) => local.init.as_ref().map_or(false, |e| loop_exit_expr(e)),
+        DeclLocal(ref local) => local.init.as_ref().map_or(false, |e| loop_exit_expr(e, loops)),
         _ => false,
     }
 }
 
-fn loop_exit_expr(expr: &Expr) -> bool {
+fn loop_exit_expr(expr: &Expr, loops: &mut Vec<NodeId>) -> bool {
     match expr.node {
         ExprBox(ref e) |
         ExprUnary(_, ref e) |
@@ -588,22 +589,34 @@ fn loop_exit_expr(expr: &Expr) -> bool {
         ExprField(ref e, _) |
         ExprTupField(ref e, _) |
         ExprAddrOf(_, ref e) |
-        ExprRepeat(ref e, _) => loop_exit_expr(e),
+        ExprRepeat(ref e, _) => loop_exit_expr(e, loops),
         ExprArray(ref es) |
         ExprMethodCall(_, _, ref es) |
-        ExprTup(ref es) => es.iter().any(|e| loop_exit_expr(e)),
-        ExprCall(ref e, ref es) => loop_exit_expr(e) || es.iter().any(|e| loop_exit_expr(e)),
+        ExprTup(ref es) => es.iter().any(|e| loop_exit_expr(e, loops)),
+        ExprCall(ref e, ref es) => loop_exit_expr(e, loops) || es.iter().any(|e| loop_exit_expr(e, loops)),
         ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
-        ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| loop_exit_expr(e)),
-        ExprIf(ref e, ref e2, ref e3) => {
-            loop_exit_expr(e) || e3.as_ref().map_or(false, |e| loop_exit_expr(e)) && loop_exit_expr(e2)
+        ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| loop_exit_expr(e, loops)),
+        ExprIf(ref e, ref e2, ref e3) => loop_exit_expr(e, loops)
+            || e3.as_ref().map_or(false, |e3| loop_exit_expr(e3, loops)) && loop_exit_expr(e2, loops),
+        ExprLoop(ref b, _, _) => {
+            loops.push(expr.id);
+            let val = loop_exit_block(b, loops);
+            loops.pop();
+            val
         },
-        ExprWhile(ref e, ref b, _) => loop_exit_expr(e) || loop_exit_block(b),
-        ExprMatch(ref e, ref arms, _) => loop_exit_expr(e) || arms.iter().all(|a| loop_exit_expr(&a.body)),
-        ExprBlock(ref b) => loop_exit_block(b),
-        ExprBreak(_, _) | ExprAgain(_) | ExprRet(_) => true,
+        ExprWhile(ref e, ref b, _) => {
+            loops.push(expr.id);
+            let val = loop_exit_expr(e, loops) || loop_exit_block(b, loops);
+            loops.pop();
+            val
+        },
+        ExprMatch(ref e, ref arms, _) => loop_exit_expr(e, loops) || arms.iter().all(|a| loop_exit_expr(&a.body, loops)),
+        ExprBlock(ref b) => loop_exit_block(b, loops),
+        ExprAgain(d) => d.target_id.opt_id().map_or(false, |id| loops.iter().skip(1).all(|&id2| id != id2)),
+        ExprBreak(d, _) => d.target_id.opt_id().map_or(false, |id| loops[0] == id),
+        ExprRet(_) => true,
         _ => false,
     }
 }
