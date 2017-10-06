@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 // compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
 #![feature(coerce_unsized)]

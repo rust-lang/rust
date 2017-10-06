@@ -12,6 +12,7 @@
 // We specify -Z incremental here because we want to test the partitioning for
 // incremental compilation
 // compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp/partitioning-tests/local-drop-glue
+// compile-flags:-Zinline-in-all-cgus
 
 #![allow(dead_code)]
 #![crate_type="lib"]
