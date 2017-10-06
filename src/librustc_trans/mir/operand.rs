@@ -123,11 +123,8 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                    self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = C_undef(llty);
-            let elems = [a, b];
-            for i in 0..2 {
-                let elem = base::from_immediate(bcx, elems[i]);
-                llpair = bcx.insert_value(llpair, elem, self.layout.llvm_field_index(i));
-            }
+            llpair = bcx.insert_value(llpair, a, 0);
+            llpair = bcx.insert_value(llpair, b, 1);
             llpair
         } else {
             self.immediate()
@@ -139,18 +136,13 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                                          llval: ValueRef,
                                          layout: TyLayout<'tcx>)
                                          -> OperandRef<'tcx> {
-        let val = if layout.is_llvm_scalar_pair(bcx.ccx) {
+        let val = if layout.is_llvm_scalar_pair() {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}",
                     llval, layout);
 
             // Deconstruct the immediate aggregate.
-            let a = bcx.extract_value(llval, layout.llvm_field_index(0));
-            let a = base::to_immediate(bcx, a, layout.field(bcx.ccx, 0));
-
-            let b = bcx.extract_value(llval, layout.llvm_field_index(1));
-            let b = base::to_immediate(bcx, b, layout.field(bcx.ccx, 1));
-
-            OperandValue::Pair(a, b)
+            OperandValue::Pair(bcx.extract_value(llval, 0),
+                               bcx.extract_value(llval, 1))
         } else {
             OperandValue::Immediate(llval)
         };
@@ -175,8 +167,11 @@ impl<'a, 'tcx> OperandValue {
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
-                    OperandValue::Immediate(x)
-                        .store(bcx, dest.project_field(bcx, i));
+                    let field = dest.project_field(bcx, i);
+                    // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                    let x = bcx.bitcast(x, field.layout.immediate_llvm_type(bcx.ccx));
+                    bcx.store(base::from_immediate(bcx, x),
+                              field.llval, field.alignment.non_abi());
                 }
             }
         }
@@ -214,10 +209,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     match (o.val, &proj.elem) {
                         (OperandValue::Pair(a, b),
                          &mir::ProjectionElem::Field(ref f, ty)) => {
+                            let layout = bcx.ccx.layout_of(self.monomorphize(&ty));
                             let llval = [a, b][f.index()];
+                            // HACK(eddyb) have to bitcast pointers
+                            // until LLVM removes pointee types.
+                            let llval = bcx.bitcast(llval,
+                                layout.immediate_llvm_type(bcx.ccx));
                             return OperandRef {
                                 val: OperandValue::Immediate(llval),
-                                layout: bcx.ccx.layout_of(self.monomorphize(&ty))
+                                layout
                             };
                         }
                         _ => {}

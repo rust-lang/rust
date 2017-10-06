@@ -232,16 +232,9 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
 }
 
 pub fn C_fat_ptr(cx: &CrateContext, ptr: ValueRef, meta: ValueRef) -> ValueRef {
-    let empty = C_array(Type::i8(cx), &[]);
     assert_eq!(abi::FAT_PTR_ADDR, 0);
     assert_eq!(abi::FAT_PTR_EXTRA, 1);
-    C_struct(cx, &[
-        empty,
-        ptr,
-        empty,
-        meta,
-        empty
-    ], false)
+    C_struct(cx, &[ptr, meta], false)
 }
 
 pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {

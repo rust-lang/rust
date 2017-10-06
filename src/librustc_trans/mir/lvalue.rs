@@ -175,10 +175,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 load
             };
             OperandValue::Immediate(base::to_immediate(bcx, llval, self.layout))
-        } else if self.layout.is_llvm_scalar_pair(bcx.ccx) {
-            OperandValue::Pair(
-                self.project_field(bcx, 0).load(bcx).immediate(),
-                self.project_field(bcx, 1).load(bcx).immediate())
+        } else if self.layout.is_llvm_scalar_pair() {
+            let load = |i| {
+                let x = self.project_field(bcx, i).load(bcx).immediate();
+                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                bcx.bitcast(x, self.layout.scalar_pair_element_llvm_type(bcx.ccx, i))
+            };
+            OperandValue::Pair(load(0), load(1))
         } else {
             OperandValue::Ref(self.llval, self.alignment)
         };
@@ -190,17 +193,23 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn project_field(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> LvalueRef<'tcx> {
         let ccx = bcx.ccx;
         let field = self.layout.field(ccx, ix);
-        let offset = self.layout.fields.offset(ix).bytes();
+        let offset = self.layout.fields.offset(ix);
         let alignment = self.alignment | Alignment::from(self.layout);
 
         let simple = || {
+            // Unions and newtypes only use an offset of 0.
+            let llval = if offset.bytes() == 0 {
+                self.llval
+            } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
+                // Offsets have to match either first or second field.
+                assert_eq!(offset, a.value.size(ccx).abi_align(b.value.align(ccx)));
+                bcx.struct_gep(self.llval, 1)
+            } else {
+                bcx.struct_gep(self.llval, self.layout.llvm_field_index(ix))
+            };
             LvalueRef {
-                // Unions and newtypes only use an offset of 0.
-                llval: if offset == 0 {
-                    bcx.pointercast(self.llval, field.llvm_type(ccx).ptr_to())
-                } else {
-                    bcx.struct_gep(self.llval, self.layout.llvm_field_index(ix))
-                },
+                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                llval: bcx.pointercast(llval, field.llvm_type(ccx).ptr_to()),
                 llextra: if ccx.shared().type_has_metadata(field.ty) {
                     self.llextra
                 } else {
@@ -249,7 +258,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         let meta = self.llextra;
 
-        let unaligned_offset = C_usize(ccx, offset);
+        let unaligned_offset = C_usize(ccx, offset.bytes());
 
         // Get the alignment of the field
         let (_, align) = glue::size_and_align_of_dst(bcx, field.ty, meta);

@@ -31,6 +31,7 @@ pub fn compute_abi_info(fty: &mut FnType) {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
+            layout::Abi::ScalarPair(..) |
             layout::Abi::Scalar(_) => {
                 if a.layout.size.bytes() > 8 {
                     a.make_indirect();

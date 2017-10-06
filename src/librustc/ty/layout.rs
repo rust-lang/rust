@@ -757,6 +757,7 @@ impl FieldPlacement {
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
+    ScalarPair(Scalar, Scalar),
     Vector,
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
@@ -769,7 +770,10 @@ impl Abi {
     /// Returns true if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector => false,
+            Abi::Uninhabited |
+            Abi::Scalar(_) |
+            Abi::ScalarPair(..) |
+            Abi::Vector => false,
             Abi::Aggregate { sized, .. } => !sized
         }
     }
@@ -777,7 +781,10 @@ impl Abi {
     /// Returns true if the fields of the layout are packed.
     pub fn is_packed(&self) -> bool {
         match *self {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector => false,
+            Abi::Uninhabited |
+            Abi::Scalar(_) |
+            Abi::ScalarPair(..) |
+            Abi::Vector => false,
             Abi::Aggregate { packed, .. } => packed
         }
     }
@@ -905,13 +912,32 @@ impl<'a, 'tcx> CachedLayout {
                         -> Result<&'tcx Self, LayoutError<'tcx>> {
         let cx = (tcx, param_env);
         let dl = cx.data_layout();
-        let scalar = |value: Primitive| {
+        let scalar_unit = |value: Primitive| {
             let bits = value.size(dl).bits();
             assert!(bits <= 128);
-            tcx.intern_layout(CachedLayout::scalar(cx, Scalar {
+            Scalar {
                 value,
                 valid_range: 0..=(!0 >> (128 - bits))
-            }))
+            }
+        };
+        let scalar = |value: Primitive| {
+            tcx.intern_layout(CachedLayout::scalar(cx, scalar_unit(value)))
+        };
+        let scalar_pair = |a: Scalar, b: Scalar| {
+            let align = a.value.align(dl).max(b.value.align(dl)).max(dl.aggregate_align);
+            let b_offset = a.value.size(dl).abi_align(b.value.align(dl));
+            let size = (b_offset + b.value.size(dl)).abi_align(align);
+            CachedLayout {
+                variants: Variants::Single { index: 0 },
+                fields: FieldPlacement::Arbitrary {
+                    offsets: vec![Size::from_bytes(0), b_offset],
+                    memory_index: vec![0, 1]
+                },
+                abi: Abi::ScalarPair(a, b),
+                align,
+                primitive_align: align,
+                size
+            }
         };
 
         #[derive(Copy, Clone, Debug)]
@@ -1049,19 +1075,54 @@ impl<'a, 'tcx> CachedLayout {
                 memory_index = inverse_memory_index;
             }
 
+            let size = min_size.abi_align(align);
+            let mut abi = Abi::Aggregate {
+                sized,
+                packed
+            };
+
+            // Look for a scalar pair, as an ABI optimization.
+            // FIXME(eddyb) ignore extra ZST fields and field ordering.
+            if sized && !packed && fields.len() == 2 {
+                match (&fields[0].abi, &fields[1].abi) {
+                    (&Abi::Scalar(ref a), &Abi::Scalar(ref b)) => {
+                        let pair = scalar_pair(a.clone(), b.clone());
+                        let pair_offsets = match pair.fields {
+                            FieldPlacement::Arbitrary {
+                                ref offsets,
+                                ref memory_index
+                            } => {
+                                assert_eq!(memory_index, &[0, 1]);
+                                offsets
+                            }
+                            _ => bug!()
+                        };
+                        if offsets[0] == pair_offsets[0] &&
+                           offsets[1] == pair_offsets[1] &&
+                           memory_index[0] == 0 &&
+                           memory_index[1] == 1 &&
+                           align == pair.align &&
+                           primitive_align == pair.primitive_align &&
+                           size == pair.size {
+                            // We can use `ScalarPair` only when it matches our
+                            // already computed layout (including `#[repr(C)]`).
+                            abi = pair.abi;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
             Ok(CachedLayout {
                 variants: Variants::Single { index: 0 },
                 fields: FieldPlacement::Arbitrary {
                     offsets,
                     memory_index
                 },
-                abi: Abi::Aggregate {
-                    sized,
-                    packed
-                },
+                abi,
                 align,
                 primitive_align,
-                size: min_size.abi_align(align)
+                size
             })
         };
         let univariant = |fields: &[TyLayout], repr: &ReprOptions, kind| {
@@ -1070,45 +1131,34 @@ impl<'a, 'tcx> CachedLayout {
         assert!(!ty.has_infer_types());
 
         let ptr_layout = |pointee: Ty<'tcx>| {
+            let mut data_ptr = scalar_unit(Pointer);
+            if !ty.is_unsafe_ptr() {
+                data_ptr.valid_range.start = 1;
+            }
+
             let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
             if pointee.is_sized(tcx, param_env, DUMMY_SP) {
-                let non_zero = !ty.is_unsafe_ptr();
-                let bits = Pointer.size(dl).bits();
-                return Ok(tcx.intern_layout(CachedLayout::scalar(cx, Scalar {
-                    value: Pointer,
-                    valid_range: (non_zero as u128)..=(!0 >> (128 - bits))
-                })));
+                return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
             }
 
             let unsized_part = tcx.struct_tail(pointee);
             let metadata = match unsized_part.sty {
-                ty::TyForeign(..) => return Ok(scalar(Pointer)),
-                ty::TySlice(_) | ty::TyStr => {
-                    Int(dl.ptr_sized_integer(), false)
+                ty::TyForeign(..) => {
+                    return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
                 }
-                ty::TyDynamic(..) => Pointer,
+                ty::TySlice(_) | ty::TyStr => {
+                    scalar_unit(Int(dl.ptr_sized_integer(), false))
+                }
+                ty::TyDynamic(..) => {
+                    let mut vtable = scalar_unit(Pointer);
+                    vtable.valid_range.start = 1;
+                    vtable
+                }
                 _ => return Err(LayoutError::Unknown(unsized_part))
             };
 
             // Effectively a (ptr, meta) tuple.
-            let align = Pointer.align(dl).max(metadata.align(dl));
-            let meta_offset = Pointer.size(dl);
-            assert_eq!(meta_offset, meta_offset.abi_align(metadata.align(dl)));
-            let fields = FieldPlacement::Arbitrary {
-                offsets: vec![Size::from_bytes(0), meta_offset],
-                memory_index: vec![0, 1]
-            };
-            Ok(tcx.intern_layout(CachedLayout {
-                variants: Variants::Single { index: 0 },
-                fields,
-                abi: Abi::Aggregate {
-                    sized: true,
-                    packed: false
-                },
-                align,
-                primitive_align: align,
-                size: (meta_offset + metadata.size(dl)).abi_align(align)
-            }))
+            Ok(tcx.intern_layout(scalar_pair(data_ptr, metadata)))
         };
 
         Ok(match ty.sty {
@@ -1134,11 +1184,9 @@ impl<'a, 'tcx> CachedLayout {
             ty::TyFloat(FloatTy::F32) => scalar(F32),
             ty::TyFloat(FloatTy::F64) => scalar(F64),
             ty::TyFnPtr(_) => {
-                let bits = Pointer.size(dl).bits();
-                tcx.intern_layout(CachedLayout::scalar(cx, Scalar {
-                    value: Pointer,
-                    valid_range: 1..=(!0 >> (128 - bits))
-                }))
+                let mut ptr = scalar_unit(Pointer);
+                ptr.valid_range.start = 1;
+                tcx.intern_layout(CachedLayout::scalar(cx, ptr))
             }
 
             // The never type.
@@ -2199,7 +2247,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     pub fn is_zst(&self) -> bool {
         match self.abi {
             Abi::Uninhabited => true,
-            Abi::Scalar(_) => false,
+            Abi::Scalar(_) | Abi::ScalarPair(..) => false,
             Abi::Vector => self.size.bytes() == 0,
             Abi::Aggregate { sized, .. } => sized && self.size.bytes() == 0
         }
@@ -2351,6 +2399,10 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Abi {
             Uninhabited => {}
             Scalar(ref value) => {
                 value.hash_stable(hcx, hasher);
+            }
+            ScalarPair(ref a, ref b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher);
             }
             Vector => {}
             Aggregate { packed, sized } => {

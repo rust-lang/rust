@@ -35,7 +35,7 @@ pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
         if layout.is_llvm_immediate() {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
-        } else if layout.is_llvm_scalar_pair(mircx.ccx) {
+        } else if layout.is_llvm_scalar_pair() {
             // We allow pairs and uses of any of their 2 fields.
         } else {
             // These sorts of types require an alloca. Note that
@@ -146,7 +146,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
                         let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
                         let layout = self.cx.ccx.layout_of(ty);
-                        if layout.is_llvm_scalar_pair(self.cx.ccx) {
+                        if layout.is_llvm_scalar_pair() {
                             return;
                         }
                     }
