@@ -88,6 +88,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 }
             }
 
+            layout::Abi::ScalarPair(..) |
             layout::Abi::Aggregate { .. } => {
                 match layout.variants {
                     layout::Variants::Single { .. } => {

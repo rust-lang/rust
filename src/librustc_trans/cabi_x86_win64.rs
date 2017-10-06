@@ -18,6 +18,7 @@ pub fn compute_abi_info(fty: &mut FnType) {
     let fixup = |a: &mut ArgType| {
         match a.layout.abi {
             layout::Abi::Uninhabited => {}
+            layout::Abi::ScalarPair(..) |
             layout::Abi::Aggregate { .. } => {
                 match a.layout.size.bits() {
                     8 => a.cast_to(Reg::i8()),

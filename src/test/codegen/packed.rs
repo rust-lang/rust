@@ -54,9 +54,6 @@ pub struct PackedPair(u8, u32);
 // CHECK-LABEL: @pkd_pair
 #[no_mangle]
 pub fn pkd_pair(pair1: &mut PackedPair, pair2: &mut PackedPair) {
-    // CHECK: [[V1:%[a-z0-9]+]] = load i8, i8* %{{.*}}, align 1
-    // CHECK: [[V2:%[a-z0-9]+]] = load i32, i32* %{{.*}}, align 1
-    // CHECK: store i8 [[V1]], i8* {{.*}}, align 1
-    // CHECK: store i32 [[V2]], i32* {{.*}}, align 1
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{.*}}, i8* %{{.*}}, i{{[0-9]+}} 5, i32 1, i1 false)
     *pair2 = *pair1;
 }

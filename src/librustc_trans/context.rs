@@ -31,7 +31,7 @@ use rustc::middle::trans::Stats;
 use rustc_data_structures::stable_hasher::StableHashingContextProvider;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
-use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
+use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_trans_utils;
@@ -103,7 +103,7 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
 
     lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
     scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
-    pointee_infos: RefCell<FxHashMap<Ty<'tcx>, Option<PointeeInfo>>>,
+    pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     isize_ty: Type,
 
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
@@ -516,7 +516,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().scalar_lltypes
     }
 
-    pub fn pointee_infos<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Option<PointeeInfo>>> {
+    pub fn pointee_infos<'a>(&'a self)
+                             -> &'a RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>> {
         &self.local().pointee_infos
     }
 

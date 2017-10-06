@@ -117,7 +117,12 @@ impl<'a, 'tcx> Const<'tcx> {
     }
 
     fn get_field(&self, ccx: &CrateContext<'a, 'tcx>, i: usize) -> ValueRef {
-        const_get_elt(self.llval, ccx.layout_of(self.ty).llvm_field_index(i))
+        let layout = ccx.layout_of(self.ty);
+        if let layout::Abi::ScalarPair(..) = layout.abi {
+            const_get_elt(self.llval, i as u64)
+        } else {
+            const_get_elt(self.llval, layout.llvm_field_index(i))
+        }
     }
 
     fn get_pair(&self, ccx: &CrateContext<'a, 'tcx>) -> (ValueRef, ValueRef) {
@@ -143,7 +148,7 @@ impl<'a, 'tcx> Const<'tcx> {
         let llty = layout.immediate_llvm_type(ccx);
         let llvalty = val_ty(self.llval);
 
-        let val = if llty == llvalty && layout.is_llvm_scalar_pair(ccx) {
+        let val = if llty == llvalty && layout.is_llvm_scalar_pair() {
             let (a, b) = self.get_pair(ccx);
             OperandValue::Pair(a, b)
         } else if llty == llvalty && layout.is_llvm_immediate() {
@@ -1173,6 +1178,14 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 discr: Option<Const<'tcx>>)
                                 -> Const<'tcx> {
     assert_eq!(vals.len(), layout.fields.count());
+
+    if let layout::Abi::ScalarPair(..) = layout.abi {
+        assert_eq!(vals.len(), 2);
+        return Const::new(C_struct(ccx, &[
+            vals[0].llval,
+            vals[1].llval,
+        ], false), layout.ty);
+    }
 
     // offset of current value
     let mut offset = Size::from_bytes(0);

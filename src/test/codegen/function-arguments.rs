@@ -133,7 +133,7 @@ pub fn trait_borrow(_: &Drop) {
 pub fn trait_box(_: Box<Drop>) {
 }
 
-// CHECK: { [0 x i8], [0 x i16]*, [0 x i8], [[USIZE]], [0 x i8] } @return_slice([0 x i16]* noalias nonnull readonly %x.0, [[USIZE]] %x.1)
+// CHECK: { [0 x i16]*, [[USIZE]] } @return_slice([0 x i16]* noalias nonnull readonly %x.0, [[USIZE]] %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
   x
