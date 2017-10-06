@@ -373,7 +373,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// and return it, or `None`, if no such item was defined there.
     pub fn associated_item(&self, def_id: DefId, item_name: ast::Name)
                            -> Option<ty::AssociatedItem> {
-        let ident = self.tcx.adjust(item_name, def_id, self.body_id).0;
-        self.tcx.associated_items(def_id).find(|item| item.name.to_ident() == ident)
+        self.tcx.associated_items(def_id)
+                .find(|item| self.tcx.hygienic_eq(item_name, item.name, def_id))
+
     }
 }

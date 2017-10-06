@@ -596,9 +596,10 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
     pub fn from_ref_and_name(
         tcx: TyCtxt, trait_ref: ty::TraitRef<'tcx>, item_name: Name
     ) -> ProjectionTy<'tcx> {
-        let item_def_id = tcx.associated_items(trait_ref.def_id).find(
-            |item| item.name == item_name && item.kind == ty::AssociatedKind::Type
-        ).unwrap().def_id;
+        let item_def_id = tcx.associated_items(trait_ref.def_id).find(|item| {
+            item.kind == ty::AssociatedKind::Type &&
+            tcx.hygienic_eq(item_name, item.name, trait_ref.def_id)
+        }).unwrap().def_id;
 
         ProjectionTy {
             substs: trait_ref.substs,
