@@ -318,6 +318,10 @@ pub fn exit(code: i32) -> ! {
     unsafe { c::ExitProcess(code as c::UINT) }
 }
 
+pub fn getpid() -> u32 {
+    unsafe { c::GetCurrentProcessId() as u32 }
+}
+
 #[cfg(test)]
 mod tests {
     use io::Error;

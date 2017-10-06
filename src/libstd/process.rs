@@ -1167,6 +1167,24 @@ pub fn abort() -> ! {
     unsafe { ::sys::abort_internal() };
 }
 
+/// Returns the OS-assigned process identifier associated with this process.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```no_run
+/// use std::process:current_pid;
+///
+/// println!("My pid is {}", current_pid());
+/// ```
+///
+///
+#[unstable(feature = "getpid", issue = "44971", reason = "recently added")]
+pub fn current_pid() -> u32 {
+    ::sys::os::getpid()
+}
+
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::prelude::*;
