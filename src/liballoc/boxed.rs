@@ -274,8 +274,8 @@ impl<T: ?Sized> Box<T> {
 
     /// Constructs a `Box` from a `Unique<T>` pointer.
     ///
-    /// After calling this function, the memory is owned by a `Box` and `T` then
-    /// be destroyed and released upon drop.
+    /// After calling this function, the memory is owned by a `Box` and `T` can
+    /// then be destroyed and released upon drop.
     ///
     /// # Safety
     ///
