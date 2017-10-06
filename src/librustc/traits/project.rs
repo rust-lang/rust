@@ -638,7 +638,7 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
                   // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
                   // ?0>`).
                   ty::Predicate::Projection(ref data) =>
-                      !infcx.any_unresolved_type_vars(&data.ty()),
+                      infcx.any_unresolved_type_vars(&data.ty()),
 
                   // We are only interested in `T: Foo<X = U>` predicates, whre
                   // `U` references one of `unresolved_type_vars`. =)
