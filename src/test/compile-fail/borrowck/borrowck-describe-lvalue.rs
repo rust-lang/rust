@@ -253,4 +253,27 @@ fn main() {
                 println!("e.bx: {:?}", bx),
         }
     }
+    // Field in field
+    {
+        struct F { x: u32, y: u32 };
+        struct S { x: F, y: (u32, u32), };
+        let mut s = S { x: F { x: 1, y: 2}, y: (999, 998) };
+        let _s = &mut s;
+        match s {
+            S  { y: (ref y0, _), .. } =>
+                //[ast]~^ ERROR cannot borrow `s.y.0` as immutable because `s` is also borrowed as mutable
+                //[mir]~^^ ERROR cannot borrow `s.y.0` as immutable because `s` is also borrowed as mutable (Ast)
+                //[mir]~| ERROR cannot borrow `s.y.0` as immutable because it is also borrowed as mutable (Mir)
+                println!("y0: {:?}", y0),
+            _ => panic!("other case"),
+        }
+        match s {
+            S  { x: F { y: ref x0, .. }, .. } =>
+                //[ast]~^ ERROR cannot borrow `s.x.y` as immutable because `s` is also borrowed as mutable
+                //[mir]~^^ ERROR cannot borrow `s.x.y` as immutable because `s` is also borrowed as mutable (Ast)
+                //[mir]~| ERROR cannot borrow `s.x.y` as immutable because it is also borrowed as mutable (Mir)
+                println!("x0: {:?}", x0),
+            _ => panic!("other case"),
+        }
+    }
 }
