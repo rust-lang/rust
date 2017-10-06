@@ -126,6 +126,19 @@ pub fn test12(a: bool, b: bool) {
     }
 }
 
+pub fn test13() {
+    let mut a = true;
+    loop { // infinite loop
+        while a {
+            if true {
+                a = false;
+                continue;
+            }
+            return;
+        }
+    }
+}
+
 fn main() {
     test1();
     test2();
@@ -139,5 +152,6 @@ fn main() {
     test10();
     test11(|| 0);
     test12(true, false);
+    test13();
 }
 
