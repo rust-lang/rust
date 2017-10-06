@@ -395,6 +395,9 @@ declare_features! (
 
     // allow `..=` in patterns (RFC 1192)
     (active, dotdoteq_in_patterns, "1.22.0", Some(28237)),
+
+    // Default match binding modes (RFC 2005)
+    (active, match_default_bindings, "1.22.0", Some(42640)),
 );
 
 declare_features! (

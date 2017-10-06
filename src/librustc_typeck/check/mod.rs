@@ -1037,7 +1037,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
         // Check the pattern.
-        fcx.check_pat_arg(&arg.pat, arg_ty, true);
+        fcx.check_pat_walk(&arg.pat, arg_ty,
+            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable), true);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -4106,6 +4107,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (self.to_ty(qself), segment)
             }
         };
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        if let Some(cached_def) = self.tables.borrow().type_dependent_defs().get(hir_id) {
+            // Return directly on cache hit. This is useful to avoid doubly reporting
+            // errors with default match binding modes. See #44614.
+            return (*cached_def, Some(ty), slice::ref_slice(&**item_segment))
+        }
         let item_name = item_segment.name;
         let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
             Ok(def) => def,
@@ -4122,7 +4129,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Write back the new resolution.
-        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
         self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
         (def, Some(ty), slice::ref_slice(&**item_segment))
     }
@@ -4132,7 +4138,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   init: &'gcx hir::Expr) -> Ty<'tcx>
     {
         // FIXME(tschottdorf): contains_explicit_ref_binding() must be removed
-        // for #42640.
+        // for #42640 (default match binding modes).
+        //
+        // See #44848.
         let ref_bindings = local.pat.contains_explicit_ref_binding();
 
         let local_ty = self.local_ty(init.span, local.id);
@@ -4164,7 +4172,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.check_pat(&local.pat, t);
+        self.check_pat_walk(&local.pat, t,
+                            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
+                            true);
         let pat_ty = self.node_ty(local.pat.hir_id);
         if pat_ty.references_error() {
             self.write_ty(local.hir_id, pat_ty);

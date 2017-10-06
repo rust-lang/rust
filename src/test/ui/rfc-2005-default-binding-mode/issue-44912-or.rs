@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum A { B, C }
+#![feature(match_default_bindings)]
 
-mod foo { pub fn bar() {} }
+// FIXME(tschottdorf): This should compile. See #44912.
 
-fn main() {
-    match (true, false) {
-        A::B => (),
-        //~^ ERROR mismatched types
-        //~| expected type `(bool, bool)`
-        //~| found type `A`
-        //~| expected tuple, found enum `A`
-        _ => ()
-    }
+pub fn main() {
+    let x = &Some((3, 3));
+    let _: &i32 = match x {
+        Some((x, 3)) | &Some((ref x, 5)) => x,
+        _ => &5i32,
+    };
 }

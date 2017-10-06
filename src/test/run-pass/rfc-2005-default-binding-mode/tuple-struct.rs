@@ -7,33 +7,23 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(slice_patterns)]
 
+#![feature(match_default_bindings)]
 
-struct Foo {
+enum Foo {
+    Bar(Option<i8>, (), (), Vec<i32>),
+    Baz,
 }
 
-fn foo(&foo: Foo) {
-}
+pub fn main() {
+    let foo = Foo::Bar(Some(1), (), (), vec![2, 3]);
 
-fn bar(foo: Foo) {
+    match &foo {
+        Foo::Baz => panic!(),
+        Foo::Bar(None, ..) => panic!(),
+        Foo::Bar(Some(n), .., v) => {
+            assert_eq!((*v).len(), 2);
+            assert_eq!(*n, 1);
+        }
+    }
 }
-
-fn qux(foo: &Foo) {
-}
-
-fn zar(&foo: &Foo) {
-}
-
-// The somewhat unexpected help message in this case is courtesy of
-// match_default_bindings.
-fn agh(&&bar: &u32) {
-}
-
-fn bgh(&&bar: u32) {
-}
-
-fn ugh(&[bar]: &u32) {
-}
-
-fn main() {}
