@@ -139,6 +139,19 @@ pub fn test13() {
     }
 }
 
+pub fn test14() {
+    let mut a = true;
+    'outer: while a { // never loops
+        while a {
+            if a {
+                a = false;
+                continue
+            }
+        }
+        break 'outer;
+    }
+}
+
 fn main() {
     test1();
     test2();
@@ -153,5 +166,6 @@ fn main() {
     test11(|| 0);
     test12(true, false);
     test13();
+    test14();
 }
 
