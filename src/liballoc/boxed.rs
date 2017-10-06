@@ -269,7 +269,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box(Unique::new_unchecked(raw))
+        mem::transmute(raw)
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
