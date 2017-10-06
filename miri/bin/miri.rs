@@ -193,14 +193,13 @@ fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits
 fn init_logger() {
     let format = |record: &log::LogRecord| {
         if record.level() == log::LogLevel::Trace {
-            // prepend spaces to indent the final string
+            // prepend frame number
             let indentation = log_settings::settings().indentation;
             format!(
-                "{lvl}:{module}:{indent:<indentation$} {text}",
+                "{indentation}:{lvl}:{module}: {text}",
                 lvl = record.level(),
                 module = record.location().module_path(),
                 indentation = indentation,
-                indent = "",
                 text = record.args(),
             )
         } else {
