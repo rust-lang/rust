@@ -276,6 +276,34 @@ fn main() {
             _ => panic!("other case"),
         }
     }
+    // Field of ref
+    {
+        struct Block<'a> {
+            current: &'a u8,
+            unrelated: &'a u8,
+        };
+
+        fn bump<'a>(mut block: &mut Block<'a>) {
+            let x = &mut block;
+            let p: &'a u8 = &*block.current;
+            //[mir]~^ ERROR cannot borrow `(*block.current)` as immutable because it is also borrowed as mutable (Mir)
+            // No errors in AST because of issue rust#38899
+        }
+    }
+    // Field of ptr
+    {
+        struct Block2 {
+            current: *const u8,
+            unrelated: *const u8,
+        }
+
+        unsafe fn bump2(mut block: *mut Block2) {
+            let x = &mut block;
+            let p : *const u8 = &*(*block).current;
+            //[mir]~^ ERROR cannot borrow `(*block.current)` as immutable because it is also borrowed as mutable (Mir)
+            // No errors in AST because of issue rust#38899
+        }
+    }
     // Field of index
     {
         struct F {x: u32, y: u32};

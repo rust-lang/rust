@@ -1160,11 +1160,16 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 ty::TyTuple(_, _) => {
                     format!("{}", field_index)
                 },
+                ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
+                    self.describe_field_from_ty(&tnm.ty, field_index)
+                },
+                ty::TyArray(ty, _) => {
+                    self.describe_field_from_ty(&ty, field_index)
+                }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
                     // (https://github.com/rust-lang/rfcs/pull/1546)
-                    bug!("Field access unsupported for non-box types that are neither Adt (struct, \
-                         enum, union) nor tuples");
+                    bug!("End-user description not implemented for field access on `{:?}`", ty.sty);
                 }
             }
         }
