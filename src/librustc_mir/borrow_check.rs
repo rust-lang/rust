@@ -1135,13 +1135,10 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         format!("{}", def.variants[variant_index].fields[field_index].name),
                     ProjectionElem::Field(_, field_type) =>
                         self.describe_field_from_ty(&field_type, field_index),
-                    ProjectionElem::Index(..) | ProjectionElem::ConstantIndex { .. } =>
+                    ProjectionElem::Index(..)
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. } =>
                         format!("{}", self.describe_field(&proj.base, field_index)),
-                    ProjectionElem::Subslice { .. } => {
-                        debug!("End-user description not implemented for field of projection {:?}",
-                               proj);
-                        format!("<subslice>{}", field_index)
-                    }
                 }
             }
         }
@@ -1169,7 +1166,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
                     self.describe_field_from_ty(&tnm.ty, field_index)
                 },
-                ty::TyArray(ty, _) => {
+                ty::TyArray(ty, _) | ty::TySlice(ty) => {
                     self.describe_field_from_ty(&ty, field_index)
                 }
                 _ => {
