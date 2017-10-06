@@ -718,7 +718,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     return;
                 }
                 let expected_trait_ty = expected_trait_ref.self_ty();
-                let found_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
+
+                let found_did = expected_trait_ty.ty_to_def_id();
+                let found_span = found_did.and_then(|did| {
                     self.tcx.hir.span_if_local(did)
                 });
 
@@ -727,10 +729,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         ty::TyTuple(ref tys, _) => tys.len(),
                         _ => 1,
                     };
-                let arg_ty_count =
+                let (arg_tys, arg_ty_count) =
                     match actual_trait_ref.skip_binder().substs.type_at(1).sty {
-                        ty::TyTuple(ref tys, _) => tys.len(),
-                        _ => 1,
+                        ty::TyTuple(ref tys, _) =>
+                            (tys.iter().map(|t| &t.sty).collect(), tys.len()),
+                        ref sty => (vec![sty], 1),
                     };
                 if self_ty_count == arg_ty_count {
                     self.report_closure_arg_mismatch(span,
@@ -738,12 +741,45 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                      expected_trait_ref,
                                                      actual_trait_ref)
                 } else {
-                    // Expected `|| { }`, found `|x, y| { }`
-                    // Expected `fn(x) -> ()`, found `|| { }`
+                    let arg_tuple = if arg_ty_count == 1 {
+                        arg_tys.first().and_then(|t| {
+                            if let &&ty::TyTuple(ref tuptys, _) = t {
+                                Some(tuptys.len())
+                            } else {
+                                None
+                            }
+                        })
+                    } else {
+                        None
+                    };
+
+                    // FIXME(#44150): Expand this to "N args expected bug a N-tuple found".
+                    // Type of the 1st expected argument is somehow provided as type of a
+                    // found one in that case.
+                    //
+                    // ```
+                    // [1i32, 2, 3].sort_by(|(a, b)| ..)
+                    // //                   ^^^^^^^^
+                    // //   actual_trait_ref:  std::ops::FnMut<(&i32, &i32)>
+                    // // expected_trait_ref:  std::ops::FnMut<(&i32,)>
+                    // ```
+
+                    let closure_args_span = found_did.and_then(|did| self.tcx.hir.get_if_local(did))
+                        .and_then(|node| {
+                            if let hir::map::NodeExpr(
+                                &hir::Expr { node: hir::ExprClosure(_, _, _, span, _), .. }) = node
+                            {
+                                Some(span)
+                            } else {
+                                None
+                            }
+                        });
+
                     self.report_arg_count_mismatch(
                         span,
-                        found_span,
+                        closure_args_span.or(found_span),
                         arg_ty_count,
+                        arg_tuple,
                         self_ty_count,
                         expected_trait_ty.is_closure()
                     )
@@ -771,28 +807,42 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                  span: Span,
                                  found_span: Option<Span>,
                                  expected: usize,
+                                 expected_tuple: Option<usize>,
                                  found: usize,
                                  is_closure: bool)
         -> DiagnosticBuilder<'tcx>
     {
-        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
-            "{} takes {} argument{} but {} argument{} {} required",
-            if is_closure { "closure" } else { "function" },
-            found,
-            if found == 1 { "" } else { "s" },
-            expected,
-            if expected == 1 { "" } else { "s" },
-            if expected == 1 { "is" } else { "are" });
+        let kind = if is_closure { "closure" } else { "function" };
 
-        err.span_label(span, format!("expected {} that takes {} argument{}",
-                                      if is_closure { "closure" } else { "function" },
-                                      expected,
-                                      if expected == 1 { "" } else { "s" }));
+        let tuple_or_args = |tuple, args|  if let Some(n) = tuple {
+            format!("a {}-tuple", n)
+        } else {
+            format!(
+                "{} argument{}",
+                args,
+                if args == 1 { "" } else { "s" }
+            )
+        };
+
+        let found_str = tuple_or_args(None, found);
+        let expected_str = tuple_or_args(expected_tuple, expected);
+
+        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
+            "{} takes {} but {} {} required",
+            kind,
+            found_str,
+            expected_str,
+            if expected_tuple.is_some() || expected == 1 { "is" } else { "are" });
+
+        err.span_label(
+            span,
+            format!("expected {} that takes {}", kind, expected_str)
+        );
+
         if let Some(span) = found_span {
-            err.span_label(span, format!("takes {} argument{}",
-                                          found,
-                                          if found == 1 { "" } else { "s" }));
+            err.span_label(span, format!("takes {}", found_str));
         }
+
         err
     }
 
