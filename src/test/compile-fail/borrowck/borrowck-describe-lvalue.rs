@@ -276,4 +276,27 @@ fn main() {
             _ => panic!("other case"),
         }
     }
+    // Field of index
+    {
+        struct F {x: u32, y: u32};
+        let mut v = &[F{x: 1, y: 2}, F{x: 3, y: 4}];
+        let _v = &mut v;
+        v[0].y;
+        //[ast]~^ ERROR cannot use `v[..].y` because it was mutably borrowed
+        //[mir]~^^ ERROR cannot use `v[..].y` because it was mutably borrowed (Ast)
+        //[mir]~| ERROR cannot use `v[..].y` because it was mutably borrowed (Mir)
+        //[mir]~| ERROR cannot use `(*v)` because it was mutably borrowed (Mir)
+    }
+    // Field of constant index
+    {
+        struct F {x: u32, y: u32};
+        let mut v = &[F{x: 1, y: 2}, F{x: 3, y: 4}];
+        let _v = &mut v;
+        match v {
+            &[_, F {x: ref xf, ..}] => println!("{}", xf),
+            //[mir]~^ ERROR cannot borrow `v[..].x` as immutable because it is also borrowed as mutable (Mir)
+            // No errors in AST
+            _ => panic!("other case")
+        }
+    }
 }
