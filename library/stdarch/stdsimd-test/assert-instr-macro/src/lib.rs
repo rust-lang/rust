@@ -40,7 +40,9 @@ pub fn assert_instr(attr: proc_macro::TokenStream,
         (quote! { #[ignore] }).into()
     };
     let name = &func.ident;
-    let assert_name = syn::Ident::from(&format!("assert_{}", name.sym.as_str())[..]);
+    let assert_name = syn::Ident::from(&format!("assert_{}_{}",
+                                                name.sym.as_str(),
+                                                instr.sym.as_str())[..]);
     let shim_name = syn::Ident::from(&format!("{}_shim", name.sym.as_str())[..]);
     let (to_test, test_name) = if invoc.args.len() == 0 {
         (TokenStream::empty(), &func.ident)
@@ -67,7 +69,10 @@ pub fn assert_instr(attr: proc_macro::TokenStream,
                 }
             };
         }
-        let attrs = Append(&item.attrs);
+        let attrs = item.attrs.iter().filter(|attr| {
+            attr.path.segments.get(0).item().ident.sym.as_str().starts_with("target")
+        }).collect::<Vec<_>>();
+        let attrs = Append(&attrs);
         (quote! {
             #attrs
             unsafe fn #shim_name(#(#inputs),*) #ret {

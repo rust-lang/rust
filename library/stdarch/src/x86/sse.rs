@@ -574,9 +574,9 @@ pub const _MM_HINT_NTA: i8 = 0;
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(prefetcht0, strategy = _MM_HINT_T0))]
-// #[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
-// #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
-// #[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
+#[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
+#[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
+#[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
 pub unsafe fn _mm_prefetch(p: *const c_void, strategy: i8) {
     // The `strategy` must be a compile-time constant, so we use a short form of
     // `constify_imm8!` for now.
