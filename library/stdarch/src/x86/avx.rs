@@ -135,7 +135,7 @@ pub unsafe fn _mm256_andnot_ps(a: f32x8, b: f32x8) -> f32x8 {
     mem::transmute((!a) & b)
 }
 
-/// Compare packed double-precision (64-bit) floating-point elements 
+/// Compare packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`, and return packed maximum values
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -144,7 +144,7 @@ pub unsafe fn _mm256_max_pd(a: f64x4, b: f64x4) -> f64x4 {
     maxpd256(a, b)
 }
 
-/// Compare packed single-precision (32-bit) floating-point elements in `a` and `b`, 
+/// Compare packed single-precision (32-bit) floating-point elements in `a` and `b`,
 /// and return packed maximum values
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -153,7 +153,7 @@ pub unsafe fn _mm256_max_ps(a: f32x8, b: f32x8) -> f32x8 {
     maxps256(a, b)
 }
 
-/// Compare packed double-precision (64-bit) floating-point elements 
+/// Compare packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`, and return packed minimum values
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -162,7 +162,7 @@ pub unsafe fn _mm256_min_pd(a: f64x4, b: f64x4) -> f64x4 {
     minpd256(a, b)
 }
 
-/// Compare packed single-precision (32-bit) floating-point elements in `a` and `b`, 
+/// Compare packed single-precision (32-bit) floating-point elements in `a` and `b`,
 /// and return packed minimum values
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -711,21 +711,21 @@ pub unsafe fn _mm256_permute_ps(a: f32x8, imm8: i32) -> f32x8 {
 #[inline(always)]
 #[target_feature = "+avx"]
 pub unsafe fn _mm256_undefined_ps() -> f32x8 {
-    mem::uninitialized()
+    f32x8::splat(mem::uninitialized())
 }
 
 /// Return vector of type `f64x4` with undefined elements.
 #[inline(always)]
 #[target_feature = "+avx"]
 pub unsafe fn _mm256_undefined_pd() -> f64x4 {
-    mem::uninitialized()
+    f64x4::splat(mem::uninitialized())
 }
 
 /// Return vector of type `i64x4` with undefined elements.
 #[inline(always)]
 #[target_feature = "+avx"]
 pub unsafe fn _mm256_undefined_si256() -> i64x4 {
-    mem::uninitialized()
+    i64x4::splat(mem::uninitialized())
 }
 
 /// LLVM intrinsics used in the above functions

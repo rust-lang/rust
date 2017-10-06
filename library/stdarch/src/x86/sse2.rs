@@ -891,7 +891,7 @@ pub unsafe fn _mm_load_si128(mem_addr: *const __m128i) -> __m128i {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(movups))]
 pub unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
-    let mut dst = mem::uninitialized();
+    let mut dst = __m128i::splat(mem::uninitialized());
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut __m128i as *mut u8,

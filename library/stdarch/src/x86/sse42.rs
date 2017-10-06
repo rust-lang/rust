@@ -638,6 +638,7 @@ mod tests {
     // a bit difficult. Rather than `load` and mutate the __m128i,
     // it is easier to memcpy the given string to a local slice with
     // length 16 and `load` the local slice.
+    #[target_feature = "+sse4.2"]
     unsafe fn str_to_m128i(s: &[u8]) -> __m128i {
         assert!(s.len() <= 16);
         let slice = &mut [0u8; 16];

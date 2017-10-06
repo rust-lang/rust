@@ -3,7 +3,9 @@ sudo: false
 rust: nightly
 
 matrix:
+  fast_finish: true
   include:
+    - env: TARGET=i586-unknown-linux-gnu
     - env: TARGET=i686-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
     - env: TARGET=arm-unknown-linux-gnueabihf
