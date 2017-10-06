@@ -11,18 +11,18 @@
 struct S;
 
 impl S {
-    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
+    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs and enums
     fn f() {
         file!();
     }
 }
 
 trait Tr1 {
-    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
+    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs and enums
     fn f();
 }
 
 trait Tr2 {
-    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
+    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs and enums
     type F;
 }
