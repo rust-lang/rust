@@ -1154,6 +1154,8 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr]
         let map_snippet = snippet(cx, map_args[1].span, "..");
         let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
         // lint message
+        // comparing the snippet from source to raw text ("None") below is safe
+        // because we already have checked the type.
         let arg = if unwrap_snippet == "None" { "None" } else { "a" };
         let suggest = if unwrap_snippet == "None" { "and_then(f)" } else { "map_or(a, f)" };
         let msg = &format!(
