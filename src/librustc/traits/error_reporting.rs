@@ -711,38 +711,38 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, _) => {
+            OutputTypeParameterMismatch(ref found_trait_ref, ref expected_trait_ref, _) => {
+                let found_trait_ref = self.resolve_type_vars_if_possible(&*found_trait_ref);
                 let expected_trait_ref = self.resolve_type_vars_if_possible(&*expected_trait_ref);
-                let actual_trait_ref = self.resolve_type_vars_if_possible(&*actual_trait_ref);
-                if actual_trait_ref.self_ty().references_error() {
+                if expected_trait_ref.self_ty().references_error() {
                     return;
                 }
-                let expected_trait_ty = expected_trait_ref.self_ty();
+                let found_trait_ty = found_trait_ref.self_ty();
 
-                let found_did = expected_trait_ty.ty_to_def_id();
+                let found_did = found_trait_ty.ty_to_def_id();
                 let found_span = found_did.and_then(|did| {
                     self.tcx.hir.span_if_local(did)
                 });
 
-                let self_ty_count =
-                    match expected_trait_ref.skip_binder().substs.type_at(1).sty {
+                let found_ty_count =
+                    match found_trait_ref.skip_binder().substs.type_at(1).sty {
                         ty::TyTuple(ref tys, _) => tys.len(),
                         _ => 1,
                     };
-                let (arg_tys, arg_ty_count) =
-                    match actual_trait_ref.skip_binder().substs.type_at(1).sty {
+                let (expected_tys, expected_ty_count) =
+                    match expected_trait_ref.skip_binder().substs.type_at(1).sty {
                         ty::TyTuple(ref tys, _) =>
                             (tys.iter().map(|t| &t.sty).collect(), tys.len()),
                         ref sty => (vec![sty], 1),
                     };
-                if self_ty_count == arg_ty_count {
+                if found_ty_count == expected_ty_count {
                     self.report_closure_arg_mismatch(span,
                                                      found_span,
-                                                     expected_trait_ref,
-                                                     actual_trait_ref)
+                                                     found_trait_ref,
+                                                     expected_trait_ref)
                 } else {
-                    let arg_tuple = if arg_ty_count == 1 {
-                        arg_tys.first().and_then(|t| {
+                    let expected_tuple = if expected_ty_count == 1 {
+                        expected_tys.first().and_then(|t| {
                             if let &&ty::TyTuple(ref tuptys, _) = t {
                                 Some(tuptys.len())
                             } else {
@@ -753,15 +753,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         None
                     };
 
-                    // FIXME(#44150): Expand this to "N args expected bug a N-tuple found".
+                    // FIXME(#44150): Expand this to "N args expected but a N-tuple found."
                     // Type of the 1st expected argument is somehow provided as type of a
                     // found one in that case.
                     //
                     // ```
                     // [1i32, 2, 3].sort_by(|(a, b)| ..)
                     // //                   ^^^^^^^^
-                    // //   actual_trait_ref:  std::ops::FnMut<(&i32, &i32)>
-                    // // expected_trait_ref:  std::ops::FnMut<(&i32,)>
+                    // // expected_trait_ref:  std::ops::FnMut<(&i32, &i32)>
+                    // //    found_trait_ref:  std::ops::FnMut<(&i32,)>
                     // ```
 
                     let closure_args_span = found_did.and_then(|did| self.tcx.hir.get_if_local(did))
@@ -778,10 +778,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     self.report_arg_count_mismatch(
                         span,
                         closure_args_span.or(found_span),
-                        arg_ty_count,
-                        arg_tuple,
-                        self_ty_count,
-                        expected_trait_ty.is_closure()
+                        expected_ty_count,
+                        expected_tuple,
+                        found_ty_count,
+                        found_trait_ty.is_closure()
                     )
                 }
             }
