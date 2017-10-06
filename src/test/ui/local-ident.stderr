@@ -1,0 +1,24 @@
+error[E0308]: mismatched types
+  --> $DIR/local-ident.rs:15:16
+   |
+15 |     let x: X = S;
+   |                ^ expected struct `Mod2::X`, found struct `Mod1::S`
+   |
+   = note: expected type `X`
+              found type `S`
+
+error[E0308]: mismatched types
+  --> $DIR/local-ident.rs:16:28
+   |
+16 |     let y: Option<usize> = Ok(2);
+   |                            ^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
+   |
+   = note: expected type `Option<usize>`
+              found type `Result<{integer}, _>`
+   = help: here are some functions which might fulfill your needs:
+           - .err()
+           - .ok()
+           - .unwrap_err()
+
+error: aborting due to 2 previous errors
+

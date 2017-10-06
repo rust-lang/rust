@@ -76,6 +76,10 @@ impl<'tcx> ConstVal<'tcx> {
             _ => None
         }
     }
+
+    pub fn to_usize(&self) -> Option<usize> {
+        self.to_const_int().and_then(|i| i.to_usize())
+    }
 }
 
 #[derive(Clone, Debug)]

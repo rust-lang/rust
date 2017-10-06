@@ -17,14 +17,14 @@ pub fn main() {
     let _x: usize = match Some(1) {
         Ok(u) => u,
         //~^ ERROR mismatched types
-        //~| expected type `std::option::Option<{integer}>`
-        //~| found type `std::result::Result<_, _>`
+        //~| expected type `Option<{integer}>`
+        //~| found type `Result<_, _>`
         //~| expected enum `std::option::Option`, found enum `std::result::Result`
 
         Err(e) => panic!(e)
         //~^ ERROR mismatched types
-        //~| expected type `std::option::Option<{integer}>`
-        //~| found type `std::result::Result<_, _>`
+        //~| expected type `Option<{integer}>`
+        //~| found type `Result<_, _>`
         //~| expected enum `std::option::Option`, found enum `std::result::Result`
     };
 }

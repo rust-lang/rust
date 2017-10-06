@@ -9,7 +9,7 @@ error[E0308]: mismatched types
 14 | | }
    | |_^ expected struct `std::string::String`, found ()
    |
-   = note: expected type `std::string::String`
+   = note: expected type `String`
               found type `()`
 
 error[E0308]: mismatched types
@@ -23,7 +23,7 @@ error[E0308]: mismatched types
 19 | | }
    | |_^ expected struct `std::string::String`, found ()
    |
-   = note: expected type `std::string::String`
+   = note: expected type `String`
               found type `()`
 
 error: aborting due to 2 previous errors

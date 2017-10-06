@@ -1463,4 +1463,10 @@ pub struct Const<'tcx> {
     pub val: ConstVal<'tcx>,
 }
 
+impl<'tcx> Const<'tcx> {
+    pub fn usize_val(&self) -> usize {
+        self.val.to_usize().unwrap_or(0)
+    }
+}
+
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}

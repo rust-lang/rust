@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we use fully-qualified type names in error messages.
+use Mod1::S;
+use Mod2::*;
 
 fn main() {
-    let x: Option<usize>;
-    x = 5;
-    //~^ ERROR mismatched types
-    //~| expected type `Option<usize>`
-    //~| found type `{integer}`
-    //~| expected enum `std::option::Option`, found integral variable
+    let x: X = S;
+    let y: Option<usize> = Ok(2);
+}
+
+mod Mod1 {
+    pub struct S;
+}
+
+mod Mod2 {
+    pub struct X;
 }

@@ -27,7 +27,7 @@ note: but, the lifetime must be valid for the lifetime 'b as defined on the func
 18 | |     Vec::push(a, b);
 19 | | }
    | |_^
-note: ...so that expression is assignable (expected &mut std::vec::Vec<Ref<'_, i32>>, found &mut std::vec::Vec<Ref<'b, i32>>)
+note: ...so that expression is assignable (expected &mut Vec<Ref<'_, i32>>, found &mut Vec<Ref<'b, i32>>)
   --> $DIR/ex2e-push-inference-variable-3.rs:16:33
    |
 16 |     let a: &mut Vec<Ref<i32>> = x;

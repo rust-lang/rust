@@ -7,7 +7,7 @@ error[E0308]: mismatched types
    |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::option::Option`
    |
    = note: expected type `Foo`
-              found type `std::option::Option<Foo>`
+              found type `Option<Foo>`
 
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:30:5
@@ -18,7 +18,7 @@ error[E0308]: mismatched types
    |     ^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::result::Result`
    |
    = note: expected type `Foo`
-              found type `std::result::Result<Foo, _>`
+              found type `Result<Foo, _>`
 
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:34:5
@@ -28,7 +28,7 @@ error[E0308]: mismatched types
 34 |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::option::Option`, found struct `Foo`
    |
-   = note: expected type `std::option::Option<Foo>`
+   = note: expected type `Option<Foo>`
               found type `Foo`
 
 error[E0308]: mismatched types
@@ -39,7 +39,7 @@ error[E0308]: mismatched types
 38 |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::result::Result`, found struct `Foo`
    |
-   = note: expected type `std::result::Result<Foo, Bar>`
+   = note: expected type `Result<Foo, Bar>`
               found type `Foo`
 
 error[E0308]: mismatched types
@@ -51,7 +51,7 @@ error[E0308]: mismatched types
 49 |     x
    |     ^ expected struct `std::string::String`, found integral variable
    |
-   = note: expected type `X<X<_, std::string::String>, std::string::String>`
+   = note: expected type `X<X<_, String>, String>`
               found type `X<X<_, {integer}>, {integer}>`
 
 error[E0308]: mismatched types
@@ -63,7 +63,7 @@ error[E0308]: mismatched types
 60 |     x
    |     ^ expected struct `std::string::String`, found integral variable
    |
-   = note: expected type `X<X<_, std::string::String>, _>`
+   = note: expected type `X<X<_, String>, _>`
               found type `X<X<_, {integer}>, _>`
 
 error: aborting due to 6 previous errors
