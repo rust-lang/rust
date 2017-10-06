@@ -288,9 +288,13 @@ impl<T: ?Sized> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// let x = Box::new(5);
-    /// let ptr = Box::into_unique(x);
-    /// let x = unsafe { Box::from_unique(ptr) };
+    /// #![feature(unique)]
+    ///
+    /// fn main() {
+    ///     let x = Box::new(5);
+    ///     let ptr = Box::into_unique(x);
+    ///     let x = unsafe { Box::from_unique(ptr) };
+    /// }
     /// ```
     #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
                issue = "27730")]
