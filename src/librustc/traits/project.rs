@@ -505,7 +505,9 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 
     let obligation = Obligation::with_depth(cause.clone(), depth, param_env, projection_ty);
     match project_type(selcx, &obligation) {
-        Ok(ProjectedTy::Progress(Progress { ty: projected_ty, mut obligations })) => {
+        Ok(ProjectedTy::Progress(Progress { ty: projected_ty,
+                                            mut obligations,
+                                            cacheable })) => {
             // if projection succeeded, then what we get out of this
             // is also non-normalized (consider: it was derived from
             // an impl, where-clause etc) and hence we must
@@ -514,10 +516,12 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             debug!("opt_normalize_projection_type: \
                     projected_ty={:?} \
                     depth={} \
-                    obligations={:?}",
+                    obligations={:?} \
+                    cacheable={:?}",
                    projected_ty,
                    depth,
-                   obligations);
+                   obligations,
+                   cacheable);
 
             let result = if projected_ty.has_projection_types() {
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx,
@@ -544,7 +548,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             };
 
             let cache_value = prune_cache_value_obligations(infcx, &result);
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, cache_value);
+            infcx.projection_cache.borrow_mut().insert_ty(cache_key, cache_value, cacheable);
 
             Some(result)
         }
@@ -556,7 +560,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 value: projected_ty,
                 obligations: vec![]
             };
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, result.clone());
+            infcx.projection_cache.borrow_mut().insert_ty(cache_key, result.clone(), true);
             Some(result)
         }
         Err(ProjectionTyError::TooManyCandidates) => {
@@ -705,6 +709,7 @@ enum ProjectedTy<'tcx> {
 struct Progress<'tcx> {
     ty: Ty<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
+    cacheable: bool,
 }
 
 impl<'tcx> Progress<'tcx> {
@@ -712,6 +717,7 @@ impl<'tcx> Progress<'tcx> {
         Progress {
             ty: tcx.types.err,
             obligations: vec![],
+            cacheable: true
         }
     }
 
@@ -1325,6 +1331,7 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
             Progress {
                 ty: ty_match.value,
                 obligations,
+                cacheable: ty_match.unconstrained_regions.is_empty(),
             }
         }
         Err(e) => {
@@ -1368,6 +1375,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     Progress {
         ty: ty.subst(tcx, substs),
         obligations: nested,
+        cacheable: true
     }
 }
 
@@ -1529,11 +1537,20 @@ impl<'tcx> ProjectionCache<'tcx> {
         Ok(())
     }
 
-    /// Indicates that `key` was normalized to `value`.
-    fn insert_ty(&mut self, key: ProjectionCacheKey<'tcx>, value: NormalizedTy<'tcx>) {
+    /// Indicates that `key` was normalized to `value`. If `cacheable` is false,
+    /// then this result is sadly not cacheable (this only occurs in weird
+    /// buggy cases, like #38714).
+    fn insert_ty(&mut self,
+                 key: ProjectionCacheKey<'tcx>,
+                 value: NormalizedTy<'tcx>,
+                 cacheable: bool) {
         debug!("ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
                key, value);
-        let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
+        let fresh_key = if cacheable {
+            self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value))
+        } else {
+            !self.map.remove(key)
+        };
         assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 
