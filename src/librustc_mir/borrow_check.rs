@@ -14,7 +14,7 @@ use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue};
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue, Local};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::transform::{MirSource};
@@ -1061,11 +1061,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String, autoderef: Option<bool>) {
         match *lvalue {
             Lvalue::Local(local) => {
-                let local = &self.mir.local_decls[local];
-                match local.name {
-                    Some(name) => buf.push_str(&format!("{}", name)),
-                    None => buf.push_str("_"),
-                }
+                self.append_local_to_string(local, buf, "_");
             }
             Lvalue::Static(ref static_) => {
                 buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
@@ -1102,12 +1098,22 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
                 if let Some(index) = index_operand {
                     buf.push_str("[");
-                    self.append_lvalue_to_string(&Lvalue::Local(index), buf, None);
+                    self.append_local_to_string(index, buf, "..");
                     buf.push_str("]");
                 } else {
                     buf.push_str(&suffix);
                 }
             }
+        }
+    }
+
+    // Appends end-user visible description of the `local` lvalue to `buf`. If `local` doesn't have
+    // a name, then `none_string` is appended instead
+    fn append_local_to_string(&self, local_index: Local, buf: &mut String, none_string: &str) {
+        let local = &self.mir.local_decls[local_index];
+        match local.name {
+            Some(name) => buf.push_str(&format!("{}", name)),
+            None => buf.push_str(none_string)
         }
     }
 
