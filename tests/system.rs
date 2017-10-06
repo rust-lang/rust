@@ -17,7 +17,9 @@ extern crate term;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read};
+use std::iter::Peekable;
 use std::path::{Path, PathBuf};
+use std::str::Chars;
 
 use rustfmt::*;
 use rustfmt::filemap::{write_system_newlines, FileMap};
@@ -369,7 +371,8 @@ fn handle_result(
         let read_error = format!("Failed reading target {:?}", &target);
         f.read_to_string(&mut text).expect(&read_error);
 
-        if fmt_text != text {
+        // Ignore LF and CRLF difference for Windows.
+        if !string_eq_ignore_newline_repr(&fmt_text, &text) {
             let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);
             assert!(
                 !diff.is_empty(),
@@ -429,4 +432,39 @@ fn rustfmt_diff_make_diff_tests() {
 fn rustfmt_diff_no_diff_test() {
     let diff = make_diff("a\nb\nc\nd", "a\nb\nc\nd", 3);
     assert_eq!(diff, vec![]);
+}
+
+// Compare strings without distinguishing between CRLF and LF
+fn string_eq_ignore_newline_repr(left: &str, right: &str) -> bool {
+    let left = CharsIgnoreNewlineRepr(left.chars().peekable());
+    let right = CharsIgnoreNewlineRepr(right.chars().peekable());
+    left.eq(right)
+}
+
+struct CharsIgnoreNewlineRepr<'a>(Peekable<Chars<'a>>);
+
+impl<'a> Iterator for CharsIgnoreNewlineRepr<'a> {
+    type Item = char;
+    fn next(&mut self) -> Option<char> {
+        self.0.next().map(|c| if c == '\r' {
+            if *self.0.peek().unwrap_or(&'\0') == '\n' {
+                self.0.next();
+                '\n'
+            } else {
+                '\r'
+            }
+        } else {
+            c
+        })
+    }
+}
+
+#[test]
+fn string_eq_ignore_newline_repr_test() {
+    assert!(string_eq_ignore_newline_repr("", ""));
+    assert!(!string_eq_ignore_newline_repr("", "abc"));
+    assert!(!string_eq_ignore_newline_repr("abc", ""));
+    assert!(string_eq_ignore_newline_repr("a\nb\nc\rd", "a\nb\r\nc\rd"));
+    assert!(string_eq_ignore_newline_repr("a\r\n\r\n\r\nb", "a\n\n\nb"));
+    assert!(!string_eq_ignore_newline_repr("a\r\nbcd", "a\nbcdefghijk"));
 }
