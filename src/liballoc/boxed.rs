@@ -326,9 +326,7 @@ impl<T: ?Sized> Box<T> {
                issue = "27730")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        let u = b.0;
-        mem::forget(b);
-        u
+        unsafe { mem::transmute(b) }
     }
 }
 
