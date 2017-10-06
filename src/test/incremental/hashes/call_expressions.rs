@@ -36,10 +36,8 @@ pub fn change_callee_function() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_callee_function() {
@@ -55,10 +53,8 @@ pub fn change_argument_function() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_argument_function() {
@@ -100,10 +96,8 @@ pub fn change_callee_method() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_callee_method() {
@@ -121,10 +115,8 @@ pub fn change_argument_method() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_argument_method() {
@@ -142,10 +134,8 @@ pub fn change_ufcs_callee_method() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_ufcs_callee_method() {
@@ -163,10 +153,8 @@ pub fn change_argument_method_ufcs() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_argument_method_ufcs() {
@@ -183,11 +171,11 @@ pub fn change_to_ufcs() {
     s.method1('x', true);
 }
 
+// FIXME(vitiral): why would this change anything, doesn't the Mir/Hir expand this
+// sort of stuff?
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized,TypeckTables")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_to_ufcs() {
@@ -208,10 +196,8 @@ mod change_ufcs_callee_indirectly {
     #[cfg(not(cfail1))]
     use super::Struct2 as Struct;
 
-    #[rustc_clean(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_dirty(label="HirBody", cfg="cfail2")]
-    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized,TypeckTables")]
+    #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_ufcs_callee_indirectly() {
