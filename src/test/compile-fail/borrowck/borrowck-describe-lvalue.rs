@@ -233,4 +233,24 @@ fn main() {
             _ => panic!("other case"),
         }
     }
+    // Downcasted field
+    {
+        enum E<X> { A(X), B { x: X } }
+
+        let mut e = E::A(3);
+        let _e = &mut e;
+        match e {
+            E::A(ref ax) =>
+                //[ast]~^ ERROR cannot borrow `e.0` as immutable because `e` is also borrowed as mutable
+                //[mir]~^^ ERROR cannot borrow `e.0` as immutable because `e` is also borrowed as mutable (Ast)
+                //[mir]~| ERROR cannot borrow `e.0` as immutable because it is also borrowed as mutable (Mir)
+                //[mir]~| ERROR cannot use `e` because it was mutably borrowed (Mir)
+                println!("e.ax: {:?}", ax),
+            E::B { x: ref bx } =>
+                //[ast]~^ ERROR cannot borrow `e.x` as immutable because `e` is also borrowed as mutable
+                //[mir]~^^ ERROR cannot borrow `e.x` as immutable because `e` is also borrowed as mutable (Ast)
+                //[mir]~| ERROR cannot borrow `e.x` as immutable because it is also borrowed as mutable (Mir)
+                println!("e.bx: {:?}", bx),
+        }
+    }
 }

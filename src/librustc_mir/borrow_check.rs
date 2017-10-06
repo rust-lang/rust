@@ -1125,11 +1125,6 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 match proj.elem {
                     ProjectionElem::Deref =>
                         self.describe_field(&proj.base, field_index),
-                    ProjectionElem::Downcast(..) => {
-                        debug!("End-user description not implemented for field of projection {:?}",
-                               proj);
-                        format!("<downcast>{}", field_index)
-                    },
                     ProjectionElem::Field(..) => {
                         debug!("End-user description not implemented for field of projection {:?}",
                                proj);
@@ -1145,6 +1140,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                proj);
                         format!("<constant_index>{}", field_index)
                     },
+                    ProjectionElem::Downcast(def, variant_index) =>
+                        format!("{}", def.variants[variant_index].fields[field_index].name),
                     ProjectionElem::Subslice { .. } => {
                         debug!("End-user description not implemented for field of projection {:?}",
                                proj);
