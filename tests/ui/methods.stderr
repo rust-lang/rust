@@ -134,705 +134,713 @@ error: called `map(f).unwrap_or(a)` on an Option value. This can be done more di
 110 | |                 });
     | |__________________^
 
-error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-   --> $DIR/methods.rs:116:13
+error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
+   --> $DIR/methods.rs:112:13
     |
-116 |       let _ = opt.map(|x| x + 1)
+112 |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: replace `map(|x| Some(x + 1)).unwrap_or(None)` with `and_then(|x| Some(x + 1))`
+
+error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
+   --> $DIR/methods.rs:118:13
+    |
+118 |       let _ = opt.map(|x| x + 1)
     |  _____________^
-117 | |
-118 | |                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
+119 | |
+120 | |                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
     | |____________________________________^
     |
     = note: `-D option-map-unwrap-or-else` implied by `-D warnings`
     = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-   --> $DIR/methods.rs:120:13
+   --> $DIR/methods.rs:122:13
     |
-120 |       let _ = opt.map(|x| {
+122 |       let _ = opt.map(|x| {
     |  _____________^
-121 | |                         x + 1
-122 | |                     }
-123 | |               ).unwrap_or_else(|| 0);
+123 | |                         x + 1
+124 | |                     }
+125 | |               ).unwrap_or_else(|| 0);
     | |____________________________________^
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-   --> $DIR/methods.rs:124:13
+   --> $DIR/methods.rs:126:13
     |
-124 |       let _ = opt.map(|x| x + 1)
+126 |       let _ = opt.map(|x| x + 1)
     |  _____________^
-125 | |                .unwrap_or_else(||
-126 | |                     0
-127 | |                 );
+127 | |                .unwrap_or_else(||
+128 | |                     0
+129 | |                 );
     | |_________________^
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:153:24
+   --> $DIR/methods.rs:155:24
     |
-153 |     fn filter(self) -> IteratorFalsePositives {
+155 |     fn filter(self) -> IteratorFalsePositives {
     |                        ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:157:22
+   --> $DIR/methods.rs:159:22
     |
-157 |     fn next(self) -> IteratorFalsePositives {
+159 |     fn next(self) -> IteratorFalsePositives {
     |                      ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:177:32
+   --> $DIR/methods.rs:179:32
     |
-177 |     fn skip(self, _: usize) -> IteratorFalsePositives {
+179 |     fn skip(self, _: usize) -> IteratorFalsePositives {
     |                                ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-   --> $DIR/methods.rs:196:13
+   --> $DIR/methods.rs:198:13
     |
-196 |     let _ = v.iter().filter(|&x| *x < 0).next();
+198 |     let _ = v.iter().filter(|&x| *x < 0).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D filter-next` implied by `-D warnings`
     = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-   --> $DIR/methods.rs:199:13
+   --> $DIR/methods.rs:201:13
     |
-199 |       let _ = v.iter().filter(|&x| {
+201 |       let _ = v.iter().filter(|&x| {
     |  _____________^
-200 | |                                 *x < 0
-201 | |                             }
-202 | |                    ).next();
+202 | |                                 *x < 0
+203 | |                             }
+204 | |                    ).next();
     | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:214:13
+   --> $DIR/methods.rs:216:13
     |
-214 |     let _ = v.iter().find(|&x| *x < 0).is_some();
+216 |     let _ = v.iter().find(|&x| *x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D search-is-some` implied by `-D warnings`
     = note: replace `find(|&x| *x < 0).is_some()` with `any(|&x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:217:13
+   --> $DIR/methods.rs:219:13
     |
-217 |       let _ = v.iter().find(|&x| {
+219 |       let _ = v.iter().find(|&x| {
     |  _____________^
-218 | |                               *x < 0
-219 | |                           }
-220 | |                    ).is_some();
+220 | |                               *x < 0
+221 | |                           }
+222 | |                    ).is_some();
     | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:223:13
+   --> $DIR/methods.rs:225:13
     |
-223 |     let _ = v.iter().position(|&x| x < 0).is_some();
+225 |     let _ = v.iter().position(|&x| x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: replace `position(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:226:13
+   --> $DIR/methods.rs:228:13
     |
-226 |       let _ = v.iter().position(|&x| {
+228 |       let _ = v.iter().position(|&x| {
     |  _____________^
-227 | |                                   x < 0
-228 | |                               }
-229 | |                    ).is_some();
+229 | |                                   x < 0
+230 | |                               }
+231 | |                    ).is_some();
     | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:232:13
+   --> $DIR/methods.rs:234:13
     |
-232 |     let _ = v.iter().rposition(|&x| x < 0).is_some();
+234 |     let _ = v.iter().rposition(|&x| x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: replace `rposition(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:235:13
+   --> $DIR/methods.rs:237:13
     |
-235 |       let _ = v.iter().rposition(|&x| {
+237 |       let _ = v.iter().rposition(|&x| {
     |  _____________^
-236 | |                                    x < 0
-237 | |                                }
-238 | |                    ).is_some();
+238 | |                                    x < 0
+239 | |                                }
+240 | |                    ).is_some();
     | |______________________________^
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:252:21
+   --> $DIR/methods.rs:254:21
     |
-252 |         fn new() -> Foo { Foo }
+254 |         fn new() -> Foo { Foo }
     |                     ^^^ help: use the applicable keyword: `Self`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:270:5
+   --> $DIR/methods.rs:272:5
     |
-270 |     with_constructor.unwrap_or(make());
+272 |     with_constructor.unwrap_or(make());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_constructor.unwrap_or_else(make)`
     |
     = note: `-D or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
-   --> $DIR/methods.rs:273:5
+   --> $DIR/methods.rs:275:5
     |
-273 |     with_new.unwrap_or(Vec::new());
+275 |     with_new.unwrap_or(Vec::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:276:5
+   --> $DIR/methods.rs:278:5
     |
-276 |     with_const_args.unwrap_or(Vec::with_capacity(12));
+278 |     with_const_args.unwrap_or(Vec::with_capacity(12));
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:279:5
+   --> $DIR/methods.rs:281:5
     |
-279 |     with_err.unwrap_or(make());
+281 |     with_err.unwrap_or(make());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err.unwrap_or_else(|_| make())`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:282:5
+   --> $DIR/methods.rs:284:5
     |
-282 |     with_err_args.unwrap_or(Vec::with_capacity(12));
+284 |     with_err_args.unwrap_or(Vec::with_capacity(12));
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a call to `default`
-   --> $DIR/methods.rs:285:5
+   --> $DIR/methods.rs:287:5
     |
-285 |     with_default_trait.unwrap_or(Default::default());
+287 |     with_default_trait.unwrap_or(Default::default());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `default`
-   --> $DIR/methods.rs:288:5
+   --> $DIR/methods.rs:290:5
     |
-288 |     with_default_type.unwrap_or(u64::default());
+290 |     with_default_type.unwrap_or(u64::default());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:291:5
+   --> $DIR/methods.rs:293:5
     |
-291 |     with_vec.unwrap_or(vec![]);
+293 |     with_vec.unwrap_or(vec![]);
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:296:5
+   --> $DIR/methods.rs:298:5
     |
-296 |     without_default.unwrap_or(Foo::new());
+298 |     without_default.unwrap_or(Foo::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `without_default.unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:299:5
+   --> $DIR/methods.rs:301:5
     |
-299 |     map.entry(42).or_insert(String::new());
+301 |     map.entry(42).or_insert(String::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `map.entry(42).or_insert_with(String::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:302:5
+   --> $DIR/methods.rs:304:5
     |
-302 |     btree.entry(42).or_insert(String::new());
+304 |     btree.entry(42).or_insert(String::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `btree.entry(42).or_insert_with(String::new)`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:305:13
+   --> $DIR/methods.rs:307:13
     |
-305 |     let _ = stringy.unwrap_or("".to_owned());
+307 |     let _ = stringy.unwrap_or("".to_owned());
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `stringy.unwrap_or_else(|| "".to_owned())`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:316:23
+   --> $DIR/methods.rs:318:23
     |
-316 |         let bad_vec = some_vec.iter().nth(3);
+318 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:317:26
+   --> $DIR/methods.rs:319:26
     |
-317 |         let bad_slice = &some_vec[..].iter().nth(3);
+319 |         let bad_slice = &some_vec[..].iter().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:318:31
+   --> $DIR/methods.rs:320:31
     |
-318 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
+320 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:319:29
+   --> $DIR/methods.rs:321:29
     |
-319 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
+321 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:324:23
+   --> $DIR/methods.rs:326:23
     |
-324 |         let bad_vec = some_vec.iter_mut().nth(3);
+326 |         let bad_vec = some_vec.iter_mut().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:327:26
+   --> $DIR/methods.rs:329:26
     |
-327 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
+329 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:330:29
+   --> $DIR/methods.rs:332:29
     |
-330 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+332 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:342:13
+   --> $DIR/methods.rs:344:13
     |
-342 |     let _ = some_vec.iter().skip(42).next();
+344 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:343:13
+   --> $DIR/methods.rs:345:13
     |
-343 |     let _ = some_vec.iter().cycle().skip(42).next();
+345 |     let _ = some_vec.iter().cycle().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:344:13
+   --> $DIR/methods.rs:346:13
     |
-344 |     let _ = (1..10).skip(10).next();
+346 |     let _ = (1..10).skip(10).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:345:14
+   --> $DIR/methods.rs:347:14
     |
-345 |     let _ = &some_vec[..].iter().skip(3).next();
+347 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:371:17
+   --> $DIR/methods.rs:373:17
     |
-371 |         let _ = boxed_slice.get(1).unwrap();
+373 |         let _ = boxed_slice.get(1).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
     |
     = note: `-D get-unwrap` implied by `-D warnings`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:372:17
+   --> $DIR/methods.rs:374:17
     |
-372 |         let _ = some_slice.get(0).unwrap();
+374 |         let _ = some_slice.get(0).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_slice[0]`
 
 error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:373:17
+   --> $DIR/methods.rs:375:17
     |
-373 |         let _ = some_vec.get(0).unwrap();
+375 |         let _ = some_vec.get(0).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vec[0]`
 
 error: called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:374:17
+   --> $DIR/methods.rs:376:17
     |
-374 |         let _ = some_vecdeque.get(0).unwrap();
+376 |         let _ = some_vecdeque.get(0).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vecdeque[0]`
 
 error: called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:375:17
+   --> $DIR/methods.rs:377:17
     |
-375 |         let _ = some_hashmap.get(&1).unwrap();
+377 |         let _ = some_hashmap.get(&1).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_hashmap[&1]`
 
 error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:376:17
+   --> $DIR/methods.rs:378:17
     |
-376 |         let _ = some_btreemap.get(&1).unwrap();
+378 |         let _ = some_btreemap.get(&1).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_btreemap[&1]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:381:10
+   --> $DIR/methods.rs:383:10
     |
-381 |         *boxed_slice.get_mut(0).unwrap() = 1;
+383 |         *boxed_slice.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut boxed_slice[0]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:382:10
+   --> $DIR/methods.rs:384:10
     |
-382 |         *some_slice.get_mut(0).unwrap() = 1;
+384 |         *some_slice.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_slice[0]`
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:383:10
+   --> $DIR/methods.rs:385:10
     |
-383 |         *some_vec.get_mut(0).unwrap() = 1;
+385 |         *some_vec.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vec[0]`
 
 error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:384:10
+   --> $DIR/methods.rs:386:10
     |
-384 |         *some_vecdeque.get_mut(0).unwrap() = 1;
+386 |         *some_vecdeque.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vecdeque[0]`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:398:13
+   --> $DIR/methods.rs:400:13
     |
-398 |     let _ = opt.unwrap();
+400 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
 
 error: used unwrap() on a Result value. If you don't want to handle the Err case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:401:13
+   --> $DIR/methods.rs:403:13
     |
-401 |     let _ = res.unwrap();
+403 |     let _ = res.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D result-unwrap-used` implied by `-D warnings`
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:403:5
+   --> $DIR/methods.rs:405:5
     |
-403 |     res.ok().expect("disaster!");
+405 |     res.ok().expect("disaster!");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D ok-expect` implied by `-D warnings`
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:409:5
-    |
-409 |     res3.ok().expect("whoof");
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:411:5
     |
-411 |     res4.ok().expect("argh");
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+411 |     res3.ok().expect("whoof");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:413:5
     |
-413 |     res5.ok().expect("oops");
+413 |     res4.ok().expect("argh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:415:5
     |
-415 |     res6.ok().expect("meh");
+415 |     res5.ok().expect("oops");
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
+   --> $DIR/methods.rs:417:5
+    |
+417 |     res6.ok().expect("meh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should use the `starts_with` method
-   --> $DIR/methods.rs:427:5
+   --> $DIR/methods.rs:429:5
     |
-427 |     "".chars().next() == Some(' ');
+429 |     "".chars().next() == Some(' ');
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
     |
     = note: `-D chars-next-cmp` implied by `-D warnings`
 
 error: you should use the `starts_with` method
-   --> $DIR/methods.rs:428:5
+   --> $DIR/methods.rs:430:5
     |
-428 |     Some(' ') != "".chars().next();
+430 |     Some(' ') != "".chars().next();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with(' ')`
 
 error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:437:5
+   --> $DIR/methods.rs:439:5
     |
-437 |     s.extend(abc.chars());
+439 |     s.extend(abc.chars());
     |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(abc)`
     |
     = note: `-D string-extend-chars` implied by `-D warnings`
 
 error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:440:5
+   --> $DIR/methods.rs:442:5
     |
-440 |     s.extend("abc".chars());
+442 |     s.extend("abc".chars());
     |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str("abc")`
 
 error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:443:5
+   --> $DIR/methods.rs:445:5
     |
-443 |     s.extend(def.chars());
+445 |     s.extend(def.chars());
     |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 
 error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:454:5
+   --> $DIR/methods.rs:456:5
     |
-454 |     42.clone();
+456 |     42.clone();
     |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
     |
     = note: `-D clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:458:5
+   --> $DIR/methods.rs:460:5
     |
-458 |     (&42).clone();
+460 |     (&42).clone();
     |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:468:5
+   --> $DIR/methods.rs:470:5
     |
-468 |     rc.clone();
+470 |     rc.clone();
     |     ^^^^^^^^^^ help: try this: `Rc::clone(&rc)`
     |
     = note: `-D clone-on-ref-ptr` implied by `-D warnings`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:471:5
+   --> $DIR/methods.rs:473:5
     |
-471 |     arc.clone();
+473 |     arc.clone();
     |     ^^^^^^^^^^^ help: try this: `Arc::clone(&arc)`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:474:5
+   --> $DIR/methods.rs:476:5
     |
-474 |     rcweak.clone();
+476 |     rcweak.clone();
     |     ^^^^^^^^^^^^^^ help: try this: `Weak::clone(&rcweak)`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:477:5
+   --> $DIR/methods.rs:479:5
     |
-477 |     arc_weak.clone();
+479 |     arc_weak.clone();
     |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::clone(&arc_weak)`
-
-error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:484:5
-    |
-484 |     t.clone();
-    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:486:5
     |
-486 |     Some(t).clone();
+486 |     t.clone();
+    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
+
+error: using `clone` on a `Copy` type
+   --> $DIR/methods.rs:488:5
+    |
+488 |     Some(t).clone();
     |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-   --> $DIR/methods.rs:492:22
+   --> $DIR/methods.rs:494:22
     |
-492 |     let z: &Vec<_> = y.clone();
+494 |     let z: &Vec<_> = y.clone();
     |                      ^^^^^^^^^ help: try dereferencing it: `(*y).clone()`
     |
     = note: `-D clone-double-ref` implied by `-D warnings`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:499:13
+   --> $DIR/methods.rs:501:13
     |
-499 |     x.split("x");
+501 |     x.split("x");
     |     --------^^^- help: try using a char instead: `x.split('x')`
     |
     = note: `-D single-char-pattern` implied by `-D warnings`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:516:16
+   --> $DIR/methods.rs:518:16
     |
-516 |     x.contains("x");
+518 |     x.contains("x");
     |     -----------^^^- help: try using a char instead: `x.contains('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:517:19
+   --> $DIR/methods.rs:519:19
     |
-517 |     x.starts_with("x");
+519 |     x.starts_with("x");
     |     --------------^^^- help: try using a char instead: `x.starts_with('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:518:17
+   --> $DIR/methods.rs:520:17
     |
-518 |     x.ends_with("x");
+520 |     x.ends_with("x");
     |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:519:12
+   --> $DIR/methods.rs:521:12
     |
-519 |     x.find("x");
+521 |     x.find("x");
     |     -------^^^- help: try using a char instead: `x.find('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:520:13
+   --> $DIR/methods.rs:522:13
     |
-520 |     x.rfind("x");
+522 |     x.rfind("x");
     |     --------^^^- help: try using a char instead: `x.rfind('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:521:14
+   --> $DIR/methods.rs:523:14
     |
-521 |     x.rsplit("x");
+523 |     x.rsplit("x");
     |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:522:24
+   --> $DIR/methods.rs:524:24
     |
-522 |     x.split_terminator("x");
+524 |     x.split_terminator("x");
     |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:523:25
+   --> $DIR/methods.rs:525:25
     |
-523 |     x.rsplit_terminator("x");
+525 |     x.rsplit_terminator("x");
     |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:524:17
+   --> $DIR/methods.rs:526:17
     |
-524 |     x.splitn(0, "x");
+526 |     x.splitn(0, "x");
     |     ------------^^^- help: try using a char instead: `x.splitn(0, 'x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:525:18
+   --> $DIR/methods.rs:527:18
     |
-525 |     x.rsplitn(0, "x");
+527 |     x.rsplitn(0, "x");
     |     -------------^^^- help: try using a char instead: `x.rsplitn(0, 'x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:526:15
+   --> $DIR/methods.rs:528:15
     |
-526 |     x.matches("x");
+528 |     x.matches("x");
     |     ----------^^^- help: try using a char instead: `x.matches('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:527:16
+   --> $DIR/methods.rs:529:16
     |
-527 |     x.rmatches("x");
+529 |     x.rmatches("x");
     |     -----------^^^- help: try using a char instead: `x.rmatches('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:528:21
+   --> $DIR/methods.rs:530:21
     |
-528 |     x.match_indices("x");
+530 |     x.match_indices("x");
     |     ----------------^^^- help: try using a char instead: `x.match_indices('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:529:22
+   --> $DIR/methods.rs:531:22
     |
-529 |     x.rmatch_indices("x");
+531 |     x.rmatch_indices("x");
     |     -----------------^^^- help: try using a char instead: `x.rmatch_indices('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:530:25
+   --> $DIR/methods.rs:532:25
     |
-530 |     x.trim_left_matches("x");
+532 |     x.trim_left_matches("x");
     |     --------------------^^^- help: try using a char instead: `x.trim_left_matches('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:531:26
+   --> $DIR/methods.rs:533:26
     |
-531 |     x.trim_right_matches("x");
+533 |     x.trim_right_matches("x");
     |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
 
 error: you are getting the inner pointer of a temporary `CString`
-   --> $DIR/methods.rs:541:5
+   --> $DIR/methods.rs:543:5
     |
-541 |     CString::new("foo").unwrap().as_ptr();
+543 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D temporary-cstring-as-ptr` implied by `-D warnings`
     = note: that pointer will be invalid outside this expression
 help: assign the `CString` to a variable to extend its lifetime
-   --> $DIR/methods.rs:541:5
+   --> $DIR/methods.rs:543:5
     |
-541 |     CString::new("foo").unwrap().as_ptr();
+543 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-   --> $DIR/methods.rs:546:27
+   --> $DIR/methods.rs:548:27
     |
-546 |     let v2 : Vec<isize> = v.iter().cloned().collect();
+548 |     let v2 : Vec<isize> = v.iter().cloned().collect();
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-cloned-collect` implied by `-D warnings`
 
 error: you should use the `starts_with` method
-   --> $DIR/methods.rs:553:8
+   --> $DIR/methods.rs:555:8
     |
-553 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
+555 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.starts_with('f')`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:553:8
+   --> $DIR/methods.rs:555:8
     |
-553 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
+555 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should use the `ends_with` method
-   --> $DIR/methods.rs:556:8
+   --> $DIR/methods.rs:558:8
     |
-556 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
+558 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
     |
     = note: `-D chars-last-cmp` implied by `-D warnings`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:556:8
+   --> $DIR/methods.rs:558:8
     |
-556 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
+558 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should use the `ends_with` method
-   --> $DIR/methods.rs:559:8
+   --> $DIR/methods.rs:561:8
     |
-559 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
+561 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:559:8
+   --> $DIR/methods.rs:561:8
     |
-559 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
+561 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should use the `starts_with` method
-   --> $DIR/methods.rs:562:8
+   --> $DIR/methods.rs:564:8
     |
-562 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
+564 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.starts_with('f')`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:562:8
+   --> $DIR/methods.rs:564:8
     |
-562 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
+564 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should use the `ends_with` method
-   --> $DIR/methods.rs:565:8
+   --> $DIR/methods.rs:567:8
     |
-565 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
+567 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:565:8
+   --> $DIR/methods.rs:567:8
     |
-565 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
+567 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you should use the `ends_with` method
-   --> $DIR/methods.rs:568:8
+   --> $DIR/methods.rs:570:8
     |
-568 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
+570 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:568:8
+   --> $DIR/methods.rs:570:8
     |
-568 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
+570 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:575:5
-    |
-575 |     "".chars().last() == Some(' ');
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:576:5
-    |
-576 |     Some(' ') != "".chars().last();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
 error: you should use the `ends_with` method
    --> $DIR/methods.rs:577:5
     |
-577 |     "".chars().next_back() == Some(' ');
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
+577 |     "".chars().last() == Some(' ');
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
 
 error: you should use the `ends_with` method
    --> $DIR/methods.rs:578:5
     |
-578 |     Some(' ') != "".chars().next_back();
+578 |     Some(' ') != "".chars().last();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:579:5
+    |
+579 |     "".chars().next_back() == Some(' ');
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:580:5
+    |
+580 |     Some(' ') != "".chars().next_back();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
