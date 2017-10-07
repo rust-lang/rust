@@ -550,7 +550,7 @@ impl Rewrite for ast::TyParamBounds {
         let strs = self.iter()
             .map(|b| b.rewrite(context, shape))
             .collect::<Option<Vec<_>>>()?;
-        join_bounds(context, shape, &strs).rewrite(context, shape)
+        Some(join_bounds(context, shape, &strs))
     }
 }
 
