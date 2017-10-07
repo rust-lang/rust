@@ -16,7 +16,7 @@ pub fn target() -> TargetResult {
 
     // Most of these settings are copied from the arm_unknown_linux_gnueabi
     // target.
-    base.features = "+v6".to_string();
+    base.features = "+strict-align,+v6".to_string();
     base.max_atomic_width = Some(64);
     Ok(Target {
         // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it

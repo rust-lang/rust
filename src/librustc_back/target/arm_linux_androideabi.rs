@@ -14,7 +14,7 @@ use target::{Target, TargetOptions, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     // https://developer.android.com/ndk/guides/abis.html#armeabi
-    base.features = "+v5te".to_string();
+    base.features = "+strict-align,+v5te".to_string();
     base.max_atomic_width = Some(64);
 
     Ok(Target {
