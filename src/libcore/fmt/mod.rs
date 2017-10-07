@@ -1275,7 +1275,7 @@ impl<'a> Formatter<'a> {
         write(self.buf, fmt)
     }
 
-    /// Flags for formatting (packed version of rt::Flag)
+    /// Flags for formatting
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn flags(&self) -> u32 { self.flags }
 
