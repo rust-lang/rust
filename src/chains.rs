@@ -266,7 +266,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         )
     };
     let result = format!("{}{}", result, repeat_try(suffix_try_num));
-    wrap_str(result, context.config.max_width(), shape)
+    if context.config.chain_indent() == IndentStyle::Visual {
+        wrap_str(result, context.config.max_width(), shape)
+    } else {
+        Some(result)
+    }
 }
 
 fn is_extendable_parent(context: &RewriteContext, parent_str: &str) -> bool {
