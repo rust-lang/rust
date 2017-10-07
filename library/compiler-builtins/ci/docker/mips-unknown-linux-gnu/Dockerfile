@@ -7,5 +7,6 @@ RUN apt-get update && \
     binfmt-support qemu-user-static qemu-system-mips
 
 ENV CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_LINKER=mips-linux-gnu-gcc \
+    CARGO_TARGET_MIPS_UNKNOWN_LINUX_GNU_RUNNER=qemu-mips-static \
     QEMU_LD_PREFIX=/usr/mips-linux-gnu \
     RUST_TEST_THREADS=1
