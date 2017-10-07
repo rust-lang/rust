@@ -610,7 +610,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         let parent = Some(::id_from_node_id(item.id, &self.save_ctxt));
 
                         self.dumper.dump_def(item.vis == ast::Visibility::Public, Def {
-                            kind: DefKind::Struct,
+                            kind: DefKind::StructVariant,
                             id,
                             span,
                             name,
@@ -644,7 +644,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         let parent = Some(::id_from_node_id(item.id, &self.save_ctxt));
 
                         self.dumper.dump_def(item.vis == ast::Visibility::Public, Def {
-                            kind: DefKind::Tuple,
+                            kind: DefKind::TupleVariant,
                             id,
                             span,
                             name,
