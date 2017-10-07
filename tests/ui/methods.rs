@@ -108,8 +108,16 @@ fn option_methods() {
                .unwrap_or({
                     0
                 });
-    // map(f).unwrap_or(None) case
+    // single line `map(f).unwrap_or(None)` case
     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
+    // multiline `map(f).unwrap_or(None)` cases
+    let _ = opt.map(|x| {
+        Some(x + 1)
+    }
+    ).unwrap_or(None);
+    let _ = opt
+        .map(|x| Some(x + 1))
+        .unwrap_or(None);
     // macro case
     let _ = opt_map!(opt, |x| x + 1).unwrap_or(0); // should not lint
 
