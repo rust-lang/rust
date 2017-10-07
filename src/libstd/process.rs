@@ -1174,7 +1174,7 @@ pub fn abort() -> ! {
 /// Basic usage:
 ///
 /// ```no_run
-/// use std::process:current_pid;
+/// use std::process::current_pid;
 ///
 /// println!("My pid is {}", current_pid());
 /// ```
