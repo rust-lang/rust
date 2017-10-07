@@ -1235,8 +1235,9 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::Match(folder.fold_expr(expr),
                           arms.move_map(|x| folder.fold_arm(x)))
             }
-            ExprKind::Closure(capture_clause, decl, body, span) => {
+            ExprKind::Closure(capture_clause, movability, decl, body, span) => {
                 ExprKind::Closure(capture_clause,
+                                  movability,
                                   folder.fold_fn_decl(decl),
                                   folder.fold_expr(body),
                                   folder.new_span(span))

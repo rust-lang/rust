@@ -209,7 +209,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>)>>,
+    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, ty::GeneratorInterior<'tcx>)>>,
 
     // Anonymized types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -838,7 +838,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   param_env,
                                                   &fn_sig);
 
-            let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, false).0;
+            let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.id);
@@ -973,7 +973,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             decl: &'gcx hir::FnDecl,
                             fn_id: ast::NodeId,
                             body: &'gcx hir::Body,
-                            can_be_generator: bool)
+                            can_be_generator: Option<hir::GeneratorMovability>)
                             -> (FnCtxt<'a, 'gcx, 'tcx>, Option<GeneratorTypes<'tcx>>)
 {
     let mut fn_sig = fn_sig.clone();
@@ -999,7 +999,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let span = body.value.span;
 
-    if body.is_generator && can_be_generator {
+    if body.is_generator && can_be_generator.is_some() {
         fcx.yield_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
     }
 
@@ -1023,17 +1023,24 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     }
 
     let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
-    let gen_ty = if can_be_generator && body.is_generator {
+    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
+
+    fcx.check_return_expr(&body.value);
+
+    // We insert the deferred_generator_interiors entry after visiting the body.
+    // This ensures that all nested generators appear before the entry of this generator.
+    // resolve_generator_interiors relies on this property.
+    let gen_ty = if can_be_generator.is_some() && body.is_generator {
         let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
-        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), witness));
-        let interior = ty::GeneratorInterior::new(witness);
+        let interior = ty::GeneratorInterior {
+            witness,
+            movable: can_be_generator.unwrap() == hir::GeneratorMovability::Movable,
+        };
+        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior));
         Some(GeneratorTypes { yield_ty: fcx.yield_ty.unwrap(), interior: interior })
     } else {
         None
     };
-    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
-
-    fcx.check_return_expr(&body.value);
 
     // Finalize the return check by taking the LUB of the return types
     // we saw and assigning it to the expected return type. This isn't
@@ -2113,9 +2120,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn resolve_generator_interiors(&self, def_id: DefId) {
-        let mut deferred_generator_interiors = self.deferred_generator_interiors.borrow_mut();
-        for (body_id, witness) in deferred_generator_interiors.drain(..) {
-            generator_interior::resolve_interior(self, def_id, body_id, witness);
+        let mut generators = self.deferred_generator_interiors.borrow_mut();
+        for (body_id, interior) in generators.drain(..) {
+            self.select_obligations_where_possible();
+            generator_interior::resolve_interior(self, def_id, body_id, interior);
         }
     }
 
@@ -3854,8 +3862,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprMatch(ref discrim, ref arms, match_src) => {
             self.check_match(expr, &discrim, arms, expected, match_src)
           }
-          hir::ExprClosure(capture, ref decl, body_id, _, _) => {
-              self.check_expr_closure(expr, capture, &decl, body_id, expected)
+          hir::ExprClosure(capture, ref decl, body_id, _, gen) => {
+              self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
           }
           hir::ExprBlock(ref body) => {
             self.check_block_with_expected(&body, expected)

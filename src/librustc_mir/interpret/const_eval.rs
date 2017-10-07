@@ -514,6 +514,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
         TyDynamic(..) => bug!("miri produced a trait object"),
         TyClosure(..) => bug!("miri produced a closure"),
         TyGenerator(..) => bug!("miri produced a generator"),
+        TyGeneratorWitness(..) => bug!("miri produced a generator witness"),
         TyNever => bug!("miri produced a value of the never type"),
         TyProjection(_) => bug!("miri produced a projection"),
         TyAnon(..) => bug!("miri produced an impl Trait type"),

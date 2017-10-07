@@ -2314,6 +2314,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::TyClosure(..) | ty::TyGenerator(..) => Tuple(vec![]), // FIXME(pcwalton)
 
+            ty::TyGeneratorWitness(..) => panic!("TyGeneratorWitness"),
             ty::TyInfer(..) => panic!("TyInfer"),
             ty::TyError => panic!("TyError"),
         }

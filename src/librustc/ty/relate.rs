@@ -18,6 +18,7 @@ use middle::const_val::ConstVal;
 use traits::Reveal;
 use ty::subst::{Kind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::fold::{TypeVisitor, TypeFolder};
 use ty::error::{ExpectedFound, TypeError};
 use util::common::ErrorReported;
 use std::rc::Rc;
@@ -319,6 +320,33 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
+#[derive(Debug, Clone)]
+struct GeneratorWitness<'tcx>(&'tcx ty::Slice<Ty<'tcx>>);
+
+impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        GeneratorWitness(self.0.fold_with(folder))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.0.visit_with(visitor)
+    }
+}
+
+impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
+    fn relate<'a, 'gcx, R>(relation: &mut R,
+                           a: &GeneratorWitness<'tcx>,
+                           b: &GeneratorWitness<'tcx>)
+                           -> RelateResult<'tcx, GeneratorWitness<'tcx>>
+        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+    {
+        assert!(a.0.len() == b.0.len());
+        let tcx = relation.tcx();
+        let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
+        Ok(GeneratorWitness(types))
+    }
+}
+
 impl<'tcx> Relate<'tcx> for Ty<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &Ty<'tcx>,
@@ -408,6 +436,17 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             let substs = relation.relate(&a_substs, &b_substs)?;
             let interior = relation.relate(&a_interior, &b_interior)?;
             Ok(tcx.mk_generator(a_id, substs, interior))
+        }
+
+        (&ty::TyGeneratorWitness(a_types), &ty::TyGeneratorWitness(b_types)) =>
+        {
+            // Wrap our types with a temporary GeneratorWitness struct
+            // inside the binder so we can related them
+            let a_types = ty::Binder(GeneratorWitness(*a_types.skip_binder()));
+            let b_types = ty::Binder(GeneratorWitness(*b_types.skip_binder()));
+            // Then remove the GeneratorWitness for the result
+            let types = ty::Binder(relation.relate(&a_types, &b_types)?.skip_binder().0);
+            Ok(tcx.mk_generator_witness(types))
         }
 
         (&ty::TyClosure(a_id, a_substs),
@@ -575,8 +614,9 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorInterior<'tcx> {
                            -> RelateResult<'tcx, ty::GeneratorInterior<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        let interior = relation.relate(&a.witness, &b.witness)?;
-        Ok(ty::GeneratorInterior::new(interior))
+        assert_eq!(a.movable, b.movable);
+        let witness = relation.relate(&a.witness, &b.witness)?;
+        Ok(ty::GeneratorInterior { witness, movable: a.movable })
     }
 }
 

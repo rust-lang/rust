@@ -606,6 +606,11 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::MatchSource {
     }
 }
 
+impl_stable_hash_for!(enum hir::GeneratorMovability {
+    Static,
+    Movable
+});
+
 impl_stable_hash_for!(enum hir::CaptureClause {
     CaptureByValue,
     CaptureByRef

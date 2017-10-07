@@ -438,7 +438,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::GeneratorInterior<'a> {
     type Lifted = ty::GeneratorInterior<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.witness).map(|witness| {
-            ty::GeneratorInterior { witness }
+            ty::GeneratorInterior { witness, movable: self.movable }
         })
     }
 }
@@ -798,6 +798,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyGenerator(did, substs, interior) => {
                 ty::TyGenerator(did, substs.fold_with(folder), interior.fold_with(folder))
             }
+            ty::TyGeneratorWitness(types) => ty::TyGeneratorWitness(types.fold_with(folder)),
             ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
             ty::TyProjection(ref data) => ty::TyProjection(data.fold_with(folder)),
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
@@ -832,6 +833,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyGenerator(_did, ref substs, ref interior) => {
                 substs.visit_with(visitor) || interior.visit_with(visitor)
             }
+            ty::TyGeneratorWitness(ref types) => types.visit_with(visitor),
             ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),
             ty::TyProjection(ref data) => data.visit_with(visitor),
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),
@@ -928,7 +930,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::GeneratorInterior<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::GeneratorInterior::new(self.witness.fold_with(folder))
+        ty::GeneratorInterior {
+           witness: self.witness.fold_with(folder),
+           movable: self.movable,
+        }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {

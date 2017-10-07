@@ -262,6 +262,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 },
                 ty::TyGenerator(..) => Some(18),
                 ty::TyForeign(..) => Some(19),
+                ty::TyGeneratorWitness(..) => Some(20),
                 ty::TyInfer(..) | ty::TyError => None
             }
         }

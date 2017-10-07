@@ -60,7 +60,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
                     match hir.get(node_id) {
                         NodeExpr(Expr {
-                            node: ExprClosure(_, _, _, closure_span, false),
+                            node: ExprClosure(_, _, _, closure_span, None),
                             ..
                         }) => {
                             let sup_sp = sup_origin.span();

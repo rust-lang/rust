@@ -1678,7 +1678,7 @@ impl<'a, 'tcx> LayoutDetails {
             ty::TyParam(_) => {
                 return Err(LayoutError::Unknown(ty));
             }
-            ty::TyInfer(_) | ty::TyError => {
+            ty::TyGeneratorWitness(..) | ty::TyInfer(_) | ty::TyError => {
                 bug!("LayoutDetails::compute: unexpected type `{}`", ty)
             }
         })
@@ -2151,8 +2151,9 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyFnPtr(_) |
             ty::TyNever |
             ty::TyFnDef(..) |
-            ty::TyDynamic(..) |
-            ty::TyForeign(..) => {
+            ty::TyGeneratorWitness(..) |
+            ty::TyForeign(..) |
+            ty::TyDynamic(..) => {
                 bug!("TyLayout::field_type({:?}): not applicable", self)
             }
 

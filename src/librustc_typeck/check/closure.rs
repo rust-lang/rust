@@ -37,6 +37,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         _capture: hir::CaptureClause,
         decl: &'gcx hir::FnDecl,
         body_id: hir::BodyId,
+        gen: Option<hir::GeneratorMovability>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         debug!(
@@ -53,7 +54,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             None => (None, None),
         };
         let body = self.tcx.hir.body(body_id);
-        self.check_closure(expr, expected_kind, decl, body, expected_sig)
+        self.check_closure(expr, expected_kind, decl, body, gen, expected_sig)
     }
 
     fn check_closure(
@@ -62,6 +63,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         opt_kind: Option<ty::ClosureKind>,
         decl: &'gcx hir::FnDecl,
         body: &'gcx hir::Body,
+        gen: Option<hir::GeneratorMovability>,
         expected_sig: Option<ty::FnSig<'tcx>>,
     ) -> Ty<'tcx> {
         debug!(
@@ -86,7 +88,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             decl,
             expr.id,
             body,
-            true,
+            gen,
         ).1;
 
         // Create type variables (for now) to represent the transformed

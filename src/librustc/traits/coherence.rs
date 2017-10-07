@@ -451,7 +451,10 @@ fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
             true
         }
 
-        ty::TyClosure(..) | ty::TyGenerator(..) | ty::TyAnon(..) => {
+        ty::TyClosure(..) |
+        ty::TyGenerator(..) |
+        ty::TyGeneratorWitness(..) |
+        ty::TyAnon(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }

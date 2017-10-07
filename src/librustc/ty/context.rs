@@ -1672,8 +1672,9 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
-            TyAdt, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr, TyGenerator, TyForeign,
-            TyDynamic, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
+            TyAdt, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyGenerator, TyGeneratorWitness, TyDynamic, TyClosure, TyTuple,
+            TyParam, TyInfer, TyProjection, TyAnon, TyForeign);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
@@ -2077,6 +2078,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         interior: GeneratorInterior<'tcx>)
                         -> Ty<'tcx> {
         self.mk_ty(TyGenerator(id, closure_substs, interior))
+    }
+
+    pub fn mk_generator_witness(self, types: ty::Binder<&'tcx Slice<Ty<'tcx>>>) -> Ty<'tcx> {
+        self.mk_ty(TyGeneratorWitness(types))
     }
 
     pub fn mk_var(self, v: TyVid) -> Ty<'tcx> {

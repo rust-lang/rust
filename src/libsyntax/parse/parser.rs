@@ -14,7 +14,7 @@ use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
-use ast::{BlockCheckMode, CaptureBy};
+use ast::{BlockCheckMode, CaptureBy, Movability};
 use ast::{Constness, Crate};
 use ast::Defaultness;
 use ast::EnumDef;
@@ -2258,8 +2258,7 @@ impl<'a> Parser<'a> {
                 return self.parse_block_expr(lo, BlockCheckMode::Default, attrs);
             }
             token::BinOp(token::Or) | token::OrOr => {
-                let lo = self.span;
-                return self.parse_lambda_expr(lo, CaptureBy::Ref, attrs);
+                return self.parse_lambda_expr(attrs);
             }
             token::OpenDelim(token::Bracket) => {
                 self.bump();
@@ -2304,9 +2303,8 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
-                if self.eat_keyword(keywords::Move) {
-                    let lo = self.prev_span;
-                    return self.parse_lambda_expr(lo, CaptureBy::Value, attrs);
+                if self.check_keyword(keywords::Move) || self.check_keyword(keywords::Static) {
+                    return self.parse_lambda_expr(attrs);
                 }
                 if self.eat_keyword(keywords::If) {
                     return self.parse_if_expr(attrs);
@@ -3247,11 +3245,20 @@ impl<'a> Parser<'a> {
 
     // `move |args| expr`
     pub fn parse_lambda_expr(&mut self,
-                             lo: Span,
-                             capture_clause: CaptureBy,
                              attrs: ThinVec<Attribute>)
                              -> PResult<'a, P<Expr>>
     {
+        let lo = self.span;
+        let movability = if self.eat_keyword(keywords::Static) {
+            Movability::Static
+        } else {
+            Movability::Movable
+        };
+        let capture_clause = if self.eat_keyword(keywords::Move) {
+            CaptureBy::Value
+        } else {
+            CaptureBy::Ref
+        };
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_span;
         let body = match decl.output {
@@ -3269,7 +3276,7 @@ impl<'a> Parser<'a> {
 
         Ok(self.mk_expr(
             lo.to(body.span),
-            ExprKind::Closure(capture_clause, decl, body, lo.to(decl_hi)),
+            ExprKind::Closure(capture_clause, movability, decl, body, lo.to(decl_hi)),
             attrs))
     }
 
@@ -6271,6 +6278,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn is_static_global(&mut self) -> bool {
+        if self.check_keyword(keywords::Static) {
+            // Check if this could be a closure
+            !self.look_ahead(1, |token| {
+                if token.is_keyword(keywords::Move) {
+                    return true;
+                }
+                match *token {
+                    token::BinOp(token::Or) | token::OrOr => true,
+                    _ => false,
+                }
+            })
+        } else {
+            false
+        }
+    }
+
     /// Parse one of the items allowed by the flags.
     /// NB: this function no longer parses the items inside an
     /// extern crate.
@@ -6329,7 +6353,8 @@ impl<'a> Parser<'a> {
             self.unexpected()?;
         }
 
-        if self.eat_keyword(keywords::Static) {
+        if self.is_static_global() {
+            self.bump();
             // STATIC ITEM
             let m = if self.eat_keyword(keywords::Mut) {
                 Mutability::Mutable

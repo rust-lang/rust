@@ -1100,7 +1100,7 @@ pub enum ExprKind {
     /// A closure (for example, `move |a, b, c| a + b + c`)
     ///
     /// The final span is the span of the argument block `|...|`
-    Closure(CaptureBy, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`{ ... }`)
     Block(P<Block>),
     /// A catch block (`catch { ... }`)
@@ -1192,6 +1192,13 @@ pub struct QSelf {
 pub enum CaptureBy {
     Value,
     Ref,
+}
+
+/// The movability of a generator / closure literal
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum Movability {
+    Static,
+    Movable,
 }
 
 pub type Mac = Spanned<Mac_>;
