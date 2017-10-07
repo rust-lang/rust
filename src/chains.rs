@@ -239,16 +239,15 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         connector.as_str()
     };
 
-    let subexpr_num = subexpr_list.len();
     let result = if is_small_parent && rewrites.len() > 1 {
-        let second_connector = choose_first_connector(
-            context,
-            &rewrites[0],
-            &rewrites[1],
-            &connector,
-            &subexpr_list[..subexpr_num - 1],
-            false,
-        );
+        let second_connector = if fits_single_line || rewrites[1] == "?"
+            || last_line_extendable(&rewrites[0])
+            || context.config.chain_indent() == IndentStyle::Visual
+        {
+            ""
+        } else {
+            &connector
+        };
         format!(
             "{}{}{}{}{}",
             parent_rewrite,
@@ -271,10 +270,6 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     } else {
         Some(result)
     }
-}
-
-fn is_extendable_parent(context: &RewriteContext, parent_str: &str) -> bool {
-    context.config.chain_indent() == IndentStyle::Block && last_line_extendable(parent_str)
 }
 
 // True if the chain is only `?`s.
@@ -442,32 +437,6 @@ fn is_try(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Try(..) => true,
         _ => false,
-    }
-}
-
-fn choose_first_connector<'a>(
-    context: &RewriteContext,
-    parent_str: &str,
-    first_child_str: &str,
-    connector: &'a str,
-    subexpr_list: &[ast::Expr],
-    extend: bool,
-) -> &'a str {
-    if subexpr_list.is_empty() {
-        ""
-    } else if extend || subexpr_list.last().map_or(false, is_try)
-        || is_extendable_parent(context, parent_str)
-    {
-        // 1 = ";", being conservative here.
-        if last_line_width(parent_str) + first_line_width(first_child_str) + 1
-            <= context.config.max_width()
-        {
-            ""
-        } else {
-            connector
-        }
-    } else {
-        connector
     }
 }
 
