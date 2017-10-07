@@ -2491,7 +2491,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
                 type_params: Vec::new(),
                 where_predicates: Vec::new()
             },
-            decl: (&*self.decl, &[][..]).clean(cx),
+            decl: (&*self.decl, &self.arg_names[..]).clean(cx),
             abi: self.abi,
         }
     }

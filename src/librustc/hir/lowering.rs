@@ -673,6 +673,7 @@ impl<'a> LoweringContext<'a> {
                     unsafety: self.lower_unsafety(f.unsafety),
                     abi: f.abi,
                     decl: self.lower_fn_decl(&f.decl),
+                    arg_names: self.lower_fn_args_to_names(&f.decl),
                 }))
             }
             TyKind::Never => hir::TyNever,

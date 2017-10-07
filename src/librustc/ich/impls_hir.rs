@@ -274,7 +274,8 @@ impl_stable_hash_for!(struct hir::BareFnTy {
     unsafety,
     abi,
     lifetimes,
-    decl
+    decl,
+    arg_names
 });
 
 impl_stable_hash_for!(enum hir::Ty_ {
