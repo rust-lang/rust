@@ -1309,13 +1309,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
-            // FIXME(#20297): Self is a type variable (e.g. `_: AsRef<str>`).
+            // Self is a type variable (e.g. `_: AsRef<str>`).
             //
             // This is somewhat problematic, as the current scheme can't really
             // handle it turning to be a projection. This does end up as truly
             // ambiguous in most cases anyway.
             //
-            // Until this is fixed, take the fast path out - this also improves
+            // Take the fast path out - this also improves
             // performance by preventing assemble_candidates_from_impls from
             // matching every impl for this trait.
             return Ok(SelectionCandidateSet { vec: vec![], ambiguous: true });
@@ -1382,8 +1382,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                               candidates: &mut SelectionCandidateSet<'tcx>)
     {
         debug!("assemble_candidates_for_projected_tys({:?})", obligation);
-
-        // FIXME(#20297) -- just examining the self-type is very simplistic
 
         // before we go into the whole skolemization thing, just
         // quickly check if the self-type is a projection at all.
@@ -2174,14 +2172,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::TyClosure(def_id, ref substs) => {
-                // FIXME(#27086). We are invariant w/r/t our
-                // func_substs, but we don't see them as
-                // constituent types; this seems RIGHT but also like
-                // something that a normal type couldn't simulate. Is
-                // this just a gap with the way that PhantomData and
-                // OIBIT interact? That is, there is no way to say
-                // "make me invariant with respect to this TYPE, but
-                // do not act as though I can reach it"
                 substs.upvar_tys(def_id, self.tcx()).collect()
             }
 

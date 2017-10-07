@@ -960,7 +960,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 
             hir::ExprAssignOp(..) | hir::ExprIndex(..) |
             hir::ExprUnary(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) => {
-                // FIXME(#6268) Nested method calls
+                // FIXME(https://github.com/rust-lang/rfcs/issues/811) Nested method calls
                 //
                 // The lifetimes for a call or method call look as follows:
                 //
@@ -1081,8 +1081,6 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     // Here, the expression `[...]` has an extended lifetime due to rule
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
-    //
-    // FIXME(#6308) -- Note that `[]` patterns work more smoothly post-DST.
 
     if let Some(expr) = init {
         record_rvalue_scope_if_borrow_expr(visitor, &expr, blk_scope);

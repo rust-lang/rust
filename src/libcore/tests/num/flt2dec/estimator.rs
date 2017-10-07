@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME https://github.com/kripken/emscripten/issues/4563
-// NB we have to actually not compile this test to avoid
-// an undefined symbol error
-#![cfg(not(target_os = "emscripten"))]
-
 use core::num::flt2dec::estimator::*;
 
 #[test]

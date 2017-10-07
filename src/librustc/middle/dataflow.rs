@@ -171,7 +171,7 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
                            -> FxHashMap<hir::ItemLocalId, Vec<CFGIndex>> {
     let mut index = FxHashMap();
 
-    // FIXME (#6298): Would it be better to fold formals from decl
+    // FIXME(#15020) Would it be better to fold formals from decl
     // into cfg itself?  i.e. introduce a fn-based flow-graph in
     // addition to the current block-based flow-graph, rather than
     // have to put traversals like this here?

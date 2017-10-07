@@ -659,7 +659,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={:?})",
                id, use_kind, lp);
 
-        // FIXME (22079): if you find yourself tempted to cut and paste
+        // FIXME: if you find yourself tempted to cut and paste
         // the body below and then specializing the error reporting,
         // consider refactoring this instead!
 
@@ -720,7 +720,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         // the path must be initialized to prevent a case of
                         // partial reinitialization
                         //
-                        // FIXME (22079): could refactor via hypothetical
+                        // FIXME: could refactor via hypothetical
                         // generalized check_if_path_is_moved
                         let loan_path = owned_ptr_base_path_rc(lp_base);
                         self.move_data.each_move_of(id, &loan_path, |_, _| {

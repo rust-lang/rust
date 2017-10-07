@@ -477,10 +477,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
         let base_ty = self.node_ty(pat.hir_id)?;
-        // FIXME (Issue #18207): This code detects whether we are
-        // looking at a `ref x`, and if so, figures out what the type
-        // *being borrowed* is.  But ideally we would put in a more
-        // fundamental fix to this conflated use of the node id.
+        // This code detects whether we are looking at a `ref x`,
+        // and if so, figures out what the type *being borrowed* is.
         let ret_ty = match pat.node {
             PatKind::Binding(..) => {
                 let bm = *self.tables
