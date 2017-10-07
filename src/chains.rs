@@ -254,14 +254,14 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
             first_connector,
             rewrites[0],
             second_connector,
-            join_rewrites(&rewrites[1..], &subexpr_list[..subexpr_num - 1], &connector)
+            join_rewrites(&rewrites[1..], &connector)
         )
     } else {
         format!(
             "{}{}{}",
             parent_rewrite,
             first_connector,
-            join_rewrites(&rewrites, subexpr_list, &connector)
+            join_rewrites(&rewrites, &connector)
         )
     };
     let result = format!("{}{}", result, repeat_try(suffix_try_num));
@@ -297,17 +297,14 @@ fn rewrite_try(
     Some(format!("{}{}", sub_expr, repeat_try(try_count)))
 }
 
-fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) -> String {
+fn join_rewrites(rewrites: &[String], connector: &str) -> String {
     let mut rewrite_iter = rewrites.iter();
     let mut result = rewrite_iter.next().unwrap().clone();
-    let mut subexpr_iter = subexps.iter().rev();
-    subexpr_iter.next();
 
-    for (rewrite, expr) in rewrite_iter.zip(subexpr_iter) {
-        match expr.node {
-            ast::ExprKind::Try(_) => (),
-            _ => result.push_str(connector),
-        };
+    for rewrite in rewrite_iter {
+        if rewrite != "?" {
+            result.push_str(connector);
+        }
         result.push_str(&rewrite[..]);
     }
 
