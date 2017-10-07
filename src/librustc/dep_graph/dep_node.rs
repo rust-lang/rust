@@ -506,6 +506,7 @@ define_dep_nodes!( <'tcx>
     [] SpecializationGraph(DefId),
     [] ObjectSafety(DefId),
     [] FulfillObligation { param_env: ParamEnv<'tcx>, trait_ref: PolyTraitRef<'tcx> },
+    [] VtableMethods { trait_ref: PolyTraitRef<'tcx> },
 
     [] IsCopy { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },

@@ -849,7 +849,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             assert!(!poly_trait_ref.has_escaping_regions());
 
             // Walk all methods of the trait, including those of its supertraits
-            let methods = traits::get_vtable_methods(tcx, poly_trait_ref);
+            let methods = tcx.vtable_methods(poly_trait_ref);
             let methods = methods.into_iter().filter_map(|method| method)
                 .map(|(def_id, substs)| ty::Instance::resolve(
                         tcx,

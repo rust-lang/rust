@@ -650,12 +650,12 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-pub fn get_vtable_methods<'a, 'tcx>(
+pub fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
     -> Vec<Option<(DefId, &'tcx Substs<'tcx>)>>
 {
-    debug!("get_vtable_methods({:?})", trait_ref);
+    debug!("vtable_methods({:?})", trait_ref);
 
     supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
         let trait_methods = tcx.associated_items(trait_ref.def_id())
@@ -664,12 +664,12 @@ pub fn get_vtable_methods<'a, 'tcx>(
         // Now list each method's DefId and Substs (for within its trait).
         // If the method can never be called from this object, produce None.
         trait_methods.map(move |trait_method| {
-            debug!("get_vtable_methods: trait_method={:?}", trait_method);
+            debug!("vtable_methods: trait_method={:?}", trait_method);
             let def_id = trait_method.def_id;
 
             // Some methods cannot be called on an object; skip those.
             if !tcx.is_vtable_safe_method(trait_ref.def_id(), &trait_method) {
-                debug!("get_vtable_methods: not vtable safe");
+                debug!("vtable_methods: not vtable safe");
                 return None;
             }
 
@@ -690,7 +690,7 @@ pub fn get_vtable_methods<'a, 'tcx>(
             // do not want to try and trans it, in that case (see #23435).
             let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
             if !normalize_and_test_predicates(tcx, predicates.predicates) {
-                debug!("get_vtable_methods: predicates do not hold");
+                debug!("vtable_methods: predicates do not hold");
                 return None;
             }
 
@@ -836,6 +836,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         trans_fulfill_obligation: trans::trans_fulfill_obligation,
+        vtable_methods,
         ..*providers
     };
 }
@@ -846,6 +847,7 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         trans_fulfill_obligation: trans::trans_fulfill_obligation,
+        vtable_methods,
         ..*providers
     };
 }

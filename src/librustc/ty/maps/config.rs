@@ -503,6 +503,12 @@ impl<'tcx> QueryDescription for queries::has_clone_closures<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::vtable_methods<'tcx> {
+    fn describe(tcx: TyCtxt, key: ty::PolyTraitRef<'tcx> ) -> String {
+        format!("finding all methods for trait {}", tcx.item_path_str(key.def_id()))
+    }
+}
+
 impl<'tcx> QueryDescription for queries::has_copy_closures<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("seeing if the crate has enabled `Copy` closures")

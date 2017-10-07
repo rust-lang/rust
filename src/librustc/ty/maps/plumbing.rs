@@ -749,6 +749,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CodegenUnit |
         DepKind::CompileCodegenUnit |
         DepKind::FulfillObligation |
+        DepKind::VtableMethods |
 
         // These are just odd
         DepKind::Null |
