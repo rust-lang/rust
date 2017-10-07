@@ -160,11 +160,13 @@ impl hir::Pat {
         variants
     }
 
-    /// Checks if the pattern contains any `ref` or `ref mut` bindings,
-    /// and if yes whether it contains mutable or just immutables ones.
+    /// Checks if the pattern contains any `ref` or `ref mut` bindings, and if
+    /// yes whether it contains mutable or just immutables ones.
     ///
-    /// FIXME(tschottdorf): this is problematic as the HIR is being scraped,
-    /// but ref bindings may be implicit after #42640.
+    /// FIXME(tschottdorf): this is problematic as the HIR is being scraped, but
+    /// ref bindings are be implicit after #42640 (default match binding modes).
+    ///
+    /// See #44848.
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| {
@@ -188,7 +190,9 @@ impl hir::Arm {
     /// bindings, and if yes whether its containing mutable ones or just immutables ones.
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         // FIXME(tschottdorf): contains_explicit_ref_binding() must be removed
-        // for #42640.
+        // for #42640 (default match binding modes).
+        //
+        // See #44848.
         self.pats.iter()
                  .filter_map(|pat| pat.contains_explicit_ref_binding())
                  .max_by_key(|m| match *m {

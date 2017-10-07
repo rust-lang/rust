@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # emscripten
 COPY scripts/emscripten-wasm.sh /scripts/
-COPY disabled/wasm32-exp/node.sh /usr/local/bin/node
+COPY wasm32-exp/node.sh /usr/local/bin/node
 RUN bash /scripts/emscripten-wasm.sh
 
 # cache

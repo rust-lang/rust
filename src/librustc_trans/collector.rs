@@ -296,26 +296,22 @@ pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  mode: TransItemCollectionMode)
                                                  -> (FxHashSet<TransItem<'tcx>>,
                                                      InliningMap<'tcx>) {
-    // We are not tracking dependencies of this pass as it has to be re-executed
-    // every time no matter what.
-    tcx.dep_graph.with_ignore(|| {
-        let roots = collect_roots(tcx, mode);
+    let roots = collect_roots(tcx, mode);
 
-        debug!("Building translation item graph, beginning at roots");
-        let mut visited = FxHashSet();
-        let mut recursion_depths = DefIdMap();
-        let mut inlining_map = InliningMap::new();
+    debug!("Building translation item graph, beginning at roots");
+    let mut visited = FxHashSet();
+    let mut recursion_depths = DefIdMap();
+    let mut inlining_map = InliningMap::new();
 
-        for root in roots {
-            collect_items_rec(tcx,
-                              root,
-                              &mut visited,
-                              &mut recursion_depths,
-                              &mut inlining_map);
-        }
+    for root in roots {
+        collect_items_rec(tcx,
+                          root,
+                          &mut visited,
+                          &mut recursion_depths,
+                          &mut inlining_map);
+    }
 
-        (visited, inlining_map)
-    })
+    (visited, inlining_map)
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
@@ -566,7 +562,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         if let ConstVal::Unevaluated(def_id, substs) = constant.val {
             let substs = self.tcx.trans_apply_param_substs(self.param_substs,
                                                            &substs);
-            let instance = monomorphize::resolve(self.tcx, def_id, substs);
+            let instance = ty::Instance::resolve(self.tcx,
+                                                 ty::ParamEnv::empty(traits::Reveal::All),
+                                                 def_id,
+                                                 substs).unwrap();
             collect_neighbours(self.tcx, instance, true, self.output);
         }
 
@@ -587,7 +586,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
                 let constness = match (self.const_context, &callee_ty.sty) {
                     (true, &ty::TyFnDef(def_id, substs)) if self.tcx.is_const_fn(def_id) => {
-                        let instance = monomorphize::resolve(self.tcx, def_id, substs);
+                        let instance =
+                            ty::Instance::resolve(self.tcx,
+                                                  ty::ParamEnv::empty(traits::Reveal::All),
+                                                  def_id,
+                                                  substs).unwrap();
                         Some(instance)
                     }
                     _ => None
@@ -657,7 +660,10 @@ fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           output: &mut Vec<TransItem<'tcx>>)
 {
     if let ty::TyFnDef(def_id, substs) = ty.sty {
-        let instance = monomorphize::resolve(tcx, def_id, substs);
+        let instance = ty::Instance::resolve(tcx,
+                                             ty::ParamEnv::empty(traits::Reveal::All),
+                                             def_id,
+                                             substs).unwrap();
         visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
@@ -845,7 +851,11 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Walk all methods of the trait, including those of its supertraits
             let methods = traits::get_vtable_methods(tcx, poly_trait_ref);
             let methods = methods.filter_map(|method| method)
-                .map(|(def_id, substs)| monomorphize::resolve(tcx, def_id, substs))
+                .map(|(def_id, substs)| ty::Instance::resolve(
+                        tcx,
+                        ty::ParamEnv::empty(traits::Reveal::All),
+                        def_id,
+                        substs).unwrap())
                 .filter(|&instance| should_trans_locally(tcx, &instance))
                 .map(|instance| create_fn_trans_item(instance));
             output.extend(methods);
@@ -1000,8 +1010,10 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    let instance =
-                        monomorphize::resolve(tcx, method.def_id, callee_substs);
+                    let instance = ty::Instance::resolve(tcx,
+                                                         ty::ParamEnv::empty(traits::Reveal::All),
+                                                         method.def_id,
+                                                         callee_substs).unwrap();
 
                     let trans_item = create_fn_trans_item(instance);
                     if trans_item.is_instantiable(tcx) && should_trans_locally(tcx, &instance) {

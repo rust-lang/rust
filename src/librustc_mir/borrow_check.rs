@@ -385,7 +385,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         // borrow of immutable ref, moves through non-`Box`-ref)
         let (sd, rw) = kind;
         self.each_borrow_involving_path(
-            context, (sd, lvalue_span.0), flow_state, |this, _index, borrow| {
+            context, (sd, lvalue_span.0), flow_state, |this, _index, borrow, common_prefix| {
                 match (rw, borrow.kind) {
                     (Read(_), BorrowKind::Shared) => {
                         Control::Continue
@@ -396,26 +396,34 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                             ReadKind::Copy =>
                                 this.report_use_while_mutably_borrowed(
                                     context, lvalue_span, borrow),
-                            ReadKind::Borrow(bk) =>
+                            ReadKind::Borrow(bk) => {
+                                let end_issued_loan_span =
+                                    flow_state.borrows.base_results.operator().region_span(
+                                        &borrow.region).end_point();
                                 this.report_conflicting_borrow(
-                                    context, lvalue_span,
-                                    (lvalue_span.0, bk), (&borrow.lvalue, borrow.kind)),
+                                    context, common_prefix, lvalue_span, bk,
+                                    &borrow, end_issued_loan_span)
+                            }
                         }
                         Control::Break
                     }
                     (Write(kind), _) => {
                         match kind {
-                            WriteKind::MutableBorrow(bk) =>
+                            WriteKind::MutableBorrow(bk) => {
+                                let end_issued_loan_span =
+                                    flow_state.borrows.base_results.operator().region_span(
+                                        &borrow.region).end_point();
                                 this.report_conflicting_borrow(
-                                    context, lvalue_span,
-                                    (lvalue_span.0, bk), (&borrow.lvalue, borrow.kind)),
+                                    context, common_prefix, lvalue_span, bk,
+                                    &borrow, end_issued_loan_span)
+                            }
                             WriteKind::StorageDead |
                             WriteKind::Mutate =>
                                 this.report_illegal_mutation_of_borrowed(
                                     context, lvalue_span, borrow),
                             WriteKind::Move =>
                                 this.report_move_out_while_borrowed(
-                                    context, lvalue_span, borrow),
+                                    context, lvalue_span, &borrow),
                         }
                         Control::Break
                     }
@@ -704,7 +712,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                      access_lvalue: (ShallowOrDeep, &Lvalue<'gcx>),
                                      flow_state: &InProgress<'b, 'gcx>,
                                      mut op: F)
-        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'gcx>) -> Control
+        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'gcx>, &Lvalue) -> Control
     {
         let (access, lvalue) = access_lvalue;
 
@@ -726,9 +734,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             // to #38899. Will probably need back-compat mode flag.
             for accessed_prefix in self.prefixes(lvalue, PrefixSet::All) {
                 if *accessed_prefix == borrowed.lvalue {
-                    // FIXME: pass in prefix here too? And/or enum
-                    // describing case we are in?
-                    let ctrl = op(self, i, borrowed);
+                    // FIXME: pass in enum describing case we are in?
+                    let ctrl = op(self, i, borrowed, accessed_prefix);
                     if ctrl == Control::Break { return; }
                 }
             }
@@ -753,9 +760,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
             for borrowed_prefix in self.prefixes(&borrowed.lvalue, prefix_kind) {
                 if borrowed_prefix == lvalue {
-                    // FIXME: pass in prefix here too? And/or enum
-                    // describing case we are in?
-                    let ctrl = op(self, i, borrowed);
+                    // FIXME: pass in enum describing case we are in?
+                    let ctrl = op(self, i, borrowed, borrowed_prefix);
                     if ctrl == Control::Break { return; }
                 }
             }
@@ -779,6 +785,30 @@ mod prefixes {
     use rustc::hir;
     use rustc::ty::{self, TyCtxt};
     use rustc::mir::{Lvalue, Mir, ProjectionElem};
+
+    pub trait IsPrefixOf<'tcx> {
+        fn is_prefix_of(&self, other: &Lvalue<'tcx>) -> bool;
+    }
+
+    impl<'tcx> IsPrefixOf<'tcx> for Lvalue<'tcx> {
+        fn is_prefix_of(&self, other: &Lvalue<'tcx>) -> bool {
+            let mut cursor = other;
+            loop {
+                if self == cursor {
+                    return true;
+                }
+
+                match *cursor {
+                    Lvalue::Local(_) |
+                    Lvalue::Static(_) => return false,
+                    Lvalue::Projection(ref proj) => {
+                        cursor = &proj.base;
+                    }
+                }
+            }
+        }
+    }
+
 
     pub(super) struct Prefixes<'c, 'tcx: 'c> {
         mir: &'c Mir<'tcx>,
@@ -931,58 +961,60 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                          _context: Context,
                                          (lvalue, span): (&Lvalue, Span),
                                          borrow : &BorrowData) {
-        let described_lvalue = self.describe_lvalue(lvalue);
-        let borrow_span = self.retrieve_borrow_span(borrow);
 
         let mut err = self.tcx.cannot_use_when_mutably_borrowed(
-            span, &described_lvalue, Origin::Mir);
-
-        err.span_label(borrow_span, format!("borrow of `{}` occurs here", described_lvalue));
-        err.span_label(span, format!("use of borrowed `{}`", described_lvalue));
+            span, &self.describe_lvalue(lvalue),
+            self.retrieve_borrow_span(borrow), &self.describe_lvalue(&borrow.lvalue),
+            Origin::Mir);
 
         err.emit();
     }
 
     fn report_conflicting_borrow(&mut self,
                                  _context: Context,
+                                 common_prefix: &Lvalue,
                                  (lvalue, span): (&Lvalue, Span),
-                                 loan1: (&Lvalue, BorrowKind),
-                                 loan2: (&Lvalue, BorrowKind)) {
-        let (loan1_lvalue, loan1_kind) = loan1;
-        let (loan2_lvalue, loan2_kind) = loan2;
-        // FIXME: obviously falsifiable. Generalize for non-eq lvalues later.
-        assert_eq!(loan1_lvalue, loan2_lvalue);
+                                 gen_borrow_kind: BorrowKind,
+                                 issued_borrow: &BorrowData,
+                                 end_issued_loan_span: Span) {
+        use self::prefixes::IsPrefixOf;
+
+        assert!(common_prefix.is_prefix_of(lvalue));
+        assert!(common_prefix.is_prefix_of(&issued_borrow.lvalue));
+
+        let issued_span = self.retrieve_borrow_span(issued_borrow);
 
         // FIXME: supply non-"" `opt_via` when appropriate
-        let mut err = match (loan1_kind, "immutable", "mutable",
-                             loan2_kind, "immutable", "mutable") {
+        let mut err = match (gen_borrow_kind, "immutable", "mutable",
+                             issued_borrow.kind, "immutable", "mutable") {
             (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt) |
             (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) =>
                 self.tcx.cannot_reborrow_already_borrowed(
-                    span, &self.describe_lvalue(lvalue),
-                    "", lft, "it", rgt, "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "", lft, issued_span,
+                    "it", rgt, "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Mut, _, _, BorrowKind::Mut, _, _) =>
                 self.tcx.cannot_mutably_borrow_multiply(
-                    span, &self.describe_lvalue(lvalue), "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "", issued_span,
+                    "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) =>
                 self.tcx.cannot_uniquely_borrow_by_two_closures(
-                    span, &self.describe_lvalue(lvalue), Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), issued_span,
+                    end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Unique, _, _, _, _, _) =>
                 self.tcx.cannot_uniquely_borrow_by_one_closure(
-                    span, &self.describe_lvalue(lvalue), "it", "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "",
+                    issued_span, "it", "", end_issued_loan_span, Origin::Mir),
 
             (_, _, _, BorrowKind::Unique, _, _) =>
                 self.tcx.cannot_reborrow_already_uniquely_borrowed(
-                    span, &self.describe_lvalue(lvalue), "it", "", Origin::Mir),
+                    span, &self.describe_lvalue(lvalue), "it", "",
+                    issued_span, "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) =>
                 unreachable!(),
-
-            // FIXME: add span labels for first and second mutable borrows, as well as
-            // end point for first.
         };
         err.emit();
     }
@@ -991,14 +1023,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                            _: Context,
                                            (lvalue, span): (&Lvalue, Span),
                                            loan: &BorrowData) {
-        let describe_lvalue = self.describe_lvalue(lvalue);
-        let borrow_span = self.retrieve_borrow_span(loan);
-
         let mut err = self.tcx.cannot_assign_to_borrowed(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
-
-        err.span_label(borrow_span, format!("borrow of `{}` occurs here", describe_lvalue));
-        err.span_label(span, format!("assignment to borrowed `{}` occurs here", describe_lvalue));
+            span, self.retrieve_borrow_span(loan), &self.describe_lvalue(lvalue), Origin::Mir);
 
         err.emit();
     }
@@ -1019,7 +1045,6 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn report_assignment_to_static(&mut self, _context: Context, (lvalue, span): (&Lvalue, Span)) {
         let mut err = self.tcx.cannot_assign_static(
             span, &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME: add span labels for borrow and assignment points
         err.emit();
     }
 }

@@ -27,47 +27,32 @@
 //! the HIR doesn't change as a result of the annotations, which might
 //! perturb the reuse results.
 
+use rustc::dep_graph::{DepNode, DepConstructor};
 use rustc::ty::TyCtxt;
 use syntax::ast;
-
-use {ModuleSource, ModuleTranslation};
-
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_TRANSLATED};
 
 const MODULE: &'static str = "module";
 const CFG: &'static str = "cfg";
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Disposition { Reused, Translated }
+enum Disposition { Reused, Translated }
 
-impl ModuleTranslation {
-    pub fn disposition(&self) -> (String, Disposition) {
-        let disposition = match self.source {
-            ModuleSource::Preexisting(_) => Disposition::Reused,
-            ModuleSource::Translated(_) => Disposition::Translated,
-        };
-
-        (self.name.clone(), disposition)
-    }
-}
-
-pub(crate) fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                              modules: &[(String, Disposition)]) {
+pub(crate) fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if tcx.sess.opts.incremental.is_none() {
         return;
     }
 
-    let ams = AssertModuleSource { tcx: tcx, modules: modules };
+    let ams = AssertModuleSource { tcx };
     for attr in &tcx.hir.krate().attrs {
         ams.check_attr(attr);
     }
 }
 
 struct AssertModuleSource<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    modules: &'a [(String, Disposition)],
+    tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 
 impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
@@ -86,32 +71,31 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
         }
 
         let mname = self.field(attr, MODULE);
-        let mtrans = self.modules.iter().find(|&&(ref name, _)| name == mname.as_str());
-        let mtrans = match mtrans {
-            Some(m) => m,
-            None => {
-                debug!("module name `{}` not found amongst:", mname);
-                for &(ref name, ref disposition) in self.modules {
-                    debug!("module named `{}` with disposition {:?}",
-                           name,
-                           disposition);
+
+        let dep_node = DepNode::new(self.tcx,
+                                    DepConstructor::CompileCodegenUnit(mname.as_str()));
+
+        if let Some(loaded_from_cache) = self.tcx.dep_graph.was_loaded_from_cache(&dep_node) {
+            match (disposition, loaded_from_cache) {
+                (Disposition::Reused, false) => {
+                    self.tcx.sess.span_err(
+                        attr.span,
+                        &format!("expected module named `{}` to be Reused but is Translated",
+                                 mname));
                 }
-
-                self.tcx.sess.span_err(
-                    attr.span,
-                    &format!("no module named `{}`", mname));
-                return;
+                (Disposition::Translated, true) => {
+                    self.tcx.sess.span_err(
+                        attr.span,
+                        &format!("expected module named `{}` to be Translated but is Reused",
+                                 mname));
+                }
+                (Disposition::Reused, true) |
+                (Disposition::Translated, false) => {
+                    // These are what we would expect.
+                }
             }
-        };
-
-        let mtrans_disposition = mtrans.1;
-        if disposition != mtrans_disposition {
-            self.tcx.sess.span_err(
-                attr.span,
-                &format!("expected module named `{}` to be {:?} but is {:?}",
-                         mname,
-                         disposition,
-                         mtrans_disposition));
+        } else {
+            self.tcx.sess.span_err(attr.span, &format!("no module named `{}`", mname));
         }
     }
 

@@ -1,0 +1,10 @@
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/for.rs:18:13
+   |
+18 |     for (n, mut m) in &tups {
+   |          -  ^^^^^ by-move pattern here
+   |          |
+   |          both by-ref and by-move used
+
+error: aborting due to previous error
+

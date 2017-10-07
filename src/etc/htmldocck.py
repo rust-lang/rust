@@ -99,6 +99,8 @@ There are a number of supported commands:
 * `@count PATH XPATH COUNT' checks for the occurrence of given XPath
   in the given file. The number of occurrences must match the given count.
 
+* `@has-dir PATH` checks for the existence of the given directory.
+
 All conditions can be negated with `!`. `@!has foo/type.NoSuch.html`
 checks if the given file does not exist, for example.
 
@@ -308,6 +310,12 @@ class CachedFiles(object):
             self.trees[path] = tree
             return self.trees[path]
 
+    def get_dir(self, path):
+        path = self.resolve_path(path)
+        abspath = os.path.join(self.root, path)
+        if not(os.path.exists(abspath) and os.path.isdir(abspath)):
+            raise FailedCheck('Directory does not exist {!r}'.format(path))
+
 
 def check_string(data, pat, regexp):
     if not pat:
@@ -405,6 +413,16 @@ def check_command(c, cache):
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = expected == found
+            else:
+                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+        elif c.cmd == 'has-dir': # has-dir test
+            if len(c.args) == 1: # @has-dir <path> = has-dir test
+                try:
+                    cache.get_dir(c.args[0])
+                    ret = True
+                except FailedCheck as err:
+                    cerr = str(err)
+                    ret = False
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
         elif c.cmd == 'valid-html':

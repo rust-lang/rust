@@ -1037,7 +1037,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
         // Check the pattern.
-        fcx.check_pat_arg(&arg.pat, arg_ty, true);
+        fcx.check_pat_walk(&arg.pat, arg_ty,
+            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable), true);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -1248,6 +1249,7 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            trait_def: &ty::TraitDef,
+                                           trait_item: &ty::AssociatedItem,
                                            impl_id: DefId,
                                            impl_item: &hir::ImplItem)
 {
@@ -1258,7 +1260,8 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ImplItemKind::Method(..) => ty::AssociatedKind::Method,
         hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
     };
-    let parent = ancestors.defs(tcx, impl_item.name, kind).skip(1).next()
+
+    let parent = ancestors.defs(tcx, trait_item.name, kind, trait_def.def_id).skip(1).next()
         .map(|node_item| node_item.map(|parent| parent.defaultness));
 
     if let Some(parent) = parent {
@@ -1290,7 +1293,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for impl_item in impl_items() {
         let ty_impl_item = tcx.associated_item(tcx.hir.local_def_id(impl_item.id));
         let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
-            .find(|ac| ac.name == ty_impl_item.name);
+            .find(|ac| tcx.hygienic_eq(ty_impl_item.name, ac.name, impl_trait_ref.def_id));
 
         // Check that impl definition matches trait definition
         if let Some(ty_trait_item) = ty_trait_item {
@@ -1371,9 +1374,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     }
                 }
             }
-        }
 
-        check_specialization_validity(tcx, trait_def, impl_id, impl_item);
+            check_specialization_validity(tcx, trait_def, &ty_trait_item, impl_id, impl_item);
+        }
     }
 
     // Check for missing items from trait
@@ -1382,7 +1385,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
         let is_implemented = trait_def.ancestors(tcx, impl_id)
-            .defs(tcx, trait_item.name, trait_item.kind)
+            .defs(tcx, trait_item.name, trait_item.kind, impl_trait_ref.def_id)
             .next()
             .map(|node_item| !node_item.node.is_from_trait())
             .unwrap_or(false);
@@ -2009,7 +2012,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.tables.borrow().node_types().get(id) {
             Some(&t) => t,
-            None if self.err_count_since_creation() != 0 => self.tcx.types.err,
+            None if self.is_tainted_by_errors() => self.tcx.types.err,
             None => {
                 let node_id = self.tcx.hir.definitions().find_node_for_hir_id(id);
                 bug!("no type for node {}: {} in fcx {}",
@@ -4104,6 +4107,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (self.to_ty(qself), segment)
             }
         };
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        if let Some(cached_def) = self.tables.borrow().type_dependent_defs().get(hir_id) {
+            // Return directly on cache hit. This is useful to avoid doubly reporting
+            // errors with default match binding modes. See #44614.
+            return (*cached_def, Some(ty), slice::ref_slice(&**item_segment))
+        }
         let item_name = item_segment.name;
         let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
             Ok(def) => def,
@@ -4120,7 +4129,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Write back the new resolution.
-        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
         self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
         (def, Some(ty), slice::ref_slice(&**item_segment))
     }
@@ -4130,7 +4138,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   init: &'gcx hir::Expr) -> Ty<'tcx>
     {
         // FIXME(tschottdorf): contains_explicit_ref_binding() must be removed
-        // for #42640.
+        // for #42640 (default match binding modes).
+        //
+        // See #44848.
         let ref_bindings = local.pat.contains_explicit_ref_binding();
 
         let local_ty = self.local_ty(init.span, local.id);
@@ -4162,7 +4172,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.check_pat(&local.pat, t);
+        self.check_pat_walk(&local.pat, t,
+                            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
+                            true);
         let pat_ty = self.node_ty(local.pat.hir_id);
         if pat_ty.references_error() {
             self.write_ty(local.hir_id, pat_ty);

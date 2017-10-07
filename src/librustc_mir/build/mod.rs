@@ -311,19 +311,7 @@ struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct ScopeId(u32);
-
-impl Idx for ScopeId {
-    fn new(index: usize) -> ScopeId {
-        assert!(index < (u32::MAX as usize));
-        ScopeId(index as u32)
-    }
-
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+newtype_index!(ScopeId);
 
 ///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a

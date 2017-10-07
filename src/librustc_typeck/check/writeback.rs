@@ -197,6 +197,8 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             _ => {}
         };
 
+        self.visit_pat_adjustments(p.span, p.hir_id);
+
         self.visit_node_id(p.span, p.hir_id);
         intravisit::walk_pat(self, p);
     }
@@ -362,6 +364,25 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
                 debug!("Adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
                 self.tables.adjustments_mut().insert(hir_id, resolved_adjustment);
+            }
+        }
+    }
+
+    fn visit_pat_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
+        let adjustment = self.fcx
+                             .tables
+                             .borrow_mut()
+                             .pat_adjustments_mut()
+                             .remove(hir_id);
+        match adjustment {
+            None => {
+                debug!("No pat_adjustments for node {:?}", hir_id);
+            }
+
+            Some(adjustment) => {
+                let resolved_adjustment = self.resolve(&adjustment, &span);
+                debug!("pat_adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
+                self.tables.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
     }

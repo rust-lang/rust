@@ -2,7 +2,7 @@ warning: unnecessary parentheses around `return` value
   --> $DIR/path-lookahead.rs:18:10
    |
 18 |   return (<T as ToString>::to_string(&arg)); //~WARN unnecessary parentheses around `return` value
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
    |
    = note: #[warn(unused_parens)] on by default
 

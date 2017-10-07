@@ -162,9 +162,21 @@ impl CodeMap {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
+        // The path is used to determine the directory for loading submodules and
+        // include files, so it must be before remapping.
+        // Note that filename may not be a valid path, eg it may be `<anon>` etc,
+        // but this is okay because the directory determined by `path.pop()` will
+        // be empty, so the working directory will be used.
+        let unmapped_path = PathBuf::from(filename.clone());
+
         let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
-        let filemap =
-            Rc::new(FileMap::new(filename, was_remapped, src, Pos::from_usize(start_pos)));
+        let filemap = Rc::new(FileMap::new(
+            filename,
+            was_remapped,
+            unmapped_path,
+            src,
+            Pos::from_usize(start_pos),
+        ));
 
         files.push(filemap.clone());
 
@@ -216,6 +228,7 @@ impl CodeMap {
         let filemap = Rc::new(FileMap {
             name: filename,
             name_was_remapped,
+            unmapped_path: None,
             crate_of_origin,
             src: None,
             src_hash,
@@ -342,7 +355,12 @@ impl CodeMap {
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
-        self.lookup_char_pos(sp.lo()).file.name.to_string()
+        self.lookup_char_pos(sp.lo()).file.name.clone()
+    }
+
+    pub fn span_to_unmapped_path(&self, sp: Span) -> PathBuf {
+        self.lookup_char_pos(sp.lo()).file.unmapped_path.clone()
+            .expect("CodeMap::span_to_unmapped_path called for imported FileMap?")
     }
 
     pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {

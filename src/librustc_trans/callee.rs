@@ -19,9 +19,10 @@ use common::{self, CrateContext};
 use consts;
 use declare;
 use llvm::{self, ValueRef};
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use rustc::hir::def_id::DefId;
-use rustc::ty::TypeFoldable;
+use rustc::ty::{self, TypeFoldable};
+use rustc::traits;
 use rustc::ty::subst::Substs;
 use type_of;
 
@@ -155,17 +156,14 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
 
-        // FIXME(#42293) we should actually track this, but fails too many tests
-        // today.
-        tcx.dep_graph.with_ignore(|| {
-            if ccx.use_dll_storage_attrs() &&
-                tcx.is_dllimport_foreign_item(instance_def_id)
-            {
-                unsafe {
-                    llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
-                }
+        if ccx.use_dll_storage_attrs() &&
+            tcx.is_dllimport_foreign_item(instance_def_id)
+        {
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
             }
-        });
+        }
+
         llfn
     };
 
@@ -179,5 +177,13 @@ pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     substs: &'tcx Substs<'tcx>)
                                     -> ValueRef
 {
-    get_fn(ccx, monomorphize::resolve(ccx.tcx(), def_id, substs))
+    get_fn(
+        ccx,
+        ty::Instance::resolve(
+            ccx.tcx(),
+            ty::ParamEnv::empty(traits::Reveal::All),
+            def_id,
+            substs
+        ).unwrap()
+    )
 }

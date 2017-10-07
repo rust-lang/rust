@@ -2047,10 +2047,8 @@ impl str {
     /// ```
     #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_string(self: Box<str>) -> String {
-        unsafe {
-            let slice = mem::transmute::<Box<str>, Box<[u8]>>(self);
-            String::from_utf8_unchecked(slice.into_vec())
-        }
+        let slice = Box::<[u8]>::from(self);
+        unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
     /// Create a [`String`] by repeating a string `n` times.
@@ -2087,5 +2085,5 @@ impl str {
 /// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    mem::transmute(v)
+    Box::from_raw(Box::into_raw(v) as *mut str)
 }

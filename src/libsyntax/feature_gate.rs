@@ -378,7 +378,7 @@ declare_features! (
     // #[doc(cfg(...))]
     (active, doc_cfg, "1.21.0", Some(43781)),
     // #[doc(masked)]
-    (active, doc_masked, "1.21.0", None),
+    (active, doc_masked, "1.21.0", Some(44027)),
 
     // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),
@@ -395,6 +395,9 @@ declare_features! (
 
     // allow `..=` in patterns (RFC 1192)
     (active, dotdoteq_in_patterns, "1.22.0", Some(28237)),
+
+    // Default match binding modes (RFC 2005)
+    (active, match_default_bindings, "1.22.0", Some(42640)),
 );
 
 declare_features! (
@@ -824,7 +827,8 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("no_debug", Whitelisted, Gated(
         Stability::Deprecated("https://github.com/rust-lang/rust/issues/29721"),
         "no_debug",
-        "the `#[no_debug]` attribute is an experimental feature",
+        "the `#[no_debug]` attribute was an experimental feature that has been \
+         deprecated due to lack of demand",
         cfg_fn!(no_debug))),
     ("omit_gdb_pretty_printer_section", Whitelisted, Gated(Stability::Unstable,
                                                        "omit_gdb_pretty_printer_section",

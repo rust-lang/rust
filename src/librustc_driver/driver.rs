@@ -642,8 +642,8 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     );
 
     let dep_graph = if sess.opts.build_dep_graph() {
-        let prev_dep_graph = time(time_passes, "load prev dep-graph (new)", || {
-            rustc_incremental::load_dep_graph_new(sess)
+        let prev_dep_graph = time(time_passes, "load prev dep-graph", || {
+            rustc_incremental::load_dep_graph(sess)
         });
 
         DepGraph::new(prev_dep_graph)
@@ -1052,9 +1052,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              tx,
                              output_filenames,
                              |tcx| {
-        time(time_passes,
-             "load_dep_graph",
-             || rustc_incremental::load_dep_graph(tcx));
+        // Do some initialization of the DepGraph that can only be done with the
+        // tcx available.
+        rustc_incremental::dep_graph_tcx_init(tcx);
 
         time(time_passes,
              "stability checking",

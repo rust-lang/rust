@@ -19,10 +19,10 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// A mutual exclusion primitive useful for protecting shared data
 ///
 /// This mutex will block threads waiting for the lock to become available. The
-/// mutex can also be statically initialized or created via a `new`
+/// mutex can also be statically initialized or created via a [`new`]
 /// constructor. Each mutex has a type parameter which represents the data that
 /// it is protecting. The data can only be accessed through the RAII guards
-/// returned from `lock` and `try_lock`, which guarantees that the data is only
+/// returned from [`lock`] and [`try_lock`], which guarantees that the data is only
 /// ever accessed when the mutex is locked.
 ///
 /// # Poisoning
@@ -33,15 +33,23 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// data by default as it is likely tainted (some invariant is not being
 /// upheld).
 ///
-/// For a mutex, this means that the `lock` and `try_lock` methods return a
-/// `Result` which indicates whether a mutex has been poisoned or not. Most
-/// usage of a mutex will simply `unwrap()` these results, propagating panics
+/// For a mutex, this means that the [`lock`] and [`try_lock`] methods return a
+/// [`Result`] which indicates whether a mutex has been poisoned or not. Most
+/// usage of a mutex will simply [`unwrap()`] these results, propagating panics
 /// among threads to ensure that a possibly invalid invariant is not witnessed.
 ///
 /// A poisoned mutex, however, does not prevent all access to the underlying
-/// data. The `PoisonError` type has an `into_inner` method which will return
+/// data. The [`PoisonError`] type has an [`into_inner`] method which will return
 /// the guard that would have otherwise been returned on a successful lock. This
 /// allows access to the data, despite the lock being poisoned.
+///
+/// [`new`]: #method.new
+/// [`lock`]: #method.lock
+/// [`try_lock`]: #method.try_lock
+/// [`Result`]: ../../std/result/enum.Result.html
+/// [`unwrap()`]: ../../std/result/enum.Result.html#method.unwrap
+/// [`PoisonError`]: ../../std/sync/struct.PoisonError.html
+/// [`into_inner`]: ../../std/sync/struct.PoisonError.html#method.into_inner
 ///
 /// # Examples
 ///
@@ -226,7 +234,7 @@ impl<T: ?Sized> Mutex<T> {
 
     /// Attempts to acquire this lock.
     ///
-    /// If the lock could not be acquired at this time, then `Err` is returned.
+    /// If the lock could not be acquired at this time, then [`Err`] is returned.
     /// Otherwise, an RAII guard is returned. The lock will be unlocked when the
     /// guard is dropped.
     ///
@@ -237,6 +245,8 @@ impl<T: ?Sized> Mutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
+    ///
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///

@@ -65,8 +65,8 @@ use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
 
 use ich::Fingerprint;
-use ty::{TyCtxt, Instance, InstanceDef};
-use ty::fast_reject::SimplifiedType;
+use ty::{TyCtxt, Instance, InstanceDef, ParamEnvAnd, Ty};
+use ty::subst::Substs;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
 use std::fmt;
@@ -347,7 +347,7 @@ impl fmt::Debug for DepNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.kind)?;
 
-        if !self.kind.has_params() {
+        if !self.kind.has_params() && !self.kind.is_anon() {
             return Ok(());
         }
 
@@ -356,14 +356,14 @@ impl fmt::Debug for DepNode {
         ::ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.item_path_str(def_id))?;
+                    write!(f, "{}", tcx.def_path(def_id).to_string(tcx))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
                     write!(f, "{}", s)?;
                 } else {
-                    write!(f, "{:?}", self.hash)?;
+                    write!(f, "{}", self.hash)?;
                 }
             } else {
-                write!(f, "{:?}", self.hash)?;
+                write!(f, "{}", self.hash)?;
             }
             Ok(())
         })?;
@@ -430,7 +430,6 @@ define_dep_nodes!( <'tcx>
     [] RegionScopeTree(DefId),
     [] Coherence,
     [] CoherenceInherentImplOverlapCheck,
-    [] Resolve,
     [] CoherenceCheckTrait(DefId),
     [] PrivacyAccessLevels(CrateNum),
 
@@ -447,10 +446,8 @@ define_dep_nodes!( <'tcx>
     [] MirBorrowCheck(DefId),
     [] UnsafetyViolations(DefId),
 
-    [] RvalueCheck(DefId),
     [] Reachability,
     [] MirKeys,
-    [] TransWriteMetadata,
     [] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
@@ -484,31 +481,22 @@ define_dep_nodes!( <'tcx>
     [] TypeckBodiesKrate,
     [] TypeckTables(DefId),
     [] HasTypeckTables(DefId),
-    [anon] ConstEval,
+    [] ConstEval { param_env: ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)> },
     [] SymbolName(DefId),
     [] InstanceSymbolName { instance: Instance<'tcx> },
     [] SpecializationGraph(DefId),
     [] ObjectSafety(DefId),
 
-    [anon] IsCopy,
-    [anon] IsSized,
-    [anon] IsFreeze,
-    [anon] NeedsDrop,
-    [anon] Layout,
+    [] IsCopy { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
+    [] IsSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
+    [] IsFreeze { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
+    [] NeedsDrop { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
+    [] Layout { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
 
     // The set of impls for a given trait.
     [] TraitImpls(DefId),
-    [] RelevantTraitImpls(DefId, SimplifiedType),
 
     [] AllLocalTraitImpls,
-
-    // Nodes representing caches. To properly handle a true cache, we
-    // don't use a DepTrackingMap, but rather we push a task node.
-    // Otherwise the write into the map would be incorrectly
-    // attributed to the first task that happened to fill the cache,
-    // which would yield an overly conservative dep-graph.
-    [] TraitItems(DefId),
-    [] ReprHints(DefId),
 
     // Trait selection cache is a little funny. Given a trait
     // reference like `Foo: SomeTrait<Bar>`, there could be
@@ -536,10 +524,6 @@ define_dep_nodes!( <'tcx>
     // that for any given trait-ref, we always map to the **same**
     // trait-select node.
     [anon] TraitSelect,
-
-    // For proj. cache, we just keep a list of all def-ids, since it is
-    // not a hotspot.
-    [] ProjectionCache { def_ids: DefIdList },
 
     [] ParamEnv(DefId),
     [] DescribeDef(DefId),
@@ -598,7 +582,6 @@ define_dep_nodes!( <'tcx>
     [] MissingLangItems(CrateNum),
     [] ExternConstBody(DefId),
     [] VisibleParentMap,
-    [] IsDirectExternCrate(CrateNum),
     [] MissingExternCrateItem(CrateNum),
     [] UsedCrateSource(CrateNum),
     [] PostorderCnums,
@@ -618,6 +601,9 @@ define_dep_nodes!( <'tcx>
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [] OutputFilenames,
+
+    // We use this for most things when incr. comp. is turned off.
+    [] Null,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
@@ -719,40 +705,6 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, De
     }
 }
 
-
-impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefIdList,) {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
-
-    // We actually would not need to specialize the implementation of this
-    // method but it's faster to combine the hashes than to instantiate a full
-    // hashing context and stable-hashing state.
-    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
-        let mut fingerprint = Fingerprint::zero();
-
-        for &def_id in self.0.iter() {
-            let def_path_hash = tcx.def_path_hash(def_id);
-            fingerprint = fingerprint.combine(def_path_hash.0);
-        }
-
-        fingerprint
-    }
-
-    fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
-        use std::fmt::Write;
-
-        let mut s = String::new();
-        write!(&mut s, "[").unwrap();
-
-        for &def_id in self.0.iter() {
-            write!(&mut s, "{}", tcx.def_path(def_id).to_string(tcx)).unwrap();
-        }
-
-        write!(&mut s, "]").unwrap();
-
-        s
-    }
-}
-
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (HirId,) {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 
@@ -811,4 +763,3 @@ impl_stable_hash_for!(struct ::dep_graph::WorkProductId {
     hash
 });
 
-type DefIdList = Vec<DefId>;

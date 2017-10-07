@@ -528,9 +528,7 @@ impl<'a> From<&'a str> for Box<str> {
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
 impl From<Box<str>> for Box<[u8]> {
     fn from(s: Box<str>) -> Self {
-        unsafe {
-            mem::transmute(s)
-        }
+        unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
     }
 }
 

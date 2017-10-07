@@ -43,30 +43,6 @@ pub mod visit;
 pub mod transform;
 pub mod traversal;
 
-macro_rules! newtype_index {
-    ($name:ident, $debug_name:expr) => (
-        #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
-         RustcEncodable, RustcDecodable)]
-        pub struct $name(u32);
-
-        impl Idx for $name {
-            fn new(value: usize) -> Self {
-                assert!(value < (u32::MAX) as usize);
-                $name(value as u32)
-            }
-            fn index(self) -> usize {
-                self.0 as usize
-            }
-        }
-
-        impl Debug for $name {
-            fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-                write!(fmt, "{}{}", $debug_name, self.0)
-            }
-        }
-    )
-}
-
 /// Types for locals
 type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
 

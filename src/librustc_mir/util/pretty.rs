@@ -188,7 +188,9 @@ pub fn write_basic_block(tcx: TyCtxt,
     let data = &mir[block];
 
     // Basic block label at the top.
-    writeln!(w, "{}{:?}: {{", INDENT, block)?;
+    let cleanup_text = if data.is_cleanup { " // cleanup" } else { "" };
+    let lbl = format!("{}{:?}: {{", INDENT, block);
+    writeln!(w, "{0:1$}{2}", lbl, ALIGN, cleanup_text)?;
 
     // List of statements in the middle.
     let mut current_location = Location { block: block, statement_index: 0 };

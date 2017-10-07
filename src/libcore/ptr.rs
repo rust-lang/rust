@@ -27,8 +27,6 @@ use nonzero::NonZero;
 
 use cmp::Ordering::{self, Less, Equal, Greater};
 
-// FIXME #19649: intrinsic docs don't render, so these have no docs :(
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::copy_nonoverlapping;
 
@@ -56,7 +54,7 @@ pub use intrinsics::write_bytes;
 /// This has all the same safety problems as `ptr::read` with respect to
 /// invalid pointers, types, and double drops.
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[lang="drop_in_place"]
+#[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the

@@ -38,6 +38,43 @@ impl Idx for u32 {
     fn index(self) -> usize { self as usize }
 }
 
+#[macro_export]
+macro_rules! newtype_index {
+    ($name:ident) => (
+        newtype_index!($name, unsafe { ::std::intrinsics::type_name::<$name>() });
+    );
+
+    ($name:ident, $debug_name:expr) => (
+        #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
+         RustcEncodable, RustcDecodable)]
+        pub struct $name(u32);
+
+        impl $name {
+            // HACK use for constants
+            #[allow(unused)]
+            const fn const_new(x: u32) -> Self {
+                $name(x)
+            }
+        }
+
+        impl Idx for $name {
+            fn new(value: usize) -> Self {
+                assert!(value < (::std::u32::MAX) as usize);
+                $name(value as u32)
+            }
+            fn index(self) -> usize {
+                self.0 as usize
+            }
+        }
+
+        impl ::std::fmt::Debug for $name {
+            fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                write!(fmt, "{}{}", $debug_name, self.0)
+            }
+        }
+    )
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,

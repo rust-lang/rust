@@ -713,6 +713,13 @@ impl ty::EarlyBoundRegion {
 
 /// Information about the formal type/lifetime parameters associated
 /// with an item or method. Analogous to hir::Generics.
+///
+/// Note that in the presence of a `Self` parameter, the ordering here
+/// is different from the ordering in a Substs. Substs are ordered as
+///     Self, *Regions, *Other Type Params, (...child generics)
+/// while this struct is ordered as
+///     regions = Regions
+///     types = [Self, *Other Type Params]
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Generics {
     pub parent: Option<DefId>,
@@ -729,7 +736,7 @@ pub struct Generics {
     pub has_late_bound_regions: Option<Span>,
 }
 
-impl Generics {
+impl<'a, 'gcx, 'tcx> Generics {
     pub fn parent_count(&self) -> usize {
         self.parent_regions as usize + self.parent_types as usize
     }
@@ -742,14 +749,52 @@ impl Generics {
         self.parent_count() + self.own_count()
     }
 
-    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef {
-        assert_eq!(self.parent_count(), 0);
-        &self.regions[param.index as usize - self.has_self as usize]
+    pub fn region_param(&'tcx self,
+                        param: &EarlyBoundRegion,
+                        tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                        -> &'tcx RegionParameterDef
+    {
+        if let Some(index) = param.index.checked_sub(self.parent_count() as u32) {
+            &self.regions[index as usize - self.has_self as usize]
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+                .region_param(param, tcx)
+        }
     }
 
-    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef {
-        assert_eq!(self.parent_count(), 0);
-        &self.types[param.idx as usize - self.has_self as usize - self.regions.len()]
+    /// Returns the `TypeParameterDef` associated with this `ParamTy`.
+    pub fn type_param(&'tcx self,
+                      param: &ParamTy,
+                      tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                      -> &TypeParameterDef {
+        if let Some(idx) = param.idx.checked_sub(self.parent_count() as u32) {
+            // non-Self type parameters are always offset by exactly
+            // `self.regions.len()`. In the absence of a Self, this is obvious,
+            // but even in the absence of a `Self` we just have to "compensate"
+            // for the regions:
+            //
+            // For example, for `trait Foo<'a, 'b, T1, T2>`, the
+            // situation is:
+            //     Substs:
+            //         0   1  2  3  4
+            //       Self 'a 'b  T1 T2
+            //     generics.types:
+            //         0  1  2
+            //       Self T1 T2
+            // And it can be seen that to move from a substs offset to a
+            // generics offset you just have to offset by the number of regions.
+            let type_param_offset = self.regions.len();
+            if let Some(idx) = (idx as usize).checked_sub(type_param_offset) {
+                assert!(!(self.has_self && idx == 0));
+                &self.types[idx]
+            } else {
+                assert!(self.has_self && idx == 0);
+                &self.types[0]
+            }
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+                .type_param(param, tcx)
+        }
     }
 }
 
@@ -1250,6 +1295,22 @@ pub struct ParamEnvAnd<'tcx, T> {
 impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
         (self.param_env, self.value)
+    }
+}
+
+impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for ParamEnvAnd<'gcx, T>
+    where T: HashStable<StableHashingContext<'gcx>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ParamEnvAnd {
+            ref param_env,
+            ref value
+        } = *self;
+
+        param_env.hash_stable(hcx, hasher);
+        value.hash_stable(hcx, hasher);
     }
 }
 
@@ -2284,6 +2345,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    // Hygienically compare a use-site name (`use_name`) for a field or an associated item with its
+    // supposed definition name (`def_name`). The method also needs `DefId` of the supposed
+    // definition's parent/scope to perform comparison.
+    pub fn hygienic_eq(self, use_name: Name, def_name: Name, def_parent_def_id: DefId) -> bool {
+        self.adjust(use_name, def_parent_def_id, DUMMY_NODE_ID).0 == def_name.to_ident()
+    }
+
     pub fn adjust(self, name: Name, scope: DefId, block: NodeId) -> (Ident, DefId) {
         self.adjust_ident(name.to_ident(), scope, block)
     }
@@ -2295,6 +2363,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let scope = match ident.ctxt.adjust(expansion) {
             Some(macro_def) => self.hir.definitions().macro_def_scope(macro_def),
+            None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
             None => self.hir.get_module_parent(block),
         };
         (ident, scope)

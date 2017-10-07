@@ -11,6 +11,7 @@
 use rustc::mir::{self, Location, Mir};
 use rustc::mir::visit::Visitor;
 use rustc::ty::{Region, TyCtxt};
+use rustc::ty::RegionKind;
 use rustc::ty::RegionKind::ReScope;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
@@ -20,6 +21,8 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
 pub use dataflow::indexes::BorrowIndex;
+
+use syntax_pos::Span;
 
 use std::fmt;
 
@@ -32,6 +35,7 @@ pub struct Borrows<'a, 'tcx: 'a> {
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+    region_span_map: FxHashMap<RegionKind, Span>,
 }
 
 // temporarily allow some dead fields: `kind` and `region` will be
@@ -63,18 +67,21 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         let mut visitor = GatherBorrows { idx_vec: IndexVec::new(),
                                           location_map: FxHashMap(),
-                                          region_map: FxHashMap(), };
+                                          region_map: FxHashMap(),
+                                          region_span_map: FxHashMap()};
         visitor.visit_mir(mir);
         return Borrows { tcx: tcx,
                          mir: mir,
                          borrows: visitor.idx_vec,
                          location_map: visitor.location_map,
-                         region_map: visitor.region_map, };
+                         region_map: visitor.region_map,
+                         region_span_map: visitor.region_span_map};
 
         struct GatherBorrows<'tcx> {
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
             location_map: FxHashMap<Location, BorrowIndex>,
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+            region_span_map: FxHashMap<RegionKind, Span>,
         }
         impl<'tcx> Visitor<'tcx> for GatherBorrows<'tcx> {
             fn visit_rvalue(&mut self,
@@ -90,6 +97,16 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
                     borrows.insert(idx);
                 }
             }
+
+            fn visit_statement(&mut self,
+                               block: mir::BasicBlock,
+                               statement: &mir::Statement<'tcx>,
+                               location: Location) {
+                if let mir::StatementKind::EndRegion(region_scope) = statement.kind {
+                    self.region_span_map.insert(ReScope(region_scope), statement.source_info.span);
+                }
+                self.super_statement(block, statement, location);
+            }
         }
     }
 
@@ -97,6 +114,12 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
         &self.borrows[idx].location
+    }
+
+    pub fn region_span(&self, region: &Region) -> Span {
+        let opt_span = self.region_span_map.get(region);
+        assert!(opt_span.is_some(), "end region not found for {:?}", region);
+        *opt_span.unwrap()
     }
 }
 
@@ -122,11 +145,11 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
         });
         match stmt.kind {
             mir::StatementKind::EndRegion(region_scope) => {
-                let borrow_indexes = self.region_map.get(&ReScope(region_scope)).unwrap_or_else(|| {
-                    panic!("could not find BorrowIndexs for region scope {:?}", region_scope);
-                });
-
-                for idx in borrow_indexes { sets.kill(&idx); }
+                if let Some(borrow_indexes) = self.region_map.get(&ReScope(region_scope)) {
+                    for idx in borrow_indexes { sets.kill(&idx); }
+                } else {
+                    // (if there is no entry, then there are no borrows to be tracked)
+                }
             }
 
             mir::StatementKind::Assign(_, ref rhs) => {
