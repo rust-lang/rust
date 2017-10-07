@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum A { B, C }
-
-mod foo { pub fn bar() {} }
+// Without caching type lookups in FnCtxt.resolve_ty_and_def_ufcs
+// the error below would be reported twice (once when checking
+// for a non-ref pattern, once when processing the pattern).
 
 fn main() {
-    match (true, false) {
-        A::B => (),
-        //~^ ERROR mismatched types
-        //~| expected type `(bool, bool)`
-        //~| found type `A`
-        //~| expected tuple, found enum `A`
-        _ => ()
+    let foo = 22;
+    match foo {
+        u32::XXX => { }
+        _ => { }
     }
 }

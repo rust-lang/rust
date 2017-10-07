@@ -9,7 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    for (ref i,) in [].iter() { //~ ERROR mismatched types
+    // NB: this (almost) typechecks when default binding modes are enabled.
+    for (ref i,) in [].iter() { //~ ERROR mismatched types [E0308]
         i.clone();
     }
 }

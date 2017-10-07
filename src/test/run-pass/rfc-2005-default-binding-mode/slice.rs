@@ -9,20 +9,28 @@
 // except according to those terms.
 
 #![feature(slice_patterns)]
+#![feature(match_default_bindings)]
 
-// NB: this test was introduced in #23121 and will have to change when default match binding modes
-// stabilizes.
+fn slice_pat() {
+    let sl: &[u8] = b"foo";
 
-fn slice_pat(x: &[u8]) {
-    // OLD!
-    match x {
-        [a, b..] => {},
-        //~^ ERROR expected an array or slice, found `&[u8]`
-        //~| HELP the semantics of slice patterns changed recently; see issue #23121
-        _ => panic!(),
+    match sl {
+        [first, remainder..] => {
+            let _: &u8 = first;
+            assert_eq!(first, &b'f');
+            assert_eq!(remainder, b"oo");
+        }
+        [] => panic!(),
     }
 }
 
+fn slice_pat_omission() {
+     match &[0, 1, 2] {
+        [..] => {}
+     };
+}
+
 fn main() {
-    slice_pat("foo".as_bytes());
+    slice_pat();
+    slice_pat_omission();
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum A { B, C }
+// Encountered while testing #44614.
 
-mod foo { pub fn bar() {} }
-
-fn main() {
-    match (true, false) {
-        A::B => (),
-        //~^ ERROR mismatched types
-        //~| expected type `(bool, bool)`
-        //~| found type `A`
-        //~| expected tuple, found enum `A`
-        _ => ()
-    }
+pub fn main() {
+    // Constant of generic type (int)
+    const X: &'static u32 = &22;
+    assert_eq!(0, match &22 {
+        X => 0,
+        _ => 1,
+    });
 }

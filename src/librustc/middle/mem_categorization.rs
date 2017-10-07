@@ -1094,7 +1094,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
+    fn cat_pattern_<F>(&self, mut cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
         where F : FnMut(cmt<'tcx>, &hir::Pat)
     {
         // Here, `cmt` is the categorization for the value being
@@ -1144,6 +1144,56 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         debug!("cat_pattern: {:?} cmt={:?}", pat, cmt);
 
+        // If (pattern) adjustments are active for this pattern, adjust the `cmt` correspondingly.
+        // `cmt`s are constructed differently from patterns. For example, in
+        //
+        // ```
+        // match foo {
+        //     &&Some(x, ) => { ... },
+        //     _ => { ... },
+        // }
+        // ```
+        //
+        // the pattern `&&Some(x,)` is represented as `Ref { Ref { TupleStruct }}`. To build the
+        // corresponding `cmt` we start with a `cmt` for `foo`, and then, by traversing the
+        // pattern, try to answer the question: given the address of `foo`, how is `x` reached?
+        //
+        // `&&Some(x,)` `cmt_foo`
+        //  `&Some(x,)` `deref { cmt_foo}`
+        //   `Some(x,)` `deref { deref { cmt_foo }}`
+        //        (x,)` `field0 { deref { deref { cmt_foo }}}` <- resulting cmt
+        //
+        // The above example has no adjustments. If the code were instead the (after adjustments,
+        // equivalent) version
+        //
+        // ```
+        // match foo {
+        //     Some(x, ) => { ... },
+        //     _ => { ... },
+        // }
+        // ```
+        //
+        // Then we see that to get the same result, we must start with `deref { deref { cmt_foo }}`
+        // instead of `cmt_foo` since the pattern is now `Some(x,)` and not `&&Some(x,)`, even
+        // though its assigned type is that of `&&Some(x,)`.
+        for _ in 0..self.tables
+                        .pat_adjustments()
+                        .get(pat.hir_id)
+                        .map(|v| v.len())
+                        .unwrap_or(0) {
+            cmt = self.cat_deref(pat, cmt, true /* implicit */)?;
+        }
+        let cmt = cmt; // lose mutability
+
+        // Invoke the callback, but only now, after the `cmt` has adjusted.
+        //
+        // To see that this makes sense, consider `match &Some(3) { Some(x) => { ... }}`. In that
+        // case, the initial `cmt` will be that for `&Some(3)` and the pattern is `Some(x)`. We
+        // don't want to call `op` with these incompatible values. As written, what happens instead
+        // is that `op` is called with the adjusted cmt (that for `*&Some(3)`) and the pattern
+        // `Some(x)` (which matches). Recursing once more, `*&Some(3)` and the pattern `Some(x)`
+        // result in the cmt `Downcast<Some>(*&Some(3)).0` associated to `x` and invoke `op` with
+        // that (where the `ref` on `x` is implied).
         op(cmt.clone(), pat);
 
         match pat.node {

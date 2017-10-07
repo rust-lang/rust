@@ -7,33 +7,30 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(slice_patterns)]
 
+#![feature(match_default_bindings)]
 
-struct Foo {
+// FIXME(tschottdorf): we want these to compile, but they don't.
+
+fn with_str() {
+    let s: &'static str = "abc";
+
+    match &s {
+            "abc" => true,
+            _ => panic!(),
+    };
 }
 
-fn foo(&foo: Foo) {
+fn with_bytes() {
+    let s: &'static [u8] = b"abc";
+
+    match &s {
+        b"abc" => true,
+        _ => panic!(),
+    };
 }
 
-fn bar(foo: Foo) {
+pub fn main() {
+    with_str();
+    with_bytes();
 }
-
-fn qux(foo: &Foo) {
-}
-
-fn zar(&foo: &Foo) {
-}
-
-// The somewhat unexpected help message in this case is courtesy of
-// match_default_bindings.
-fn agh(&&bar: &u32) {
-}
-
-fn bgh(&&bar: u32) {
-}
-
-fn ugh(&[bar]: &u32) {
-}
-
-fn main() {}

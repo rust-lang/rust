@@ -17,8 +17,9 @@ fn main() {
         _ => { }
     };
 
+    // Note that this one works with default binding modes.
     match &[0, 1, 2] {
-        [..] => {} //~ ERROR expected an array or slice, found `&[{integer}; 3]`
+        [..] => {} //~ ERROR expected an array or slice, found `&[{integer}; 3]` [E0529]
     };
 
     match &[0, 1, 2] {
