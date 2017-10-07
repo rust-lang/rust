@@ -182,7 +182,17 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let all_in_one_line = !parent_rewrite_contains_newline
         && rewrites.iter().all(|s| !s.contains('\n'))
         && almost_total < one_line_budget;
-    let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, nested_shape);
+    let last_shape = if rewrites.is_empty() {
+        // We only have a single child.
+        first_child_shape
+    } else {
+        match context.config.chain_indent() {
+            IndentStyle::Visual => other_child_shape.sub_width(shape.rhs_overhead(context.config))?,
+            IndentStyle::Block => other_child_shape,
+        }
+    };
+    let last_shape = last_shape.sub_width(suffix_try_num)?;
+    let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, last_shape);
     let (last_subexpr_str, fits_single_line) = if all_in_one_line || extend_last_subexr {
         parent_shape.offset_left(almost_total).map(|shape| {
             if let Some(rw) = rewrite_chain_subexpr(last_subexpr, total_span, context, shape) {
