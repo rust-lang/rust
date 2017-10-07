@@ -660,7 +660,7 @@ impl Rewrite for ast::Ty {
                             mut_str,
                             mt.ty.rewrite(
                                 context,
-                                Shape::legacy(budget, shape.indent + 1 + mut_len),
+                                Shape::legacy(budget, shape.indent + 1 + mut_len)
                             )?
                         )
                     }
