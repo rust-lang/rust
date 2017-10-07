@@ -392,7 +392,7 @@ macro_rules! skip_out_of_file_lines_range_visitor {
 
 // Wraps string-like values in an Option. Returns Some when the string adheres
 // to the Rewrite constraints defined for the Rewrite trait and else otherwise.
-pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S> {
+pub fn wrap_str(s: String, max_width: usize, shape: Shape) -> Option<String> {
     {
         let snippet = s.as_ref();
 
