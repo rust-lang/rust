@@ -77,7 +77,7 @@ the output looks as you expect with `git diff`. Commit all `*.stderr` files, too
 
 Manually testing against an example file is useful if you have added some
 `println!`s and test suite output becomes unreadable.  To try clippy with your
-local modifications, run `cargo run -- -L ./target/debug input.rs` from the
+local modifications, run `cargo run --bin clippy-driver -- -L ./target/debug input.rs` from the
 working copy root. Your test file, here `input.rs`, needs to have clippy
 enabled as a plugin:
 
