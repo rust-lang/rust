@@ -1695,15 +1695,20 @@ fn rewrite_match_body(
     is_last: bool,
 ) -> Option<String> {
     let (extend, body) = flatten_arm_body(context, body);
-
-    let comma = arm_comma(context.config, body, is_last);
-    let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
-    let alt_block_sep = alt_block_sep.as_str();
     let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block) = body.node {
         (true, is_empty_block(block, context.codemap))
     } else {
         (false, false)
     };
+    let extend = if context.config.match_arm_forces_newline() {
+        is_block
+    } else {
+        extend
+    };
+
+    let comma = arm_comma(context.config, body, is_last);
+    let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
+    let alt_block_sep = alt_block_sep.as_str();
 
     let combine_orig_body = |body_str: &str| {
         let block_sep = match context.config.control_brace_style() {
@@ -1716,7 +1721,11 @@ fn rewrite_match_body(
 
     let forbid_same_line = has_guard && pats_str.contains('\n') && !is_empty_block;
     let next_line_indent = if is_block {
-        shape.indent
+        if is_empty_block {
+            shape.indent.block_indent(context.config)
+        } else {
+            shape.indent
+        }
     } else {
         shape.indent.block_indent(context.config)
     };
@@ -1772,7 +1781,7 @@ fn rewrite_match_body(
 
         match rewrite {
             Some(ref body_str)
-                if !forbid_same_line
+                if !forbid_same_line && !context.config.match_arm_forces_newline()
                     && (is_block
                         || (!body_str.contains('\n') && body_str.len() <= body_shape.width)) =>
             {

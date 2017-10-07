@@ -597,6 +597,8 @@ create_config! {
                                   the same line with the pattern of arms";
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
+    match_arm_forces_newline: bool, false,
+        "Force match arm bodies to be in a new lines";
     indent_match_arms: bool, true, "Indent match arms instead of keeping them at the same \
                                     indentation level as the match keyword";
     match_pattern_separator_break_point: SeparatorPlace, SeparatorPlace::Back,
