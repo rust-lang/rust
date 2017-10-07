@@ -171,12 +171,18 @@ pub fn trimmed_last_line_width(s: &str) -> usize {
 
 #[inline]
 pub fn last_line_extendable(s: &str) -> bool {
-    s.lines().last().map_or(false, |s| {
-        s.ends_with("\"#")
-            || s.trim()
-                .chars()
-                .all(|c| c == ')' || c == ']' || c == '}' || c == '?')
-    })
+    if s.ends_with("\"#") {
+        return true;
+    }
+    for c in s.chars().rev() {
+        match c {
+            ')' | ']' | '}' | '?' => continue,
+            '\n' => break,
+            _ if c.is_whitespace() => continue,
+            _ => return false,
+        }
+    }
+    true
 }
 
 #[inline]
