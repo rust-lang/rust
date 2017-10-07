@@ -165,6 +165,80 @@ pub unsafe fn _mm_max_ps(a: f32x4, b: f32x4) -> f32x4 {
     maxps(a, b)
 }
 
+/// Construct a `f32x4` with the lowest element set to `a` and the rest set to
+/// zero.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movss))]
+pub unsafe fn _mm_set_ss(a: f32) -> f32x4 {
+    f32x4::new(a, 0.0, 0.0, 0.0)
+}
+
+/// Construct a `f32x4` with all element set to `a`.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(shufps))]
+pub unsafe fn _mm_set1_ps(a: f32) -> f32x4 {
+    f32x4::new(a, a, a, a)
+}
+
+/// Alias for [`_mm_set1_ps`](fn._mm_set1_ps.html)
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(shufps))]
+pub unsafe fn _mm_set_ps1(a: f32) -> f32x4 {
+    _mm_set1_ps(a)
+}
+
+/// Construct a `f32x4` from four floating point values highest to lowest.
+///
+/// Note that `a` will be the highest 32 bits of the result, and `d` the lowest.
+/// This matches the standard way of writing bit patterns on x86:
+///
+/// ```text
+///  bit    127 .. 96  95 .. 64  63 .. 32  31 .. 0
+///        +---------+---------+---------+---------+
+///        |    a    |    b    |    c    |    d    |   result
+///        +---------+---------+---------+---------+
+/// ```
+///
+/// Alternatively:
+///
+/// ```text
+/// assert_eq!(f32x4::new(a, b, c, d), _mm_set_ps(d, c, b, a));
+/// ```
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(unpcklps))]
+pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> f32x4 {
+    f32x4::new(d, c, b, a)
+}
+
+/// Construct a `f32x4` from four floating point values lowest to highest.
+///
+/// This matches the memory order of `f32x4`, i.e., `a` will be the lowest 32
+/// bits of the result, and `d` the highest.
+///
+/// ```text
+/// assert_eq!(f32x4::new(a, b, c, d), _mm_setr_ps(a, b, c, d));
+/// ```
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(unpcklps))]
+// On a 32-bit architecture it just copies the operands from the stack.
+#[cfg_attr(all(test, target_arch = "x86"), assert_instr(movaps))]
+pub unsafe fn _mm_setr_ps(a: f32, b: f32, c: f32, d: f32) -> f32x4 {
+    f32x4::new(a, b, c, d)
+}
+
+/// Construct a `f32x4` with all elements initialized to zero.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(xorps))]
+pub unsafe fn _mm_setzero_ps() -> f32x4 {
+    f32x4::new(0.0, 0.0, 0.0, 0.0)
+}
+
 /// Shuffle packed single-precision (32-bit) floating-point elements in `a` and
 /// `b` using `mask`.
 ///
@@ -787,6 +861,40 @@ mod tests {
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
         let r = sse::_mm_max_ps(a, b);
         assert_eq!(r, f32x4::new(-1.0, 20.0, 0.0, -5.0));
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_set_ss() {
+        let r = sse::_mm_set_ss(black_box(4.25));
+        assert_eq!(r, f32x4::new(4.25, 0.0, 0.0, 0.0));
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_set1_ps() {
+        let r1 = sse::_mm_set1_ps(black_box(4.25));
+        let r2 = sse::_mm_set_ps1(black_box(4.25));
+        assert_eq!(r1, f32x4::splat(4.25));
+        assert_eq!(r2, f32x4::splat(4.25));
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_set_ps() {
+        let r = sse::_mm_set_ps(
+            black_box(1.0), black_box(2.0), black_box(3.0), black_box(4.0));
+        assert_eq!(r, f32x4::new(4.0, 3.0, 2.0, 1.0));
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_setr_ps() {
+        let r = sse::_mm_setr_ps(
+            black_box(1.0), black_box(2.0), black_box(3.0), black_box(4.0));
+        assert_eq!(r, f32x4::new(1.0, 2.0, 3.0, 4.0));
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_setzero_ps() {
+        let r = *black_box(&sse::_mm_setzero_ps());
+        assert_eq!(r, f32x4::splat(0.0));
     }
 
     #[simd_test = "sse"]
