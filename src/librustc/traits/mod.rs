@@ -653,7 +653,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn get_vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
-    -> impl Iterator<Item=Option<(DefId, &'tcx Substs<'tcx>)>> + 'a
+    -> Vec<Option<(DefId, &'tcx Substs<'tcx>)>>
 {
     debug!("get_vtable_methods({:?})", trait_ref);
 
@@ -696,7 +696,7 @@ pub fn get_vtable_methods<'a, 'tcx>(
 
             Some((def_id, substs))
         })
-    })
+    }).collect()
 }
 
 impl<'tcx,O> Obligation<'tcx,O> {
