@@ -1,268 +1,280 @@
 error: statement with no effect
-  --> $DIR/no_effect.rs:56:5
+  --> $DIR/no_effect.rs:58:5
    |
-56 |     0;
+58 |     0;
    |     ^^
    |
    = note: `-D no-effect` implied by `-D warnings`
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:57:5
-   |
-57 |     s2;
-   |     ^^^
-
-error: statement with no effect
-  --> $DIR/no_effect.rs:58:5
-   |
-58 |     Unit;
-   |     ^^^^^
-
-error: statement with no effect
   --> $DIR/no_effect.rs:59:5
    |
-59 |     Tuple(0);
-   |     ^^^^^^^^^
+59 |     s2;
+   |     ^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:60:5
    |
-60 |     Struct { field: 0 };
-   |     ^^^^^^^^^^^^^^^^^^^^
+60 |     Unit;
+   |     ^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:61:5
    |
-61 |     Struct { ..s };
-   |     ^^^^^^^^^^^^^^^
+61 |     Tuple(0);
+   |     ^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:62:5
    |
-62 |     Union { a: 0 };
-   |     ^^^^^^^^^^^^^^^
+62 |     Struct { field: 0 };
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:63:5
    |
-63 |     Enum::Tuple(0);
+63 |     Struct { ..s };
    |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:64:5
    |
-64 |     Enum::Struct { field: 0 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+64 |     Union { a: 0 };
+   |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:65:5
    |
-65 |     5 + 6;
-   |     ^^^^^^
+65 |     Enum::Tuple(0);
+   |     ^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:66:5
    |
-66 |     *&42;
-   |     ^^^^^
+66 |     Enum::Struct { field: 0 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:67:5
    |
-67 |     &6;
-   |     ^^^
+67 |     5 + 6;
+   |     ^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:68:5
    |
-68 |     (5, 6, 7);
-   |     ^^^^^^^^^^
+68 |     *&42;
+   |     ^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:69:5
    |
-69 |     box 42;
-   |     ^^^^^^^
+69 |     &6;
+   |     ^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:70:5
    |
-70 |     ..;
-   |     ^^^
+70 |     (5, 6, 7);
+   |     ^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:71:5
    |
-71 |     5..;
-   |     ^^^^
+71 |     box 42;
+   |     ^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:72:5
    |
-72 |     ..5;
-   |     ^^^^
+72 |     ..;
+   |     ^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:73:5
    |
-73 |     5..6;
-   |     ^^^^^
+73 |     5..;
+   |     ^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:74:5
    |
-74 |     5..=6;
-   |     ^^^^^^
+74 |     ..5;
+   |     ^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:75:5
    |
-75 |     [42, 55];
-   |     ^^^^^^^^^
+75 |     5..6;
+   |     ^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:76:5
    |
-76 |     [42, 55][1];
-   |     ^^^^^^^^^^^^
+76 |     5..=6;
+   |     ^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:77:5
    |
-77 |     (42, 55).1;
-   |     ^^^^^^^^^^^
+77 |     [42, 55];
+   |     ^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:78:5
    |
-78 |     [42; 55];
-   |     ^^^^^^^^^
+78 |     [42, 55][1];
+   |     ^^^^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:79:5
    |
-79 |     [42; 55][13];
-   |     ^^^^^^^^^^^^^
+79 |     (42, 55).1;
+   |     ^^^^^^^^^^^
+
+error: statement with no effect
+  --> $DIR/no_effect.rs:80:5
+   |
+80 |     [42; 55];
+   |     ^^^^^^^^^
 
 error: statement with no effect
   --> $DIR/no_effect.rs:81:5
    |
-81 |     || x += 5;
+81 |     [42; 55][13];
+   |     ^^^^^^^^^^^^^
+
+error: statement with no effect
+  --> $DIR/no_effect.rs:83:5
+   |
+83 |     || x += 5;
    |     ^^^^^^^^^^
 
-error: statement can be reduced
-  --> $DIR/no_effect.rs:92:5
+error: statement with no effect
+  --> $DIR/no_effect.rs:85:5
    |
-92 |     Tuple(get_number());
+85 |     FooString { s: s };
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: statement can be reduced
+  --> $DIR/no_effect.rs:96:5
+   |
+96 |     Tuple(get_number());
    |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
    |
    = note: `-D unnecessary-operation` implied by `-D warnings`
 
 error: statement can be reduced
-  --> $DIR/no_effect.rs:93:5
-   |
-93 |     Struct { field: get_number() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
-
-error: statement can be reduced
-  --> $DIR/no_effect.rs:94:5
-   |
-94 |     Struct { ..get_struct() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_struct();`
-
-error: statement can be reduced
-  --> $DIR/no_effect.rs:95:5
-   |
-95 |     Enum::Tuple(get_number());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
-
-error: statement can be reduced
-  --> $DIR/no_effect.rs:96:5
-   |
-96 |     Enum::Struct { field: get_number() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
-
-error: statement can be reduced
   --> $DIR/no_effect.rs:97:5
    |
-97 |     5 + get_number();
-   |     ^^^^^^^^^^^^^^^^^ help: replace it with: `5;get_number();`
+97 |     Struct { field: get_number() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> $DIR/no_effect.rs:98:5
    |
-98 |     *&get_number();
-   |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
+98 |     Struct { ..get_struct() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_struct();`
 
 error: statement can be reduced
   --> $DIR/no_effect.rs:99:5
    |
-99 |     &get_number();
-   |     ^^^^^^^^^^^^^^ help: replace it with: `get_number();`
+99 |     Enum::Tuple(get_number());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:100:5
     |
-100 |     (5, 6, get_number());
-    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `5;6;get_number();`
+100 |     Enum::Struct { field: get_number() };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:101:5
     |
-101 |     box get_number();
-    |     ^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
+101 |     5 + get_number();
+    |     ^^^^^^^^^^^^^^^^^ help: replace it with: `5;get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:102:5
     |
-102 |     get_number()..;
+102 |     *&get_number();
     |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:103:5
     |
-103 |     ..get_number();
-    |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
+103 |     &get_number();
+    |     ^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:104:5
     |
-104 |     5..get_number();
-    |     ^^^^^^^^^^^^^^^^ help: replace it with: `5;get_number();`
+104 |     (5, 6, get_number());
+    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `5;6;get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:105:5
     |
-105 |     [42, get_number()];
-    |     ^^^^^^^^^^^^^^^^^^^ help: replace it with: `42;get_number();`
+105 |     box get_number();
+    |     ^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:106:5
     |
-106 |     [42, 55][get_number() as usize];
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `[42, 55];get_number() as usize;`
+106 |     get_number()..;
+    |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:107:5
     |
-107 |     (42, get_number()).1;
-    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `42;get_number();`
+107 |     ..get_number();
+    |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:108:5
     |
-108 |     [get_number(); 55];
-    |     ^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
+108 |     5..get_number();
+    |     ^^^^^^^^^^^^^^^^ help: replace it with: `5;get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:109:5
     |
-109 |     [42; 55][get_number() as usize];
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `[42; 55];get_number() as usize;`
+109 |     [42, get_number()];
+    |     ^^^^^^^^^^^^^^^^^^^ help: replace it with: `42;get_number();`
 
 error: statement can be reduced
    --> $DIR/no_effect.rs:110:5
     |
-110 |     {get_number()};
+110 |     [42, 55][get_number() as usize];
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `[42, 55];get_number() as usize;`
+
+error: statement can be reduced
+   --> $DIR/no_effect.rs:111:5
+    |
+111 |     (42, get_number()).1;
+    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `42;get_number();`
+
+error: statement can be reduced
+   --> $DIR/no_effect.rs:112:5
+    |
+112 |     [get_number(); 55];
+    |     ^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
+
+error: statement can be reduced
+   --> $DIR/no_effect.rs:113:5
+    |
+113 |     [42; 55][get_number() as usize];
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `[42; 55];get_number() as usize;`
+
+error: statement can be reduced
+   --> $DIR/no_effect.rs:114:5
+    |
+114 |     {get_number()};
     |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
+
+error: statement can be reduced
+   --> $DIR/no_effect.rs:115:5
+    |
+115 |     FooString { s: String::from("blah"), };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `String::from("blah");`
 

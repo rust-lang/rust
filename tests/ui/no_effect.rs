@@ -37,7 +37,9 @@ enum DropEnum {
 impl Drop for DropEnum {
     fn drop(&mut self) {}
 }
-
+struct FooString {
+    s: String,
+}
 union Union {
     a: u8,
     b: f64,
@@ -79,6 +81,8 @@ fn main() {
     [42; 55][13];
     let mut x = 0;
     || x += 5;
+    let s: String = "foo".into();
+    FooString { s: s };
 
     // Do not warn
     get_number();
@@ -108,6 +112,7 @@ fn main() {
     [get_number(); 55];
     [42; 55][get_number() as usize];
     {get_number()};
+    FooString { s: String::from("blah"), };
 
     // Do not warn
     DropTuple(get_number());
