@@ -10,7 +10,6 @@
 name = "libc"
 version = "0.0.0"
 authors = ["The Rust Project Developers"]
-build = "build.rs"
 
 [lib]
 name = "libc"
@@ -21,3 +20,7 @@ doc = false
 
 [dependencies]
 core = { path = "../../libcore" }
+
+[features]
+stdbuild = []
+default = ["stdbuild"]

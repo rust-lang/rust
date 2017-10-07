@@ -16,7 +16,7 @@ use self::EvaluationResult::*;
 use super::coherence;
 use super::DerivedObligationCause;
 use super::project;
-use super::project::{normalize_with_depth, Normalized};
+use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
@@ -655,8 +655,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let project_obligation = obligation.with(data.clone());
                 match project::poly_project_and_unify_type(self, &project_obligation) {
                     Ok(Some(subobligations)) => {
-                        self.evaluate_predicates_recursively(previous_stack,
-                                                             subobligations.iter())
+                        let result = self.evaluate_predicates_recursively(previous_stack,
+                                                                          subobligations.iter());
+                        if let Some(key) =
+                            ProjectionCacheKey::from_poly_projection_predicate(self, data)
+                        {
+                            self.infcx.projection_cache.borrow_mut().complete(key);
+                        }
+                        result
                     }
                     Ok(None) => {
                         EvaluatedToAmbig

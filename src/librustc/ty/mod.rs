@@ -67,6 +67,7 @@ pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
+pub use self::sty::Issue32330;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
@@ -681,6 +682,7 @@ pub struct RegionParameterDef {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
+    pub issue_32330: Option<ty::Issue32330>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `'a`, asserts data of lifetime `'a`
@@ -1014,6 +1016,10 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         // return value, so we are preserving the number of binding
         // levels.
         ty::Binder(self.0.projection_ty.trait_ref(tcx))
+    }
+
+    pub fn ty(&self) -> Binder<Ty<'tcx>> {
+        Binder(self.skip_binder().ty) // preserves binding levels
     }
 }
 
