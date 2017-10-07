@@ -764,23 +764,51 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // //    found_trait_ref:  std::ops::FnMut<(&i32,)>
                     // ```
 
-                    let closure_args_span = found_did.and_then(|did| self.tcx.hir.get_if_local(did))
+                    let (closure_span, closure_args) = found_did
+                        .and_then(|did| self.tcx.hir.get_if_local(did))
                         .and_then(|node| {
                             if let hir::map::NodeExpr(
-                                &hir::Expr { node: hir::ExprClosure(_, _, _, span, _), .. }) = node
+                                &hir::Expr {
+                                    node: hir::ExprClosure(_, ref decl, id, span, _),
+                                    ..
+                                }) = node
                             {
-                                Some(span)
+                                let ty_snips = decl.inputs.iter()
+                                    .map(|ty| {
+                                        self.tcx.sess.codemap().span_to_snippet(ty.span).ok()
+                                            .and_then(|snip| {
+                                                // filter out dummy spans
+                                                if snip == "," || snip == "|" {
+                                                    None
+                                                } else {
+                                                    Some(snip)
+                                                }
+                                            })
+                                    })
+                                    .collect::<Vec<Option<String>>>();
+
+                                let body = self.tcx.hir.body(id);
+                                let pat_snips = body.arguments.iter()
+                                    .map(|arg|
+                                        self.tcx.sess.codemap().span_to_snippet(arg.pat.span).ok())
+                                    .collect::<Option<Vec<String>>>();
+
+                                Some((span, pat_snips, ty_snips))
                             } else {
                                 None
                             }
-                        });
+                        })
+                        .map(|(span, pat, ty)| (Some(span), Some((pat, ty))))
+                        .unwrap_or((None, None));
+                    let closure_args = closure_args.and_then(|(pat, ty)| Some((pat?, ty)));
 
                     self.report_arg_count_mismatch(
                         span,
-                        closure_args_span.or(found_span),
+                        closure_span.or(found_span),
                         expected_ty_count,
                         expected_tuple,
                         found_ty_count,
+                        closure_args,
                         found_trait_ty.is_closure()
                     )
                 }
@@ -803,44 +831,85 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         err.emit();
     }
 
-    fn report_arg_count_mismatch(&self,
-                                 span: Span,
-                                 found_span: Option<Span>,
-                                 expected: usize,
-                                 expected_tuple: Option<usize>,
-                                 found: usize,
-                                 is_closure: bool)
-        -> DiagnosticBuilder<'tcx>
-    {
+    fn report_arg_count_mismatch(
+        &self,
+        span: Span,
+        found_span: Option<Span>,
+        expected: usize,
+        expected_tuple: Option<usize>,
+        found: usize,
+        closure_args: Option<(Vec<String>, Vec<Option<String>>)>,
+        is_closure: bool
+    ) -> DiagnosticBuilder<'tcx> {
+        use std::borrow::Cow;
+
         let kind = if is_closure { "closure" } else { "function" };
 
-        let tuple_or_args = |tuple, args|  if let Some(n) = tuple {
-            format!("a {}-tuple", n)
-        } else {
-            format!(
+        let args_str = |n| format!(
                 "{} argument{}",
-                args,
-                if args == 1 { "" } else { "s" }
-            )
-        };
-
-        let found_str = tuple_or_args(None, found);
-        let expected_str = tuple_or_args(expected_tuple, expected);
+                n,
+                if n == 1 { "" } else { "s" }
+            );
 
         let mut err = struct_span_err!(self.tcx.sess, span, E0593,
-            "{} takes {} but {} {} required",
+            "{} takes {}, but {} {} required",
             kind,
-            found_str,
-            expected_str,
-            if expected_tuple.is_some() || expected == 1 { "is" } else { "are" });
+            if expected_tuple.is_some() {
+                Cow::from("multiple arguments")
+            } else {
+                Cow::from(args_str(found))
+            },
+            if expected_tuple.is_some() {
+                Cow::from("a tuple argument")
+            } else {
+                Cow::from(args_str(expected))
+            },
+            if expected == 1 { "is" } else { "are" });
 
         err.span_label(
             span,
-            format!("expected {} that takes {}", kind, expected_str)
+            format!(
+                "expected {} that takes {}{}",
+                kind,
+                args_str(expected),
+                if let Some(n) = expected_tuple {
+                    assert!(expected == 1);
+                    Cow::from(format!(", a {}-tuple", n))
+                } else {
+                    Cow::from("")
+                }
+            )
         );
 
         if let Some(span) = found_span {
-            err.span_label(span, format!("takes {}", found_str));
+            if let (Some(expected_tuple), Some((pats, tys))) = (expected_tuple, closure_args) {
+                if expected_tuple != found || pats.len() != found {
+                    err.span_label(span, format!("takes {}", args_str(found)));
+                } else {
+                    let sugg = format!(
+                        "|({}){}|",
+                        pats.join(", "),
+
+                        // add type annotations if available
+                        if tys.iter().any(|ty| ty.is_some()) {
+                            Cow::from(format!(
+                                ": ({})",
+                                tys.into_iter().map(|ty| if let Some(ty) = ty {
+                                    ty
+                                } else {
+                                    "_".to_string()
+                                }).collect::<Vec<String>>().join(", ")
+                            ))
+                        } else {
+                            Cow::from("")
+                        },
+                    );
+
+                    err.span_suggestion(span, "consider changing to", sugg);
+                }
+            } else {
+                err.span_label(span, format!("takes {}", args_str(found)));
+            }
         }
 
         err
