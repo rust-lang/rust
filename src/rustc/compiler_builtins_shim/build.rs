@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
-
-// See comments in Cargo.toml for why this exists
-
-fn main() {
-    println!("cargo:rustc-cfg=stdbuild");
-    println!("cargo:rerun-if-changed=build.rs");
-}
+// This file is left intentionally empty (and not removed) to avoid an issue
+// where this crate is always considered dirty due to compiler-builtins'
+// `cargo:rerun-if-changed=build.rs` directive; since the path is relative, it
+// refers to this file when this shim crate is being built, and the absence of
+// this file is considered by cargo to be equivalent to it having changed.
