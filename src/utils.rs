@@ -15,7 +15,7 @@ use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, Neste
                   Path, Visibility};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 
-use rewrite::{Rewrite, RewriteContext};
+use rewrite::RewriteContext;
 use shape::Shape;
 
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -423,12 +423,6 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
     }
 
     Some(s)
-}
-
-impl Rewrite for String {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        wrap_str(self, context.config.max_width(), shape).map(ToOwned::to_owned)
-    }
 }
 
 #[inline]
