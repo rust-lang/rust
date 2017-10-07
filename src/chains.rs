@@ -198,7 +198,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
             if let Some(rw) = rewrite_chain_subexpr(last_subexpr, total_span, context, shape) {
                 let line_count = rw.lines().count();
                 let fits_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
-                if (line_count >= 5 && fits_single_line) || extend_last_subexr {
+                if fits_single_line && (line_count >= 5 && fits_single_line || extend_last_subexr) {
                     (Some(rw), true)
                 } else {
                     match rewrite_last() {
