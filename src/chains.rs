@@ -24,6 +24,15 @@
 /// alignment).
 /// E.g., `let foo = { aaaa; bbb; ccc }.bar.baz();`, we would layout for the
 /// following values of `chain_indent`:
+/// Block:
+/// ```
+/// let foo = {
+///     aaaa;
+///     bbb;
+///     ccc
+/// }.bar
+///     .baz();
+/// ```
 /// Visual:
 /// ```
 /// let foo = {
@@ -34,46 +43,20 @@
 ///           .bar
 ///           .baz();
 /// ```
-/// Inherit:
-/// ```
-/// let foo = {
-///     aaaa;
-///     bbb;
-///     ccc
-/// }
-/// .bar
-/// .baz();
-/// ```
-/// Tabbed:
-/// ```
-/// let foo = {
-///         aaaa;
-///         bbb;
-///         ccc
-///     }
-///     .bar
-///     .baz();
-/// ```
 ///
 /// If the first item in the chain is a block expression, we align the dots with
 /// the braces.
+/// Block:
+/// ```
+/// let a = foo.bar
+///     .baz()
+///     .qux
+/// ```
 /// Visual:
 /// ```
 /// let a = foo.bar
 ///            .baz()
 ///            .qux
-/// ```
-/// Inherit:
-/// ```
-/// let a = foo.bar
-/// .baz()
-/// .qux
-/// ```
-/// Tabbed:
-/// ```
-/// let a = foo.bar
-///     .baz()
-///     .qux
 /// ```
 
 use shape::Shape;
