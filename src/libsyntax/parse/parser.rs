@@ -1003,7 +1003,8 @@ impl<'a> Parser<'a> {
                                          -> ParseSeqResult<'a,  T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>
     {
-        self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f, |_| {})
+        self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f,
+            |ref mut e| e.emit())
     }
 
     // `fe` is an error handler.
