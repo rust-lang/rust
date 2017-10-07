@@ -12,5 +12,3 @@ error: bit mask could be simplified with a call to `trailing_zeros`
 8 |     let _ = x & 0b1_1111 == 0; // suggest trailing_zeros
   |             ^^^^^^^^^^^^^^^^^ help: try: `x.trailing_zeros() >= 5`
 
-error: aborting due to 2 previous errors
-

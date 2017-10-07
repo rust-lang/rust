@@ -69,5 +69,3 @@ error: floating-point arithmetic detected
 29 |     -f;
    |     ^^
 
-error: aborting due to 11 previous errors
-

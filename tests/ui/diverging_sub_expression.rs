@@ -1,5 +1,5 @@
 #![feature(plugin, never_type)]
-#![plugin(clippy)]
+
 #![warn(diverging_sub_expression)]
 #![allow(match_same_arms, logic_bug)]
 

@@ -154,8 +154,9 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     let last = last_path_segment(qpath);
                     if_let_chain! {[
-                        !last.parameters.parenthesized,
-                        let Some(vec) = last.parameters.types.get(0),
+                        let Some(ref params) = last.parameters,
+                        !params.parenthesized,
+                        let Some(vec) = params.types.get(0),
                         let TyPath(ref qpath) = vec.node,
                         let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id))),
                         match_def_path(cx.tcx, did, &paths::VEC),
@@ -183,73 +184,82 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                     check_ty(cx, ty, is_local);
                     for ty in p.segments
                         .iter()
-                        .flat_map(|seg| seg.parameters.types.iter())
+                        .flat_map(|seg| seg.parameters.as_ref()
+                                           .map_or_else(|| [].iter(),
+                                                        |params| params.types.iter()))
                     {
                         check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::Resolved(None, ref p) => for ty in p.segments
                     .iter()
-                    .flat_map(|seg| seg.parameters.types.iter())
+                    .flat_map(|seg| seg.parameters.as_ref()
+                                       .map_or_else(|| [].iter(),
+                                                    |params| params.types.iter()))
                 {
                     check_ty(cx, ty, is_local);
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
                     check_ty(cx, ty, is_local);
-                    for ty in seg.parameters.types.iter() {
-                        check_ty(cx, ty, is_local);
+                    if let Some(ref params) = seg.parameters {
+                        for ty in params.types.iter() {
+                            check_ty(cx, ty, is_local);
+                        }
                     }
                 },
             }
         },
-        TyRptr(ref lt, MutTy { ref ty, ref mutbl }) => {
-            match ty.node {
-                TyPath(ref qpath) => {
-                    let hir_id = cx.tcx.hir.node_to_hir_id(ty.id);
-                    let def = cx.tables.qpath_def(qpath, hir_id);
-                    if_let_chain! {[
-                        let Some(def_id) = opt_def_id(def),
-                        Some(def_id) == cx.tcx.lang_items().owned_box(),
-                        let QPath::Resolved(None, ref path) = *qpath,
-                        let [ref bx] = *path.segments,
-                        !bx.parameters.parenthesized,
-                        let [ref inner] = *bx.parameters.types
-                    ], {
-                        if is_any_trait(inner) {
-                            // Ignore `Box<Any>` types, see #1884 for details.
-                            return;
-                        }
-
-                        let ltopt = if lt.is_elided() {
-                            "".to_owned()
-                        } else {
-                            format!("{} ", lt.name.as_str())
-                        };
-                        let mutopt = if *mutbl == Mutability::MutMutable {
-                            "mut "
-                        } else {
-                            ""
-                        };
-                        span_lint_and_sugg(cx,
-                            BORROWED_BOX,
-                            ast_ty.span,
-                            "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
-                            "try",
-                            format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, ".."))
-                        );
-                        return; // don't recurse into the type
-                    }};
-                    check_ty(cx, ty, is_local);
-                },
-                _ => check_ty(cx, ty, is_local),
-            }
-        },
+        TyRptr(ref lt, ref mut_ty) => check_ty_rptr(cx, ast_ty, is_local, lt, mut_ty),
         // recurse
         TySlice(ref ty) | TyArray(ref ty, _) | TyPtr(MutTy { ref ty, .. }) => check_ty(cx, ty, is_local),
         TyTup(ref tys) => for ty in tys {
             check_ty(cx, ty, is_local);
         },
         _ => {},
+    }
+}
+
+fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
+    match mut_ty.ty.node {
+        TyPath(ref qpath) => {
+            let hir_id = cx.tcx.hir.node_to_hir_id(mut_ty.ty.id);
+            let def = cx.tables.qpath_def(qpath, hir_id);
+            if_let_chain! {[
+                let Some(def_id) = opt_def_id(def),
+                Some(def_id) == cx.tcx.lang_items().owned_box(),
+                let QPath::Resolved(None, ref path) = *qpath,
+                let [ref bx] = *path.segments,
+                let Some(ref params) = bx.parameters,
+                !params.parenthesized,
+                let [ref inner] = *params.types
+            ], {
+                if is_any_trait(inner) {
+                    // Ignore `Box<Any>` types, see #1884 for details.
+                    return;
+                }
+
+                let ltopt = if lt.is_elided() {
+                    "".to_owned()
+                } else {
+                    format!("{} ", lt.name.name().as_str())
+                };
+                let mutopt = if mut_ty.mutbl == Mutability::MutMutable {
+                    "mut "
+                } else {
+                    ""
+                };
+                span_lint_and_sugg(cx,
+                    BORROWED_BOX,
+                    ast_ty.span,
+                    "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
+                    "try",
+                    format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, ".."))
+                );
+                return; // don't recurse into the type
+            }};
+            check_ty(cx, &mut_ty.ty, is_local);
+        },
+        _ => check_ty(cx, &mut_ty.ty, is_local),
     }
 }
 

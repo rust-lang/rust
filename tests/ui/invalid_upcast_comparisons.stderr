@@ -162,5 +162,3 @@ error: because of the numeric bounds on `u8` prior to casting, this expression i
 78 |     -5 >= (u8 as i32);
    |     ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 27 previous errors
-

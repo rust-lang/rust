@@ -1,5 +1,5 @@
 #![feature(plugin, box_syntax)]
-#![plugin(clippy)]
+
 #![allow(warnings, clippy)]
 
 #![warn(boxed_local)]

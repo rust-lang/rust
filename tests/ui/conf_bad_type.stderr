@@ -1,4 +1,8 @@
-error: error reading Clippy's configuration file: invalid type: integer `42`, expected a sequence
-
-error: aborting due to previous error
+error: compiler plugins are experimental and possibly buggy (see issue #29597)
+ --> $DIR/conf_bad_type.rs:4:1
+  |
+4 | #![plugin(clippy(conf_file="./$DIR/conf_bad_type.toml"))]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: add #![feature(plugin)] to the crate attributes to enable
 

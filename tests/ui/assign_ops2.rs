@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[allow(unused_assignments)]
 #[warn(misrefactored_assign_op)]

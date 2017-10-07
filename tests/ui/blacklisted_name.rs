@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![allow(dead_code, similar_names, single_match, toplevel_ref_arg, unused_mut, unused_variables)]
 #![warn(blacklisted_name)]

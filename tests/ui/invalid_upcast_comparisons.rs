@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(invalid_upcast_comparisons)]
 #![allow(unused, eq_op, no_effect, unnecessary_operation, cast_lossless)]

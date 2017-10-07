@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![allow(many_single_char_names)]
 #![warn(overflow_check_conditional)]

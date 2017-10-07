@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(cmp_nan)]
 #[allow(float_cmp, no_effect, unnecessary_operation)]

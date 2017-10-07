@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[allow(unused_variables)]
 #[warn(zero_divided_by_zero)]

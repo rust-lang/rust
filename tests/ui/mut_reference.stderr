@@ -18,5 +18,3 @@ error: The function/method `takes_an_immutable_reference` doesn't need a mutable
 28 |     my_struct.takes_an_immutable_reference(&mut 42);
    |                                            ^^^^^^^
 
-error: aborting due to 3 previous errors
-

@@ -1,5 +1,6 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
+use std::borrow::Cow;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::map::NodeItem;
@@ -158,49 +159,53 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                 let mut ty_snippet = None;
                 if_let_chain!([
                     let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node,
-                    let Some(&PathSegment{ref parameters, ..}) = path.segments.last(),
+                    let Some(&PathSegment{parameters: Some(ref parameters), ..}) = path.segments.last(),
                     parameters.types.len() == 1,
                 ], {
                     ty_snippet = snippet_opt(cx, parameters.types[0].span);
                 });
-                let spans = get_spans(cx, opt_body_id, idx, "to_owned");
-                span_lint_and_then(
-                    cx,
-                    PTR_ARG,
-                    arg.span,
-                    "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
-                     with non-Vec-based slices.",
-                    |db| {
-                        if let Some(ref snippet) = ty_snippet {
+                if let Ok(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
+                    span_lint_and_then(
+                        cx,
+                        PTR_ARG,
+                        arg.span,
+                        "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
+                         with non-Vec-based slices.",
+                        |db| {
+                            if let Some(ref snippet) = ty_snippet {
+                                db.span_suggestion(arg.span,
+                                                   "change this to",
+                                                   format!("&[{}]", snippet));
+                            }
+                            for (clonespan, suggestion) in spans {
+                                db.span_suggestion(clonespan,
+                                                   &snippet_opt(cx, clonespan).map_or("change the call to".into(),
+                                                        |x| Cow::Owned(format!("change `{}` to", x))),
+                                                   suggestion.into());
+                            }
+                        }
+                    );
+                }
+            } else if match_type(cx, ty, &paths::STRING) {
+                if let Ok(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
+                    span_lint_and_then(
+                        cx,
+                        PTR_ARG,
+                        arg.span,
+                        "writing `&String` instead of `&str` involves a new object where a slice will do.",
+                        |db| {
                             db.span_suggestion(arg.span,
                                                "change this to",
-                                               format!("&[{}]", snippet));
+                                               "&str".into());
+                            for (clonespan, suggestion) in spans {
+                                db.span_suggestion_short(clonespan,
+                                                   &snippet_opt(cx, clonespan).map_or("change the call to".into(),
+                                                        |x| Cow::Owned(format!("change `{}` to", x))),
+                                                   suggestion.into());
+                            }
                         }
-                        for (clonespan, suggestion) in spans {
-                            db.span_suggestion(clonespan,
-                                               "change the `.clone()` to",
-                                               suggestion);
-                        }
-                    }
-                );
-            } else if match_type(cx, ty, &paths::STRING) {
-                let spans = get_spans(cx, opt_body_id, idx, "to_string");
-                span_lint_and_then(
-                    cx,
-                    PTR_ARG,
-                    arg.span,
-                    "writing `&String` instead of `&str` involves a new object where a slice will do.",
-                    |db| {
-                        db.span_suggestion(arg.span,
-                                           "change this to",
-                                           "&str".into());
-                        for (clonespan, suggestion) in spans {
-                            db.span_suggestion_short(clonespan,
-                                               "change the `.clone` to ",
-                                               suggestion);
-                        }
-                    }
-                );
+                    );
+                }
             }
         }
     }
@@ -229,38 +234,50 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
     }
 }
 
-fn get_spans(cx: &LateContext, opt_body_id: Option<BodyId>, idx: usize, fn_name: &'static str) -> Vec<(Span, String)> {
+fn get_spans(cx: &LateContext, opt_body_id: Option<BodyId>, idx: usize, replacements: &'static [(&'static str, &'static str)]) -> Result<Vec<(Span, Cow<'static, str>)>, ()> {
     if let Some(body) = opt_body_id.map(|id| cx.tcx.hir.body(id)) {
-        get_binding_name(&body.arguments[idx]).map_or_else(Vec::new,
-                                                |name| extract_clone_suggestions(cx, name, fn_name, body))
+        get_binding_name(&body.arguments[idx]).map_or_else(|| Ok(vec![]),
+                                                |name| extract_clone_suggestions(cx, name, replacements, body))
     } else {
-        vec![]
+        Ok(vec![])
     }
 }
 
-fn extract_clone_suggestions<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, fn_name: &'static str, body: &'tcx Body) -> Vec<(Span, String)> {
+fn extract_clone_suggestions<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, replace: &'static [(&'static str, &'static str)], body: &'tcx Body) -> Result<Vec<(Span, Cow<'static, str>)>, ()> {
     let mut visitor = PtrCloneVisitor {
         cx,
         name,
-        fn_name,
-        spans: vec![]
+        replace,
+        spans: vec![],
+        abort: false,
     };
     visitor.visit_body(body);
-    visitor.spans
+    if visitor.abort { Err(()) } else { Ok(visitor.spans) }
 }
 
 struct PtrCloneVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     name: Name,
-    fn_name: &'static str,
-    spans: Vec<(Span, String)>,
+    replace: &'static [(&'static str, &'static str)],
+    spans: Vec<(Span, Cow<'static, str>)>,
+    abort: bool,
 }
 
 impl<'a, 'tcx: 'a> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if self.abort { return; }
         if let ExprMethodCall(ref seg, _, ref args) = expr.node {
-            if args.len() == 1 && match_var(&args[0], self.name) && seg.name == "clone" {
-                self.spans.push((expr.span, format!("{}.{}()", snippet(self.cx, args[0].span, "_"), self.fn_name)));
+            if args.len() == 1 && match_var(&args[0], self.name) {
+                if seg.name == "capacity" {
+                    self.abort = true;
+                    return;
+                }
+                for &(fn_name, suffix) in self.replace {
+                    if seg.name == fn_name {
+                        self.spans.push((expr.span, snippet(self.cx, args[0].span, "_") + suffix));
+                        return;
+                    }
+                }
             }
             return;
         }

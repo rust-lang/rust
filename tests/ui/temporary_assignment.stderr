@@ -12,5 +12,3 @@ error: assignment to temporary
 30 |     (0, 0).0 = 1;
    |     ^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
-

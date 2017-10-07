@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(clippy, clippy_pedantic)]
 #![allow(missing_docs_in_private_items)]

@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![deny(clippy)]
 #![allow(unused_imports)]
 

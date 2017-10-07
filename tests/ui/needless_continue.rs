@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 macro_rules! zero {
     ($x:expr) => ($x == 0);

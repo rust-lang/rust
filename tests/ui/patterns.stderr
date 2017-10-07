@@ -6,5 +6,3 @@ error: the `y @ _` pattern can be written as just `y`
    |
    = note: `-D redundant-pattern` implied by `-D warnings`
 
-error: aborting due to previous error
-

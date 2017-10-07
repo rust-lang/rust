@@ -18,5 +18,3 @@ error: usage of mem::forget on Drop type
 24 |     forgetSomething(eight);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
-

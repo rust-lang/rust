@@ -51,6 +51,7 @@ extern crate lazy_static;
 
 extern crate itertools;
 extern crate pulldown_cmark;
+extern crate url;
 
 macro_rules! declare_restriction_lint {
     { pub $name:tt, $description:tt } => {
@@ -92,10 +93,13 @@ pub mod eval_order_dependence;
 pub mod format;
 pub mod formatting;
 pub mod functions;
+pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
 pub mod infinite_iter;
+pub mod int_plus_one;
+pub mod invalid_ref;
 pub mod is_unit_expr;
 pub mod items_after_statements;
 pub mod large_enum_variant;
@@ -231,7 +235,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box enum_variants::EnumVariantNames::new(conf.enum_variant_name_threshold));
     reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
     reg.register_late_lint_pass(box enum_clike::UnportableVariant);
-    reg.register_late_lint_pass(box bit_mask::BitMask);
+    reg.register_late_lint_pass(box bit_mask::BitMask::new(conf.verbose_bit_mask_threshold));
     reg.register_late_lint_pass(box ptr::PointerPass);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
     reg.register_late_lint_pass(box needless_bool::BoolComparison);
@@ -299,6 +303,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box formatting::Formatting);
     reg.register_late_lint_pass(box swap::Swap);
     reg.register_early_lint_pass(box if_not_else::IfNotElse);
+    reg.register_early_lint_pass(box int_plus_one::IntPlusOne);
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
@@ -326,6 +331,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box use_self::UseSelf);
     reg.register_late_lint_pass(box bytecount::ByteCount);
     reg.register_late_lint_pass(box infinite_iter::Pass);
+    reg.register_late_lint_pass(box invalid_ref::InvalidRef);
+    reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -342,6 +349,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         enum_variants::STUTTER,
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
+        int_plus_one::INT_PLUS_ONE,
+        invalid_ref::INVALID_REF,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         matches::SINGLE_MATCH_ELSE,
         mem_forget::MEM_FORGET,
@@ -424,6 +433,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         functions::NOT_UNSAFE_PTR_ARG_DEREF,
         functions::TOO_MANY_ARGUMENTS,
+        identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
         infinite_iter::INFINITE_ITER,
@@ -446,6 +456,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         loops::FOR_LOOP_OVER_RESULT,
         loops::ITER_NEXT_LOOP,
         loops::MANUAL_MEMCPY,
+        loops::MUT_RANGE_BOUND,
         loops::NEEDLESS_RANGE_LOOP,
         loops::NEVER_LOOP,
         loops::REVERSE_RANGE_LOOP,
@@ -458,6 +469,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         matches::MATCH_REF_PATS,
         matches::MATCH_WILD_ERR_ARM,
         matches::SINGLE_MATCH,
+        methods::CHARS_LAST_CMP,
         methods::CHARS_NEXT_CMP,
         methods::CLONE_DOUBLE_REF,
         methods::CLONE_ON_COPY,
@@ -535,6 +547,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         transmute::TRANSMUTE_PTR_TO_REF,
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
+        transmute::TRANSMUTE_INT_TO_CHAR,
+        transmute::TRANSMUTE_INT_TO_BOOL,
+        transmute::TRANSMUTE_INT_TO_FLOAT,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BORROWED_BOX,
         types::BOX_VEC,

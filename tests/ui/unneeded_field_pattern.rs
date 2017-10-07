@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(unneeded_field_pattern)]
 #[allow(dead_code, unused)]

@@ -1,9 +1,7 @@
 use rustc::hir::*;
-use rustc::hir::map::Node::NodeItem;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::LitKind;
-use syntax::symbol::InternedString;
 use utils::paths;
 use utils::{is_expn_of, match_def_path, match_type, resolve_node, span_lint, walk_ptrs_ty, opt_def_id};
 
@@ -50,8 +48,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id)),
                         match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1),
                         // ensure the format string is `"{..}"` with only one argument and no text
-                        check_static_str(cx, &args[0]),
+                        check_static_str(&args[0]),
                         // ensure the format argument is `{}` ie. Display with no fancy option
+                        // and that the argument is a string
                         check_arg_is_display(cx, &args[1])
                     ], {
                         span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
@@ -69,44 +68,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-/// Returns the slice of format string parts in an `Arguments::new_v1` call.
-/// Public because it's shared with a lint in print.rs.
-pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Expr) -> Option<Vec<InternedString>> {
+/// Checks if the expressions matches `&[""]`
+fn check_static_str(expr: &Expr) -> bool {
     if_let_chain! {[
-        let ExprBlock(ref block) = expr.node,
-        block.stmts.len() == 1,
-        let StmtDecl(ref decl, _) = block.stmts[0].node,
-        let DeclItem(ref decl) = decl.node,
-        let Some(NodeItem(decl)) = cx.tcx.hir.find(decl.id),
-        decl.name == "__STATIC_FMTSTR",
-        let ItemStatic(_, _, ref expr) = decl.node,
-        let ExprAddrOf(_, ref expr) = cx.tcx.hir.body(*expr).value.node, // &["…", "…", …]
-        let ExprArray(ref exprs) = expr.node,
+        let ExprAddrOf(_, ref expr) = expr.node, // &[""]
+        let ExprArray(ref exprs) = expr.node, // [""]
+        exprs.len() == 1,
+        let ExprLit(ref lit) = exprs[0].node,
+        let LitKind::Str(ref lit, _) = lit.node,
     ], {
-        let mut result = Vec::new();
-        for expr in exprs {
-            if let ExprLit(ref lit) = expr.node {
-                if let LitKind::Str(ref lit, _) = lit.node {
-                    result.push(lit.as_str());
-                }
-            }
-        }
-        return Some(result);
+        return lit.as_str().is_empty();
     }}
-    None
-}
 
-/// Checks if the expressions matches
-/// ```rust, ignore
-/// { static __STATIC_FMTSTR: &'static[&'static str] = &["a", "b", c];
-/// __STATIC_FMTSTR }
-/// ```
-fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
-    if let Some(expr) = get_argument_fmtstr_parts(cx, expr) {
-        expr.len() == 1 && expr[0].is_empty()
-    } else {
-        false
-    }
+    false
 }
 
 /// Checks if the expressions matches

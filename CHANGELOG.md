@@ -1,6 +1,22 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.165
+* Rust upgrade to rustc 1.22.0-nightly (0e6f4cf51 2017-09-27)
+* New lint: [`mut_range_bound`]
+
+## 0.0.164
+* Update to *rustc 1.22.0-nightly (6c476ce46 2017-09-25)*
+* New lint: [`int_plus_one`]
+
+## 0.0.163
+* Update to *rustc 1.22.0-nightly (14039a42a 2017-09-22)*
+
+## 0.0.162
+* Update to *rustc 1.22.0-nightly (0701b37d9 2017-09-18)*
+* New lint: [`chars_last_cmp`]
+* Improved suggestions for [`needless_borrow`], [`ptr_arg`],
+
 ## 0.0.161
 * Update to *rustc 1.22.0-nightly (539f2083d 2017-09-13)*
 
@@ -457,6 +473,7 @@ All notable changes to this project will be documented in this file.
 [`cast_precision_loss`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_precision_loss
 [`cast_sign_loss`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_sign_loss
 [`char_lit_as_u8`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#char_lit_as_u8
+[`chars_last_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#chars_last_cmp
 [`chars_next_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#chars_next_cmp
 [`clone_double_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#clone_double_ref
 [`clone_on_copy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#clone_on_copy
@@ -510,6 +527,7 @@ All notable changes to this project will be documented in this file.
 [`ineffective_bit_mask`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ineffective_bit_mask
 [`infinite_iter`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#infinite_iter
 [`inline_always`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#inline_always
+[`int_plus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#int_plus_one
 [`integer_arithmetic`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#integer_arithmetic
 [`invalid_regex`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#invalid_regex
 [`invalid_upcast_comparisons`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#invalid_upcast_comparisons
@@ -547,6 +565,7 @@ All notable changes to this project will be documented in this file.
 [`modulo_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#modulo_one
 [`mut_from_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_from_ref
 [`mut_mut`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_mut
+[`mut_range_bound`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_range_bound
 [`mutex_atomic`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mutex_atomic
 [`mutex_integer`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mutex_integer
 [`naive_bytecount`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#naive_bytecount

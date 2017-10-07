@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![deny(mut_mut, zero_ptr, cmp_nan)]
 #![allow(dead_code)]
 

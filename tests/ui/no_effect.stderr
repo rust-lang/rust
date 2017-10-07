@@ -111,7 +111,7 @@ error: statement with no effect
 error: statement with no effect
   --> $DIR/no_effect.rs:74:5
    |
-74 |     5...6;
+74 |     5..=6;
    |     ^^^^^^
 
 error: statement with no effect
@@ -265,6 +265,4 @@ error: statement can be reduced
     |
 110 |     {get_number()};
     |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
-
-error: aborting due to 44 previous errors
 

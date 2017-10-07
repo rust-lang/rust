@@ -68,5 +68,3 @@ help: consider boxing the large fields to reduce the total size of the enum
 49 |     StructLikeLarge2 { x: Box<[i32; 8000]> },
    |                           ^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
-

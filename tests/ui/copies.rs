@@ -1,5 +1,4 @@
-#![feature(plugin, inclusive_range_syntax)]
-#![plugin(clippy)]
+#![feature(dotdoteq_in_patterns, inclusive_range_syntax)]
 
 #![allow(dead_code, no_effect, unnecessary_operation)]
 #![allow(let_and_return)]
@@ -33,7 +32,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         ..;
         0..;
         ..10;
-        0...10;
+        0..=10;
         foo();
     }
     else {
@@ -42,7 +41,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         ..;
         0..;
         ..10;
-        0...10;
+        0..=10;
         foo();
     }
 
@@ -64,7 +63,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         0..10;
     }
     else {
-        0...10;
+        0..=10;
     }
 
     if true {
@@ -161,7 +160,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
-            10...15 => 3,
+            10..=15 => 3,
             _ => 4,
         };
     }
@@ -172,7 +171,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
-            10...15 => 3,
+            10..=15 => 3,
             _ => 4,
         };
     }

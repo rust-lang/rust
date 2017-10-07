@@ -82,7 +82,8 @@ macro_rules! define_Conf {
             #[serde(rename_all="kebab-case")]
             #[serde(deny_unknown_fields)]
             pub struct Conf {
-                $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)] pub $rust_name: define_Conf!(TY $($ty)+),)+
+                $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)]
+                          pub $rust_name: define_Conf!(TY $($ty)+),)+
                 #[allow(dead_code)]
                 #[serde(default)]
                 third_party: Option<::toml::Value>,
@@ -91,10 +92,12 @@ macro_rules! define_Conf {
                 mod $rust_name {
                     use serde;
                     use serde::Deserialize;
-                    pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<define_Conf!(TY $($ty)+), D::Error> {
+                    pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D)
+                    -> Result<define_Conf!(TY $($ty)+), D::Error> {
                         type T = define_Conf!(TY $($ty)+);
                         Ok(T::deserialize(deserializer).unwrap_or_else(|e| {
-                            ::utils::conf::ERRORS.lock().expect("no threading here").push(::utils::conf::Error::Toml(e.to_string()));
+                            ::utils::conf::ERRORS.lock().expect("no threading here")
+                                                        .push(::utils::conf::Error::Toml(e.to_string()));
                             super::$rust_name()
                         }))
                     }
@@ -154,10 +157,10 @@ define_Conf! {
         "JavaScript",
         "NaN",
         "OAuth",
-        "OpenGL",
+        "OpenGL", "OpenSSH", "OpenSSL",
         "TrueType",
         "iOS", "macOS",
-        "TeX", "LaTeX", "BibTex", "BibLaTex",
+        "TeX", "LaTeX", "BibTeX", "BibLaTeX",
         "MinGW",
     ] => Vec<String>),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
@@ -172,6 +175,8 @@ define_Conf! {
     (enum_variant_name_threshold, "enum_variant_name_threshold", 3 => u64),
     /// Lint: LARGE_ENUM_VARIANT. The maximum size of a emum's variant to avoid box suggestion
     (enum_variant_size_threshold, "enum_variant_size_threshold", 200 => u64),
+    /// Lint: VERBOSE_BIT_MASK. The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
+    (verbose_bit_mask_threshold, "verbose_bit_mask_threshold", 1 => u64),
 }
 
 /// Search for the configuration file.

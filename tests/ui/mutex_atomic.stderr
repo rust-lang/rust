@@ -44,5 +44,3 @@ error: Consider using an AtomicIsize instead of a Mutex here. If you just want t
 16 |     Mutex::new(0i32);
    |     ^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
-

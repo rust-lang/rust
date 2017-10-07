@@ -12,5 +12,3 @@ error: `0 as *mut _` detected. Consider using `ptr::null_mut()`
 7 |     let y = 0 as *mut f64;
   |             ^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
-

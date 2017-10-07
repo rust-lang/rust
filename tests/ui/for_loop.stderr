@@ -178,7 +178,7 @@ help: consider using an iterator
 error: the loop variable `i` is only used to index `vec`.
    --> $DIR/for_loop.rs:128:5
     |
-128 | /     for i in 0...MAX_LEN {
+128 | /     for i in 0..=MAX_LEN {
 129 | |         println!("{}", vec[i]);
 130 | |     }
     | |_____^
@@ -204,7 +204,7 @@ help: consider using an iterator
 error: the loop variable `i` is only used to index `vec`.
    --> $DIR/for_loop.rs:136:5
     |
-136 | /     for i in 5...10 {
+136 | /     for i in 5..=10 {
 137 | |         println!("{}", vec[i]);
 138 | |     }
     | |_____^
@@ -257,7 +257,7 @@ help: consider using the following if you are attempting to iterate over this ra
 error: this range is empty so this for loop will never run
    --> $DIR/for_loop.rs:152:5
     |
-152 | /     for i in 10...0 {
+152 | /     for i in 10..=0 {
 153 | |         println!("{}", i);
 154 | |     }
     | |_____^
@@ -585,6 +585,4 @@ error: it looks like you're manually copying between slices
 548 | |         dst[i] = src[i].clone();
 549 | |     }
     | |_____^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
-
-error: aborting due to 59 previous errors
 

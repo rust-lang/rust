@@ -1,7 +1,7 @@
-#![feature(plugin)]
+
 #![feature(exclusive_range_pattern)]
 
-#![plugin(clippy)]
+
 #![warn(clippy)]
 #![allow(unused, if_let_redundant_pattern_matching)]
 #![warn(single_match_else)]

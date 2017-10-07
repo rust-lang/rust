@@ -156,5 +156,27 @@ error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the doc
 138 | /// be_sure_we_got_to_the_end_of_it
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 26 previous errors
+error: you should put bare URLs between `<`/`>` or make a proper Markdown link
+   --> $DIR/doc.rs:165:13
+    |
+165 | /// Not ok: http://www.unicode.org
+    |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should put bare URLs between `<`/`>` or make a proper Markdown link
+   --> $DIR/doc.rs:166:13
+    |
+166 | /// Not ok: https://www.unicode.org
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should put bare URLs between `<`/`>` or make a proper Markdown link
+   --> $DIR/doc.rs:167:13
+    |
+167 | /// Not ok: http://www.unicode.org/
+    |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should put bare URLs between `<`/`>` or make a proper Markdown link
+   --> $DIR/doc.rs:168:13
+    |
+168 | /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

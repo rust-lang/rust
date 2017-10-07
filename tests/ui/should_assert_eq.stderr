@@ -55,5 +55,3 @@ error: use `assert_ne` for better reporting
    |
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to 7 previous errors
-

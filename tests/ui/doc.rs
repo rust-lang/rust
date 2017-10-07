@@ -1,7 +1,7 @@
 //! This file tests for the DOC_MARKDOWN lint
 
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(dead_code)]
 #![warn(doc_markdown)]
 
@@ -159,3 +159,11 @@ fn issue_1469() {}
  *This would also be an error under a strict common mark interpretation
  */
 fn issue_1920() {}
+
+/// Ok: <http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels>
+///
+/// Not ok: http://www.unicode.org
+/// Not ok: https://www.unicode.org
+/// Not ok: http://www.unicode.org/
+/// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
+fn issue_1832() {}

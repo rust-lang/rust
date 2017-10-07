@@ -1617,11 +1617,18 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
                         match_path(path, name) &&
                             path.segments
                                 .last()
-                                .map_or(false, |s| if s.parameters.parenthesized {
-                                    false
-                                } else {
-                                    s.parameters.types.len() == 1 &&
-                                        (is_self_ty(&s.parameters.types[0]) || is_ty(&*s.parameters.types[0], self_ty))
+                                .map_or(false, |s| {
+                                    if let Some(ref params) = s.parameters {
+                                        if params.parenthesized {
+                                            false
+                                        } else {
+                                            params.types.len() == 1 &&
+                                                (is_self_ty(&params.types[0])
+                                                  || is_ty(&*params.types[0], self_ty))
+                                        }
+                                    } else {
+                                        false
+                                    }
                                 })
                     } else {
                         false

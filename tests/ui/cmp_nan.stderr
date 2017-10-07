@@ -72,5 +72,3 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 21 |     y >= std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
-

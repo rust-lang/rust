@@ -68,5 +68,3 @@ error: this loop never actually loops
 103 | |     }
     | |_____^
 
-error: aborting due to 7 previous errors
-

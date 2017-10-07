@@ -1,6 +1,6 @@
-#![feature(plugin)]
 
-#![plugin(clippy)]
+
+
 #![warn(clippy)]
 #![warn(mutex_integer)]
 

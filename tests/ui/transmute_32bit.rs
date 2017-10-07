@@ -1,6 +1,6 @@
 //ignore-x86_64
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(wrong_transmute)]
 fn main() {

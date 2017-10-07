@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #![warn(unsafe_removed_from_name)]

@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(clippy)]
 #![allow(unused, needless_pass_by_value)]
 #![feature(associated_type_defaults)]

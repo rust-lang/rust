@@ -1,4 +1,8 @@
-error: error reading Clippy's configuration file: unknown field `foobar`, expected one of `blacklisted-names`, `cyclomatic-complexity-threshold`, `doc-valid-idents`, `too-many-arguments-threshold`, `type-complexity-threshold`, `single-char-binding-names-threshold`, `too-large-for-stack`, `enum-variant-name-threshold`, `enum-variant-size-threshold`, `third-party`
-
-error: aborting due to previous error
+error: compiler plugins are experimental and possibly buggy (see issue #29597)
+ --> $DIR/conf_unknown_key.rs:4:1
+  |
+4 | #![plugin(clippy(conf_file="./tests/auxiliary/conf_unknown_key.toml"))]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: add #![feature(plugin)] to the crate attributes to enable
 

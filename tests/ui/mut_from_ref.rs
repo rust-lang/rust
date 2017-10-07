@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(unused)]
 #![warn(mut_from_ref)]
 

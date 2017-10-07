@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 use std::fs::OpenOptions;
 
 #[allow(unused_must_use)]

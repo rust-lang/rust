@@ -144,7 +144,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         let TyPath(QPath::Resolved(_, ref path)) = input.node,
                         let Some(elem_ty) = path.segments.iter()
                             .find(|seg| seg.name == "Vec")
-                            .map(|ps| &ps.parameters.types[0]),
+                            .and_then(|ps| ps.parameters.as_ref())
+                            .map(|params| &params.types[0]),
                     ], {
                         let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
                         db.span_suggestion(input.span,

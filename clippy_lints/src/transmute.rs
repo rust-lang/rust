@@ -1,6 +1,8 @@
 use rustc::lint::*;
 use rustc::ty::{self, Ty};
 use rustc::hir::*;
+use std::borrow::Cow;
+use syntax::ast;
 use utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
 use utils::{sugg, opt_def_id};
 
@@ -76,11 +78,73 @@ declare_lint! {
     "transmutes from a pointer to a reference type"
 }
 
+/// **What it does:** Checks for transmutes from an integer to a `char`.
+///
+/// **Why is this bad?** Not every integer is a unicode scalar value.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let _: char = std::mem::transmute(x); // where x: u32
+/// // should be:
+/// let _: Option<char> = std::char::from_u32(x);
+/// ```
+declare_lint! {
+    pub TRANSMUTE_INT_TO_CHAR,
+    Warn,
+    "transmutes from an integer to a `char`"
+}
+
+/// **What it does:** Checks for transmutes from an integer to a `bool`.
+///
+/// **Why is this bad?** This might result in an invalid in-memory representation of a `bool`.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let _: bool = std::mem::transmute(x); // where x: u8
+/// // should be:
+/// let _: bool = x != 0;
+/// ```
+declare_lint! {
+    pub TRANSMUTE_INT_TO_BOOL,
+    Warn,
+    "transmutes from an integer to a `bool`"
+}
+
+/// **What it does:** Checks for transmutes from an integer to a float.
+///
+/// **Why is this bad?** This might result in an invalid in-memory representation of a float.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let _: f32 = std::mem::transmute(x); // where x: u32
+/// // should be:
+/// let _: f32 = f32::from_bits(x);
+/// ```
+declare_lint! {
+    pub TRANSMUTE_INT_TO_FLOAT,
+    Warn,
+    "transmutes from an integer to a float"
+}
+
 pub struct Transmute;
 
 impl LintPass for Transmute {
     fn get_lints(&self) -> LintArray {
-        lint_array!(CROSSPOINTER_TRANSMUTE, TRANSMUTE_PTR_TO_REF, USELESS_TRANSMUTE, WRONG_TRANSMUTE)
+        lint_array!(
+            CROSSPOINTER_TRANSMUTE,
+            TRANSMUTE_PTR_TO_REF,
+            USELESS_TRANSMUTE,
+            WRONG_TRANSMUTE,
+            TRANSMUTE_INT_TO_CHAR,
+            TRANSMUTE_INT_TO_BOOL,
+            TRANSMUTE_INT_TO_FLOAT
+        )
     }
 }
 
@@ -177,6 +241,50 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
                                 },
                             ),
+                            (&ty::TyInt(ast::IntTy::I32), &ty::TyChar) |
+                            (&ty::TyUint(ast::UintTy::U32), &ty::TyChar) => span_lint_and_then(
+                                cx,
+                                TRANSMUTE_INT_TO_CHAR,
+                                e.span,
+                                &format!("transmute from a `{}` to a `char`", from_ty),
+                                |db| {
+                                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                                    let arg = if let ty::TyInt(_) = from_ty.sty {
+                                        arg.as_ty(ty::TyUint(ast::UintTy::U32))
+                                    } else {
+                                        arg
+                                    };
+                                    db.span_suggestion(e.span, "consider using", format!("std::char::from_u32({})", arg.to_string()));
+                                }
+                            ),
+                            (&ty::TyInt(ast::IntTy::I8), &ty::TyBool) |
+                            (&ty::TyUint(ast::UintTy::U8), &ty::TyBool) => span_lint_and_then(
+                                cx,
+                                TRANSMUTE_INT_TO_BOOL,
+                                e.span,
+                                &format!("transmute from a `{}` to a `bool`", from_ty),
+                                |db| {
+                                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                                    let zero = sugg::Sugg::NonParen(Cow::from("0"));
+                                    db.span_suggestion(e.span, "consider using", sugg::make_binop(ast::BinOpKind::Ne, &arg, &zero).to_string());
+                                }
+                            ),
+                            (&ty::TyInt(_), &ty::TyFloat(_)) |
+                            (&ty::TyUint(_), &ty::TyFloat(_)) => span_lint_and_then(
+                                cx,
+                                TRANSMUTE_INT_TO_FLOAT,
+                                e.span,
+                                &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
+                                |db| {
+                                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                                    let arg = if let ty::TyInt(int_ty) = from_ty.sty {
+                                        arg.as_ty(format!("u{}", int_ty.bit_width().map_or_else(|| "size".to_string(), |v| v.to_string())))
+                                    } else {
+                                        arg
+                                    };
+                                    db.span_suggestion(e.span, "consider using", format!("{}::from_bits({})", to_ty, arg.to_string()));
+                                }
+                            ),
                             _ => return,
                         };
                     }
@@ -194,8 +302,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: Ty) -> String {
     let seg = last_path_segment(path);
     if_let_chain!{[
-        !seg.parameters.parenthesized,
-        let Some(to_ty) = seg.parameters.types.get(1),
+        let Some(ref params) = seg.parameters,
+        !params.parenthesized,
+        let Some(to_ty) = params.types.get(1),
         let TyRptr(_, ref to_ty) = to_ty.node,
     ], {
         return snippet(cx, to_ty.ty.span, &to_rty.to_string()).to_string();

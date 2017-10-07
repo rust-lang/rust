@@ -1,9 +1,10 @@
 use rustc::hir::*;
 use rustc::hir::map::Node::{NodeImplItem, NodeItem};
 use rustc::lint::*;
-use utils::{paths, opt_def_id};
+use syntax::ast::LitKind;
+use syntax::symbol::InternedString;
 use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint};
-use format::get_argument_fmtstr_parts;
+use utils::{paths, opt_def_id};
 
 /// **What it does:** This lint warns when you using `print!()` with a format
 /// string that
@@ -103,15 +104,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let ExprTup(ref args) = args.node,
 
                         // collect the format string parts and check the last one
-                        let Some(fmtstrs) = get_argument_fmtstr_parts(cx, &args_args[0]),
-                        let Some(last_str) = fmtstrs.last(),
-                        let Some('\n') = last_str.chars().last(),
+                        let Some((fmtstr, fmtlen)) = get_argument_fmtstr_parts(&args_args[0]),
+                        let Some('\n') = fmtstr.chars().last(),
 
                         // "foo{}bar" is made into two strings + one argument,
                         // if the format string starts with `{}` (eg. "{}foo"),
                         // the string array is prepended an empty string "".
                         // We only want to check the last string after any `{}`:
-                        args.len() < fmtstrs.len(),
+                        args.len() < fmtlen,
                     ], {
                         span_lint(cx, PRINT_WITH_NEWLINE, span,
                                   "using `print!()` with a format string that ends in a \
@@ -124,7 +124,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             else if args.len() == 2 && match_def_path(cx.tcx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
                 if let ExprPath(ref qpath) = args[1].node {
                     if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, args[1].hir_id)) {
-                        if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) && is_expn_of(expr.span, "panic").is_none() {
+                        if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD)
+                                && !is_in_debug_impl(cx, expr) && is_expn_of(expr.span, "panic").is_none() {
                             span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                         }
                     }
@@ -148,4 +149,18 @@ fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
     }
 
     false
+}
+
+/// Returns the slice of format string parts in an `Arguments::new_v1` call.
+fn get_argument_fmtstr_parts(expr: &Expr) -> Option<(InternedString, usize)> {
+    if_let_chain! {[
+        let ExprAddrOf(_, ref expr) = expr.node, // &["…", "…", …]
+        let ExprArray(ref exprs) = expr.node,
+        let Some(expr) = exprs.last(),
+        let ExprLit(ref lit) = expr.node,
+        let LitKind::Str(ref lit, _) = lit.node,
+    ], {
+        return Some((lit.as_str(), exprs.len()));
+    }}
+    None
 }

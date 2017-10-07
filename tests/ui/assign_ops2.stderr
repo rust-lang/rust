@@ -48,5 +48,3 @@ error: variable appears on both sides of an assignment operation
 15 |     a &= a & 1;
    |     ^^^^^^^^^^ help: replace it with: `a &= 1`
 
-error: aborting due to 8 previous errors
-

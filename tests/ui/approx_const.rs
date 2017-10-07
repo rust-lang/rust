@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(approx_constant)]
 #[allow(unused, shadow_unrelated, similar_names)]

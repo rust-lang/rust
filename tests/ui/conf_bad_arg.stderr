@@ -1,14 +1,8 @@
-error: `conf_file` must be a named value
- --> $DIR/conf_bad_arg.rs:4:18
+error: compiler plugins are experimental and possibly buggy (see issue #29597)
+ --> $DIR/conf_bad_arg.rs:4:1
   |
 4 | #![plugin(clippy(conf_file))]
-  |                  ^^^^^^^^^
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-note: Clippy will use default configuration
- --> $DIR/conf_bad_arg.rs:4:18
-  |
-4 | #![plugin(clippy(conf_file))]
-  |                  ^^^^^^^^^
-
-error: aborting due to previous error
+  = help: add #![feature(plugin)] to the crate attributes to enable
 

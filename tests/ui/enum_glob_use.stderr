@@ -12,5 +12,3 @@ error: don't use glob imports for enum variants
 12 | use self::Enum::*;
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
-

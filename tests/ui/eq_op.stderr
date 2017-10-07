@@ -204,5 +204,3 @@ error: taken reference of right operand
    |
    = note: `-D op-ref` implied by `-D warnings`
 
-error: aborting due to 33 previous errors
-

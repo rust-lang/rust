@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(unused, dead_code, needless_lifetimes, needless_pass_by_value)]
 #![warn(unused_lifetimes)]
 

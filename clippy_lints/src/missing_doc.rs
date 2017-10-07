@@ -15,16 +15,7 @@
 // *rustc*'s
 // [`missing_doc`].
 //
-// [`missing_doc`]:
-// https://github.
-// com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.
-//
-//
-//
-//
-//
-//
-// rs#L246
+// [`missing_doc`]: https://github.com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.rs#L246
 //
 
 use rustc::hir;

@@ -66,5 +66,3 @@ error: this if-then-else expression returns a bool literal
 50 |     if x && y { return false } else { return true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return !(x && y)`
 
-error: aborting due to 11 previous errors
-

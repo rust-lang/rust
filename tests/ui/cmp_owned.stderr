@@ -36,5 +36,3 @@ error: this creates an owned instance just for comparison
 30 |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^ try calling implementing the comparison without allocating
 
-error: aborting due to 6 previous errors
-

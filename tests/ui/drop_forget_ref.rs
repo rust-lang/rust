@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(drop_ref, forget_ref)]
 #![allow(toplevel_ref_arg, similar_names, needless_pass_by_value)]

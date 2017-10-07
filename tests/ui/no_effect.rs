@@ -1,5 +1,5 @@
 #![feature(plugin, box_syntax, inclusive_range_syntax)]
-#![plugin(clippy)]
+
 
 #![warn(no_effect, unnecessary_operation)]
 #![allow(dead_code)]
@@ -71,7 +71,7 @@ fn main() {
     5..;
     ..5;
     5..6;
-    5...6;
+    5..=6;
     [42, 55];
     [42, 55][1];
     (42, 55).1;

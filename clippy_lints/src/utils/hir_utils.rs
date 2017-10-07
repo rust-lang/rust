@@ -214,7 +214,14 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     fn eq_path_segment(&self, left: &PathSegment, right: &PathSegment) -> bool {
         // The == of idents doesn't work with different contexts,
         // we have to be explicit about hygiene
-        left.name.as_str() == right.name.as_str() && self.eq_path_parameters(&left.parameters, &right.parameters)
+        if left.name.as_str() != right.name.as_str() {
+            return false;
+        }
+        match (&left.parameters, &right.parameters) {
+            (&None, &None) => true,
+            (&Some(ref l), &Some(ref r)) => self.eq_path_parameters(l, r),
+            _ => false
+        }
     }
 
     fn eq_ty(&self, left: &Ty, right: &Ty) -> bool {

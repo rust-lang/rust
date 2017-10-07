@@ -6,5 +6,3 @@ error: re-implementing `PartialEq::ne` is unnecessary
    |
    = note: `-D partialeq-ne-impl` implied by `-D warnings`
 
-error: aborting due to previous error
-

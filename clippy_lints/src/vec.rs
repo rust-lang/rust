@@ -67,7 +67,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
                 .eval(len)
                 .is_ok()
             {
-                format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
+                format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len"))
             } else {
                 return;
             }
@@ -75,7 +75,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
         higher::VecArgs::Vec(args) => if let Some(last) = args.iter().last() {
             let span = args[0].span.to(last.span);
 
-            format!("&[{}]", snippet(cx, span, "..")).into()
+            format!("&[{}]", snippet(cx, span, ".."))
         } else {
             "&[]".into()
         },

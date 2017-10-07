@@ -18,5 +18,3 @@ error: this lifetime isn't used in the function definition
 50 |     fn x<'a>(&self) {}
    |          ^^
 
-error: aborting due to 3 previous errors
-

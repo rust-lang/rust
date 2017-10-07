@@ -104,19 +104,20 @@ fn check_fn_inner<'a, 'tcx>(
     for typ in &generics.ty_params {
         for bound in &typ.bounds {
             if let TraitTyParamBound(ref trait_ref, _) = *bound {
-                let bounds = &trait_ref
+                let params = &trait_ref
                     .trait_ref
                     .path
                     .segments
                     .last()
                     .expect("a path must have at least one segment")
-                    .parameters
-                    .lifetimes;
-                for bound in bounds {
-                    if bound.name != "'static" && !bound.is_elided() {
-                        return;
+                    .parameters;
+                if let Some(ref params) = *params {
+                    for bound in &params.lifetimes {
+                        if bound.name.name() != "'static" && !bound.is_elided() {
+                            return;
+                        }
+                        bounds_lts.push(bound);
                     }
-                    bounds_lts.push(bound);
                 }
             }
         }
@@ -225,7 +226,7 @@ fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {
     let mut allowed_lts = HashSet::new();
     for lt in named_lts {
         if lt.bounds.is_empty() {
-            allowed_lts.insert(RefLt::Named(lt.lifetime.name));
+            allowed_lts.insert(RefLt::Named(lt.lifetime.name.name()));
         }
     }
     allowed_lts.insert(RefLt::Unnamed);
@@ -235,8 +236,8 @@ fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {
 
 fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
     for lt in bounds_lts {
-        if lt.name != "'static" {
-            vec.push(RefLt::Named(lt.name));
+        if lt.name.name() != "'static" {
+            vec.push(RefLt::Named(lt.name.name()));
         }
     }
 
@@ -266,12 +267,12 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let Some(ref lt) = *lifetime {
-            if lt.name == "'static" {
+            if lt.name.name() == "'static" {
                 self.lts.push(RefLt::Static);
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
             } else {
-                self.lts.push(RefLt::Named(lt.name));
+                self.lts.push(RefLt::Named(lt.name.name()));
             }
         } else {
             self.lts.push(RefLt::Unnamed);
@@ -287,23 +288,24 @@ impl<'v, 't> RefVisitor<'v, 't> {
     }
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
-        let last_path_segment = &last_path_segment(qpath).parameters;
-        if !last_path_segment.parenthesized && last_path_segment.lifetimes.is_empty() {
-            let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
-            match self.cx.tables.qpath_def(qpath, hir_id) {
-                Def::TyAlias(def_id) | Def::Struct(def_id) => {
-                    let generics = self.cx.tcx.generics_of(def_id);
-                    for _ in generics.regions.as_slice() {
-                        self.record(&None);
-                    }
-                },
-                Def::Trait(def_id) => {
-                    let trait_def = self.cx.tcx.trait_def(def_id);
-                    for _ in &self.cx.tcx.generics_of(trait_def.def_id).regions {
-                        self.record(&None);
-                    }
-                },
-                _ => (),
+        if let Some(ref last_path_segment) = last_path_segment(qpath).parameters {
+            if !last_path_segment.parenthesized && last_path_segment.lifetimes.is_empty() {
+                let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
+                match self.cx.tables.qpath_def(qpath, hir_id) {
+                    Def::TyAlias(def_id) | Def::Struct(def_id) => {
+                        let generics = self.cx.tcx.generics_of(def_id);
+                        for _ in generics.regions.as_slice() {
+                            self.record(&None);
+                        }
+                    },
+                    Def::Trait(def_id) => {
+                        let trait_def = self.cx.tcx.trait_def(def_id);
+                        for _ in &self.cx.tcx.generics_of(trait_def.def_id).regions {
+                            self.record(&None);
+                        }
+                    },
+                    _ => (),
+                }
             }
         }
     }
@@ -396,7 +398,7 @@ struct LifetimeChecker {
 impl<'tcx> Visitor<'tcx> for LifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        self.map.remove(&lifetime.name);
+        self.map.remove(&lifetime.name.name());
     }
 
     fn visit_lifetime_def(&mut self, _: &'tcx LifetimeDef) {
@@ -415,7 +417,7 @@ fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx 
     let hs = generics
         .lifetimes
         .iter()
-        .map(|lt| (lt.lifetime.name, lt.lifetime.span))
+        .map(|lt| (lt.lifetime.name.name(), lt.lifetime.span))
         .collect();
     let mut checker = LifetimeChecker { map: hs };
 
@@ -434,7 +436,7 @@ struct BodyLifetimeChecker {
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if lifetime.name != keywords::Invalid.name() && lifetime.name != "'static" {
+        if lifetime.name.name() != keywords::Invalid.name() && lifetime.name.name() != "'static" {
             self.lifetimes_used_in_body = true;
         }
     }

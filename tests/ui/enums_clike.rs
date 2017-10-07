@@ -1,6 +1,6 @@
 // ignore-x86
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(clippy)]
 
 #![allow(unused)]

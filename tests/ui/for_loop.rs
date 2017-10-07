@@ -1,5 +1,5 @@
 #![feature(plugin, inclusive_range_syntax)]
-#![plugin(clippy)]
+
 
 use std::collections::*;
 use std::rc::Rc;
@@ -125,7 +125,7 @@ fn main() {
         println!("{}", vec[i]);
     }
 
-    for i in 0...MAX_LEN {
+    for i in 0..=MAX_LEN {
         println!("{}", vec[i]);
     }
 
@@ -133,7 +133,7 @@ fn main() {
         println!("{}", vec[i]);
     }
 
-    for i in 5...10 {
+    for i in 5..=10 {
         println!("{}", vec[i]);
     }
 
@@ -149,7 +149,7 @@ fn main() {
         println!("{}", i);
     }
 
-    for i in 10...0 {
+    for i in 10..=0 {
         println!("{}", i);
     }
 
@@ -161,7 +161,7 @@ fn main() {
         println!("{}", i);
     }
 
-    for i in 5...5 {
+    for i in 5..=5 {
         // not an error, this is the range with only one element “5”
         println!("{}", i);
     }

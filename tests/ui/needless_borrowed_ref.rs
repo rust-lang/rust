@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(needless_borrowed_reference)]
 #[allow(unused_variables)]

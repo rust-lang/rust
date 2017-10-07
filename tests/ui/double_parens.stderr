@@ -30,5 +30,3 @@ error: Consider removing unnecessary double parentheses
 32 |     (())
    |     ^^^^
 
-error: aborting due to 5 previous errors
-

@@ -21,13 +21,13 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:16:6
    |
-16 |     &x[0...4];
+16 |     &x[0..=4];
    |      ^^^^^^^^
 
 error: range is out of bounds
   --> $DIR/array_indexing.rs:17:6
    |
-17 |     &x[...4];
+17 |     &x[..=4];
    |      ^^^^^^^
 
 error: range is out of bounds
@@ -59,13 +59,13 @@ error: slicing may panic
 error: slicing may panic
   --> $DIR/array_indexing.rs:29:6
    |
-29 |     &y[0...4];
+29 |     &y[0..=4];
    |      ^^^^^^^^
 
 error: slicing may panic
   --> $DIR/array_indexing.rs:30:6
    |
-30 |     &y[...4];
+30 |     &y[..=4];
    |      ^^^^^^^
 
 error: const index is out of bounds
@@ -83,25 +83,25 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:35:6
    |
-35 |     &empty[0...4];
+35 |     &empty[0..=4];
    |      ^^^^^^^^^^^^
 
 error: range is out of bounds
   --> $DIR/array_indexing.rs:36:6
    |
-36 |     &empty[...4];
+36 |     &empty[..=4];
    |      ^^^^^^^^^^^
 
 error: range is out of bounds
   --> $DIR/array_indexing.rs:40:6
    |
-40 |     &empty[0...0];
+40 |     &empty[0..=0];
    |      ^^^^^^^^^^^^
 
 error: range is out of bounds
   --> $DIR/array_indexing.rs:41:6
    |
-41 |     &empty[...0];
+41 |     &empty[..=0];
    |      ^^^^^^^^^^^
 
 error: range is out of bounds
@@ -115,6 +115,4 @@ error: range is out of bounds
    |
 44 |     &empty[..4];
    |      ^^^^^^^^^^
-
-error: aborting due to 19 previous errors
 

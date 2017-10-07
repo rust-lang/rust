@@ -51,5 +51,3 @@ note: Consider removing the trailing semicolon
 42 |             x;
    |             ^^
 
-error: aborting due to 3 previous errors
-

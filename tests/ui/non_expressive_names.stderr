@@ -129,5 +129,3 @@ error: 5th binding whose name is just one char
 129 |             e => panic!(),
     |             ^
 
-error: aborting due to 11 previous errors
-

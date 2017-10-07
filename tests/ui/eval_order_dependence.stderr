@@ -47,5 +47,3 @@ note: whether read occurs before this write depends on evaluation order
 21 |         x += { x = 20; 2 };
    |                ^^^^^^
 
-error: aborting due to 4 previous errors
-

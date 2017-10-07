@@ -6,5 +6,3 @@ error: useless lint attribute
   |
   = note: `-D useless-attribute` implied by `-D warnings`
 
-error: aborting due to previous error
-
