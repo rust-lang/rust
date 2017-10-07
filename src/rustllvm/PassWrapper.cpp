@@ -26,7 +26,11 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 #if LLVM_VERSION_GE(4, 0)
+#include "llvm/Object/ModuleSummaryIndexObjectFile.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/IPO/FunctionImport.h"
+#include "llvm/Transforms/Utils/FunctionImportUtils.h"
+#include "llvm/LTO/LTO.h"
 #endif
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
@@ -100,6 +104,19 @@ extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
   Pass *Pass = unwrap(RustPass);
   PassManagerBase *PMB = unwrap(PMR);
   PMB->add(Pass);
+}
+
+extern "C"
+bool LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
+  LLVMPassManagerBuilderRef PMBR,
+  LLVMPassManagerRef PMR
+) {
+#if LLVM_VERSION_GE(4, 0)
+  unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
+  return true;
+#else
+  return false;
+#endif
 }
 
 #ifdef LLVM_COMPONENT_X86
@@ -740,3 +757,447 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
   unwrap(M)->setPIELevel(PIELevel::Level::Large);
 #endif
 }
+
+extern "C" bool
+LLVMRustThinLTOAvailable() {
+#if LLVM_VERSION_GE(4, 0)
+  return true;
+#else
+  return false;
+#endif
+}
+
+#if LLVM_VERSION_GE(4, 0)
+
+// Here you'll find an implementation of ThinLTO as used by the Rust compiler
+// right now. This ThinLTO support is only enabled on "recent ish" versions of
+// LLVM, and otherwise it's just blanket rejected from other compilers.
+//
+// Most of this implementation is straight copied from LLVM. At the time of
+// this writing it wasn't *quite* suitable to reuse more code from upstream
+// for our purposes, but we should strive to upstream this support once it's
+// ready to go! I figure we may want a bit of testing locally first before
+// sending this upstream to LLVM. I hear though they're quite eager to receive
+// feedback like this!
+//
+// If you're reading this code and wondering "what in the world" or you're
+// working "good lord by LLVM upgrade is *still* failing due to these bindings"
+// then fear not! (ok maybe fear a little). All code here is mostly based
+// on `lib/LTO/ThinLTOCodeGenerator.cpp` in LLVM.
+//
+// You'll find that the general layout here roughly corresponds to the `run`
+// method in that file as well as `ProcessThinLTOModule`. Functions are
+// specifically commented below as well, but if you're updating this code
+// or otherwise trying to understand it, the LLVM source will be useful in
+// interpreting the mysteries within.
+//
+// Otherwise I'll apologize in advance, it probably requires a relatively
+// significant investment on your part to "truly understand" what's going on
+// here. Not saying I do myself, but it took me awhile staring at LLVM's source
+// and various online resources about ThinLTO to make heads or tails of all
+// this.
+
+extern "C" bool
+LLVMRustWriteThinBitcodeToFile(LLVMPassManagerRef PMR,
+                               LLVMModuleRef M,
+                               const char *BcFile) {
+  llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
+  std::error_code EC;
+  llvm::raw_fd_ostream bc(BcFile, EC, llvm::sys::fs::F_None);
+  if (EC) {
+    LLVMRustSetLastError(EC.message().c_str());
+    return false;
+  }
+  PM->add(createWriteThinLTOBitcodePass(bc));
+  PM->run(*unwrap(M));
+  delete PM;
+  return true;
+}
+
+// This is a shared data structure which *must* be threadsafe to share
+// read-only amongst threads. This also corresponds basically to the arguments
+// of the `ProcessThinLTOModule` function in the LLVM source.
+struct LLVMRustThinLTOData {
+  // The combined index that is the global analysis over all modules we're
+  // performing ThinLTO for. This is mostly managed by LLVM.
+  ModuleSummaryIndex Index;
+
+  // All modules we may look at, stored as in-memory serialized versions. This
+  // is later used when inlining to ensure we can extract any module to inline
+  // from.
+  StringMap<MemoryBufferRef> ModuleMap;
+
+  // A set that we manage of everything we *don't* want internalized. Note that
+  // this includes all transitive references right now as well, but it may not
+  // always!
+  DenseSet<GlobalValue::GUID> GUIDPreservedSymbols;
+
+  // Not 100% sure what these are, but they impact what's internalized and
+  // what's inlined across modules, I believe.
+  StringMap<FunctionImporter::ImportMapTy> ImportLists;
+  StringMap<FunctionImporter::ExportSetTy> ExportLists;
+  StringMap<GVSummaryMapTy> ModuleToDefinedGVSummaries;
+};
+
+// Just an argument to the `LLVMRustCreateThinLTOData` function below.
+struct LLVMRustThinLTOModule {
+  const char *identifier;
+  const char *data;
+  size_t len;
+};
+
+// This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`, not sure what it
+// does.
+static const GlobalValueSummary *
+getFirstDefinitionForLinker(const GlobalValueSummaryList &GVSummaryList) {
+  auto StrongDefForLinker = llvm::find_if(
+      GVSummaryList, [](const std::unique_ptr<GlobalValueSummary> &Summary) {
+        auto Linkage = Summary->linkage();
+        return !GlobalValue::isAvailableExternallyLinkage(Linkage) &&
+               !GlobalValue::isWeakForLinker(Linkage);
+      });
+  if (StrongDefForLinker != GVSummaryList.end())
+    return StrongDefForLinker->get();
+
+  auto FirstDefForLinker = llvm::find_if(
+      GVSummaryList, [](const std::unique_ptr<GlobalValueSummary> &Summary) {
+        auto Linkage = Summary->linkage();
+        return !GlobalValue::isAvailableExternallyLinkage(Linkage);
+      });
+  if (FirstDefForLinker == GVSummaryList.end())
+    return nullptr;
+  return FirstDefForLinker->get();
+}
+
+// This is a helper function we added that isn't present in LLVM's source.
+//
+// The way LTO works in Rust is that we typically have a number of symbols that
+// we know ahead of time need to be preserved. We want to ensure that ThinLTO
+// doesn't accidentally internalize any of these and otherwise is always
+// ready to keep them linking correctly.
+//
+// This function will recursively walk the `GUID` provided and all of its
+// references, as specified in the `Index`. In other words, we're taking a
+// `GUID` as input, adding it to `Preserved`, and then taking all `GUID`
+// items that the input references and recursing.
+static void
+addPreservedGUID(const ModuleSummaryIndex &Index,
+                 DenseSet<GlobalValue::GUID> &Preserved,
+                 GlobalValue::GUID GUID) {
+  if (Preserved.count(GUID))
+    return;
+  Preserved.insert(GUID);
+
+  auto SummaryList = Index.findGlobalValueSummaryList(GUID);
+  if (SummaryList == Index.end())
+    return;
+  for (auto &Summary : SummaryList->second) {
+    for (auto &Ref : Summary->refs()) {
+      if (Ref.isGUID()) {
+        addPreservedGUID(Index, Preserved, Ref.getGUID());
+      } else {
+        auto Value = Ref.getValue();
+        addPreservedGUID(Index, Preserved, Value->getGUID());
+      }
+    }
+
+    GlobalValueSummary *GVSummary = Summary.get();
+    if (isa<FunctionSummary>(GVSummary)) {
+      FunctionSummary *FS = cast<FunctionSummary>(GVSummary);
+      for (auto &Call: FS->calls()) {
+        if (Call.first.isGUID()) {
+          addPreservedGUID(Index, Preserved, Call.first.getGUID());
+        } else {
+          auto Value = Call.first.getValue();
+          addPreservedGUID(Index, Preserved, Value->getGUID());
+        }
+      }
+      for (auto &GUID: FS->type_tests()) {
+        addPreservedGUID(Index, Preserved, GUID);
+      }
+    }
+  }
+}
+
+// The main entry point for creating the global ThinLTO analysis. The structure
+// here is basically the same as before threads are spawned in the `run`
+// function of `lib/LTO/ThinLTOCodeGenerator.cpp`.
+extern "C" LLVMRustThinLTOData*
+LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
+                          int num_modules,
+                          const char **preserved_symbols,
+                          int num_symbols) {
+  auto Ret = llvm::make_unique<LLVMRustThinLTOData>();
+
+  // Load each module's summary and merge it into one combined index
+  for (int i = 0; i < num_modules; i++) {
+    auto module = &modules[i];
+    StringRef buffer(module->data, module->len);
+    MemoryBufferRef mem_buffer(buffer, module->identifier);
+
+    Ret->ModuleMap[module->identifier] = mem_buffer;
+
+    Expected<std::unique_ptr<object::ModuleSummaryIndexObjectFile>> ObjOrErr =
+      object::ModuleSummaryIndexObjectFile::create(mem_buffer);
+    if (!ObjOrErr) {
+      LLVMRustSetLastError(toString(ObjOrErr.takeError()).c_str());
+      return nullptr;
+    }
+    auto Index = (*ObjOrErr)->takeIndex();
+    Ret->Index.mergeFrom(std::move(Index), i);
+  }
+
+  // Collect for each module the list of function it defines (GUID -> Summary)
+  Ret->Index.collectDefinedGVSummariesPerModule(Ret->ModuleToDefinedGVSummaries);
+
+  // Convert the preserved symbols set from string to GUID, this is then needed
+  // for internalization. We use `addPreservedGUID` to include any transitively
+  // used symbol as well.
+  for (int i = 0; i < num_symbols; i++) {
+    addPreservedGUID(Ret->Index,
+                     Ret->GUIDPreservedSymbols,
+                     GlobalValue::getGUID(preserved_symbols[i]));
+  }
+
+  // Collect the import/export lists for all modules from the call-graph in the
+  // combined index
+  //
+  // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
+  computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
+  ComputeCrossModuleImport(
+    Ret->Index,
+    Ret->ModuleToDefinedGVSummaries,
+    Ret->ImportLists,
+    Ret->ExportLists
+  );
+
+  // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it
+  // impacts the caching.
+  //
+  // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
+  StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
+  DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
+  for (auto &I : Ret->Index) {
+    if (I.second.size() > 1)
+      PrevailingCopy[I.first] = getFirstDefinitionForLinker(I.second);
+  }
+  auto isPrevailing = [&](GlobalValue::GUID GUID, const GlobalValueSummary *S) {
+    const auto &Prevailing = PrevailingCopy.find(GUID);
+    if (Prevailing == PrevailingCopy.end())
+      return true;
+    return Prevailing->second == S;
+  };
+  auto recordNewLinkage = [&](StringRef ModuleIdentifier,
+                              GlobalValue::GUID GUID,
+                              GlobalValue::LinkageTypes NewLinkage) {
+    ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
+  };
+  thinLTOResolveWeakForLinkerInIndex(Ret->Index, isPrevailing, recordNewLinkage);
+  auto isExported = [&](StringRef ModuleIdentifier, GlobalValue::GUID GUID) {
+    const auto &ExportList = Ret->ExportLists.find(ModuleIdentifier);
+    return (ExportList != Ret->ExportLists.end() &&
+      ExportList->second.count(GUID)) ||
+      Ret->GUIDPreservedSymbols.count(GUID);
+  };
+  thinLTOInternalizeAndPromoteInIndex(Ret->Index, isExported);
+
+  return Ret.release();
+}
+
+extern "C" void
+LLVMRustFreeThinLTOData(LLVMRustThinLTOData *Data) {
+  delete Data;
+}
+
+// Below are the various passes that happen *per module* when doing ThinLTO.
+//
+// In other words, these are the functions that are all run concurrently
+// with one another, one per module. The passes here correspond to the analysis
+// passes in `lib/LTO/ThinLTOCodeGenerator.cpp`, currently found in the
+// `ProcessThinLTOModule` function. Here they're split up into separate steps
+// so rustc can save off the intermediate bytecode between each step.
+
+extern "C" bool
+LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  Module &Mod = *unwrap(M);
+  if (renameModuleForThinLTO(Mod, Data->Index)) {
+    LLVMRustSetLastError("renameModuleForThinLTO failed");
+    return false;
+  }
+  return true;
+}
+
+extern "C" bool
+LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  Module &Mod = *unwrap(M);
+  const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
+  thinLTOResolveWeakForLinkerModule(Mod, DefinedGlobals);
+  return true;
+}
+
+extern "C" bool
+LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  Module &Mod = *unwrap(M);
+  const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
+  thinLTOInternalizeModule(Mod, DefinedGlobals);
+  return true;
+}
+
+extern "C" bool
+LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  Module &Mod = *unwrap(M);
+  const auto &ImportList = Data->ImportLists.lookup(Mod.getModuleIdentifier());
+  auto Loader = [&](StringRef Identifier) {
+    const auto &Memory = Data->ModuleMap.lookup(Identifier);
+    auto &Context = Mod.getContext();
+    return getLazyBitcodeModule(Memory, Context, true, true);
+  };
+  FunctionImporter Importer(Data->Index, Loader);
+  Expected<bool> Result = Importer.importFunctions(Mod, ImportList);
+  if (!Result) {
+    LLVMRustSetLastError(toString(Result.takeError()).c_str());
+    return false;
+  }
+  return true;
+}
+
+// This struct and various functions are sort of a hack right now, but the
+// problem is that we've got in-memory LLVM modules after we generate and
+// optimize all codegen-units for one compilation in rustc. To be compatible
+// with the LTO support above we need to serialize the modules plus their
+// ThinLTO summary into memory.
+//
+// This structure is basically an owned version of a serialize module, with
+// a ThinLTO summary attached.
+struct LLVMRustThinLTOBuffer {
+  std::string data;
+};
+
+extern "C" LLVMRustThinLTOBuffer*
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
+  auto Ret = llvm::make_unique<LLVMRustThinLTOBuffer>();
+  {
+    raw_string_ostream OS(Ret->data);
+    {
+      legacy::PassManager PM;
+      PM.add(createWriteThinLTOBitcodePass(OS));
+      PM.run(*unwrap(M));
+    }
+  }
+  return Ret.release();
+}
+
+extern "C" void
+LLVMRustThinLTOBufferFree(LLVMRustThinLTOBuffer *Buffer) {
+  delete Buffer;
+}
+
+extern "C" const void*
+LLVMRustThinLTOBufferPtr(const LLVMRustThinLTOBuffer *Buffer) {
+  return Buffer->data.data();
+}
+
+extern "C" size_t
+LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
+  return Buffer->data.length();
+}
+
+// This is what we used to parse upstream bitcode for actual ThinLTO
+// processing.  We'll call this once per module optimized through ThinLTO, and
+// it'll be called concurrently on many threads.
+extern "C" LLVMModuleRef
+LLVMRustParseBitcodeForThinLTO(LLVMContextRef Context,
+                               const char *data,
+                               size_t len,
+                               const char *identifier) {
+  StringRef Data(data, len);
+  MemoryBufferRef Buffer(Data, identifier);
+  unwrap(Context)->enableDebugTypeODRUniquing();
+  Expected<std::unique_ptr<Module>> SrcOrError =
+      parseBitcodeFile(Buffer, *unwrap(Context));
+  if (!SrcOrError) {
+    LLVMRustSetLastError(toString(SrcOrError.takeError()).c_str());
+    return nullptr;
+  }
+  return wrap(std::move(*SrcOrError).release());
+}
+
+#else
+
+extern "C" bool
+LLVMRustWriteThinBitcodeToFile(LLVMPassManagerRef PMR,
+                               LLVMModuleRef M,
+                               const char *BcFile) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+struct LLVMRustThinLTOData {
+};
+
+struct LLVMRustThinLTOModule {
+};
+
+extern "C" LLVMRustThinLTOData*
+LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
+                          int num_modules,
+                          const char **preserved_symbols,
+                          int num_symbols) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" bool
+LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" bool
+LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" bool
+LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" bool
+LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" void
+LLVMRustFreeThinLTOData(LLVMRustThinLTOData *Data) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+struct LLVMRustThinLTOBuffer {
+};
+
+extern "C" LLVMRustThinLTOBuffer*
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" void
+LLVMRustThinLTOBufferFree(LLVMRustThinLTOBuffer *Buffer) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" const void*
+LLVMRustThinLTOBufferPtr(const LLVMRustThinLTOBuffer *Buffer) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" size_t
+LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
+  llvm_unreachable("ThinLTO not available");
+}
+
+extern "C" LLVMModuleRef
+LLVMRustParseBitcodeForThinLTO(LLVMContextRef Context,
+                               const char *data,
+                               size_t len,
+                               const char *identifier) {
+  llvm_unreachable("ThinLTO not available");
+}
+#endif // LLVM_VERSION_GE(4, 0)

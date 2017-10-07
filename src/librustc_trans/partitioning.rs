@@ -108,7 +108,6 @@ use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::middle::trans::{Linkage, Visibility};
-use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -627,7 +626,7 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-    Symbol::intern(&format!("{}{}{}", crate_name, NUMBERED_CODEGEN_UNIT_MARKER, index)).as_str()
+    Symbol::intern(&format!("{}{}", crate_name, index)).as_str()
 }
 
 fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
