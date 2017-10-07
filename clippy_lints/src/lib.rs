@@ -263,7 +263,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box loops::Pass);
     reg.register_late_lint_pass(box lifetimes::LifetimePass);
     reg.register_late_lint_pass(box entry::HashMapLint);
-    reg.register_late_lint_pass(box ranges::StepByZero);
+    reg.register_late_lint_pass(box ranges::Pass);
     reg.register_late_lint_pass(box types::CastPass);
     reg.register_late_lint_pass(box types::TypeComplexityPass::new(conf.type_complexity_threshold));
     reg.register_late_lint_pass(box matches::MatchPass);
