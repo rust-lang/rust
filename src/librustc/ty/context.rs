@@ -1252,6 +1252,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn def_path_debug_str(self, def_id: DefId) -> String {
+        // We are explicitly not going through queries here in order to get
+        // crate name and disambiguator since this code is called from debug!()
+        // statements within the query system and we'd run into endless
+        // recursion otherwise.
+        let (crate_name, crate_disambiguator) = if def_id.is_local() {
+            (self.crate_name.clone(),
+             self.sess.local_crate_disambiguator())
+        } else {
+            (self.cstore.crate_name_untracked(def_id.krate),
+             self.cstore.crate_disambiguator_untracked(def_id.krate))
+        };
+
+        format!("{}[{}]{}",
+                crate_name,
+                // Don't print the whole crate disambiguator. That's just
+                // annoying in debug output.
+                &(crate_disambiguator.as_str())[..4],
+                self.def_path(def_id).to_string_no_crate())
+    }
+
     pub fn metadata_encoding_version(self) -> Vec<u8> {
         self.cstore.metadata_encoding_version().to_vec()
     }

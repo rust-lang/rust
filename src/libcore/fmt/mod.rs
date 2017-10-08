@@ -322,7 +322,6 @@ impl<'a> ArgumentV1<'a> {
 
 // flags available in the v1 format of format_args
 #[derive(Copy, Clone)]
-#[allow(dead_code)] // SignMinus isn't currently used
 enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, }
 
 impl<'a> Arguments<'a> {
@@ -427,7 +426,7 @@ impl<'a> Display for Arguments<'a> {
     }
 }
 
-/// Format trait for the `?` character.
+/// `?` formatting.
 ///
 /// `Debug` should format the output in a programmer-facing, debugging context.
 ///
@@ -593,7 +592,7 @@ pub trait Display {
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
-/// Format trait for the `o` character.
+/// `o` formatting.
 ///
 /// The `Octal` trait should format its output as a number in base-8.
 ///
@@ -640,7 +639,7 @@ pub trait Octal {
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
-/// Format trait for the `b` character.
+/// `b` formatting.
 ///
 /// The `Binary` trait should format its output as a number in binary.
 ///
@@ -687,7 +686,7 @@ pub trait Binary {
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
-/// Format trait for the `x` character.
+/// `x` formatting.
 ///
 /// The `LowerHex` trait should format its output as a number in hexadecimal, with `a` through `f`
 /// in lower case.
@@ -735,7 +734,7 @@ pub trait LowerHex {
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
-/// Format trait for the `X` character.
+/// `X` formatting.
 ///
 /// The `UpperHex` trait should format its output as a number in hexadecimal, with `A` through `F`
 /// in upper case.
@@ -783,7 +782,7 @@ pub trait UpperHex {
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
-/// Format trait for the `p` character.
+/// `p` formatting.
 ///
 /// The `Pointer` trait should format its output as a memory location. This is commonly presented
 /// as hexadecimal.
@@ -828,7 +827,7 @@ pub trait Pointer {
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
-/// Format trait for the `e` character.
+/// `e` formatting.
 ///
 /// The `LowerExp` trait should format its output in scientific notation with a lower-case `e`.
 ///
@@ -871,7 +870,7 @@ pub trait LowerExp {
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
-/// Format trait for the `E` character.
+/// `E` formatting.
 ///
 /// The `UpperExp` trait should format its output in scientific notation with an upper-case `E`.
 ///
@@ -1276,7 +1275,7 @@ impl<'a> Formatter<'a> {
         write(self.buf, fmt)
     }
 
-    /// Flags for formatting (packed version of rt::Flag)
+    /// Flags for formatting
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn flags(&self) -> u32 { self.flags }
 
