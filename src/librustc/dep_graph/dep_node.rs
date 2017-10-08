@@ -356,7 +356,7 @@ impl fmt::Debug for DepNode {
         ::ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.def_path(def_id).to_string(tcx))?;
+                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
                     write!(f, "{}", s)?;
                 } else {
@@ -700,8 +700,8 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, De
         let (def_id_0, def_id_1) = *self;
 
         format!("({}, {})",
-                tcx.def_path(def_id_0).to_string(tcx),
-                tcx.def_path(def_id_1).to_string(tcx))
+                tcx.def_path_debug_str(def_id_0),
+                tcx.def_path_debug_str(def_id_1))
     }
 }
 
