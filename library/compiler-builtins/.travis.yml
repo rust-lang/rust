@@ -29,9 +29,6 @@ matrix:
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
 
-before_install:
-  - test "$TRAVIS_OS_NAME" = "osx" || docker run --rm --privileged multiarch/qemu-user-static:register
-
 install:
   - case $TARGET in
       x86_64-apple-darwin | x86_64-unknown-linux-gnu) ;;
