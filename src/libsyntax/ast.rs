@@ -853,24 +853,23 @@ impl Expr {
     /// Wether this expression would be valid somewhere that expects a value, for example, an `if`
     /// condition.
     pub fn returns(&self) -> bool {
-        if let ExprKind::Block(ref block) = self.node {
-            match block.stmts.last().map(|last_stmt| &last_stmt.node) {
-                // implicit return
-                Some(&StmtKind::Expr(_)) => true,
-                Some(&StmtKind::Semi(ref expr)) => {
-                    if let ExprKind::Ret(_) = expr.node {
-                        // last statement is explicit return
-                        true
-                    } else {
-                        false
-                    }
+        match self.node {
+            ExprKind::Block(ref block) => {
+                match block.stmts.last().map(|last_stmt| &last_stmt.node) {
+                    // implicit return
+                    Some(&StmtKind::Expr(_)) => true,
+                    // This is a block that doesn't end in an implicit return
+                    _ => false,
                 }
-                // This is a block that doesn't end in either an implicit or explicit return
-                _ => false,
             }
-        } else {
-            // This is not a block, it is a value
-            true
+            ExprKind::Assign(..) |
+            ExprKind::AssignOp(..) |
+            ExprKind::Break(..) |
+            ExprKind::Continue(_) |
+            ExprKind::Loop(..) |
+            ExprKind::Ret(..) |
+            ExprKind::ForLoop(..) => false,
+            _ => true,
         }
     }
 }

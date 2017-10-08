@@ -1177,6 +1177,9 @@ impl<'a> Parser<'a> {
     pub fn span_warn(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_warn(sp, m)
     }
+    pub fn span_warn_diag(&self, sp: Span, m: &str) -> DiagnosticBuilder<'a> {
+        self.sess.span_diagnostic.mut_span_warn(sp, m)
+    }
     pub fn span_err(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
@@ -2837,8 +2840,10 @@ impl<'a> Parser<'a> {
                     let binary = self.mk_binary(codemap::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary, ThinVec::new())
                 }
-                AssocOp::Assign =>
-                    self.mk_expr(span, ExprKind::Assign(lhs, rhs), ThinVec::new()),
+                AssocOp::Assign => {
+                    self.warn_returnless_block_assign(&rhs);
+                    self.mk_expr(span, ExprKind::Assign(lhs, rhs), ThinVec::new())
+                }
                 AssocOp::Inplace =>
                     self.mk_expr(span, ExprKind::InPlace(lhs, rhs), ThinVec::new()),
                 AssocOp::AssignOp(k) => {
@@ -3671,6 +3676,11 @@ impl<'a> Parser<'a> {
             None
         };
         let init = self.parse_initializer()?;
+
+        if let Some(ref init) = init {
+            self.warn_returnless_block_assign(init);
+        }
+
         Ok(P(ast::Local {
             ty,
             pat,
@@ -4202,6 +4212,36 @@ impl<'a> Parser<'a> {
 
         stmt.span = stmt.span.with_hi(self.prev_span.hi());
         Ok(Some(stmt))
+    }
+
+    /// Warn when assigning a block that doesn't have an implicit return.
+    ///
+    /// The following code is valid, but probably not what the writer intended, so we warn on it:
+    ///
+    /// ```rust
+    /// let x = { 2 + 2; };
+    /// //      ^^^^^^^-^^ assigning result of block that evaluates to `()`
+    /// //             |
+    /// //             help: consider removing this semicolon
+    /// ```
+    fn warn_returnless_block_assign(&self, expr: &P<Expr>) {
+        if let ExprKind::Block(ref block) = expr.node {
+            if !expr.returns() {
+                let mut diag = self.diagnostic()
+                    .mut_span_warn(expr.span, "assinging result of block that evaluates to `()`");
+
+                let last_stmt = block.stmts.last().map(|last_stmt| &last_stmt.node);
+                if let Some(&StmtKind::Semi(ref expr)) = last_stmt {
+                    // Suggest to remove `;` if the expression makes sense.
+                    if expr.returns() {
+                        diag.span_suggestion(expr.span.next_point(),
+                                             "consider removing this semicolon",
+                                             "".to_string());
+                    }
+                }
+                diag.emit();
+            }
+        }
     }
 
     fn warn_missing_semicolon(&self) {

@@ -1,0 +1,22 @@
+warning: assinging result of block that evaluates to `()`
+  --> $DIR/assigning-block.rs:13:13
+   |
+13 |       let x = {
+   |  _____________^
+14 | |         println!("foo");
+15 | |         "bar";
+   | |              - help: consider removing this semicolon
+16 | |     };
+   | |_____^
+
+warning: assinging result of block that evaluates to `()`
+  --> $DIR/assigning-block.rs:21:9
+   |
+21 |       y = {
+   |  _________^
+22 | |         println!("foo");
+23 | |         "bar";
+   | |              - help: consider removing this semicolon
+24 | |     };
+   | |_____^
+
