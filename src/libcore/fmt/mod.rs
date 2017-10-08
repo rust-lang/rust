@@ -1037,12 +1037,31 @@ impl<'a> Formatter<'a> {
     /// This function will correctly account for the flags provided as well as
     /// the minimum width. It will not take precision into account.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pad_integral(&mut self,
-                        is_nonnegative: bool,
-                        prefix: &str,
-                        buf: &str)
-                        -> Result {
-        let mut width = buf.len();
+    pub fn pad_integral(
+        &mut self,
+        is_nonnegative: bool,
+        prefix: &str,
+        buf: &str
+    ) -> Result {
+        self.pad_integral_with(is_nonnegative, prefix, buf.len(), |f| f.write_str(buf))
+    }
+
+    /// Equivalent to `pad_integral`, allowing a custom closure for writing the integer.
+    ///
+    /// This changes the `buf` argument to two arguments, `write_digits` and `num_digits`.
+    /// `write_digits` is a closure that will write out the formatted integer, and `len_digits` is
+    /// the number of bytes that will be written out. This allows writing integers of arbitrarily
+    /// large length without having to allocate an extra string.
+    #[unstable(feature = "pad_integral_with", issue = "0")]
+    pub fn pad_integral_with<F>(
+        &mut self,
+        is_nonnegative: bool,
+        prefix: &str,
+        len_digits: usize,
+        write_digits: F
+    ) -> Result
+    where F: FnOnce(&mut Formatter) -> Result {
+        let mut width = len_digits;
 
         let mut sign = None;
         if !is_nonnegative {
@@ -1070,12 +1089,12 @@ impl<'a> Formatter<'a> {
             // If there's no minimum length requirements then we can just
             // write the bytes.
             None => {
-                write_prefix(self)?; self.buf.write_str(buf)
+                write_prefix(self)?; write_digits(self)
             }
             // Check if we're over the minimum width, if so then we can also
             // just write the bytes.
             Some(min) if width >= min => {
-                write_prefix(self)?; self.buf.write_str(buf)
+                write_prefix(self)?; write_digits(self)
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
@@ -1083,14 +1102,12 @@ impl<'a> Formatter<'a> {
                 self.fill = '0';
                 self.align = rt::v1::Alignment::Right;
                 write_prefix(self)?;
-                self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    f.buf.write_str(buf)
-                })
+                self.with_padding(min - width, rt::v1::Alignment::Right, write_digits)
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
                 self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    write_prefix(f)?; f.buf.write_str(buf)
+                    write_prefix(f)?; write_digits(f)
                 })
             }
         }
