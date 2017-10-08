@@ -498,7 +498,7 @@ class RustBuild(object):
 
         If the key does not exists, the result is None:
 
-        >>> rb.get_toml("key3") == None
+        >>> rb.get_toml("key3") is None
         True
         """
         for line in self.config_toml.splitlines():
