@@ -1174,14 +1174,15 @@ pub fn abort() -> ! {
 /// Basic usage:
 ///
 /// ```no_run
-/// use std::process::current_pid;
+/// #![feature(getpid)]
+/// use std::process;
 ///
-/// println!("My pid is {}", current_pid());
+/// println!("My pid is {}", process::id());
 /// ```
 ///
 ///
 #[unstable(feature = "getpid", issue = "44971", reason = "recently added")]
-pub fn current_pid() -> u32 {
+pub fn id() -> u32 {
     ::sys::os::getpid()
 }
 
