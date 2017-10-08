@@ -358,6 +358,15 @@ pub fn implements_trait<'a, 'tcx>(
     })
 }
 
+/// Check whether this type implements Drop.
+pub fn has_drop(cx: &LateContext, expr: &Expr) -> bool {
+    let struct_ty = cx.tables.expr_ty(expr);
+    match struct_ty.ty_adt_def() {
+        Some(def) => def.has_dtor(cx.tcx),
+        _ => false,
+    }
+}
+
 /// Resolve the definition of a node from its `HirId`.
 pub fn resolve_node(cx: &LateContext, qpath: &QPath, id: HirId) -> def::Def {
     cx.tables.qpath_def(qpath, id)
