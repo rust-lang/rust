@@ -15,14 +15,12 @@ use io;
 use os::raw::c_char;
 use u64;
 
-use libc::{c_int, c_void};
+use libc::{c_int, c_void, size_t};
 
-pub type zx_handle_t = i32;
+pub type zx_handle_t = u32;
 pub type zx_vaddr_t = usize;
 pub type zx_rights_t = u32;
 pub type zx_status_t = i32;
-
-pub type zx_size_t = usize;
 
 pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
 
@@ -115,36 +113,37 @@ extern {
                               pending: *mut zx_signals_t) -> zx_status_t;
 
     pub fn zx_object_get_info(handle: zx_handle_t, topic: u32, buffer: *mut c_void,
-                              buffer_size: zx_size_t, actual_size: *mut zx_size_t,
-                              avail: *mut zx_size_t) -> zx_status_t;
+                              buffer_size: size_t, actual_size: *mut size_t,
+                              avail: *mut size_t) -> zx_status_t;
 }
 
 // From `enum special_handles` in system/ulib/launchpad/launchpad.c
 // HND_LOADER_SVC = 0
 // HND_EXEC_VMO = 1
-pub const HND_SPECIAL_COUNT: usize = 2;
+// HND_SEGMENTS_VMAR = 2
+const HND_SPECIAL_COUNT: c_int = 3;
 
 #[repr(C)]
 pub struct launchpad_t {
     argc: u32,
     envc: u32,
     args: *const c_char,
-    args_len: usize,
+    args_len: size_t,
     env: *const c_char,
-    env_len: usize,
+    env_len: size_t,
 
     handles: *mut zx_handle_t,
     handles_info: *mut u32,
-    handle_count: usize,
-    handle_alloc: usize,
+    handle_count: size_t,
+    handle_alloc: size_t,
 
     entry: zx_vaddr_t,
     base: zx_vaddr_t,
     vdso_base: zx_vaddr_t,
 
-    stack_size: usize,
+    stack_size: size_t,
 
-    special_handles: [zx_handle_t; HND_SPECIAL_COUNT],
+    special_handles: [zx_handle_t; HND_SPECIAL_COUNT as usize],
     loader_message: bool,
 }
 
