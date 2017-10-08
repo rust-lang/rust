@@ -115,6 +115,8 @@ matrix:
       if: branch = auto
     - env: IMAGE=cross DEPLOY=1
       if: branch = auto
+    - env: IMAGE=cross2 DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-android DEPLOY=1
@@ -124,8 +126,6 @@ matrix:
     - env: IMAGE=dist-armhf-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-armv7-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-fuchsia DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-i586-gnu-i686-musl DEPLOY=1
       if: branch = auto
