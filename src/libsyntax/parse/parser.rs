@@ -3670,7 +3670,9 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        debug!("parse_local ty {:?}", ty);
         let init = self.parse_initializer()?;
+        debug!("parse_local init {:?}", init);
         Ok(P(ast::Local {
             ty,
             pat,
@@ -4190,7 +4192,29 @@ impl<'a> Parser<'a> {
                 if macro_legacy_warnings && self.token != token::Semi {
                     self.warn_missing_semicolon();
                 } else {
-                    self.expect_one_of(&[token::Semi], &[])?;
+                    match self.expect_one_of(&[token::Semi], &[]) {
+                        Ok(_) => (),
+                        Err(mut err) => {
+                            if let (token::ModSep, StmtKind::Local(local)) = (self.token,
+                                                                              stmt.node) {
+                                if let Some(ref init) = local.init {
+                                    // We have an initializer for the `let` binding, which means
+                                    // that "something" was parsed correctly as a value there, but
+                                    // was followed by more code.
+                                    if let ExprKind::Repeat(_, _) = init.node {
+                                        let expr_str = self.sess.codemap()
+                                            .span_to_snippet(init.span)
+                                            .unwrap_or(pprust::expr_to_string(init));
+                                        err.span_suggestion(init.span.to(self.span),
+                                                            "did you mean to use an associated \
+                                                             type instead?",
+                                                            format!("<{}>::", expr_str));
+                                    }
+                                }
+                            }
+                            return Err(err);
+                        }
+                    }
                 }
             }
             _ => {}
