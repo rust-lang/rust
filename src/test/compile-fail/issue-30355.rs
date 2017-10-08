@@ -8,22 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:attr-on-trait.rs
-// ignore-stage1
+pub struct X([u8]);
 
-#![feature(proc_macro)]
+pub static Y: &'static X = {
+    const Y: &'static [u8] = b"";
+    &X(*Y)
+    //~^ ERROR cannot move out
+    //~^^ ERROR cannot move a
+    //~^^^ ERROR cannot move a
+};
 
-extern crate attr_on_trait;
-
-trait Foo {
-    #[attr_on_trait::foo]
-    fn foo() {}
-}
-
-impl Foo for i32 {
-    fn foo(&self) {}
-}
-
-fn main() {
-    3i32.foo();
-}
+fn main() {}

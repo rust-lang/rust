@@ -8,22 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:attr-on-trait.rs
-// ignore-stage1
-
-#![feature(proc_macro)]
-
-extern crate attr_on_trait;
-
 trait Foo {
-    #[attr_on_trait::foo]
-    fn foo() {}
+    const AMT: usize;
 }
 
-impl Foo for i32 {
-    fn foo(&self) {}
+enum Bar<A, B> {
+    First(A),
+    Second(B),
+}
+
+impl<A: Foo, B: Foo> Foo for Bar<A, B> {
+    const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize]; //~ ERROR constant evaluation
+}
+
+impl Foo for u8 {
+    const AMT: usize = 1;
+}
+
+impl Foo for u16 {
+    const AMT: usize = 2;
 }
 
 fn main() {
-    3i32.foo();
+    println!("{}", <Bar<u16, u8> as Foo>::AMT);
 }

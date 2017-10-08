@@ -8,22 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:attr-on-trait.rs
-// ignore-stage1
+#![feature(rustc_attrs)]
 
-#![feature(proc_macro)]
+use std::fmt;
 
-extern crate attr_on_trait;
+// CoerceUnsized is not implemented for tuples. You can still create
+// an unsized tuple by transmuting a trait object.
+fn any<T>() -> T { unreachable!() }
 
-trait Foo {
-    #[attr_on_trait::foo]
-    fn foo() {}
-}
-
-impl Foo for i32 {
-    fn foo(&self) {}
-}
-
-fn main() {
-    3i32.foo();
+#[rustc_error]
+fn main() { //~ ERROR compilation successful
+    let t: &(u8, fmt::Debug) = any();
+    println!("{:?}", &t.1);
 }
