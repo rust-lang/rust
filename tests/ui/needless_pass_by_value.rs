@@ -4,6 +4,9 @@
 #![warn(needless_pass_by_value)]
 #![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names)]
 
+use std::borrow::Borrow;
+use std::convert::AsRef;
+
 // `v` should be warned
 // `w`, `x` and `y` are allowed (moved or mutated)
 fn foo<T: Default>(v: Vec<T>, w: Vec<T>, mut x: Vec<T>, y: Vec<T>) -> Vec<T> {
@@ -25,10 +28,11 @@ fn bar(x: String, y: Wrapper) {
     assert_eq!(y.0.len(), 42);
 }
 
-// U implements `Borrow<U>`, but should be warned correctly
-fn test_borrow_trait<T: std::borrow::Borrow<str>, U>(t: T, u: U) {
+// V implements `Borrow<V>`, but should be warned correctly
+fn test_borrow_trait<T: Borrow<str>, U: AsRef<str>, V>(t: T, u: U, v: V) {
     println!("{}", t.borrow());
-    consume(&u);
+    println!("{}", u.as_ref());
+    consume(&v);
 }
 
 // ok
@@ -57,6 +61,22 @@ fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
 
     assert_eq!(x.0.len(), s.len());
     println!("{}", t);
+}
+
+trait Foo {}
+
+// `S: Serialize` can be passed by value
+trait Serialize {}
+impl<'a, T> Serialize for &'a T where T: Serialize {}
+impl Serialize for i32 {}
+
+fn test_blanket_ref<T: Foo, S: Serialize>(_foo: T, _serializable: S) {}
+
+fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+    s.capacity();
+    let _ = t.clone();
+    u.capacity();
+    let _ = v.clone();
 }
 
 fn main() {}
