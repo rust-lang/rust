@@ -55,7 +55,7 @@ declare_lint! {
 /// ```
 declare_lint! {
     pub RANGE_PLUS_ONE,
-    Warn,
+    Allow,
     "`x..(y+1)` reads better as `x..=y`"
 }
 
