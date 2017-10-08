@@ -1,7 +1,10 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{is_integer_literal, paths, snippet, span_lint};
+use syntax::ast::RangeLimits;
+use syntax::codemap::Spanned;
+use utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then};
 use utils::{get_trait_def_id, higher, implements_trait};
+use utils::sugg::Sugg;
 
 /// **What it does:** Checks for calling `.step_by(0)` on iterators,
 /// which never terminates.
@@ -38,16 +41,57 @@ declare_lint! {
     "zipping iterator with a range when `enumerate()` would do"
 }
 
-#[derive(Copy, Clone)]
-pub struct StepByZero;
+/// **What it does:** Checks for exclusive ranges where 1 is added to the
+/// upper bound, e.g. `x..(y+1)`.
+///
+/// **Why is this bad?** The code is more readable with an inclusive range
+/// like `x..=y`.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// for x..(y+1) { .. }
+/// ```
+declare_lint! {
+    pub RANGE_PLUS_ONE,
+    Allow,
+    "`x..(y+1)` reads better as `x..=y`"
+}
 
-impl LintPass for StepByZero {
+/// **What it does:** Checks for inclusive ranges where 1 is subtracted from
+/// the upper bound, e.g. `x..=(y-1)`.
+///
+/// **Why is this bad?** The code is more readable with an exclusive range
+/// like `x..y`.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// for x..=(y-1) { .. }
+/// ```
+declare_lint! {
+    pub RANGE_MINUS_ONE,
+    Warn,
+    "`x..=(y-1)` reads better as `x..y`"
+}
+
+#[derive(Copy, Clone)]
+pub struct Pass;
+
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ITERATOR_STEP_BY_ZERO, RANGE_ZIP_WITH_LEN)
+        lint_array!(
+            ITERATOR_STEP_BY_ZERO,
+            RANGE_ZIP_WITH_LEN,
+            RANGE_PLUS_ONE,
+            RANGE_MINUS_ONE
+        )
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprMethodCall(ref path, _, ref args) = expr.node {
             let name = path.name.as_str();
@@ -92,6 +136,46 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
                 }}
             }
         }
+
+        // exclusive range plus one: x..(y+1)
+        if_let_chain! {[
+            let Some(higher::Range { start, end: Some(end), limits: RangeLimits::HalfOpen }) = higher::range(expr),
+            let Some(y) = y_plus_one(end),
+        ], {
+            span_lint_and_then(
+                cx,
+                RANGE_PLUS_ONE,
+                expr.span,
+                "an inclusive range would be more readable",
+                |db| {
+                    let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
+                    let end = Sugg::hir(cx, y, "y");
+                    db.span_suggestion(expr.span,
+                                       "use",
+                                       format!("{}..={}", start, end));
+                },
+            );
+        }}
+
+        // inclusive range minus one: x..=(y-1)
+        if_let_chain! {[
+            let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(expr),
+            let Some(y) = y_minus_one(end),
+        ], {
+            span_lint_and_then(
+                cx,
+                RANGE_MINUS_ONE,
+                expr.span,
+                "an exclusive range would be more readable",
+                |db| {
+                    let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
+                    let end = Sugg::hir(cx, y, "y");
+                    db.span_suggestion(expr.span,
+                                       "use",
+                                       format!("{}..{}", start, end));
+                },
+            );
+        }}
     }
 }
 
@@ -101,4 +185,26 @@ fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
     let ty = cx.tables.expr_ty_adjusted(expr);
 
     get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
+}
+
+fn y_plus_one(expr: &Expr) -> Option<&Expr> {
+    match expr.node {
+        ExprBinary(Spanned { node: BiAdd, .. }, ref lhs, ref rhs) => {
+            if is_integer_literal(lhs, 1) {
+                Some(rhs)
+            } else if is_integer_literal(rhs, 1) {
+                Some(lhs)
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
+fn y_minus_one(expr: &Expr) -> Option<&Expr> {
+    match expr.node {
+        ExprBinary(Spanned { node: BiSub, .. }, ref lhs, ref rhs) if is_integer_literal(rhs, 1) => Some(lhs),
+        _ => None,
+    }
 }
