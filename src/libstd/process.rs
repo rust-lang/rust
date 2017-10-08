@@ -745,10 +745,10 @@ impl fmt::Debug for Output {
 /// Describes what to do with a standard I/O stream for a child process when
 /// passed to the [`stdin`], [`stdout`], and [`stderr`] methods of [`Command`].
 ///
-/// [`stdin`]: ./struct.Command.html#method.stdin
-/// [`stdout`]: ./struct.Command.html#method.stdout
-/// [`stderr`]: ./struct.Command.html#method.stderr
-/// [`Command`]: ./struct.Command.html
+/// [`stdin`]: struct.Command.html#method.stdin
+/// [`stdout`]: struct.Command.html#method.stdout
+/// [`stderr`]: struct.Command.html#method.stderr
+/// [`Command`]: struct.Command.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(imp::Stdio);
 
@@ -783,12 +783,12 @@ impl Stdio {
     ///     .stdout(Stdio::piped())
     ///     .spawn()
     ///     .expect("Failed to spawn child process");
-    /// 
+    ///
     /// {
     ///     let mut stdin = child.stdin.as_mut().expect("Failed to open stdin");
     ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
     /// }
-    /// 
+    ///
     /// let output = child.wait_with_output().expect("Failed to read stdout");
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH\n");
     /// ```
@@ -818,13 +818,13 @@ impl Stdio {
     ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
-    ///  
+    ///
     /// let output = Command::new("rev")
     ///     .stdin(Stdio::inherit())
     ///     .stdout(Stdio::piped())
     ///     .output()
     ///     .expect("Failed to execute command");
-    /// 
+    ///
     /// println!("You piped in the reverse of: {}", String::from_utf8_lossy(&output.stdout));
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
@@ -854,13 +854,13 @@ impl Stdio {
     ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
-    /// 
+    ///
     /// let output = Command::new("rev")
     ///     .stdin(Stdio::null())
     ///     .stdout(Stdio::piped())
     ///     .output()
     ///     .expect("Failed to execute command");
-    ///  
+    ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // Ignores any piped-in input
     /// ```
