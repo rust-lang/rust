@@ -14,6 +14,7 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::NoteClosureEnv;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::ty;
+use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 use syntax::ast;
 use syntax_pos;
 use errors::DiagnosticBuilder;
@@ -134,7 +135,7 @@ fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
 }
 
 // (keep in sync with gather_moves::check_and_get_illegal_move_origin )
-fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
                                        move_from: mc::cmt<'tcx>)
                                        -> DiagnosticBuilder<'a> {
     match move_from.cat {
@@ -142,43 +143,21 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Deref(_, mc::Implicit(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
-            let mut err = struct_span_err!(bccx, move_from.span, E0507,
-                             "cannot move out of {}",
-                             move_from.descriptive_string(bccx.tcx));
-            err.span_label(
-                move_from.span,
-                format!("cannot move out of {}", move_from.descriptive_string(bccx.tcx))
-                );
-            err
+            bccx.cannot_move_out_of(
+                move_from.span, &move_from.descriptive_string(bccx.tcx), Origin::Ast)
         }
-
         Categorization::Interior(ref b, mc::InteriorElement(ik)) => {
-            let type_name = match (&b.ty.sty, ik) {
-                (&ty::TyArray(_, _), Kind::Index) => "array",
-                (&ty::TySlice(_), _) => "slice",
-                _ => {
-                    span_bug!(move_from.span, "this path should not cause illegal move");
-                },
-            };
-            let mut err = struct_span_err!(bccx, move_from.span, E0508,
-                                           "cannot move out of type `{}`, \
-                                            a non-copy {}",
-                                           b.ty, type_name);
-            err.span_label(move_from.span, "cannot move out of here");
-            err
+            bccx.cannot_move_out_of_interior_noncopy(
+                move_from.span, b.ty, ik == Kind::Index, Origin::Ast)
         }
 
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
                 ty::TyAdt(def, _) if def.has_dtor(bccx.tcx) => {
-                    let mut err = struct_span_err!(bccx, move_from.span, E0509,
-                                                   "cannot move out of type `{}`, \
-                                                   which implements the `Drop` trait",
-                                                   b.ty);
-                    err.span_label(move_from.span, "cannot move out of here");
-                    err
-                },
+                    bccx.cannot_move_out_of_interior_of_drop(
+                        move_from.span, b.ty, Origin::Ast)
+                }
                 _ => {
                     span_bug!(move_from.span, "this path should not cause illegal move");
                 }

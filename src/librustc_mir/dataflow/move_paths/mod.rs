@@ -13,6 +13,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
+use syntax_pos::{Span};
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
@@ -227,11 +228,39 @@ impl<'tcx> MovePathLookup<'tcx> {
     }
 }
 
+#[derive(Debug)]
+pub struct IllegalMoveOrigin<'tcx> {
+    pub(crate) span: Span,
+    pub(crate) kind: IllegalMoveOriginKind<'tcx>,
+}
+
+#[derive(Debug)]
+pub(crate) enum IllegalMoveOriginKind<'tcx> {
+    Static,
+    BorrowedContent,
+    InteriorOfTypeWithDestructor { container_ty: ty::Ty<'tcx> },
+    InteriorOfSlice { elem_ty: ty::Ty<'tcx>, is_index: bool, },
+    InteriorOfArray { elem_ty: ty::Ty<'tcx>, is_index: bool, },
+}
+
+#[derive(Debug)]
+pub enum MoveError<'tcx> {
+    IllegalMove { cannot_move_out_of: IllegalMoveOrigin<'tcx> },
+    UnionMove { path: MovePathIndex },
+}
+
+impl<'tcx> MoveError<'tcx> {
+    fn cannot_move_out_of(span: Span, kind: IllegalMoveOriginKind<'tcx>) -> Self {
+        let origin = IllegalMoveOrigin { span, kind };
+        MoveError::IllegalMove { cannot_move_out_of: origin }
+    }
+}
+
 impl<'a, 'tcx> MoveData<'tcx> {
     pub fn gather_moves(mir: &Mir<'tcx>,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         param_env: ty::ParamEnv<'tcx>)
-                        -> Self {
+                        -> Result<Self, (Self, Vec<MoveError<'tcx>>)> {
         builder::gather_moves(mir, tcx, param_env)
     }
 }

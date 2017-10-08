@@ -45,7 +45,7 @@ impl MirPass for ElaborateDrops {
         }
         let id = src.item_id();
         let param_env = tcx.param_env(tcx.hir.local_def_id(id));
-        let move_data = MoveData::gather_moves(mir, tcx, param_env);
+        let move_data = MoveData::gather_moves(mir, tcx, param_env).unwrap();
         let elaborate_patch = {
             let mir = &*mir;
             let env = MoveDataParamEnv {

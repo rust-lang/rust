@@ -260,6 +260,19 @@ impl<'tcx> Mir<'tcx> {
         debug_assert!(location.statement_index < block.statements.len());
         block.statements[location.statement_index].make_nop()
     }
+
+    /// Returns the source info associated with `location`.
+    pub fn source_info(&self, location: Location) -> &SourceInfo {
+        let block = &self[location.block];
+        let stmts = &block.statements;
+        let idx = location.statement_index;
+        if location.statement_index < stmts.len() {
+            &stmts[idx].source_info
+        } else {
+            assert!(location.statement_index == stmts.len());
+            &block.terminator().source_info
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

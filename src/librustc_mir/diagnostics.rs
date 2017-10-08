@@ -999,6 +999,272 @@ fn print_fancy_ref(fancy_ref: &FancyNum){
 ```
 "##,
 
+E0507: r##"
+You tried to move out of a value which was borrowed. Erroneous code example:
+
+```compile_fail,E0507
+use std::cell::RefCell;
+
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+
+    x.borrow().nothing_is_true(); // error: cannot move out of borrowed content
+}
+```
+
+Here, the `nothing_is_true` method takes the ownership of `self`. However,
+`self` cannot be moved because `.borrow()` only provides an `&TheDarkKnight`,
+which is a borrow of the content owned by the `RefCell`. To fix this error,
+you have three choices:
+
+* Try to avoid moving the variable.
+* Somehow reclaim the ownership.
+* Implement the `Copy` trait on the type.
+
+Examples:
+
+```
+use std::cell::RefCell;
+
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(&self) {} // First case, we don't take ownership
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+
+    x.borrow().nothing_is_true(); // ok!
+}
+```
+
+Or:
+
+```
+use std::cell::RefCell;
+
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+    let x = x.into_inner(); // we get back ownership
+
+    x.nothing_is_true(); // ok!
+}
+```
+
+Or:
+
+```
+use std::cell::RefCell;
+
+#[derive(Clone, Copy)] // we implement the Copy trait
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+
+    x.borrow().nothing_is_true(); // ok!
+}
+```
+
+Moving a member out of a mutably borrowed struct will also cause E0507 error:
+
+```compile_fail,E0507
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+struct Batcave {
+    knight: TheDarkKnight
+}
+
+fn main() {
+    let mut cave = Batcave {
+        knight: TheDarkKnight
+    };
+    let borrowed = &mut cave;
+
+    borrowed.knight.nothing_is_true(); // E0507
+}
+```
+
+It is fine only if you put something back. `mem::replace` can be used for that:
+
+```
+# struct TheDarkKnight;
+# impl TheDarkKnight { fn nothing_is_true(self) {} }
+# struct Batcave { knight: TheDarkKnight }
+use std::mem;
+
+let mut cave = Batcave {
+    knight: TheDarkKnight
+};
+let borrowed = &mut cave;
+
+mem::replace(&mut borrowed.knight, TheDarkKnight).nothing_is_true(); // ok!
+```
+
+You can find more information about borrowing in the rust-book:
+http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
+"##,
+
+E0508: r##"
+A value was moved out of a non-copy fixed-size array.
+
+Example of erroneous code:
+
+```compile_fail,E0508
+struct NonCopy;
+
+fn main() {
+    let array = [NonCopy; 1];
+    let _value = array[0]; // error: cannot move out of type `[NonCopy; 1]`,
+                           //        a non-copy fixed-size array
+}
+```
+
+The first element was moved out of the array, but this is not
+possible because `NonCopy` does not implement the `Copy` trait.
+
+Consider borrowing the element instead of moving it:
+
+```
+struct NonCopy;
+
+fn main() {
+    let array = [NonCopy; 1];
+    let _value = &array[0]; // Borrowing is allowed, unlike moving.
+}
+```
+
+Alternatively, if your type implements `Clone` and you need to own the value,
+consider borrowing and then cloning:
+
+```
+#[derive(Clone)]
+struct NonCopy;
+
+fn main() {
+    let array = [NonCopy; 1];
+    // Now you can clone the array element.
+    let _value = array[0].clone();
+}
+```
+"##,
+
+E0509: r##"
+This error occurs when an attempt is made to move out of a value whose type
+implements the `Drop` trait.
+
+Example of erroneous code:
+
+```compile_fail,E0509
+struct FancyNum {
+    num: usize
+}
+
+struct DropStruct {
+    fancy: FancyNum
+}
+
+impl Drop for DropStruct {
+    fn drop(&mut self) {
+        // Destruct DropStruct, possibly using FancyNum
+    }
+}
+
+fn main() {
+    let drop_struct = DropStruct{fancy: FancyNum{num: 5}};
+    let fancy_field = drop_struct.fancy; // Error E0509
+    println!("Fancy: {}", fancy_field.num);
+    // implicit call to `drop_struct.drop()` as drop_struct goes out of scope
+}
+```
+
+Here, we tried to move a field out of a struct of type `DropStruct` which
+implements the `Drop` trait. However, a struct cannot be dropped if one or
+more of its fields have been moved.
+
+Structs implementing the `Drop` trait have an implicit destructor that gets
+called when they go out of scope. This destructor may use the fields of the
+struct, so moving out of the struct could make it impossible to run the
+destructor. Therefore, we must think of all values whose type implements the
+`Drop` trait as single units whose fields cannot be moved.
+
+This error can be fixed by creating a reference to the fields of a struct,
+enum, or tuple using the `ref` keyword:
+
+```
+struct FancyNum {
+    num: usize
+}
+
+struct DropStruct {
+    fancy: FancyNum
+}
+
+impl Drop for DropStruct {
+    fn drop(&mut self) {
+        // Destruct DropStruct, possibly using FancyNum
+    }
+}
+
+fn main() {
+    let drop_struct = DropStruct{fancy: FancyNum{num: 5}};
+    let ref fancy_field = drop_struct.fancy; // No more errors!
+    println!("Fancy: {}", fancy_field.num);
+    // implicit call to `drop_struct.drop()` as drop_struct goes out of scope
+}
+```
+
+Note that this technique can also be used in the arms of a match expression:
+
+```
+struct FancyNum {
+    num: usize
+}
+
+enum DropEnum {
+    Fancy(FancyNum)
+}
+
+impl Drop for DropEnum {
+    fn drop(&mut self) {
+        // Destruct DropEnum, possibly using FancyNum
+    }
+}
+
+fn main() {
+    // Creates and enum of type `DropEnum`, which implements `Drop`
+    let drop_enum = DropEnum::Fancy(FancyNum{num: 10});
+    match drop_enum {
+        // Creates a reference to the inside of `DropEnum::Fancy`
+        DropEnum::Fancy(ref fancy_field) => // No error!
+            println!("It was fancy-- {}!", fancy_field.num),
+    }
+    // implicit call to `drop_enum.drop()` as drop_enum goes out of scope
+}
+```
+"##,
+
 }
 
 register_diagnostics! {

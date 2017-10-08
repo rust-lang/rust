@@ -30,6 +30,7 @@ use dataflow::{MoveDataParamEnv};
 use dataflow::{BitDenotation, BlockSets, DataflowResults, DataflowResultsConsumer};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{Borrows, BorrowData, BorrowIndex};
+use dataflow::move_paths::{MoveError, IllegalMoveOriginKind};
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -59,7 +60,33 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let param_env = tcx.param_env(def_id);
     tcx.infer_ctxt().enter(|_infcx| {
 
-        let move_data = MoveData::gather_moves(mir, tcx, param_env);
+        let move_data = match MoveData::gather_moves(mir, tcx, param_env) {
+            Ok(move_data) => move_data,
+            Err((move_data, move_errors)) => {
+                for move_error in move_errors {
+                    let (span, kind): (Span, IllegalMoveOriginKind) = match move_error {
+                        MoveError::UnionMove { .. } =>
+                            unimplemented!("dont know how to report union move errors yet."),
+                        MoveError::IllegalMove { cannot_move_out_of: o } => (o.span, o.kind),
+                    };
+                    let origin = Origin::Mir;
+                    let mut err = match kind {
+                        IllegalMoveOriginKind::Static =>
+                            tcx.cannot_move_out_of(span, "static item", origin),
+                        IllegalMoveOriginKind::BorrowedContent =>
+                            tcx.cannot_move_out_of(span, "borrowed_content", origin),
+                        IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } =>
+                            tcx.cannot_move_out_of_interior_of_drop(span, ty, origin),
+                        IllegalMoveOriginKind::InteriorOfSlice { elem_ty: ty, is_index } =>
+                            tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
+                        IllegalMoveOriginKind::InteriorOfArray { elem_ty: ty, is_index } =>
+                            tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
+                    };
+                    err.emit();
+                }
+                move_data
+            }
+        };
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
         let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
         let flow_borrows = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
@@ -1106,9 +1133,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     // Retrieve span of given borrow from the current MIR representation
     fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
-        self.mir.basic_blocks()[borrow.location.block]
-            .statements[borrow.location.statement_index]
-            .source_info.span
+        self.mir.source_info(borrow.location).span
     }
 }
 
