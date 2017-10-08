@@ -179,19 +179,19 @@ impl<'a, 'tcx> OperandValue {
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_consume(&mut self,
-                         bcx: &Builder<'a, 'tcx>,
-                         lvalue: &mir::Lvalue<'tcx>)
-                         -> OperandRef<'tcx>
+    fn maybe_trans_consume_direct(&mut self,
+                                  bcx: &Builder<'a, 'tcx>,
+                                  lvalue: &mir::Lvalue<'tcx>)
+                                   -> Option<OperandRef<'tcx>>
     {
-        debug!("trans_consume(lvalue={:?})", lvalue);
+        debug!("maybe_trans_consume_direct(lvalue={:?})", lvalue);
 
         // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
         if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
                 LocalRef::Operand(Some(o)) => {
-                    return o;
+                    return Some(o);
                 }
                 LocalRef::Operand(None) => {
                     bug!("use of {:?} before def", lvalue);
@@ -204,26 +204,51 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         // Moves out of pair fields are trivial.
         if let &mir::Lvalue::Projection(ref proj) = lvalue {
-            if let mir::Lvalue::Local(index) = proj.base {
-                if let LocalRef::Operand(Some(o)) = self.locals[index] {
-                    match (o.val, &proj.elem) {
-                        (OperandValue::Pair(a, b),
-                         &mir::ProjectionElem::Field(ref f, ty)) => {
-                            let layout = bcx.ccx.layout_of(self.monomorphize(&ty));
+            if let mir::ProjectionElem::Field(ref f, _) = proj.elem {
+                if let Some(o) = self.maybe_trans_consume_direct(bcx, &proj.base) {
+                    let layout = o.layout.field(bcx.ccx, f.index());
+
+                    // Handled in `trans_consume`.
+                    assert!(!layout.is_zst());
+
+                    match o.val {
+                        OperandValue::Pair(a, b) => {
                             let llval = [a, b][f.index()];
                             // HACK(eddyb) have to bitcast pointers
                             // until LLVM removes pointee types.
                             let llval = bcx.bitcast(llval,
                                 layout.immediate_llvm_type(bcx.ccx));
-                            return OperandRef {
+                            return Some(OperandRef {
                                 val: OperandValue::Immediate(llval),
                                 layout
-                            };
+                            });
                         }
                         _ => {}
                     }
                 }
             }
+        }
+
+        None
+    }
+
+    pub fn trans_consume(&mut self,
+                         bcx: &Builder<'a, 'tcx>,
+                         lvalue: &mir::Lvalue<'tcx>)
+                         -> OperandRef<'tcx>
+    {
+        debug!("trans_consume(lvalue={:?})", lvalue);
+
+        let ty = self.monomorphized_lvalue_ty(lvalue);
+        let layout = bcx.ccx.layout_of(ty);
+
+        // ZSTs don't require any actual memory access.
+        if layout.is_zst() {
+            return OperandRef::new_zst(bcx.ccx, layout);
+        }
+
+        if let Some(o) = self.maybe_trans_consume_direct(bcx, lvalue) {
+            return o;
         }
 
         // for most lvalues, to consume them we just load them

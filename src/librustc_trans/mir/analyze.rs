@@ -136,19 +136,29 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     context: LvalueContext<'tcx>,
                     location: Location) {
         debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
+        let ccx = self.cx.ccx;
 
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
-            // Allow uses of projections of immediate pair fields.
+            // Allow uses of projections that are ZSTs or from immediate scalar fields.
             if let LvalueContext::Consume = context {
-                if let mir::Lvalue::Local(_) = proj.base {
-                    if let mir::ProjectionElem::Field(..) = proj.elem {
-                        let ty = proj.base.ty(self.cx.mir, self.cx.ccx.tcx());
+                let base_ty = proj.base.ty(self.cx.mir, ccx.tcx());
+                let base_ty = self.cx.monomorphize(&base_ty);
 
-                        let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
-                        let layout = self.cx.ccx.layout_of(ty);
-                        if layout.is_llvm_scalar_pair() {
-                            return;
-                        }
+                // ZSTs don't require any actual memory access.
+                let elem_ty = base_ty.projection_ty(ccx.tcx(), &proj.elem).to_ty(ccx.tcx());
+                let elem_ty = self.cx.monomorphize(&elem_ty);
+                if ccx.layout_of(elem_ty).is_zst() {
+                    return;
+                }
+
+                if let mir::ProjectionElem::Field(..) = proj.elem {
+                    let layout = ccx.layout_of(base_ty.to_ty(ccx.tcx()));
+                    if layout.is_llvm_scalar_pair() {
+                        // Recurse as a `Consume` instead of `Projection`,
+                        // potentially stopping at non-operand projections,
+                        // which would trigger `mark_as_lvalue` on locals.
+                        self.visit_lvalue(&proj.base, LvalueContext::Consume, location);
+                        return;
                     }
                 }
             }
