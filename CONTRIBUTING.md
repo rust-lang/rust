@@ -363,6 +363,44 @@ outside the submodule.
 It can also be more convenient during development to set `submodules = false`
 in the `config.toml` to prevent `x.py` from resetting to the original branch.
 
+#### Breaking rustfmt or rls
+
+Rust's build system also builds the
+[RLS](https://github.com/rust-lang-nursery/rls)
+and [rustfmt](https://github.com/rust-lang-nursery/rustfmt). If these tools
+break because of your changes, you may run into a sort of "chicken and egg"
+problem. Both tools rely on the latest compiler to be built so you can't update
+them until the changes you are making to the compiler land. In the meantime, you
+can't land your changes to the compiler because the build won't pass until those
+tools are fixed.
+
+That means that, in the default state, you can't update the compiler without
+fixing rustfmt and rls first.
+
+When this happens, follow these steps:
+
+1. First, if it doesn't exist already, create a `config.toml` by copying
+   `config.toml.example` in the root directory of the Rust repository.
+   Set `submodules = false` in the `[build]` section. This will prevent `x.py`
+   from resetting to the original branch after you make your changes.
+2. Run `./x.py test src/tools/rustfmt`. Fix any errors in the submodule itself
+   (the `src/tools/rustfmt` directory) until it works.
+3. Run `./x.py test src/tools/rls`. Fix any errors in the submodule itself
+   (the `src/tools/rls` directory) until it works.
+4. Make a commit for `rustfmt`, if necessary, and send a PR to the master
+   branch of rust-lang-nursery/rustfmt
+5. Do the same, if necessary for the RLS
+6. A maintainer of rls/rustfmt will **not** merge the PR. The PR can't be
+   merged because CI will be broken. Instead a new branch will be created,
+   and the PR will be pushed to the branch (the PR is left open)
+7. On your branch, update the rls/rustfmt submodules to these branches
+8. Commit the changes, update your PR to rust-lang/rust
+9. Wait for the branch to merge
+10. Wait for a nightly
+11. A maintainer of rls/rustfmt will merge the original PRs to rls/rustfmt
+12. Eventually the rls/rustfmt submodules will get re-updated back to the
+    master branch
+
 ## Writing Documentation
 [writing-documentation]: #writing-documentation
 
