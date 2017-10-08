@@ -37,6 +37,7 @@ use type_of;
 use rustc::hir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Layout, LayoutTyper, TyLayout, Size};
+use rustc_back::PanicStrategy;
 
 use libc::c_uint;
 use std::cmp;
@@ -760,7 +761,17 @@ impl<'a, 'tcx> FnType<'tcx> {
                 // on memory dependencies rather than pointer equality
                 let is_freeze = ccx.shared().type_is_freeze(mt.ty);
 
-                if mt.mutbl != hir::MutMutable && is_freeze {
+                let no_alias_is_safe =
+                    if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias ||
+                       ccx.shared().tcx().sess.panic_strategy() == PanicStrategy::Abort {
+                        // Mutable refrences or immutable shared references
+                        mt.mutbl == hir::MutMutable || is_freeze
+                    } else {
+                        // Only immutable shared references
+                        mt.mutbl != hir::MutMutable && is_freeze
+                    };
+
+                if no_alias_is_safe {
                     arg.attrs.set(ArgAttribute::NoAlias);
                 }
 
