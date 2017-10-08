@@ -75,8 +75,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             _ => return,
         }
 
+        // Allow `Borrow` or functions to be taken by value
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
-        let fn_trait = need!(cx.tcx.lang_items().fn_trait());
+        let fn_traits = [
+            need!(cx.tcx.lang_items().fn_trait()),
+            need!(cx.tcx.lang_items().fn_once_trait()),
+            need!(cx.tcx.lang_items().fn_mut_trait()),
+        ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
 
@@ -119,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         {
             // * Exclude a type that is specifically bounded by `Borrow`.
             // * Exclude a type whose reference also fulfills its bound.
-            //   (e.g. `std::borrow::Borrow`, `serde::Serialize`)
+            //   (e.g. `std::convert::AsRef`, `serde::Serialize`)
             let (implements_borrow_trait, all_borrowable_trait) = {
                 let preds = preds
                     .iter()
@@ -143,7 +148,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 !is_self(arg),
                 !ty.is_mutable_pointer(),
                 !is_copy(cx, ty),
-                !implements_trait(cx, ty, fn_trait, &[]),
+                !fn_traits.iter().any(|&t| implements_trait(cx, ty, t, &[])),
                 !implements_borrow_trait,
                 !all_borrowable_trait,
 
