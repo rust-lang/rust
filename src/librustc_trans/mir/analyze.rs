@@ -139,7 +139,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         let ccx = self.cx.ccx;
 
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
-            // Allow uses of projections that are ZSTs or from immediate scalar fields.
+            // Allow uses of projections that are ZSTs or from scalar fields.
             if let LvalueContext::Consume = context {
                 let base_ty = proj.base.ty(self.cx.mir, ccx.tcx());
                 let base_ty = self.cx.monomorphize(&base_ty);
@@ -153,7 +153,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
                 if let mir::ProjectionElem::Field(..) = proj.elem {
                     let layout = ccx.layout_of(base_ty.to_ty(ccx.tcx()));
-                    if layout.is_llvm_scalar_pair() {
+                    if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
                         // Recurse as a `Consume` instead of `Projection`,
                         // potentially stopping at non-operand projections,
                         // which would trigger `mark_as_lvalue` on locals.

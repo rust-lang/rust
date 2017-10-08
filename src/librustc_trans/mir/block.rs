@@ -700,11 +700,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let elem = if field.is_zst() {
                         C_undef(field.llvm_type(bcx.ccx))
                     } else {
-                        bcx.extract_value(llval, tuple.layout.llvm_field_index(i))
+                        // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                        bcx.bitcast(llval, field.immediate_llvm_type(bcx.ccx))
                     };
                     // If the tuple is immediate, the elements are as well
                     let op = OperandRef {
-                        val: Immediate(base::to_immediate(bcx, elem, field)),
+                        val: Immediate(elem),
                         layout: field,
                     };
                     self.trans_argument(bcx, op, llargs, &args[i]);
@@ -712,7 +713,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             Pair(a, b) => {
                 let elems = [a, b];
-                for i in 0..tuple.layout.fields.count() {
+                assert_eq!(tuple.layout.fields.count(), 2);
+                for i in 0..2 {
                     // Pair is always made up of immediates
                     let op = OperandRef {
                         val: Immediate(elems[i]),

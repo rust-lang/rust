@@ -118,10 +118,27 @@ impl<'a, 'tcx> Const<'tcx> {
 
     fn get_field(&self, ccx: &CrateContext<'a, 'tcx>, i: usize) -> ValueRef {
         let layout = ccx.layout_of(self.ty);
-        if let layout::Abi::ScalarPair(..) = layout.abi {
-            const_get_elt(self.llval, i as u64)
-        } else {
-            const_get_elt(self.llval, layout.llvm_field_index(i))
+        let field = layout.field(ccx, i);
+        if field.is_zst() {
+            return C_undef(field.immediate_llvm_type(ccx));
+        }
+        match layout.abi {
+            layout::Abi::Scalar(_) => self.llval,
+            layout::Abi::ScalarPair(ref a, ref b) => {
+                let offset = layout.fields.offset(i);
+                if offset.bytes() == 0 {
+                    assert_eq!(field.size, a.value.size(ccx));
+                    const_get_elt(self.llval, 0)
+                } else {
+                    assert_eq!(offset, a.value.size(ccx)
+                        .abi_align(b.value.align(ccx)));
+                    assert_eq!(field.size, b.value.size(ccx));
+                    const_get_elt(self.llval, 1)
+                }
+            }
+            _ => {
+                const_get_elt(self.llval, layout.llvm_field_index(i))
+            }
         }
     }
 
@@ -159,7 +176,8 @@ impl<'a, 'tcx> Const<'tcx> {
             // a constant LLVM global and cast its address if necessary.
             let align = ccx.align_of(self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
-            OperandValue::Ref(consts::ptrcast(ptr, llty.ptr_to()), Alignment::AbiAligned)
+            OperandValue::Ref(consts::ptrcast(ptr, layout.llvm_type(ccx).ptr_to()),
+                              Alignment::AbiAligned)
         };
 
         OperandRef {
@@ -1179,12 +1197,26 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 -> Const<'tcx> {
     assert_eq!(vals.len(), layout.fields.count());
 
-    if let layout::Abi::ScalarPair(..) = layout.abi {
-        assert_eq!(vals.len(), 2);
-        return Const::new(C_struct(ccx, &[
-            vals[0].llval,
-            vals[1].llval,
-        ], false), layout.ty);
+    match layout.abi {
+        layout::Abi::Scalar(_) |
+        layout::Abi::ScalarPair(..) if discr.is_none() => {
+            let mut non_zst_fields = vals.iter().enumerate().map(|(i, f)| {
+                (f, layout.fields.offset(i))
+            }).filter(|&(f, _)| !ccx.layout_of(f.ty).is_zst());
+            match (non_zst_fields.next(), non_zst_fields.next()) {
+                (Some((x, offset)), None) if offset.bytes() == 0 => {
+                    return Const::new(x.llval, layout.ty);
+                }
+                (Some((a, a_offset)), Some((b, _))) if a_offset.bytes() == 0 => {
+                    return Const::new(C_struct(ccx, &[a.llval, b.llval], false), layout.ty);
+                }
+                (Some((a, _)), Some((b, b_offset))) if b_offset.bytes() == 0 => {
+                    return Const::new(C_struct(ccx, &[b.llval, a.llval], false), layout.ty);
+                }
+                _ => {}
+            }
+        }
+        _ => {}
     }
 
     // offset of current value

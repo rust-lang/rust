@@ -46,13 +46,13 @@ pub fn static_borrow(_: &'static i32) {
 pub fn named_borrow<'r>(_: &'r i32) {
 }
 
-// CHECK: @unsafe_borrow(%UnsafeInner* dereferenceable(2) %arg0)
+// CHECK: @unsafe_borrow(i16* dereferenceable(2) %arg0)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(%UnsafeInner* dereferenceable(2) %arg0)
+// CHECK: @mutable_unsafe_borrow(i16* dereferenceable(2) %arg0)
 // ... unless this is a mutable borrow, those never alias
 // ... except that there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
@@ -110,7 +110,7 @@ pub fn slice(_: &[u8]) {
 pub fn mutable_slice(_: &mut [u8]) {
 }
 
-// CHECK: @unsafe_slice([0 x %UnsafeInner]* nonnull %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @unsafe_slice([0 x i16]* nonnull %arg0.0, [[USIZE]] %arg0.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {
