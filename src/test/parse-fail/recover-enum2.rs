@@ -35,7 +35,6 @@ fn main() {
         // fail again
         enum Test4 {
             Nope(i32 {}) //~ ERROR: found `{`
-                         //~^ ERROR: found `{`
         }
     }
     // still recover later

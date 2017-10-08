@@ -202,6 +202,10 @@ pub struct Parser<'a> {
     pub cfg_mods: bool,
 }
 
+pub struct ParseSeqResult<'a, T> {
+    parsed: Vec<T>,
+    error: Option<DiagnosticBuilder<'a>>
+}
 
 #[derive(Clone)]
 struct TokenCursor {
@@ -984,9 +988,9 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, Vec<T>> where
         F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
     {
-        let val = self.parse_seq_to_before_end(ket, sep, f);
+        let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
-        Ok(val)
+        Ok(result.parsed)
     }
 
     /// Parse a sequence, not including the closing delimiter. The function
@@ -996,10 +1000,11 @@ impl<'a> Parser<'a> {
                                          ket: &token::Token,
                                          sep: SeqSep,
                                          f: F)
-                                         -> Vec<T>
+                                         -> ParseSeqResult<'a,  T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>
     {
-        self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f, |mut e| e.emit())
+        self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f,
+            |ref mut e| e.emit())
     }
 
     // `fe` is an error handler.
@@ -1009,12 +1014,15 @@ impl<'a> Parser<'a> {
                                             expect: TokenExpectType,
                                             mut f: F,
                                             mut fe: Fe)
-                                            -> Vec<T>
+                                            -> ParseSeqResult<'a,  T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
-              Fe: FnMut(DiagnosticBuilder)
+              Fe: FnMut(&mut DiagnosticBuilder)
     {
         let mut first: bool = true;
-        let mut v = vec![];
+        let mut result = ParseSeqResult {
+            parsed: vec![],
+            error: None
+        };
         while !kets.contains(&&self.token) {
             match self.token {
                 token::CloseDelim(..) | token::Eof => break,
@@ -1024,8 +1032,9 @@ impl<'a> Parser<'a> {
                 if first {
                     first = false;
                 } else {
-                    if let Err(e) = self.expect(t) {
-                        fe(e);
+                    if let Err(mut e) = self.expect(t) {
+                        fe(&mut e);
+                        result.error = Some(e);
                         break;
                     }
                 }
@@ -1040,15 +1049,16 @@ impl<'a> Parser<'a> {
             }
 
             match f(self) {
-                Ok(t) => v.push(t),
-                Err(e) => {
-                    fe(e);
+                Ok(t) => result.parsed.push(t),
+                Err(mut e) => {
+                    fe(&mut e);
+                    result.error = Some(e);
                     break;
                 }
             }
         }
 
-        v
+        result
     }
 
     /// Parse a sequence, including the closing delimiter. The function
@@ -1067,7 +1077,10 @@ impl<'a> Parser<'a> {
         if self.token == *ket {
             self.bump();
         }
-        Ok(result)
+        match result.error {
+            None => Ok(result.parsed),
+            Some(e) => Err(e)
+        }
     }
 
     // NB: Do not use this function unless you actually plan to place the
@@ -1085,7 +1098,7 @@ impl<'a> Parser<'a> {
         let result = self.parse_seq_to_before_end(ket, sep, f);
         let hi = self.span;
         self.bump();
-        Ok(respan(lo.to(hi), result))
+        Ok(respan(lo.to(hi), result.parsed))
     }
 
     /// Advance the parser by one token
@@ -4726,14 +4739,14 @@ impl<'a> Parser<'a> {
             } else if self.eat(&token::Comma) {
                 let mut fn_inputs = vec![self_arg];
                 fn_inputs.append(&mut self.parse_seq_to_before_end(
-                    &token::CloseDelim(token::Paren), sep, parse_arg_fn)
+                    &token::CloseDelim(token::Paren), sep, parse_arg_fn).parsed
                 );
                 fn_inputs
             } else {
                 return self.unexpected();
             }
         } else {
-            self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)
+            self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn).parsed
         };
 
         // Parse closing paren and return type.
@@ -4757,8 +4770,8 @@ impl<'a> Parser<'a> {
                     SeqSep::trailing_allowed(token::Comma),
                     TokenExpectType::NoExpect,
                     |p| p.parse_fn_block_arg(),
-                    |mut e| e.emit()
-                );
+                    |e| e.emit()
+                ).parsed;
                 self.expect_or()?;
                 args
             }

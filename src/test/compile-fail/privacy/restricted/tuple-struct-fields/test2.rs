@@ -14,7 +14,6 @@ macro_rules! define_struct {
         struct S2(pub (in foo) ());
         struct S3(pub $t ());
         //~^ ERROR expected `,`, found `(`
-        //~| ERROR expected one of `;` or `where`, found `(`
     }
 }
 
