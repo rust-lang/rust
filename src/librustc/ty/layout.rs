@@ -964,40 +964,37 @@ impl<'a, 'tcx> CachedLayout {
             let mut align = base_align;
             let mut primitive_align = base_align;
             let mut sized = true;
-
-            // Anything with repr(C) or repr(packed) doesn't optimize.
-            // Neither do  1-member and 2-member structs.
-            // In addition, code in trans assume that 2-element structs can become pairs.
-            // It's easier to just short-circuit here.
-            let (mut optimize, sort_ascending) = match kind {
-                StructKind::AlwaysSized |
-                StructKind::MaybeUnsized => (fields.len() > 2, false),
-                StructKind::EnumVariant(discr) => {
-                    (discr.size().bytes() == 1, true)
-                }
-            };
-
-            optimize &= (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty();
-
             let mut offsets = vec![Size::from_bytes(0); fields.len()];
             let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
+            // Anything with repr(C) or repr(packed) doesn't optimize.
+            let optimize = match kind {
+                StructKind::AlwaysSized |
+                StructKind::MaybeUnsized |
+                StructKind::EnumVariant(I8) => {
+                    (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty()
+                }
+                StructKind::EnumVariant(_) => false
+            };
             if optimize {
                 let end = if let StructKind::MaybeUnsized = kind {
                     fields.len() - 1
                 } else {
                     fields.len()
                 };
-                if end > 0 {
-                    let optimizing  = &mut inverse_memory_index[..end];
-                    if sort_ascending {
+                let optimizing = &mut inverse_memory_index[..end];
+                match kind {
+                    StructKind::AlwaysSized |
+                    StructKind::MaybeUnsized => {
+                        optimizing.sort_by_key(|&x| {
+                            // Place ZSTs first to avoid "interesting offsets",
+                            // especially with only one or two non-ZST fields.
+                            let f = &fields[x as usize];
+                            (!f.is_zst(), cmp::Reverse(f.align.abi()))
+                        })
+                    }
+                    StructKind::EnumVariant(_) => {
                         optimizing.sort_by_key(|&x| fields[x as usize].align.abi());
-                    } else {
-                        optimizing.sort_by(| &a, &b | {
-                            let a = fields[a as usize].align.abi();
-                            let b = fields[b as usize].align.abi();
-                            b.cmp(&a)
-                        });
                     }
                 }
             }
