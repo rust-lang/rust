@@ -76,7 +76,7 @@ impl<T> Node<T> {
 }
 
 impl<T> Queue<T> {
-    #[cfg(test)]
+    #[cfg(all(test, not(target_os = "emscripten")))]
     /// Creates a new queue.
     ///
     /// This is unsafe as the type system doesn't enforce a single
