@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::traits;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
@@ -73,18 +73,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             _ => return,
         }
 
-        // Allows these to be passed by value.
-        let fn_trait = need!(cx.tcx.lang_items().fn_trait());
-        let asref_trait = need!(get_trait_def_id(cx, &paths::ASREF_TRAIT));
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
+        let fn_trait = need!(cx.tcx.lang_items().fn_trait());
+
+        let sized_trait = need!(cx.tcx.lang_items().sized_trait());
 
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
 
-        let preds: Vec<ty::Predicate> = {
-            traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.to_vec())
-                .filter(|p| !p.is_global())
-                .collect()
-        };
+        let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.to_vec())
+            .filter(|p| !p.is_global())
+            .collect::<Vec<_>>();
+        let preds = preds
+            .iter()
+            .filter_map(|pred| if let ty::Predicate::Trait(ref poly_trait_ref) = *pred {
+                Some(poly_trait_ref.skip_binder())
+            } else {
+                None
+            })
+            .filter(|t| t.def_id() != sized_trait && !t.has_escaping_regions())
+            .collect::<Vec<_>>();
 
         // Collect moved variables and spans which will need dereferencings from the
         // function body.
@@ -103,40 +110,44 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
         for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
-            // Determines whether `ty` implements `Borrow<U>` (U != ty) specifically.
-            // This is needed due to the `Borrow<T> for T` blanket impl.
-            let implements_borrow_trait = preds
-                .iter()
-                .filter_map(|pred| if let ty::Predicate::Trait(ref poly_trait_ref) = *pred {
-                    Some(poly_trait_ref.skip_binder())
-                } else {
-                    None
-                })
-                .filter(|tpred| tpred.def_id() == borrow_trait && tpred.self_ty() == ty)
-                .any(|tpred| {
-                    tpred
-                        .input_types()
-                        .nth(1)
-                        .expect("Borrow trait must have an parameter") != ty
-                });
+            // * Exclude a type that is specifically bounded by `Borrow`.
+            // * Exclude a type whose reference also fulfills its bound.
+            //   (e.g. `std::borrow::Borrow`, `serde::Serialize`)
+            let (implements_borrow_trait, all_borrowable_trait) = {
+                let preds = preds
+                    .iter()
+                    .filter(|t| t.self_ty() == ty)
+                    .collect::<Vec<_>>();
+
+                (
+                    preds.iter().any(|t| t.def_id() == borrow_trait),
+                    !preds.is_empty() && preds.iter().all(|t| {
+                        implements_trait(
+                            cx,
+                            cx.tcx.mk_imm_ref(&RegionKind::ReErased, ty),
+                            t.def_id(),
+                            &t.input_types().skip(1).collect::<Vec<_>>(),
+                        )
+                    }),
+                )
+            };
 
             if_let_chain! {[
                 !is_self(arg),
                 !ty.is_mutable_pointer(),
                 !is_copy(cx, ty),
                 !implements_trait(cx, ty, fn_trait, &[]),
-                !implements_trait(cx, ty, asref_trait, &[]),
                 !implements_borrow_trait,
+                !all_borrowable_trait,
 
                 let PatKind::Binding(mode, canonical_id, ..) = arg.pat.node,
                 !moved_vars.contains(&canonical_id),
             ], {
-                // Note: `toplevel_ref_arg` warns if `BindByRef`
                 if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
                     continue;
                 }
 
-                // Suggestion logic
+                // Dereference suggestion
                 let sugg = |db: &mut DiagnosticBuilder| {
                     let deref_span = spans_need_deref.get(&canonical_id);
                     if_let_chain! {[
@@ -152,33 +163,37 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                         "consider changing the type to",
                                         slice_ty);
                         assert!(deref_span.is_none());
-                        return; // `Vec` and `String` cannot be destructured - no need for `*` suggestion
+                        return; // `Vec` cannot be destructured - no need for `*` suggestion
                     }}
 
                     if match_type(cx, ty, &paths::STRING) {
-                        db.span_suggestion(input.span,
-                                           "consider changing the type to",
-                                           "&str".to_string());
+                        db.span_suggestion(input.span, "consider changing the type to", "&str".to_string());
                         assert!(deref_span.is_none());
-                        return;
+                        return; // ditto
                     }
 
                     let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
 
                     // Suggests adding `*` to dereference the added reference.
                     if let Some(deref_span) = deref_span {
-                        spans.extend(deref_span.iter().cloned()
-                                     .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))));
+                        spans.extend(
+                            deref_span
+                                .iter()
+                                .cloned()
+                                .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))),
+                        );
                         spans.sort_by_key(|&(span, _)| span);
                     }
                     multispan_sugg(db, "consider taking a reference instead".to_string(), spans);
                 };
 
-                span_lint_and_then(cx,
-                          NEEDLESS_PASS_BY_VALUE,
-                          input.span,
-                          "this argument is passed by value, but not consumed in the function body",
-                          sugg);
+                span_lint_and_then(
+                    cx,
+                    NEEDLESS_PASS_BY_VALUE,
+                    input.span,
+                    "this argument is passed by value, but not consumed in the function body",
+                    sugg,
+                );
             }}
         }
     }
@@ -188,8 +203,7 @@ struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     moved_vars: HashSet<NodeId>,
     /// Spans which need to be prefixed with `*` for dereferencing the
-    /// suggested additional
-    /// reference.
+    /// suggested additional reference.
     spans_need_deref: HashMap<NodeId, HashSet<Span>>,
 }
 
@@ -213,9 +227,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
     fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
-        if_let_chain! {[
-            let mc::Categorization::Local(vid) = cmt.cat,
-        ], {
+        if let mc::Categorization::Local(vid) = cmt.cat {
             let mut id = matched_pat.id;
             loop {
                 let parent = self.cx.tcx.hir.get_parent_node(id);
@@ -235,7 +247,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                                     .or_insert_with(HashSet::new)
                                     .insert(c.span);
                             }
-                        }
+                        },
 
                         map::Node::NodeStmt(s) => {
                             // `let <pat> = x;`
@@ -251,13 +263,13 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                                         .map(|e| e.span)
                                         .expect("`let` stmt without init aren't caught by match_pat"));
                             }}
-                        }
+                        },
 
-                        _ => {}
+                        _ => {},
                     }
                 }
             }
-        }}
+        }
     }
 }
 
