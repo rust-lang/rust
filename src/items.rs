@@ -1421,36 +1421,18 @@ pub fn rewrite_struct_field(
     }
 
     // We must use multiline.
-    let last_line_width = last_line_width(&prefix);
-    let ty_rewritten = rewrite_struct_field_type(context, last_line_width, field, &spacing, shape);
+    let new_shape = shape.with_max_width(context.config);
+    let ty_rewritten = field.ty.rewrite(context, new_shape)?;
 
-    let type_offset = shape.indent.block_indent(context.config);
-    let rewrite_type_in_next_line = || {
-        field
-            .ty
-            .rewrite(context, Shape::indented(type_offset, context.config))
-    };
-
-    let field_str = match ty_rewritten {
-        // If we start from the next line and type fits in a single line, then do so.
-        Some(ref ty) => match rewrite_type_in_next_line() {
-            Some(ref new_ty) if !new_ty.contains('\n') => format!(
-                "{}\n{}{}",
-                prefix,
-                type_offset.to_string(context.config),
-                &new_ty
-            ),
-            _ => prefix + ty,
-        },
-        _ => {
-            let ty = rewrite_type_in_next_line()?;
-            format!(
-                "{}\n{}{}",
-                prefix,
-                type_offset.to_string(context.config),
-                &ty
-            )
-        }
+    let field_str = if prefix.is_empty() {
+        ty_rewritten
+    } else if prefix.len() + first_line_width(&ty_rewritten) + 1 <= shape.width {
+        prefix + " " + &ty_rewritten
+    } else {
+        let type_offset = shape.indent.block_indent(context.config);
+        let nested_shape = Shape::indented(type_offset, context.config);
+        let nested_ty = field.ty.rewrite(context, nested_shape)?;
+        prefix + "\n" + &type_offset.to_string(context.config) + &nested_ty
     };
     combine_strs_with_missing_comments(
         context,
