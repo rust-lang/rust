@@ -72,4 +72,11 @@ impl Serialize for i32 {}
 
 fn test_blanket_ref<T: Foo, S: Serialize>(_foo: T, _serializable: S) {}
 
+fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+    s.capacity();
+    let _ = t.clone();
+    u.capacity();
+    let _ = v.clone();
+}
+
 fn main() {}

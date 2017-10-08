@@ -9,8 +9,10 @@ use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;
 use utils::{get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths,
-            snippet, span_lint_and_then};
+            snippet, snippet_opt, span_lint_and_then};
+use utils::ptr::get_spans;
 use std::collections::{HashMap, HashSet};
+use std::borrow::Cow;
 
 /// **What it does:** Checks for functions taking arguments by value, but not
 /// consuming them in its
@@ -109,7 +111,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
-        for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
+        for (idx, ((input, &ty), arg)) in decl.inputs
+            .iter()
+            .zip(fn_sig.inputs())
+            .zip(&body.arguments)
+            .enumerate()
+        {
             // * Exclude a type that is specifically bounded by `Borrow`.
             // * Exclude a type whose reference also fulfills its bound.
             //   (e.g. `std::borrow::Borrow`, `serde::Serialize`)
@@ -152,6 +159,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     let deref_span = spans_need_deref.get(&canonical_id);
                     if_let_chain! {[
                         match_type(cx, ty, &paths::VEC),
+                        let Some(clone_spans) =
+                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]),
                         let TyPath(QPath::Resolved(_, ref path)) = input.node,
                         let Some(elem_ty) = path.segments.iter()
                             .find(|seg| seg.name == "Vec")
@@ -162,14 +171,44 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         db.span_suggestion(input.span,
                                         "consider changing the type to",
                                         slice_ty);
+
+                        for (span, suggestion) in clone_spans {
+                            db.span_suggestion(
+                                span,
+                                &snippet_opt(cx, span)
+                                    .map_or(
+                                        "change the call to".into(),
+                                        |x| Cow::from(format!("change `{}` to", x)),
+                                    ),
+                                suggestion.into()
+                            );
+                        }
+
+                        // cannot be destructured, no need for `*` suggestion
                         assert!(deref_span.is_none());
-                        return; // `Vec` cannot be destructured - no need for `*` suggestion
+                        return;
                     }}
 
                     if match_type(cx, ty, &paths::STRING) {
-                        db.span_suggestion(input.span, "consider changing the type to", "&str".to_string());
-                        assert!(deref_span.is_none());
-                        return; // ditto
+                        if let Some(clone_spans) =
+                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
+                            db.span_suggestion(input.span, "consider changing the type to", "&str".to_string());
+
+                            for (span, suggestion) in clone_spans {
+                                db.span_suggestion(
+                                    span,
+                                    &snippet_opt(cx, span)
+                                        .map_or(
+                                            "change the call to".into(),
+                                            |x| Cow::from(format!("change `{}` to", x))
+                                        ),
+                                    suggestion.into(),
+                                );
+                            }
+
+                            assert!(deref_span.is_none());
+                            return;
+                        }
                     }
 
                     let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];

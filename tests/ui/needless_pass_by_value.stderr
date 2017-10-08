@@ -62,3 +62,45 @@ error: this argument is passed by value, but not consumed in the function body
 73 | fn test_blanket_ref<T: Foo, S: Serialize>(_foo: T, _serializable: S) {}
    |                                                 ^ help: consider taking a reference instead: `&T`
 
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:75:18
+   |
+75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+   |                  ^^^^^^ help: consider taking a reference instead: `&String`
+
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:75:29
+   |
+75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+   |                             ^^^^^^
+   |
+help: consider changing the type to
+   |
+75 | fn issue_2114(s: String, t: &str, u: Vec<i32>, v: Vec<i32>) {
+   |                             ^^^^
+help: change `t.clone()` to
+   |
+77 |     let _ = t.to_string();
+   |             ^^^^^^^^^^^^^
+
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:75:40
+   |
+75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+   |                                        ^^^^^^^^ help: consider taking a reference instead: `&Vec<i32>`
+
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:75:53
+   |
+75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+   |                                                     ^^^^^^^^
+   |
+help: consider changing the type to
+   |
+75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: &[i32]) {
+   |                                                     ^^^^^^
+help: change `v.clone()` to
+   |
+79 |     let _ = v.to_owned();
+   |             ^^^^^^^^^^^^
+
