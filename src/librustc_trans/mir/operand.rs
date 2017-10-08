@@ -10,12 +10,12 @@
 
 use llvm::ValueRef;
 use rustc::ty;
-use rustc::ty::layout::{LayoutOf, TyLayout};
+use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{CrateContext, C_undef};
+use common::{CrateContext, C_undef, C_usize};
 use builder::Builder;
 use value::Value;
 use type_of::LayoutLlvmExt;
@@ -207,24 +207,47 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             if let mir::ProjectionElem::Field(ref f, _) = proj.elem {
                 if let Some(o) = self.maybe_trans_consume_direct(bcx, &proj.base) {
                     let layout = o.layout.field(bcx.ccx, f.index());
+                    let offset = o.layout.fields.offset(f.index());
 
                     // Handled in `trans_consume`.
                     assert!(!layout.is_zst());
 
-                    match o.val {
-                        OperandValue::Pair(a, b) => {
-                            let llval = [a, b][f.index()];
-                            // HACK(eddyb) have to bitcast pointers
-                            // until LLVM removes pointee types.
-                            let llval = bcx.bitcast(llval,
-                                layout.immediate_llvm_type(bcx.ccx));
-                            return Some(OperandRef {
-                                val: OperandValue::Immediate(llval),
-                                layout
-                            });
+                    // Offset has to match a scalar component.
+                    let llval = match (o.val, &o.layout.abi) {
+                        (OperandValue::Immediate(llval),
+                         &layout::Abi::Scalar(ref scalar)) => {
+                            assert_eq!(offset.bytes(), 0);
+                            assert_eq!(layout.size, scalar.value.size(bcx.ccx));
+                            llval
                         }
-                        _ => {}
-                    }
+                        (OperandValue::Pair(a_llval, b_llval),
+                         &layout::Abi::ScalarPair(ref a, ref b)) => {
+                            if offset.bytes() == 0 {
+                                assert_eq!(layout.size, a.value.size(bcx.ccx));
+                                a_llval
+                            } else {
+                                assert_eq!(offset, a.value.size(bcx.ccx)
+                                    .abi_align(b.value.align(bcx.ccx)));
+                                assert_eq!(layout.size, b.value.size(bcx.ccx));
+                                b_llval
+                            }
+                        }
+
+                        // `#[repr(simd)]` types are also immediate.
+                        (OperandValue::Immediate(llval),
+                         &layout::Abi::Vector) => {
+                            bcx.extract_element(llval, C_usize(bcx.ccx, f.index() as u64))
+                        }
+
+                        _ => return None
+                    };
+
+                    // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+                    let llval = bcx.bitcast(llval, layout.immediate_llvm_type(bcx.ccx));
+                    return Some(OperandRef {
+                        val: OperandValue::Immediate(llval),
+                        layout
+                    });
                 }
             }
         }

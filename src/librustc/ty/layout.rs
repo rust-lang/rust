@@ -1078,6 +1078,30 @@ impl<'a, 'tcx> CachedLayout {
                 packed
             };
 
+            // Unpack newtype ABIs.
+            if sized && optimize && size.bytes() > 0 {
+                // All but one field must be ZSTs, and so they all start at 0.
+                if offsets.iter().all(|o| o.bytes() == 0) {
+                    let mut non_zst_fields = fields.iter().filter(|f| !f.is_zst());
+
+                    // We have exactly one non-ZST field.
+                    match (non_zst_fields.next(), non_zst_fields.next()) {
+                        (Some(field), None) => {
+                            // Field size match and it has a scalar ABI.
+                            if size == field.size {
+                                match field.abi {
+                                    Abi::Scalar(_) => {
+                                        abi = field.abi.clone();
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             // Look for a scalar pair, as an ABI optimization.
             // FIXME(eddyb) ignore extra ZST fields and field ordering.
             if sized && !packed && fields.len() == 2 {
@@ -1424,6 +1448,18 @@ impl<'a, 'tcx> CachedLayout {
 
                     let mut st = univariant_uninterned(&variants[v], &def.repr, kind)?;
                     st.variants = Variants::Single { index: v };
+                    // Exclude 0 from the range of a newtype ABI NonZero<T>.
+                    if Some(def.did) == cx.tcx().lang_items().non_zero() {
+                        match st.abi {
+                            Abi::Scalar(ref mut scalar) |
+                            Abi::ScalarPair(ref mut scalar, _) => {
+                                if scalar.valid_range.start == 0 {
+                                    scalar.valid_range.start = 1;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                     return Ok(tcx.intern_layout(st));
                 }
 
@@ -2287,20 +2323,6 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             } else {
                 Ok(None)
             };
-        }
-
-        // Is this the NonZero lang item wrapping a pointer or integer type?
-        if let ty::TyAdt(def, _) = self.ty.sty {
-            if Some(def.did) == cx.tcx().lang_items().non_zero() {
-                let field = self.field(cx, 0)?;
-                let offset = self.fields.offset(0);
-                if let Abi::Scalar(Scalar { value, ref valid_range }) = field.abi {
-                    return Ok(Some((offset, Scalar {
-                        value,
-                        valid_range: 0..=valid_range.end
-                    }, 0)));
-                }
-            }
         }
 
         // Perhaps one of the fields is non-zero, let's recurse and find out.
