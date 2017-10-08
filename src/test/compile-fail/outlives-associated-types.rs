@@ -16,9 +16,8 @@
 // https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md#example-1-a-reference
 
 #[rustc_outlives]
-struct Direct<'a, T> {
-    // inferred: `T: 'a`
-    field: &'a T //~ ERROR generic reference may outlive the data it points to
+struct Direct<'a, T> { //~ ERROR 19:1: 21:2: [] [E0640]
+    field: &'a T
 }
 
 fn main() { }
