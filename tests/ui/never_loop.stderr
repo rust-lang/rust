@@ -68,3 +68,15 @@ error: this loop never actually loops
 103 | |     }
     | |_____^
 
+error: this loop never actually loops
+   --> $DIR/never_loop.rs:144:5
+    |
+144 | /     'outer: while a { // never loops
+145 | |         while a {
+146 | |             if a {
+147 | |                 a = false;
+...   |
+151 | |         break 'outer;
+152 | |     }
+    | |_____^
+
