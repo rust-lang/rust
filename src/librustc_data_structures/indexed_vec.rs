@@ -40,39 +40,86 @@ impl Idx for u32 {
 
 #[macro_export]
 macro_rules! newtype_index {
-    ($name:ident) => (
-        newtype_index!($name, unsafe { ::std::intrinsics::type_name::<$name>() });
-    );
+    // ---- private rules ----
 
-    ($name:ident, $debug_name:expr) => (
+    // Base case, user-defined constants (if any) have already been defined
+    (@type[$type:ident] @max[$max:expr] @descr[$descr:expr]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
-         RustcEncodable, RustcDecodable)]
-        pub struct $name(u32);
+            RustcEncodable, RustcDecodable)]
+        pub struct $type(u32);
 
-        impl $name {
-            // HACK use for constants
-            #[allow(unused)]
-            const fn const_new(x: u32) -> Self {
-                $name(x)
-            }
-        }
-
-        impl Idx for $name {
+        impl Idx for $type {
             fn new(value: usize) -> Self {
-                assert!(value < (::std::u32::MAX) as usize);
-                $name(value as u32)
+                assert!(value < ($max) as usize);
+                $type(value as u32)
             }
             fn index(self) -> usize {
                 self.0 as usize
             }
         }
 
-        impl ::std::fmt::Debug for $name {
+        impl ::std::fmt::Debug for $type {
             fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                write!(fmt, "{}{}", $debug_name, self.0)
+                write!(fmt, "{}{}", $descr, self.0)
             }
         }
-    )
+    );
+
+    // Replace existing default for max (as final param)
+    (@type[$type:ident] @max[$_max:expr] @descr[$descr:expr] MAX = $max:expr) => (
+        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
+    );
+
+    // Replace existing default for max
+    (@type[$type:ident] @max[$_max:expr] @descr[$descr:expr] MAX = $max:expr, $($idents:ident = $constants:expr),*) => (
+        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
+    );
+
+    // Replace existing default for description (as final param)
+    (@type[$type:ident] @max[$max:expr] @descr[$_descr:expr] DESCRIPTION = $descr:expr) => (
+        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
+    );
+
+    // Replace existing default for description
+    (@type[$type:ident] @max[$max:expr] @descr[$_descr:expr] DESCRIPTION = $descr:expr, $($idents:ident = $constants:expr),*) => (
+        newtype_index!(@type[$type] @max[$max] @descr[$descr] $($idents = $constants),*);
+    );
+
+    // Assign a user-defined constant (as final param)
+    (@type[$type:ident] @max[$max:expr] @descr[$descr:expr] $name:ident = $constant:expr) => (
+        pub const $name: $type = $type($constant);
+        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
+    );
+
+    // Assign a user-defined constant
+    (@type[$type:ident] @max[$max:expr] @descr[$descr:expr] $name:ident = $constant:expr, $($idents:ident = $constants:expr),*) => (
+        pub const $name: $type = $type($constant);
+        newtype_index!(@type[$type] @max[$max] @descr[$descr] $($idents = $constants),*);
+    );
+
+    // ---- public rules ----
+
+    // Use default constants
+    ($name:ident) => (
+        newtype_index!(
+            @type[$name]
+            @max[::std::u32::MAX]
+            @descr[unsafe {::std::intrinsics::type_name::<$name>() }]);
+    );
+
+    // Define any constants
+    ($name:ident, const { $($idents:ident = $constants:expr,)+ }) => (
+        newtype_index!(
+            @type[$name]
+            @max[::std::u32::MAX]
+            @descr[unsafe {::std::intrinsics::type_name::<$name>() }]
+            $($idents = $constants),+);
+    );
+
+    // Rewrite missing trailing comma in const to version with trailing comma
+    ($name:ident, const { $($idents:ident = $constants:expr),+ }) => (
+        newtype_index!($name, const { $($idents = $constants,)+ });
+    );
 }
 
 #[derive(Clone, PartialEq, Eq)]

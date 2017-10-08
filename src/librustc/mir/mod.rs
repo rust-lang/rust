@@ -402,9 +402,11 @@ pub enum BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-newtype_index!(Local, "_");
-
-pub const RETURN_POINTER: Local = Local(0);
+newtype_index!(Local,
+    const {
+        DESCRIPTION = "_",
+        RETURN_POINTER = 0,
+    });
 
 /// Classifies locals into categories. See `Mir::local_kind`.
 #[derive(PartialEq, Eq, Debug)]
@@ -538,7 +540,7 @@ pub struct UpvarDecl {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-newtype_index!(BasicBlock, "bb");
+newtype_index!(BasicBlock, const { DESCRIPTION = "bb" });
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
@@ -1118,7 +1120,7 @@ pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>
 /// and the index is a local.
 pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
-newtype_index!(Field, "field");
+newtype_index!(Field, const { DESCRIPTION = "field" });
 
 impl<'tcx> Lvalue<'tcx> {
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Lvalue<'tcx> {
@@ -1183,8 +1185,11 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-newtype_index!(VisibilityScope, "scope");
-pub const ARGUMENT_VISIBILITY_SCOPE : VisibilityScope = VisibilityScope(0);
+newtype_index!(VisibilityScope,
+    const {
+        DESCRIPTION = "scope",
+        ARGUMENT_VISIBILITY_SCOPE = 0,
+    });
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VisibilityScopeData {
@@ -1509,7 +1514,7 @@ pub struct Constant<'tcx> {
     pub literal: Literal<'tcx>,
 }
 
-newtype_index!(Promoted, "promoted");
+newtype_index!(Promoted, const { DESCRIPTION = "promoted" });
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
