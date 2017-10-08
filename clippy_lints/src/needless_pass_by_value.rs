@@ -89,15 +89,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.to_vec())
             .filter(|p| !p.is_global())
-            .collect::<Vec<_>>();
-        let preds = preds
-            .iter()
-            .filter_map(|pred| if let ty::Predicate::Trait(ref poly_trait_ref) = *pred {
-                Some(poly_trait_ref.skip_binder())
+            .filter_map(|pred| if let ty::Predicate::Trait(poly_trait_ref) = pred {
+                if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_regions() {
+                    return None;
+                }
+                Some(poly_trait_ref)
             } else {
                 None
             })
-            .filter(|t| t.def_id() != sized_trait && !t.has_escaping_regions())
             .collect::<Vec<_>>();
 
         // Collect moved variables and spans which will need dereferencings from the
@@ -128,7 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             let (implements_borrow_trait, all_borrowable_trait) = {
                 let preds = preds
                     .iter()
-                    .filter(|t| t.self_ty() == ty)
+                    .filter(|t| t.skip_binder().self_ty() == ty)
                     .collect::<Vec<_>>();
 
                 (
@@ -138,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             cx,
                             cx.tcx.mk_imm_ref(&RegionKind::ReErased, ty),
                             t.def_id(),
-                            &t.input_types().skip(1).collect::<Vec<_>>(),
+                            &t.skip_binder().input_types().skip(1).collect::<Vec<_>>(),
                         )
                     }),
                 )
