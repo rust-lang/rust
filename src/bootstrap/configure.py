@@ -360,7 +360,7 @@ def to_toml(value):
     elif isinstance(value, str):
         return "'" + value + "'"
     else:
-        raise 'no toml'
+        raise RuntimeError('no toml')
 
 def configure_section(lines, config):
     for key in config:
