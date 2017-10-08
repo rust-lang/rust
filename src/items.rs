@@ -1362,20 +1362,6 @@ pub fn rewrite_struct_field_prefix(
     })
 }
 
-fn rewrite_struct_field_type(
-    context: &RewriteContext,
-    last_line_width: usize,
-    field: &ast::StructField,
-    spacing: &str,
-    shape: Shape,
-) -> Option<String> {
-    let ty_shape = shape.offset_left(last_line_width + spacing.len())?;
-    field
-        .ty
-        .rewrite(context, ty_shape)
-        .map(|ty| format!("{}{}", spacing, ty))
-}
-
 impl Rewrite for ast::StructField {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         rewrite_struct_field(context, self, shape, 0)
@@ -1427,10 +1413,10 @@ pub fn rewrite_struct_field(
     if prefix.is_empty() && !attrs_str.is_empty() && attrs_extendable && spacing.is_empty() {
         spacing.push(' ');
     }
-    let ty_rewritten = rewrite_struct_field_type(context, overhead, field, &spacing, shape);
-    if let Some(ref ty) = ty_rewritten {
+    let ty_shape = shape.offset_left(overhead + spacing.len())?;
+    if let Some(ref ty) = field.ty.rewrite(context, ty_shape) {
         if !ty.contains('\n') {
-            return Some(attr_prefix + ty);
+            return Some(attr_prefix + &spacing + ty);
         }
     }
 
