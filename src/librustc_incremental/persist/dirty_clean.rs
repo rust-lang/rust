@@ -39,6 +39,8 @@
 //! previous revision to compare things to.
 //!
 
+use std::collections::HashSet;
+use std::vec::Vec;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -53,6 +55,8 @@ use rustc::ty::TyCtxt;
 
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
+
+type Labels = HashSet<String>;
 
 pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
@@ -87,23 +91,46 @@ pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
-    fn dep_node(&self, attr: &Attribute, def_id: DefId) -> DepNode {
-        let def_path_hash = self.tcx.def_path_hash(def_id);
+    fn labels(&self, attr: &Attribute) -> Labels {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(LABEL) {
                 let value = expect_associated_value(self.tcx, &item);
-                match DepNode::from_label_string(&value.as_str(), def_path_hash) {
-                    Ok(dep_node) => return dep_node,
-                    Err(()) => {
-                        self.tcx.sess.span_fatal(
-                            item.span,
-                            &format!("dep-node label `{}` not recognized", value));
-                    }
-                }
+                return self.resolve_labels(&item, value.as_str().as_ref());
             }
         }
-
         self.tcx.sess.span_fatal(attr.span, "no `label` found");
+    }
+
+    fn resolve_labels(&self, item: &NestedMetaItem, value: &str) -> Labels {
+        let mut out: Labels = HashSet::new();
+        for label in value.split(',') {
+            let label = label.trim();
+            if DepNode::has_label_string(label) {
+                if out.contains(label) {
+                    self.tcx.sess.span_fatal(
+                        item.span,
+                        &format!("dep-node label `{}` is repeated", label));
+                }
+                out.insert(label.to_string());
+            } else {
+                self.tcx.sess.span_fatal(
+                    item.span,
+                    &format!("dep-node label `{}` not recognized", label));
+            }
+        }
+        out
+    }
+
+    fn dep_nodes(&self, labels: &Labels, def_id: DefId) -> Vec<DepNode> {
+        let mut out = Vec::with_capacity(labels.len());
+        let def_path_hash = self.tcx.def_path_hash(def_id);
+        for label in labels.iter() {
+            match DepNode::from_label_string(label, def_path_hash) {
+                Ok(dep_node) => out.push(dep_node),
+                Err(()) => unreachable!(),
+            }
+        }
+        out
     }
 
     fn dep_node_str(&self, dep_node: &DepNode) -> String {
@@ -150,12 +177,18 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
             if attr.check_name(ATTR_DIRTY) {
                 if check_config(self.tcx, attr) {
                     self.checked_attrs.insert(attr.id);
-                    self.assert_dirty(item_span, self.dep_node(attr, def_id));
+                    let labels = self.labels(attr);
+                    for dep_node in self.dep_nodes(&labels, def_id) {
+                        self.assert_dirty(item_span, dep_node);
+                    }
                 }
             } else if attr.check_name(ATTR_CLEAN) {
                 if check_config(self.tcx, attr) {
                     self.checked_attrs.insert(attr.id);
-                    self.assert_clean(item_span, self.dep_node(attr, def_id));
+                    let labels = self.labels(attr);
+                    for dep_node in self.dep_nodes(&labels, def_id) {
+                        self.assert_clean(item_span, dep_node);
+                    }
                 }
             }
         }

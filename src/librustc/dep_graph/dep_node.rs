@@ -339,6 +339,25 @@ macro_rules! define_dep_nodes {
                     Ok(DepNode::new_no_params(kind))
                 }
             }
+
+            /// Used in testing
+            pub fn has_label_string(label: &str) -> bool {
+                match label {
+                    $(
+                        stringify!($variant) => true,
+                    )*
+                    _ => false,
+                }
+            }
+        }
+
+        /// Contains variant => str representations for constructing
+        /// DepNode groups for tests.
+        #[allow(dead_code, non_upper_case_globals)]
+        pub mod label_strs {
+           $(
+                pub const $variant: &'static str = stringify!($variant);
+            )*
         }
     );
 }
