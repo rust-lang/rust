@@ -1231,9 +1231,6 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
             .collect::<Vec<_>>()
     });
 
-    assert!(tcx.sess.opts.codegen_units == codegen_units.len() ||
-            tcx.sess.opts.debugging_opts.incremental.is_some());
-
     let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
         match *trans_item {
             TransItem::Fn(ref instance) => Some(instance.def_id()),

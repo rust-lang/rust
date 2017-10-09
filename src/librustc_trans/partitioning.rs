@@ -390,15 +390,6 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     for (index, cgu) in codegen_units.iter_mut().enumerate() {
         cgu.set_name(numbered_codegen_unit_name(crate_name, index));
     }
-
-    // If the initial partitioning contained less than target_cgu_count to begin
-    // with, we won't have enough codegen units here, so add a empty units until
-    // we reach the target count
-    while codegen_units.len() < target_cgu_count {
-        let index = codegen_units.len();
-        let name = numbered_codegen_unit_name(crate_name, index);
-        codegen_units.push(CodegenUnit::new(name));
-    }
 }
 
 fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartitioning<'tcx>,
