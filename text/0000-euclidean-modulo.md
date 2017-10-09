@@ -8,7 +8,7 @@
 
 This RFC proposes the addition of a modulo method with more useful and mathematically regular properties over the built-in remainder `%` operator when the dividend or divisor is negative, along with the associated division method.
 
-For previous discussion, see: [https://internals.rust-lang.org/t/mathematical-modulo-operator/5952]().
+For previous discussion, see: https://internals.rust-lang.org/t/mathematical-modulo-operator/5952.
 
 # Motivation
 [motivation]: #motivation
