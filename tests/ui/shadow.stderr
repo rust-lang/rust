@@ -2,7 +2,7 @@ error: `x` is shadowed by itself in `&mut x`
   --> $DIR/shadow.rs:13:5
    |
 13 |     let x = &mut x;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^
    |
    = note: `-D shadow-same` implied by `-D warnings`
 note: previous binding is here
@@ -15,7 +15,7 @@ error: `x` is shadowed by itself in `{ x }`
   --> $DIR/shadow.rs:14:5
    |
 14 |     let x = { x };
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^
    |
 note: previous binding is here
   --> $DIR/shadow.rs:13:9
@@ -27,7 +27,7 @@ error: `x` is shadowed by itself in `(&*x)`
   --> $DIR/shadow.rs:15:5
    |
 15 |     let x = (&*x);
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^
    |
 note: previous binding is here
   --> $DIR/shadow.rs:14:9
@@ -126,7 +126,7 @@ error: `x` shadows a previous declaration
   --> $DIR/shadow.rs:23:5
    |
 23 |     let x;
-   |     ^^^^^
+   |     ^^^^^^
    |
 note: previous binding is here
   --> $DIR/shadow.rs:21:9
