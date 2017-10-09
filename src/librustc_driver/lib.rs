@@ -401,7 +401,8 @@ pub trait CompilerCalls<'a> {
         // What we need to run borrowck etc.
 
         passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
-        passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
+        passes.push_pass(MIR_VALIDATED,
+                         mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
         passes.push_pass(MIR_VALIDATED, mir::transform::nll::NLL);
 
         // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
@@ -418,7 +419,8 @@ pub trait CompilerCalls<'a> {
         // an AllCallEdges pass right before it.
         passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AllCallEdges);
         passes.push_pass(MIR_OPTIMIZED, mir::transform::add_validation::AddValidation);
-        passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
+        passes.push_pass(MIR_OPTIMIZED,
+                         mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
         // No lifetime analysis based on borrowing can be done from here on out.
 
         // From here on out, regions are gone.
