@@ -254,8 +254,8 @@ pub fn run_compiler<'a>(args: &[String],
                            &odir,
                            &ofile,
                            Some(plugins),
-                           callbacks.mir_passes(),
-                           &control),
+                           &control,
+                           callbacks.mir_passes()),
      Some(sess))
 }
 

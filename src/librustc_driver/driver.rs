@@ -74,8 +74,8 @@ pub fn compile_input(sess: &Session,
                      outdir: &Option<PathBuf>,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
-                     mir_passes: Rc<Passes>,
-                     control: &CompileController) -> CompileResult {
+                     control: &CompileController,
+                     mir_passes: Rc<Passes>) -> CompileResult {
     use rustc::session::config::CrateType;
 
     macro_rules! controller_entry_point {
