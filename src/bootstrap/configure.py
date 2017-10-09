@@ -378,7 +378,7 @@ def configure_section(lines, config):
 for section_key in config:
     section_config = config[section_key]
     if not section_key in sections:
-        raise RuntimeError("config key {} not in sections".format(key))
+        raise RuntimeError("config key {} not in sections".format(section_key))
 
     if section_key == 'target':
         for target in section_config:
