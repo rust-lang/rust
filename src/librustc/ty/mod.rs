@@ -2577,6 +2577,7 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           .map(|id| tcx.hir.local_def_id(id.node_id))
                           .collect()
         }
+        hir::ItemTraitAlias(..) => vec![],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
     };
     Rc::new(vec)
