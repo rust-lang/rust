@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Zincremental=tmp/cfail-tests/incr_comp_with_macro_export
+// revisions: cfail1 cfail2 cfail3
 // must-compile-successfully
-
 
 // This test case makes sure that we can compile with incremental compilation
 // enabled when there are macros exported from this crate. (See #37756)
