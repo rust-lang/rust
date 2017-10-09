@@ -1348,10 +1348,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::DefaultImpl(..) => {
+            ast::ItemKind::AutoImpl(..) => {
                 gate_feature_post!(&self, optin_builtin_traits,
                                    i.span,
-                                   "default trait implementations are experimental \
+                                   "auto trait implementations are experimental \
                                     and possibly buggy");
             }
 

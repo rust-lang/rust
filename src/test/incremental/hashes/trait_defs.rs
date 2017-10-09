@@ -249,7 +249,7 @@ trait TraitChangeMethodParametersOrder {
 
 // Add default implementation to method -------------------------------------------
 #[cfg(cfail1)]
-trait TraitAddMethodDefaultImplementation {
+trait TraitAddMethodAutoImplementation {
     fn method();
 }
 
@@ -258,7 +258,7 @@ trait TraitAddMethodDefaultImplementation {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-trait TraitAddMethodDefaultImplementation {
+trait TraitAddMethodAutoImplementation {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]

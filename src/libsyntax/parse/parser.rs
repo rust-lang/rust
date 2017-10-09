@@ -5076,19 +5076,19 @@ impl<'a> Parser<'a> {
 
         if opt_trait.is_some() && self.eat(&token::DotDot) {
             if generics.is_parameterized() {
-                self.span_err(impl_span, "default trait implementations are not \
+                self.span_err(impl_span, "auto trait implementations are not \
                                           allowed to have generics");
             }
 
             if let ast::Defaultness::Default = defaultness {
                 self.span_err(impl_span, "`default impl` is not allowed for \
-                                         default trait implementations");
+                                         auto trait implementations");
             }
 
             self.expect(&token::OpenDelim(token::Brace))?;
             self.expect(&token::CloseDelim(token::Brace))?;
             Ok((keywords::Invalid.ident(),
-             ItemKind::DefaultImpl(unsafety, opt_trait.unwrap()), None))
+             ItemKind::AutoImpl(unsafety, opt_trait.unwrap()), None))
         } else {
             if opt_trait.is_some() {
                 ty = self.parse_ty()?;

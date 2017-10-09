@@ -1902,7 +1902,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     document(w, cx, item)?;
 
     let mut indices = (0..items.len()).filter(|i| {
-        if let clean::DefaultImplItem(..) = items[*i].inner {
+        if let clean::AutoImplItem(..) = items[*i].inner {
             return false;
         }
         !items[*i].is_stripped()
@@ -3644,7 +3644,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
                    ItemType::AssociatedType, ItemType::AssociatedConst] {
         if items.iter().any(|it| {
-            if let clean::DefaultImplItem(..) = it.inner {
+            if let clean::AutoImplItem(..) = it.inner {
                 false
             } else {
                 !it.is_stripped() && it.type_() == myty

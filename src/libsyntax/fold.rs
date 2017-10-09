@@ -908,8 +908,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             let generics = folder.fold_generics(generics);
             ItemKind::Union(folder.fold_variant_data(struct_def), generics)
         }
-        ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
-            ItemKind::DefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
+        ItemKind::AutoImpl(unsafety, ref trait_ref) => {
+            ItemKind::AutoImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
         ItemKind::Impl(unsafety,
                        polarity,

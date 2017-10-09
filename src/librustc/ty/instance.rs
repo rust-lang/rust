@@ -257,7 +257,7 @@ fn resolve_associated_item<'a, 'tcx>(
                 None
             }
         }
-        traits::VtableDefaultImpl(..) | traits::VtableParam(..) => None
+        traits::VtableAutoImpl(..) | traits::VtableParam(..) => None
     }
 }
 

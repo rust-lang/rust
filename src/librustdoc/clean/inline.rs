@@ -292,10 +292,10 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         }
     }
 
-    // If this is a defaulted impl, then bail out early here
-    if tcx.is_default_impl(did) {
+    // If this is an auto impl, then bail out early here
+    if tcx.is_auto_impl(did) {
         return ret.push(clean::Item {
-            inner: clean::DefaultImplItem(clean::DefaultImpl {
+            inner: clean::AutoImplItem(clean::AutoImpl {
                 // FIXME: this should be decoded
                 unsafety: hir::Unsafety::Normal,
                 trait_: match associated_trait.as_ref().unwrap().clean(cx) {

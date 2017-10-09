@@ -961,7 +961,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_sig: None,
                 }), repr_options)
             }
-            hir::ItemDefaultImpl(..) => {
+            hir::ItemAutoImpl(..) => {
                 let data = ImplData {
                     polarity: hir::ImplPolarity::Positive,
                     defaultness: hir::Defaultness::Final,
@@ -970,7 +970,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
-                EntryKind::DefaultImpl(self.lazy(&data))
+                EntryKind::AutoImpl(self.lazy(&data))
             }
             hir::ItemImpl(_, polarity, defaultness, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
@@ -1012,7 +1012,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
                     paren_sugar: trait_def.paren_sugar,
-                    has_default_impl: tcx.trait_has_default_impl(def_id),
+                    has_auto_impl: tcx.trait_has_auto_impl(def_id),
                     super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
                 };
 
@@ -1558,7 +1558,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemGlobalAsm(..) |
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
-            hir::ItemDefaultImpl(..) |
+            hir::ItemAutoImpl(..) |
             hir::ItemTy(..) => {
                 // no sub-item recording needed in these cases
             }

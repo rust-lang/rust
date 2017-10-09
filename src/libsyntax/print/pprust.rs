@@ -1279,7 +1279,7 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.ident, item.span, true)?;
             }
-            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;

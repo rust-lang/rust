@@ -726,13 +726,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::TraitDef {
             def_id: _,
             unsafety,
             paren_sugar,
-            has_default_impl,
+            has_auto_impl,
             def_path_hash,
         } = *self;
 
         unsafety.hash_stable(hcx, hasher);
         paren_sugar.hash_stable(hcx, hasher);
-        has_default_impl.hash_stable(hcx, hasher);
+        has_auto_impl.hash_stable(hcx, hasher);
         def_path_hash.hash_stable(hcx, hasher);
     }
 }

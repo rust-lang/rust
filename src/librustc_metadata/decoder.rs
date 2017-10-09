@@ -452,7 +452,7 @@ impl<'tcx> EntryKind<'tcx> {
 
             EntryKind::ForeignMod |
             EntryKind::Impl(_) |
-            EntryKind::DefaultImpl(_) |
+            EntryKind::AutoImpl(_) |
             EntryKind::Field |
             EntryKind::Generator(_) |
             EntryKind::Closure(_) => return None,
@@ -522,7 +522,7 @@ impl<'a, 'tcx> CrateMetadata {
         ty::TraitDef::new(self.local_def_id(item_id),
                           data.unsafety,
                           data.paren_sugar,
-                          data.has_default_impl,
+                          data.has_auto_impl,
                           self.def_path_table.def_path_hash(item_id))
     }
 
@@ -728,7 +728,7 @@ impl<'a, 'tcx> CrateMetadata {
                         continue;
                     }
                     EntryKind::Impl(_) |
-                    EntryKind::DefaultImpl(_) => continue,
+                    EntryKind::AutoImpl(_) => continue,
 
                     _ => {}
                 }
@@ -1075,9 +1075,9 @@ impl<'a, 'tcx> CrateMetadata {
         self.dllimport_foreign_items.contains(&id)
     }
 
-    pub fn is_default_impl(&self, impl_id: DefIndex) -> bool {
+    pub fn is_auto_impl(&self, impl_id: DefIndex) -> bool {
         match self.entry(impl_id).kind {
-            EntryKind::DefaultImpl(_) => true,
+            EntryKind::AutoImpl(_) => true,
             _ => false,
         }
     }

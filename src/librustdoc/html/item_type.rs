@@ -81,7 +81,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::PrimitiveItem(..)       => ItemType::Primitive,
             clean::AssociatedConstItem(..) => ItemType::AssociatedConst,
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
-            clean::DefaultImplItem(..)     => ItemType::Impl,
+            clean::AutoImplItem(..)     => ItemType::Impl,
             clean::StrippedItem(..)        => unreachable!(),
         }
     }

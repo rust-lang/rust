@@ -73,7 +73,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
-        is_default_impl,
+        is_auto_impl,
         ..*providers
     };
 }
@@ -435,7 +435,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.predicates_of(def_id);
             convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
         },
-        hir::ItemDefaultImpl(..) => {
+        hir::ItemAutoImpl(..) => {
             tcx.impl_trait_ref(def_id);
         }
         hir::ItemImpl(..) => {
@@ -740,11 +740,11 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let def_path_hash = tcx.def_path_hash(def_id);
-    let has_default_impl = tcx.hir.trait_is_auto(def_id);
+    let has_auto_impl = tcx.hir.trait_is_auto(def_id);
     let def = ty::TraitDef::new(def_id,
                                 unsafety,
                                 paren_sugar,
-                                has_default_impl,
+                                has_auto_impl,
                                 def_path_hash);
     tcx.alloc_trait_def(def)
 }
@@ -1093,7 +1093,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
-                ItemDefaultImpl(..) |
+                ItemAutoImpl(..) |
                 ItemTrait(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
@@ -1241,7 +1241,7 @@ fn impl_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     match tcx.hir.expect_item(node_id).node {
-        hir::ItemDefaultImpl(_, ref ast_trait_ref) => {
+        hir::ItemAutoImpl(_, ref ast_trait_ref) => {
             Some(AstConv::instantiate_mono_trait_ref(&icx,
                                                      ast_trait_ref,
                                                      tcx.mk_self_type()))
@@ -1688,13 +1688,13 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn is_default_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn is_auto_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              def_id: DefId)
                              -> bool {
     match tcx.hir.get_if_local(def_id) {
-        Some(hir_map::NodeItem(&hir::Item { node: hir::ItemDefaultImpl(..), .. }))
+        Some(hir_map::NodeItem(&hir::Item { node: hir::ItemAutoImpl(..), .. }))
              => true,
         Some(_) => false,
-        _ => bug!("is_default_impl applied to non-local def-id {:?}", def_id)
+        _ => bug!("is_auto_impl applied to non-local def-id {:?}", def_id)
     }
 }

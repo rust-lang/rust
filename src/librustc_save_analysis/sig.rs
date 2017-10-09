@@ -498,7 +498,7 @@ impl Sig for ast::Item {
 
                 Ok(sig)
             }
-            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 let mut text = String::new();
                 if unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
