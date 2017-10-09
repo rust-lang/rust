@@ -8,6 +8,8 @@
 
 This RFC proposes the addition of a modulo method with more useful and mathematically regular properties over the built-in remainder `%` operator when the dividend or divisor is negative, along with the associated division method.
 
+For previous discussion, see: [https://internals.rust-lang.org/t/mathematical-modulo-operator/5952]().
+
 # Motivation
 [motivation]: #motivation
 
@@ -22,14 +24,14 @@ The behaviour of division and modulo, as implemented by Rust's (truncated) divis
 (-8 / 3,      -8 % 3)       // (-2, -2)
 (-8.div_e(3), -8.mod_e(3))  // (-3,  1)
 ```
-Euclidean division & modulo will be achieved using the `div_e` and `mod_e` methods. The `%` operator has identical behaviour to `mod_e` for unsigned integers. However, when using signed integers, you should be careful to consider the behaviour you want: often Euclidean modulo will be more appropriate.
+Euclidean division & modulo for integers will be achieved using the `div_e` and `mod_e` methods. The `%` operator has identical behaviour to `mod_e` for unsigned integers. However, when using signed integers, you should be careful to consider the behaviour you want: often Euclidean modulo will be more appropriate.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
 It is important to have both division and modulo methods, as the two operations are intrinsically linked[[8]](https://en.wikipedia.org/wiki/Modulo_operation), though it is often the modulo operator that is specifically requested.
 
-A complete implementation of Euclidean modulo would involve adding 8 methods to the integer primitives in `libcore/num/mod.rs` (floating-point implementations would also be provided for `div_e` and `mod_e`):
+A complete implementation of Euclidean modulo would involve adding 8 methods to the integer primitives in `libcore/num/mod.rs`:
 ```rust
 // Implemented for all numeric primitives.
 fn div_e(self, rhs: Self) -> Self;
@@ -80,9 +82,11 @@ Flooring modulo is another variant that also has more useful behaviour with nega
 
 The functionality could be provided as an operator. However, it is likely that the functionality of remainder and modulo are small enough that it is not worth providing a dedicated operator for the method.
 
-This functionality could instead reside in a separate crate, such as `num` (floored division & modulo is already available in this crate). However, there are strong points for inclusion into core itself: modulo as an operation is more often desirable than remainder for signed operations (so much so that it is the default in a number of languages) -- [the mailing list discussion has more support in favour of flooring/Euclidean division](https://mail.mozilla.org/pipermail/rust-dev/2013-April/003687.html); many people are unaware that the remainder can cause problems with signed integers, and having a method displaying the other behaviour would draw attention to this subtlety; the previous support for this functionality in core shows that many are keen to have this available; the Euclidean or flooring modulo is used (or reimplemented) commonly enough that it is worth having it generally accessible, rather than in a separate crate that must be depended on by each project.
-
-Alternatives have been discussed at [https://internals.rust-lang.org/t/mathematical-modulo-operator/5952]().
+This functionality could instead reside in a separate crate, such as `num` (floored division & modulo is already available in this crate). However, there are strong points for inclusion into core itself:
+- Modulo as an operation is more often desirable than remainder for signed operations (so much so that it is the default in a number of languages) -- [the mailing list discussion has more support in favour of flooring/Euclidean division](https://mail.mozilla.org/pipermail/rust-dev/2013-April/003687.html).
+- Many people are unaware that the remainder can cause problems with signed integers, and having a method displaying the other behaviour would draw attention to this subtlety.
+- The previous support for this functionality in core shows that many are keen to have this available.
+- The Euclidean or flooring modulo is used (or reimplemented) commonly enough that it is worth having it generally accessible, rather than in a separate crate that must be depended on by each project.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
