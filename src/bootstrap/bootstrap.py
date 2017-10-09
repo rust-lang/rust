@@ -8,7 +8,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import argparse
 import contextlib
 import datetime
