@@ -26,6 +26,7 @@ use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::trans::{Linkage, Visibility};
+use rustc::session::config::OptLevel;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
@@ -44,7 +45,20 @@ pub use rustc::middle::trans::TransItem;
 pub enum InstantiationMode {
     /// There will be exactly one instance of the given TransItem. It will have
     /// external linkage so that it can be linked to from other codegen units.
-    GloballyShared,
+    GloballyShared {
+        /// In some compilation scenarios we may decide to take functions that
+        /// are typically `LocalCopy` and instead move them to `GloballyShared`
+        /// to avoid translating them a bunch of times. In this situation,
+        /// however, our local copy may conflict with other crates also
+        /// inlining the same function.
+        ///
+        /// This flag indicates that this situation is occuring, and informs
+        /// symbol name calculation that some extra mangling is needed to
+        /// avoid conflicts. Note that this may eventually go away entirely if
+        /// ThinLTO enables us to *always* have a globally shared instance of a
+        /// function within one crate's compilation.
+        may_conflict: bool,
+    },
 
     /// Each codegen unit containing a reference to the given TransItem will
     /// have its own private copy of the function (with internal linkage).
@@ -154,18 +168,31 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
     fn instantiation_mode(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
                           -> InstantiationMode {
+        let inline_in_all_cgus =
+            tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
+                tcx.sess.opts.optimize != OptLevel::No
+            });
+
         match *self.as_trans_item() {
             TransItem::Fn(ref instance) => {
                 if self.explicit_linkage(tcx).is_none() &&
                     common::requests_inline(tcx, instance)
                 {
-                    InstantiationMode::LocalCopy
+                    if inline_in_all_cgus {
+                        InstantiationMode::LocalCopy
+                    } else {
+                        InstantiationMode::GloballyShared  { may_conflict: true }
+                    }
                 } else {
-                    InstantiationMode::GloballyShared
+                    InstantiationMode::GloballyShared  { may_conflict: false }
                 }
             }
-            TransItem::Static(..) => InstantiationMode::GloballyShared,
-            TransItem::GlobalAsm(..) => InstantiationMode::GloballyShared,
+            TransItem::Static(..) => {
+                InstantiationMode::GloballyShared { may_conflict: false }
+            }
+            TransItem::GlobalAsm(..) => {
+                InstantiationMode::GloballyShared { may_conflict: false }
+            }
         }
     }
 

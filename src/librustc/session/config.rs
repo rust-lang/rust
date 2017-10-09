@@ -1100,6 +1100,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "generate a graphical HTML report of time spent in trans and LLVM"),
     thinlto: bool = (false, parse_bool, [TRACKED],
         "enable ThinLTO when possible"),
+    inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "control whether #[inline] functions are in all cgus"),
 }
 
 pub fn default_lib_output() -> CrateType {
