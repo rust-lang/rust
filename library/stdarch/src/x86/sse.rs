@@ -868,6 +868,13 @@ pub unsafe fn _mm_prefetch(p: *const c_void, strategy: i8) {
     pref!(strategy)
 }
 
+/// Return vector of type __m128 with undefined elements.
+#[inline(always)]
+#[target_feature = "+sse"]
+pub unsafe fn _mm_undefined_ps() -> f32x4 {
+    f32x4::splat(mem::uninitialized())
+}
+
 #[allow(improper_ctypes)]
 extern {
     #[link_name = "llvm.x86.sse.add.ss"]

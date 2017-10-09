@@ -74,7 +74,7 @@ pub unsafe fn _mm256_or_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// lanes using the control in `imm8`.
 #[inline(always)]
 #[target_feature = "+avx"]
-//#[cfg_attr(test, assert_instr(vshufpd, imm8 = 0x0))] // FIXME
+#[cfg_attr(test, assert_instr(vshufpd, imm8 = 0x1))]
 pub unsafe fn _mm256_shuffle_pd(a: f64x4, b: f64x4, imm8: i32) -> f64x4 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
@@ -484,6 +484,152 @@ pub unsafe fn _mm256_xor_ps(a: f32x8, b: f32x8) -> f32x8 {
     mem::transmute(a ^ b)
 }
 
+// Equal (ordered, non-signaling)
+pub const _CMP_EQ_OQ: u8 = 0x00;
+// Less-than (ordered, signaling)
+pub const _CMP_LT_OS: u8 = 0x01;
+// Less-than-or-equal (ordered, signaling)
+pub const _CMP_LE_OS: u8 = 0x02;
+// Unordered (non-signaling)
+pub const _CMP_UNORD_Q: u8 = 0x03;
+// Not-equal (unordered, non-signaling)
+pub const _CMP_NEQ_UQ: u8 = 0x04;
+// Not-less-than (unordered, signaling)
+pub const _CMP_NLT_US: u8 = 0x05;
+// Not-less-than-or-equal (unordered, signaling)
+pub const _CMP_NLE_US: u8 = 0x06;
+// Ordered (non-signaling)
+pub const _CMP_ORD_Q: u8 = 0x07;
+// Equal (unordered, non-signaling)
+pub const _CMP_EQ_UQ: u8 = 0x08;
+// Not-greater-than-or-equal (unordered, signaling)
+pub const _CMP_NGE_US: u8 = 0x09;
+// Not-greater-than (unordered, signaling)
+pub const _CMP_NGT_US: u8 = 0x0a;
+// False (ordered, non-signaling)
+pub const _CMP_FALSE_OQ: u8 = 0x0b;
+// Not-equal (ordered, non-signaling)
+pub const _CMP_NEQ_OQ: u8 = 0x0c;
+// Greater-than-or-equal (ordered, signaling)
+pub const _CMP_GE_OS: u8 = 0x0d;
+// Greater-than (ordered, signaling)
+pub const _CMP_GT_OS: u8 = 0x0e;
+// True (unordered, non-signaling)
+pub const _CMP_TRUE_UQ: u8 = 0x0f;
+// Equal (ordered, signaling)
+pub const _CMP_EQ_OS: u8 = 0x10;
+// Less-than (ordered, non-signaling)
+pub const _CMP_LT_OQ: u8 = 0x11;
+// Less-than-or-equal (ordered, non-signaling)
+pub const _CMP_LE_OQ: u8 = 0x12;
+// Unordered (signaling)
+pub const _CMP_UNORD_S: u8 = 0x13;
+// Not-equal (unordered, signaling)
+pub const _CMP_NEQ_US: u8 = 0x14;
+// Not-less-than (unordered, non-signaling)
+pub const _CMP_NLT_UQ: u8 = 0x15;
+// Not-less-than-or-equal (unordered, non-signaling)
+pub const _CMP_NLE_UQ: u8 = 0x16;
+// Ordered (signaling)
+pub const _CMP_ORD_S: u8 = 0x17;
+// Equal (unordered, signaling)
+pub const _CMP_EQ_US: u8 = 0x18;
+// Not-greater-than-or-equal (unordered, non-signaling)
+pub const _CMP_NGE_UQ: u8 = 0x19;
+// Not-greater-than (unordered, non-signaling)
+pub const _CMP_NGT_UQ: u8 = 0x1a;
+// False (ordered, signaling)
+pub const _CMP_FALSE_OS: u8 = 0x1b;
+// Not-equal (ordered, signaling)
+pub const _CMP_NEQ_OS: u8 = 0x1c;
+// Greater-than-or-equal (ordered, non-signaling)
+pub const _CMP_GE_OQ: u8 = 0x1d;
+// Greater-than (ordered, non-signaling)
+pub const _CMP_GT_OQ: u8 = 0x1e;
+// True (unordered, signaling)
+pub const _CMP_TRUE_US: u8 = 0x1f;
+
+/// Compare packed double-precision (64-bit) floating-point
+/// elements in `a` and `b` based on the comparison operand
+/// specified by `imm8`.
+#[inline(always)]
+#[target_feature = "+avx,+sse2"]
+#[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
+pub unsafe fn _mm_cmp_pd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
+    macro_rules! call {
+        ($imm8:expr) => { vcmppd(a, b, $imm8) }
+    }
+    constify_imm6!(imm8, call)
+}
+
+/// Compare packed double-precision (64-bit) floating-point
+/// elements in `a` and `b` based on the comparison operand
+/// specified by `imm8`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
+pub unsafe fn _mm256_cmp_pd(a: f64x4, b: f64x4, imm8: u8) -> f64x4 {
+    macro_rules! call {
+        ($imm8:expr) => { vcmppd256(a, b, $imm8) }
+    }
+    constify_imm6!(imm8, call)
+}
+
+/// Compare packed single-precision (32-bit) floating-point
+/// elements in `a` and `b` based on the comparison operand
+/// specified by `imm8`.
+#[inline(always)]
+#[target_feature = "+avx,+sse"]
+#[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
+pub unsafe fn _mm_cmp_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
+    macro_rules! call {
+        ($imm8:expr) => { vcmpps(a, b, $imm8) }
+    }
+    constify_imm6!(imm8, call)
+}
+
+/// Compare packed single-precision (32-bit) floating-point
+/// elements in `a` and `b` based on the comparison operand
+/// specified by `imm8`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
+pub unsafe fn _mm256_cmp_ps(a: f32x8, b: f32x8, imm8: u8) -> f32x8 {
+    macro_rules! call {
+        ($imm8:expr) => { vcmpps256(a, b, $imm8) }
+    }
+    constify_imm6!(imm8, call)
+}
+
+/// Compare the lower double-precision (64-bit) floating-point element in
+/// `a` and `b` based on the comparison operand specified by `imm8`,
+/// store the result in the lower element of returned vector,
+/// and copy the upper element from `a` to the upper element of returned vector.
+#[inline(always)]
+#[target_feature = "+avx,+sse2"]
+#[cfg_attr(test, assert_instr(vcmpeqsd, imm8 = 0))] // TODO Validate vcmpsd
+pub unsafe fn _mm_cmp_sd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
+    macro_rules! call {
+        ($imm8:expr) => { vcmpsd(a, b, $imm8) }
+    }
+    constify_imm6!(imm8, call)
+}
+
+/// Compare the lower single-precision (32-bit) floating-point element in
+/// `a` and `b` based on the comparison operand specified by `imm8`,
+/// store the result in the lower element of returned vector,
+/// and copy the upper 3 packed elements from `a` to the upper elements of
+/// returned vector.
+#[inline(always)]
+#[target_feature = "+avx,+sse"]
+#[cfg_attr(test, assert_instr(vcmpeqss, imm8 = 0))] // TODO Validate vcmpss
+pub unsafe fn _mm_cmp_ss(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
+    macro_rules! call {
+        ($imm8:expr) => { vcmpss(a, b, $imm8) }
+    }
+    constify_imm6!(imm8, call)
+}
+
 /// Convert packed 32-bit integers in `a` to packed double-precision (64-bit)
 /// floating-point elements.
 #[inline(always)]
@@ -707,6 +853,328 @@ pub unsafe fn _mm256_permute_ps(a: f32x8, imm8: i32) -> f32x8 {
     }
 }
 
+/// Shuffle single-precision (32-bit) floating-point elements in `a` 
+/// using the control in `imm8`.
+#[inline(always)]
+#[target_feature = "+avx,+sse"]
+#[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
+pub unsafe fn _mm_permute_ps(a: f32x4, imm8: i32) -> f32x4 {
+    use x86::sse::_mm_undefined_ps;
+
+    let imm8 = (imm8 & 0xFF) as u8;
+    macro_rules! shuffle4 {
+        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+            simd_shuffle4(a, _mm_undefined_ps(), [
+                $a, $b, $c, $d
+            ])
+        }
+    }
+    macro_rules! shuffle3 {
+        ($a:expr, $b:expr, $c:expr) => {
+            match (imm8 >> 6) & 0b11 {
+                0b00 => shuffle4!($a, $b, $c, 0),
+                0b01 => shuffle4!($a, $b, $c, 1),
+                0b10 => shuffle4!($a, $b, $c, 2),
+                _ => shuffle4!($a, $b, $c, 3),
+            }
+        }
+    }
+    macro_rules! shuffle2 {
+        ($a:expr, $b:expr) => {
+            match (imm8 >> 4) & 0b11 {
+                0b00 => shuffle3!($a, $b, 0),
+                0b01 => shuffle3!($a, $b, 1),
+                0b10 => shuffle3!($a, $b, 2),
+                _ => shuffle3!($a, $b, 3),
+            }
+        }
+    }
+    macro_rules! shuffle1 {
+        ($a:expr) => {
+            match (imm8 >> 2) & 0b11 {
+                0b00 => shuffle2!($a, 0),
+                0b01 => shuffle2!($a, 1),
+                0b10 => shuffle2!($a, 2),
+                _ => shuffle2!($a, 3),
+            }
+        }
+    }
+    match (imm8 >> 0) & 0b11 {
+        0b00 => shuffle1!(0),
+        0b01 => shuffle1!(1),
+        0b10 => shuffle1!(2),
+        _ => shuffle1!(3),
+    }
+}
+
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vpermilpd))]
+pub unsafe fn _mm256_permutevar_pd(a: f64x4, b: i64x4) -> f64x4 {
+    vpermilpd256(a, b)
+}
+
+/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// using the control in `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vpermilpd))]
+pub unsafe fn _mm_permutevar_pd(a: f64x2, b: i64x2) -> f64x2 {
+    vpermilpd(a, b)
+}
+
+/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// within 128-bit lanes using the control in `imm8`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
+pub unsafe fn _mm256_permute_pd(a: f64x4, imm8: i32) -> f64x4 {
+    let imm8 = (imm8 & 0xFF) as u8;
+    macro_rules! shuffle4 {
+        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+            simd_shuffle4(a, _mm256_undefined_pd(), [$a, $b, $c, $d]);
+        }
+    }
+    macro_rules! shuffle3 {
+        ($a:expr, $b: expr, $c: expr) => {
+            match (imm8 >> 3) & 0x1 {
+                0 => shuffle4!($a, $b, $c, 2),
+                _ => shuffle4!($a, $b, $c, 3),
+            }
+        }
+    }
+    macro_rules! shuffle2 {
+        ($a:expr, $b:expr) => {
+            match (imm8 >> 2) & 0x1 {
+                0 => shuffle3!($a, $b, 2),
+                _ => shuffle3!($a, $b, 3),
+            }
+        }
+    }
+    macro_rules! shuffle1 {
+        ($a:expr) => {
+            match (imm8 >> 1) & 0x1 {
+                0 => shuffle2!($a, 0),
+                _ => shuffle2!($a, 1),
+            }
+        }
+    }
+    match (imm8 >> 0) & 0x1 {
+        0 => shuffle1!(0),
+        _ => shuffle1!(1),
+    }
+}
+
+/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// using the control in `imm8`.
+#[inline(always)]
+#[target_feature = "+avx,+sse2"]
+#[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
+pub unsafe fn _mm_permute_pd(a: f64x2, imm8: i32) -> f64x2 {
+    use x86::sse2::_mm_undefined_pd;
+
+    let imm8 = (imm8 & 0xFF) as u8;
+    macro_rules! shuffle2 {
+        ($a:expr, $b:expr) => {
+            simd_shuffle2(a, _mm_undefined_pd(), [$a, $b]);
+        }
+    }
+    macro_rules! shuffle1 {
+        ($a:expr) => {
+            match (imm8 >> 1) & 0x1 {
+                0 => shuffle2!($a, 0),
+                _ => shuffle2!($a, 1),
+            }
+        }
+    }
+    match (imm8 >> 0) & 0x1 {
+        0 => shuffle1!(0),
+        _ => shuffle1!(1),
+    }
+}
+
+/// Shuffle 256-bits (composed of 8 packed single-precision (32-bit)
+/// floating-point elements) selected by `imm8` from `a` and `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x5))]
+pub unsafe fn _mm256_permute2f128_ps(a: f32x8, b: f32x8, imm8: i8) -> f32x8 {
+    macro_rules! call {
+        ($imm8:expr) => { vperm2f128ps256(a, b, $imm8) }
+    }
+    constify_imm8!(imm8, call)
+}
+
+/// Shuffle 256-bits (composed of 4 packed double-precision (64-bit)
+/// floating-point elements) selected by `imm8` from `a` and `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
+pub unsafe fn _mm256_permute2f128_pd(a: f64x4, b: f64x4, imm8: i8) -> f64x4 {
+    macro_rules! call {
+        ($imm8:expr) => { vperm2f128pd256(a, b, $imm8) }
+    }
+    constify_imm8!(imm8, call)
+}
+
+/// Shuffle 258-bits (composed of integer data) selected by `imm8`
+/// from `a` and `b`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
+pub unsafe fn _mm256_permute2f128_si256(a: i32x8, b: i32x8, imm8: i8) -> i32x8 {
+    macro_rules! call {
+        ($imm8:expr) => { vperm2f128si256(a, b, $imm8) }
+    }
+    constify_imm8!(imm8, call)
+}
+
+/// Broadcast a single-precision (32-bit) floating-point element from memory
+/// to all elements of the returned vector.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vbroadcastss))]
+pub unsafe fn _mm256_broadcast_ss(f: &f32) -> f32x8 {
+    f32x8::splat(*f)
+}
+
+/// Broadcast a single-precision (32-bit) floating-point element from memory
+/// to all elements of the returned vector.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vbroadcastss))]
+pub unsafe fn _mm_broadcast_ss(f: &f32) -> f32x4 {
+    f32x4::splat(*f)
+}
+
+/// Broadcast a double-precision (64-bit) floating-point element from memory
+/// to all elements of the returned vector.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vbroadcastsd))]
+pub unsafe fn _mm256_broadcast_sd(f: &f64) -> f64x4 {
+    f64x4::splat(*f)
+}
+
+/// Broadcast 128 bits from memory (composed of 4 packed single-precision
+/// (32-bit) floating-point elements) to all elements of the returned vector.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vbroadcastf128))]
+pub unsafe fn _mm256_broadcast_ps(a: &f32x4) -> f32x8 {
+    vbroadcastf128ps256(a)
+}
+
+/// Broadcast 128 bits from memory (composed of 2 packed double-precision
+/// (64-bit) floating-point elements) to all elements of the returned vector.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vbroadcastf128))]
+pub unsafe fn _mm256_broadcast_pd(a: &f64x2) -> f64x4 {
+    vbroadcastf128pd256(a)
+}
+
+/// Copy `a` to result, then insert 128 bits (composed of 4 packed
+/// single-precision (32-bit) floating-point elements) from `b` into result
+/// at the location specified by `imm8`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+pub unsafe fn _mm256_insertf128_ps(a: f32x8, b: f32x4, imm8: i32) -> f32x8 {
+    match imm8 & 1 {
+        0 => simd_shuffle8(a, _mm256_castps128_ps256(b), [8, 9, 10, 11, 4, 5, 6, 7]),
+        _ => simd_shuffle8(a, _mm256_castps128_ps256(b), [0, 1, 2, 3, 8, 9, 10, 11]),
+    }
+}
+
+/// Copy `a` to result, then insert 128 bits (composed of 2 packed
+/// double-precision (64-bit) floating-point elements) from `b` into result
+/// at the location specified by `imm8`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+pub unsafe fn _mm256_insertf128_pd(a: f64x4, b: f64x2, imm8: i32) -> f64x4 {
+    match imm8 & 1 {
+        0 => simd_shuffle4(a, _mm256_castpd128_pd256(b), [4, 5, 2, 3]),
+        _ => simd_shuffle4(a, _mm256_castpd128_pd256(b), [0, 1, 4, 5]),
+    }
+}
+
+/// Copy `a` to result, then insert 128 bits from `b` into result
+/// at the location specified by `imm8`.
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+pub unsafe fn _mm256_insertf128_si256(a: i64x4, b: i64x2, imm8: i32) -> i64x4 {
+    match imm8 & 1 {
+        0 => simd_shuffle4(a, _mm256_castsi128_si256(b), [4, 5, 2, 3]),
+        _ => simd_shuffle4(a, _mm256_castsi128_si256(b), [0, 1, 4, 5]),
+    }
+}
+
+/// Copy `a` to result, and insert the 8-bit integer `i` into result
+/// at the location specified by `index`.
+#[inline(always)]
+#[target_feature = "+avx"]
+pub unsafe fn _mm256_insert_epi8(a: i8x32, i: i8, index: i32) -> i8x32 {
+    let c = a;
+    c.replace(index as u32 & 31, i)
+}
+
+/// Copy `a` to result, and insert the 16-bit integer `i` into result
+/// at the location specified by `index`.
+#[inline(always)]
+#[target_feature = "+avx"]
+pub unsafe fn _mm256_insert_epi16(a: i16x16, i: i16, index: i32) -> i16x16 {
+    let c = a;
+    c.replace(index as u32 & 15, i)
+}
+
+/// Copy `a` to result, and insert the 32-bit integer `i` into result
+/// at the location specified by `index`.
+#[inline(always)]
+#[target_feature = "+avx"]
+pub unsafe fn _mm256_insert_epi32(a: i32x8, i: i32, index: i32) -> i32x8 {
+    let c = a;
+    c.replace(index as u32 & 7, i)
+}
+
+/// Copy `a` to result, and insert the 64-bit integer `i` into result
+/// at the location specified by `index`.
+#[inline(always)]
+#[target_feature = "+avx"]
+pub unsafe fn _mm256_insert_epi64(a: i64x4, i: i64, index: i32) -> i64x4 {
+    let c = a;
+    c.replace(index as u32 & 3, i)
+}
+
+/// Casts vector of type __m128 to type __m256;
+/// the upper 128 bits of the result are undefined.
+#[inline(always)]
+#[target_feature = "+avx"]
+pub unsafe fn _mm256_castps128_ps256(a: f32x4) -> f32x8 {
+    // FIXME simd_shuffle8(a, a, [0, 1, 2, 3, -1, -1, -1, -1])
+    simd_shuffle8(a, a, [0, 1, 2, 3, 0, 0, 0, 0])
+}
+
+/// Casts vector of type __m128d to type __m256d;
+/// the upper 128 bits of the result are undefined.
+#[inline(always)]
+#[target_feature = "+avx"]
+pub unsafe fn _mm256_castpd128_pd256(a: f64x2) -> f64x4 {
+    // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
+    simd_shuffle4(a, a, [0, 1, 0, 0])
+}
+
+/// Casts vector of type __m128i to type __m256i;
+/// the upper 128 bits of the result are undefined.
+#[inline(always)]
+#[target_feature = "+avx"]
+pub unsafe fn _mm256_castsi128_si256(a: i64x2) -> i64x4 {
+    // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
+    simd_shuffle4(a, a, [0, 1, 0, 0])
+}
+
 /// Return vector of type `f32x8` with undefined elements.
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -765,6 +1233,18 @@ extern "C" {
     fn vhsubpd(a: f64x4, b: f64x4) -> f64x4;
     #[link_name = "llvm.x86.avx.hsub.ps.256"]
     fn vhsubps(a: f32x8, b: f32x8) -> f32x8;
+    #[link_name = "llvm.x86.sse2.cmp.pd"]
+    fn vcmppd(a: f64x2, b: f64x2, imm8: u8) -> f64x2;
+    #[link_name = "llvm.x86.avx.cmp.pd.256"]
+    fn vcmppd256(a: f64x4, b: f64x4, imm8: u8) -> f64x4;
+    #[link_name = "llvm.x86.sse.cmp.ps"]
+    fn vcmpps(a: f32x4, b: f32x4, imm8: u8) -> f32x4;
+    #[link_name = "llvm.x86.avx.cmp.ps.256"]
+    fn vcmpps256(a: f32x8, b: f32x8, imm8: u8) -> f32x8;
+    #[link_name = "llvm.x86.sse2.cmp.sd"]
+    fn vcmpsd(a: f64x2, b: f64x2, imm8: u8) -> f64x2;
+    #[link_name = "llvm.x86.sse.cmp.ss"]
+    fn vcmpss(a: f32x4, b: f32x4, imm8: u8) -> f32x4;
     #[link_name = "llvm.x86.avx.cvtdq2.ps.256"]
     fn vcvtdq2ps(a: i32x8) -> f32x8;
     #[link_name = "llvm.x86.avx.cvt.pd2.ps.256"]
@@ -785,6 +1265,20 @@ extern "C" {
     fn vpermilps256(a: f32x8, b: i32x8) -> f32x8;
     #[link_name = "llvm.x86.avx.vpermilvar.ps"]
     fn vpermilps(a: f32x4, b: i32x4) -> f32x4;
+    #[link_name = "llvm.x86.avx.vpermilvar.pd.256"]
+    fn vpermilpd256(a: f64x4, b: i64x4) -> f64x4;
+    #[link_name = "llvm.x86.avx.vpermilvar.pd"]
+    fn vpermilpd(a: f64x2, b: i64x2) -> f64x2;
+    #[link_name = "llvm.x86.avx.vperm2f128.ps.256"]
+    fn vperm2f128ps256(a: f32x8, b: f32x8, imm8: i8) -> f32x8;
+    #[link_name = "llvm.x86.avx.vperm2f128.pd.256"]
+    fn vperm2f128pd256(a: f64x4, b: f64x4, imm8: i8) -> f64x4;
+    #[link_name = "llvm.x86.avx.vperm2f128.si.256"]
+    fn vperm2f128si256(a: i32x8, b: i32x8, imm8: i8) -> i32x8;
+    #[link_name = "llvm.x86.avx.vbroadcastf128.ps.256"]
+    fn vbroadcastf128ps256(a: &f32x4) -> f32x8;
+    #[link_name = "llvm.x86.avx.vbroadcastf128.pd.256"]
+    fn vbroadcastf128pd256(a: &f64x2) -> f64x4;
 }
 
 #[cfg(test)]
@@ -1177,6 +1671,64 @@ mod tests {
     }
 
     #[simd_test = "avx"]
+    unsafe fn _mm_cmp_pd() {
+        let a = f64x2::new(4.0, 9.0);
+        let b = f64x2::new(4.0, 3.0);
+        let r = avx::_mm_cmp_pd(a, b, avx::_CMP_GE_OS);
+        assert!(r.extract(0).is_nan());
+        assert!(r.extract(1).is_nan());
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_cmp_pd() {
+        let a = f64x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f64x4::new(5.0, 6.0, 7.0, 8.0);
+        let r = avx::_mm256_cmp_pd(a, b, avx::_CMP_GE_OS);
+        let e = f64x4::splat(0.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm_cmp_ps() {
+        let a = f32x4::new(4.0, 3.0, 2.0, 5.0);
+        let b = f32x4::new(4.0, 9.0, 16.0, 25.0);
+        let r = avx::_mm_cmp_ps(a, b, avx::_CMP_GE_OS);
+        assert!(r.extract(0).is_nan());
+        assert_eq!(r.extract(1), 0.0);
+        assert_eq!(r.extract(2), 0.0);
+        assert_eq!(r.extract(3), 0.0);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_cmp_ps() {
+        let a = f32x8::new(1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0);
+        let b = f32x8::new(5.0, 6.0, 7.0, 8.0, 5.0, 6.0, 7.0, 8.0);
+        let r = avx::_mm256_cmp_ps(a, b, avx::_CMP_GE_OS);
+        let e = f32x8::splat(0.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm_cmp_sd() {
+        let a = f64x2::new(4.0, 9.0);
+        let b = f64x2::new(4.0, 3.0);
+        let r = avx::_mm_cmp_sd(a, b, avx::_CMP_GE_OS);
+        assert!(r.extract(0).is_nan());
+        assert_eq!(r.extract(1), 9.0);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm_cmp_ss() {
+        let a = f32x4::new(4.0, 3.0, 2.0, 5.0);
+        let b = f32x4::new(4.0, 9.0, 16.0, 25.0);
+        let r = avx::_mm_cmp_ss(a, b, avx::_CMP_GE_OS);
+        assert!(r.extract(0).is_nan());
+        assert_eq!(r.extract(1), 3.0);
+        assert_eq!(r.extract(2), 2.0);
+        assert_eq!(r.extract(3), 5.0);
+    }
+
+    #[simd_test = "avx"]
     unsafe fn _mm256_cvtepi32_pd() {
         let a = i32x4::new(4, 9, 16, 25);
         let r = avx::_mm256_cvtepi32_pd(a);
@@ -1331,6 +1883,183 @@ mod tests {
         let a = f32x8::new(4.0, 3.0, 2.0, 5.0, 8.0, 9.0, 64.0, 50.0);
         let r = avx::_mm256_permute_ps(a, 0x1b);
         let e = f32x8::new(5.0, 2.0, 3.0, 4.0, 50.0, 64.0, 9.0, 8.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm_permute_ps() {
+        let a = f32x4::new(4.0, 3.0, 2.0, 5.0);
+        let r = avx::_mm_permute_ps(a, 0x1b);
+        let e = f32x4::new(5.0, 2.0, 3.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_permutevar_pd() {
+        let a = f64x4::new(4.0, 3.0, 2.0, 5.0);
+        let b = i64x4::new(1, 2, 3, 4);
+        let r = avx::_mm256_permutevar_pd(a, b);
+        let e = f64x4::new(4.0, 3.0, 5.0, 2.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm_permutevar_pd() {
+        let a = f64x2::new(4.0, 3.0);
+        let b = i64x2::new(3, 0);
+        let r = avx::_mm_permutevar_pd(a, b);
+        let e = f64x2::new(3.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_permute_pd() {
+        let a = f64x4::new(4.0, 3.0, 2.0, 5.0);
+        let r = avx::_mm256_permute_pd(a, 5);
+        let e = f64x4::new(3.0, 4.0, 5.0, 2.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm_permute_pd() {
+        let a = f64x2::new(4.0, 3.0);
+        let r = avx::_mm_permute_pd(a, 1);
+        let e = f64x2::new(3.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_permute2f128_ps() {
+        let a = f32x8::new(1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0);
+        let b = f32x8::new(5.0, 6.0, 7.0, 8.0, 5.0, 6.0, 7.0, 8.0);
+        let r = avx::_mm256_permute2f128_ps(a, b, 0x13);
+        let e = f32x8::new(5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 3.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_permute2f128_pd() {
+        let a = f64x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f64x4::new(5.0, 6.0, 7.0, 8.0);
+        let r = avx::_mm256_permute2f128_pd(a, b, 0x31);
+        let e = f64x4::new(3.0, 4.0, 7.0, 8.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_permute2f128_si256() {
+        let a = i32x8::new(1, 2, 3, 4, 1, 2, 3, 4);
+        let b = i32x8::new(5, 6, 7, 8, 5, 6, 7, 8);
+        let r = avx::_mm256_permute2f128_si256(a, b, 0x20);
+        let e = i32x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_broadcast_ss() {
+        let r = avx::_mm256_broadcast_ss(&3.0);
+        let e = f32x8::splat(3.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm_broadcast_ss() {
+        let r = avx::_mm_broadcast_ss(&3.0);
+        let e = f32x4::splat(3.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_broadcast_sd() {
+        let r = avx::_mm256_broadcast_sd(&3.0);
+        let e = f64x4::splat(3.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_broadcast_ps() {
+        let a = f32x4::new(4.0, 3.0, 2.0, 5.0);
+        let r = avx::_mm256_broadcast_ps(&a);
+        let e = f32x8::new(4.0, 3.0, 2.0, 5.0, 4.0, 3.0, 2.0, 5.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_broadcast_pd() {
+        let a = f64x2::new(4.0, 3.0);
+        let r = avx::_mm256_broadcast_pd(&a);
+        let e = f64x4::new(4.0, 3.0, 4.0, 3.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_insertf128_ps() {
+        let a = f32x8::new(4.0, 3.0, 2.0, 5.0, 8.0, 9.0, 64.0, 50.0);
+        let b = f32x4::new(4.0, 9.0, 16.0, 25.0);
+        let r = avx::_mm256_insertf128_ps(a, b, 0);
+        let e = f32x8::new(4.0, 9.0, 16.0, 25.0, 8.0, 9.0, 64.0, 50.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_insertf128_pd() {
+        let a = f64x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f64x2::new(5.0, 6.0);
+        let r = avx::_mm256_insertf128_pd(a, b, 0);
+        let e = f64x4::new(5.0, 6.0, 3.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_insertf128_si256() {
+        let a = i64x4::new(1, 2, 3, 4);
+        let b = i64x2::new(5, 6);
+        let r = avx::_mm256_insertf128_si256(a, b, 0);
+        let e = i64x4::new(5, 6, 3, 4);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_insert_epi8() {
+        let a = i8x32::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32);
+        let r = avx::_mm256_insert_epi8(a, 0, 31);
+        let e = i8x32::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_insert_epi16() {
+        let a = i16x16::new(
+            0, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15);
+        let r = avx::_mm256_insert_epi16(a, 0, 15);
+        let e = i16x16::new(
+            0, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_insert_epi32() {
+        let a = i32x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let r = avx::_mm256_insert_epi32(a, 0, 7);
+        let e = i32x8::new(1, 2, 3, 4, 5, 6, 7, 0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_insert_epi64() {
+        let a = i64x4::new(1, 2, 3, 4);
+        let r = avx::_mm256_insert_epi64(a, 0, 3);
+        let e = i64x4::new(1, 2, 3, 0);
         assert_eq!(r, e);
     }
 }

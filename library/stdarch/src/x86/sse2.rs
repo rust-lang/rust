@@ -1827,6 +1827,13 @@ pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> f64x2 {
     f64x2::new(d, d)
 }
 
+/// Return vector of type __m128d with undefined elements.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_undefined_pd() -> f64x2 {
+    f64x2::splat(mem::uninitialized())
+}
+
 #[allow(improper_ctypes)]
 extern {
     #[link_name = "llvm.x86.sse2.pause"]
