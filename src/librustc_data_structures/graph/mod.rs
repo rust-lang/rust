@@ -31,7 +31,7 @@
 //! be indexed by the direction (see the type `Direction`).
 
 use bitvec::BitVector;
-use std::fmt::{Formatter, Error, Debug};
+use std::fmt::Debug;
 use std::usize;
 use snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 
@@ -48,6 +48,7 @@ pub struct Node<N> {
     pub data: N,
 }
 
+#[derive(Debug)]
 pub struct Edge<E> {
     next_edge: [EdgeIndex; 2], // see module comment
     source: NodeIndex,
@@ -67,18 +68,6 @@ impl<N> SnapshotVecDelegate for Edge<N> {
     type Undo = ();
 
     fn reverse(_: &mut Vec<Edge<N>>, _: ()) {}
-}
-
-impl<E: Debug> Debug for Edge<E> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f,
-               "Edge {{ next_edge: [{:?}, {:?}], source: {:?}, target: {:?}, data: {:?} }}",
-               self.next_edge[0],
-               self.next_edge[1],
-               self.source,
-               self.target,
-               self.data)
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
