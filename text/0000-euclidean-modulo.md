@@ -91,4 +91,4 @@ This functionality could instead reside in a separate crate, such as `num` (floo
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-None.
+- Is it worth implementing `div_e` and `mod_e` for floating-point numbers? While it makes sense for completeness, it may be too rare a use case to be worth extending the core library to include.
