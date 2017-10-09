@@ -2239,20 +2239,20 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.key.take()
     }
 
-    /// Replaces the entry, returning the old key and value.
+    /// Replaces the entry, returning the old key and value. The new key in the hash map will be
+    /// the key used to create this entry.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(map_entry_replace)]
-    /// use std::collections::HashMap;
-    /// use std::collections::hash_map::Entry;
+    /// use std::collections::hash_map::{Entry, HashMap};
     ///
     /// let mut map: HashMap<String, u32> = HashMap::new();
     /// map.insert("poneyland".to_string(), 15);
     ///
     /// if let Entry::Occupied(entry) = map.entry("poneyland".to_string()) {
-    ///     let (old_key, old_value): (String, u32) = entry.replace(16);
+    ///     let (old_key, old_value): (String, u32) = entry.replace_entry(16);
     ///     assert_eq!(old_key, "poneyland");
     ///     assert_eq!(old_value, 15);
     /// }
@@ -2260,13 +2260,35 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map.get("poneyland"), Some(&16));
     /// ```
     #[unstable(feature = "map_entry_replace", issue = "44286")]
-    pub fn replace(mut self, value: V) -> (K, V) {
+    pub fn replace_entry(mut self, value: V) -> (K, V) {
         let (old_key, old_value) = self.elem.read_mut();
 
         let old_key = mem::replace(old_key, self.key.unwrap());
         let old_value = mem::replace(old_value, value);
 
         (old_key, old_value)
+    }
+
+    /// Replaces the key in the hash map with the key used to create this entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_entry_replace)]
+    /// use std::collections::hash_map::{Entry, HashMap};
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.insert("poneyland".to_string(), 15);
+    ///
+    /// if let Entry::Occupied(entry) = map.entry("poneyland".to_string()) {
+    ///     let old_key = entry.replace_key();
+    ///     assert_eq!(old_key, "poneyland");
+    /// }
+    /// ```
+    #[unstable(feature = "map_entry_replace", issue = "44286")]
+    pub fn replace_key(mut self) -> K {
+	let (old_key, _) = self.elem.read_mut();
+	mem::replace(old_key, self.key.unwrap())
     }
 }
 
