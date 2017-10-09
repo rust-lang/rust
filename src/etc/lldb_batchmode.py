@@ -81,7 +81,7 @@ def execute_command(command_interpreter, command):
 
     if res.Succeeded():
         if res.HasResult():
-            print(normalize_whitespace(res.GetOutput()), end='\n')
+            print(normalize_whitespace(res.GetOutput() or ''), end='\n')
 
         # If the command introduced any breakpoints, make sure to register
         # them with the breakpoint
