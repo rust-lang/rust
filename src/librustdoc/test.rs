@@ -23,6 +23,7 @@ use std::sync::{Arc, Mutex};
 use testing;
 use rustc_lint;
 use rustc::hir;
+use rustc::mir::transform::Passes;
 use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs};
@@ -259,8 +260,9 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
         control.after_analysis.stop = Compilation::Stop;
     }
 
+    let mir_passes = Rc::new(Passes::new());
     let res = panic::catch_unwind(AssertUnwindSafe(|| {
-        driver::compile_input(&sess, &cstore, &input, &out, &None, None, &control)
+        driver::compile_input(&sess, &cstore, &input, &out, &None, None, &control, mir_passes)
     }));
 
     let compile_result = match res {
