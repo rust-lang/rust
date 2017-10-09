@@ -14,6 +14,6 @@
 trait Foo {}
 
 default impl Foo for .. {}
-//~^ ERROR `default impl` is not allowed for default trait implementations
+//~^ ERROR `default impl` is not allowed for auto trait implementations
 
 fn main() {}

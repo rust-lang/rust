@@ -113,8 +113,8 @@ define_maps! { <'tcx>
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     [] fn is_foreign_item: IsForeignItem(DefId) -> bool,
 
-    /// True if this is a default impl (aka impl Foo for ..)
-    [] fn is_default_impl: IsDefaultImpl(DefId) -> bool,
+    /// True if this is an auto impl (aka impl Foo for ..)
+    [] fn is_auto_impl: IsAutoImpl(DefId) -> bool,
 
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.

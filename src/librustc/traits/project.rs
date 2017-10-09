@@ -1116,7 +1116,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // projection. And the projection where clause is handled
                 // in `assemble_candidates_from_param_env`.
             }
-            super::VtableDefaultImpl(..) |
+            super::VtableAutoImpl(..) |
             super::VtableBuiltin(..) => {
                 // These traits have no associated types.
                 span_bug!(
@@ -1182,7 +1182,7 @@ fn confirm_select_candidate<'cx, 'gcx, 'tcx>(
             confirm_fn_pointer_candidate(selcx, obligation, data),
         super::VtableObject(_) =>
             confirm_object_candidate(selcx, obligation, obligation_trait_ref),
-        super::VtableDefaultImpl(..) |
+        super::VtableAutoImpl(..) |
         super::VtableParam(..) |
         super::VtableBuiltin(..) =>
             // we don't create Select candidates with this kind of resolution

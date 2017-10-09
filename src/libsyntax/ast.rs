@@ -1947,7 +1947,7 @@ pub enum ItemKind {
     /// Auto trait implementation.
     ///
     /// E.g. `impl Trait for .. {}` or `impl<T> Trait<T> for .. {}`
-    DefaultImpl(Unsafety, TraitRef),
+    AutoImpl(Unsafety, TraitRef),
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
@@ -1986,7 +1986,7 @@ impl ItemKind {
             ItemKind::Mac(..) |
             ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |
-            ItemKind::DefaultImpl(..) => "item"
+            ItemKind::AutoImpl(..) => "item"
         }
     }
 }

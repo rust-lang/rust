@@ -425,7 +425,7 @@ pub enum ItemEnum {
     PrimitiveItem(PrimitiveType),
     AssociatedConstItem(Type, Option<String>),
     AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
-    DefaultImplItem(DefaultImpl),
+    AutoImplItem(AutoImpl),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemEnum>),
 }
@@ -2733,12 +2733,12 @@ fn build_deref_target_impls(cx: &DocContext,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct DefaultImpl {
+pub struct AutoImpl {
     pub unsafety: hir::Unsafety,
     pub trait_: Type,
 }
 
-impl Clean<Item> for doctree::DefaultImpl {
+impl Clean<Item> for doctree::AutoImpl {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
             name: None,
@@ -2748,7 +2748,7 @@ impl Clean<Item> for doctree::DefaultImpl {
             visibility: Some(Public),
             stability: None,
             deprecation: None,
-            inner: DefaultImplItem(DefaultImpl {
+            inner: AutoImplItem(AutoImpl {
                 unsafety: self.unsafety,
                 trait_: self.trait_.clean(cx),
             }),

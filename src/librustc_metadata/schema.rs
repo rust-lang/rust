@@ -303,7 +303,7 @@ pub enum EntryKind<'tcx> {
     Generator(Lazy<GeneratorData<'tcx>>),
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
-    DefaultImpl(Lazy<ImplData<'tcx>>),
+    AutoImpl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer, u8),
@@ -359,7 +359,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for EntryKind<'gcx> {
             EntryKind::Trait(ref trait_data) => {
                 trait_data.hash_stable(hcx, hasher);
             }
-            EntryKind::DefaultImpl(ref impl_data) |
+            EntryKind::AutoImpl(ref impl_data) |
             EntryKind::Impl(ref impl_data) => {
                 impl_data.hash_stable(hcx, hasher);
             }
@@ -426,14 +426,14 @@ impl_stable_hash_for!(struct VariantData<'tcx> {
 pub struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
-    pub has_default_impl: bool,
+    pub has_auto_impl: bool,
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 
 impl_stable_hash_for!(struct TraitData<'tcx> {
     unsafety,
     paren_sugar,
-    has_default_impl,
+    has_auto_impl,
     super_predicates
 });
 

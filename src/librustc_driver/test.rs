@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 hir::ItemUnion(..) |
                 hir::ItemTrait(..) |
                 hir::ItemImpl(..) |
-                hir::ItemDefaultImpl(..) => None,
+                hir::ItemAutoImpl(..) => None,
 
                 hir::ItemMod(ref m) => search_mod(this, m, idx, names),
             };

@@ -23,7 +23,7 @@ use rustc::hir::intravisit::FnKind;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {
-    TraitDefaultImpl,
+    TraitAutoImpl,
     TraitImpl,
     PlainImpl,
 }
@@ -32,7 +32,7 @@ pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
     let def_id = cx.tcx.hir.local_def_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
-        ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
+        ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
         ty::ImplContainer(cid) => {
             match cx.tcx.impl_trait_ref(cid) {
                 Some(_) => MethodLateContext::TraitImpl,
@@ -245,7 +245,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                     MethodLateContext::PlainImpl => {
                         self.check_snake_case(cx, "method", &name.as_str(), Some(span))
                     }
-                    MethodLateContext::TraitDefaultImpl => {
+                    MethodLateContext::TraitAutoImpl => {
                         self.check_snake_case(cx, "trait method", &name.as_str(), Some(span))
                     }
                     _ => (),

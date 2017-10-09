@@ -499,7 +499,7 @@ pub struct Crate {
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
     pub bodies: BTreeMap<BodyId, Body>,
     pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    pub trait_default_impl: BTreeMap<DefId, NodeId>,
+    pub trait_auto_impl: BTreeMap<DefId, NodeId>,
 
     /// A list of the body ids written out in the order in which they
     /// appear in the crate. If you're going to process all the bodies
@@ -1813,10 +1813,10 @@ pub enum Item_ {
     /// Represents a Trait Declaration
     ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
 
-    // Default trait implementations
+    /// Auto trait implementations
     ///
     /// `impl Trait for .. {}`
-    ItemDefaultImpl(Unsafety, TraitRef),
+    ItemAutoImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
@@ -1844,7 +1844,7 @@ impl Item_ {
             ItemUnion(..) => "union",
             ItemTrait(..) => "trait",
             ItemImpl(..) |
-            ItemDefaultImpl(..) => "item",
+            ItemAutoImpl(..) => "item",
         }
     }
 

@@ -474,16 +474,16 @@ impl<'hir> Map<'hir> {
         self.forest.krate.trait_impls.get(&trait_did).map_or(&[], |xs| &xs[..])
     }
 
-    pub fn trait_default_impl(&self, trait_did: DefId) -> Option<NodeId> {
+    pub fn trait_auto_impl(&self, trait_did: DefId) -> Option<NodeId> {
         self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
-        self.forest.krate.trait_default_impl.get(&trait_did).cloned()
+        self.forest.krate.trait_auto_impl.get(&trait_did).cloned()
     }
 
     pub fn trait_is_auto(&self, trait_did: DefId) -> bool {
-        self.trait_default_impl(trait_did).is_some()
+        self.trait_auto_impl(trait_did).is_some()
     }
 
     /// Get the attributes on the krate. This is preferable to
@@ -1140,7 +1140,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemUnion(..) => "union",
                 ItemTrait(..) => "trait",
                 ItemImpl(..) => "impl",
-                ItemDefaultImpl(..) => "default impl",
+                ItemAutoImpl(..) => "default impl",
             };
             format!("{} {}{}", item_str, path_str(), id_str)
         }
