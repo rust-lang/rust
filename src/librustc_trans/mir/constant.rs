@@ -126,8 +126,12 @@ impl<'a, 'tcx> Const<'tcx> {
             layout::Abi::ScalarPair(ref a, ref b) => {
                 let offset = layout.fields.offset(i);
                 if offset.bytes() == 0 {
-                    assert_eq!(field.size, a.value.size(ccx));
-                    const_get_elt(self.llval, 0)
+                    if field.size == layout.size {
+                        self.llval
+                    } else {
+                        assert_eq!(field.size, a.value.size(ccx));
+                        const_get_elt(self.llval, 0)
+                    }
                 } else {
                     assert_eq!(offset, a.value.size(ccx)
                         .abi_align(b.value.align(ccx)));
@@ -165,8 +169,9 @@ impl<'a, 'tcx> Const<'tcx> {
         let llvalty = val_ty(self.llval);
 
         let val = if llty == llvalty && layout.is_llvm_scalar_pair() {
-            let (a, b) = self.get_pair(ccx);
-            OperandValue::Pair(a, b)
+            OperandValue::Pair(
+                const_get_elt(self.llval, 0),
+                const_get_elt(self.llval, 1))
         } else if llty == llvalty && layout.is_llvm_immediate() {
             // If the types match, we can use the value directly.
             OperandValue::Immediate(self.llval)

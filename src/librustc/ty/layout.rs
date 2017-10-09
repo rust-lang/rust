@@ -1087,10 +1087,11 @@ impl<'a, 'tcx> CachedLayout {
                     // We have exactly one non-ZST field.
                     match (non_zst_fields.next(), non_zst_fields.next()) {
                         (Some(field), None) => {
-                            // Field size match and it has a scalar ABI.
+                            // Field size matches and it has a scalar or scalar pair ABI.
                             if size == field.size {
                                 match field.abi {
-                                    Abi::Scalar(_) => {
+                                    Abi::Scalar(_) |
+                                    Abi::ScalarPair(..) => {
                                         abi = field.abi.clone();
                                     }
                                     _ => {}
@@ -2233,17 +2234,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyAdt(def, substs) => {
                 match self.variants {
                     Variants::Single { index } => {
-                        let mut field_ty = def.variants[index].fields[i].ty(tcx, substs);
-
-                        // Treat NonZero<*T> as containing &T.
-                        // This is especially useful for fat pointers.
-                        if Some(def.did) == tcx.lang_items().non_zero() {
-                            if let ty::TyRawPtr(mt) = field_ty.sty {
-                                field_ty = tcx.mk_ref(tcx.types.re_erased, mt);
-                            }
-                        }
-
-                        field_ty
+                        def.variants[index].fields[i].ty(tcx, substs)
                     }
 
                     // Discriminant field for enums (where applicable).
@@ -2299,21 +2290,22 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         where C: LayoutOf<Ty<'tcx>, TyLayout = Result<Self, LayoutError<'tcx>>> +
                  HasTyCtxt<'tcx>
     {
-        if let Abi::Scalar(Scalar { value, ref valid_range }) = self.abi {
+        let scalar_component = |scalar: &Scalar, offset| {
             // FIXME(eddyb) support negative/wrap-around discriminant ranges.
-            return if valid_range.start < valid_range.end {
+            let Scalar { value, ref valid_range } = *scalar;
+            if valid_range.start < valid_range.end {
                 let bits = value.size(cx).bits();
                 assert!(bits <= 128);
                 let max_value = !0u128 >> (128 - bits);
                 if valid_range.start > 0 {
                     let niche = valid_range.start - 1;
-                    Ok(Some((self.fields.offset(0), Scalar {
+                    Ok(Some((offset, Scalar {
                         value,
                         valid_range: niche..=valid_range.end
                     }, niche)))
                 } else if valid_range.end < max_value {
                     let niche = valid_range.end + 1;
-                    Ok(Some((self.fields.offset(0), Scalar {
+                    Ok(Some((offset, Scalar {
                         value,
                         valid_range: valid_range.start..=niche
                     }, niche)))
@@ -2322,7 +2314,20 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 }
             } else {
                 Ok(None)
-            };
+            }
+        };
+
+        match self.abi {
+            Abi::Scalar(ref scalar) => {
+                return scalar_component(scalar, Size::from_bytes(0));
+            }
+            Abi::ScalarPair(ref a, ref b) => {
+                if let Some(result) = scalar_component(a, Size::from_bytes(0))? {
+                    return Ok(Some(result));
+                }
+                return scalar_component(b, a.value.size(cx).abi_align(b.value.align(cx)));
+            }
+            _ => {}
         }
 
         // Perhaps one of the fields is non-zero, let's recurse and find out.

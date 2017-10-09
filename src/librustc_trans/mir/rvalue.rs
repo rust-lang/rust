@@ -218,20 +218,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         operand.val
                     }
                     mir::CastKind::Unsize => {
-                        // unsize targets other than to a fat pointer currently
-                        // can't be operands.
-                        assert!(common::type_is_fat_ptr(bcx.ccx, cast.ty));
-
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer - this is a
                                 // "trait-object-to-supertrait" coercion, for
                                 // example,
                                 //   &'a fmt::Debug+Send => &'a fmt::Debug,
-                                // So we need to pointercast the base to ensure
-                                // the types match up.
-                                let thin_ptr = cast.field(bcx.ccx, abi::FAT_PTR_ADDR);
-                                let lldata = bcx.pointercast(lldata, thin_ptr.llvm_type(bcx.ccx));
+
+                                // HACK(eddyb) have to bitcast pointers
+                                // until LLVM removes pointee types.
+                                let lldata = bcx.pointercast(lldata,
+                                    cast.scalar_pair_element_llvm_type(bcx.ccx, 0));
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {

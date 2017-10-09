@@ -240,6 +240,31 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
             let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
+        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
+            assert_eq!(def_a, def_b);
+
+            let src_layout = bcx.ccx.layout_of(src_ty);
+            let dst_layout = bcx.ccx.layout_of(dst_ty);
+            let mut result = None;
+            for i in 0..src_layout.fields.count() {
+                let src_f = src_layout.field(bcx.ccx, i);
+                assert_eq!(src_layout.fields.offset(i).bytes(), 0);
+                assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
+                if src_f.is_zst() {
+                    continue;
+                }
+                assert_eq!(src_layout.size, src_f.size);
+
+                let dst_f = dst_layout.field(bcx.ccx, i);
+                assert_ne!(src_f.ty, dst_f.ty);
+                assert_eq!(result, None);
+                result = Some(unsize_thin_ptr(bcx, src, src_f.ty, dst_f.ty));
+            }
+            let (lldata, llextra) = result.unwrap();
+            // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+            (bcx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bcx.ccx, 0)),
+             bcx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bcx.ccx, 1)))
+        }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
 }

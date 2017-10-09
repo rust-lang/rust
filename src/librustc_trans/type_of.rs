@@ -481,16 +481,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         }
                     }
                 }
-
-                if let ty::TyAdt(def, _) = self.ty.sty {
-                    if Some(def.did) == ccx.tcx().lang_items().non_zero() {
-                        // FIXME(eddyb) Don't treat NonZero<*T> as
-                        // as containing &T in ty::layout.
-                        if let Some(ref mut pointee) = result {
-                            pointee.safe = None;
-                        }
-                    }
-                }
             }
         }
 

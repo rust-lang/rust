@@ -135,6 +135,31 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             return OperandRef::new_zst(bcx.ccx, self.layout);
         }
 
+        let scalar_load_metadata = |load, scalar: &layout::Scalar| {
+            let (min, max) = (scalar.valid_range.start, scalar.valid_range.end);
+            let max_next = max.wrapping_add(1);
+            let bits = scalar.value.size(bcx.ccx).bits();
+            assert!(bits <= 128);
+            let mask = !0u128 >> (128 - bits);
+            // For a (max) value of -1, max will be `-1 as usize`, which overflows.
+            // However, that is fine here (it would still represent the full range),
+            // i.e., if the range is everything.  The lo==hi case would be
+            // rejected by the LLVM verifier (it would mean either an
+            // empty set, which is impossible, or the entire range of the
+            // type, which is pointless).
+            match scalar.value {
+                layout::Int(..) if max_next & mask != min & mask => {
+                    // llvm::ConstantRange can deal with ranges that wrap around,
+                    // so an overflow on (max + 1) is fine.
+                    bcx.range_metadata(load, min..max_next);
+                }
+                layout::Pointer if 0 < min && min < max => {
+                    bcx.nonnull_metadata(load);
+                }
+                _ => {}
+            }
+        };
+
         let val = if self.layout.is_llvm_immediate() {
             let mut const_llval = ptr::null_mut();
             unsafe {
@@ -149,39 +174,27 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             } else {
                 let load = bcx.load(self.llval, self.alignment.non_abi());
                 if let layout::Abi::Scalar(ref scalar) = self.layout.abi {
-                    let (min, max) = (scalar.valid_range.start, scalar.valid_range.end);
-                    let max_next = max.wrapping_add(1);
-                    let bits = scalar.value.size(bcx.ccx).bits();
-                    assert!(bits <= 128);
-                    let mask = !0u128 >> (128 - bits);
-                    // For a (max) value of -1, max will be `-1 as usize`, which overflows.
-                    // However, that is fine here (it would still represent the full range),
-                    // i.e., if the range is everything.  The lo==hi case would be
-                    // rejected by the LLVM verifier (it would mean either an
-                    // empty set, which is impossible, or the entire range of the
-                    // type, which is pointless).
-                    match scalar.value {
-                        layout::Int(..) if max_next & mask != min & mask => {
-                            // llvm::ConstantRange can deal with ranges that wrap around,
-                            // so an overflow on (max + 1) is fine.
-                            bcx.range_metadata(load, min..max_next);
-                        }
-                        layout::Pointer if 0 < min && min < max => {
-                            bcx.nonnull_metadata(load);
-                        }
-                        _ => {}
-                    }
+                    scalar_load_metadata(load, scalar);
                 }
                 load
             };
             OperandValue::Immediate(base::to_immediate(bcx, llval, self.layout))
-        } else if self.layout.is_llvm_scalar_pair() {
-            let load = |i| {
-                let x = self.project_field(bcx, i).load(bcx).immediate();
-                // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                bcx.bitcast(x, self.layout.scalar_pair_element_llvm_type(bcx.ccx, i))
+        } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
+            let load = |i, scalar: &layout::Scalar| {
+                let mut llptr = bcx.struct_gep(self.llval, i as u64);
+                // Make sure to always load i1 as i8.
+                if scalar.is_bool() {
+                    llptr = bcx.pointercast(llptr, Type::i8p(bcx.ccx));
+                }
+                let load = bcx.load(llptr, self.alignment.non_abi());
+                scalar_load_metadata(load, scalar);
+                if scalar.is_bool() {
+                    bcx.trunc(load, Type::i1(bcx.ccx))
+                } else {
+                    load
+                }
             };
-            OperandValue::Pair(load(0), load(1))
+            OperandValue::Pair(load(0, a), load(1, b))
         } else {
             OperandValue::Ref(self.llval, self.alignment)
         };
