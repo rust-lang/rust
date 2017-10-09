@@ -69,6 +69,10 @@ fn main() {
     let cflags = compiler.args()
         .iter()
         .map(|s| s.to_str().unwrap())
+        .filter(|&s| {
+            // separate function/data sections trigger errors with android's TLS emulation
+            !target.contains("android") || (s != "-ffunction-sections" && s != "-fdata-sections")
+        })
         .collect::<Vec<_>>()
         .join(" ");
 
@@ -78,6 +82,7 @@ fn main() {
                           .unwrap()
                           .replace("C:\\", "/c/")
                           .replace("\\", "/"))
+       .arg("--disable-cxx")
        .current_dir(&native.out_dir)
        .env("CC", compiler.path())
        .env("EXTRA_CFLAGS", cflags.clone())
@@ -93,9 +98,7 @@ fn main() {
        .env("AR", &ar)
        .env("RANLIB", format!("{} s", ar.display()));
 
-    if target.contains("ios") {
-        cmd.arg("--disable-tls");
-    } else if target.contains("android") {
+    if target.contains("android") {
         // We force android to have prefixed symbols because apparently
         // replacement of the libc allocator doesn't quite work. When this was
         // tested (unprefixed symbols), it was found that the `realpath`
@@ -106,7 +109,6 @@ fn main() {
         // If the test suite passes, however, without symbol prefixes then we
         // should be good to go!
         cmd.arg("--with-jemalloc-prefix=je_");
-        cmd.arg("--disable-tls");
     } else if target.contains("dragonfly") || target.contains("musl") {
         cmd.arg("--with-jemalloc-prefix=je_");
     }
