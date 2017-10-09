@@ -685,46 +685,19 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let tuple = self.trans_operand(bcx, operand);
 
         // Handle both by-ref and immediate tuples.
-        match tuple.val {
-            Ref(llval, align) => {
-                let tuple_ptr = LvalueRef::new_sized(llval, tuple.layout, align);
-                for i in 0..tuple.layout.fields.count() {
-                    let field_ptr = tuple_ptr.project_field(bcx, i);
-                    self.trans_argument(bcx, field_ptr.load(bcx), llargs, &args[i]);
-                }
-
+        if let Ref(llval, align) = tuple.val {
+            let tuple_ptr = LvalueRef::new_sized(llval, tuple.layout, align);
+            for i in 0..tuple.layout.fields.count() {
+                let field_ptr = tuple_ptr.project_field(bcx, i);
+                self.trans_argument(bcx, field_ptr.load(bcx), llargs, &args[i]);
             }
-            Immediate(llval) => {
-                for i in 0..tuple.layout.fields.count() {
-                    let field = tuple.layout.field(bcx.ccx, i);
-                    let elem = if field.is_zst() {
-                        C_undef(field.llvm_type(bcx.ccx))
-                    } else {
-                        // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                        bcx.bitcast(llval, field.immediate_llvm_type(bcx.ccx))
-                    };
-                    // If the tuple is immediate, the elements are as well
-                    let op = OperandRef {
-                        val: Immediate(elem),
-                        layout: field,
-                    };
-                    self.trans_argument(bcx, op, llargs, &args[i]);
-                }
-            }
-            Pair(a, b) => {
-                let elems = [a, b];
-                assert_eq!(tuple.layout.fields.count(), 2);
-                for i in 0..2 {
-                    // Pair is always made up of immediates
-                    let op = OperandRef {
-                        val: Immediate(elems[i]),
-                        layout: tuple.layout.field(bcx.ccx, i),
-                    };
-                    self.trans_argument(bcx, op, llargs, &args[i]);
-                }
+        } else {
+            // If the tuple is immediate, the elements are as well.
+            for i in 0..tuple.layout.fields.count() {
+                let op = tuple.extract_field(bcx, i);
+                self.trans_argument(bcx, op, llargs, &args[i]);
             }
         }
-
     }
 
     fn get_personality_slot(&mut self, bcx: &Builder<'a, 'tcx>) -> LvalueRef<'tcx> {

@@ -15,10 +15,11 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{CrateContext, C_undef, C_usize};
+use common::{self, CrateContext, C_undef, C_usize};
 use builder::Builder;
 use value::Value;
 use type_of::LayoutLlvmExt;
+use type_::Type;
 
 use std::fmt;
 use std::ptr;
@@ -84,7 +85,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                    layout: TyLayout<'tcx>) -> OperandRef<'tcx> {
         assert!(layout.is_zst());
         OperandRef {
-            val: OperandValue::Immediate(C_undef(layout.llvm_type(ccx))),
+            val: OperandValue::Immediate(C_undef(layout.immediate_llvm_type(ccx))),
             layout
         }
     }
@@ -148,6 +149,66 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         };
         OperandRef { val, layout }
     }
+
+    pub fn extract_field(&self, bcx: &Builder<'a, 'tcx>, i: usize) -> OperandRef<'tcx> {
+        let field = self.layout.field(bcx.ccx, i);
+        let offset = self.layout.fields.offset(i);
+
+        let mut val = match (self.val, &self.layout.abi) {
+            // If we're uninhabited, or the field is ZST, it has no data.
+            _ if self.layout.abi == layout::Abi::Uninhabited || field.is_zst() => {
+                return OperandRef {
+                    val: OperandValue::Immediate(C_undef(field.immediate_llvm_type(bcx.ccx))),
+                    layout: field
+                };
+            }
+
+            // Newtype of a scalar or scalar pair.
+            (OperandValue::Immediate(_), _) |
+            (OperandValue::Pair(..), _) if field.size == self.layout.size => {
+                assert_eq!(offset.bytes(), 0);
+                self.val
+            }
+
+            // Extract a scalar component from a pair.
+            (OperandValue::Pair(a_llval, b_llval), &layout::Abi::ScalarPair(ref a, ref b)) => {
+                if offset.bytes() == 0 {
+                    assert_eq!(field.size, a.value.size(bcx.ccx));
+                    OperandValue::Immediate(a_llval)
+                } else {
+                    assert_eq!(offset, a.value.size(bcx.ccx)
+                        .abi_align(b.value.align(bcx.ccx)));
+                    assert_eq!(field.size, b.value.size(bcx.ccx));
+                    OperandValue::Immediate(b_llval)
+                }
+            }
+
+            // `#[repr(simd)]` types are also immediate.
+            (OperandValue::Immediate(llval), &layout::Abi::Vector) => {
+                OperandValue::Immediate(
+                    bcx.extract_element(llval, C_usize(bcx.ccx, i as u64)))
+            }
+
+            _ => bug!("OperandRef::extract_field({:?}): not applicable", self)
+        };
+
+        // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+        match val {
+            OperandValue::Immediate(ref mut llval) => {
+                *llval = bcx.bitcast(*llval, field.immediate_llvm_type(bcx.ccx));
+            }
+            OperandValue::Pair(ref mut a, ref mut b) => {
+                *a = bcx.bitcast(*a, field.scalar_pair_element_llvm_type(bcx.ccx, 0));
+                *b = bcx.bitcast(*b, field.scalar_pair_element_llvm_type(bcx.ccx, 1));
+            }
+            OperandValue::Ref(..) => bug!()
+        }
+
+        OperandRef {
+            val,
+            layout: field
+        }
+    }
 }
 
 impl<'a, 'tcx> OperandValue {
@@ -167,11 +228,12 @@ impl<'a, 'tcx> OperandValue {
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
-                    let field = dest.project_field(bcx, i);
-                    // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                    let x = bcx.bitcast(x, field.layout.immediate_llvm_type(bcx.ccx));
-                    bcx.store(base::from_immediate(bcx, x),
-                              field.llval, field.alignment.non_abi());
+                    let mut llptr = bcx.struct_gep(dest.llval, i as u64);
+                    // Make sure to always store i1 as i8.
+                    if common::val_ty(x) == Type::i1(bcx.ccx) {
+                        llptr = bcx.pointercast(llptr, Type::i8p(bcx.ccx));
+                    }
+                    bcx.store(base::from_immediate(bcx, x), llptr, dest.alignment.non_abi());
                 }
             }
         }
@@ -202,52 +264,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
         }
 
-        // Moves out of pair fields are trivial.
+        // Moves out of scalar and scalar pair fields are trivial.
         if let &mir::Lvalue::Projection(ref proj) = lvalue {
             if let mir::ProjectionElem::Field(ref f, _) = proj.elem {
                 if let Some(o) = self.maybe_trans_consume_direct(bcx, &proj.base) {
-                    let layout = o.layout.field(bcx.ccx, f.index());
-                    let offset = o.layout.fields.offset(f.index());
-
-                    // Handled in `trans_consume`.
-                    assert!(!layout.is_zst());
-
-                    // Offset has to match a scalar component.
-                    let llval = match (o.val, &o.layout.abi) {
-                        (OperandValue::Immediate(llval),
-                         &layout::Abi::Scalar(ref scalar)) => {
-                            assert_eq!(offset.bytes(), 0);
-                            assert_eq!(layout.size, scalar.value.size(bcx.ccx));
-                            llval
-                        }
-                        (OperandValue::Pair(a_llval, b_llval),
-                         &layout::Abi::ScalarPair(ref a, ref b)) => {
-                            if offset.bytes() == 0 {
-                                assert_eq!(layout.size, a.value.size(bcx.ccx));
-                                a_llval
-                            } else {
-                                assert_eq!(offset, a.value.size(bcx.ccx)
-                                    .abi_align(b.value.align(bcx.ccx)));
-                                assert_eq!(layout.size, b.value.size(bcx.ccx));
-                                b_llval
-                            }
-                        }
-
-                        // `#[repr(simd)]` types are also immediate.
-                        (OperandValue::Immediate(llval),
-                         &layout::Abi::Vector) => {
-                            bcx.extract_element(llval, C_usize(bcx.ccx, f.index() as u64))
-                        }
-
-                        _ => return None
-                    };
-
-                    // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                    let llval = bcx.bitcast(llval, layout.immediate_llvm_type(bcx.ccx));
-                    return Some(OperandRef {
-                        val: OperandValue::Immediate(llval),
-                        layout
-                    });
+                    return Some(o.extract_field(bcx, f.index()));
                 }
             }
         }
