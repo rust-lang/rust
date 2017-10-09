@@ -11,9 +11,17 @@
 fn foo(():(), ():()) {}
 fn bar(():()) {}
 
+struct S;
+impl S {
+    fn baz(self, (): ()) { }
+    fn generic<T>(self, _: T) { }
+}
+
 fn main() {
     let _: Result<(), String> = Ok();
     foo();
     foo(());
     bar();
+    S.baz();
+    S.generic::<()>();
 }

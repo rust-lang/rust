@@ -271,6 +271,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             fn_sig.output(),
                                             fn_sig.inputs());
         self.check_argument_types(call_expr.span,
+                                  call_expr.span,
                                   fn_sig.inputs(),
                                   &expected_arg_tys[..],
                                   arg_exprs,
@@ -298,6 +299,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                fn_sig.inputs());
 
         self.check_argument_types(call_expr.span,
+                                  call_expr.span,
                                   fn_sig.inputs(),
                                   &expected_arg_tys,
                                   arg_exprs,
@@ -315,6 +317,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                method_callee: MethodCallee<'tcx>)
                                -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(call_expr.span,
+                                                           call_expr.span,
                                                            Ok(method_callee),
                                                            arg_exprs,
                                                            TupleArgumentsFlag::TupleArguments,
