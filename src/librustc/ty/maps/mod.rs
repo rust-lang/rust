@@ -229,7 +229,7 @@ define_maps! { <'tcx>
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
     [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
-                          -> Vec<Option<(DefId, &'tcx Substs<'tcx>)>>,
+                          -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,
 
     [] fn trans_fulfill_obligation: fulfill_obligation_dep_node(
         (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> Vtable<'tcx, ()>,
