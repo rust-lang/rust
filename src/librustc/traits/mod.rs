@@ -650,7 +650,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-pub fn vtable_methods<'a, 'tcx>(
+fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
     -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>
