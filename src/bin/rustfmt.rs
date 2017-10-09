@@ -21,7 +21,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use getopts::{Matches, Options};
+use getopts::{HasArg, Matches, Occur, Options};
 
 use rustfmt::{run, Input, Summary};
 use rustfmt::file_lines::FileLines;
@@ -44,8 +44,8 @@ enum Operation {
     Version,
     /// Print detailed configuration help.
     ConfigHelp,
-    /// Output default config to a file
-    ConfigOutputDefault { path: String },
+    /// Output default config to a file, or stdout if None
+    ConfigOutputDefault { path: Option<String> },
     /// No file specified, read from stdin
     Stdin {
         input: String,
@@ -125,11 +125,14 @@ fn make_opts() -> Options {
         "config-help",
         "show details of rustfmt configuration options",
     );
-    opts.optopt(
+    opts.opt(
         "",
         "dump-default-config",
-        "Dumps the default configuration to a file and exits.",
+        "Dumps the default configuration to a file and exits. PATH defaults to rustfmt.toml if \
+         omitted.",
         "PATH",
+        HasArg::Maybe,
+        Occur::Optional,
     );
     opts.optopt(
         "",
@@ -172,9 +175,13 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             Ok(Summary::default())
         }
         Operation::ConfigOutputDefault { path } => {
-            let mut file = File::create(path)?;
             let toml = Config::default().all_options().to_toml()?;
-            file.write_all(toml.as_bytes())?;
+            if let Some(path) = path {
+                let mut file = File::create(path)?;
+                file.write_all(toml.as_bytes())?;
+            } else {
+                io::stdout().write_all(toml.as_bytes())?;
+            }
             Ok(Summary::default())
         }
         Operation::Stdin { input, config_path } => {
@@ -327,8 +334,20 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         return Ok(Operation::ConfigHelp);
     }
 
-    if let Some(path) = matches.opt_str("dump-default-config") {
-        return Ok(Operation::ConfigOutputDefault { path });
+    if matches.opt_present("dump-default-config") {
+        // NOTE for some reason when configured with HasArg::Maybe + Occur::Optional opt_default
+        // doesn't recognize `--foo bar` as a long flag with an argument but as a long flag with no
+        // argument *plus* a free argument. Thus we check for that case in this branch -- this is
+        // required for backward compatibility.
+        if let Some(path) = matches.free.get(0) {
+            return Ok(Operation::ConfigOutputDefault {
+                path: Some(path.clone()),
+            });
+        } else {
+            return Ok(Operation::ConfigOutputDefault {
+                path: matches.opt_str("dump-default-config"),
+            });
+        }
     }
 
     if matches.opt_present("version") {
