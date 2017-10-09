@@ -21,6 +21,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
+use rustc_apfloat::{ieee, Float};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {adt, base, machine};
 use abi::{self, Abi};
@@ -689,20 +690,16 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     llvm::LLVMConstIntCast(llval, ll_t_out.to_ref(), s)
                                 }
                                 (CastTy::Int(_), CastTy::Float) => {
-                                    if signed {
-                                        llvm::LLVMConstSIToFP(llval, ll_t_out.to_ref())
-                                    } else {
-                                        llvm::LLVMConstUIToFP(llval, ll_t_out.to_ref())
-                                    }
+                                    const_cast_int_to_float(self.ccx, llval, signed, ll_t_out)
                                 }
                                 (CastTy::Float, CastTy::Float) => {
                                     llvm::LLVMConstFPCast(llval, ll_t_out.to_ref())
                                 }
                                 (CastTy::Float, CastTy::Int(IntTy::I)) => {
-                                    llvm::LLVMConstFPToSI(llval, ll_t_out.to_ref())
+                                    const_cast_from_float(&operand, true, ll_t_out)
                                 }
                                 (CastTy::Float, CastTy::Int(_)) => {
-                                    llvm::LLVMConstFPToUI(llval, ll_t_out.to_ref())
+                                    const_cast_from_float(&operand, false, ll_t_out)
                                 }
                                 (CastTy::Ptr(_), CastTy::Ptr(_)) |
                                 (CastTy::FnPtr, CastTy::Ptr(_)) |
@@ -952,6 +949,51 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some((const_scalar_binop(op, lllhs, llrhs, input_ty), of))
     } else {
         None
+    }
+}
+
+unsafe fn const_cast_from_float(operand: &Const, signed: bool, int_ty: Type) -> ValueRef {
+    let llval = operand.llval;
+    // Note: this breaks if addresses can be turned into integers (is that possible?)
+    // But at least an ICE is better than producing undef.
+    assert!(llvm::LLVMRustIsConstantFP(llval),
+            "const_cast_from_float: invalid llval {:?}", Value(llval));
+    let bits = llvm::LLVMRustConstFloatGetBits(llval) as u128;
+    let int_width = int_ty.int_width() as usize;
+    let float_bits = match operand.ty.sty {
+        ty::TyFloat(fty) => fty.bit_width(),
+        _ => bug!("const_cast_from_float: operand not a float"),
+    };
+    // Ignore the Status, to_i128 does the Right Thing(tm) on overflow and NaN even though it
+    // sets INVALID_OP.
+    let cast_result = match float_bits {
+        32 if signed => ieee::Single::from_bits(bits).to_i128(int_width).value as u128,
+        64 if signed => ieee::Double::from_bits(bits).to_i128(int_width).value as u128,
+        32 => ieee::Single::from_bits(bits).to_u128(int_width).value,
+        64 => ieee::Double::from_bits(bits).to_u128(int_width).value,
+        n => bug!("unsupported float width {}", n),
+    };
+    C_big_integral(int_ty, cast_result)
+}
+
+unsafe fn const_cast_int_to_float(ccx: &CrateContext,
+                           llval: ValueRef,
+                           signed: bool,
+                           float_ty: Type) -> ValueRef {
+    // Note: this breaks if addresses can be turned into integers (is that possible?)
+    // But at least an ICE is better than producing undef.
+    let value = const_to_opt_u128(llval, signed).unwrap_or_else(|| {
+        panic!("could not get z128 value of constant integer {:?}",
+               Value(llval));
+    });
+    // If this is an u128 cast and the value is > f32::MAX + 0.5 ULP, round up to infinity.
+    if signed {
+        llvm::LLVMConstSIToFP(llval, float_ty.to_ref())
+    } else if value >= 0xffffff80000000000000000000000000_u128 && float_ty.float_width() == 32 {
+        let infinity_bits = C_u32(ccx, ieee::Single::INFINITY.to_bits() as u32);
+        consts::bitcast(infinity_bits, float_ty)
+    } else {
+        llvm::LLVMConstUIToFP(llval, float_ty.to_ref())
     }
 }
 

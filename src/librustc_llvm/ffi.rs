@@ -628,6 +628,8 @@ extern "C" {
     pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
     pub fn LLVMRustConstInt128Get(ConstantVal: ValueRef, SExt: bool,
                                   high: *mut u64, low: *mut u64) -> bool;
+    pub fn LLVMRustIsConstantFP(ConstantVal: ValueRef) -> bool;
+    pub fn LLVMRustConstFloatGetBits(ConstantVal: ValueRef) -> u64;
 
 
     // Operations on composite constants

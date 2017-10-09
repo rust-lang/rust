@@ -15,11 +15,14 @@ use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
+use rustc_apfloat::{ieee, Float, Status, Round};
+use std::{u128, i128};
 
 use base;
 use builder::Builder;
 use callee;
-use common::{self, val_ty, C_bool, C_i32, C_null, C_usize, C_uint};
+use common::{self, val_ty, C_bool, C_i32, C_u32, C_u64, C_null, C_usize, C_uint, C_big_integral};
+use consts;
 use adt;
 use machine;
 use monomorphize;
@@ -333,14 +336,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 bcx.ptrtoint(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Ptr(_)) =>
                                 bcx.inttoptr(llval, ll_t_out),
-                            (CastTy::Int(_), CastTy::Float) if signed =>
-                                bcx.sitofp(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Float) =>
-                                bcx.uitofp(llval, ll_t_out),
+                                cast_int_to_float(&bcx, signed, llval, ll_t_in, ll_t_out),
                             (CastTy::Float, CastTy::Int(IntTy::I)) =>
-                                bcx.fptosi(llval, ll_t_out),
+                                cast_float_to_int(&bcx, true, llval, ll_t_in, ll_t_out),
                             (CastTy::Float, CastTy::Int(_)) =>
-                                bcx.fptoui(llval, ll_t_out),
+                                cast_float_to_int(&bcx, false, llval, ll_t_in, ll_t_out),
                             _ => bug!("unsupported cast: {:?} to {:?}", operand.ty, cast_ty)
                         };
                         OperandValue::Immediate(newval)
@@ -814,4 +815,173 @@ fn get_overflow_intrinsic(oop: OverflowOp, bcx: &Builder, ty: Ty) -> ValueRef {
     };
 
     bcx.ccx.get_intrinsic(&name)
+}
+
+fn cast_int_to_float(bcx: &Builder,
+                     signed: bool,
+                     x: ValueRef,
+                     int_ty: Type,
+                     float_ty: Type) -> ValueRef {
+    // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
+    // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
+    // LLVM's uitofp produces undef in those cases, so we manually check for that case.
+    let is_u128_to_f32 = !signed && int_ty.int_width() == 128 && float_ty.float_width() == 32;
+    if is_u128_to_f32 && bcx.sess().opts.debugging_opts.saturating_float_casts {
+        // f32::MAX + 0.5 ULP as u128. All inputs greater or equal to this should be
+        // rounded to infinity, for everything else LLVM's uitofp works just fine.
+        let max = C_big_integral(int_ty, 0xffffff80000000000000000000000000_u128);
+        let overflow = bcx.icmp(llvm::IntUGE, x, max);
+        let infinity_bits = C_u32(bcx.ccx, ieee::Single::INFINITY.to_bits() as u32);
+        let infinity = consts::bitcast(infinity_bits, float_ty);
+        bcx.select(overflow, infinity, bcx.uitofp(x, float_ty))
+    } else {
+        if signed {
+            bcx.sitofp(x, float_ty)
+        } else {
+            bcx.uitofp(x, float_ty)
+        }
+    }
+}
+
+fn cast_float_to_int(bcx: &Builder,
+                     signed: bool,
+                     x: ValueRef,
+                     float_ty: Type,
+                     int_ty: Type) -> ValueRef {
+    if !bcx.sess().opts.debugging_opts.saturating_float_casts {
+        if signed {
+            return bcx.fptosi(x, int_ty);
+        } else {
+            return bcx.fptoui(x, int_ty);
+        }
+    }
+    // LLVM's fpto[su]i returns undef when the input x is infinite, NaN, or does not fit into the
+    // destination integer type after rounding towards zero. This `undef` value can cause UB in
+    // safe code (see issue #10184), so we implement a saturating conversion on top of it:
+    // Semantically, the mathematical value of the input is rounded towards zero to the next
+    // mathematical integer, and then the result is clamped into the range of the destination
+    // integer type. Positive and negative infinity are mapped to the maximum and minimum value of
+    // the destination integer type. NaN is mapped to 0.
+    //
+    // Define f_min and f_max as the largest and smallest (finite) floats that are exactly equal to
+    // a value representable in int_ty.
+    // They are exactly equal to int_ty::{MIN,MAX} if float_ty has enough significand bits.
+    // Otherwise, int_ty::MAX must be rounded towards zero, as it is one less than a power of two.
+    // int_ty::MIN, however, is either zero or a negative power of two and is thus exactly
+    // representable. Note that this only works if float_ty's exponent range is sufficently large.
+    // f16 or 256 bit integers would break this property. Right now the smallest float type is f32
+    // with exponents ranging up to 127, which is barely enough for i128::MIN = -2^127.
+    // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
+    // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
+    // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
+    fn compute_clamp_bounds<F: Float>(signed: bool, int_ty: Type) -> (u128, u128, Status) {
+        let f_min = if signed {
+            let int_min = i128::MIN >> (128 - int_ty.int_width());
+            let rounded_min = F::from_i128_r(int_min, Round::TowardZero);
+            assert_eq!(rounded_min.status, Status::OK);
+            rounded_min.value
+        } else {
+            F::ZERO
+        };
+
+        let rounded_max = F::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
+        assert!(rounded_max.value.is_finite());
+
+        (f_min.to_bits(), rounded_max.value.to_bits(), rounded_max.status)
+    }
+    fn int_max(signed: bool, int_ty: Type) -> u128 {
+        let shift_amount = 128 - int_ty.int_width();
+        if signed {
+            i128::MAX as u128 >> shift_amount
+        } else {
+            u128::MAX >> shift_amount
+        }
+    }
+    let (f_min, f_max, f_max_status) = match float_ty.float_width() {
+        32 => compute_clamp_bounds::<ieee::Single>(signed, int_ty),
+        64 => compute_clamp_bounds::<ieee::Double>(signed, int_ty),
+        n => bug!("unsupported float width {}", n),
+    };
+    let float_bits_to_llval = |bits| {
+        let bits_llval = match float_ty.float_width() {
+            32 => C_u32(bcx.ccx, bits as u32),
+            64 => C_u64(bcx.ccx, bits as u64),
+            n => bug!("unsupported float width {}", n),
+        };
+        consts::bitcast(bits_llval, float_ty)
+    };
+    let f_min = float_bits_to_llval(f_min);
+    let f_max = float_bits_to_llval(f_max);
+    // To implement saturation, we perform the following steps (not all steps are necessary for
+    // all combinations of int_ty and float_ty, but we'll deal with that below):
+    //
+    // 1. Clamp x into the range [f_min, f_max] in such a way that NaN becomes f_min.
+    // 2. If x is NaN, replace the result of the clamping with 0.0, otherwise
+    //    keep the clamping result.
+    // 3. Now cast the result of step 2 with fpto[su]i.
+    // 4. If x > f_max, return int_ty::MAX, otherwise return the result of step 3.
+    //
+    // This avoids undef because values in range [f_min, f_max] by definition fit into the
+    // destination type. More importantly, it correctly implements saturating conversion.
+    // Proof (sketch):
+    // If x is NaN, step 2 yields 0.0, which is converted to 0 in step 3, and NaN > f_max does
+    // not hold in step 4, therefore 0 is returned, as desired.
+    // Otherwise, x is finite or infinite and thus can be compared with f_min and f_max.
+    // This yields three cases to consider:
+    // (1) if x in [f_min, f_max], steps 1, 2, and 4 do nothing and the result of fpto[su]i
+    //     is returned, which agrees with saturating conversion for inputs in that range.
+    // (2) if x > f_max, then x is larger than int_ty::MAX and step 4 correctly returns
+    //     int_ty::MAX. This holds even if f_max is rounded (i.e., if f_max < int_ty::MAX)
+    //     because in those cases, nextUp(f_max) is already larger than int_ty::MAX.
+    // (3) if x < f_min, then x is smaller than int_ty::MIN and is clamped to f_min. As shown
+    //     earlier, f_min exactly equals int_ty::MIN and therefore no fixup analogous to step 4
+    //     is needed. Instead, step 3 casts f_min to int_ty::MIN and step 4 returns this cast
+    //     result, as desired.
+    // QED.
+
+    // Step 1: Clamping. Computed as:
+    //    clamped_to_min = if f_min < x { x } else { f_min };
+    //    clamped_x = if f_max < clamped_to_min { f_max } else { clamped_to_min };
+    // Note that for x = NaN, both of the above variables become f_min.
+    let clamped_to_min = bcx.select(bcx.fcmp(llvm::RealOLT, f_min, x), x, f_min);
+    let clamped_x = bcx.select(
+                                bcx.fcmp(llvm::RealOLT, f_max, clamped_to_min),
+                                f_max,
+                                clamped_to_min
+                            );
+
+    // Step 2: NaN replacement.
+    // For unsigned types, f_min == 0.0 and therefore clamped_x is already zero.
+    // Therefore we only need to execute this step for signed integer types.
+    let clamped_x = if signed {
+        let zero = match float_ty.float_width() {
+            32 => float_bits_to_llval(ieee::Single::ZERO.to_bits()),
+            64 => float_bits_to_llval(ieee::Double::ZERO.to_bits()),
+            n => bug!("unsupported float width {}", n),
+        };
+        // LLVM has no isNaN predicate, so we use (x == x) instead
+        bcx.select(bcx.fcmp(llvm::RealOEQ, x, x), clamped_x, zero)
+    } else {
+        clamped_x
+    };
+
+    // Step 3: fpto[su]i cast
+    let cast_result = if signed {
+        bcx.fptosi(clamped_x, int_ty)
+    } else {
+        bcx.fptoui(clamped_x, int_ty)
+    };
+
+    // Step 4: f_max fixup.
+    // Note that x > f_max implies that x was clamped to f_max in step 1, and therefore the
+    // cast result is the integer equal to f_max. If the conversion from int_ty::MAX to f_max
+    // was exact, then the result of casting f_max is again int_ty::MAX, so we'd return the same
+    // value whether or not x > f_max holds. Therefore, we only need to execute this step
+    // if f_max is inexact.
+    if f_max_status.contains(Status::INEXACT) {
+        let int_max = C_big_integral(int_ty, int_max(signed, int_ty));
+        bcx.select(bcx.fcmp(llvm::RealOGT, x, f_max), int_max, cast_result)
+    } else {
+        cast_result
+    }
 }
