@@ -15,7 +15,6 @@ use rustc::ty::layout::{self, LayoutOf};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
-use abi;
 use base;
 use builder::Builder;
 use callee;
@@ -49,10 +48,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                bcx
            }
 
-            mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, cast_ty) => {
-                let cast_ty = self.monomorphize(&cast_ty);
-
-                if common::type_is_fat_ptr(bcx.ccx, cast_ty) {
+            mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, _) => {
+                // The destination necessarily contains a fat pointer, so if
+                // it's a scalar pair, it's a fat pointer or newtype thereof.
+                if dest.layout.is_llvm_scalar_pair() {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
@@ -218,6 +217,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         operand.val
                     }
                     mir::CastKind::Unsize => {
+                        assert!(cast.is_llvm_scalar_pair());
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer - this is a
@@ -243,12 +243,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             }
                         }
                     }
-                    mir::CastKind::Misc if common::type_is_fat_ptr(bcx.ccx, operand.layout.ty) => {
+                    mir::CastKind::Misc if operand.layout.is_llvm_scalar_pair() => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
-                            if common::type_is_fat_ptr(bcx.ccx, cast.ty) {
-                                let thin_ptr = cast.field(bcx.ccx, abi::FAT_PTR_ADDR);
+                            if cast.is_llvm_scalar_pair() {
                                 let data_cast = bcx.pointercast(data_ptr,
-                                    thin_ptr.llvm_type(bcx.ccx));
+                                    cast.scalar_pair_element_llvm_type(bcx.ccx, 0));
                                 OperandValue::Pair(data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
@@ -365,22 +364,21 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs = self.trans_operand(&bcx, lhs);
                 let rhs = self.trans_operand(&bcx, rhs);
-                let llresult = if common::type_is_fat_ptr(bcx.ccx, lhs.layout.ty) {
-                    match (lhs.val, rhs.val) {
-                        (OperandValue::Pair(lhs_addr, lhs_extra),
-                         OperandValue::Pair(rhs_addr, rhs_extra)) => {
-                            self.trans_fat_ptr_binop(&bcx, op,
-                                                     lhs_addr, lhs_extra,
-                                                     rhs_addr, rhs_extra,
-                                                     lhs.layout.ty)
-                        }
-                        _ => bug!()
+                let llresult = match (lhs.val, rhs.val) {
+                    (OperandValue::Pair(lhs_addr, lhs_extra),
+                     OperandValue::Pair(rhs_addr, rhs_extra)) => {
+                        self.trans_fat_ptr_binop(&bcx, op,
+                                                 lhs_addr, lhs_extra,
+                                                 rhs_addr, rhs_extra,
+                                                 lhs.layout.ty)
                     }
 
-                } else {
-                    self.trans_scalar_binop(&bcx, op,
-                                            lhs.immediate(), rhs.immediate(),
-                                            lhs.layout.ty)
+                    (OperandValue::Immediate(lhs_val),
+                     OperandValue::Immediate(rhs_val)) => {
+                        self.trans_scalar_binop(&bcx, op, lhs_val, rhs_val, lhs.layout.ty)
+                    }
+
+                    _ => bug!()
                 };
                 let operand = OperandRef {
                     val: OperandValue::Immediate(llresult),

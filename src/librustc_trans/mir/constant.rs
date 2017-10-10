@@ -673,10 +673,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         operand.llval
                     }
                     mir::CastKind::Unsize => {
-                        // unsize targets other than to a fat pointer currently
-                        // can't be in constants.
-                        assert!(common::type_is_fat_ptr(self.ccx, cast_ty));
-
                         let pointee_ty = operand.ty.builtin_deref(true, ty::NoPreference)
                             .expect("consts: unsizing got non-pointer type").ty;
                         let (base, old_info) = if !self.ccx.shared().type_is_sized(pointee_ty) {
@@ -761,19 +757,18 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     mir::CastKind::Misc => { // Casts from a fat-ptr.
-                        if common::type_is_fat_ptr(self.ccx, operand.ty) {
+                        let l = self.ccx.layout_of(operand.ty);
+                        let cast = self.ccx.layout_of(cast_ty);
+                        if l.is_llvm_scalar_pair() {
                             let (data_ptr, meta) = operand.get_fat_ptr(self.ccx);
-                            if common::type_is_fat_ptr(self.ccx, cast_ty) {
-                                let thin_ptr = self.ccx.layout_of(cast_ty)
-                                    .field(self.ccx, abi::FAT_PTR_ADDR);
+                            if cast.is_llvm_scalar_pair() {
                                 let data_cast = consts::ptrcast(data_ptr,
-                                    thin_ptr.llvm_type(self.ccx));
+                                    cast.scalar_pair_element_llvm_type(self.ccx, 0));
                                 C_fat_ptr(self.ccx, data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = self.ccx.layout_of(cast_ty)
-                                    .immediate_llvm_type(self.ccx);
+                                let llcast_ty = cast.immediate_llvm_type(self.ccx);
                                 consts::ptrcast(data_ptr, llcast_ty)
                             }
                         } else {

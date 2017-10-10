@@ -41,19 +41,6 @@ use syntax_pos::{Span, DUMMY_SP};
 
 pub use context::{CrateContext, SharedCrateContext};
 
-pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
-            !ccx.shared().type_is_sized(ty)
-        }
-        ty::TyAdt(def, _) if def.is_box() => {
-            !ccx.shared().type_is_sized(ty.boxed_ty())
-        }
-        _ => false
-    }
-}
-
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All))
 }
