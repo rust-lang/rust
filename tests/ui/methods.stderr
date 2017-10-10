@@ -627,128 +627,24 @@ error: using `clone` on a double-reference; this will copy the reference instead
     |
     = note: `-D clone-double-ref` implied by `-D warnings`
 
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:503:13
-    |
-503 |     x.split("x");
-    |     --------^^^- help: try using a char instead: `x.split('x')`
-    |
-    = note: `-D single-char-pattern` implied by `-D warnings`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:520:16
-    |
-520 |     x.contains("x");
-    |     -----------^^^- help: try using a char instead: `x.contains('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:521:19
-    |
-521 |     x.starts_with("x");
-    |     --------------^^^- help: try using a char instead: `x.starts_with('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:522:17
-    |
-522 |     x.ends_with("x");
-    |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:523:12
-    |
-523 |     x.find("x");
-    |     -------^^^- help: try using a char instead: `x.find('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:524:13
-    |
-524 |     x.rfind("x");
-    |     --------^^^- help: try using a char instead: `x.rfind('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:525:14
-    |
-525 |     x.rsplit("x");
-    |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:526:24
-    |
-526 |     x.split_terminator("x");
-    |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:527:25
-    |
-527 |     x.rsplit_terminator("x");
-    |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:528:17
-    |
-528 |     x.splitn(0, "x");
-    |     ------------^^^- help: try using a char instead: `x.splitn(0, 'x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:529:18
-    |
-529 |     x.rsplitn(0, "x");
-    |     -------------^^^- help: try using a char instead: `x.rsplitn(0, 'x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:530:15
-    |
-530 |     x.matches("x");
-    |     ----------^^^- help: try using a char instead: `x.matches('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:531:16
-    |
-531 |     x.rmatches("x");
-    |     -----------^^^- help: try using a char instead: `x.rmatches('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:532:21
-    |
-532 |     x.match_indices("x");
-    |     ----------------^^^- help: try using a char instead: `x.match_indices('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:533:22
-    |
-533 |     x.rmatch_indices("x");
-    |     -----------------^^^- help: try using a char instead: `x.rmatch_indices('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:534:25
-    |
-534 |     x.trim_left_matches("x");
-    |     --------------------^^^- help: try using a char instead: `x.trim_left_matches('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:535:26
-    |
-535 |     x.trim_right_matches("x");
-    |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
-
 error: you are getting the inner pointer of a temporary `CString`
-   --> $DIR/methods.rs:545:5
+   --> $DIR/methods.rs:505:5
     |
-545 |     CString::new("foo").unwrap().as_ptr();
+505 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D temporary-cstring-as-ptr` implied by `-D warnings`
     = note: that pointer will be invalid outside this expression
 help: assign the `CString` to a variable to extend its lifetime
-   --> $DIR/methods.rs:545:5
+   --> $DIR/methods.rs:505:5
     |
-545 |     CString::new("foo").unwrap().as_ptr();
+505 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-   --> $DIR/methods.rs:550:27
+   --> $DIR/methods.rs:510:27
     |
-550 |     let v2 : Vec<isize> = v.iter().cloned().collect();
+510 |     let v2 : Vec<isize> = v.iter().cloned().collect();
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-cloned-collect` implied by `-D warnings`
