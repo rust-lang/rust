@@ -1245,7 +1245,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir
 fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, map_or_args: &'tcx [hir::Expr]) {
     // check if the first non-self argument to map_or() is None
     let map_or_arg_is_none = if let hir::Expr_::ExprPath(ref qpath) = map_or_args[1].node {
-        match_qpath(&qpath, &paths::OPTION_NONE)
+        match_qpath(qpath, &paths::OPTION_NONE)
     } else {
         false
     };
