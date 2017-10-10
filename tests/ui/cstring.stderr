@@ -1,0 +1,22 @@
+error: function is never used: `temporary_cstring`
+ --> $DIR/cstring.rs:4:1
+  |
+4 | fn temporary_cstring() {
+  | ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D dead-code` implied by `-D warnings`
+
+error: you are getting the inner pointer of a temporary `CString`
+ --> $DIR/cstring.rs:7:5
+  |
+7 |     CString::new("foo").unwrap().as_ptr();
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D temporary-cstring-as-ptr` implied by `-D warnings`
+  = note: that pointer will be invalid outside this expression
+help: assign the `CString` to a variable to extend its lifetime
+ --> $DIR/cstring.rs:7:5
+  |
+7 |     CString::new("foo").unwrap().as_ptr();
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

@@ -567,17 +567,3 @@ error: calling `.extend(_.chars())`
 447 |     s.extend(def.chars());
     |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 
-error: you are getting the inner pointer of a temporary `CString`
-   --> $DIR/methods.rs:461:5
-    |
-461 |     CString::new("foo").unwrap().as_ptr();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `-D temporary-cstring-as-ptr` implied by `-D warnings`
-    = note: that pointer will be invalid outside this expression
-help: assign the `CString` to a variable to extend its lifetime
-   --> $DIR/methods.rs:461:5
-    |
-461 |     CString::new("foo").unwrap().as_ptr();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
