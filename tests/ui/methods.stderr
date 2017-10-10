@@ -500,50 +500,10 @@ error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and 
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vecdeque[0]`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:399:13
+   --> $DIR/methods.rs:397:13
     |
-399 |     let _ = opt.unwrap();
+397 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
-
-error: used unwrap() on a Result value. If you don't want to handle the Err case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:402:13
-    |
-402 |     let _ = res.unwrap();
-    |             ^^^^^^^^^^^^
-    |
-    = note: `-D result-unwrap-used` implied by `-D warnings`
-
-error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:404:5
-    |
-404 |     res.ok().expect("disaster!");
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `-D ok-expect` implied by `-D warnings`
-
-error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:410:5
-    |
-410 |     res3.ok().expect("whoof");
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:412:5
-    |
-412 |     res4.ok().expect("argh");
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:414:5
-    |
-414 |     res5.ok().expect("oops");
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:416:5
-    |
-416 |     res6.ok().expect("meh");
-    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
