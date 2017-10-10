@@ -127,7 +127,7 @@ impl Thread {
               target_os = "dragonfly",
               target_os = "bitrig",
               target_os = "openbsd"))]
-    pub fn set_name(name: &CStr) {
+    pub fn set_name(name: &OsStr) {
         unsafe {
             libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr());
         }

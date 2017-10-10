@@ -164,7 +164,7 @@
 
 use any::Any;
 use cell::UnsafeCell;
-use ffi::{CStr, CString};
+use ffi::{OsStr, OsString};
 use fmt;
 use io;
 use panic;
@@ -856,8 +856,8 @@ pub fn park_timeout(dur: Duration) {
 /// Current blockers macOS, redox
 #[unstable(feature = "libstd_thread_rename", issue = "44258")]
 pub fn set_os_name(name: &str) {
-    let cname = CString::new(name).expect("thread name must not contain interior null bytes");
-    imp::Thread::set_name(&cname);
+    let os_name = OsString::new(name).expect("thread name must not contain interior null bytes");
+    imp::Thread::set_name(&os_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -922,7 +922,6 @@ impl ThreadId {
 
 /// The internal representation of a `Thread` handle
 struct Inner {
-    name: Option<CString>,      // Guaranteed to be UTF-8
     id: ThreadId,
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
@@ -962,7 +961,7 @@ impl Thread {
     // Panics if the name contains nulls.
     pub(crate) fn new(name: Option<String>) -> Thread {
         let cname = name.map(|n| {
-            CString::new(n).expect("thread name may not contain interior null bytes")
+            OsString::new(n).expect("thread name may not contain interior null bytes")
         });
         Thread {
             inner: Arc::new(Inner {
@@ -1077,7 +1076,7 @@ impl Thread {
         self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) } )
     }
 
-    fn cname(&self) -> Option<&CStr> {
+    fn cname(&self) -> Option<&OsStr> {
         self.inner.name.as_ref().map(|s| &**s)
     }
 
@@ -1100,9 +1099,10 @@ impl Thread {
     /// handler.join().unwrap();
     /// ```
     #[unstable(feature = "libstd_thread_rename", issue = "44258")]
-    pub fn os_name(&self) -> String {
+    pub fn os_name(&self) -> Result<String> {
+        // TODO check if the thread is still alive
         let name = imp::Thread::get_name();
-        name.into()
+        Ok(name.into())
     }
 }
 
