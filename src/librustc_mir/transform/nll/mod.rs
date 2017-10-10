@@ -168,7 +168,7 @@ impl MirPass for NLL {
 }
 
 #[derive(Clone, Default, PartialEq, Eq)]
-struct Region {
+pub struct Region {
     points: FxHashSet<Location>,
 }
 
