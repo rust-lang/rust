@@ -19,8 +19,6 @@
 // ignore-pretty issue #37195
 // ignore-emscripten spawning processes is not supported
 
-use std::io;
-use std::io::prelude::*;
 use std::env;
 
 #[path = "backtrace-debuginfo-aux.rs"] mod aux;
@@ -163,7 +161,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 {
         let case = args[1].parse().unwrap();
-        writeln!(&mut io::stderr(), "test case {}", case).unwrap();
+        eprintln!("test case {}", case);
         outer(case, pos!());
         println!("done.");
     } else {

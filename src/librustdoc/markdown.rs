@@ -11,7 +11,6 @@
 use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io;
 use std::path::{PathBuf, Path};
 
 use getopts;
@@ -75,9 +74,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
     let mut out = match File::create(&output) {
         Err(e) => {
-            let _ = writeln!(&mut io::stderr(),
-                             "rustdoc: {}: {}",
-                             output.display(), e);
+            eprintln!("rustdoc: {}: {}", output.display(), e);
             return 4;
         }
         Ok(f) => f
@@ -85,10 +82,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
     let (metadata, text) = extract_leading_metadata(&input_str);
     if metadata.is_empty() {
-        let _ = writeln!(
-            &mut io::stderr(),
-            "rustdoc: invalid markdown file: no initial lines starting with `# ` or `%`"
-        );
+        eprintln!("rustdoc: invalid markdown file: no initial lines starting with `# ` or `%`");
         return 5;
     }
     let title = metadata[0];
@@ -138,9 +132,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
     match err {
         Err(e) => {
-            let _ = writeln!(&mut io::stderr(),
-                             "rustdoc: cannot write to `{}`: {}",
-                             output.display(), e);
+            eprintln!("rustdoc: cannot write to `{}`: {}", output.display(), e);
             6
         }
         Ok(_) => 0

@@ -12,7 +12,6 @@
 // error-pattern:drop 3
 // error-pattern:drop 2
 // error-pattern:drop 1
-use std::io::{self, Write};
 
 
 /// Structure which will not allow to be dropped twice.
@@ -20,10 +19,10 @@ struct Droppable<'a>(&'a mut bool, u32);
 impl<'a> Drop for Droppable<'a> {
     fn drop(&mut self) {
         if *self.0 {
-            writeln!(io::stderr(), "{} dropped twice", self.1);
+            eprintln!("{} dropped twice", self.1);
             ::std::process::exit(1);
         }
-        writeln!(io::stderr(), "drop {}", self.1);
+        eprintln!("drop {}", self.1);
         *self.0 = true;
     }
 }

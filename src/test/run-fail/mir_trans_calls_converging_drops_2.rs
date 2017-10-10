@@ -12,18 +12,16 @@
 // error-pattern:dropped
 // error-pattern:exit
 
-use std::io::{self, Write};
-
 struct Droppable;
 impl Drop for Droppable {
     fn drop(&mut self) {
-        write!(io::stderr(), "dropped\n");
+        eprintln!("dropped");
     }
 }
 
 // return value of this function is copied into the return slot
 fn complex() -> u64 {
-    write!(io::stderr(), "complex called\n");
+    eprintln!("complex called");
     42
 }
 

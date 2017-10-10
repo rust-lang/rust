@@ -10,7 +10,6 @@
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::io;
 use std::path::Path;
 use std::str;
 use html::markdown::{Markdown, RenderType};
@@ -70,17 +69,13 @@ pub fn load_string<P: AsRef<Path>>(file_path: P) -> Result<String, LoadStringErr
     let result = File::open(file_path)
                       .and_then(|mut f| f.read_to_end(&mut contents));
     if let Err(e) = result {
-        let _ = writeln!(&mut io::stderr(),
-                         "error reading `{}`: {}",
-                         file_path.display(), e);
+        eprintln!("error reading `{}`: {}", file_path.display(), e);
         return Err(LoadStringError::ReadFail);
     }
     match str::from_utf8(&contents) {
         Ok(s) => Ok(s.to_string()),
         Err(_) => {
-            let _ = writeln!(&mut io::stderr(),
-                             "error reading `{}`: not UTF-8",
-                             file_path.display());
+            eprintln!("error reading `{}`: not UTF-8", file_path.display());
             Err(LoadStringError::BadUtf8)
         }
     }

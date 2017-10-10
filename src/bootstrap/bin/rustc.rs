@@ -31,8 +31,6 @@ extern crate bootstrap;
 
 use std::env;
 use std::ffi::OsString;
-use std::io;
-use std::io::prelude::*;
 use std::str::FromStr;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
@@ -270,7 +268,7 @@ fn main() {
     }
 
     if verbose > 1 {
-        writeln!(&mut io::stderr(), "rustc command: {:?}", cmd).unwrap();
+        eprintln!("rustc command: {:?}", cmd);
     }
 
     // Actually run the compiler!
