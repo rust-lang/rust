@@ -11,7 +11,7 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use abi::{ArgType, ArgAttribute, CastTarget, FnType, LayoutExt, Reg, RegKind};
+use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
 
 use rustc::ty::layout::{self, TyLayout, Size};
@@ -214,11 +214,11 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
         };
 
         if in_mem {
-            arg.make_indirect();
             if is_arg {
-                arg.attrs.set(ArgAttribute::ByVal);
+                arg.make_indirect_byval();
             } else {
                 // `sret` parameter thus one less integer register available
+                arg.make_indirect();
                 int_regs -= 1;
             }
         } else {

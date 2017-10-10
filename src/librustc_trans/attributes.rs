@@ -116,7 +116,7 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
             naked(llfn, true);
         } else if attr.check_name("allocator") {
             Attribute::NoAlias.apply_llfn(
-                llvm::AttributePlace::ReturnValue(), llfn);
+                llvm::AttributePlace::ReturnValue, llfn);
         } else if attr.check_name("unwind") {
             unwind(llfn, true);
         } else if attr.check_name("rustc_allocator_nounwind") {

@@ -15,7 +15,7 @@ use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::traits;
 use rustc::mir;
-use abi::{Abi, FnType, ArgType};
+use abi::{Abi, FnType, ArgType, PassMode};
 use base;
 use callee;
 use builder::Builder;
@@ -207,44 +207,47 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::Return => {
-                if self.fn_ty.ret.is_ignore() || self.fn_ty.ret.is_indirect() {
-                    bcx.ret_void();
-                    return;
-                }
+                let llval = match self.fn_ty.ret.mode {
+                    PassMode::Ignore | PassMode::Indirect(_) => {
+                        bcx.ret_void();
+                        return;
+                    }
 
-                let llval = if let Some(cast_ty) = self.fn_ty.ret.cast {
-                    let op = match self.locals[mir::RETURN_POINTER] {
-                        LocalRef::Operand(Some(op)) => op,
-                        LocalRef::Operand(None) => bug!("use of return before def"),
-                        LocalRef::Lvalue(tr_lvalue) => {
-                            OperandRef {
-                                val: Ref(tr_lvalue.llval, tr_lvalue.alignment),
-                                layout: tr_lvalue.layout
+                    PassMode::Direct(_) | PassMode::Pair(..) => {
+                        let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
+                        if let Ref(llval, align) = op.val {
+                            bcx.load(llval, align.non_abi())
+                        } else {
+                            op.immediate_or_packed_pair(&bcx)
+                        }
+                    }
+
+                    PassMode::Cast(cast_ty) => {
+                        let op = match self.locals[mir::RETURN_POINTER] {
+                            LocalRef::Operand(Some(op)) => op,
+                            LocalRef::Operand(None) => bug!("use of return before def"),
+                            LocalRef::Lvalue(tr_lvalue) => {
+                                OperandRef {
+                                    val: Ref(tr_lvalue.llval, tr_lvalue.alignment),
+                                    layout: tr_lvalue.layout
+                                }
                             }
-                        }
-                    };
-                    let llslot = match op.val {
-                        Immediate(_) | Pair(..) => {
-                            let scratch = LvalueRef::alloca(&bcx, self.fn_ty.ret.layout, "ret");
-                            op.val.store(&bcx, scratch);
-                            scratch.llval
-                        }
-                        Ref(llval, align) => {
-                            assert_eq!(align, Alignment::AbiAligned,
-                                       "return pointer is unaligned!");
-                            llval
-                        }
-                    };
-                    let load = bcx.load(
-                        bcx.pointercast(llslot, cast_ty.llvm_type(bcx.ccx).ptr_to()),
-                        Some(self.fn_ty.ret.layout.align));
-                    load
-                } else {
-                    let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
-                    if let Ref(llval, align) = op.val {
-                        bcx.load(llval, align.non_abi())
-                    } else {
-                        op.immediate_or_packed_pair(&bcx)
+                        };
+                        let llslot = match op.val {
+                            Immediate(_) | Pair(..) => {
+                                let scratch = LvalueRef::alloca(&bcx, self.fn_ty.ret.layout, "ret");
+                                op.val.store(&bcx, scratch);
+                                scratch.llval
+                            }
+                            Ref(llval, align) => {
+                                assert_eq!(align, Alignment::AbiAligned,
+                                           "return pointer is unaligned!");
+                                llval
+                            }
+                        };
+                        bcx.load(
+                            bcx.pointercast(llslot, cast_ty.llvm_type(bcx.ccx).ptr_to()),
+                            Some(self.fn_ty.ret.layout.align))
                     }
                 };
                 bcx.ret(llval);
@@ -559,12 +562,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 for (i, arg) in first_args.iter().enumerate() {
                     let mut op = self.trans_operand(&bcx, arg);
-                    if i == 0 {
-                        if let Pair(_, meta) = op.val {
-                            if let Some(ty::InstanceDef::Virtual(_, idx)) = def {
-                                llfn = Some(meth::VirtualIndex::from_index(idx)
-                                    .get_fn(&bcx, meta, &fn_ty));
-                            }
+                    if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
+                        if let Pair(data_ptr, meta) = op.val {
+                            llfn = Some(meth::VirtualIndex::from_index(idx)
+                                .get_fn(&bcx, meta, &fn_ty));
+                            llargs.push(data_ptr);
+                            continue;
                         }
                     }
 
@@ -604,21 +607,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                       op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
                       arg: &ArgType<'tcx>) {
-        if let Pair(a, b) = op.val {
-            // Treat the values in a fat pointer separately.
-            if !arg.nested.is_empty() {
-                assert_eq!(arg.nested.len(), 2);
-                let imm_op = |x| OperandRef {
-                    val: Immediate(x),
-                    // We won't be checking the type again.
-                    layout: bcx.ccx.layout_of(bcx.tcx().types.never)
-                };
-                self.trans_argument(bcx, imm_op(a), llargs, &arg.nested[0]);
-                self.trans_argument(bcx, imm_op(b), llargs, &arg.nested[1]);
-                return;
-            }
-        }
-
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
             llargs.push(C_undef(ty.llvm_type(bcx.ccx)));
@@ -628,15 +616,29 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             return;
         }
 
+        if let PassMode::Pair(..) = arg.mode {
+            match op.val {
+                Pair(a, b) => {
+                    llargs.push(a);
+                    llargs.push(b);
+                    return;
+                }
+                _ => bug!("trans_argument: {:?} invalid for pair arugment", op)
+            }
+        }
+
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
-                if arg.is_indirect() || arg.cast.is_some() {
-                    let scratch = LvalueRef::alloca(bcx, arg.layout, "arg");
-                    op.val.store(bcx, scratch);
-                    (scratch.llval, Alignment::AbiAligned, true)
-                } else {
-                    (op.immediate_or_packed_pair(bcx), Alignment::AbiAligned, false)
+                match arg.mode {
+                    PassMode::Indirect(_) | PassMode::Cast(_) => {
+                        let scratch = LvalueRef::alloca(bcx, arg.layout, "arg");
+                        op.val.store(bcx, scratch);
+                        (scratch.llval, Alignment::AbiAligned, true)
+                    }
+                    _ => {
+                        (op.immediate_or_packed_pair(bcx), Alignment::AbiAligned, false)
+                    }
                 }
             }
             Ref(llval, align @ Alignment::Packed(_)) if arg.is_indirect() => {
@@ -653,7 +655,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if let Some(ty) = arg.cast {
+            if let PassMode::Cast(ty) = arg.mode {
                 llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.ccx).ptr_to()),
                                  (align | Alignment::Packed(arg.layout.align))
                                     .non_abi());
@@ -890,7 +892,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
-                let op = if ret_ty.cast.is_some() {
+                let op = if let PassMode::Cast(_) = ret_ty.mode {
                     let tmp = LvalueRef::alloca(bcx, ret_ty.layout, "tmp_ret");
                     tmp.storage_live(bcx);
                     ret_ty.store(bcx, llval, tmp);
