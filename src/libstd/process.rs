@@ -555,9 +555,6 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// On Windows, if the `#![windows_subsystem = "windows"]` attribute is
-    /// set, no stdin is connected unless explicitly assigned.
-    ///
     /// [`inherit`]: struct.Stdio.html#method.inherit
     /// [`piped`]: struct.Stdio.html#method.piped
     ///
@@ -584,9 +581,6 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// On Windows, if the `#![windows_subsystem = "windows"]` attribute is
-    /// set, no stdout is connected unless explicitly assigned.
-    ///
     /// [`inherit`]: struct.Stdio.html#method.inherit
     /// [`piped`]: struct.Stdio.html#method.piped
     ///
@@ -612,9 +606,6 @@ impl Command {
     ///
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
-    ///
-    /// On Windows, if the `#![windows_subsystem = "windows"]` attribute is
-    /// set, no stderr is connected unless explicitly assigned.
     ///
     /// [`inherit`]: struct.Stdio.html#method.inherit
     /// [`piped`]: struct.Stdio.html#method.piped
