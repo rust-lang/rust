@@ -102,4 +102,18 @@ mod allowed {
     }
 }
 
+// should not lint
+enum Pat {
+    Foo,
+    Bar,
+    Path,
+}
+
+// should not lint
+enum N {
+    Pos,
+    Neg,
+    Float,
+}
+
 fn main() {}
