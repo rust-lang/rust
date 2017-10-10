@@ -269,7 +269,38 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        mem::transmute(raw)
+        Box::from_unique(Unique::new_unchecked(raw))
+    }
+
+    /// Constructs a `Box` from a `Unique<T>` pointer.
+    ///
+    /// After calling this function, the memory is owned by a `Box` and `T` can
+    /// then be destroyed and released upon drop.
+    ///
+    /// # Safety
+    ///
+    /// A `Unique<T>` can be safely created via [`Unique::new`] and thus doesn't
+    /// necessarily own the data pointed to nor is the data guaranteed to live
+    /// as long as the pointer.
+    ///
+    /// [`Unique::new`]: ../../core/ptr/struct.Unique.html#method.new
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique)]
+    ///
+    /// fn main() {
+    ///     let x = Box::new(5);
+    ///     let ptr = Box::into_unique(x);
+    ///     let x = unsafe { Box::from_unique(ptr) };
+    /// }
+    /// ```
+    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
+               issue = "27730")]
+    #[inline]
+    pub unsafe fn from_unique(u: Unique<T>) -> Self {
+        mem::transmute(u)
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
@@ -295,7 +326,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        unsafe { mem::transmute(b) }
+        Box::into_unique(b).as_ptr()
     }
 
     /// Consumes the `Box`, returning the wrapped pointer as `Unique<T>`.
@@ -303,13 +334,18 @@ impl<T: ?Sized> Box<T> {
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// proper way to do so is to convert the raw pointer back into a
-    /// `Box` with the [`Box::from_raw`] function.
+    /// proper way to do so is to either convert the `Unique<T>` pointer:
+    ///
+    /// - Into a `Box` with the [`Box::from_unique`] function.
+    ///
+    /// - Into a raw pointer and back into a `Box` with the [`Box::from_raw`]
+    ///   function.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_unique(b)` instead of `b.into_unique()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
+    /// [`Box::from_unique`]: struct.Box.html#method.from_unique
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
     /// # Examples
