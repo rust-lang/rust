@@ -845,33 +845,34 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let kind = if is_closure { "closure" } else { "function" };
 
-        let args_str = |n| format!(
-                "{} argument{}",
+        let args_str = |n, distinct| format!(
+                "{} {}argument{}",
                 n,
-                if n == 1 { "" } else { "s" }
+                if distinct && n >= 2 { "distinct " } else { "" },
+                if n == 1 { "" } else { "s" },
             );
 
         let mut err = struct_span_err!(self.tcx.sess, span, E0593,
-            "{} takes {}, but {} {} required",
+            "{} is expected to take {}, but it takes {}",
             kind,
             if expected_tuple.is_some() {
-                Cow::from("multiple arguments")
+                Cow::from("a single tuple as argument")
             } else {
-                Cow::from(args_str(found))
+                Cow::from(args_str(expected, false))
             },
             if expected_tuple.is_some() {
-                Cow::from("a tuple argument")
+                args_str(found, true)
             } else {
-                Cow::from(args_str(expected))
+                args_str(found, false)
             },
-            if expected == 1 { "is" } else { "are" });
+        );
 
         err.span_label(
             span,
             format!(
                 "expected {} that takes {}{}",
                 kind,
-                args_str(expected),
+                args_str(expected, false),
                 if let Some(n) = expected_tuple {
                     assert!(expected == 1);
                     Cow::from(format!(", a {}-tuple", n))
@@ -884,7 +885,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let Some(span) = found_span {
             if let (Some(expected_tuple), Some((pats, tys))) = (expected_tuple, closure_args) {
                 if expected_tuple != found || pats.len() != found {
-                    err.span_label(span, format!("takes {}", args_str(found)));
+                    err.span_label(span, format!("takes {}", args_str(found, true)));
                 } else {
                     let sugg = format!(
                         "|({}){}|",
@@ -908,7 +909,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     err.span_suggestion(span, "consider changing to", sugg);
                 }
             } else {
-                err.span_label(span, format!("takes {}", args_str(found)));
+                err.span_label(span, format!("takes {}", args_str(found, false)));
             }
         }
 
