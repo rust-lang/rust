@@ -437,72 +437,10 @@ error: called `skip(x).next()` on an iterator. This is more succinctly expressed
 346 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:372:17
-    |
-372 |         let _ = boxed_slice.get(1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
-    |
-    = note: `-D get-unwrap` implied by `-D warnings`
-
-error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:373:17
-    |
-373 |         let _ = some_slice.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_slice[0]`
-
-error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:374:17
-    |
-374 |         let _ = some_vec.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vec[0]`
-
-error: called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:375:17
-    |
-375 |         let _ = some_vecdeque.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vecdeque[0]`
-
-error: called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:376:17
-    |
-376 |         let _ = some_hashmap.get(&1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_hashmap[&1]`
-
-error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:377:17
-    |
-377 |         let _ = some_btreemap.get(&1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_btreemap[&1]`
-
-error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:382:10
-    |
-382 |         *boxed_slice.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut boxed_slice[0]`
-
-error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:383:10
-    |
-383 |         *some_slice.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_slice[0]`
-
-error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:384:10
-    |
-384 |         *some_vec.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vec[0]`
-
-error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:385:10
-    |
-385 |         *some_vecdeque.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vecdeque[0]`
-
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:397:13
+   --> $DIR/methods.rs:355:13
     |
-397 |     let _ = opt.unwrap();
+355 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
