@@ -1078,19 +1078,28 @@ impl<'a, 'tcx> CachedLayout {
                 packed
             };
 
-            // Unpack newtype ABIs.
-            if sized && optimize && size.bytes() > 0 {
-                // All but one field must be ZSTs, and so they all start at 0.
-                if offsets.iter().all(|o| o.bytes() == 0) {
-                    let mut non_zst_fields = fields.iter().filter(|f| !f.is_zst());
+            // Unpack newtype ABIs and find scalar pairs.
+            if sized && size.bytes() > 0 {
+                // All other fields must be ZSTs, and we need them to all start at 0.
+                let mut zst_offsets =
+                    offsets.iter().enumerate().filter(|&(i, _)| fields[i].is_zst());
+                if zst_offsets.all(|(_, o)| o.bytes() == 0) {
+                    let mut non_zst_fields =
+                        fields.iter().enumerate().filter(|&(_, f)| !f.is_zst());
 
-                    // We have exactly one non-ZST field.
-                    match (non_zst_fields.next(), non_zst_fields.next()) {
-                        (Some(field), None) => {
-                            // Field size matches and it has a scalar or scalar pair ABI.
-                            if size == field.size {
+                    match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
+                        // We have exactly one non-ZST field.
+                        (Some((i, field)), None, None) => {
+                            // Field fills the struct and it has a scalar or scalar pair ABI.
+                            if offsets[i].bytes() == 0 && size == field.size {
                                 match field.abi {
-                                    Abi::Scalar(_) |
+                                    // For plain scalars we can't unpack newtypes
+                                    // for `#[repr(C)]`, as that affects C ABIs.
+                                    Abi::Scalar(_) if optimize => {
+                                        abi = field.abi.clone();
+                                    }
+                                    // But scalar pairs are Rust-specific and get
+                                    // treated as aggregates by C ABIs anyway.
                                     Abi::ScalarPair(..) => {
                                         abi = field.abi.clone();
                                     }
@@ -1098,40 +1107,43 @@ impl<'a, 'tcx> CachedLayout {
                                 }
                             }
                         }
+
+                        // Two non-ZST fields, and they're both scalars.
+                        (Some((i, &TyLayout {
+                            cached: &CachedLayout { abi: Abi::Scalar(ref a), .. }, ..
+                        })), Some((j, &TyLayout {
+                            cached: &CachedLayout { abi: Abi::Scalar(ref b), .. }, ..
+                        })), None) => {
+                            // Order by the memory placement, not source order.
+                            let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
+                                ((i, a), (j, b))
+                            } else {
+                                ((j, b), (i, a))
+                            };
+                            let pair = scalar_pair(a.clone(), b.clone());
+                            let pair_offsets = match pair.fields {
+                                FieldPlacement::Arbitrary {
+                                    ref offsets,
+                                    ref memory_index
+                                } => {
+                                    assert_eq!(memory_index, &[0, 1]);
+                                    offsets
+                                }
+                                _ => bug!()
+                            };
+                            if offsets[i] == pair_offsets[0] &&
+                               offsets[j] == pair_offsets[1] &&
+                               align == pair.align &&
+                               primitive_align == pair.primitive_align &&
+                               size == pair.size {
+                                // We can use `ScalarPair` only when it matches our
+                                // already computed layout (including `#[repr(C)]`).
+                                abi = pair.abi;
+                            }
+                        }
+
                         _ => {}
                     }
-                }
-            }
-
-            // Look for a scalar pair, as an ABI optimization.
-            // FIXME(eddyb) ignore extra ZST fields and field ordering.
-            if sized && !packed && fields.len() == 2 {
-                match (&fields[0].abi, &fields[1].abi) {
-                    (&Abi::Scalar(ref a), &Abi::Scalar(ref b)) => {
-                        let pair = scalar_pair(a.clone(), b.clone());
-                        let pair_offsets = match pair.fields {
-                            FieldPlacement::Arbitrary {
-                                ref offsets,
-                                ref memory_index
-                            } => {
-                                assert_eq!(memory_index, &[0, 1]);
-                                offsets
-                            }
-                            _ => bug!()
-                        };
-                        if offsets[0] == pair_offsets[0] &&
-                           offsets[1] == pair_offsets[1] &&
-                           memory_index[0] == 0 &&
-                           memory_index[1] == 1 &&
-                           align == pair.align &&
-                           primitive_align == pair.primitive_align &&
-                           size == pair.size {
-                            // We can use `ScalarPair` only when it matches our
-                            // already computed layout (including `#[repr(C)]`).
-                            abi = pair.abi;
-                        }
-                    }
-                    _ => {}
                 }
             }
 
