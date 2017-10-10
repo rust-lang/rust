@@ -214,356 +214,336 @@ error: unnecessary structure name repetition
     |                                ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-   --> $DIR/methods.rs:206:13
+   --> $DIR/methods.rs:197:13
     |
-206 |     let _ = v.iter().filter(|&x| *x < 0).next();
+197 |     let _ = v.iter().filter(|&x| *x < 0).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D filter-next` implied by `-D warnings`
     = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-   --> $DIR/methods.rs:209:13
+   --> $DIR/methods.rs:200:13
     |
-209 |       let _ = v.iter().filter(|&x| {
+200 |       let _ = v.iter().filter(|&x| {
     |  _____________^
-210 | |                                 *x < 0
-211 | |                             }
-212 | |                    ).next();
+201 | |                                 *x < 0
+202 | |                             }
+203 | |                    ).next();
     | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:224:13
+   --> $DIR/methods.rs:215:13
     |
-224 |     let _ = v.iter().find(|&x| *x < 0).is_some();
+215 |     let _ = v.iter().find(|&x| *x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D search-is-some` implied by `-D warnings`
     = note: replace `find(|&x| *x < 0).is_some()` with `any(|&x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:227:13
+   --> $DIR/methods.rs:218:13
     |
-227 |       let _ = v.iter().find(|&x| {
+218 |       let _ = v.iter().find(|&x| {
     |  _____________^
-228 | |                               *x < 0
-229 | |                           }
-230 | |                    ).is_some();
+219 | |                               *x < 0
+220 | |                           }
+221 | |                    ).is_some();
     | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:233:13
+   --> $DIR/methods.rs:224:13
     |
-233 |     let _ = v.iter().position(|&x| x < 0).is_some();
+224 |     let _ = v.iter().position(|&x| x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: replace `position(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:236:13
+   --> $DIR/methods.rs:227:13
     |
-236 |       let _ = v.iter().position(|&x| {
+227 |       let _ = v.iter().position(|&x| {
     |  _____________^
-237 | |                                   x < 0
-238 | |                               }
-239 | |                    ).is_some();
+228 | |                                   x < 0
+229 | |                               }
+230 | |                    ).is_some();
     | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:242:13
+   --> $DIR/methods.rs:233:13
     |
-242 |     let _ = v.iter().rposition(|&x| x < 0).is_some();
+233 |     let _ = v.iter().rposition(|&x| x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: replace `rposition(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:245:13
+   --> $DIR/methods.rs:236:13
     |
-245 |       let _ = v.iter().rposition(|&x| {
+236 |       let _ = v.iter().rposition(|&x| {
     |  _____________^
-246 | |                                    x < 0
-247 | |                                }
-248 | |                    ).is_some();
+237 | |                                    x < 0
+238 | |                                }
+239 | |                    ).is_some();
     | |______________________________^
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:262:21
+   --> $DIR/methods.rs:253:21
     |
-262 |         fn new() -> Foo { Foo }
+253 |         fn new() -> Foo { Foo }
     |                     ^^^ help: use the applicable keyword: `Self`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:280:5
+   --> $DIR/methods.rs:271:5
     |
-280 |     with_constructor.unwrap_or(make());
+271 |     with_constructor.unwrap_or(make());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_constructor.unwrap_or_else(make)`
     |
     = note: `-D or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
-   --> $DIR/methods.rs:283:5
+   --> $DIR/methods.rs:274:5
     |
-283 |     with_new.unwrap_or(Vec::new());
+274 |     with_new.unwrap_or(Vec::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:286:5
+   --> $DIR/methods.rs:277:5
     |
-286 |     with_const_args.unwrap_or(Vec::with_capacity(12));
+277 |     with_const_args.unwrap_or(Vec::with_capacity(12));
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a function call
+   --> $DIR/methods.rs:280:5
+    |
+280 |     with_err.unwrap_or(make());
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err.unwrap_or_else(|_| make())`
+
+error: use of `unwrap_or` followed by a function call
+   --> $DIR/methods.rs:283:5
+    |
+283 |     with_err_args.unwrap_or(Vec::with_capacity(12));
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
+
+error: use of `unwrap_or` followed by a call to `default`
+   --> $DIR/methods.rs:286:5
+    |
+286 |     with_default_trait.unwrap_or(Default::default());
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
+
+error: use of `unwrap_or` followed by a call to `default`
    --> $DIR/methods.rs:289:5
     |
-289 |     with_err.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err.unwrap_or_else(|_| make())`
+289 |     with_default_type.unwrap_or(u64::default());
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:292:5
     |
-292 |     with_err_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
-
-error: use of `unwrap_or` followed by a call to `default`
-   --> $DIR/methods.rs:295:5
-    |
-295 |     with_default_trait.unwrap_or(Default::default());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
-
-error: use of `unwrap_or` followed by a call to `default`
-   --> $DIR/methods.rs:298:5
-    |
-298 |     with_default_type.unwrap_or(u64::default());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
-
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:301:5
-    |
-301 |     with_vec.unwrap_or(vec![]);
+292 |     with_vec.unwrap_or(vec![]);
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:306:5
+   --> $DIR/methods.rs:297:5
     |
-306 |     without_default.unwrap_or(Foo::new());
+297 |     without_default.unwrap_or(Foo::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `without_default.unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:309:5
+   --> $DIR/methods.rs:300:5
     |
-309 |     map.entry(42).or_insert(String::new());
+300 |     map.entry(42).or_insert(String::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `map.entry(42).or_insert_with(String::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:312:5
+   --> $DIR/methods.rs:303:5
     |
-312 |     btree.entry(42).or_insert(String::new());
+303 |     btree.entry(42).or_insert(String::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `btree.entry(42).or_insert_with(String::new)`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:315:13
+   --> $DIR/methods.rs:306:13
     |
-315 |     let _ = stringy.unwrap_or("".to_owned());
+306 |     let _ = stringy.unwrap_or("".to_owned());
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `stringy.unwrap_or_else(|| "".to_owned())`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:326:23
+   --> $DIR/methods.rs:317:23
     |
-326 |         let bad_vec = some_vec.iter().nth(3);
+317 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:327:26
+   --> $DIR/methods.rs:318:26
     |
-327 |         let bad_slice = &some_vec[..].iter().nth(3);
+318 |         let bad_slice = &some_vec[..].iter().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:328:31
+   --> $DIR/methods.rs:319:31
     |
-328 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
+319 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:329:29
+   --> $DIR/methods.rs:320:29
     |
-329 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
+320 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:334:23
+   --> $DIR/methods.rs:325:23
     |
-334 |         let bad_vec = some_vec.iter_mut().nth(3);
+325 |         let bad_vec = some_vec.iter_mut().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:337:26
+   --> $DIR/methods.rs:328:26
     |
-337 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
+328 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:340:29
+   --> $DIR/methods.rs:331:29
     |
-340 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+331 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:352:13
+   --> $DIR/methods.rs:343:13
     |
-352 |     let _ = some_vec.iter().skip(42).next();
+343 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:353:13
+   --> $DIR/methods.rs:344:13
     |
-353 |     let _ = some_vec.iter().cycle().skip(42).next();
+344 |     let _ = some_vec.iter().cycle().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:354:13
+   --> $DIR/methods.rs:345:13
     |
-354 |     let _ = (1..10).skip(10).next();
+345 |     let _ = (1..10).skip(10).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:355:14
+   --> $DIR/methods.rs:346:14
     |
-355 |     let _ = &some_vec[..].iter().skip(3).next();
+346 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:381:17
+   --> $DIR/methods.rs:372:17
     |
-381 |         let _ = boxed_slice.get(1).unwrap();
+372 |         let _ = boxed_slice.get(1).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
     |
     = note: `-D get-unwrap` implied by `-D warnings`
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:382:17
+   --> $DIR/methods.rs:373:17
     |
-382 |         let _ = some_slice.get(0).unwrap();
+373 |         let _ = some_slice.get(0).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_slice[0]`
 
 error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:383:17
+   --> $DIR/methods.rs:374:17
     |
-383 |         let _ = some_vec.get(0).unwrap();
+374 |         let _ = some_vec.get(0).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vec[0]`
 
 error: called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:384:17
+   --> $DIR/methods.rs:375:17
     |
-384 |         let _ = some_vecdeque.get(0).unwrap();
+375 |         let _ = some_vecdeque.get(0).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vecdeque[0]`
 
 error: called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:385:17
+   --> $DIR/methods.rs:376:17
     |
-385 |         let _ = some_hashmap.get(&1).unwrap();
+376 |         let _ = some_hashmap.get(&1).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_hashmap[&1]`
 
 error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:386:17
+   --> $DIR/methods.rs:377:17
     |
-386 |         let _ = some_btreemap.get(&1).unwrap();
+377 |         let _ = some_btreemap.get(&1).unwrap();
     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_btreemap[&1]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:391:10
+   --> $DIR/methods.rs:382:10
     |
-391 |         *boxed_slice.get_mut(0).unwrap() = 1;
+382 |         *boxed_slice.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut boxed_slice[0]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:392:10
+   --> $DIR/methods.rs:383:10
     |
-392 |         *some_slice.get_mut(0).unwrap() = 1;
+383 |         *some_slice.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_slice[0]`
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:393:10
+   --> $DIR/methods.rs:384:10
     |
-393 |         *some_vec.get_mut(0).unwrap() = 1;
+384 |         *some_vec.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vec[0]`
 
 error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-   --> $DIR/methods.rs:394:10
+   --> $DIR/methods.rs:385:10
     |
-394 |         *some_vecdeque.get_mut(0).unwrap() = 1;
+385 |         *some_vecdeque.get_mut(0).unwrap() = 1;
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vecdeque[0]`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:408:13
+   --> $DIR/methods.rs:399:13
     |
-408 |     let _ = opt.unwrap();
+399 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
 
 error: used unwrap() on a Result value. If you don't want to handle the Err case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:411:13
+   --> $DIR/methods.rs:402:13
     |
-411 |     let _ = res.unwrap();
+402 |     let _ = res.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D result-unwrap-used` implied by `-D warnings`
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:413:5
+   --> $DIR/methods.rs:404:5
     |
-413 |     res.ok().expect("disaster!");
+404 |     res.ok().expect("disaster!");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D ok-expect` implied by `-D warnings`
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:419:5
+   --> $DIR/methods.rs:410:5
     |
-419 |     res3.ok().expect("whoof");
+410 |     res3.ok().expect("whoof");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:421:5
+   --> $DIR/methods.rs:412:5
     |
-421 |     res4.ok().expect("argh");
+412 |     res4.ok().expect("argh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:423:5
+   --> $DIR/methods.rs:414:5
     |
-423 |     res5.ok().expect("oops");
+414 |     res5.ok().expect("oops");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
-   --> $DIR/methods.rs:425:5
+   --> $DIR/methods.rs:416:5
     |
-425 |     res6.ok().expect("meh");
+416 |     res6.ok().expect("meh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:441:5
-    |
-441 |     s.extend(abc.chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(abc)`
-    |
-    = note: `-D string-extend-chars` implied by `-D warnings`
-
-error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:444:5
-    |
-444 |     s.extend("abc".chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str("abc")`
-
-error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:447:5
-    |
-447 |     s.extend(def.chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 

@@ -189,15 +189,6 @@ impl IteratorFalsePositives {
     }
 }
 
-#[derive(Copy, Clone)]
-struct HasChars;
-
-impl HasChars {
-    fn chars(self) -> std::str::Chars<'static> {
-        "HasChars".chars()
-    }
-}
-
 /// Checks implementation of `FILTER_NEXT` lint
 fn filter_next() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
@@ -430,26 +421,4 @@ struct MyError(()); // doesn't implement Debug
 #[derive(Debug)]
 struct MyErrorWithParam<T> {
     x: T
-}
-
-fn str_extend_chars() {
-    let abc = "abc";
-    let def = String::from("def");
-    let mut s = String::new();
-
-    s.push_str(abc);
-    s.extend(abc.chars());
-
-    s.push_str("abc");
-    s.extend("abc".chars());
-
-    s.push_str(&def);
-    s.extend(def.chars());
-
-    s.extend(abc.chars().skip(1));
-    s.extend("abc".chars().skip(1));
-    s.extend(['a', 'b', 'c'].iter());
-
-    let f = HasChars;
-    s.extend(f.chars());
 }
