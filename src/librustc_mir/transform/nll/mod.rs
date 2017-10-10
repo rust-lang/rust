@@ -161,7 +161,7 @@ impl MirPass for NLL {
                 Ok(())
             });
             let (_lookup_map, regions) = visitor.into_results();
-            let inference_context = InferenceContext::new(regions);
+            let mut inference_context = InferenceContext::new(regions);
             inference_context.solve(infcx, &renumbered_mir);
         })
     }
