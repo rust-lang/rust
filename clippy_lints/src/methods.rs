@@ -208,7 +208,7 @@ declare_lint! {
     pub OPTION_MAP_OR_NONE,
     Warn,
     "using `Option.map_or(None, f)`, which is more succinctly expressed as \
-     `map_or_else(g, f)`"
+     `and_then(f)`"
 }
 
 /// **What it does:** Checks for usage of `_.filter(_).next()`.
@@ -1243,30 +1243,28 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir
 
 /// lint use of `_.map_or(None, _)` for `Option`s
 fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, map_or_args: &'tcx [hir::Expr]) {
-    // check if the first non-self argument to map_or() is None
-    let map_or_arg_is_none = if let hir::Expr_::ExprPath(ref qpath) = map_or_args[1].node {
-        match_qpath(qpath, &paths::OPTION_NONE)
-    } else {
-        false
-    };
 
-    if match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION) && map_or_arg_is_none {
-        // lint message
-        let msg = "called `map_or(None, f)` on an Option value. This can be done more directly by calling \
-                   `and_then(f)` instead";
-        let map_or_none_snippet = snippet(cx, map_or_args[1].span, "..");
-        let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
-        let multiline = map_or_func_snippet.lines().count() > 1 || map_or_none_snippet.lines().count() > 1;
-        if multiline {
-            span_lint(cx, OPTION_MAP_OR_NONE, expr.span, msg);
+    if match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION) {
+        // check if the first non-self argument to map_or() is None
+        let map_or_arg_is_none = if let hir::Expr_::ExprPath(ref qpath) = map_or_args[1].node {
+            match_qpath(qpath, &paths::OPTION_NONE)
         } else {
-            span_note_and_lint(
+            false
+        };
+
+        if map_or_arg_is_none {
+            // lint message
+            let msg = "called `map_or(None, f)` on an Option value. This can be done more directly by calling \
+                       `and_then(f)` instead";
+            let map_or_self_snippet = snippet(cx, map_or_args[0].span, "..");
+            let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
+            let hint = format!("{0}.and_then({1})", map_or_self_snippet, map_or_func_snippet);
+            span_lint_and_then(
                 cx,
                 OPTION_MAP_OR_NONE,
                 expr.span,
                 msg,
-                expr.span,
-                &format!("replace `map_or({0}, {1})` with `and_then({1})`", map_or_none_snippet, map_or_func_snippet)
+                |db| { db.span_suggestion(expr.span, "try using and_then instead", hint); },
             );
         }
     }

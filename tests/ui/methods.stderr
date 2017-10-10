@@ -199,10 +199,9 @@ error: called `map_or(None, f)` on an Option value. This can be done more direct
    --> $DIR/methods.rs:144:13
     |
 144 |     let _ = opt.map_or(None, |x| Some(x + 1));
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using and_then instead: `opt.and_then(|x| Some(x + 1))`
     |
     = note: `-D option-map-or-none` implied by `-D warnings`
-    = note: replace `map_or(None, |x| Some(x + 1))` with `and_then(|x| Some(x + 1))`
 
 error: called `map_or(None, f)` on an Option value. This can be done more directly by calling `and_then(f)` instead
    --> $DIR/methods.rs:146:13
@@ -213,6 +212,13 @@ error: called `map_or(None, f)` on an Option value. This can be done more direct
 148 | |                        }
 149 | |                 );
     | |_________________^
+    |
+help: try using and_then instead
+    |
+146 |     let _ = opt.and_then(|x| {
+147 |                         Some(x + 1)
+148 |                        });
+    |
 
 error: unnecessary structure name repetition
    --> $DIR/methods.rs:173:24
