@@ -1152,37 +1152,6 @@ impl<'a, 'tcx> CachedLayout {
         };
         assert!(!ty.has_infer_types());
 
-        let ptr_layout = |pointee: Ty<'tcx>| {
-            let mut data_ptr = scalar_unit(Pointer);
-            if !ty.is_unsafe_ptr() {
-                data_ptr.valid_range.start = 1;
-            }
-
-            let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
-            if pointee.is_sized(tcx, param_env, DUMMY_SP) {
-                return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
-            }
-
-            let unsized_part = tcx.struct_tail(pointee);
-            let metadata = match unsized_part.sty {
-                ty::TyForeign(..) => {
-                    return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
-                }
-                ty::TySlice(_) | ty::TyStr => {
-                    scalar_unit(Int(dl.ptr_sized_integer(), false))
-                }
-                ty::TyDynamic(..) => {
-                    let mut vtable = scalar_unit(Pointer);
-                    vtable.valid_range.start = 1;
-                    vtable
-                }
-                _ => return Err(LayoutError::Unknown(unsized_part))
-            };
-
-            // Effectively a (ptr, meta) tuple.
-            Ok(tcx.intern_layout(scalar_pair(data_ptr, metadata)))
-        };
-
         Ok(match ty.sty {
             // Basic scalars.
             ty::TyBool => {
@@ -1219,10 +1188,34 @@ impl<'a, 'tcx> CachedLayout {
             // Potentially-fat pointers.
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                ptr_layout(pointee)?
-            }
-            ty::TyAdt(def, _) if def.is_box() => {
-                ptr_layout(ty.boxed_ty())?
+                let mut data_ptr = scalar_unit(Pointer);
+                if !ty.is_unsafe_ptr() {
+                    data_ptr.valid_range.start = 1;
+                }
+
+                let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
+                if pointee.is_sized(tcx, param_env, DUMMY_SP) {
+                    return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
+                }
+
+                let unsized_part = tcx.struct_tail(pointee);
+                let metadata = match unsized_part.sty {
+                    ty::TyForeign(..) => {
+                        return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
+                    }
+                    ty::TySlice(_) | ty::TyStr => {
+                        scalar_unit(Int(dl.ptr_sized_integer(), false))
+                    }
+                    ty::TyDynamic(..) => {
+                        let mut vtable = scalar_unit(Pointer);
+                        vtable.valid_range.start = 1;
+                        vtable
+                    }
+                    _ => return Err(LayoutError::Unknown(unsized_part))
+                };
+
+                // Effectively a (ptr, meta) tuple.
+                tcx.intern_layout(scalar_pair(data_ptr, metadata))
             }
 
             // Arrays and slices.
@@ -1866,32 +1859,25 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
             Err(err) => err
         };
 
-        let ptr_skeleton = |pointee: Ty<'tcx>| {
-            let non_zero = !ty.is_unsafe_ptr();
-            let tail = tcx.struct_tail(pointee);
-            match tail.sty {
-                ty::TyParam(_) | ty::TyProjection(_) => {
-                    assert!(tail.has_param_types() || tail.has_self_ty());
-                    Ok(SizeSkeleton::Pointer {
-                        non_zero,
-                        tail: tcx.erase_regions(&tail)
-                    })
-                }
-                _ => {
-                    bug!("SizeSkeleton::compute({}): layout errored ({}), yet \
-                            tail `{}` is not a type parameter or a projection",
-                            ty, err, tail)
-                }
-            }
-        };
-
         match ty.sty {
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                ptr_skeleton(pointee)
-            }
-            ty::TyAdt(def, _) if def.is_box() => {
-                ptr_skeleton(ty.boxed_ty())
+                let non_zero = !ty.is_unsafe_ptr();
+                let tail = tcx.struct_tail(pointee);
+                match tail.sty {
+                    ty::TyParam(_) | ty::TyProjection(_) => {
+                        assert!(tail.has_param_types() || tail.has_self_ty());
+                        Ok(SizeSkeleton::Pointer {
+                            non_zero,
+                            tail: tcx.erase_regions(&tail)
+                        })
+                    }
+                    _ => {
+                        bug!("SizeSkeleton::compute({}): layout errored ({}), yet \
+                              tail `{}` is not a type parameter or a projection",
+                             ty, err, tail)
+                    }
+                }
             }
 
             ty::TyAdt(def, substs) => {
@@ -2153,39 +2139,6 @@ impl<'a, 'tcx> TyLayout<'tcx> {
               C::TyLayout: MaybeResult<TyLayout<'tcx>>
     {
         let tcx = cx.tcx();
-        let ptr_field_layout = |pointee: Ty<'tcx>| {
-            assert!(i < 2);
-
-            // Reuse the fat *T type as its own thin pointer data field.
-            // This provides information about e.g. DST struct pointees
-            // (which may have no non-DST form), and will work as long
-            // as the `Abi` or `FieldPlacement` is checked by users.
-            if i == 0 {
-                let nil = tcx.mk_nil();
-                let ptr_ty = if self.ty.is_unsafe_ptr() {
-                    tcx.mk_mut_ptr(nil)
-                } else {
-                    tcx.mk_mut_ref(tcx.types.re_static, nil)
-                };
-                return cx.layout_of(ptr_ty).map_same(|mut ptr_layout| {
-                    ptr_layout.ty = self.ty;
-                    ptr_layout
-                });
-            }
-
-            let meta_ty = match tcx.struct_tail(pointee).sty {
-                ty::TySlice(_) |
-                ty::TyStr => tcx.types.usize,
-                ty::TyDynamic(..) => {
-                    // FIXME(eddyb) use an usize/fn() array with
-                    // the correct number of vtables slots.
-                    tcx.mk_imm_ref(tcx.types.re_static, tcx.mk_nil())
-                }
-                _ => bug!("TyLayout::field_type({:?}): not applicable", self)
-            };
-            cx.layout_of(meta_ty)
-        };
-
         cx.layout_of(match self.ty.sty {
             ty::TyBool |
             ty::TyChar |
@@ -2203,10 +2156,35 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             // Potentially-fat pointers.
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                return ptr_field_layout(pointee);
-            }
-            ty::TyAdt(def, _) if def.is_box() => {
-                return ptr_field_layout(self.ty.boxed_ty());
+                assert!(i < 2);
+
+                // Reuse the fat *T type as its own thin pointer data field.
+                // This provides information about e.g. DST struct pointees
+                // (which may have no non-DST form), and will work as long
+                // as the `Abi` or `FieldPlacement` is checked by users.
+                if i == 0 {
+                    let nil = tcx.mk_nil();
+                    let ptr_ty = if self.ty.is_unsafe_ptr() {
+                        tcx.mk_mut_ptr(nil)
+                    } else {
+                        tcx.mk_mut_ref(tcx.types.re_static, nil)
+                    };
+                    return cx.layout_of(ptr_ty).map_same(|mut ptr_layout| {
+                        ptr_layout.ty = self.ty;
+                        ptr_layout
+                    });
+                }
+
+                match tcx.struct_tail(pointee).sty {
+                    ty::TySlice(_) |
+                    ty::TyStr => tcx.types.usize,
+                    ty::TyDynamic(..) => {
+                        // FIXME(eddyb) use an usize/fn() array with
+                        // the correct number of vtables slots.
+                        tcx.mk_imm_ref(tcx.types.re_static, tcx.mk_nil())
+                    }
+                    _ => bug!("TyLayout::field_type({:?}): not applicable", self)
+                }
             }
 
             // Arrays and slices.

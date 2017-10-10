@@ -321,7 +321,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 return self.field(ccx, index).llvm_type(ccx);
             }
             ty::TyAdt(def, _) if def.is_box() => {
-                return self.field(ccx, index).llvm_type(ccx);
+                let ptr_ty = ccx.tcx().mk_mut_ptr(self.ty.boxed_ty());
+                return ccx.layout_of(ptr_ty).scalar_pair_element_llvm_type(ccx, index);
             }
             _ => {}
         }
@@ -438,15 +439,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 });
             }
 
-            ty::TyAdt(def, _) if def.is_box() && offset.bytes() == 0 => {
-                let (size, align) = ccx.size_and_align_of(self.ty.boxed_ty());
-                result = Some(PointeeInfo {
-                    size,
-                    align,
-                    safe: Some(PointerKind::UniqueOwned)
-                });
-            }
-
             _ => {
                 let mut data_variant = match self.variants {
                     layout::Variants::NicheFilling { dataful_variant, .. } => {
@@ -478,6 +470,15 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                                 result = field.pointee_info_at(ccx, offset - field_start);
                                 break;
                             }
+                        }
+                    }
+                }
+
+                // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
+                if let Some(ref mut pointee) = result {
+                    if let ty::TyAdt(def, _) = self.ty.sty {
+                        if def.is_box() && offset.bytes() == 0 {
+                            pointee.safe = Some(PointerKind::UniqueOwned);
                         }
                     }
                 }
