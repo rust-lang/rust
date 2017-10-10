@@ -24,25 +24,35 @@ fn main() { }
 // END RUST SOURCE
 // START rustc.node10.Deaggregator.before.mir
 // bb0: {
+//     ...
 //     _2 = _1;
+//     ...
 //     _4 = _2;
 //     _3 = Foo::A(_4,);
+//     ...
 //     _6 = _2;
 //     _5 = Foo::A(_6,);
+//     ...
 //     _0 = [_3, _5];
+//     ...
 //     return;
 // }
 // END rustc.node10.Deaggregator.before.mir
 // START rustc.node10.Deaggregator.after.mir
 // bb0: {
+//     ...
 //     _2 = _1;
+//     ...
 //     _4 = _2;
 //     ((_3 as A).0: i32) = _4;
 //     discriminant(_3) = 0;
+//     ...
 //     _6 = _2;
 //     ((_5 as A).0: i32) = _6;
 //     discriminant(_5) = 0;
+//     ...
 //     _0 = [_3, _5];
+//     ...
 //     return;
 // }
 // END rustc.node10.Deaggregator.after.mir
