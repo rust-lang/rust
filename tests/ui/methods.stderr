@@ -547,321 +547,209 @@ error: called `ok().expect()` on a Result value. You can call `expect` directly 
 425 |     res6.ok().expect("meh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: you should use the `starts_with` method
-   --> $DIR/methods.rs:437:5
-    |
-437 |     "".chars().next() == Some(' ');
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
-    |
-    = note: `-D chars-next-cmp` implied by `-D warnings`
-
-error: you should use the `starts_with` method
-   --> $DIR/methods.rs:438:5
-    |
-438 |     Some(' ') != "".chars().next();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with(' ')`
-
 error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:447:5
+   --> $DIR/methods.rs:441:5
     |
-447 |     s.extend(abc.chars());
+441 |     s.extend(abc.chars());
     |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(abc)`
     |
     = note: `-D string-extend-chars` implied by `-D warnings`
 
 error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:450:5
+   --> $DIR/methods.rs:444:5
     |
-450 |     s.extend("abc".chars());
+444 |     s.extend("abc".chars());
     |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str("abc")`
 
 error: calling `.extend(_.chars())`
-   --> $DIR/methods.rs:453:5
+   --> $DIR/methods.rs:447:5
     |
-453 |     s.extend(def.chars());
+447 |     s.extend(def.chars());
     |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 
 error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:464:5
+   --> $DIR/methods.rs:458:5
     |
-464 |     42.clone();
+458 |     42.clone();
     |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
     |
     = note: `-D clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:468:5
+   --> $DIR/methods.rs:462:5
     |
-468 |     (&42).clone();
+462 |     (&42).clone();
     |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:478:5
+   --> $DIR/methods.rs:472:5
     |
-478 |     rc.clone();
+472 |     rc.clone();
     |     ^^^^^^^^^^ help: try this: `Rc::clone(&rc)`
     |
     = note: `-D clone-on-ref-ptr` implied by `-D warnings`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:481:5
+   --> $DIR/methods.rs:475:5
     |
-481 |     arc.clone();
+475 |     arc.clone();
     |     ^^^^^^^^^^^ help: try this: `Arc::clone(&arc)`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:484:5
+   --> $DIR/methods.rs:478:5
     |
-484 |     rcweak.clone();
+478 |     rcweak.clone();
     |     ^^^^^^^^^^^^^^ help: try this: `Weak::clone(&rcweak)`
 
 error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:487:5
+   --> $DIR/methods.rs:481:5
     |
-487 |     arc_weak.clone();
+481 |     arc_weak.clone();
     |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::clone(&arc_weak)`
 
 error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:494:5
+   --> $DIR/methods.rs:488:5
     |
-494 |     t.clone();
+488 |     t.clone();
     |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:496:5
+   --> $DIR/methods.rs:490:5
     |
-496 |     Some(t).clone();
+490 |     Some(t).clone();
     |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-   --> $DIR/methods.rs:502:22
+   --> $DIR/methods.rs:496:22
     |
-502 |     let z: &Vec<_> = y.clone();
+496 |     let z: &Vec<_> = y.clone();
     |                      ^^^^^^^^^ help: try dereferencing it: `(*y).clone()`
     |
     = note: `-D clone-double-ref` implied by `-D warnings`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:509:13
+   --> $DIR/methods.rs:503:13
     |
-509 |     x.split("x");
+503 |     x.split("x");
     |     --------^^^- help: try using a char instead: `x.split('x')`
     |
     = note: `-D single-char-pattern` implied by `-D warnings`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:526:16
+   --> $DIR/methods.rs:520:16
     |
-526 |     x.contains("x");
+520 |     x.contains("x");
     |     -----------^^^- help: try using a char instead: `x.contains('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:527:19
+   --> $DIR/methods.rs:521:19
     |
-527 |     x.starts_with("x");
+521 |     x.starts_with("x");
     |     --------------^^^- help: try using a char instead: `x.starts_with('x')`
+
+error: single-character string constant used as pattern
+   --> $DIR/methods.rs:522:17
+    |
+522 |     x.ends_with("x");
+    |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
+
+error: single-character string constant used as pattern
+   --> $DIR/methods.rs:523:12
+    |
+523 |     x.find("x");
+    |     -------^^^- help: try using a char instead: `x.find('x')`
+
+error: single-character string constant used as pattern
+   --> $DIR/methods.rs:524:13
+    |
+524 |     x.rfind("x");
+    |     --------^^^- help: try using a char instead: `x.rfind('x')`
+
+error: single-character string constant used as pattern
+   --> $DIR/methods.rs:525:14
+    |
+525 |     x.rsplit("x");
+    |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
+
+error: single-character string constant used as pattern
+   --> $DIR/methods.rs:526:24
+    |
+526 |     x.split_terminator("x");
+    |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
+
+error: single-character string constant used as pattern
+   --> $DIR/methods.rs:527:25
+    |
+527 |     x.rsplit_terminator("x");
+    |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:528:17
     |
-528 |     x.ends_with("x");
-    |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:529:12
-    |
-529 |     x.find("x");
-    |     -------^^^- help: try using a char instead: `x.find('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:530:13
-    |
-530 |     x.rfind("x");
-    |     --------^^^- help: try using a char instead: `x.rfind('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:531:14
-    |
-531 |     x.rsplit("x");
-    |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:532:24
-    |
-532 |     x.split_terminator("x");
-    |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:533:25
-    |
-533 |     x.rsplit_terminator("x");
-    |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
-
-error: single-character string constant used as pattern
-   --> $DIR/methods.rs:534:17
-    |
-534 |     x.splitn(0, "x");
+528 |     x.splitn(0, "x");
     |     ------------^^^- help: try using a char instead: `x.splitn(0, 'x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:535:18
+   --> $DIR/methods.rs:529:18
     |
-535 |     x.rsplitn(0, "x");
+529 |     x.rsplitn(0, "x");
     |     -------------^^^- help: try using a char instead: `x.rsplitn(0, 'x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:536:15
+   --> $DIR/methods.rs:530:15
     |
-536 |     x.matches("x");
+530 |     x.matches("x");
     |     ----------^^^- help: try using a char instead: `x.matches('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:537:16
+   --> $DIR/methods.rs:531:16
     |
-537 |     x.rmatches("x");
+531 |     x.rmatches("x");
     |     -----------^^^- help: try using a char instead: `x.rmatches('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:538:21
+   --> $DIR/methods.rs:532:21
     |
-538 |     x.match_indices("x");
+532 |     x.match_indices("x");
     |     ----------------^^^- help: try using a char instead: `x.match_indices('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:539:22
+   --> $DIR/methods.rs:533:22
     |
-539 |     x.rmatch_indices("x");
+533 |     x.rmatch_indices("x");
     |     -----------------^^^- help: try using a char instead: `x.rmatch_indices('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:540:25
+   --> $DIR/methods.rs:534:25
     |
-540 |     x.trim_left_matches("x");
+534 |     x.trim_left_matches("x");
     |     --------------------^^^- help: try using a char instead: `x.trim_left_matches('x')`
 
 error: single-character string constant used as pattern
-   --> $DIR/methods.rs:541:26
+   --> $DIR/methods.rs:535:26
     |
-541 |     x.trim_right_matches("x");
+535 |     x.trim_right_matches("x");
     |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
 
 error: you are getting the inner pointer of a temporary `CString`
-   --> $DIR/methods.rs:551:5
+   --> $DIR/methods.rs:545:5
     |
-551 |     CString::new("foo").unwrap().as_ptr();
+545 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D temporary-cstring-as-ptr` implied by `-D warnings`
     = note: that pointer will be invalid outside this expression
 help: assign the `CString` to a variable to extend its lifetime
-   --> $DIR/methods.rs:551:5
+   --> $DIR/methods.rs:545:5
     |
-551 |     CString::new("foo").unwrap().as_ptr();
+545 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-   --> $DIR/methods.rs:556:27
+   --> $DIR/methods.rs:550:27
     |
-556 |     let v2 : Vec<isize> = v.iter().cloned().collect();
+550 |     let v2 : Vec<isize> = v.iter().cloned().collect();
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-cloned-collect` implied by `-D warnings`
-
-error: you should use the `starts_with` method
-   --> $DIR/methods.rs:563:8
-    |
-563 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.starts_with('f')`
-
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:563:8
-    |
-563 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:566:8
-    |
-566 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
-    |
-    = note: `-D chars-last-cmp` implied by `-D warnings`
-
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:566:8
-    |
-566 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:569:8
-    |
-569 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
-
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:569:8
-    |
-569 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should use the `starts_with` method
-   --> $DIR/methods.rs:572:8
-    |
-572 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.starts_with('f')`
-
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:572:8
-    |
-572 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:575:8
-    |
-575 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
-
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:575:8
-    |
-575 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:578:8
-    |
-578 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
-
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:578:8
-    |
-578 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:585:5
-    |
-585 |     "".chars().last() == Some(' ');
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:586:5
-    |
-586 |     Some(' ') != "".chars().last();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:587:5
-    |
-587 |     "".chars().next_back() == Some(' ');
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
-
-error: you should use the `ends_with` method
-   --> $DIR/methods.rs:588:5
-    |
-588 |     Some(' ') != "".chars().next_back();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
