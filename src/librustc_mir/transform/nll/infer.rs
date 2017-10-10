@@ -184,18 +184,19 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
             };
 
             if successor_points.is_empty() {
+                // TODO handle free regions
                 // If we reach the END point in the graph, then copy
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
-                for region_decl in self.infcx.tcx.tables.borrow().free_region_map() {
-                    // TODO(nashenas88) figure out skolemized_end points
-                    let block = self.env.graph.skolemized_end(region_decl.name);
-                    let skolemized_end_point = Location {
-                        block,
-                        statement_index: 0,
-                    };
-                    changed |= to_region.add_point(skolemized_end_point);
-                }
+                // for region_decl in self.infcx.tcx.tables.borrow().free_region_map() {
+                //     // TODO(nashenas88) figure out skolemized_end points
+                //     let block = self.env.graph.skolemized_end(region_decl.name);
+                //     let skolemized_end_point = Location {
+                //         block,
+                //         statement_index: 0,
+                //     };
+                //     changed |= to_region.add_point(skolemized_end_point);
+                // }
             } else {
                 stack.extend(successor_points);
             }
