@@ -54,24 +54,24 @@ pub mod config;
 pub mod filesearch;
 pub mod search_paths;
 
-// Represents the data associated with a compilation
-// session for a single crate.
+/// Represents the data associated with a compilation
+/// session for a single crate.
 pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
     pub parse_sess: ParseSess,
-    // For a library crate, this is always none
+    /// For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
-    // The name of the root source file of the crate, in the local file system.
-    // `None` means that there is no source file.
+    /// The name of the root source file of the crate, in the local file system.
+    /// `None` means that there is no source file.
     pub local_crate_source_file: Option<String>,
-    // The directory the compiler has been executed in plus a flag indicating
-    // if the value stored here has been affected by path remapping.
+    /// The directory the compiler has been executed in plus a flag indicating
+    /// if the value stored here has been affected by path remapping.
     pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
@@ -83,11 +83,11 @@ pub struct Session {
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
-    // The crate_disambiguator is constructed out of all the `-C metadata`
-    // arguments passed to the compiler. Its value together with the crate-name
-    // forms a unique global identifier for the crate. It is used to allow
-    // multiple crates with the same name to coexist. See the
-    // trans::back::symbol_names module for more information.
+    /// The crate_disambiguator is constructed out of all the `-C metadata`
+    /// arguments passed to the compiler. Its value together with the crate-name
+    /// forms a unique global identifier for the crate. It is used to allow
+    /// multiple crates with the same name to coexist. See the
+    /// trans::back::symbol_names module for more information.
     pub crate_disambiguator: RefCell<Option<Symbol>>,
     pub features: RefCell<feature_gate::Features>,
 
@@ -143,17 +143,17 @@ pub struct Session {
 }
 
 pub struct PerfStats {
-    // The accumulated time needed for computing the SVH of the crate
+    /// The accumulated time needed for computing the SVH of the crate
     pub svh_time: Cell<Duration>,
-    // The accumulated time spent on computing incr. comp. hashes
+    /// The accumulated time spent on computing incr. comp. hashes
     pub incr_comp_hashes_time: Cell<Duration>,
-    // The number of incr. comp. hash computations performed
+    /// The number of incr. comp. hash computations performed
     pub incr_comp_hashes_count: Cell<u64>,
-    // The number of bytes hashed when computing ICH values
+    /// The number of bytes hashed when computing ICH values
     pub incr_comp_bytes_hashed: Cell<u64>,
-    // The accumulated time spent on computing symbol hashes
+    /// The accumulated time spent on computing symbol hashes
     pub symbol_hash_time: Cell<Duration>,
-    // The accumulated time spent decoding def path tables from metadata
+    /// The accumulated time spent decoding def path tables from metadata
     pub decode_def_path_tables_time: Cell<Duration>,
 }
 
@@ -804,24 +804,24 @@ pub fn build_session_(sopts: config::Options,
 /// Holds data on the current incremental compilation session, if there is one.
 #[derive(Debug)]
 pub enum IncrCompSession {
-    // This is the state the session will be in until the incr. comp. dir is
-    // needed.
+    /// This is the state the session will be in until the incr. comp. dir is
+    /// needed.
     NotInitialized,
-    // This is the state during which the session directory is private and can
-    // be modified.
+    /// This is the state during which the session directory is private and can
+    /// be modified.
     Active {
         session_directory: PathBuf,
         lock_file: flock::Lock,
         load_dep_graph: bool,
     },
-    // This is the state after the session directory has been finalized. In this
-    // state, the contents of the directory must not be modified any more.
+    /// This is the state after the session directory has been finalized. In this
+    /// state, the contents of the directory must not be modified any more.
     Finalized {
         session_directory: PathBuf,
     },
-    // This is an error state that is reached when some compilation error has
-    // occurred. It indicates that the contents of the session directory must
-    // not be used, since they might be invalid.
+    /// This is an error state that is reached when some compilation error has
+    /// occurred. It indicates that the contents of the session directory must
+    /// not be used, since they might be invalid.
     InvalidBecauseOfErrors {
         session_directory: PathBuf,
     }
