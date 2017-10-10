@@ -567,12 +567,12 @@ fn never_loop_expr(expr: &Expr, state: &mut NeverLoopState) -> bool {
         },
         ExprBlock(ref b) => never_loop_block(b, state),
         ExprAgain(d) => {
-            let id = d.target_id.opt_id().expect("continue is missing target id");
+            let id = d.target_id.opt_id().expect("target id can only be missing in the presence of compilation errors");
             state.continues.insert(id);
             false
         },
         ExprBreak(d, _) => {
-            let id = d.target_id.opt_id().expect("break is missing target id");
+            let id = d.target_id.opt_id().expect("target id can only be missing in the presence of compilation errors");
             state.breaks.insert(id);
             false
         },
