@@ -80,7 +80,7 @@ impl InferenceContext {
 
     pub fn solve<'a, 'gcx, 'tcx>(
         &mut self,
-        infcx: InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         mir: &'a Mir<'tcx>,
     ) -> IndexVec<InferenceErrorIndex, InferenceError>
     where
@@ -130,12 +130,12 @@ impl InferenceContext {
 }
 
 struct Dfs<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
-    infcx: InferCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
-    fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         Self { infcx, mir }
     }
 

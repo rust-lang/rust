@@ -31,11 +31,12 @@ mod infer;
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     lookup_map: HashMap<RegionVid, Lookup>,
     regions: IndexVec<RegionIndex, Region>,
-    infcx: InferCtxt<'a, 'gcx, 'tcx>,
+    #[allow(dead_code)]
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
         NLLVisitor {
             infcx,
             lookup_map: HashMap::new(),
@@ -150,7 +151,7 @@ impl MirPass for NLL {
         tcx.infer_ctxt().enter(|infcx| {
             // Clone mir so we can mutate it without disturbing the rest of the compiler
             let mut renumbered_mir = mir.clone();
-            let mut visitor = NLLVisitor::new(infcx);
+            let mut visitor = NLLVisitor::new(&infcx);
             visitor.visit_mir(&mut renumbered_mir);
             mir_util::dump_mir(tcx, None, "nll", &0, source, mir, |pass_where, out| {
                 if let PassWhere::BeforeCFG = pass_where {
@@ -162,7 +163,7 @@ impl MirPass for NLL {
             });
             let (_lookup_map, regions) = visitor.into_results();
             let mut inference_context = InferenceContext::new(regions);
-            inference_context.solve(infcx, &renumbered_mir);
+            inference_context.solve(&infcx, &renumbered_mir);
         })
     }
 }
