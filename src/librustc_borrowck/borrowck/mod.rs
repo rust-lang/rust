@@ -618,7 +618,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let mut err = self.cannot_act_on_moved_value(use_span,
                                                              verb,
                                                              msg,
-                                                             &format!("{}", nl));
+                                                             &format!("{}", nl),
+                                                             Origin::Ast);
                 let need_note = match lp.ty.sty {
                     ty::TypeVariants::TyClosure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
@@ -698,7 +699,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             &self,
             span: Span,
             lp: &LoanPath<'tcx>) {
-        self.cannot_partially_reinit_an_uninit_struct(span, &self.loan_path_to_string(lp))
+        self.cannot_partially_reinit_an_uninit_struct(span,
+                                                      &self.loan_path_to_string(lp),
+                                                      Origin::Ast)
             .emit();
     }
 
@@ -760,7 +763,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         self.cannot_assign(error_span, &descr, Origin::Ast)
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
-                        self.closure_cannot_assign_to_borrowed(error_span, &descr)
+                        self.closure_cannot_assign_to_borrowed(error_span, &descr, Origin::Ast)
                     }
                     BorrowViolation(euv::OverloadedOperator) |
                     BorrowViolation(euv::AddrOf) |
@@ -769,7 +772,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     BorrowViolation(euv::AutoUnsafe) |
                     BorrowViolation(euv::ForLoop) |
                     BorrowViolation(euv::MatchDiscriminant) => {
-                        self.cannot_borrow_path_as_mutable(error_span, &descr)
+                        self.cannot_borrow_path_as_mutable(error_span, &descr, Origin::Ast)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
                         span_bug!(err.span,
@@ -851,12 +854,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 if let Some((yield_span, _)) = maybe_borrow_across_yield {
                     debug!("err_out_of_scope: opt_yield_span = {:?}", yield_span);
-                    self.cannot_borrow_across_generator_yield(error_span, yield_span)
+                    self.cannot_borrow_across_generator_yield(error_span, yield_span, Origin::Ast)
                         .emit();
                     return;
                 }
 
-                let mut db = self.path_does_not_live_long_enough(error_span, &msg);
+                let mut db = self.path_does_not_live_long_enough(error_span, &msg, Origin::Ast);
                 let (value_kind, value_msg) = match err.cmt.cat {
                     mc::Categorization::Rvalue(..) =>
                         ("temporary value", "temporary value created here"),
@@ -965,7 +968,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = self.cmt_to_path_or_string(&err.cmt);
-                let mut db = self.lifetime_too_short_for_reborrow(error_span, &descr);
+                let mut db = self.lifetime_too_short_for_reborrow(error_span, &descr, Origin::Ast);
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
                         format!("`{}`", self.loan_path_to_string(&lp))
@@ -1050,10 +1053,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
                 let node_id = self.tcx.hir.def_index_to_node_id(id);
                 let help_span = self.tcx.hir.span(node_id);
-                self.cannot_act_on_capture_in_sharable_fn(span, prefix, (help_span, help_msg))
+                self.cannot_act_on_capture_in_sharable_fn(span,
+                                                          prefix,
+                                                          (help_span, help_msg),
+                                                          Origin::Ast)
             }
             _ =>  {
-                self.cannot_assign_into_immutable_reference(span, prefix)
+                self.cannot_assign_into_immutable_reference(span, prefix,
+                                                            Origin::Ast)
             }
         };
         self.note_immutability_blame(&mut err, blame);
@@ -1207,7 +1214,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         self.cannot_capture_in_long_lived_closure(err.span,
                                                   &cmt_path_or_string,
-                                                  capture_span)
+                                                  capture_span,
+                                                  Origin::Ast)
             .span_suggestion(err.span,
                              &format!("to force the closure to take ownership of {} \
                                        (and any other referenced variables), \
