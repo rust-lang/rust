@@ -166,7 +166,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
 
             changed |= to_region.add_point(p);
 
-            let block_data = self.mir[p.block];
+            let block_data = &self.mir[p.block];
             let successor_points = if p.statement_index < block_data.statements.len() {
                 vec![Location {
                     statement_index: p.statement_index + 1,
