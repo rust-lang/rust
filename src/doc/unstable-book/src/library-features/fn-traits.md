@@ -2,7 +2,7 @@
 
 The tracking issue for this feature is [#29625]
 
-See Also: [`unboxed_closures`](language-features/unboxed_closures.md)
+See Also: [`unboxed_closures`](language-features/unboxed-closures.html)
 
 [#29625]: https://github.com/rust-lang/rust/issues/29625
 

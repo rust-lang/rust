@@ -6,44 +6,42 @@ The tracking issue for this feature is [#13231]
 
 ----
 
-The `optin_builtin_traits` feature gate allows you to define _auto traits_.
+The `optin_builtin_traits` feature gate allows you to define auto traits.
 
 Auto traits, like [`Send`] or [`Sync`] in the standard library, are marker traits
 that are automatically implemented for every type, unless the type, or a type it contains, 
-has explictly opted out via a _negative impl_. 
+has explictly opted out via a negative impl. 
 
 [`Send`]: https://doc.rust-lang.org/std/marker/trait.Send.html
 [`Sync`]: https://doc.rust-lang.org/std/marker/trait.Sync.html
 
-```rust, ignore
+```rust,ignore
 impl !Type for Trait
 ```
 
 Example:
 
 ```rust
-    #![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits)]
 
-    trait Valid {}
+trait Valid {}
 
-    impl Valid for .. {}
+impl Valid for .. {}
 
-    struct True;
-    struct False;
+struct True;
+struct False;
 
-    impl !Valid for False {}
+impl !Valid for False {}
 
-    struct MaybeValid<T>(T);
+struct MaybeValid<T>(T);
 
-    fn must_be_valid<T: Valid>(_t: T) { 
+fn must_be_valid<T: Valid>(_t: T) { }
 
-    }
-
-    fn main() {
-        //works
-        must_be_valid( MaybeValid(True) );
+fn main() {
+    // works
+    must_be_valid( MaybeValid(True) );
                 
-        // compiler error - trait bound not satisfied
-        // must_be_valid( MaybeValid(False) );
-    }
+    // compiler error - trait bound not satisfied
+    // must_be_valid( MaybeValid(False) );
+}
 ```

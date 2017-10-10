@@ -2,7 +2,7 @@
 
 The tracking issue for this feature is [#29625]
 
-See Also: [`fn_traits`](library-features/fn-traits.md)
+See Also: [`fn_traits`](library-features/fn-traits.html)
 
 [#29625]: https://github.com/rust-lang/rust/issues/29625
 
@@ -17,7 +17,7 @@ exactly one (non self) argument, a tuple representing the argument list.
 ```rust
 #![feature(unboxed_closures)]
 
-extern "rust-call" fn add_args(args: (u32, u32)) {
+extern "rust-call" fn add_args(args: (u32, u32)) -> u32 {
     args.0 + args.1
 }
 
