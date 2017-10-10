@@ -193,6 +193,24 @@ declare_lint! {
      `map_or_else(g, f)`"
 }
 
+/// **What it does:** Checks for usage of `_.map_or(None, _)`.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `_.and_then(_)`.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// opt.map_or(None, |a| a + 1)
+/// ```
+declare_lint! {
+    pub OPTION_MAP_OR_NONE,
+    Warn,
+    "using `Option.map_or(None, f)`, which is more succinctly expressed as \
+     `and_then(f)`"
+}
+
 /// **What it does:** Checks for usage of `_.filter(_).next()`.
 ///
 /// **Why is this bad?** Readability, this can be written more concisely as
@@ -574,6 +592,7 @@ impl LintPass for Pass {
             OK_EXPECT,
             OPTION_MAP_UNWRAP_OR,
             OPTION_MAP_UNWRAP_OR_ELSE,
+            OPTION_MAP_OR_NONE,
             OR_FUN_CALL,
             CHARS_NEXT_CMP,
             CHARS_LAST_CMP,
@@ -620,6 +639,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_map_unwrap_or(cx, expr, arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
                     lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["map_or"]) {
+                    lint_map_or_none(cx, expr, arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
                     lint_filter_next(cx, expr, arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["filter", "map"]) {
@@ -1217,6 +1238,35 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir
         } else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg);
         };
+    }
+}
+
+/// lint use of `_.map_or(None, _)` for `Option`s
+fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, map_or_args: &'tcx [hir::Expr]) {
+
+    if match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION) {
+        // check if the first non-self argument to map_or() is None
+        let map_or_arg_is_none = if let hir::Expr_::ExprPath(ref qpath) = map_or_args[1].node {
+            match_qpath(qpath, &paths::OPTION_NONE)
+        } else {
+            false
+        };
+
+        if map_or_arg_is_none {
+            // lint message
+            let msg = "called `map_or(None, f)` on an Option value. This can be done more directly by calling \
+                       `and_then(f)` instead";
+            let map_or_self_snippet = snippet(cx, map_or_args[0].span, "..");
+            let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
+            let hint = format!("{0}.and_then({1})", map_or_self_snippet, map_or_func_snippet);
+            span_lint_and_then(
+                cx,
+                OPTION_MAP_OR_NONE,
+                expr.span,
+                msg,
+                |db| { db.span_suggestion(expr.span, "try using and_then instead", hint); },
+            );
+        }
     }
 }
 

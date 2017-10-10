@@ -91,6 +91,7 @@ macro_rules! opt_map {
 /// Checks implementation of the following lints:
 /// * `OPTION_MAP_UNWRAP_OR`
 /// * `OPTION_MAP_UNWRAP_OR_ELSE`
+/// * `OPTION_MAP_OR_NONE`
 fn option_methods() {
     let opt = Some(1);
 
@@ -137,6 +138,15 @@ fn option_methods() {
                 );
     // macro case
     let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0); // should not lint
+
+    // Check OPTION_MAP_OR_NONE
+    // single line case
+    let _ = opt.map_or(None, |x| Some(x + 1));
+    // multi line case
+    let _ = opt.map_or(None, |x| {
+                        Some(x + 1)
+                       }
+                );
 }
 
 /// Struct to generate false positives for things with .iter()
