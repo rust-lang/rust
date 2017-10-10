@@ -925,14 +925,16 @@ fn check_for_loop_range<'a, 'tcx>(
                 cx: cx,
                 var: canonical_id,
                 indexed: HashMap::new(),
+                indexed_directly: HashMap::new(),
                 referenced: HashSet::new(),
                 nonindex: false,
             };
             walk_expr(&mut visitor, body);
 
-            // linting condition: we only indexed one variable
-            if visitor.indexed.len() == 1 {
-                let (indexed, indexed_extent) = visitor.indexed.into_iter().next().expect(
+            // linting condition: we only indexed one variable, and indexed it directly
+            // (`indexed_directly` is subset of `indexed`)
+            if visitor.indexed.len() == 1 && visitor.indexed_directly.len() == 1 {
+                let (indexed, indexed_extent) = visitor.indexed_directly.into_iter().next().expect(
                     "already checked that we have exactly 1 element",
                 );
 
@@ -1481,6 +1483,9 @@ struct VarVisitor<'a, 'tcx: 'a> {
     var: ast::NodeId,
     /// indexed variables, the extend is `None` for global
     indexed: HashMap<Name, Option<region::Scope>>,
+    /// subset of `indexed` of vars that are indexed directly: `v[i]`
+    /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
+    indexed_directly: HashMap<Name, Option<region::Scope>>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
     referenced: HashSet<Name>,
@@ -1499,7 +1504,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             let QPath::Resolved(None, ref seqvar) = *seqpath,
             seqvar.segments.len() == 1,
         ], {
-            let index_used = same_var(self.cx, idx, self.var) || {
+            let index_used_directly = same_var(self.cx, idx, self.var);
+            let index_used = index_used_directly || {
                 let mut used_visitor = LocalUsedVisitor {
                     cx: self.cx,
                     local: self.var,
@@ -1519,10 +1525,16 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                         let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
                         let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
                         self.indexed.insert(seqvar.segments[0].name, Some(extent));
+                        if index_used_directly {
+                            self.indexed_directly.insert(seqvar.segments[0].name, Some(extent));
+                        }
                         return;  // no need to walk further *on the variable*
                     }
                     Def::Static(..) | Def::Const(..) => {
                         self.indexed.insert(seqvar.segments[0].name, None);
+                        if index_used_directly {
+                            self.indexed_directly.insert(seqvar.segments[0].name, None);
+                        }
                         return;  // no need to walk further *on the variable*
                     }
                     _ => (),
