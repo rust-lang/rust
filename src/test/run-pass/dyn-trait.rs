@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,15 @@
 
 #![feature(dyn_trait)]
 
-struct Foo;
+use std::fmt::Display;
 
-fn foo(_x: Box<Foo + Send>) { } //~ ERROR expected trait, found struct `Foo`
+static BYTE: u8 = 33;
 
-type A<T> = Box<dyn Vec<T>>; //~ ERROR expected trait, found struct `Vec`
-
-fn main() { }
+fn main() {
+    let x: &(dyn 'static + Display) = &BYTE;
+    let y: Box<dyn Display + 'static> = Box::new(BYTE);
+    let xstr = format!("{}", x);
+    let ystr = format!("{}", y);
+    assert_eq!(xstr, "33");
+    assert_eq!(ystr, "33");
+}

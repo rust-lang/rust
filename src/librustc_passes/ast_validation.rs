@@ -152,7 +152,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     err.emit();
                 });
             }
-            TyKind::TraitObject(ref bounds) => {
+            TyKind::TraitObject(ref bounds, ..) => {
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
                     if let RegionTyParamBound(ref lifetime) = *bound {

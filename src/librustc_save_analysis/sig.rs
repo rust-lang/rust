@@ -288,7 +288,7 @@ impl Sig for ast::Ty {
                     })
                 }
             }
-            ast::TyKind::TraitObject(ref bounds) => {
+            ast::TyKind::TraitObject(ref bounds, ..) => {
                 // FIXME recurse into bounds
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(nested))
