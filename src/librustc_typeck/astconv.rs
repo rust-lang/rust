@@ -1464,7 +1464,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// declaration like `self: SomeType` into either `self`,
     /// `&self`, `&mut self`, or `Box<self>`. We do this here
     /// by some simple pattern matching. A more precise check
-    /// is done later in `check_method_self_type()`.
+    /// is done later in `check_method_receiver()`.
     ///
     /// Examples:
     ///
@@ -1475,7 +1475,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     ///     fn method2(self: &T); // ExplicitSelf::ByValue
     ///     fn method3(self: Box<&T>); // ExplicitSelf::ByBox
     ///
-    ///     // Invalid cases will be caught later by `check_method_self_type`:
+    ///     // Invalid cases will be caught later by `check_method_receiver`:
     ///     fn method_err1(self: &mut T); // ExplicitSelf::ByReference
     /// }
     /// ```

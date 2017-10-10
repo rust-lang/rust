@@ -39,7 +39,7 @@ The script accepts commands, flags, and arguments to determine what to do:
   ```
 
   If files are dirty that would normally be rebuilt from stage 0, that can be
-  overidden using `--keep-stage 0`. Using `--keep-stage n` will skip all steps
+  overridden using `--keep-stage 0`. Using `--keep-stage n` will skip all steps
   that belong to stage n or earlier:
 
   ```

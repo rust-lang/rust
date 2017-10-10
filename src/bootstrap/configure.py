@@ -346,7 +346,7 @@ for target in configured_targets:
     targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", target)
 
 # Here we walk through the constructed configuration we have from the parsed
-# command line arguemnts. We then apply each piece of configuration by
+# command line arguments. We then apply each piece of configuration by
 # basically just doing a `sed` to change the various configuration line to what
 # we've got configure.
 def to_toml(value):

@@ -19,7 +19,7 @@ use std::intrinsics::{fadd_fast, fsub_fast, fmul_fast, fdiv_fast, frem_fast};
 #[no_mangle]
 pub fn add(x: f32, y: f32) -> f32 {
 // CHECK: fadd float
-// CHECK-NOT fast
+// CHECK-NOT: fast
     x + y
 }
 
