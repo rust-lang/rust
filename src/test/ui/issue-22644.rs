@@ -35,5 +35,7 @@ fn main() {
                    <
                    5);
 
+    println!("{}", a as usize << long_name);
+
     println!("{}", a: &mut 4);
 }

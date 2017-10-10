@@ -76,9 +76,18 @@ help: try comparing the casted value
 33 | 
  ...
 
-error: expected type, found `4`
-  --> $DIR/issue-22644.rs:38:28
+error: `<` is interpreted as a start of generic arguments for `usize`, not a shift
+  --> $DIR/issue-22644.rs:38:31
    |
-38 |     println!("{}", a: &mut 4);
+38 |     println!("{}", a as usize << long_name);
+   |                    ---------- ^^ --------- interpreted as generic arguments
+   |                    |          |
+   |                    |          not interpreted as shift
+   |                    help: try shifting the casted value: `(a as usize)`
+
+error: expected type, found `4`
+  --> $DIR/issue-22644.rs:40:28
+   |
+40 |     println!("{}", a: &mut 4);
    |                            ^ expecting a type here because of type ascription
 
