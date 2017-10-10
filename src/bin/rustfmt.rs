@@ -201,7 +201,6 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             }
 
             Ok(error_summary)
-
         }
         Operation::Format {
             files,
@@ -254,7 +253,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                     }
 
                     if !config.version_meets_requirement(&mut error_summary) {
-                        break
+                        break;
                     }
 
                     options.clone().apply_to(&mut config);
