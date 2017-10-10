@@ -3513,12 +3513,29 @@ impl<'a> fmt::Display for Sidebar<'a> {
     }
 }
 
+fn get_methods(i: &clean::Impl) -> Vec<String> {
+    i.items.iter().filter_map(|item| {
+        match item.name {
+            // Maybe check with clean::Visibility::Public as well?
+            Some(ref name) if !name.is_empty() && item.visibility.is_some() && item.is_method() => {
+                Some(format!("<a href=\"#method.{name}\">{name}</a>", name = name))
+            }
+            _ => None,
+        }
+    }).collect::<Vec<_>>()
+}
+
 fn sidebar_assoc_items(it: &clean::Item) -> String {
     let mut out = String::new();
     let c = cache();
     if let Some(v) = c.impls.get(&it.def_id) {
-        if v.iter().any(|i| i.inner_impl().trait_.is_none()) {
-            out.push_str("<li><a href=\"#methods\">Methods</a></li>");
+        let ret = v.iter()
+                   .filter(|i| i.inner_impl().trait_.is_none())
+                   .flat_map(|i| get_methods(i.inner_impl()))
+                   .collect::<String>();
+        if !ret.is_empty() {
+            out.push_str(&format!("<a class=\"sidebar-title\" href=\"#methods\">Methods\
+                                   </a><div class=\"sidebar-links\">{}</div>", ret));
         }
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
@@ -3534,16 +3551,33 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                     let inner_impl = target.def_id().or(target.primitive_type().and_then(|prim| {
                         c.primitive_locations.get(&prim).cloned()
                     })).and_then(|did| c.impls.get(&did));
-                    if inner_impl.is_some() {
-                        out.push_str("<li><a href=\"#deref-methods\">");
+                    if let Some(impls) = inner_impl {
+                        out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");
                         out.push_str(&format!("Methods from {:#}&lt;Target={:#}&gt;",
-                                                  impl_.inner_impl().trait_.as_ref().unwrap(),
-                                                  target));
-                        out.push_str("</a></li>");
+                                              impl_.inner_impl().trait_.as_ref().unwrap(),
+                                              target));
+                        out.push_str("</a>");
+                        let ret = impls.iter()
+                                       .filter(|i| i.inner_impl().trait_.is_none())
+                                       .flat_map(|i| get_methods(i.inner_impl()))
+                                       .collect::<String>();
+                        out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret));
                     }
                 }
             }
-            out.push_str("<li><a href=\"#implementations\">Trait Implementations</a></li>");
+            let ret = v.iter()
+                       .filter_map(|i| if let Some(ref i) = i.inner_impl().trait_ {
+                           let out = format!("{:#}", i).replace("<", "&lt;").replace(">", "&gt;");
+                           Some(format!("<a href=\"#impl-{:#}\">{name}</a>", i, out))
+                       } else {
+                           None
+                       })
+                       .collect::<String>();
+            if !ret.is_empty() {
+                out.push_str("<a class=\"sidebar-title\" href=\"#implementations\">\
+                              Trait Implementations</a>");
+                out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret));
+            }
         }
     }
 
@@ -3564,7 +3598,7 @@ fn sidebar_struct(fmt: &mut fmt::Formatter, it: &clean::Item,
     sidebar.push_str(&sidebar_assoc_items(it));
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
     }
     Ok(())
 }
@@ -3606,7 +3640,7 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
 
     sidebar.push_str("<li><a href=\"#implementors\">Implementors</a></li>");
 
-    write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)
+    write!(fmt, "<div class=\"block items\">{}</div>", sidebar)
 }
 
 fn sidebar_primitive(fmt: &mut fmt::Formatter, it: &clean::Item,
@@ -3614,7 +3648,7 @@ fn sidebar_primitive(fmt: &mut fmt::Formatter, it: &clean::Item,
     let sidebar = sidebar_assoc_items(it);
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
     }
     Ok(())
 }
@@ -3624,7 +3658,7 @@ fn sidebar_typedef(fmt: &mut fmt::Formatter, it: &clean::Item,
     let sidebar = sidebar_assoc_items(it);
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
     }
     Ok(())
 }
@@ -3641,7 +3675,7 @@ fn sidebar_union(fmt: &mut fmt::Formatter, it: &clean::Item,
     sidebar.push_str(&sidebar_assoc_items(it));
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
     }
     Ok(())
 }
@@ -3657,7 +3691,7 @@ fn sidebar_enum(fmt: &mut fmt::Formatter, it: &clean::Item,
     sidebar.push_str(&sidebar_assoc_items(it));
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
     }
     Ok(())
 }
