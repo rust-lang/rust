@@ -1,5 +1,5 @@
-#!/bin/sh
-# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+#!/usr/bin/env python
+# Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -9,21 +9,122 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-# Exit if anything fails
-set -e
+from __future__ import print_function
+from subprocess import (
+    CalledProcessError,
+    check_call,
+    check_output,
+)
+import os
+import sys
 
-# Find out where the pretty printer Python module is
-RUSTC_SYSROOT=`rustc --print=sysroot`
-GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
-# Find rust source for gdb
-RUST_SRCROOT="${RUSTC_SYSROOT}/lib/rustlib/src/rust"
 
-# Run GDB with the additional arguments that load the pretty printers
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 # Set the environment variable `RUST_GDB` to overwrite the call to a
 # different/specific command (defaults to `gdb`).
-RUST_GDB="${RUST_GDB:-gdb}"
-PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" ${RUST_GDB} \
-  -d "$GDB_PYTHON_MODULE_DIRECTORY" \
-  -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
-  -iex "set substitute-path /checkout $RUST_SRCROOT" \
-  "$@"
+RUST_GDB = os.environ.get("RUST_GDB", "gdb")
+
+try:
+    RUSTC_SYSROOT = check_output(["rustc", "--print=sysroot"]).strip()
+    RUSTC_VERSION = check_output(["rustc", "--version"]).strip()
+except Exception as e:
+    eprint("Couldn't execute rustc!")
+    sys.exit(1)
+
+RUST_DWARFROOT = "/checkout"
+DEFAULT_RUST_SRC_PATH = "{}/lib/rustlib/src/rust".format(RUSTC_SYSROOT)
+GDB_PYTHON_MODULE_DIRECTORY = "{}/lib/rustlib/etc".format(RUSTC_SYSROOT)
+
+
+def rustc_mismatch(version):
+    eprint("""
+ERROR: The current rustc doesn't match the version used to compile the binary
+These versions must match to display standard library functions.
+The binary was built with rust version {}
+To fix this, do one of the following:
+  - Install the appropriate rust and rust-src components
+  - Set the RUST_DBG_SRC_PATH environment variable when running this command
+  - Skip loading the Rust standard library source code with the environment variable
+    RUST_DBG_IGNORE_SRC=1
+""".format(version))
+    sys.exit(1)
+
+
+def objdump_exists():
+    try:
+        check_call("command -v objdump 2>&1 >/dev/null", shell=True)
+        return True
+    except CalledProcessError:
+        return False
+
+
+def get_version_from_objdump(filename):
+    try:
+        obj_info = check_output(("objdump -g {} 2>/dev/null"
+                                 "| grep DW_AT_producer.*rustc "
+                                 "| head -n 1").format(filename),
+                                shell=True)
+        if len(obj_info) == 0:
+            return None
+    except:
+        return None
+
+    try:
+        version = obj_info.split("rustc version ")[1].strip().replace("))", ")")
+        return version
+    except:
+        return None
+
+
+def verify_rust_std_src_path(rust_std_src_path, target_path):
+    # By default we'll look for the rust-src installed alongside the current rustc. It doesn't make
+    # sense to check the version of rustc if the user has overridden this path.
+    if rust_std_src_path == DEFAULT_RUST_SRC_PATH:
+        if objdump_exists():
+            target_version = get_version_from_objdump(target_path)
+            if target_version and (target_version not in RUSTC_VERSION):
+                rustc_mismatch(RUSTC_VERSION)
+    else:
+        eprint(("Using Rust standard library source code path "
+                "{} from environment").format(rust_std_src_path))
+    if os.path.exists(os.path.expanduser(rust_std_src_path)):
+        return True
+    return False
+
+
+def run(env, skip_src, rust_std_src_path):
+    if skip_src:
+        rust_std_src_path = None
+    else:
+        # the last argument to GDB is the target binary
+        if not verify_rust_std_src_path(rust_std_src_path, sys.argv[-1]):
+            rust_std_src_path = None
+
+    env["PYTHONPATH"] = ":".join(filter(None, [
+        env.get("PYTHONPATH", None),
+        GDB_PYTHON_MODULE_DIRECTORY
+    ]))
+
+    args = [RUST_GDB]
+    # Run GDB with the additional arguments that load the pretty printers
+    args.extend(["-d", GDB_PYTHON_MODULE_DIRECTORY])
+    args.extend(["-iex", "add-auto-load-safe-path {}".format(GDB_PYTHON_MODULE_DIRECTORY)])
+    # Add path substitution to display source code for rust-std functions
+    if rust_std_src_path and not skip_src:
+        args.extend(["-iex", "set substitute-path {} {}".format(RUST_DWARFROOT, rust_std_src_path)])
+    else:
+        eprint("WARNING: rust-src is not present, "
+               "gdb will not be able to display source for rust-std")
+
+    # Pass through the rest of the original arguments
+    args.extend(sys.argv[1:])
+    os.execvpe(RUST_GDB, args, env)
+
+
+if __name__ == "__main__":
+    env = os.environ.copy()
+    skip_src = os.environ.get("RUST_DBG_IGNORE_SRC", None) == "1"
+    rust_std_src_path = os.environ.get("RUST_DBG_SRC_PATH", DEFAULT_RUST_SRC_PATH)
+    run(env, skip_src, rust_std_src_path)
