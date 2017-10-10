@@ -103,344 +103,363 @@ error: unnecessary structure name repetition
    |                               ^ help: use the applicable keyword: `Self`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-   --> $DIR/methods.rs:99:13
+   --> $DIR/methods.rs:100:13
     |
-99  |       let _ = opt.map(|x| x + 1)
+100 |       let _ = opt.map(|x| x + 1)
     |  _____________^
-100 | |
-101 | |                .unwrap_or(0); // should lint even though this call is on a separate line
+101 | |
+102 | |                .unwrap_or(0); // should lint even though this call is on a separate line
     | |____________________________^
     |
     = note: `-D option-map-unwrap-or` implied by `-D warnings`
     = note: replace `map(|x| x + 1).unwrap_or(0)` with `map_or(0, |x| x + 1)`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-   --> $DIR/methods.rs:103:13
+   --> $DIR/methods.rs:104:13
     |
-103 |       let _ = opt.map(|x| {
+104 |       let _ = opt.map(|x| {
     |  _____________^
-104 | |                         x + 1
-105 | |                     }
-106 | |               ).unwrap_or(0);
+105 | |                         x + 1
+106 | |                     }
+107 | |               ).unwrap_or(0);
     | |____________________________^
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-   --> $DIR/methods.rs:107:13
+   --> $DIR/methods.rs:108:13
     |
-107 |       let _ = opt.map(|x| x + 1)
+108 |       let _ = opt.map(|x| x + 1)
     |  _____________^
-108 | |                .unwrap_or({
-109 | |                     0
-110 | |                 });
+109 | |                .unwrap_or({
+110 | |                     0
+111 | |                 });
     | |__________________^
 
 error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-   --> $DIR/methods.rs:112:13
+   --> $DIR/methods.rs:113:13
     |
-112 |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
+113 |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: replace `map(|x| Some(x + 1)).unwrap_or(None)` with `and_then(|x| Some(x + 1))`
 
 error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-   --> $DIR/methods.rs:114:13
+   --> $DIR/methods.rs:115:13
     |
-114 |       let _ = opt.map(|x| {
+115 |       let _ = opt.map(|x| {
     |  _____________^
-115 | |         Some(x + 1)
-116 | |     }
-117 | |     ).unwrap_or(None);
+116 | |         Some(x + 1)
+117 | |     }
+118 | |     ).unwrap_or(None);
     | |_____________________^
 
 error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-   --> $DIR/methods.rs:118:13
+   --> $DIR/methods.rs:119:13
     |
-118 |       let _ = opt
+119 |       let _ = opt
     |  _____________^
-119 | |         .map(|x| Some(x + 1))
-120 | |         .unwrap_or(None);
+120 | |         .map(|x| Some(x + 1))
+121 | |         .unwrap_or(None);
     | |________________________^
     |
     = note: replace `map(|x| Some(x + 1)).unwrap_or(None)` with `and_then(|x| Some(x + 1))`
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-   --> $DIR/methods.rs:126:13
+   --> $DIR/methods.rs:127:13
     |
-126 |       let _ = opt.map(|x| x + 1)
+127 |       let _ = opt.map(|x| x + 1)
     |  _____________^
-127 | |
-128 | |                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
+128 | |
+129 | |                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
     | |____________________________________^
     |
     = note: `-D option-map-unwrap-or-else` implied by `-D warnings`
     = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-   --> $DIR/methods.rs:130:13
+   --> $DIR/methods.rs:131:13
     |
-130 |       let _ = opt.map(|x| {
+131 |       let _ = opt.map(|x| {
     |  _____________^
-131 | |                         x + 1
-132 | |                     }
-133 | |               ).unwrap_or_else(|| 0);
+132 | |                         x + 1
+133 | |                     }
+134 | |               ).unwrap_or_else(|| 0);
     | |____________________________________^
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-   --> $DIR/methods.rs:134:13
+   --> $DIR/methods.rs:135:13
     |
-134 |       let _ = opt.map(|x| x + 1)
+135 |       let _ = opt.map(|x| x + 1)
     |  _____________^
-135 | |                .unwrap_or_else(||
-136 | |                     0
-137 | |                 );
+136 | |                .unwrap_or_else(||
+137 | |                     0
+138 | |                 );
+    | |_________________^
+
+error: called `map_or(None, f)` on an Option value. This can be done more directly by calling `and_then(f)` instead
+   --> $DIR/methods.rs:144:13
+    |
+144 |     let _ = opt.map_or(None, |x| Some(x + 1));
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D option-map-or-none` implied by `-D warnings`
+    = note: replace `map_or(None, |x| Some(x + 1))` with `and_then(|x| Some(x + 1))`
+
+error: called `map_or(None, f)` on an Option value. This can be done more directly by calling `and_then(f)` instead
+   --> $DIR/methods.rs:146:13
+    |
+146 |       let _ = opt.map_or(None, |x| {
+    |  _____________^
+147 | |                         Some(x + 1)
+148 | |                        }
+149 | |                 );
     | |_________________^
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:163:24
+   --> $DIR/methods.rs:173:24
     |
-163 |     fn filter(self) -> IteratorFalsePositives {
+173 |     fn filter(self) -> IteratorFalsePositives {
     |                        ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:167:22
+   --> $DIR/methods.rs:177:22
     |
-167 |     fn next(self) -> IteratorFalsePositives {
+177 |     fn next(self) -> IteratorFalsePositives {
     |                      ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:187:32
+   --> $DIR/methods.rs:197:32
     |
-187 |     fn skip(self, _: usize) -> IteratorFalsePositives {
+197 |     fn skip(self, _: usize) -> IteratorFalsePositives {
     |                                ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-   --> $DIR/methods.rs:197:13
+   --> $DIR/methods.rs:207:13
     |
-197 |     let _ = v.iter().filter(|&x| *x < 0).next();
+207 |     let _ = v.iter().filter(|&x| *x < 0).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D filter-next` implied by `-D warnings`
     = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-   --> $DIR/methods.rs:200:13
+   --> $DIR/methods.rs:210:13
     |
-200 |       let _ = v.iter().filter(|&x| {
+210 |       let _ = v.iter().filter(|&x| {
     |  _____________^
-201 | |                                 *x < 0
-202 | |                             }
-203 | |                    ).next();
+211 | |                                 *x < 0
+212 | |                             }
+213 | |                    ).next();
     | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:215:13
+   --> $DIR/methods.rs:225:13
     |
-215 |     let _ = v.iter().find(|&x| *x < 0).is_some();
+225 |     let _ = v.iter().find(|&x| *x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D search-is-some` implied by `-D warnings`
     = note: replace `find(|&x| *x < 0).is_some()` with `any(|&x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:218:13
+   --> $DIR/methods.rs:228:13
     |
-218 |       let _ = v.iter().find(|&x| {
+228 |       let _ = v.iter().find(|&x| {
     |  _____________^
-219 | |                               *x < 0
-220 | |                           }
-221 | |                    ).is_some();
+229 | |                               *x < 0
+230 | |                           }
+231 | |                    ).is_some();
     | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:224:13
+   --> $DIR/methods.rs:234:13
     |
-224 |     let _ = v.iter().position(|&x| x < 0).is_some();
+234 |     let _ = v.iter().position(|&x| x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: replace `position(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:227:13
+   --> $DIR/methods.rs:237:13
     |
-227 |       let _ = v.iter().position(|&x| {
+237 |       let _ = v.iter().position(|&x| {
     |  _____________^
-228 | |                                   x < 0
-229 | |                               }
-230 | |                    ).is_some();
+238 | |                                   x < 0
+239 | |                               }
+240 | |                    ).is_some();
     | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:233:13
+   --> $DIR/methods.rs:243:13
     |
-233 |     let _ = v.iter().rposition(|&x| x < 0).is_some();
+243 |     let _ = v.iter().rposition(|&x| x < 0).is_some();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: replace `rposition(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-   --> $DIR/methods.rs:236:13
+   --> $DIR/methods.rs:246:13
     |
-236 |       let _ = v.iter().rposition(|&x| {
+246 |       let _ = v.iter().rposition(|&x| {
     |  _____________^
-237 | |                                    x < 0
-238 | |                                }
-239 | |                    ).is_some();
+247 | |                                    x < 0
+248 | |                                }
+249 | |                    ).is_some();
     | |______________________________^
 
 error: unnecessary structure name repetition
-   --> $DIR/methods.rs:253:21
+   --> $DIR/methods.rs:263:21
     |
-253 |         fn new() -> Foo { Foo }
+263 |         fn new() -> Foo { Foo }
     |                     ^^^ help: use the applicable keyword: `Self`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:271:5
+   --> $DIR/methods.rs:281:5
     |
-271 |     with_constructor.unwrap_or(make());
+281 |     with_constructor.unwrap_or(make());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_constructor.unwrap_or_else(make)`
     |
     = note: `-D or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
-   --> $DIR/methods.rs:274:5
+   --> $DIR/methods.rs:284:5
     |
-274 |     with_new.unwrap_or(Vec::new());
+284 |     with_new.unwrap_or(Vec::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:277:5
+   --> $DIR/methods.rs:287:5
     |
-277 |     with_const_args.unwrap_or(Vec::with_capacity(12));
+287 |     with_const_args.unwrap_or(Vec::with_capacity(12));
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:280:5
+   --> $DIR/methods.rs:290:5
     |
-280 |     with_err.unwrap_or(make());
+290 |     with_err.unwrap_or(make());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err.unwrap_or_else(|_| make())`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:283:5
+   --> $DIR/methods.rs:293:5
     |
-283 |     with_err_args.unwrap_or(Vec::with_capacity(12));
+293 |     with_err_args.unwrap_or(Vec::with_capacity(12));
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a call to `default`
-   --> $DIR/methods.rs:286:5
+   --> $DIR/methods.rs:296:5
     |
-286 |     with_default_trait.unwrap_or(Default::default());
+296 |     with_default_trait.unwrap_or(Default::default());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `default`
-   --> $DIR/methods.rs:289:5
+   --> $DIR/methods.rs:299:5
     |
-289 |     with_default_type.unwrap_or(u64::default());
+299 |     with_default_type.unwrap_or(u64::default());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:292:5
+   --> $DIR/methods.rs:302:5
     |
-292 |     with_vec.unwrap_or(vec![]);
+302 |     with_vec.unwrap_or(vec![]);
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:297:5
+   --> $DIR/methods.rs:307:5
     |
-297 |     without_default.unwrap_or(Foo::new());
+307 |     without_default.unwrap_or(Foo::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `without_default.unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:300:5
+   --> $DIR/methods.rs:310:5
     |
-300 |     map.entry(42).or_insert(String::new());
+310 |     map.entry(42).or_insert(String::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `map.entry(42).or_insert_with(String::new)`
 
 error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:303:5
+   --> $DIR/methods.rs:313:5
     |
-303 |     btree.entry(42).or_insert(String::new());
+313 |     btree.entry(42).or_insert(String::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `btree.entry(42).or_insert_with(String::new)`
 
 error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:306:13
+   --> $DIR/methods.rs:316:13
     |
-306 |     let _ = stringy.unwrap_or("".to_owned());
+316 |     let _ = stringy.unwrap_or("".to_owned());
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `stringy.unwrap_or_else(|| "".to_owned())`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:317:23
+   --> $DIR/methods.rs:327:23
     |
-317 |         let bad_vec = some_vec.iter().nth(3);
+327 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:318:26
+   --> $DIR/methods.rs:328:26
     |
-318 |         let bad_slice = &some_vec[..].iter().nth(3);
+328 |         let bad_slice = &some_vec[..].iter().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:319:31
+   --> $DIR/methods.rs:329:31
     |
-319 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
+329 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:320:29
+   --> $DIR/methods.rs:330:29
     |
-320 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
+330 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:325:23
+   --> $DIR/methods.rs:335:23
     |
-325 |         let bad_vec = some_vec.iter_mut().nth(3);
+335 |         let bad_vec = some_vec.iter_mut().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:328:26
+   --> $DIR/methods.rs:338:26
     |
-328 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
+338 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:331:29
+   --> $DIR/methods.rs:341:29
     |
-331 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+341 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:343:13
+   --> $DIR/methods.rs:353:13
     |
-343 |     let _ = some_vec.iter().skip(42).next();
+353 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:344:13
+   --> $DIR/methods.rs:354:13
     |
-344 |     let _ = some_vec.iter().cycle().skip(42).next();
+354 |     let _ = some_vec.iter().cycle().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:345:13
+   --> $DIR/methods.rs:355:13
     |
-345 |     let _ = (1..10).skip(10).next();
+355 |     let _ = (1..10).skip(10).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:346:14
+   --> $DIR/methods.rs:356:14
     |
-346 |     let _ = &some_vec[..].iter().skip(3).next();
+356 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:355:13
+   --> $DIR/methods.rs:365:13
     |
-355 |     let _ = opt.unwrap();
+365 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
