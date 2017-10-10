@@ -640,7 +640,7 @@ create_config! {
     merge_derives: bool, true, "Merge multiple `#[derive(...)]` into a single one";
     binop_separator: SeparatorPlace, SeparatorPlace::Front,
         "Where to put a binary operator when a binary expression goes multiline.";
-    required_version: String, "".to_owned(),
+    required_version: String, env!("CARGO_PKG_VERSION").to_owned(),
         "Require a specific version of rustfmt."
 }
 
