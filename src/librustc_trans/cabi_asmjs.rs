@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{FnType, ArgType, ArgAttribute, LayoutExt, Uniform};
+use abi::{FnType, ArgType, LayoutExt, Uniform};
 use context::CrateContext;
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
@@ -35,8 +35,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
 
 fn classify_arg_ty(arg: &mut ArgType) {
     if arg.layout.is_aggregate() {
-        arg.make_indirect();
-        arg.attrs.set(ArgAttribute::ByVal);
+        arg.make_indirect_byval();
     }
 }
 

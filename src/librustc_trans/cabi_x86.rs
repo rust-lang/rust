@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{ArgAttribute, FnType, LayoutExt, Reg, RegKind};
+use abi::{ArgAttribute, FnType, LayoutExt, PassMode, Reg, RegKind};
 use common::CrateContext;
 
 use rustc::ty::layout::{self, TyLayout};
@@ -82,8 +82,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
         if arg.layout.is_aggregate() {
-            arg.make_indirect();
-            arg.attrs.set(ArgAttribute::ByVal);
+            arg.make_indirect_byval();
         } else {
             arg.extend_integer_width_to(32);
         }
@@ -102,7 +101,15 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let mut free_regs = 2;
 
         for arg in &mut fty.args {
-            if arg.is_ignore() || arg.is_indirect() { continue; }
+            let attrs = match arg.mode {
+                PassMode::Ignore |
+                PassMode::Indirect(_) => continue,
+                PassMode::Direct(ref mut attrs) => attrs,
+                PassMode::Pair(..) |
+                PassMode::Cast(_) => {
+                    bug!("x86 shouldn't be passing arguments by {:?}", arg.mode)
+                }
+            };
 
             // At this point we know this must be a primitive of sorts.
             let unit = arg.layout.homogeneous_aggregate(ccx).unwrap();
@@ -124,7 +131,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             free_regs -= size_in_regs;
 
             if arg.layout.size.bits() <= 32 && unit.kind == RegKind::Integer {
-                arg.attrs.set(ArgAttribute::InReg);
+                attrs.set(ArgAttribute::InReg);
             }
 
             if free_regs == 0 {

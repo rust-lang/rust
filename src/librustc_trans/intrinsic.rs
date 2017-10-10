@@ -13,7 +13,7 @@
 use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
-use abi::{Abi, FnType};
+use abi::{Abi, FnType, PassMode};
 use mir::lvalue::{LvalueRef, Alignment};
 use mir::operand::{OperandRef, OperandValue};
 use base::*;
@@ -237,7 +237,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         "volatile_load" => {
             let tp_ty = substs.type_at(0);
             let mut ptr = args[0].immediate();
-            if let Some(ty) = fn_ty.ret.cast {
+            if let PassMode::Cast(ty) = fn_ty.ret.mode {
                 ptr = bcx.pointercast(ptr, ty.llvm_type(ccx).ptr_to());
             }
             let load = bcx.volatile_load(ptr);
@@ -671,7 +671,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     };
 
     if !fn_ty.ret.is_ignore() {
-        if let Some(ty) = fn_ty.ret.cast {
+        if let PassMode::Cast(ty) = fn_ty.ret.mode {
             let ptr = bcx.pointercast(llresult, ty.llvm_type(ccx).ptr_to());
             bcx.store(llval, ptr, Some(ccx.align_of(ret_ty)));
         } else {
