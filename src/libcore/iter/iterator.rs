@@ -1514,6 +1514,24 @@ pub trait Iterator {
         false
     }
 
+    /// Completly consumes an iterator. This is a conveniant method for
+    /// functional programming with iterators.
+    ///
+    /// ```
+    /// let xs = [0, 1, 2, 3];
+    /// let mut sum = 0;
+    ///
+    /// xs.iter().map(|x| sum += x).drain();
+    /// assert_eq!(6, sum);
+    /// ```
+    #[inline]
+    #[stable(feature = "iterator_helper", since = "1.22.0")]
+    fn drain(&mut self) where
+        Self: Sized
+    {
+        self.fold((), |_,_| {});
+    }
+
     /// Searches for an element of an iterator that satisfies a predicate.
     ///
     /// `find()` takes a closure that returns `true` or `false`. It applies
