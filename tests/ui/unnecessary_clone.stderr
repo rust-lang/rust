@@ -1,0 +1,68 @@
+error: using `clone` on a `Copy` type
+  --> $DIR/unnecessary_clone.rs:11:5
+   |
+11 |     42.clone();
+   |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
+   |
+   = note: `-D clone-on-copy` implied by `-D warnings`
+
+error: using `clone` on a `Copy` type
+  --> $DIR/unnecessary_clone.rs:15:5
+   |
+15 |     (&42).clone();
+   |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
+
+error: using '.clone()' on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:25:5
+   |
+25 |     rc.clone();
+   |     ^^^^^^^^^^ help: try this: `Rc::clone(&rc)`
+   |
+   = note: `-D clone-on-ref-ptr` implied by `-D warnings`
+
+error: using '.clone()' on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:28:5
+   |
+28 |     arc.clone();
+   |     ^^^^^^^^^^^ help: try this: `Arc::clone(&arc)`
+
+error: using '.clone()' on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:31:5
+   |
+31 |     rcweak.clone();
+   |     ^^^^^^^^^^^^^^ help: try this: `Weak::clone(&rcweak)`
+
+error: using '.clone()' on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:34:5
+   |
+34 |     arc_weak.clone();
+   |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::clone(&arc_weak)`
+
+error: using `clone` on a `Copy` type
+  --> $DIR/unnecessary_clone.rs:41:5
+   |
+41 |     t.clone();
+   |     ^^^^^^^^^ help: try removing the `clone` call: `t`
+
+error: using `clone` on a `Copy` type
+  --> $DIR/unnecessary_clone.rs:43:5
+   |
+43 |     Some(t).clone();
+   |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
+
+error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
+  --> $DIR/unnecessary_clone.rs:49:22
+   |
+49 |     let z: &Vec<_> = y.clone();
+   |                      ^^^^^^^^^ help: try dereferencing it: `(*y).clone()`
+   |
+   = note: `-D clone-double-ref` implied by `-D warnings`
+
+error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
+  --> $DIR/unnecessary_clone.rs:56:27
+   |
+56 |     let v2 : Vec<isize> = v.iter().cloned().collect();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D iter-cloned-collect` implied by `-D warnings`
+

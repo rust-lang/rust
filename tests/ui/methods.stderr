@@ -567,85 +567,17 @@ error: calling `.extend(_.chars())`
 447 |     s.extend(def.chars());
     |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 
-error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:458:5
-    |
-458 |     42.clone();
-    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
-    |
-    = note: `-D clone-on-copy` implied by `-D warnings`
-
-error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:462:5
-    |
-462 |     (&42).clone();
-    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
-
-error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:472:5
-    |
-472 |     rc.clone();
-    |     ^^^^^^^^^^ help: try this: `Rc::clone(&rc)`
-    |
-    = note: `-D clone-on-ref-ptr` implied by `-D warnings`
-
-error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:475:5
-    |
-475 |     arc.clone();
-    |     ^^^^^^^^^^^ help: try this: `Arc::clone(&arc)`
-
-error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:478:5
-    |
-478 |     rcweak.clone();
-    |     ^^^^^^^^^^^^^^ help: try this: `Weak::clone(&rcweak)`
-
-error: using '.clone()' on a ref-counted pointer
-   --> $DIR/methods.rs:481:5
-    |
-481 |     arc_weak.clone();
-    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::clone(&arc_weak)`
-
-error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:488:5
-    |
-488 |     t.clone();
-    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
-
-error: using `clone` on a `Copy` type
-   --> $DIR/methods.rs:490:5
-    |
-490 |     Some(t).clone();
-    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
-
-error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-   --> $DIR/methods.rs:496:22
-    |
-496 |     let z: &Vec<_> = y.clone();
-    |                      ^^^^^^^^^ help: try dereferencing it: `(*y).clone()`
-    |
-    = note: `-D clone-double-ref` implied by `-D warnings`
-
 error: you are getting the inner pointer of a temporary `CString`
-   --> $DIR/methods.rs:505:5
+   --> $DIR/methods.rs:461:5
     |
-505 |     CString::new("foo").unwrap().as_ptr();
+461 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D temporary-cstring-as-ptr` implied by `-D warnings`
     = note: that pointer will be invalid outside this expression
 help: assign the `CString` to a variable to extend its lifetime
-   --> $DIR/methods.rs:505:5
+   --> $DIR/methods.rs:461:5
     |
-505 |     CString::new("foo").unwrap().as_ptr();
+461 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-   --> $DIR/methods.rs:510:27
-    |
-510 |     let v2 : Vec<isize> = v.iter().cloned().collect();
-    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `-D iter-cloned-collect` implied by `-D warnings`
 
