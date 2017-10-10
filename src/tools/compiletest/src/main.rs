@@ -102,6 +102,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         .reqopt("", "cc", "path to a C compiler", "PATH")
         .reqopt("", "cxx", "path to a C++ compiler", "PATH")
         .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
+        .optopt("", "ar", "path to an archiver", "PATH")
+        .optopt("", "linker", "path to a linker", "PATH")
         .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
         .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
@@ -198,6 +200,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
         cflags: matches.opt_str("cflags").unwrap(),
+        ar: matches.opt_str("ar").unwrap_or("ar".into()),
+        linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         llvm_cxxflags: matches.opt_str("llvm-cxxflags").unwrap(),
         nodejs: matches.opt_str("nodejs"),
@@ -234,6 +238,8 @@ pub fn log_config(config: &Config) {
     logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}",
                     config.adb_device_status));
+    logv(c, format!("ar: {}", config.ar));
+    logv(c, format!("linker: {:?}", config.linker));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("quiet: {}", config.quiet));
     logv(c, "\n".to_string());

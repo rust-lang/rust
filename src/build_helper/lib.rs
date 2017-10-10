@@ -138,27 +138,6 @@ pub fn gnu_target(target: &str) -> String {
     }
 }
 
-pub fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
-    if target.contains("msvc") {
-        None
-    } else if target.contains("musl") {
-        Some(PathBuf::from("ar"))
-    } else if target.contains("openbsd") {
-        Some(PathBuf::from("ar"))
-    } else {
-        let parent = cc.parent().unwrap();
-        let file = cc.file_name().unwrap().to_str().unwrap();
-        for suffix in &["gcc", "cc", "clang"] {
-            if let Some(idx) = file.rfind(suffix) {
-                let mut file = file[..idx].to_owned();
-                file.push_str("ar");
-                return Some(parent.join(&file));
-            }
-        }
-        Some(parent.join(file))
-    }
-}
-
 pub fn make(host: &str) -> PathBuf {
     if host.contains("bitrig") || host.contains("dragonfly") ||
         host.contains("freebsd") || host.contains("netbsd") ||

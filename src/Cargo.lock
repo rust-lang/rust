@@ -1994,7 +1994,6 @@ dependencies = [
  "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
- "cc 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "collections 0.0.0",
  "compiler_builtins 0.0.0",
  "core 0.0.0",

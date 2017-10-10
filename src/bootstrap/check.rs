@@ -725,6 +725,9 @@ impl Step for Compiletest {
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc" || mode == "run-make" {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
+            if let Some(linker) = build.linker(target) {
+                cmd.arg("--linker").arg(linker);
+            }
         }
 
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
@@ -806,6 +809,9 @@ impl Step for Compiletest {
                 .arg("--cflags").arg(build.cflags(target).join(" "))
                 .arg("--llvm-components").arg(llvm_components.trim())
                 .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());
+                if let Some(ar) = build.ar(target) {
+                    cmd.arg("--ar").arg(ar);
+                }
             }
         }
         if suite == "run-make" && !build.config.llvm_enabled {
@@ -831,7 +837,7 @@ impl Step for Compiletest {
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
         if target.contains("msvc") {
-            for &(ref k, ref v) in build.cc[&target].0.env() {
+            for &(ref k, ref v) in build.cc[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
                 }

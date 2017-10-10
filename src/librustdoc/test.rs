@@ -61,7 +61,8 @@ pub fn run(input: &str,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
            render_type: RenderType,
-           display_warnings: bool)
+           display_warnings: bool,
+           linker: Option<String>)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
@@ -121,7 +122,8 @@ pub fn run(input: &str,
                                        maybe_sysroot,
                                        Some(codemap),
                                        None,
-                                       render_type);
+                                       render_type,
+                                       linker);
 
     {
         let map = hir::map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
@@ -180,7 +182,8 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
             externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-            maybe_sysroot: Option<PathBuf>) {
+            maybe_sysroot: Option<PathBuf>,
+            linker: Option<String>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = make_test(test, Some(cratename), as_test_harness, opts);
@@ -201,6 +204,7 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
         externs,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
+            linker,
             .. config::basic_codegen_options()
         },
         test: as_test_harness,
@@ -442,13 +446,14 @@ pub struct Collector {
     filename: Option<String>,
     // to be removed when hoedown will be removed as well
     pub render_type: RenderType,
+    linker: Option<String>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
                codemap: Option<Rc<CodeMap>>, filename: Option<String>,
-               render_type: RenderType) -> Collector {
+               render_type: RenderType, linker: Option<String>) -> Collector {
         Collector {
             tests: Vec::new(),
             old_tests: HashMap::new(),
@@ -464,6 +469,7 @@ impl Collector {
             codemap,
             filename,
             render_type,
+            linker,
         }
     }
 
@@ -510,6 +516,7 @@ impl Collector {
         let cratename = self.cratename.to_string();
         let opts = self.opts.clone();
         let maybe_sysroot = self.maybe_sysroot.clone();
+        let linker = self.linker.clone();
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -538,7 +545,8 @@ impl Collector {
                                  compile_fail,
                                  error_codes,
                                  &opts,
-                                 maybe_sysroot)
+                                 maybe_sysroot,
+                                 linker)
                     })
                 } {
                     Ok(()) => (),
