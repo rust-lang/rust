@@ -15,7 +15,7 @@ has explictly opted out via a _negative impl_.
 [`Send`]: https://doc.rust-lang.org/std/marker/trait.Send.html
 [`Sync`]: https://doc.rust-lang.org/std/marker/trait.Sync.html
 
-```rust
+```rust, ignore
 impl !Type for Trait
 ```
 
