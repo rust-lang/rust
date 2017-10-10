@@ -387,7 +387,7 @@ pub struct Clippy {
 
 impl Step for Clippy {
     type Output = PathBuf;
-    const DEFAULT: bool = false;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -411,7 +411,7 @@ impl Step for Clippy {
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
-            tool: "clippy",
+            tool: "clippy-driver",
             mode: Mode::Librustc,
             path: "src/tools/clippy",
             expectation: builder.build.config.toolstate.clippy.passes(ToolState::Compiling),
