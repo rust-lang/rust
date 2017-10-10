@@ -52,10 +52,12 @@ impl InferenceContext {
         }
     }
 
+    #[allow(dead_code)]
     pub fn cap_var(&mut self, v: RegionIndex) {
         self.definitions[v].capped = true;
     }
 
+    #[allow(dead_code)]
     pub fn add_live_point(&mut self, v: RegionIndex, point: Location) {
         debug!("add_live_point({:?}, {:?})", v, point);
         let definition = &mut self.definitions[v];
@@ -69,11 +71,13 @@ impl InferenceContext {
         }
     }
 
+    #[allow(dead_code)]
     pub fn add_outlives(&mut self, sup: RegionIndex, sub: RegionIndex, point: Location) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
         self.constraints.push(Constraint { sup, sub, point });
     }
 
+    #[allow(dead_code)]
     pub fn region(&self, v: RegionIndex) -> &Region {
         &self.definitions[v].value
     }
@@ -130,6 +134,7 @@ impl InferenceContext {
 }
 
 struct Dfs<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
+    #[allow(dead_code)]
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
 }
