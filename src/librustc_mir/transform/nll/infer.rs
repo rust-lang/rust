@@ -93,7 +93,7 @@ impl InferenceContext {
             changed = false;
             for constraint in &self.constraints {
                 let sub = &self.definitions[constraint.sub].value.clone();
-                let sup_def = &self.definitions[constraint.sup];
+                let sup_def = &mut self.definitions[constraint.sup];
                 debug!("constraint: {:?}", constraint);
                 debug!("    sub (before): {:?}", sub);
                 debug!("    sup (before): {:?}", sup_def.value);
