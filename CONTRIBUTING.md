@@ -364,6 +364,7 @@ It can also be more convenient during development to set `submodules = false`
 in the `config.toml` to prevent `x.py` from resetting to the original branch.
 
 #### Breaking rustfmt or rls
+[breaking-rustfmt-or-rls]: #breaking-rustfmt-or-rls
 
 Rust's build system also builds the
 [RLS](https://github.com/rust-lang-nursery/rls)
@@ -382,7 +383,9 @@ When this happens, follow these steps:
 1. First, if it doesn't exist already, create a `config.toml` by copying
    `config.toml.example` in the root directory of the Rust repository.
    Set `submodules = false` in the `[build]` section. This will prevent `x.py`
-   from resetting to the original branch after you make your changes.
+   from resetting to the original branch after you make your changes. If you
+   need to [update any submodules to their latest versions][updating-submodules],
+   see the section of this file about that for more information.
 2. Run `./x.py test src/tools/rustfmt`. Fix any errors in the submodule itself
    (the `src/tools/rustfmt` directory) until it works.
 3. Run `./x.py test src/tools/rls`. Fix any errors in the submodule itself
@@ -400,6 +403,65 @@ When this happens, follow these steps:
 11. A maintainer of rls/rustfmt will merge the original PRs to rls/rustfmt
 12. Eventually the rls/rustfmt submodules will get re-updated back to the
     master branch
+
+#### Updating submodules
+[updating-submodules]: #updating-submodules
+
+These instructions are specific to updating `rustfmt`, however they may apply
+to the other submodules as well. Please help by improving these instructions
+if you find any discrepencies or special cases that need to be addressed.
+
+To update the `rustfmt` submodule, start by running the appropriate
+[`git submodule` command](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
+For example, to update to the latest commit on the remote master branch,
+you may want to run:
+```
+git submodule update --remote src/tools/rustfmt
+```
+If you run `./x.py build` now, and you are lucky, it may just work. If you see
+an error message about patches that did not resolve to any crates, you will need
+to complete a few more steps which are outlined with their rationale below.
+
+*(This error may change in the future to include more information.)*
+```
+error: failed to resolve patches for `https://github.com/rust-lang-nursery/rustfmt`
+
+Caused by:
+  patch for `rustfmt-nightly` in `https://github.com/rust-lang-nursery/rustfmt` did not resolve to any crates
+failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --manifest-path ~/rust/src/bootstrap/Cargo.toml
+```
+
+If you haven't used the `[patch]`
+section of `Cargo.toml` before, there is [some relevant documentation about it
+in the cargo docs](http://doc.crates.io/manifest.html#the-patch-section). In
+addition to that, you should read the 
+[Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#overriding-dependencies)
+section of the documentation as well.
+
+Specifically, the following [section in Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#testing-a-bugfix) reveals what the problem is:
+
+> Next up we need to ensure that our lock file is updated to use this new version of uuid so our project uses the locally checked out copy instead of one from crates.io. The way [patch] works is that it'll load the dependency at ../path/to/uuid and then whenever crates.io is queried for versions of uuid it'll also return the local version.
+> 
+> This means that the version number of the local checkout is significant and will affect whether the patch is used. Our manifest declared uuid = "1.0" which means we'll only resolve to >= 1.0.0, < 2.0.0, and Cargo's greedy resolution algorithm also means that we'll resolve to the maximum version within that range. Typically this doesn't matter as the version of the git repository will already be greater or match the maximum version published on crates.io, but it's important to keep this in mind!
+
+This says that when we updated the submodule, the version number in our
+`src/tools/rustfmt/Cargo.toml` changed. The new version is different from
+the version in `Cargo.lock`, so the build can no longer continue.
+
+To resolve this, we need to update `Cargo.lock`. Luckily, cargo provides a
+command to do this easily.
+
+First, go into the `src/` directory since that is where `Cargo.toml` is in
+the rust repository. Then run, `cargo update -p rustfmt-nightly` to solve
+the problem.
+
+```
+$ cd src
+$ cargo update -p rustfmt-nightly
+```
+
+This should change the version listed in `src/Cargo.lock` to the new version you updated
+the submodule to. Running `./x.py build` should work now.
 
 ## Writing Documentation
 [writing-documentation]: #writing-documentation
