@@ -31,7 +31,7 @@ use codemap::Spanned;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Ident, &'a Generics, Unsafety, Spanned<Constness>, Abi, &'a Visibility, &'a Block),
+    ItemFn(Ident, Unsafety, Spanned<Constness>, Abi, &'a Visibility, &'a Block),
 
     /// fn foo(&self)
     Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
@@ -247,7 +247,8 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_expr(expr);
         }
         ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
-            visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
+            visitor.visit_generics(generics);
+            visitor.visit_fn(FnKind::ItemFn(item.ident, unsafety,
                                             constness, abi, &item.vis, body),
                              declaration,
                              item.span,
@@ -538,8 +539,7 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
     where V: Visitor<'a>,
 {
     match kind {
-        FnKind::ItemFn(_, generics, _, _, _, _, body) => {
-            visitor.visit_generics(generics);
+        FnKind::ItemFn(_, _, _, _, _, body) => {
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
