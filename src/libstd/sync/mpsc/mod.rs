@@ -297,6 +297,8 @@ mod sync;
 mod mpsc_queue;
 mod spsc_queue;
 
+mod cache_aligned;
+
 /// The receiving half of Rust's [`channel`][] (or [`sync_channel`]) type.
 /// This half can only be owned by one thread.
 ///
