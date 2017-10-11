@@ -394,7 +394,7 @@ for section_key in config:
     if section_key not in sections:
         raise RuntimeError("config key {} not in sections".format(section_key))
 
-    if __key == 'target':
+    if section_key == 'target':
         for target in section_config:
             configure_section(targets[target], section_config[target])
     else:
