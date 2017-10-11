@@ -19,8 +19,7 @@ install:
 build: false
 
 test_script:
-  - cargo test --target %TARGET%
-  - cargo test --target %TARGET% --release
+  - C:\msys64\usr\bin\sh ci\run.sh
 
 branches:
   only:
