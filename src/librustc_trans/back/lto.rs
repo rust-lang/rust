@@ -130,6 +130,7 @@ pub fn run(cgcx: &CodegenContext,
         .filter_map(symbol_filter)
         .collect::<Vec<CString>>();
     timeline.record("whitelist");
+    info!("{} symbols to preserve in this crate", symbol_white_list.len());
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -437,7 +438,24 @@ fn run_pass_manager(cgcx: &CodegenContext,
         assert!(!pass.is_null());
         llvm::LLVMRustAddPass(pm, pass);
 
-        with_llvm_pmb(llmod, config, &mut |b| {
+        // When optimizing for LTO we don't actually pass in `-O0`, but we force
+        // it to always happen at least with `-O1`.
+        //
+        // With ThinLTO we mess around a lot with symbol visibility in a way
+        // that will actually cause linking failures if we optimize at O0 which
+        // notable is lacking in dead code elimination. To ensure we at least
+        // get some optimizations and correctly link we forcibly switch to `-O1`
+        // to get dead code elimination.
+        //
+        // Note that in general this shouldn't matter too much as you typically
+        // only turn on ThinLTO when you're compiling with optimizations
+        // otherwise.
+        let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
+        let opt_level = match opt_level {
+            llvm::CodeGenOptLevel::None => llvm::CodeGenOptLevel::Less,
+            level => level,
+        };
+        with_llvm_pmb(llmod, config, opt_level, &mut |b| {
             if thin {
                 if !llvm::LLVMRustPassManagerBuilderPopulateThinLTOPassManager(b, pm) {
                     panic!("this version of LLVM does not support ThinLTO");

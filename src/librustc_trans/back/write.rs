@@ -217,7 +217,7 @@ pub struct ModuleConfig {
     passes: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
     /// absolutely no optimizations (used for the metadata module).
-    opt_level: Option<llvm::CodeGenOptLevel>,
+    pub opt_level: Option<llvm::CodeGenOptLevel>,
 
     /// Some(level) to optimize binary size, or None to not affect program size.
     opt_size: Option<llvm::CodeGenOptSize>,
@@ -507,7 +507,8 @@ unsafe fn optimize(cgcx: &CodegenContext,
         if !config.no_prepopulate_passes {
             llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
             llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-            with_llvm_pmb(llmod, &config, &mut |b| {
+            let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
+            with_llvm_pmb(llmod, &config, opt_level, &mut |b| {
                 llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
                 llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
             })
@@ -1842,16 +1843,17 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
 
 pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
                             config: &ModuleConfig,
+                            opt_level: llvm::CodeGenOptLevel,
                             f: &mut FnMut(llvm::PassManagerBuilderRef)) {
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
-    let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
     let opt_size = config.opt_size.unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
-    llvm::LLVMRustConfigurePassManagerBuilder(builder, opt_level,
+    llvm::LLVMRustConfigurePassManagerBuilder(builder,
+                                              opt_level,
                                               config.merge_functions,
                                               config.vectorize_slp,
                                               config.vectorize_loop);
