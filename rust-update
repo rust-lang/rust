@@ -1,0 +1,31 @@
+#!/bin/sh
+
+if [ "$1" = '-h' ] ; then
+	echo 'Updates rustc & clippy'
+	echo 'It first checks if clippy would compile at currentl nightly and if so, it updates.'
+	echo 'Options:'
+	echo '-h: This help message'
+	echo '-f: Skips the check and just updates'
+	exit
+fi
+
+set -ex
+
+renice -n 10 -p $$
+
+export CARGO_INCREMENTAL=0
+export RUSTFLAGS='-C target-cpu=native'
+
+try_out() {
+	export RUSTUP_HOME=$HOME/.rustup-attempt
+	test -d $RUSTUP_HOME || (rustup toolchain add nightly && rustup default nightly)
+	rustup update
+	cargo +nightly install --force clippy
+	unset RUSTUP_HOME
+	export RUSTUP_HOME
+}
+
+[ "$1" = '-f' ] || try_out
+
+rustup update
+cargo +nightly install --force clippy
