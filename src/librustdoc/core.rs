@@ -12,6 +12,7 @@ use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
 use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc::session::{self, config};
+use rustc::mir::transform::Passes;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::middle::privacy::AccessLevels;
@@ -182,6 +183,7 @@ pub fn run_core(search_paths: SearchPaths,
                                                           &[],
                                                           &sess);
 
+    let mir_passes = Rc::new(Passes::new());
     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                      &*cstore,
                                                      hir_map,
@@ -191,6 +193,7 @@ pub fn run_core(search_paths: SearchPaths,
                                                      &arenas,
                                                      &name,
                                                      &output_filenames,
+                                                     mir_passes,
                                                      |tcx, analysis, _, result| {
         if let Err(_) = result {
             sess.fatal("Compilation failed, aborting rustdoc");

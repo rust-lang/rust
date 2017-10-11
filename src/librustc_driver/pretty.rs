@@ -10,6 +10,7 @@
 
 //! The various pretty print routines.
 
+use std::rc::Rc;
 pub use self::UserIdentifiedItem::*;
 pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
@@ -50,6 +51,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
 use rustc::hir;
 use rustc::hir::print as pprust_hir;
+use rustc::mir::transform::Passes;
 
 use arena::DroplessArena;
 
@@ -206,6 +208,7 @@ impl PpSourceMode {
                                                arenas: &'tcx GlobalArenas<'tcx>,
                                                output_filenames: &OutputFilenames,
                                                id: &str,
+                                               mir_passes: Rc<Passes>,
                                                f: F)
                                                -> A
         where F: FnOnce(&HirPrinterSupport, &hir::Crate) -> A
@@ -236,6 +239,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  output_filenames,
+                                                                 mir_passes,
                                                                  |tcx, _, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
@@ -904,7 +908,8 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 arenas: &'tcx GlobalArenas<'tcx>,
                                                 output_filenames: &OutputFilenames,
                                                 opt_uii: Option<UserIdentifiedItem>,
-                                                ofile: Option<&Path>) {
+                                                ofile: Option<&Path>,
+                                                mir_passes: Rc<Passes>) {
     if ppm.needs_analysis() {
         print_with_analysis(sess,
                             cstore,
@@ -917,7 +922,8 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                             output_filenames,
                             ppm,
                             opt_uii,
-                            ofile);
+                            ofile,
+                            mir_passes);
         return;
     }
 
@@ -955,6 +961,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            arenas,
                                            output_filenames,
                                            crate_name,
+                                           mir_passes,
                                            move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -980,6 +987,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            arenas,
                                            output_filenames,
                                            crate_name,
+                                           mir_passes,
                                            move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -1025,7 +1033,8 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        output_filenames: &OutputFilenames,
                                        ppm: PpMode,
                                        uii: Option<UserIdentifiedItem>,
-                                       ofile: Option<&Path>) {
+                                       ofile: Option<&Path>,
+                                       mir_passes: Rc<Passes>) {
     let nodeid = if let Some(uii) = uii {
         debug!("pretty printing for {:?}", uii);
         Some(uii.to_one_node_id("--unpretty", sess, &hir_map))
@@ -1045,6 +1054,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      arenas,
                                                      crate_name,
                                                      output_filenames,
+                                                     mir_passes,
                                                      |tcx, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
