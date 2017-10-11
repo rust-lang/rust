@@ -431,7 +431,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // fields are actually safe.
                         let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
-                            let field_ty = cx.trans_normalize_associated_types_in(&field.ty(cx, substs));
+                            let field_ty = cx.trans_normalize_associated_types_in(
+                                &field.ty(cx, substs)
+                            );
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
                                 FfiSafe => {
@@ -463,7 +465,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
-                            let field_ty = cx.trans_normalize_associated_types_in(&field.ty(cx, substs));
+                            let field_ty = cx.trans_normalize_associated_types_in(
+                                &field.ty(cx, substs)
+                            );
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
                                 FfiSafe => {
@@ -516,7 +520,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // Check the contained variants.
                         for variant in &def.variants {
                             for field in &variant.fields {
-                                let arg = cx.trans_normalize_associated_types_in(&field.ty(cx, substs));
+                                let arg = cx.trans_normalize_associated_types_in(
+                                    &field.ty(cx, substs)
+                                );
                                 let r = self.check_type_for_ffi(cache, arg);
                                 match r {
                                     FfiSafe => {}
