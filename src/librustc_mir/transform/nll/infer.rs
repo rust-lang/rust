@@ -13,13 +13,13 @@ pub struct InferenceContext {
 
 pub struct InferenceError {
     pub constraint_point: Location,
-    pub name: (), // TODO(nashenas88) RegionName
+    pub name: (), // FIXME(nashenas88) RegionName
 }
 
 newtype_index!(InferenceErrorIndex);
 
 struct VarDefinition {
-    name: (), // TODO(nashenas88) RegionName
+    name: (), // FIXME(nashenas88) RegionName
     value: Region,
     capped: bool,
 }
@@ -189,12 +189,12 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
             };
 
             if successor_points.is_empty() {
-                // TODO handle free regions
+                // FIXME handle free regions
                 // If we reach the END point in the graph, then copy
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
                 // for region_decl in self.infcx.tcx.tables.borrow().free_region_map() {
-                //     // TODO(nashenas88) figure out skolemized_end points
+                //     // FIXME(nashenas88) figure out skolemized_end points
                 //     let block = self.env.graph.skolemized_end(region_decl.name);
                 //     let skolemized_end_point = Location {
                 //         block,
