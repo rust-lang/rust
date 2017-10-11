@@ -208,11 +208,12 @@ pub struct CStr {
     inner: [c_char]
 }
 
-/// An error returned from [`CString::new`] to indicate that a nul byte was found
-/// in the vector provided.  While Rust strings may contain nul bytes in the middle,
-/// C strings can't, as that byte would effectively truncate the string.
+/// An error indicating that an interior nul byte was found.
 ///
-/// This `struct` is created by the [`new`][`CString::new`] method on
+/// While Rust strings may contain nul bytes in the middle, C strings
+/// can't, as that byte would effectively truncate the string.
+///
+/// This error is created by the [`new`][`CString::new`] method on
 /// [`CString`]. See its documentation for more.
 ///
 /// [`CString`]: struct.CString.html
@@ -229,13 +230,12 @@ pub struct CStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
-/// An error returned from [`CStr::from_bytes_with_nul`] to indicate
-/// that a nul byte was found too early in the slice provided, or one
-/// wasn't found at all for the nul terminator.  The slice used to
-/// create a `CStr` must have one and only one nul byte at the end of
-/// the slice.
+/// An error indicating that a nul byte was not in the expected position.
 ///
-/// This `struct` is created by the
+/// The slice used to create a [`CStr`] must have one and only one nul
+/// byte at the end of the slice.
+///
+/// This error is created by the
 /// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on
 /// [`CStr`]. See its documentation for more.
 ///
@@ -274,16 +274,17 @@ impl FromBytesWithNulError {
     }
 }
 
-/// An error returned from [`CString::into_string`] to indicate that a
-/// UTF-8 error was encountered during the conversion.  `CString` is
-/// just a wrapper over a buffer of bytes with a nul terminator;
-/// [`into_string`][`CString::into_string`] performs UTF-8 validation
-/// and may return this error.
+/// An error indicating invalid UTF-8 when converting a [`CString`] into a [`String`].
+///
+/// `CString` is just a wrapper over a buffer of bytes with a nul
+/// terminator; [`into_string`][`CString::into_string`] performs UTF-8
+/// validation on those bytes and may return this error.
 ///
 /// This `struct` is created by the
 /// [`into_string`][`CString::into_string`] method on [`CString`]. See
 /// its documentation for more.
 ///
+/// [`String`]: ../string/struct.String.html
 /// [`CString`]: struct.CString.html
 /// [`CString::into_string`]: struct.CString.html#method.into_string
 #[derive(Clone, PartialEq, Eq, Debug)]
