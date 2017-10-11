@@ -302,6 +302,7 @@ def default_build_triple():
 
     return "{}-{}".format(cputype, ostype)
 
+
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
