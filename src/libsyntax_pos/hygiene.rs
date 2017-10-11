@@ -189,10 +189,10 @@ impl HygieneData {
 
                 mark_queue.push_back(data.parent);
                 if let Some(ref info) = data.expn_info {
-                    ctxt_queue.push_back(info.call_site.ctxt);
+                    ctxt_queue.push_back(info.call_site.ctxt());
 
                     if let Some(span) = info.callee.span {
-                        ctxt_queue.push_back(span.ctxt);
+                        ctxt_queue.push_back(span.ctxt());
                     }
                 }
 
@@ -272,11 +272,7 @@ impl ImportedHygieneData {
     }
 
     pub fn translate_span(&self, external: Span) -> Span {
-        Span {
-            lo: external.lo,
-            hi: external.hi,
-            ctxt: self.translate_ctxt(external.ctxt),
-        }
+        Span::new(external.lo(), external.hi(), self.translate_ctxt(external.ctxt()))
     }
 
     fn translate_mark_data(&self, data: MarkData) -> MarkData {

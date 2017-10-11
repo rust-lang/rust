@@ -13,6 +13,6 @@
 #[macro_use]
 extern crate macro_spans_lib;
 
-abc!(Name)
+abc!(Name); //~ ERROR recursive type `Name::Name` has infinite size
 
 fn main() { }

@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_export]
 macro_rules! abc {
     ($name:ident) => {
         mod $name {
             macro_rules! $name {
                 ($name2:ident) => {
                     struct $name {
-                        $name2: u8,
+                        $name2: $name,
                     }
                 }
             }
 
-            $name!(AStruct)
+            $name!(some_field);
         }
     }
 }

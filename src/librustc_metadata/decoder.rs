@@ -274,7 +274,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            return Ok(Span { lo, hi, ctxt });
+            return Ok(Span::new(lo, hi, ctxt));
         };
 
         let (lo, hi) = if lo > hi {
