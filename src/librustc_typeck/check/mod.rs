@@ -728,7 +728,7 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
     debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {
         for body_owner_def_id in tcx.body_owners() {
-            tcx.typeck_tables_of(body_owner_def_id);
+            ty::maps::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
         }
     })?)
 }
