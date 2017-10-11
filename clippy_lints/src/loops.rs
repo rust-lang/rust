@@ -16,6 +16,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Subst, Substs};
 use rustc_const_eval::ConstContext;
 use std::collections::{HashMap, HashSet};
+use std::iter::{Iterator, once};
 use syntax::ast;
 use syntax::codemap::Span;
 use utils::sugg;
@@ -378,7 +379,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         match expr.node {
             ExprWhile(_, ref block, _) |
             ExprLoop(ref block, _, _) => {
-                if never_loop(block, expr.id) {
+                let mut state = NeverLoopState {
+                    breaks: HashSet::new(),
+                    continues: HashSet::new(),
+                };
+                let may_complete = never_loop_block(block, &mut state);
+                if !may_complete && !state.continues.contains(&expr.id) {
                     span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
                 }
             },
@@ -485,41 +491,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn never_loop(block: &Block, id: NodeId) -> bool {
-    !contains_continue_block(block, Some(id)) && loop_exit_block(block, &mut vec![id])
+struct NeverLoopState {
+    breaks: HashSet<NodeId>,
+    continues: HashSet<NodeId>,
 }
 
-fn contains_continue_block(block: &Block, dest: Option<NodeId>) -> bool {
-    block.stmts.iter().any(|e| contains_continue_stmt(e, dest)) ||
-        block.expr.as_ref().map_or(
-            false,
-            |e| contains_continue_expr(e, dest),
-        )
+fn never_loop_block(block: &Block, state: &mut NeverLoopState) -> bool {
+    let stmts = block.stmts.iter().map(stmt_to_expr);
+    let expr = once(block.expr.as_ref().map(|p| &**p));
+    let mut iter = stmts.chain(expr).filter_map(|e| e);
+    never_loop_expr_seq(&mut iter, state)
 }
 
-fn contains_continue_stmt(stmt: &Stmt, dest: Option<NodeId>) -> bool {
+fn stmt_to_expr(stmt: &Stmt) -> Option<&Expr> {
     match stmt.node {
-        StmtSemi(ref e, _) |
-        StmtExpr(ref e, _) => contains_continue_expr(e, dest),
-        StmtDecl(ref d, _) => contains_continue_decl(d, dest),
+        StmtSemi(ref e, ..) |
+        StmtExpr(ref e, ..) => Some(e),
+        StmtDecl(ref d, ..) => decl_to_expr(d),
     }
 }
 
-fn contains_continue_decl(decl: &Decl, dest: Option<NodeId>) -> bool {
+fn decl_to_expr(decl: &Decl) -> Option<&Expr> {
     match decl.node {
-        DeclLocal(ref local) => {
-            local.init.as_ref().map_or(
-                false,
-                |e| contains_continue_expr(e, dest),
-            )
-        },
-        _ => false,
+        DeclLocal(ref local) => local.init.as_ref().map(|p| &**p),
+        _ => None,
     }
 }
 
-fn contains_continue_expr(expr: &Expr, dest: Option<NodeId>) -> bool {
+fn never_loop_expr(expr: &Expr, state: &mut NeverLoopState) -> bool {
     match expr.node {
-        ExprRet(Some(ref e)) |
         ExprBox(ref e) |
         ExprUnary(_, ref e) |
         ExprCast(ref e, _) |
@@ -527,98 +527,71 @@ fn contains_continue_expr(expr: &Expr, dest: Option<NodeId>) -> bool {
         ExprField(ref e, _) |
         ExprTupField(ref e, _) |
         ExprAddrOf(_, ref e) |
-        ExprRepeat(ref e, _) => contains_continue_expr(e, dest),
+        ExprRepeat(ref e, _) => never_loop_expr(e, state),
         ExprArray(ref es) |
         ExprMethodCall(_, _, ref es) |
-        ExprTup(ref es) => es.iter().any(|e| contains_continue_expr(e, dest)),
-        ExprCall(ref e, ref es) => {
-            contains_continue_expr(e, dest) || es.iter().any(|e| contains_continue_expr(e, dest))
-        },
+        ExprTup(ref es) => never_loop_expr_seq(&mut es.iter(), state),
+        ExprCall(ref e, ref es) => never_loop_expr_seq(&mut once(&**e).chain(es.iter()), state),
         ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
-        ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| contains_continue_expr(e, dest)),
+        ExprIndex(ref e1, ref e2) => never_loop_expr_seq(&mut [&**e1, &**e2].iter().cloned(), state),
         ExprIf(ref e, ref e2, ref e3) => {
-            [e, e2].iter().chain(e3.as_ref().iter()).any(|e| {
-                contains_continue_expr(e, dest)
-            })
+            let e1 = never_loop_expr(e, state);
+            let e2 = never_loop_expr(e2, state);
+            match *e3 {
+                Some(ref e3) => {
+                    let e3 = never_loop_expr(e3, state);
+                    e1 && (e2 || e3)
+                },
+                None => e1,
+            }
         },
-        ExprWhile(ref e, ref b, _) => contains_continue_expr(e, dest) || contains_continue_block(b, dest),
-        ExprMatch(ref e, ref arms, _) => {
-            contains_continue_expr(e, dest) || arms.iter().any(|a| contains_continue_expr(&a.body, dest))
-        },
-        ExprBlock(ref block) |
-        ExprLoop(ref block, ..) => contains_continue_block(block, dest),
-        ExprStruct(_, _, ref base) => {
-            base.as_ref().map_or(
-                false,
-                |e| contains_continue_expr(e, dest),
-            )
-        },
-        ExprAgain(d) => dest.map_or(true, |dest| d.target_id.opt_id().map_or(false, |id| id == dest)),
-        _ => false,
-    }
-}
-
-fn loop_exit_block(block: &Block, loops: &mut Vec<NodeId>) -> bool {
-    block.stmts.iter().take_while(|s| !contains_continue_stmt(s, None)).any(|s| loop_exit_stmt(s, loops))
-        || block.expr.as_ref().map_or(false, |e| loop_exit_expr(e, loops))
-}
-
-fn loop_exit_stmt(stmt: &Stmt, loops: &mut Vec<NodeId>) -> bool {
-    match stmt.node {
-        StmtSemi(ref e, _) |
-        StmtExpr(ref e, _) => loop_exit_expr(e, loops),
-        StmtDecl(ref d, _) => loop_exit_decl(d, loops),
-    }
-}
-
-fn loop_exit_decl(decl: &Decl, loops: &mut Vec<NodeId>) -> bool {
-    match decl.node {
-        DeclLocal(ref local) => local.init.as_ref().map_or(false, |e| loop_exit_expr(e, loops)),
-        _ => false,
-    }
-}
-
-fn loop_exit_expr(expr: &Expr, loops: &mut Vec<NodeId>) -> bool {
-    match expr.node {
-        ExprBox(ref e) |
-        ExprUnary(_, ref e) |
-        ExprCast(ref e, _) |
-        ExprType(ref e, _) |
-        ExprField(ref e, _) |
-        ExprTupField(ref e, _) |
-        ExprAddrOf(_, ref e) |
-        ExprRepeat(ref e, _) => loop_exit_expr(e, loops),
-        ExprArray(ref es) |
-        ExprMethodCall(_, _, ref es) |
-        ExprTup(ref es) => es.iter().any(|e| loop_exit_expr(e, loops)),
-        ExprCall(ref e, ref es) => loop_exit_expr(e, loops) || es.iter().any(|e| loop_exit_expr(e, loops)),
-        ExprBinary(_, ref e1, ref e2) |
-        ExprAssign(ref e1, ref e2) |
-        ExprAssignOp(_, ref e1, ref e2) |
-        ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| loop_exit_expr(e, loops)),
-        ExprIf(ref e, ref e2, ref e3) => loop_exit_expr(e, loops)
-            || e3.as_ref().map_or(false, |e3| loop_exit_expr(e3, loops)) && loop_exit_expr(e2, loops),
         ExprLoop(ref b, _, _) => {
-            loops.push(expr.id);
-            let val = loop_exit_block(b, loops);
-            loops.pop();
-            val
+            let block_may_complete = never_loop_block(b, state);
+            let has_break = state.breaks.remove(&expr.id);
+            state.continues.remove(&expr.id);
+            block_may_complete || has_break
         },
         ExprWhile(ref e, ref b, _) => {
-            loops.push(expr.id);
-            let val = loop_exit_expr(e, loops) || loop_exit_block(b, loops);
-            loops.pop();
-            val
+            let e = never_loop_expr(e, state);
+            let block_may_complete = never_loop_block(b, state);
+            let has_break = state.breaks.remove(&expr.id);
+            let has_continue = state.continues.remove(&expr.id);
+            e && (block_may_complete || has_break || has_continue)
         },
-        ExprMatch(ref e, ref arms, _) => loop_exit_expr(e, loops) || arms.iter().all(|a| loop_exit_expr(&a.body, loops)),
-        ExprBlock(ref b) => loop_exit_block(b, loops),
-        ExprAgain(d) => d.target_id.opt_id().map_or(false, |id| loops.iter().skip(1).all(|&id2| id != id2)),
-        ExprBreak(d, _) => d.target_id.opt_id().map_or(false, |id| loops[0] == id),
-        ExprRet(_) => true,
-        _ => false,
+        ExprMatch(ref e, ref arms, _) => {
+            let e = never_loop_expr(e, state);
+            let arms = never_loop_expr_branch(&mut arms.iter().map(|a| &*a.body), state);
+            e && arms
+        },
+        ExprBlock(ref b) => never_loop_block(b, state),
+        ExprAgain(d) => {
+            let id = d.target_id.opt_id().expect("target id can only be missing in the presence of compilation errors");
+            state.continues.insert(id);
+            false
+        },
+        ExprBreak(d, _) => {
+            let id = d.target_id.opt_id().expect("target id can only be missing in the presence of compilation errors");
+            state.breaks.insert(id);
+            false
+        },
+        ExprRet(ref e) => {
+            if let Some(ref e) = *e {
+                never_loop_expr(e, state);
+            }
+            false
+        },
+        _ => true,
     }
+}
+
+fn never_loop_expr_seq<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, state: &mut NeverLoopState) -> bool {
+    es.map(|e| never_loop_expr(e, state)).fold(true, |a, b| a && b)
+}
+
+fn never_loop_expr_branch<'a, T: Iterator<Item=&'a Expr>>(e: &mut T, state: &mut NeverLoopState) -> bool {
+    e.map(|e| never_loop_expr(e, state)).fold(false, |a, b| a || b)
 }
 
 fn check_for_loop<'a, 'tcx>(
