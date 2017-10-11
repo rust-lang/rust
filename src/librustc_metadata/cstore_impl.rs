@@ -144,7 +144,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_const_fn => { cdata.is_const_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    is_default_impl => { cdata.is_default_impl(def_id.index) }
+    is_auto_impl => { cdata.is_auto_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {

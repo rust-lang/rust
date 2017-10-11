@@ -313,7 +313,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemExternCrate(_) |
             hir::ItemUse(..) |
             hir::ItemMod(..) |
-            hir::ItemDefaultImpl(..) |
+            hir::ItemAutoImpl(..) |
             hir::ItemForeignMod(..) |
             hir::ItemGlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.

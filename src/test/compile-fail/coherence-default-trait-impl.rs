@@ -13,7 +13,7 @@
 trait MyTrait { fn foo() {} }
 
 impl MyTrait for .. {}
-//~^ ERROR redundant default implementations of trait `MyTrait`
+//~^ ERROR redundant auto implementations of trait `MyTrait`
 
 impl MyTrait for .. {}
 

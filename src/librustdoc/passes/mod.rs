@@ -116,7 +116,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // handled in the `strip-priv-imports` pass
             clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
 
-            clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
+            clean::AutoImplItem(..) | clean::ImplItem(..) => {}
 
             // tymethods/macros have no control over privacy
             clean::MacroItem(..) | clean::TyMethodItem(..) => {}

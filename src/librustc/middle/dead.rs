@@ -562,7 +562,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemTrait(..) |
-                hir::ItemDefaultImpl(..) |
+                hir::ItemAutoImpl(..) |
                 hir::ItemImpl(..) => self.tcx.sess.codemap().def_span(item.span),
                 _ => item.span,
             };

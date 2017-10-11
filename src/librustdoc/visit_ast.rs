@@ -532,10 +532,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     om.impls.push(i);
                 }
             },
-            hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
+            hir::ItemAutoImpl(unsafety, ref trait_ref) => {
                 // See comment above about ItemImpl.
                 if !self.inlining {
-                    let i = DefaultImpl {
+                    let i = AutoImpl {
                         unsafety,
                         trait_: trait_ref.clone(),
                         id: item.id,

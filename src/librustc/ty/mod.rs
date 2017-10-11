@@ -2296,8 +2296,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.get_attrs(did).iter().any(|item| item.check_name(attr))
     }
 
-    pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
-        self.trait_def(trait_def_id).has_default_impl
+    pub fn trait_has_auto_impl(self, trait_def_id: DefId) -> bool {
+        self.trait_def(trait_def_id).has_auto_impl
     }
 
     pub fn generator_layout(self, def_id: DefId) -> &'tcx GeneratorLayout<'tcx> {
