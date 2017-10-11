@@ -759,7 +759,21 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 let mut db = match err.cause {
                     MutabilityViolation => {
-                        self.cannot_assign(error_span, &descr, Origin::Ast)
+                        let mut db = self.cannot_assign(error_span, &descr, Origin::Ast);
+                        if let mc::NoteClosureEnv(upvar_id) = err.cmt.note {
+                            let node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
+                            let sp = self.tcx.hir.span(node_id);
+                            match self.tcx.sess.codemap().span_to_snippet(sp) {
+                                Ok(snippet) => {
+                                    let msg = &format!("consider making `{}` mutable", snippet);
+                                    db.span_suggestion(sp, msg, format!("mut {}", snippet));
+                                }
+                                _ => {
+                                    db.span_help(sp, "consider making this binding mutable");
+                                }
+                            }
+                        }
+                        db
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
                         struct_span_err!(self.tcx.sess, error_span, E0595,
