@@ -13,6 +13,7 @@
 
 #[macro_use]
 extern crate rustc;
+extern crate rustc_typeck;
 extern crate syntax;
 extern crate syntax_pos;
 

@@ -5,6 +5,7 @@ use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisito
 use rustc::lint::*;
 use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
 use rustc::ty::subst::Substs;
+use rustc_typeck::hir_ty_to_ty;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::borrow::Cow;
@@ -13,8 +14,8 @@ use syntax::attr::IntType;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 use utils::{comparisons, higher, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
-            multispan_sugg, opt_def_id, snippet, snippet_opt, span_help_and_lint, span_lint,
-            span_lint_and_sugg, span_lint_and_then, type_size, same_tys};
+            multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
+            span_lint_and_sugg, span_lint_and_then, type_size};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -1459,8 +1460,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
 /// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
 /// used with them.
 ///
-/// **Known problems:** Suggestions for replacing constructors are not always
-/// accurate.
+/// **Known problems:** Suggestions for replacing constructors contains
+/// false-positives. Also applying suggestion can require modification of other
+/// pieces of code, possibly including external crates.
 ///
 /// **Example:**
 /// ```rust
@@ -1620,7 +1622,7 @@ impl<'tcx> ImplicitHasherType<'tcx> {
             let params = &path.segments.last().as_ref()?.parameters.as_ref()?.types;
             let params_len = params.len();
 
-            let ty = cx.tcx.type_of(opt_def_id(path.def)?);
+            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
 
             if match_path(path, &paths::HASHMAP) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(
