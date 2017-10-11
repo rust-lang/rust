@@ -2960,6 +2960,7 @@ impl<'a> Parser<'a> {
                 {                                  //     Foo<Bar<Baz<Qux, ()>>>
                     err.help(
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
+                    err.help("or use `(...)` if you meant to specify fn arguments");
                 }
                 err.emit();
             }
