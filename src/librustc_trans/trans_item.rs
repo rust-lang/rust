@@ -31,7 +31,7 @@ use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 use syntax::ast;
-use syntax::attr;
+use syntax::attr::{self, InlineAttr};
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 use type_of;
@@ -175,16 +175,32 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
 
         match *self.as_trans_item() {
             TransItem::Fn(ref instance) => {
-                if self.explicit_linkage(tcx).is_none() &&
-                    common::requests_inline(tcx, instance)
+                // If this function isn't inlined or otherwise has explicit
+                // linkage, then we'll be creating a globally shared version.
+                if self.explicit_linkage(tcx).is_some() ||
+                    !common::requests_inline(tcx, instance)
                 {
-                    if inline_in_all_cgus {
-                        InstantiationMode::LocalCopy
-                    } else {
+                    return InstantiationMode::GloballyShared  { may_conflict: false }
+                }
+
+                // At this point we don't have explicit linkage and we're an
+                // inlined function. If we're inlining into all CGUs then we'll
+                // be creating a local copy per CGU
+                if inline_in_all_cgus {
+                    return InstantiationMode::LocalCopy
+                }
+
+                // Finally, if this is `#[inline(always)]` we're sure to respect
+                // that with an inline copy per CGU, but otherwise we'll be
+                // creating one copy of this `#[inline]` function which may
+                // conflict with upstream crates as it could be an exported
+                // symbol.
+                let attrs = instance.def.attrs(tcx);
+                match attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs) {
+                    InlineAttr::Always => InstantiationMode::LocalCopy,
+                    _ => {
                         InstantiationMode::GloballyShared  { may_conflict: true }
                     }
-                } else {
-                    InstantiationMode::GloballyShared  { may_conflict: false }
                 }
             }
             TransItem::Static(..) => {
