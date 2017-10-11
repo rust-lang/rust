@@ -14,7 +14,7 @@
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
-            issue = "27783")]
+            issue = "32838")]
 #![feature(global_allocator)]
 #![feature(allocator_api)]
 #![feature(alloc)]
