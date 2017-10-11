@@ -1,0 +1,112 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:12:5
+   |
+12 |     f1(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'r, 's> fn(&'r (), &'s ()) -> _`
+   |
+   = note: required by `f1`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:13:5
+   |
+13 |     f2(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'a, 'r> fn(&'a (), &'r ()) -> _`
+   |
+   = note: required by `f2`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:14:5
+   |
+14 |     f3(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'r> fn(&(), &'r ()) -> _`
+   |
+   = note: required by `f3`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:15:5
+   |
+15 |     f4(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'s, 'r> fn(&'s (), &'r ()) -> _`
+   |
+   = note: required by `f4`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:16:5
+   |
+16 |     f5(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'r> fn(&'r (), &'r ()) -> _`
+   |
+   = note: required by `f5`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:17:5
+   |
+17 |     g1(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'r> fn(&'r (), std::boxed::Box<for<'s> std::ops::Fn(&'s ()) + 'static>) -> _`
+   |
+   = note: required by `g1`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:18:5
+   |
+18 |     g2(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'r> fn(&'r (), for<'s> fn(&'s ())) -> _`
+   |
+   = note: required by `g2`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:19:5
+   |
+19 |     g3(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'s> fn(&'s (), std::boxed::Box<for<'r> std::ops::Fn(&'r ()) + 'static>) -> _`
+   |
+   = note: required by `g3`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:20:5
+   |
+20 |     g4(|_: (), _: ()| {});
+   |     ^^ ----------------- found signature of `fn((), ()) -> _`
+   |     |
+   |     expected signature of `for<'s> fn(&'s (), for<'r> fn(&'r ())) -> _`
+   |
+   = note: required by `g4`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:21:5
+   |
+21 |     h1(|_: (), _: (), _: (), _: ()| {});
+   |     ^^ ------------------------------- found signature of `fn((), (), (), ()) -> _`
+   |     |
+   |     expected signature of `for<'r, 's> fn(&'r (), std::boxed::Box<for<'t0> std::ops::Fn(&'t0 ()) + 'static>, &'s (), for<'t0, 't1> fn(&'t0 (), &'t1 ())) -> _`
+   |
+   = note: required by `h1`
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/anonymous-higher-ranked-lifetime.rs:22:5
+   |
+22 |     h2(|_: (), _: (), _: (), _: ()| {});
+   |     ^^ ------------------------------- found signature of `fn((), (), (), ()) -> _`
+   |     |
+   |     expected signature of `for<'r, 't0> fn(&'r (), std::boxed::Box<for<'s> std::ops::Fn(&'s ()) + 'static>, &'t0 (), for<'s, 't1> fn(&'s (), &'t1 ())) -> _`
+   |
+   = note: required by `h2`
+
+error: aborting due to 11 previous errors
+
