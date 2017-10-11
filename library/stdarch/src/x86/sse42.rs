@@ -171,6 +171,46 @@ pub unsafe fn _mm_cmpistrm(
 /// # }
 /// ```
 ///
+/// Find the index of the first character in the haystack that is within a range
+/// of characters.
+///
+/// ```
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("sse4.2") {
+/// #         #[target_feature = "+sse4.2"]
+/// #         fn worker() {
+/// use stdsimd::simd::u8x16;
+/// use stdsimd::vendor::{__m128i, _mm_cmpistri, _SIDD_CMP_RANGES};
+/// # let b = __m128i::from(u8x16::load(b":;<=>?@[\\]^_`abc", 0));
+///
+/// // Specify the ranges of values to be searched for [A-Za-z0-9].
+/// let a = __m128i::from(u8x16::load(b"AZaz09\0\0\0\0\0\0\0\0\0\0", 0));
+///
+/// // Use _SIDD_CMP_RANGES to find the index of first byte in ranges.
+/// // Which in this case will be the first alpha numeric byte found
+/// // in the string.
+/// let idx = unsafe {
+///     _mm_cmpistri(a, b, _SIDD_CMP_RANGES)
+/// };
+///
+///
+/// if idx < 16 {
+///     println!("Found an alpha numeric character");
+///     # assert_eq!(idx, 13);
+/// } else {
+///     println!("Did not find an alpha numeric character");
+/// }
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+///
 /// Working with 16-bit characters.
 ///
 /// ```
