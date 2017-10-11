@@ -46,6 +46,7 @@ pub fn simd_test(attr: proc_macro::TokenStream,
     let name: TokenStream = name.as_str().parse().unwrap();
 
     let ret: TokenStream = quote! {
+        #[allow(non_snake_case)]
         #[test]
         fn #name() {
             if cfg_feature_enabled!(#target_feature) {

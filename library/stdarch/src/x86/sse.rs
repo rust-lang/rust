@@ -875,6 +875,22 @@ pub unsafe fn _mm_undefined_ps() -> f32x4 {
     f32x4::splat(mem::uninitialized())
 }
 
+/// Transpose the 4x4 matrix formed by 4 rows of f32x4 in place.
+#[inline(always)]
+#[allow(non_snake_case)]
+#[target_feature = "+sse"]
+pub unsafe fn _MM_TRANSPOSE4_PS(row0: &mut f32x4, row1: &mut f32x4, row2: &mut f32x4, row3: &mut f32x4) {
+    let tmp0 = _mm_unpacklo_ps(*row0, *row1);
+    let tmp2 = _mm_unpacklo_ps(*row2, *row3);
+    let tmp1 = _mm_unpackhi_ps(*row0, *row1);
+    let tmp3 = _mm_unpackhi_ps(*row2, *row3);
+
+    mem::replace(row0, _mm_movelh_ps(tmp0, tmp2));
+    mem::replace(row1,_mm_movehl_ps(tmp2, tmp0));
+    mem::replace(row2, _mm_movelh_ps(tmp1, tmp3));
+    mem::replace(row3, _mm_movehl_ps(tmp3, tmp1));
+}
+
 #[allow(improper_ctypes)]
 extern {
     #[link_name = "llvm.x86.sse.add.ss"]
@@ -1290,5 +1306,20 @@ mod tests {
         let underflow =
             sse::_MM_GET_EXCEPTION_STATE() & sse::_MM_EXCEPT_UNDERFLOW != 0;
         assert_eq!(underflow, true);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _MM_TRANSPOSE4_PS() {
+        let mut a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let mut b = f32x4::new(5.0, 6.0, 7.0, 8.0);
+        let mut c = f32x4::new(9.0, 10.0, 11.0, 12.0);
+        let mut d = f32x4::new(13.0, 14.0, 15.0, 16.0);
+
+        sse::_MM_TRANSPOSE4_PS(&mut a, &mut b, &mut c, &mut d);
+
+        assert_eq!(a, f32x4::new(1.0, 5.0, 9.0, 13.0));
+        assert_eq!(b, f32x4::new(2.0, 6.0, 10.0, 14.0));
+        assert_eq!(c, f32x4::new(3.0, 7.0, 11.0, 15.0));
+        assert_eq!(d, f32x4::new(4.0, 8.0, 12.0, 16.0));
     }
 }
