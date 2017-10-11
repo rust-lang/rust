@@ -369,6 +369,7 @@ pub enum PrintRequest {
     CodeModels,
     TargetSpec,
     NativeStaticLibs,
+    UnstableFeatures,
 }
 
 pub enum Input {
@@ -1306,6 +1307,17 @@ mod opt {
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
 pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
+    // FIXME: unfortunately, we need to hardcode these nightly vs. stable
+    // option value listings separately (rather than, say, plumbing in the
+    // extra nightly values with `format!`) because the `opt` interface
+    // requires a static lifetime
+    let stable_print_options = "[crate-name|file-names|sysroot|cfg|target-list|\
+                                target-cpus|target-features|relocation-models|\
+                                code-models|native-static-libs]";
+    let nightly_print_options = "[crate-name|file-names|sysroot|cfg|target-list|\
+                                target-cpus|target-features|relocation-models|\
+                                code-models|native-static-libs|target-spec-json|\
+                                unstable-features]";
     vec![
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment", "SPEC"),
@@ -1325,10 +1337,12 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                               the compiler to emit",
                  "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
-                               print on stdout",
-                     "[crate-name|file-names|sysroot|cfg|target-list|\
-                       target-cpus|target-features|relocation-models|\
-                       code-models|target-spec-json|native-static-libs]"),
+                                   print on stdout",
+                              if nightly_options::is_nightly_build() {
+                                  nightly_print_options
+                              } else {
+                                  stable_print_options
+                              }),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
@@ -1677,6 +1691,15 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                     early_error(error_format,
                                 &format!("the `-Z unstable-options` flag must also be passed to \
                                           enable the target-spec-json print option"));
+                }
+            },
+            "unstable-features" => {
+                if nightly_options::is_nightly_build() {
+                    PrintRequest::UnstableFeatures
+                } else {
+                    early_error(error_format,
+                                &format!("unstable features require a nightly \
+                                          build of the compiler"));
                 }
             },
             req => {

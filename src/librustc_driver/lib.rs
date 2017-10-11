@@ -96,7 +96,7 @@ use std::thread;
 
 use syntax::ast;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
-use syntax::feature_gate::{GatedCfg, UnstableFeatures};
+use syntax::feature_gate::{ACTIVE_FEATURES, GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
 
@@ -800,6 +800,38 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::NativeStaticLibs => {
                     println!("Native static libs can be printed only during linking");
+                }
+                PrintRequest::UnstableFeatures => {
+                    let (feat_width, ver_width, iss_width) = ACTIVE_FEATURES.iter()
+                        .map(|&(feat, ver, iss_maybe, _)| {
+                            (feat.len(),
+                             ver.len(),
+                             iss_maybe.map(|no| no.to_string().len()).unwrap_or(1))
+                        })
+                        .fold((7, 7, 5), // lengths of col. headings: "feature", "version", "issue"
+                              |max_widths, feat_widths| {
+                                  (max(max_widths.0, feat_widths.0),
+                                   max(max_widths.1, feat_widths.1),
+                                   max(max_widths.2, feat_widths.2))
+                        });
+                    println!("| {0:feat_width$} | {1:ver_width$} | {2:iss_width$} |",
+                             "feature", "version", "issue",
+                             feat_width = feat_width,
+                             ver_width = ver_width,
+                             iss_width = iss_width);
+                    println!("{:->total_width$}", "",
+                             // `+ 10` is for ` | ` column borders: 2 + 3 + 3 + 2
+                             total_width = feat_width + ver_width + iss_width + 10);
+                    let mut features = ACTIVE_FEATURES.to_vec();
+                    features.sort_by_key(|&f| f.0);
+                    for &(feature, version, issue_maybe, _) in &features {
+                        println!("| {0:feat_width$} | {1:>ver_width$} | {2:>iss_width$} |",
+                                 feature, version,
+                                 issue_maybe.map(|no| no.to_string()).unwrap_or("—".to_owned()),
+                                 feat_width = feat_width,
+                                 ver_width = ver_width,
+                                 iss_width = iss_width);
+                    }
                 }
             }
         }

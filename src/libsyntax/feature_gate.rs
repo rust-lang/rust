@@ -58,7 +58,7 @@ macro_rules! declare_features {
     ($((active, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
-        const ACTIVE_FEATURES:
+        pub const ACTIVE_FEATURES:
                 &'static [(&'static str, &'static str, Option<u32>, fn(&mut Features, Span))] =
             &[$((stringify!($feature), $ver, $issue, set!($feature))),+];
 
@@ -84,21 +84,21 @@ macro_rules! declare_features {
 
     ($((removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents unstable features which have since been removed (it was once Active)
-        const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
+        pub const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
 
     ($((stable_removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents stable features which have since been removed (it was once Accepted)
-        const STABLE_REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
+        pub const STABLE_REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
 
     ($((accepted, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Those language feature has since been Accepted (it was once Active)
-        const ACCEPTED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
+        pub const ACCEPTED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     }
