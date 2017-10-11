@@ -261,6 +261,7 @@ pub struct Formatter<'a> {
 
 struct Void {
     _priv: (),
+    _oibit_remover: PhantomData<*mut Fn()>,
 }
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
