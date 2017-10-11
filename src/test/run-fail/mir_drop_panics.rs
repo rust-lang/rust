@@ -10,7 +10,6 @@
 
 // error-pattern:panic 1
 // error-pattern:drop 2
-use std::io::{self, Write};
 
 struct Droppable(u32);
 impl Drop for Droppable {
@@ -18,7 +17,7 @@ impl Drop for Droppable {
         if self.0 == 1 {
             panic!("panic 1");
         } else {
-            write!(io::stderr(), "drop {}", self.0);
+            eprint!("drop {}", self.0);
         }
     }
 }

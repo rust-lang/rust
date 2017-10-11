@@ -85,16 +85,23 @@ ident [a-zA-Z\x80-\xff_][a-zA-Z0-9\x80-\xff_]*
 <blockcomment>(.|\n)   { }
 
 _        { return UNDERSCORE; }
+abstract { return ABSTRACT; }
+alignof  { return ALIGNOF; }
 as       { return AS; }
+become   { return BECOME; }
 box      { return BOX; }
 break    { return BREAK; }
+catch    { return CATCH; }
 const    { return CONST; }
 continue { return CONTINUE; }
 crate    { return CRATE; }
+default  { return DEFAULT; }
+do       { return DO; }
 else     { return ELSE; }
 enum     { return ENUM; }
 extern   { return EXTERN; }
 false    { return FALSE; }
+final    { return FINAL; }
 fn       { return FN; }
 for      { return FOR; }
 if       { return IF; }
@@ -102,26 +109,36 @@ impl     { return IMPL; }
 in       { return IN; }
 let      { return LET; }
 loop     { return LOOP; }
+macro    { return MACRO; }
 match    { return MATCH; }
 mod      { return MOD; }
 move     { return MOVE; }
 mut      { return MUT; }
+offsetof { return OFFSETOF; }
+override { return OVERRIDE; }
 priv     { return PRIV; }
 proc     { return PROC; }
+pure     { return PURE; }
 pub      { return PUB; }
 ref      { return REF; }
 return   { return RETURN; }
 self     { return SELF; }
+sizeof   { return SIZEOF; }
 static   { return STATIC; }
 struct   { return STRUCT; }
+super    { return SUPER; }
 trait    { return TRAIT; }
 true     { return TRUE; }
 type     { return TYPE; }
 typeof   { return TYPEOF; }
+union    { return UNION; }
 unsafe   { return UNSAFE; }
+unsized  { return UNSIZED; }
 use      { return USE; }
+virtual  { return VIRTUAL; }
 where    { return WHERE; }
 while    { return WHILE; }
+yield    { return YIELD; }
 
 {ident}  { return IDENT; }
 
@@ -189,25 +206,25 @@ while    { return WHILE; }
 \>\>= { return SHREQ; }
 \>    { return '>'; }
 
-\x27                                  { BEGIN(ltorchar); yymore(); }
-<ltorchar>static                      { BEGIN(INITIAL); return STATIC_LIFETIME; }
-<ltorchar>{ident}                     { BEGIN(INITIAL); return LIFETIME; }
-<ltorchar>\\[nrt\\\x27\x220]\x27      { BEGIN(suffix); return LIT_CHAR; }
-<ltorchar>\\x[0-9a-fA-F]{2}\x27       { BEGIN(suffix); return LIT_CHAR; }
-<ltorchar>\\u\{[0-9a-fA-F]?{6}\}\x27  { BEGIN(suffix); return LIT_CHAR; }
-<ltorchar>.\x27                       { BEGIN(suffix); return LIT_CHAR; }
-<ltorchar>[\x80-\xff]{2,4}\x27        { BEGIN(suffix); return LIT_CHAR; }
-<ltorchar><<EOF>>                     { BEGIN(INITIAL); return -1; }
+\x27                                      { BEGIN(ltorchar); yymore(); }
+<ltorchar>static                          { BEGIN(INITIAL); return STATIC_LIFETIME; }
+<ltorchar>{ident}                         { BEGIN(INITIAL); return LIFETIME; }
+<ltorchar>\\[nrt\\\x27\x220]\x27          { BEGIN(suffix); return LIT_CHAR; }
+<ltorchar>\\x[0-9a-fA-F]{2}\x27           { BEGIN(suffix); return LIT_CHAR; }
+<ltorchar>\\u\{([0-9a-fA-F]_*){1,6}\}\x27 { BEGIN(suffix); return LIT_CHAR; }
+<ltorchar>.\x27                           { BEGIN(suffix); return LIT_CHAR; }
+<ltorchar>[\x80-\xff]{2,4}\x27            { BEGIN(suffix); return LIT_CHAR; }
+<ltorchar><<EOF>>                         { BEGIN(INITIAL); return -1; }
 
 b\x22              { BEGIN(bytestr); yymore(); }
 <bytestr>\x22      { BEGIN(suffix); return LIT_BYTE_STR; }
 
-<bytestr><<EOF>>                { return -1; }
-<bytestr>\\[n\nrt\\\x27\x220]   { yymore(); }
-<bytestr>\\x[0-9a-fA-F]{2}      { yymore(); }
-<bytestr>\\u\{[0-9a-fA-F]?{6}\} { yymore(); }
-<bytestr>\\[^n\nrt\\\x27\x220]  { return -1; }
-<bytestr>(.|\n)                 { yymore(); }
+<bytestr><<EOF>>                     { return -1; }
+<bytestr>\\[n\nrt\\\x27\x220]        { yymore(); }
+<bytestr>\\x[0-9a-fA-F]{2}           { yymore(); }
+<bytestr>\\u\{([0-9a-fA-F]_*){1,6}\} { yymore(); }
+<bytestr>\\[^n\nrt\\\x27\x220]       { return -1; }
+<bytestr>(.|\n)                      { yymore(); }
 
 br\x22                      { BEGIN(rawbytestr_nohash); yymore(); }
 <rawbytestr_nohash>\x22     { BEGIN(suffix); return LIT_BYTE_STR_RAW; }
@@ -252,13 +269,13 @@ br/# {
 }
 <rawbytestr><<EOF>> { return -1; }
 
-b\x27                        { BEGIN(byte); yymore(); }
-<byte>\\[nrt\\\x27\x220]\x27 { BEGIN(INITIAL); return LIT_BYTE; }
-<byte>\\x[0-9a-fA-F]{2}\x27  { BEGIN(INITIAL); return LIT_BYTE; }
-<byte>\\u[0-9a-fA-F]{4}\x27  { BEGIN(INITIAL); return LIT_BYTE; }
-<byte>\\U[0-9a-fA-F]{8}\x27  { BEGIN(INITIAL); return LIT_BYTE; }
-<byte>.\x27                  { BEGIN(INITIAL); return LIT_BYTE; }
-<byte><<EOF>>                { BEGIN(INITIAL); return -1; }
+b\x27                           { BEGIN(byte); yymore(); }
+<byte>\\[nrt\\\x27\x220]\x27    { BEGIN(INITIAL); return LIT_BYTE; }
+<byte>\\x[0-9a-fA-F]{2}\x27     { BEGIN(INITIAL); return LIT_BYTE; }
+<byte>\\u([0-9a-fA-F]_*){4}\x27 { BEGIN(INITIAL); return LIT_BYTE; }
+<byte>\\U([0-9a-fA-F]_*){8}\x27 { BEGIN(INITIAL); return LIT_BYTE; }
+<byte>.\x27                     { BEGIN(INITIAL); return LIT_BYTE; }
+<byte><<EOF>>                   { BEGIN(INITIAL); return -1; }
 
 r\x22           { BEGIN(rawstr); yymore(); }
 <rawstr>\x22    { BEGIN(suffix); return LIT_STR_RAW; }
@@ -310,12 +327,12 @@ r/#             {
 \x22                     { BEGIN(str); yymore(); }
 <str>\x22                { BEGIN(suffix); return LIT_STR; }
 
-<str><<EOF>>                { return -1; }
-<str>\\[n\nr\rt\\\x27\x220] { yymore(); }
-<str>\\x[0-9a-fA-F]{2}      { yymore(); }
-<str>\\u\{[0-9a-fA-F]?{6}\} { yymore(); }
-<str>\\[^n\nrt\\\x27\x220]  { return -1; }
-<str>(.|\n)                 { yymore(); }
+<str><<EOF>>                     { return -1; }
+<str>\\[n\nr\rt\\\x27\x220]      { yymore(); }
+<str>\\x[0-9a-fA-F]{2}           { yymore(); }
+<str>\\u\{([0-9a-fA-F]_*){1,6}\} { yymore(); }
+<str>\\[^n\nrt\\\x27\x220]       { return -1; }
+<str>(.|\n)                      { yymore(); }
 
 \<-  { return LARROW; }
 -\>  { return RARROW; }

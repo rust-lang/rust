@@ -2890,17 +2890,30 @@ impl<'a> Parser<'a> {
 
                 match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
+                        let (op_noun, op_verb) = match self.token {
+                            token::Lt => ("comparison", "comparing"),
+                            token::BinOp(token::Shl) => ("shift", "shifting"),
+                            _ => {
+                                // We can end up here even without `<` being the next token, for
+                                // example because `parse_ty_no_plus` returns `Err` on keywords,
+                                // but `parse_path` returns `Ok` on them due to error recovery.
+                                // Return original error and parser state.
+                                mem::replace(self, parser_snapshot_after_type);
+                                return Err(type_err);
+                            }
+                        };
+
                         // Successfully parsed the type path leaving a `<` yet to parse.
                         type_err.cancel();
 
                         // Report non-fatal diagnostics, keep `x as usize` as an expression
                         // in AST and continue parsing.
                         let msg = format!("`<` is interpreted as a start of generic \
-                                           arguments for `{}`, not a comparison", path);
+                                           arguments for `{}`, not a {}", path, op_noun);
                         let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
                         err.span_label(self.look_ahead_span(1).to(parser_snapshot_after_type.span),
                                        "interpreted as generic arguments");
-                        err.span_label(self.span, "not interpreted as comparison");
+                        err.span_label(self.span, format!("not interpreted as {}", op_noun));
 
                         let expr = mk_expr(self, P(Ty {
                             span: path.span,
@@ -2911,7 +2924,7 @@ impl<'a> Parser<'a> {
                         let expr_str = self.sess.codemap().span_to_snippet(expr.span)
                                                 .unwrap_or(pprust::expr_to_string(&expr));
                         err.span_suggestion(expr.span,
-                                            "try comparing the casted value",
+                                            &format!("try {} the casted value", op_verb),
                                             format!("({})", expr_str));
                         err.emit();
 

@@ -488,7 +488,7 @@ impl Literal {
     pub fn string(string: &str) -> Literal {
         let mut escaped = String::new();
         for ch in string.chars() {
-            escaped.extend(ch.escape_unicode());
+            escaped.extend(ch.escape_debug());
         }
         Literal(token::Literal(token::Lit::Str_(Symbol::intern(&escaped)), None))
     }

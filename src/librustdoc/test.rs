@@ -495,11 +495,10 @@ impl Collector {
                 found = entry.remove_item(&test).is_some();
             }
             if !found {
-                let _ = writeln!(&mut io::stderr(),
-                                 "WARNING: {} Code block is not currently run as a test, but will \
-                                  in future versions of rustdoc. Please ensure this code block is \
-                                  a runnable test, or use the `ignore` directive.",
-                                 name);
+                eprintln!("WARNING: {} Code block is not currently run as a test, but will \
+                           in future versions of rustdoc. Please ensure this code block is \
+                           a runnable test, or use the `ignore` directive.",
+                          name);
                 return
             }
         }

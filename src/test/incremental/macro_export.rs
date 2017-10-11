@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Nacl-specific definitions
+// revisions: cfail1 cfail2 cfail3
+// must-compile-successfully
 
-#![stable(feature = "raw_ext", since = "1.1.0")]
+// This test case makes sure that we can compile with incremental compilation
+// enabled when there are macros exported from this crate. (See #37756)
 
-pub mod raw;
-pub mod fs;
+#![crate_type="rlib"]
+
+#[macro_export]
+macro_rules! some_macro {
+    ($e:expr) => ($e + 1)
+}

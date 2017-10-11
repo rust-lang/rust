@@ -1247,7 +1247,7 @@ fn start_executing_work(tcx: TyCtxt,
                         modules_config: Arc<ModuleConfig>,
                         metadata_config: Arc<ModuleConfig>,
                         allocator_config: Arc<ModuleConfig>)
-                        -> thread::JoinHandle<CompiledModules> {
+                        -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tcx.tx_to_llvm_workers.clone();
     let mut exported_symbols = FxHashMap();
     exported_symbols.insert(LOCAL_CRATE, tcx.exported_symbols(LOCAL_CRATE));
@@ -1695,7 +1695,7 @@ fn start_executing_work(tcx: TyCtxt,
                 Message::Done { result: Err(()), worker_id: _ } => {
                     shared_emitter.fatal("aborting due to worker thread failure");
                     // Exit the coordinator thread
-                    panic!("aborting due to worker thread failure")
+                    return Err(())
                 }
                 Message::TranslateItem => {
                     bug!("the coordinator should not receive translation requests")
@@ -1721,11 +1721,11 @@ fn start_executing_work(tcx: TyCtxt,
         let compiled_metadata_module = compiled_metadata_module
             .expect("Metadata module not compiled?");
 
-        CompiledModules {
+        Ok(CompiledModules {
             modules: compiled_modules,
             metadata_module: compiled_metadata_module,
             allocator_module: compiled_allocator_module,
-        }
+        })
     });
 
     // A heuristic that determines if we have enough LLVM WorkItems in the
@@ -2018,7 +2018,7 @@ pub struct OngoingCrateTranslation {
     coordinator_send: Sender<Box<Any + Send>>,
     trans_worker_receive: Receiver<Message>,
     shared_emitter_main: SharedEmitterMain,
-    future: thread::JoinHandle<CompiledModules>,
+    future: thread::JoinHandle<Result<CompiledModules, ()>>,
     output_filenames: Arc<OutputFilenames>,
 }
 
@@ -2026,7 +2026,11 @@ impl OngoingCrateTranslation {
     pub fn join(self, sess: &Session, dep_graph: &DepGraph) -> CrateTranslation {
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = match self.future.join() {
-            Ok(compiled_modules) => compiled_modules,
+            Ok(Ok(compiled_modules)) => compiled_modules,
+            Ok(Err(())) => {
+                sess.abort_if_errors();
+                panic!("expected abort due to worker thread errors")
+            },
             Err(_) => {
                 sess.fatal("Error during translation/LLVM phase.");
             }

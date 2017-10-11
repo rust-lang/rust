@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread 'main' panicked at 'foobar'
-
-#![feature(panic_handler)]
-
-use std::panic;
+macro_rules! foo {
+    ($rest: tt) => {
+        bar(baz: $rest)
+    }
+}
 
 fn main() {
-    panic::set_hook(Box::new(|i| {
-        eprint!("greetings from the panic handler");
-    }));
-    panic::take_hook();
-    panic!("foobar");
+    foo!(true);
 }

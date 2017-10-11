@@ -358,7 +358,7 @@ for target in configured_targets:
 
 
 # Here we walk through the constructed configuration we have from the parsed
-# command line arguemnts. We then apply each piece of configuration by
+# command line arguments. We then apply each piece of configuration by
 # basically just doing a `sed` to change the various configuration line to what
 # we've got configure.
 def to_toml(value):
@@ -372,7 +372,7 @@ def to_toml(value):
     elif isinstance(value, str):
         return "'" + value + "'"
     else:
-        raise 'no toml'
+        raise RuntimeError('no toml')
 
 
 def configure_section(lines, config):
@@ -392,9 +392,9 @@ def configure_section(lines, config):
 for section_key in config:
     section_config = config[section_key]
     if section_key not in sections:
-        raise RuntimeError("config key {} not in sections".format(key))
+        raise RuntimeError("config key {} not in sections".format(section_key))
 
-    if section_key == 'target':
+    if __key == 'target':
         for target in section_config:
             configure_section(targets[target], section_config[target])
     else:

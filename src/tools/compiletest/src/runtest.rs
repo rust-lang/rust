@@ -571,9 +571,10 @@ actual:\n\
                 }
             }
 
-            _=> {
-                let rust_src_root = self.find_rust_src_root()
-                                        .expect("Could not find Rust source root");
+            _ => {
+                let rust_src_root = self.config.find_rust_src_root().expect(
+                    "Could not find Rust source root",
+                );
                 let rust_pp_module_rel_path = Path::new("./src/etc");
                 let rust_pp_module_abs_path = rust_src_root.join(rust_pp_module_rel_path)
                                                            .to_str()
@@ -664,19 +665,6 @@ actual:\n\
         self.check_debugger_output(&debugger_run_result, &check_lines);
     }
 
-    fn find_rust_src_root(&self) -> Option<PathBuf> {
-        let mut path = self.config.src_base.clone();
-        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
-
-        while path.pop() {
-            if path.join(&path_postfix).is_file() {
-                return Some(path);
-            }
-        }
-
-        None
-    }
-
     fn run_debuginfo_lldb_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
@@ -735,7 +723,9 @@ actual:\n\
         script_str.push_str("version\n");
 
         // Switch LLDB into "Rust mode"
-        let rust_src_root = self.find_rust_src_root().expect("Could not find Rust source root");
+        let rust_src_root = self.config.find_rust_src_root().expect(
+            "Could not find Rust source root",
+        );
         let rust_pp_module_rel_path = Path::new("./src/etc/lldb_rust_formatters.py");
         let rust_pp_module_abs_path = rust_src_root.join(rust_pp_module_rel_path)
                                                    .to_str()
@@ -1717,11 +1707,13 @@ actual:\n\
         if self.props.check_test_line_numbers_match {
             self.check_rustdoc_test_option(proc_res);
         } else {
-            let root = self.find_rust_src_root().unwrap();
-            let res = self.cmd2procres(Command::new(&self.config.docck_python)
-                                       .arg(root.join("src/etc/htmldocck.py"))
-                                       .arg(out_dir)
-                                       .arg(&self.testpaths.file));
+            let root = self.config.find_rust_src_root().unwrap();
+            let res = self.cmd2procres(
+                Command::new(&self.config.docck_python)
+                    .arg(root.join("src/etc/htmldocck.py"))
+                    .arg(out_dir)
+                    .arg(&self.testpaths.file),
+            );
             if !res.status.success() {
                 self.fatal_proc_rec("htmldocck failed!", &res);
             }

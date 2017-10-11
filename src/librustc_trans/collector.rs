@@ -401,9 +401,9 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        caller: TransItem<'tcx>,
-                                        callees: &[TransItem<'tcx>],
-                                        inlining_map: &mut InliningMap<'tcx>) {
+                             caller: TransItem<'tcx>,
+                             callees: &[TransItem<'tcx>],
+                             inlining_map: &mut InliningMap<'tcx>) {
     let is_inlining_candidate = |trans_item: &TransItem<'tcx>| {
         trans_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };

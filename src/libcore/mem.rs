@@ -836,7 +836,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 ///
 /// See the `discriminant` function in this module for more information.
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub struct Discriminant<T>(u64, PhantomData<*const T>);
+pub struct Discriminant<T>(u64, PhantomData<fn() -> T>);
 
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 
