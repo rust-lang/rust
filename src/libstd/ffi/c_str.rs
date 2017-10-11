@@ -297,10 +297,10 @@ pub struct IntoStringError {
 impl CString {
     /// Creates a new C-compatible string from a container of bytes.
     ///
-    /// This method will consume the provided data and use the
+    /// This function will consume the provided data and use the
     /// underlying bytes to construct a new string, ensuring that
-    /// there is a trailing 0 byte.  This trailing 0 byte will be
-    /// appended by this method; the provided data should *not*
+    /// there is a trailing 0 byte. This trailing 0 byte will be
+    /// appended by this function; the provided data should *not*
     /// contain any 0 bytes in it.
     ///
     /// # Examples
