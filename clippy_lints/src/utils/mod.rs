@@ -664,7 +664,10 @@ pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
 /// appear once per
 /// replacement. In human-readable format though, it only appears once before
 /// the whole suggestion.
-pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(Span, String)>) {
+pub fn multispan_sugg<I>(db: &mut DiagnosticBuilder, help_msg: String, sugg: I)
+where
+    I: IntoIterator<Item=(Span, String)>,
+{
     let sugg = rustc_errors::CodeSuggestion {
         substitution_parts: sugg.into_iter()
             .map(|(span, sub)| {

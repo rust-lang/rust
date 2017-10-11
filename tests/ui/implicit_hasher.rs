@@ -65,4 +65,22 @@ impl<S: BuildHasher + Default> Foo<i64> for HashSet<String, S> {
 pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {
 }
 
+macro_rules! gen {
+    (impl) => {
+        impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
+            fn make() -> (Self, Self) {
+                (HashMap::new(), HashMap::with_capacity(10))
+            }
+        }
+    };
+
+    (fn $name:ident) => {
+        pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {
+        }
+    }
+}
+
+gen!(impl);
+gen!(fn bar);
+
 fn main() {}

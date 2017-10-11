@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::*;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
 use rustc::ty::subst::Substs;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -11,9 +11,10 @@ use std::borrow::Cow;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
+use syntax::errors::DiagnosticBuilder;
 use utils::{comparisons, higher, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
-            opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_sugg,
-            span_lint_and_then, type_size};
+            multispan_sugg, opt_def_id, snippet, snippet_opt, span_help_and_lint, span_lint,
+            span_lint_and_sugg, span_lint_and_then, type_size, same_tys};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -1484,140 +1485,129 @@ impl LintPass for ImplicitHasher {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
     #[allow(cast_possible_truncation)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemImpl(_, _, _, ref generics, _, ref ty, ref items) = item.node {
-            let mut vis = ImplicitHasherTypeVisitor::new(cx);
-            vis.visit_ty(ty);
+        use syntax_pos::BytePos;
 
-            for target in vis.found {
-                let generics_snip = snippet(cx, generics.span, "");
-                let generics_snip_trimmed = if generics_snip.len() == 0 {
-                    ""
-                } else {
-                    // trim `<` `>`
-                    &generics_snip[1..generics_snip.len() - 1]
-                };
-                let generics_span = generics.span.substitute_dummy({
-                    let pos = snippet_opt(cx, item.span.until(target.span()))
-                        .and_then(|snip| {
-                            Some(item.span.lo() + ::syntax_pos::BytePos(snip.find("impl")? as u32 + 4))
-                        })
-                        .expect("failed to create span for type arguments");
-                    Span::new(pos, pos, item.span.data().ctxt)
-                });
+        fn suggestion<'a, 'tcx>(
+            cx: &LateContext<'a, 'tcx>,
+            db: &mut DiagnosticBuilder,
+            generics_span: Span,
+            generics_suggestion_span: Span,
+            target: &ImplicitHasherType,
+            vis: ImplicitHasherConstructorVisitor,
+        ) {
+            let generics_snip = snippet(cx, generics_span, "");
+            // trim `<` `>`
+            let generics_snip = if generics_snip.is_empty() {
+                ""
+            } else {
+                &generics_snip[1..generics_snip.len() - 1]
+            };
 
-                let mut vis = ImplicitHasherConstructorVisitor::new(cx, target.clone());
-                for item in items.iter().map(|item| cx.tcx.hir.impl_item(item.id)) {
-                    vis.visit_impl_item(item);
-                }
-
-                span_lint_and_then(
-                    cx,
-                    IMPLICIT_HASHER,
-                    target.span(),
-                    &format!("impl for `{}` should be generarized over different hashers", target.type_name()),
-                    move |db| {
-                        db.span_suggestion(
-                            generics_span,
-                            "consider adding a type parameter",
-                            format!(
-                                "<{}{}S: ::std::hash::BuildHasher{}>",
-                                generics_snip_trimmed,
-                                if generics_snip_trimmed.is_empty() {
-                                    ""
-                                } else {
-                                    ", "
-                                },
-                                if vis.suggestions.is_empty() {
-                                    ""
-                                } else {
-                                    // request users to add `Default` bound so that generic constructors can be used
-                                    " + Default"
-                                },
-                            ),
-                        );
-
-                        db.span_suggestion(
-                            target.span(),
-                            "...and change the type to",
-                            format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
-                        );
-
-                        for (span, sugg) in vis.suggestions {
-                            db.span_suggestion(span, "...and use generic constructor here", sugg);
-                        }
+            db.span_suggestion(
+                generics_suggestion_span,
+                "consider adding a type parameter",
+                format!(
+                    "<{}{}S: ::std::hash::BuildHasher{}>",
+                    generics_snip,
+                    if generics_snip.is_empty() { "" } else { ", " },
+                    if vis.suggestions.is_empty() {
+                        ""
+                    } else {
+                        // request users to add `Default` bound so that generic constructors can be used
+                        " + Default"
                     },
-                );
+                ),
+            );
+
+            db.span_suggestion(
+                target.span(),
+                "...and change the type to",
+                format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
+            );
+
+            if !vis.suggestions.is_empty() {
+                multispan_sugg(db, "...and use generic constructor".into(), vis.suggestions);
             }
+            // for (span, sugg) in vis.suggestions {
+            //     db.span_suggestion(span, "...and use generic constructor here", sugg);
+            // }
         }
 
-        if let ItemFn(ref decl, .., ref generics, body) = item.node {
-            if item.vis != Public {
-                return;
-            }
-
-            for ty in &decl.inputs {
+        match item.node {
+            ItemImpl(_, _, _, ref generics, _, ref ty, ref items) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
                 vis.visit_ty(ty);
 
-                for target in vis.found {
-                    let generics_snip = snippet(cx, generics.span, "");
-                    let generics_snip_trimmed = if generics_snip.len() == 0 {
-                        ""
-                    } else {
-                        // trim `<` `>`
-                        &generics_snip[1..generics_snip.len() - 1]
-                    };
-                    let generics_span = generics.span.substitute_dummy({
-                        let pos = snippet_opt(cx, item.span.until(ty.span))
-                            .and_then(|snip| {
-                                let i = snip.find("fn")?;
-                                Some(item.span.lo() + ::syntax_pos::BytePos(i as u32 + (&snip[i..]).find('(')? as u32))
-                            })
-                            .expect("failed to create span for type parameters");
+                for target in &vis.found {
+                    let generics_suggestion_span = generics.span.substitute_dummy({
+                        let pos = snippet_opt(cx, item.span.until(target.span()))
+                            .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)))
+                            .expect("failed to create span for type arguments");
                         Span::new(pos, pos, item.span.data().ctxt)
                     });
 
-                    let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target.clone());
-                    ctr_vis.visit_body(cx.tcx.hir.body(body));
-                    assert!(ctr_vis.suggestions.is_empty());
+                    let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
+                    for item in items.iter().map(|item| cx.tcx.hir.impl_item(item.id)) {
+                        ctr_vis.visit_impl_item(item);
+                    }
 
                     span_lint_and_then(
                         cx,
                         IMPLICIT_HASHER,
                         target.span(),
-                        &format!(
-                            "parameter of type `{}` should be generarized over different hashers",
-                            target.type_name()
-                        ),
+                        &format!("impl for `{}` should be generarized over different hashers", target.type_name()),
                         move |db| {
-                            db.span_suggestion(
-                                generics_span,
-                                "consider adding a type parameter",
-                                format!(
-                                    "<{}{}S: ::std::hash::BuildHasher>",
-                                    generics_snip_trimmed,
-                                    if generics_snip_trimmed.is_empty() {
-                                        ""
-                                    } else {
-                                        ", "
-                                    },
-                                ),
-                            );
-
-                            db.span_suggestion(
-                                target.span(),
-                                "...and change the type to",
-                                format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
-                            );
+                            suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
                         },
                     );
                 }
-            }
+            },
+            ItemFn(ref decl, .., ref generics, body_id) => {
+                if item.vis != Public {
+                    return;
+                }
+
+                let body = cx.tcx.hir.body(body_id);
+
+                for ty in &decl.inputs {
+                    let mut vis = ImplicitHasherTypeVisitor::new(cx);
+                    vis.visit_ty(ty);
+
+                    for target in &vis.found {
+                        let generics_suggestion_span = generics.span.substitute_dummy({
+                            let pos = snippet_opt(cx, item.span.until(body.arguments[0].pat.span))
+                                .and_then(|snip| {
+                                    let i = snip.find("fn")?;
+                                    Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
+                                })
+                                .expect("failed to create span for type parameters");
+                            Span::new(pos, pos, item.span.data().ctxt)
+                        });
+
+                        let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
+                        ctr_vis.visit_body(body);
+                        assert!(ctr_vis.suggestions.is_empty());
+
+                        span_lint_and_then(
+                            cx,
+                            IMPLICIT_HASHER,
+                            target.span(),
+                            &format!(
+                                "parameter of type `{}` should be generarized over different hashers",
+                                target.type_name()
+                            ),
+                            move |db| {
+                                suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
+                            },
+                        );
+                    }
+                }
+            },
+            _ => {},
         }
     }
 }
 
-#[derive(Clone)]
 enum ImplicitHasherType<'tcx> {
     HashMap(Span, Ty<'tcx>, Cow<'static, str>, Cow<'static, str>),
     HashSet(Span, Ty<'tcx>, Cow<'static, str>),
@@ -1702,38 +1692,37 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
 }
 
 /// Looks for default-hasher-dependent constructors like `HashMap::new`.
-struct ImplicitHasherConstructorVisitor<'a, 'tcx: 'a> {
+struct ImplicitHasherConstructorVisitor<'a, 'b, 'tcx: 'a + 'b> {
     cx: &'a LateContext<'a, 'tcx>,
-    body: Option<BodyId>,
-    target: ImplicitHasherType<'tcx>,
+    body: &'a TypeckTables<'tcx>,
+    target: &'b ImplicitHasherType<'tcx>,
     suggestions: BTreeMap<Span, String>,
 }
 
-impl<'a, 'tcx: 'a> ImplicitHasherConstructorVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>, target: ImplicitHasherType<'tcx>) -> Self {
+impl<'a, 'b, 'tcx: 'a + 'b> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+    fn new(cx: &'a LateContext<'a, 'tcx>, target: &'b ImplicitHasherType<'tcx>) -> Self {
         Self {
             cx,
-            body: None,
+            body: cx.tables,
             target,
             suggestions: BTreeMap::new(),
         }
     }
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'tcx> {
+impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     fn visit_body(&mut self, body: &'tcx Body) {
-        self.body = Some(body.id());
+        self.body = self.cx.tcx.body_tables(body.id());
         walk_body(self, body);
     }
 
     fn visit_expr(&mut self, e: &'tcx Expr) {
         if_let_chain!{[
-            let Some(body) = self.body,
             let ExprCall(ref fun, ref args) = e.node,
             let ExprPath(QPath::TypeRelative(ref ty, ref method)) = fun.node,
             let TyPath(QPath::Resolved(None, ref ty_path)) = ty.node,
         ], {
-            if same_tys(self.cx, self.cx.tcx.body_tables(body).expr_ty(e), self.target.ty()) {
+            if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
                 return;
             }
 
