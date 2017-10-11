@@ -407,11 +407,6 @@ with open('Makefile', 'w') as f:
     contents = contents.replace("$(CFG_PYTHON)", sys.executable)
     f.write(contents)
 
-# Finally, clean up with a bit of a help message
-relpath = os.path.dirname(__file__)
-if relpath == '':
-    relpath = '.'
-
 p("")
-p("run `python {}/x.py --help`".format(relpath))
+p("run `python {}/x.py --help`".format(rust_dir))
 p("")
