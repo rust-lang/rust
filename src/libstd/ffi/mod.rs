@@ -12,24 +12,24 @@
 //!
 //! This module provides utilities to handle data across non-Rust
 //! interfaces, like other programming languages and the underlying
-//! operating system.  It is mainly of use for FFI (Foreign Function
+//! operating system. It is mainly of use for FFI (Foreign Function
 //! Interface) bindings and code that needs to exchange C-like strings
 //! with other languages.
 //!
 //! # Overview
 //!
 //! Rust represents owned strings with the [`String`] type, and
-//! borrowed slices of strings with the [`str`] primitive.  Both are
+//! borrowed slices of strings with the [`str`] primitive. Both are
 //! always in UTF-8 encoding, and may contain nul bytes in the middle,
 //! i.e. if you look at the bytes that make up the string, there may
-//! be a `\0` among them.  Both `String` and `str` store their length
+//! be a `\0` among them. Both `String` and `str` store their length
 //! explicitly; there are no nul terminators at the end of strings
 //! like in C.
 //!
 //! C strings are different from Rust strings:
 //!
 //! * **Encodings** - Rust strings are UTF-8, but C strings may use
-//! other encodings.  If you are using a string from C, you should
+//! other encodings. If you are using a string from C, you should
 //! check its encoding explicitly, rather than just assuming that it
 //! is UTF-8 like you can do in Rust.
 //!
@@ -37,22 +37,22 @@
 //! characters; please **note** that C's `char` is different from Rust's.
 //! The C standard leaves the actual sizes of those types open to
 //! interpretation, but defines different APIs for strings made up of
-//! each character type.  Rust strings are always UTF-8, so different
+//! each character type. Rust strings are always UTF-8, so different
 //! Unicode characters will be encoded in a variable number of bytes
-//! each.  The Rust type [`char`] represents a '[Unicode scalar
+//! each. The Rust type [`char`] represents a '[Unicode scalar
 //! value]', which is similar to, but not the same as, a '[Unicode
 //! code point]'.
 //!
 //! * **Nul terminators and implicit string lengths** - Often, C
 //! strings are nul-terminated, i.e. they have a `\0` character at the
-//! end.  The length of a string buffer is not stored, but has to be
+//! end. The length of a string buffer is not stored, but has to be
 //! calculated; to compute the length of a string, C code must
 //! manually call a function like `strlen()` for `char`-based strings,
-//! or `wcslen()` for `wchar_t`-based ones.  Those functions return
+//! or `wcslen()` for `wchar_t`-based ones. Those functions return
 //! the number of characters in the string excluding the nul
 //! terminator, so the buffer length is really `len+1` characters.
 //! Rust strings don't have a nul terminator; their length is always
-//! stored and does not need to be calculated.  While in Rust
+//! stored and does not need to be calculated. While in Rust
 //! accessing a string's length is a O(1) operation (becasue the
 //! length is stored); in C it is an O(length) operation because the
 //! length needs to be computed by scanning the string for the nul
@@ -61,7 +61,7 @@
 //! * **Internal nul characters** - When C strings have a nul
 //! terminator character, this usually means that they cannot have nul
 //! characters in the middle — a nul character would essentially
-//! truncate the string.  Rust strings *can* have nul characters in
+//! truncate the string. Rust strings *can* have nul characters in
 //! the middle, because nul does not have to mark the end of the
 //! string in Rust.
 //!
@@ -80,30 +80,30 @@
 //!
 //! * **From C to Rust:** [`CStr`] represents a borrowed C string; it
 //! is what you would use to wrap a raw `*const u8` that you got from
-//! a C function.  A `CStr` is guaranteed to be a nul-terminated array
-//! of bytes.  Once you have a `CStr`, you can convert it to a Rust
+//! a C function. A `CStr` is guaranteed to be a nul-terminated array
+//! of bytes. Once you have a `CStr`, you can convert it to a Rust
 //! `&str` if it's valid UTF-8, or lossily convert it by adding
 //! replacement characters.
 //!
 //! [`OsString`] and [`OsStr`] are useful when you need to transfer
 //! strings to and from the operating system itself, or when capturing
-//! the output of external commands.  Conversions between `OsString`,
+//! the output of external commands. Conversions between `OsString`,
 //! `OsStr` and Rust strings work similarly to those for [`CString`]
 //! and [`CStr`].
 //!
 //! * [`OsString`] represents an owned string in whatever
-//! representation the operating system prefers.  In the Rust standard
+//! representation the operating system prefers. In the Rust standard
 //! library, various APIs that transfer strings to/from the operating
-//! system use `OsString` instead of plain strings.  For example,
+//! system use `OsString` instead of plain strings. For example,
 //! [`env::var_os()`] is used to query environment variables; it
-//! returns an `Option<OsString>`.  If the environment variable exists
+//! returns an `Option<OsString>`. If the environment variable exists
 //! you will get a `Some(os_string)`, which you can *then* try to
-//! convert to a Rust string.  This yields a [`Result<>`], so that
+//! convert to a Rust string. This yields a [`Result<>`], so that
 //! your code can detect errors in case the environment variable did
 //! not in fact contain valid Unicode data.
 //!
 //! * [`OsStr`] represents a borrowed reference to a string in a
-//! format that can be passed to the operating system.  It can be
+//! format that can be passed to the operating system. It can be
 //! converted into an UTF-8 Rust string slice in a similar way to
 //! `OsString`.
 //!
@@ -125,12 +125,12 @@
 //!
 //! On Windows, [`OsStr`] implements the
 //! `std::os::windows::ffi::`[`OsStrExt`][windows.OsStrExt] trait,
-//! which provides an [`encode_wide`] method.  This provides an
+//! which provides an [`encode_wide`] method. This provides an
 //! iterator that can be [`collect`]ed into a vector of [`u16`].
 //!
 //! Additionally, on Windows [`OsString`] implements the
 //! `std::os::windows:ffi::`[`OsStringExt`][windows.OsStringExt]
-//! trait, which provides a [`from_wide`] method.  The result of this
+//! trait, which provides a [`from_wide`] method. The result of this
 //! method is an `OsString` which can be round-tripped to a Windows
 //! string losslessly.
 //!
