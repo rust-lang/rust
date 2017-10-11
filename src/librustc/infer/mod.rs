@@ -480,16 +480,16 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     {
         assert!(!value.needs_subst());
         let value = self.erase_late_bound_regions(value);
-        self.normalize_associated_type_in(&value)
+        self.trans_normalize_associated_types_in(&value)
     }
 
     /// Fully normalizes any associated types in `value`, using an
     /// empty environment and `Reveal::All` mode (therefore, suitable
     /// only for monomorphized code during trans, basically).
-    pub fn normalize_associated_type_in<T>(self, value: &T) -> T
+    pub fn trans_normalize_associated_types_in<T>(self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        debug!("normalize_associated_type_in(t={:?})", value);
+        debug!("trans_normalize_associated_types_in(t={:?})", value);
 
         let param_env = ty::ParamEnv::empty(Reveal::All);
         let value = self.erase_regions(value);
