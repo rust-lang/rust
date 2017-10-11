@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Utilities related to FFI bindings.
+//!
 //! This module provides utilities to handle data across non-Rust
 //! interfaces, like other programming languages and the underlying
 //! operating system.  It is mainly of use for FFI (Foreign Function
