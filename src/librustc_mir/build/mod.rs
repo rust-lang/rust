@@ -21,6 +21,7 @@ use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
+use rustc_const_eval::pattern::{BindingMode, PatternKind};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
 use std::mem;
@@ -571,13 +572,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // Bind the argument patterns
         for (index, &(ty, pattern)) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return pointer
-            let lvalue = Lvalue::Local(Local::new(index + 1));
+            let local = Local::new(index + 1);
+            let lvalue = Lvalue::Local(local);
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
-                scope = self.declare_bindings(scope, ast_body.span,
-                                              LintLevel::Inherited, &pattern);
-                unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
+
+                match *pattern.kind {
+                    // Don't introduce extra copies for simple bindings
+                    PatternKind::Binding { mutability, var, mode: BindingMode::ByValue, .. } => {
+                        self.local_decls[local].mutability = mutability;
+                        self.var_indices.insert(var, local);
+                    }
+                    _ => {
+                        scope = self.declare_bindings(scope, ast_body.span,
+                                                      LintLevel::Inherited, &pattern);
+                        unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
+                    }
+                }
             }
 
             // Make sure we drop (parts of) the argument even when not matched on.
