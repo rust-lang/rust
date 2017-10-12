@@ -894,7 +894,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             let mut db = cx.struct_span_lint(UNCONDITIONAL_RECURSION,
                                              sp,
                                              "function cannot return without recurring");
-            // FIXME #19668: these could be span_lint_note's instead of this manual guard.
             // offer some help to the programmer.
             for call in &self_call_spans {
                 db.span_note(*call, "recursive call site");
