@@ -805,19 +805,19 @@ pub enum Variants {
         variants: Vec<CachedLayout>,
     },
 
-    /// Two cases distinguished by a niche (a value invalid for a type):
+    /// Multiple cases distinguished by a niche (values invalid for a type):
     /// the variant `dataful_variant` contains a niche at an arbitrary
-    /// offset (field 0 of the enum), which is set to `niche_value`
-    /// for the other variant.
+    /// offset (field 0 of the enum), which for a variant with discriminant
+    /// `d` is set to `(d - niche_variants.start).wrapping_add(niche_start)`.
     ///
     /// For example, `Option<(usize, &T)>`  is represented such that
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
     NicheFilling {
         dataful_variant: usize,
-        niche_variant: usize,
+        niche_variants: RangeInclusive<usize>,
         niche: Scalar,
-        niche_value: u128,
+        niche_start: u128,
         variants: Vec<CachedLayout>,
     }
 }
@@ -1372,11 +1372,11 @@ impl<'a, 'tcx> CachedLayout {
                     }).collect::<Result<Vec<_>, _>>()
                 }).collect::<Result<Vec<_>, _>>()?;
 
-                let (inh_first, inh_second, inh_third) = {
+                let (inh_first, inh_second) = {
                     let mut inh_variants = (0..variants.len()).filter(|&v| {
                         variants[v].iter().all(|f| f.abi != Abi::Uninhabited)
                     });
-                    (inh_variants.next(), inh_variants.next(), inh_variants.next())
+                    (inh_variants.next(), inh_variants.next())
                 };
                 if inh_first.is_none() {
                     // Uninhabited because it has no variants, or only uninhabited ones.
@@ -1472,68 +1472,94 @@ impl<'a, 'tcx> CachedLayout {
                 let no_explicit_discriminants = def.variants.iter().enumerate()
                     .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i));
 
-                if inh_second.is_some() && inh_third.is_none() &&
-                   !def.repr.inhibit_enum_layout_opt() &&
-                   no_explicit_discriminants {
-                    // Nullable pointer optimization
-                    let (a, b) = (inh_first.unwrap(), inh_second.unwrap());
-                    for &(i, other) in &[(a, b), (b, a)] {
-                        if !variants[other].iter().all(|f| f.is_zst()) {
-                            continue;
-                        }
+                // Niche-filling enum optimization.
+                if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
+                    let mut dataful_variant = None;
+                    let mut niche_variants = usize::max_value()..=0;
 
-                        for (field_index, field) in variants[i].iter().enumerate() {
-                            if let Some((offset, niche, niche_value)) = field.find_niche(cx)? {
-                                let st = variants.iter().enumerate().map(|(j, v)| {
-                                    let mut st = univariant_uninterned(v,
-                                        &def.repr, StructKind::AlwaysSized)?;
-                                    st.variants = Variants::Single { index: j };
-                                    Ok(st)
-                                }).collect::<Result<Vec<_>, _>>()?;
-
-                                let offset = st[i].fields.offset(field_index) + offset;
-                                let CachedLayout {
-                                    size,
-                                    mut align,
-                                    mut primitive_align,
-                                    ..
-                                } = st[i];
-
-                                let mut niche_align = niche.value.align(dl);
-                                let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
-                                    Abi::Scalar(niche.clone())
-                                } else {
-                                    let mut packed = st[i].abi.is_packed();
-                                    if offset.abi_align(niche_align) != offset {
-                                        packed = true;
-                                        niche_align = dl.i8_align;
-                                    }
-                                    Abi::Aggregate {
-                                       sized: true,
-                                       packed
-                                    }
-                                };
-                                align = align.max(niche_align);
-                                primitive_align = primitive_align.max(niche_align);
-
-                                return Ok(tcx.intern_layout(CachedLayout {
-                                    variants: Variants::NicheFilling {
-                                        dataful_variant: i,
-                                        niche_variant: other,
-                                        niche,
-                                        niche_value,
-                                        variants: st,
-                                    },
-                                    fields: FieldPlacement::Arbitrary {
-                                        offsets: vec![offset],
-                                        memory_index: vec![0]
-                                    },
-                                    abi,
-                                    size,
-                                    align,
-                                    primitive_align
-                                }));
+                    // Find one non-ZST variant.
+                    'variants: for (v, fields) in variants.iter().enumerate() {
+                        for f in fields {
+                            if f.abi == Abi::Uninhabited {
+                                continue 'variants;
                             }
+                            if !f.is_zst() {
+                                if dataful_variant.is_none() {
+                                    dataful_variant = Some(v);
+                                    continue 'variants;
+                                } else {
+                                    dataful_variant = None;
+                                    break 'variants;
+                                }
+                            }
+                        }
+                        if niche_variants.start > v {
+                            niche_variants.start = v;
+                        }
+                        niche_variants.end = v;
+                    }
+
+                    if niche_variants.start > niche_variants.end {
+                        dataful_variant = None;
+                    }
+
+                    if let Some(i) = dataful_variant {
+                        let count = (niche_variants.end - niche_variants.start + 1) as u128;
+                        for (field_index, field) in variants[i].iter().enumerate() {
+                            let (offset, niche, niche_start) =
+                                match field.find_niche(cx, count)? {
+                                    Some(niche) => niche,
+                                    None => continue
+                                };
+                            let st = variants.iter().enumerate().map(|(j, v)| {
+                                let mut st = univariant_uninterned(v,
+                                    &def.repr, StructKind::AlwaysSized)?;
+                                st.variants = Variants::Single { index: j };
+                                Ok(st)
+                            }).collect::<Result<Vec<_>, _>>()?;
+
+                            let offset = st[i].fields.offset(field_index) + offset;
+                            let CachedLayout {
+                                size,
+                                mut align,
+                                mut primitive_align,
+                                ..
+                            } = st[i];
+
+                            let mut niche_align = niche.value.align(dl);
+                            let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
+                                Abi::Scalar(niche.clone())
+                            } else {
+                                let mut packed = st[i].abi.is_packed();
+                                if offset.abi_align(niche_align) != offset {
+                                    packed = true;
+                                    niche_align = dl.i8_align;
+                                }
+                                Abi::Aggregate {
+                                    sized: true,
+                                    packed
+                                }
+                            };
+                            align = align.max(niche_align);
+                            primitive_align = primitive_align.max(niche_align);
+
+                            return Ok(tcx.intern_layout(CachedLayout {
+                                variants: Variants::NicheFilling {
+                                    dataful_variant: i,
+                                    niche_variants,
+                                    niche,
+                                    niche_start,
+                                    variants: st,
+                                },
+                                fields: FieldPlacement::Arbitrary {
+                                    offsets: vec![offset],
+                                    memory_index: vec![0]
+                                },
+                                abi,
+                                size,
+                                align,
+                                primitive_align
+                            }));
                         }
                     }
                 }
@@ -2272,50 +2298,50 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     }
 
     /// Find the offset of a niche leaf field, starting from
-    /// the given type and recursing through aggregates.
+    /// the given type and recursing through aggregates, which
+    /// has at least `count` consecutive invalid values.
     /// The tuple is `(offset, scalar, niche_value)`.
     // FIXME(eddyb) traverse already optimized enums.
-    fn find_niche<C>(&self, cx: C)
+    fn find_niche<C>(&self, cx: C, count: u128)
         -> Result<Option<(Size, Scalar, u128)>, LayoutError<'tcx>>
         where C: LayoutOf<Ty<'tcx>, TyLayout = Result<Self, LayoutError<'tcx>>> +
                  HasTyCtxt<'tcx>
     {
         let scalar_component = |scalar: &Scalar, offset| {
-            // FIXME(eddyb) support negative/wrap-around discriminant ranges.
-            let Scalar { value, ref valid_range } = *scalar;
-            if valid_range.start < valid_range.end {
-                let bits = value.size(cx).bits();
-                assert!(bits <= 128);
-                let max_value = !0u128 >> (128 - bits);
-                if valid_range.start > 0 {
-                    let niche = valid_range.start - 1;
-                    Ok(Some((offset, Scalar {
-                        value,
-                        valid_range: niche..=valid_range.end
-                    }, niche)))
-                } else if valid_range.end < max_value {
-                    let niche = valid_range.end + 1;
-                    Ok(Some((offset, Scalar {
-                        value,
-                        valid_range: valid_range.start..=niche
-                    }, niche)))
-                } else {
-                    Ok(None)
-                }
+            let Scalar { value, valid_range: ref v } = *scalar;
+
+            let bits = value.size(cx).bits();
+            assert!(bits <= 128);
+            let max_value = !0u128 >> (128 - bits);
+
+            // Find out how many values are outside the valid range.
+            let niches = if v.start <= v.end {
+                v.start + (max_value - v.end)
             } else {
-                Ok(None)
+                v.start - v.end - 1
+            };
+
+            // Give up if we can't fit `count` consecutive niches.
+            if count > niches {
+                return None;
             }
+
+            let niche_start = v.end.wrapping_add(1) & max_value;
+            let niche_end = v.end.wrapping_add(count) & max_value;
+            Some((offset, Scalar {
+                value,
+                valid_range: v.start..=niche_end
+            }, niche_start))
         };
 
         match self.abi {
             Abi::Scalar(ref scalar) => {
-                return scalar_component(scalar, Size::from_bytes(0));
+                return Ok(scalar_component(scalar, Size::from_bytes(0)));
             }
             Abi::ScalarPair(ref a, ref b) => {
-                if let Some(result) = scalar_component(a, Size::from_bytes(0))? {
-                    return Ok(Some(result));
-                }
-                return scalar_component(b, a.value.size(cx).abi_align(b.value.align(cx)));
+                return Ok(scalar_component(a, Size::from_bytes(0)).or_else(|| {
+                    scalar_component(b, a.value.size(cx).abi_align(b.value.align(cx)))
+                }));
             }
             _ => {}
         }
@@ -2328,13 +2354,13 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 return Ok(None);
             }
         }
-        if let FieldPlacement::Array { count, .. } = self.fields {
-            if count > 0 {
-                return self.field(cx, 0)?.find_niche(cx);
+        if let FieldPlacement::Array { .. } = self.fields {
+            if self.fields.count() > 0 {
+                return self.field(cx, 0)?.find_niche(cx, count);
             }
         }
         for i in 0..self.fields.count() {
-            let r = self.field(cx, i)?.find_niche(cx)?;
+            let r = self.field(cx, i)?.find_niche(cx, count)?;
             if let Some((offset, scalar, niche_value)) = r {
                 let offset = self.fields.offset(i) + offset;
                 return Ok(Some((offset, scalar, niche_value)));
@@ -2364,15 +2390,16 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Variants {
             }
             NicheFilling {
                 dataful_variant,
-                niche_variant,
+                niche_variants: RangeInclusive { start, end },
                 ref niche,
-                niche_value,
+                niche_start,
                 ref variants,
             } => {
                 dataful_variant.hash_stable(hcx, hasher);
-                niche_variant.hash_stable(hcx, hasher);
+                start.hash_stable(hcx, hasher);
+                end.hash_stable(hcx, hasher);
                 niche.hash_stable(hcx, hasher);
-                niche_value.hash_stable(hcx, hasher);
+                niche_start.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
             }
         }

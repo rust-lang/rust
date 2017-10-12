@@ -1157,7 +1157,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 }).collect()
             }
-            layout::Variants::NicheFilling { dataful_variant, niche_variant, .. } => {
+            layout::Variants::NicheFilling { dataful_variant, ref niche_variants, .. } => {
                 let variant = self.layout.for_variant(cx, dataful_variant);
                 // Create a description of the non-null variant
                 let (variant_type_metadata, member_description_factory) =
@@ -1180,6 +1180,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let mut name = String::from("RUST$ENCODED$ENUM$");
                 // HACK(eddyb) the debuggers should just handle offset+size
                 // of discriminant instead of us having to recover its path.
+                // Right now it's not even going to work for `niche_start > 0`,
+                // and for multiple niche variants it only supports the first.
                 fn compute_field_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 name: &mut String,
                                                 layout: TyLayout<'tcx>,
@@ -1202,7 +1204,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                    self.layout,
                                    self.layout.fields.offset(0),
                                    self.layout.field(cx, 0).size);
-                name.push_str(&adt.variants[niche_variant].name.as_str());
+                name.push_str(&adt.variants[niche_variants.start].name.as_str());
 
                 // Create the (singleton) list of descriptions of union members.
                 vec![
