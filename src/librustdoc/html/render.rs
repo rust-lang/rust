@@ -61,7 +61,7 @@ use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
-use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability, Span};
+use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability, Span, ConfigFeatureMap};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -255,6 +255,10 @@ pub struct Cache {
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
     pub access_levels: Arc<AccessLevels<DefId>>,
+
+    /// This map contains information about which #[cfg(feature)]'s are required
+    /// to be active for a given item to be included in the crate.
+    pub cfg_feature_map: ConfigFeatureMap,
 
     // Private fields only used when initially crawling a crate to build a cache
 
@@ -541,6 +545,7 @@ pub fn run(mut krate: clean::Crate,
         owned_box_did,
         masked_crates: mem::replace(&mut krate.masked_crates, FxHashSet()),
         typarams: external_typarams,
+        cfg_feature_map: mem::replace(&mut krate.cfg_feature_map, Default::default()),
     };
 
     // Cache where all our extern crates are located
@@ -1706,6 +1711,7 @@ impl<'a> fmt::Display for Item<'a> {
 
         write!(fmt, "</span>")?; // in-band
         write!(fmt, "<span class='out-of-band'>")?;
+        render_all_cfg_features(fmt, self.item.def_id)?;
         if let Some(version) = self.item.stable_since() {
             write!(fmt, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
                    version)?;
@@ -2082,6 +2088,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                     _ => "",
                 };
 
+                let mut features = String::new();
+                render_introduced_cfg_features(&mut features, myitem.def_id)?;
+
                 let doc_value = myitem.doc_value().unwrap_or("");
                 write!(w, "
                        <tr class='{stab} module-item'>
@@ -2089,6 +2098,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                                   title='{title_type} {title}'>{name}</a>{unsafety_flag}</td>
                            <td class='docblock-short'>
                                {stab_docs} {docs}
+                               <span class='out-of-band'>
+                                   {features}
+                               </span>
                            </td>
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
@@ -2100,6 +2112,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        } else {
                            format!("{}", MarkdownSummaryLine(doc_value))
                        },
+                       features = features,
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
@@ -2385,6 +2398,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                ns_id = ns_id)?;
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl)?;
         write!(w, "</code>")?;
+        write!(w, "<span class='out-of-band'>")?;
+        render_introduced_cfg_features(w, m.def_id)?;
+        write!(w, "</span>")?;
         render_stability_since(w, m, t)?;
         write!(w, "</span></h3>")?;
         document(w, cx, m)?;
@@ -2528,7 +2544,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     write!(w, ";</span>")?;
                 }
             }
-            writeln!(w, "</code></li>")?;
+            writeln!(w, "</code><span class='out-of-band'>")?;
+            render_all_cfg_features(w, implementor.def_id)?;
+            writeln!(w, "</span></li>")?;
         }
     } else {
         // even without any implementations to write in, we still want the heading and list, so the
@@ -2607,6 +2625,41 @@ fn render_stability_since_raw<'a>(w: &mut fmt::Formatter,
                    v)?
         }
     }
+    Ok(())
+}
+
+fn render_all_cfg_features(w: &mut fmt::Write, def_id: DefId) -> fmt::Result {
+    let cache = cache();
+
+    let cfg_features = cache.cfg_feature_map.all(def_id);
+    if !cfg_features.is_empty() {
+        let s = if cfg_features.len() == 1 { "" } else { "s" };
+        let mut features = cfg_features.fold(String::new(), |acc, f| acc + f + ", ");
+        features.pop();
+        features.pop();
+        write!(w,
+            "<div class='cfg-feature' title='Requires feature{0} {1}'>{1}</div>",
+            s, features)?;
+    }
+
+    Ok(())
+}
+
+fn render_introduced_cfg_features(w: &mut fmt::Write, def_id: DefId) -> fmt::Result {
+    let cache = cache();
+
+    let introduced = cache.cfg_feature_map.introduced(def_id);
+    if !introduced.is_empty() {
+        let s = if introduced.len() == 1 { "" } else { "s" };
+        let mut features = introduced.fold(String::new(), |acc, f| acc + f + ", ");
+        features.pop();
+        features.pop();
+        write!(w,
+            "<div class='cfg-feature cfg-feature-introduced' \
+                title='Requires feature{0} {1}'>{1}</div>",
+            s, features)?;
+    }
+
     Ok(())
 }
 
@@ -2734,13 +2787,15 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 write!(w, "<span id=\"{id}\" class=\"{item_type} small-section-header\">
                            <a href=\"#{id}\" class=\"anchor field\"></a>
                            <span id=\"{ns_id}\" class='invisible'>
-                           <code>{name}: {ty}</code>
-                           </span></span>",
+                           <code>{name}: {ty}</code>",
                        item_type = ItemType::StructField,
                        id = id,
                        ns_id = ns_id,
                        name = field.name.as_ref().unwrap(),
                        ty = ty)?;
+                write!(w, "<span class='out-of-band'>")?;
+                render_introduced_cfg_features(w, field.def_id)?;
+                write!(w, "</span></span></span>")?;
                 if let Some(stability_class) = field.stability_class() {
                     write!(w, "<span class='stab {stab}'></span>",
                         stab = stability_class)?;
@@ -2842,6 +2897,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "}}")?;
     }
     write!(w, "</pre>")?;
+    render_introduced_cfg_features(w, it.def_id)?;
 
     document(w, cx, it)?;
     if !e.variants.is_empty() {
@@ -2912,6 +2968,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 write!(w, "</table></span>")?;
             }
             render_stability_since(w, variant, it)?;
+            render_introduced_cfg_features(w, variant.def_id)?;
         }
     }
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)?;
@@ -3206,10 +3263,12 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
             write!(w, "<div class='ghost'></div>")?;
             render_stability_since_raw(w, since, outer_version)?;
+            render_introduced_cfg_features(w, i.impl_item.def_id)?;
             write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                    l, "goto source code")?;
         } else {
             render_stability_since_raw(w, since, outer_version)?;
+            render_introduced_cfg_features(w, i.impl_item.def_id)?;
         }
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
@@ -3264,6 +3323,9 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     write!(w, "<code>")?;
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
                     write!(w, "</code>")?;
+                    write!(w, "<span class='out-of-band'>")?;
+                    render_introduced_cfg_features(w, item.def_id)?;
+                    write!(w, "</span>")?;
                     if let Some(l) = (Item { cx, item }).src_href() {
                         write!(w, "</span><span class='out-of-band'>")?;
                         write!(w, "<div class='ghost'></div>")?;
@@ -3723,6 +3785,7 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                                      None,
                                                      None,
                                                      None))?;
+    render_introduced_cfg_features(w, it.def_id)?;
     document(w, cx, it)
 }
 

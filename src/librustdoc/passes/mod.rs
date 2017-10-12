@@ -36,11 +36,16 @@ pub use self::unindent_comments::unindent_comments;
 mod propagate_doc_cfg;
 pub use self::propagate_doc_cfg::propagate_doc_cfg;
 
+pub mod cfg_features;
+pub use self::cfg_features::cfg_features;
+
 type Pass = (&'static str,                                      // name
              fn(clean::Crate) -> plugins::PluginResult,         // fn
              &'static str);                                     // description
 
 pub const PASSES: &'static [Pass] = &[
+    ("cfg-features", cfg_features,
+     "indexes all cfg(feature) required for an item"),
     ("strip-hidden", strip_hidden,
      "strips all doc(hidden) items from the output"),
     ("unindent-comments", unindent_comments,
@@ -57,6 +62,7 @@ pub const PASSES: &'static [Pass] = &[
 ];
 
 pub const DEFAULT_PASSES: &'static [&'static str] = &[
+    "cfg-features",
     "strip-hidden",
     "strip-private",
     "collapse-docs",

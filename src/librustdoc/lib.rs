@@ -24,6 +24,8 @@
 #![feature(unicode)]
 #![feature(vec_remove_item)]
 #![feature(ascii_ctype)]
+#![feature(conservative_impl_trait)]
+#![feature(exact_size_is_empty)]
 
 extern crate arena;
 extern crate getopts;

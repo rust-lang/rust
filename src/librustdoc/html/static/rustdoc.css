@@ -605,6 +605,19 @@ body.blur > :not(#help) {
 	top: 0;
 }
 
+.cfg-feature {
+	padding-left: 10px;
+	font-family: "Comic Sans MS", monospace;
+	font-weight: normal;
+	font-size: initial;
+	color: purple;
+	display: inline-block;
+}
+
+.cfg-feature-introduced {
+	color: red;
+}
+
 .variants_table {
 	width: 100%;
 }
@@ -706,9 +719,18 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	height: 12px;
 }
 
+.cfg-feature + .srclink {
+	padding-left: 10px;
+}
+
 span.since {
 	position: initial;
 	font-size: 20px;
+	margin-right: 5px;
+}
+
+span.cfg-feature {
+	position: initial;
 	margin-right: 5px;
 }
 
