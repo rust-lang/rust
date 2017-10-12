@@ -246,8 +246,11 @@ impl Step for Rls {
         let compiler = builder.compiler(stage, host);
 
         builder.ensure(tool::Rls { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/rls/Cargo.toml"));
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/rls");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -291,8 +294,11 @@ impl Step for Rustfmt {
         let compiler = builder.compiler(stage, host);
 
         builder.ensure(tool::Rustfmt { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/rustfmt/Cargo.toml"));
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/rustfmt");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
