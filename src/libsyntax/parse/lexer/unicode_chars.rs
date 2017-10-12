@@ -144,7 +144,7 @@ const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
     ('‵', "Reversed Prime", '\''),
     ('՚', "Armenian Apostrophe", '\''),
     ('׳', "Hebrew Punctuation Geresh", '\''),
-    ('`', "Greek Accent", '\''),
+    ('`', "Grave Accent", '\''),
     ('`', "Greek Varia", '\''),
     ('｀', "Fullwidth Grave Accent", '\''),
     ('´', "Acute Accent", '\''),
