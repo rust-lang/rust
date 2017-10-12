@@ -85,27 +85,32 @@ macro_rules! newtype_index {
     );
 
     // Rewrite final without comma to one that includes comma
-    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr] $name:ident = $constant:expr) => (
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr]
+            $name:ident = $constant:expr) => (
         newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $name = $constant,);
     );
 
     // Rewrite final const without comma to one that includes comma
-    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr] const $name:ident = $constant:expr) => (
+    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr]
+            const $name:ident = $constant:expr) => (
         newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] const $name = $constant,);
     );
 
     // Replace existing default for max
-    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr] MAX = $max:expr, $($tokens:tt)*) => (
+    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr]
+            MAX = $max:expr, $($tokens:tt)*) => (
         newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $(tokens)*);
     );
 
     // Replace existing default for debug_name
-    (@type[$type:ident] @max[$max:expr] @debug_name[$_debug_name:expr] DEBUG_NAME = $debug_name:expr, $($tokens:tt)*) => (
+    (@type[$type:ident] @max[$max:expr] @debug_name[$_debug_name:expr]
+            DEBUG_NAME = $debug_name:expr, $($tokens:tt)*) => (
         newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
     );
 
     // Assign a user-defined constant (as final param)
-    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr] const $name:ident = $constant:expr, $($tokens:tt)*) => (
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr]
+            const $name:ident = $constant:expr, $($tokens:tt)*) => (
         pub const $name: $type = $type($constant);
         newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
     );
