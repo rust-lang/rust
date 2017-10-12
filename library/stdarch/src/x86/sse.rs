@@ -885,10 +885,10 @@ pub unsafe fn _MM_TRANSPOSE4_PS(row0: &mut f32x4, row1: &mut f32x4, row2: &mut f
     let tmp1 = _mm_unpackhi_ps(*row0, *row1);
     let tmp3 = _mm_unpackhi_ps(*row2, *row3);
 
-    mem::replace(row0, _mm_movelh_ps(tmp0, tmp2));
-    mem::replace(row1,_mm_movehl_ps(tmp2, tmp0));
-    mem::replace(row2, _mm_movelh_ps(tmp1, tmp3));
-    mem::replace(row3, _mm_movehl_ps(tmp3, tmp1));
+    *row0 = _mm_movelh_ps(tmp0, tmp2);
+    *row1 = _mm_movehl_ps(tmp2, tmp0);
+    *row2 = _mm_movelh_ps(tmp1, tmp3);
+    *row3 = _mm_movehl_ps(tmp3, tmp1);
 }
 
 #[allow(improper_ctypes)]
