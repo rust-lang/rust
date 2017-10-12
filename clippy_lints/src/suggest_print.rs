@@ -56,14 +56,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 None
             },
         ], {
-            let dest_expr = &write_args[0];
-            let (span, calling_macro) =
-                if let Some(span) = is_expn_of(dest_expr.span, "write") {
-                    (span, Some("write"))
-                } else if let Some(span) = is_expn_of(dest_expr.span, "writeln") {
-                    (span, Some("writeln"))
+            let write_span = unwrap_args[0].span;
+            let calling_macro =
+                // ordering is important here, since `writeln!` uses `write!` internally
+                if is_expn_of(write_span, "writeln").is_some() {
+                    Some("writeln")
+                } else if is_expn_of(write_span, "write").is_some() {
+                    Some("write")
                 } else {
-                    (dest_expr.span, None)
+                    None
                 };
             let prefix = if dest_name == "stderr" {
                 "e"
@@ -74,9 +75,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 span_lint(
                     cx,
                     SUGGEST_PRINT,
-                    span,
+                    expr.span,
                     &format!(
-                        "use of `{}!({}, ...).unwrap()`. Consider using `{}{}!` instead",
+                        "use of `{}!({}(), ...).unwrap()`. Consider using `{}{}!` instead",
                         macro_name,
                         dest_name,
                         prefix,
@@ -87,9 +88,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 span_lint(
                     cx,
                     SUGGEST_PRINT,
-                    span,
+                    expr.span,
                     &format!(
-                        "use of `{}.write_fmt(...).unwrap()`. Consider using `{}print!` instead",
+                        "use of `{}().write_fmt(...).unwrap()`. Consider using `{}print!` instead",
                         dest_name,
                         prefix,
                     )
