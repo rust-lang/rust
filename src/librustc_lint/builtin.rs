@@ -44,7 +44,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
-use syntax_pos::{Span, SyntaxContext};
+use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
 
 use rustc::hir::{self, PatKind};
@@ -1133,35 +1133,55 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemFn(.., ref generics, _) => {
-                if attr::contains_name(&it.attrs, "no_mangle") &&
-                   !attr::contains_name(&it.attrs, "linkage") {
+                if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, "no_mangle") {
+                    if attr::contains_name(&it.attrs, "linkage") {
+                        return;
+                    }
                     if !cx.access_levels.is_reachable(it.id) {
-                        let msg = format!("function {} is marked #[no_mangle], but not exported",
-                                          it.name);
-                        cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
+                        let msg = "function is marked #[no_mangle], but not exported";
+                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
+                        let insertion_span = it.span.with_hi(it.span.lo());
+                        err.span_suggestion(insertion_span,
+                                            "try making it public",
+                                            "pub ".to_owned());
+                        err.emit();
                     }
                     if generics.is_type_parameterized() {
-                        cx.span_lint(NO_MANGLE_GENERIC_ITEMS,
-                                     it.span,
-                                     "functions generic over types must be mangled");
+                        let mut err = cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS,
+                                                          it.span,
+                                                          "functions generic over \
+                                                           types must be mangled");
+                        err.span_suggestion_short(no_mangle_attr.span,
+                                                  "remove this attribute",
+                                                  "".to_owned());
+                        err.emit();
                     }
                 }
             }
             hir::ItemStatic(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
                    !cx.access_levels.is_reachable(it.id) {
-                    let msg = format!("static {} is marked #[no_mangle], but not exported",
-                                      it.name);
-                    cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, &msg);
+                       let msg = "static is marked #[no_mangle], but not exported";
+                       let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
+                       let insertion_span = it.span.with_hi(it.span.lo());
+                       err.span_suggestion(insertion_span,
+                                           "try making it public",
+                                           "pub ".to_owned());
+                       err.emit();
                 }
             }
             hir::ItemConst(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
-                    let msg = "const items should never be #[no_mangle], consider instead using \
-                               `pub static`";
-                    cx.span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
+                    let msg = "const items should never be #[no_mangle]";
+                    let mut err = cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
+                    // `const` is 5 chars
+                    let const_span = it.span.with_hi(BytePos(it.span.lo().0 + 5));
+                    err.span_suggestion(const_span,
+                                        "try a static value",
+                                        "pub static".to_owned());
+                    err.emit();
                 }
             }
             _ => {}
