@@ -82,7 +82,7 @@ fn g() {
     let c1 = || get(&*x.f);
     *x.f = 5; //[ast]~ ERROR cannot assign to `*x.f`
               //[mir]~^ ERROR cannot assign to `*x.f` because it is borrowed (Ast)
-              //[mir]~| ERROR cannot assign to `(*(*x).0)` because it is borrowed (Mir)
+              //[mir]~| ERROR cannot assign to `(*x.f)` because it is borrowed (Mir)
 }
 
 fn h() {

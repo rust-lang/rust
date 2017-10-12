@@ -14,7 +14,7 @@ use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue};
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue, Local};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::transform::{MirSource};
@@ -1080,52 +1080,126 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     // End-user visible description of `lvalue`
     fn describe_lvalue(&self, lvalue: &Lvalue) -> String {
         let mut buf = String::new();
-        self.append_lvalue_to_string(lvalue, &mut buf);
+        self.append_lvalue_to_string(lvalue, &mut buf, None);
         buf
     }
 
     // Appends end-user visible description of `lvalue` to `buf`.
-    fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String) {
+    fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String, autoderef: Option<bool>) {
         match *lvalue {
             Lvalue::Local(local) => {
-                let local = &self.mir.local_decls[local];
-                match local.name {
-                    Some(name) => buf.push_str(&format!("{}", name)),
-                    None => buf.push_str("_"),
-                }
+                self.append_local_to_string(local, buf, "_");
             }
             Lvalue::Static(ref static_) => {
                 buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
             }
             Lvalue::Projection(ref proj) => {
+                let mut autoderef = autoderef.unwrap_or(false);
                 let (prefix, suffix, index_operand) = match proj.elem {
-                    ProjectionElem::Deref =>
-                        ("(*", format!(")"), None),
+                    ProjectionElem::Deref => {
+                        if autoderef {
+                            ("", format!(""), None)
+                        } else {
+                            ("(*", format!(")"), None)
+                        }
+                    },
                     ProjectionElem::Downcast(..) =>
                         ("",   format!(""), None), // (dont emit downcast info)
-                    ProjectionElem::Field(field, _ty) =>
-                        ("",   format!(".{}", field.index()), None), // FIXME: report name of field
-                    ProjectionElem::Index(index) =>
-                        ("",   format!(""), Some(index)),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
-                        ("",   format!("[{} of {}]", offset, min_length), None),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
-                        ("",   format!("[-{} of {}]", offset, min_length), None),
-                    ProjectionElem::Subslice { from, to: 0 } =>
-                        ("",   format!("[{}:]", from), None),
-                    ProjectionElem::Subslice { from: 0, to } =>
-                        ("",   format!("[:-{}]", to), None),
-                    ProjectionElem::Subslice { from, to } =>
-                        ("",   format!("[{}:-{}]", from, to), None),
+                    ProjectionElem::Field(field, _ty) => {
+                        autoderef = true;
+                        ("", format!(".{}", self.describe_field(&proj.base, field.index())), None)
+                    },
+                    ProjectionElem::Index(index) => {
+                        autoderef = true;
+                        ("",   format!(""), Some(index))
+                    },
+                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                        autoderef = true;
+                        // Since it isn't possible to borrow an element on a particular index and
+                        // then use another while the borrow is held, don't output indices details
+                        // to avoid confusing the end-user
+                        ("",   format!("[..]"), None)
+                    },
                 };
                 buf.push_str(prefix);
-                self.append_lvalue_to_string(&proj.base, buf);
+                self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
                 if let Some(index) = index_operand {
                     buf.push_str("[");
-                    self.append_lvalue_to_string(&Lvalue::Local(index), buf);
+                    self.append_local_to_string(index, buf, "..");
                     buf.push_str("]");
                 } else {
                     buf.push_str(&suffix);
+                }
+            }
+        }
+    }
+
+    // Appends end-user visible description of the `local` lvalue to `buf`. If `local` doesn't have
+    // a name, then `none_string` is appended instead
+    fn append_local_to_string(&self, local_index: Local, buf: &mut String, none_string: &str) {
+        let local = &self.mir.local_decls[local_index];
+        match local.name {
+            Some(name) => buf.push_str(&format!("{}", name)),
+            None => buf.push_str(none_string)
+        }
+    }
+
+    // End-user visible description of the `field_index`nth field of `base`
+    fn describe_field(&self, base: &Lvalue, field_index: usize) -> String {
+        match *base {
+            Lvalue::Local(local) => {
+                let local = &self.mir.local_decls[local];
+                self.describe_field_from_ty(&local.ty, field_index)
+            },
+            Lvalue::Static(ref static_) => {
+                self.describe_field_from_ty(&static_.ty, field_index)
+            },
+            Lvalue::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Deref =>
+                        self.describe_field(&proj.base, field_index),
+                    ProjectionElem::Downcast(def, variant_index) =>
+                        format!("{}", def.variants[variant_index].fields[field_index].name),
+                    ProjectionElem::Field(_, field_type) =>
+                        self.describe_field_from_ty(&field_type, field_index),
+                    ProjectionElem::Index(..)
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. } =>
+                        format!("{}", self.describe_field(&proj.base, field_index)),
+                }
+            }
+        }
+    }
+
+    // End-user visible description of the `field_index`nth field of `ty`
+    fn describe_field_from_ty(&self, ty: &ty::Ty, field_index: usize) -> String {
+        if ty.is_box() {
+            // If the type is a box, the field is described from the boxed type
+            self.describe_field_from_ty(&ty.boxed_ty(), field_index)
+        }
+        else {
+            match ty.sty {
+                ty::TyAdt(def, _) => {
+                    if def.is_enum() {
+                        format!("{}", field_index)
+                    }
+                    else {
+                        format!("{}", def.struct_variant().fields[field_index].name)
+                    }
+                },
+                ty::TyTuple(_, _) => {
+                    format!("{}", field_index)
+                },
+                ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
+                    self.describe_field_from_ty(&tnm.ty, field_index)
+                },
+                ty::TyArray(ty, _) | ty::TySlice(ty) => {
+                    self.describe_field_from_ty(&ty, field_index)
+                }
+                _ => {
+                    // Might need a revision when the fields in trait RFC is implemented
+                    // (https://github.com/rust-lang/rfcs/pull/1546)
+                    bug!("End-user description not implemented for field access on `{:?}`", ty.sty);
                 }
             }
         }

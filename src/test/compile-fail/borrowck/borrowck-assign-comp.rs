@@ -22,7 +22,7 @@ fn a() {
     // immutable.  Otherwise the type of &_q.x (&isize) would be wrong.
     p.x = 5; //[ast]~ ERROR cannot assign to `p.x`
              //[mir]~^ ERROR cannot assign to `p.x` because it is borrowed (Ast)
-             //[mir]~| ERROR cannot assign to `p.0` because it is borrowed (Mir)
+             //[mir]~| ERROR cannot assign to `p.x` because it is borrowed (Mir)
     q.x;
 }
 
@@ -47,7 +47,7 @@ fn d() {
     let q = &p.y;
     p.y = 5; //[ast]~ ERROR cannot assign to `p.y`
              //[mir]~^ ERROR cannot assign to `p.y` because it is borrowed (Ast)
-             //[mir]~| ERROR cannot assign to `p.1` because it is borrowed (Mir)
+             //[mir]~| ERROR cannot assign to `p.y` because it is borrowed (Mir)
     *q;
 }
 
