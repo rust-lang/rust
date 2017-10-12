@@ -328,21 +328,31 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             }
             layout::Variants::NicheFilling {
                 dataful_variant,
-                niche_variant,
-                niche_value,
+                ref niche_variants,
+                niche_start,
                 ..
             } => {
-                let niche_llty = discr.layout.llvm_type(bcx.ccx);
-                // FIXME(eddyb) Check the actual primitive type here.
-                let niche_llval = if niche_value == 0 {
-                    // HACK(eddyb) Using `C_null` as it works on all types.
-                    C_null(niche_llty)
+                let niche_llty = discr.layout.immediate_llvm_type(bcx.ccx);
+                if niche_variants.start == niche_variants.end {
+                    // FIXME(eddyb) Check the actual primitive type here.
+                    let niche_llval = if niche_start == 0 {
+                        // HACK(eddyb) Using `C_null` as it works on all types.
+                        C_null(niche_llty)
+                    } else {
+                        C_uint_big(niche_llty, niche_start)
+                    };
+                    bcx.select(bcx.icmp(llvm::IntEQ, lldiscr, niche_llval),
+                        C_uint(cast_to, niche_variants.start as u64),
+                        C_uint(cast_to, dataful_variant as u64))
                 } else {
-                    C_uint_big(niche_llty, niche_value)
-                };
-                bcx.select(bcx.icmp(llvm::IntEQ, lldiscr, niche_llval),
-                    C_uint(cast_to, niche_variant as u64),
-                    C_uint(cast_to, dataful_variant as u64))
+                    // Rebase from niche values to discriminant values.
+                    let delta = niche_start.wrapping_sub(niche_variants.start as u128);
+                    let lldiscr = bcx.sub(lldiscr, C_uint_big(niche_llty, delta));
+                    let lldiscr_max = C_uint(niche_llty, niche_variants.end as u64);
+                    bcx.select(bcx.icmp(llvm::IntULE, lldiscr, lldiscr_max),
+                        bcx.intcast(lldiscr, cast_to, false),
+                        C_uint(cast_to, dataful_variant as u64))
+                }
             }
         }
     }
@@ -367,7 +377,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 bcx.store(C_int(ptr.layout.llvm_type(bcx.ccx), to as i64),
                     ptr.llval, ptr.alignment.non_abi());
             }
-            layout::Variants::NicheFilling { dataful_variant, niche_value, .. } => {
+            layout::Variants::NicheFilling {
+                dataful_variant,
+                ref niche_variants,
+                niche_start,
+                ..
+            } => {
                 if variant_index != dataful_variant {
                     if bcx.sess().target.target.arch == "arm" ||
                        bcx.sess().target.target.arch == "aarch64" {
@@ -382,7 +397,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                     }
 
                     let niche = self.project_field(bcx, 0);
-                    let niche_llty = niche.layout.llvm_type(bcx.ccx);
+                    let niche_llty = niche.layout.immediate_llvm_type(bcx.ccx);
+                    let niche_value = ((variant_index - niche_variants.start) as u128)
+                        .wrapping_add(niche_start);
                     // FIXME(eddyb) Check the actual primitive type here.
                     let niche_llval = if niche_value == 0 {
                         // HACK(eddyb) Using `C_null` as it works on all types.
@@ -390,7 +407,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                     } else {
                         C_uint_big(niche_llty, niche_value)
                     };
-                    bcx.store(niche_llval, niche.llval, niche.alignment.non_abi());
+                    OperandValue::Immediate(niche_llval).store(bcx, niche);
                 }
             }
         }

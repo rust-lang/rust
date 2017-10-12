@@ -1163,12 +1163,19 @@ fn trans_const_adt<'a, 'tcx>(
                 build_const_struct(ccx, l.for_variant(ccx, variant_index), vals, Some(discr))
             }
         }
-        layout::Variants::NicheFilling { dataful_variant, niche_value, .. } => {
+        layout::Variants::NicheFilling {
+            dataful_variant,
+            ref niche_variants,
+            niche_start,
+            ..
+        } => {
             if variant_index == dataful_variant {
                 build_const_struct(ccx, l.for_variant(ccx, dataful_variant), vals, None)
             } else {
                 let niche = l.field(ccx, 0);
                 let niche_llty = niche.llvm_type(ccx);
+                let niche_value = ((variant_index - niche_variants.start) as u128)
+                    .wrapping_add(niche_start);
                 // FIXME(eddyb) Check the actual primitive type here.
                 let niche_llval = if niche_value == 0 {
                     // HACK(eddyb) Using `C_null` as it works on all types.

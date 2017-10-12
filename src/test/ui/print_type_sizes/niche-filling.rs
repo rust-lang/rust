@@ -68,6 +68,13 @@ impl One for u32 {
     fn one() -> Self { 1 }
 }
 
+pub enum Enum4<A, B, C, D> {
+    One(A),
+    Two(B),
+    Three(C),
+    Four(D)
+}
+
 pub fn main() {
     let _x: MyOption<NonZero<u32>> = Default::default();
     let _y: EmbeddedDiscr = Default::default();
@@ -76,4 +83,7 @@ pub fn main() {
     let _b: MyOption<char> = Default::default();
     let _c: MyOption<std::cmp::Ordering> = Default::default();
     let _b: MyOption<MyOption<u8>> = Default::default();
+    let _e: Enum4<(), char, (), ()> = Enum4::One(());
+    let _f: Enum4<(), (), bool, ()> = Enum4::One(());
+    let _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
 }
