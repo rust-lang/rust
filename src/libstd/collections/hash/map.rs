@@ -2287,8 +2287,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[unstable(feature = "map_entry_replace", issue = "44286")]
     pub fn replace_key(mut self) -> K {
-	let (old_key, _) = self.elem.read_mut();
-	mem::replace(old_key, self.key.unwrap())
+        let (old_key, _) = self.elem.read_mut();
+        mem::replace(old_key, self.key.unwrap())
     }
 }
 
