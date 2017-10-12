@@ -134,6 +134,15 @@ impl Key for (MirSuite, MirPassIndex, DefId) {
     }
 }
 
+impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
+    fn map_crate(&self) -> CrateNum {
+        self.1.def_id().krate
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        tcx.def_span(self.1.def_id())
+    }
+}
+
 impl<'tcx> Key for Ty<'tcx> {
     fn map_crate(&self) -> CrateNum {
         LOCAL_CRATE

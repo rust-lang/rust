@@ -30,6 +30,7 @@ use middle::trans::{CodegenUnit, Stats};
 use mir;
 use session::CompileResult;
 use session::config::OutputFilenames;
+use traits::Vtable;
 use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::layout::{Layout, LayoutError};
@@ -228,6 +229,8 @@ define_maps! { <'tcx>
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
 
+    [] fn trans_fulfill_obligation: fulfill_obligation_dep_node(
+        (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> Vtable<'tcx, ()>,
     [] fn trait_impls_of: TraitImpls(DefId) -> Rc<ty::trait_def::TraitImpls>,
     [] fn specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] fn is_object_safe: ObjectSafety(DefId) -> bool,
@@ -344,6 +347,14 @@ fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstr
     DepConstructor::TypeParamPredicates {
         item_id,
         param_id
+    }
+}
+
+fn fulfill_obligation_dep_node<'tcx>((param_env, trait_ref):
+    (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> DepConstructor<'tcx> {
+    DepConstructor::FulfillObligation {
+        param_env,
+        trait_ref
     }
 }
 
