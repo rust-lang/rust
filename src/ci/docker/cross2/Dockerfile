@@ -5,6 +5,7 @@ RUN sh /scripts/cross-apt-packages.sh
 
 RUN apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommends \
   build-essential \
+  gcc-multilib \
   libedit-dev \
   libgmp-dev \
   libisl-dev \
