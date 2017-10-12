@@ -50,8 +50,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
         let expr = &fields
             .iter()
-            .find(|field| field.name.node == name)
-            .unwrap_or_else(|| panic!("missing {} field for range", name))
+            .find(|field| field.name.node == name)?
             .expr;
 
         Some(expr)
@@ -77,32 +76,32 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
             match_qpath(path, &paths::RANGE_FROM)
         {
             Some(Range {
-                start: get_field("start", fields),
+                start: Some(get_field("start", fields)?),
                 end: None,
                 limits: ast::RangeLimits::HalfOpen,
             })
         } else if match_qpath(path, &paths::RANGE_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_INCLUSIVE) {
             Some(Range {
-                start: get_field("start", fields),
-                end: get_field("end", fields),
+                start: Some(get_field("start", fields)?),
+                end: Some(get_field("end", fields)?),
                 limits: ast::RangeLimits::Closed,
             })
         } else if match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE) {
             Some(Range {
-                start: get_field("start", fields),
-                end: get_field("end", fields),
+                start: Some(get_field("start", fields)?),
+                end: Some(get_field("end", fields)?),
                 limits: ast::RangeLimits::HalfOpen,
             })
         } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_TO_INCLUSIVE) {
             Some(Range {
                 start: None,
-                end: get_field("end", fields),
+                end: Some(get_field("end", fields)?),
                 limits: ast::RangeLimits::Closed,
             })
         } else if match_qpath(path, &paths::RANGE_TO_STD) || match_qpath(path, &paths::RANGE_TO) {
             Some(Range {
                 start: None,
-                end: get_field("end", fields),
+                end: Some(get_field("end", fields)?),
                 limits: ast::RangeLimits::HalfOpen,
             })
         } else {

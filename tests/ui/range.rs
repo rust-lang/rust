@@ -32,3 +32,12 @@ fn main() {
     // check const eval
     let _ = v1.iter().step_by(2/3);
 }
+
+#[allow(unused)]
+fn no_panic_with_fake_range_types() {
+    struct Range {
+        foo: i32,
+    }
+
+    let _ = Range { foo: 0 };
+}
