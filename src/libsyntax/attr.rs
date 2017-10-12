@@ -589,8 +589,9 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                          -> bool
     where F: FnMut(&ast::MetaItem) -> bool
 {
+    use ast::MetaItemKind::*;
     match cfg.node {
-        ast::MetaItemKind::List(ref mis) => {
+        List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
                     handle_errors(&sess.span_diagnostic, mi.span, AttrError::UnsupportedLiteral);
@@ -621,7 +622,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                 }
             }
         },
-        ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) | ast::MetaItemKind::TokenStream(..) => {
+        Word | NameValue(..) | TokenStream(..) => {
             eval(cfg)
         }
     }
