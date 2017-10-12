@@ -41,7 +41,7 @@ use super::intravisit::Visitor;
 ///    - Example: Lifetime resolution, which wants to bring lifetimes declared on the
 ///      impl into scope while visiting the impl-items, and then back out again.
 ///    - How: Implement `intravisit::Visitor` and override the
-///      `visit_nested_map()` methods to return
+///      `nested_visit_map()` methods to return
 ///      `NestedVisitorMap::All`. Walk your crate with
 ///      `intravisit::walk_crate()` invoked on `tcx.hir.krate()`.
 ///    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
