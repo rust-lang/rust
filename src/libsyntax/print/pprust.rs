@@ -773,6 +773,12 @@ pub trait PrintState<'a> {
                               |s, i| s.print_meta_list_item(i))?;
                 self.pclose()?;
             }
+            ast::MetaItemKind::TokenStream(ref stream) => {
+                self.writer().word(&item.name.as_str())?;
+                self.popen()?;
+                self.print_tts(stream.clone())?;
+                self.pclose()?;
+            }
         }
         self.end()
     }

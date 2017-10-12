@@ -344,7 +344,8 @@ impl_stable_hash_for!(struct ::syntax::ast::MetaItem {
 impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     Word,
     List(nested_items),
-    NameValue(lit)
+    NameValue(lit),
+    TokenStream(stream)
 });
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {

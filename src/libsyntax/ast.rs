@@ -443,10 +443,12 @@ pub enum MetaItemKind {
     ///
     /// E.g. `test` as in `#[test]`
     Word,
-    /// List meta item.
+    /// List meta item containing only literals or nested meta items.
     ///
     /// E.g. `derive(..)` as in `#[derive(..)]`
     List(Vec<NestedMetaItem>),
+    /// List meta item contain an arbitrary token stream.
+    TokenStream(TokenStream),
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`

@@ -1243,6 +1243,7 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
                 Literal(_) => true,
             }
         }),
+        TokenStream(_) => false,
     }
 }
 
@@ -1276,6 +1277,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(&self, attr_literals, attr.span,
                                "non-string literals in attributes, or string \
                                literals in top-level positions, are experimental");
+        }
+
+        if let ast::MetaItemKind::TokenStream(_) = meta.node {
+            gate_feature_post!(&self, attr_literals, attr.span,
+                               "arbitrary tokens in attributes are experimental");
         }
     }
 
