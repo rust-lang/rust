@@ -1,0 +1,38 @@
+error: use of `stdout.write_fmt(...).unwrap()`. Consider using `print!` instead
+  --> $DIR/suggest_print.rs:16:16
+   |
+16 |         write!(std::io::stdout(), "test").unwrap();
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D suggest-print` implied by `-D warnings`
+
+error: use of `stderr.write_fmt(...).unwrap()`. Consider using `eprint!` instead
+  --> $DIR/suggest_print.rs:17:16
+   |
+17 |         write!(std::io::stderr(), "test").unwrap();
+   |                ^^^^^^^^^^^^^^^^^
+
+error: use of `stdout.write_fmt(...).unwrap()`. Consider using `print!` instead
+  --> $DIR/suggest_print.rs:18:18
+   |
+18 |         writeln!(std::io::stdout(), "test").unwrap();
+   |                  ^^^^^^^^^^^^^^^^^
+
+error: use of `stderr.write_fmt(...).unwrap()`. Consider using `eprint!` instead
+  --> $DIR/suggest_print.rs:19:18
+   |
+19 |         writeln!(std::io::stderr(), "test").unwrap();
+   |                  ^^^^^^^^^^^^^^^^^
+
+error: use of `stdout.write_fmt(...).unwrap()`. Consider using `print!` instead
+  --> $DIR/suggest_print.rs:20:9
+   |
+20 |         std::io::stdout().write_fmt(format_args!("test")).unwrap();
+   |         ^^^^^^^^^^^^^^^^^
+
+error: use of `stderr.write_fmt(...).unwrap()`. Consider using `eprint!` instead
+  --> $DIR/suggest_print.rs:21:9
+   |
+21 |         std::io::stderr().write_fmt(format_args!("test")).unwrap();
+   |         ^^^^^^^^^^^^^^^^^
+
