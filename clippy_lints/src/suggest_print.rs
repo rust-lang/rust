@@ -19,7 +19,7 @@ declare_lint! {
     pub SUGGEST_PRINT,
     Warn,
     "using `write!()` family of functions instead of `print!()` family of \
-     functions"
+     functions, when using the latter would work"
 }
 
 #[derive(Copy, Clone, Debug)]
