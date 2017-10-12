@@ -17,6 +17,9 @@ trait DummyTrait {
     fn dummy(&self) {}
 }
 
+auto trait AutoDummyTrait {}
+//~^ ERROR auto traits are experimental and possibly buggy
+
 impl DummyTrait for .. {}
 //~^ ERROR auto trait implementations are experimental and possibly buggy
 

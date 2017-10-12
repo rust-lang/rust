@@ -6014,6 +6014,37 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
+        if self.eat_keyword(keywords::Auto) {
+            self.expect_keyword(keywords::Trait)?;
+            // AUTO TRAIT ITEM
+            let (ident,
+                 item_,
+                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Normal)?;
+            let prev_span = self.prev_span;
+            let item = self.mk_item(lo.to(prev_span),
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return Ok(Some(item));
+        }
+        if self.check_keyword(keywords::Unsafe) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Auto)) {
+            self.expect_keyword(keywords::Unsafe)?;
+            self.expect_keyword(keywords::Auto)?;
+            self.expect_keyword(keywords::Trait)?;
+            // UNSAFE AUTO TRAIT ITEM
+            let (ident,
+                 item_,
+                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Unsafe)?;
+            let prev_span = self.prev_span;
+            let item = self.mk_item(lo.to(prev_span),
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return Ok(Some(item));
+        }
         if (self.check_keyword(keywords::Unsafe) &&
             self.look_ahead(1, |t| t.is_keyword(keywords::Impl))) ||
            (self.check_keyword(keywords::Default) &&
@@ -6130,37 +6161,6 @@ impl<'a> Parser<'a> {
             let (ident,
                  item_,
                  extra_attrs) = self.parse_item_impl(ast::Unsafety::Normal, defaultness)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
-        }
-        if self.eat_keyword(keywords::Auto) {
-            self.expect_keyword(keywords::Trait)?;
-            // AUTO TRAIT ITEM
-            let (ident,
-                 item_,
-                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Normal)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
-        }
-        if self.check_keyword(keywords::Unsafe) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Auto)) {
-            self.expect_keyword(keywords::Unsafe)?;
-            self.expect_keyword(keywords::Auto)?;
-            self.expect_keyword(keywords::Trait)?;
-            // UNSAFE AUTO TRAIT ITEM
-            let (ident,
-                 item_,
-                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Unsafe)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
