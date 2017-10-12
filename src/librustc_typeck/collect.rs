@@ -677,7 +677,7 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       SizedByDefault::No,
                                       item.span);
 
-    let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
+    let superbounds1 = superbounds1.predicates(tcx, self_param_ty, ty::DefaultImplCheck::No);
 
     // Convert any explicit superbounds in the where clause,
     // e.g. `trait Foo where Self : Bar`:
@@ -694,7 +694,11 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     ty::GenericPredicates {
         parent: None,
-        predicates: superbounds
+        predicates: superbounds.iter()
+                               .map(|predicate| {
+                                   predicate.change_default_impl_check(ty::DefaultImplCheck::Yes)
+                                            .unwrap_or(predicate.clone())
+                                }).collect()
     }
 }
 
@@ -1364,17 +1368,39 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node = tcx.hir.get(node_id);
 
     let mut is_trait = None;
+    let mut default_impl_check = ty::DefaultImplCheck::No;
 
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
     let ast_generics = match node {
-        NodeTraitItem(item) => &item.generics,
-        NodeImplItem(item) => &item.generics,
+        NodeTraitItem(item) => {
+            match item.node {
+                TraitItemKind::Method(ref sig, _) => {
+                    default_impl_check = ty::DefaultImplCheck::Yes;
+                    &item.generics
+                },
+                _ => &item.generics
+            }
+        }
+        NodeImplItem(item) => {
+            match item.node {
+                ImplItemKind::Method(ref sig, _) => {
+                    default_impl_check = ty::DefaultImplCheck::Yes;
+                    &item.generics
+                },
+                _ => &item.generics
+            }
+        }
 
         NodeItem(item) => {
             match item.node {
                 ItemFn(.., ref generics, _) |
                 ItemImpl(_, _, _, ref generics, ..) |
+                ItemStruct(_, ref generics) => {
+                    default_impl_check = ty::DefaultImplCheck::Yes;
+                    generics
+                }
+
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
@@ -1415,7 +1441,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             debug!("explicit_predicates_of: bounds={:?}", bounds);
 
-            let predicates = bounds.predicates(tcx, anon_ty);
+            let predicates = bounds.predicates(tcx, anon_ty, ty::DefaultImplCheck::No);
 
             debug!("explicit_predicates_of: predicates={:?}", predicates);
 
@@ -1476,7 +1502,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     &param.bounds,
                                     SizedByDefault::Yes,
                                     param.span);
-        predicates.extend(bounds.predicates(tcx, param_ty));
+        predicates.extend(bounds.predicates(tcx, param_ty, default_impl_check));
     }
 
     // Add in the bounds that appear in the where-clause
@@ -1496,8 +1522,16 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                     poly_trait_ref,
                                                                     ty,
                                                                     &mut projections);
-
-                            predicates.push(trait_ref.to_predicate());
+                            predicates.push(
+                               if trait_ref.skip_binder().def_id !=
+                                  tcx.lang_items().sized_trait().unwrap() {
+                                   trait_ref.to_predicate()
+                                            .change_default_impl_check(default_impl_check)
+                                            .unwrap_or(trait_ref.to_predicate())
+                               } else {
+                                   trait_ref.to_predicate()
+                               }
+                            );
 
                             for projection in &projections {
                                 predicates.push(projection.to_predicate());
@@ -1552,7 +1586,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         SizedByDefault::Yes,
                                         trait_item.span);
 
-            bounds.predicates(tcx, assoc_ty).into_iter()
+            bounds.predicates(tcx, assoc_ty, ty::DefaultImplCheck::No).into_iter()
         }))
     }
 

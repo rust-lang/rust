@@ -1378,7 +1378,10 @@ pub struct Bounds<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
+    pub fn predicates(&self,
+                      tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                      param_ty: Ty<'tcx>,
+                      default_impl_check: ty::DefaultImplCheck)
                       -> Vec<ty::Predicate<'tcx>>
     {
         let mut vec = Vec::new();
@@ -1402,7 +1405,16 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
         }
 
         for bound_trait_ref in &self.trait_bounds {
-            vec.push(bound_trait_ref.to_predicate());
+            vec.push(
+                if bound_trait_ref.skip_binder().def_id !=
+                   tcx.lang_items().sized_trait().unwrap() {
+                    bound_trait_ref.to_predicate()
+                                   .change_default_impl_check(default_impl_check)
+                                   .unwrap_or(bound_trait_ref.to_predicate())
+                } else {
+                    bound_trait_ref.to_predicate()
+                }
+            );
         }
 
         for projection in &self.projection_bounds {

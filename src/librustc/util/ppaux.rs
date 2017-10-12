@@ -1230,8 +1230,12 @@ define_print! {
 define_print! {
     ('tcx) ty::TraitPredicate<'tcx>, (self, f, cx) {
         debug {
-            write!(f, "TraitPredicate({:?})",
-                   self.trait_ref)
+            let default_impl_check_value = match self.default_impl_check {
+                ty::DefaultImplCheck::Yes => "default_impl_check: yes",
+                ty::DefaultImplCheck::No => "default_impl_check: no",
+            };
+            write!(f, "TraitPredicate({:?}, {})",
+               self.trait_ref, default_impl_check_value)
         }
         display {
             print!(f, cx, print(self.trait_ref.self_ty()), write(": "), print(self.trait_ref))

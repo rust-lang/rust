@@ -9,13 +9,18 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
-use ty::subst::Kind;
+use ty::{self, Ty, TypeFoldable, Substs, TyCtxt, AssociatedKind, AssociatedItemContainer};
+use ty::subst::{Kind, Subst};
 use traits;
 use syntax::abi::Abi;
 use util::ppaux;
 
 use std::fmt;
+
+use syntax_pos::{BytePos, Span};
+use syntax::ext::hygiene::SyntaxContext;
+use hir::map::Node::NodeTraitItem;
+use hir;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Instance<'tcx> {
@@ -260,6 +265,13 @@ fn resolve_associated_item<'a, 'tcx>(
         traits::VtableImpl(impl_data) => {
             let (def_id, substs) = traits::find_associated_item(
                 tcx, trait_item, rcvr_substs, &impl_data);
+
+            check_unimplemented_trait_item(tcx,
+                                           impl_data.impl_def_id,
+                                           def_id,
+                                           trait_id,
+                                           trait_item);
+
             let substs = tcx.erase_regions(&substs);
             Some(ty::Instance::new(def_id, substs))
         }
@@ -362,4 +374,109 @@ fn fn_once_adapter_instance<'a, 'tcx>(
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }
+}
+
+fn check_unimplemented_trait_item<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    impl_def_id: DefId,
+    trait_item_def_id: DefId,
+    trait_id: DefId,
+    trait_item: &ty::AssociatedItem)
+{
+    // if trait_item_def_id is a trait item and it doesn't have a default trait implementation
+    // the resolution has found an unimplemented trait item inside a default impl
+    if tcx.impl_is_default(impl_def_id) {
+        let is_unimplemented_trait_item = match tcx.hir.as_local_node_id(trait_item_def_id) {
+            Some(node_id) =>
+                match tcx.hir.find(node_id) {
+                    Some(NodeTraitItem(item)) => {
+                        if let hir::TraitItemKind::Method(_,
+                                                          hir::TraitMethod::Provided(_))
+                                                          = item.node {
+                            false
+                        } else {
+                            true
+                        }
+                    },
+                    _ => false
+                }
+            None => {
+                let item = tcx.global_tcx().associated_item(trait_item_def_id);
+                match item.kind {
+                    AssociatedKind::Method => match item.container {
+                        AssociatedItemContainer::TraitContainer(_) => {
+                            !item.defaultness.has_value()
+                        }
+                        _ => false
+                    }
+                    _ => false
+                }
+            }
+        };
+
+        if is_unimplemented_trait_item {
+            let mut err = tcx.sess.struct_err(&format!("the trait method `{}` \
+                                                        is not implemented",
+                                               trait_item.name));
+
+            let mut help_messages = Vec::new();
+            help_messages.push(
+                if impl_def_id.is_local() {
+                    let item = tcx.hir
+                                  .expect_item(
+                                    tcx.hir
+                                       .as_local_node_id(impl_def_id).unwrap()
+                                  );
+                    (item.span, format!("implement it inside this `default impl`"))
+                } else {
+                    (Span::new (
+                        BytePos(0),
+                        BytePos(0),
+                        SyntaxContext::empty()
+                    ),
+                    format!("implement it inside the {} `default impl`",
+                            tcx.item_path_str(impl_def_id)))
+                }
+            );
+
+            help_messages.push(
+                if trait_id.is_local() {
+                    let trait_item = tcx.hir
+                                        .expect_item(
+                                          tcx.hir
+                                             .as_local_node_id(trait_id).unwrap()
+                                        );
+                    (trait_item.span, format!("provide a default method implementation \
+                                             inside this `trait`"))
+                } else {
+                    (Span::new (
+                        BytePos(0),
+                        BytePos(0),
+                        SyntaxContext::empty()
+                    ),
+                    format!("provide a default method implementation \
+                             inside the {} `trait`",
+                            tcx.item_path_str(trait_id)))
+                }
+            );
+
+            help_messages.sort_by(|&(a,_), &(b,_)| a.partial_cmp(&b).unwrap());
+
+            let mut cnjs = vec!["or ", "either "];
+            help_messages.iter().for_each(|&(span, ref msg)| {
+                let mut help_msg = String::from(cnjs.pop().unwrap_or(""));
+                help_msg.push_str(&msg);
+
+                if span.data().lo == BytePos(0) && span.data().hi == BytePos(0) {
+                    err.help(&help_msg);
+                } else {
+                    err.span_help(span, &help_msg);
+                }
+            });
+
+            err.note(&format!("a `default impl` doesn't need to include all \
+                               items from the trait"));
+            err.emit();
+        }
+    }
 }

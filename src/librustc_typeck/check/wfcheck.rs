@@ -25,6 +25,7 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
+use rustc::ty::TypeFoldable;
 
 pub struct CheckTypeWellFormedVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -343,8 +344,36 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                                   fcx.body_id,
                                                   &trait_ref,
                                                   ast_trait_ref.path.span);
+
+                    // not registering predicates associcated with a `default impl`
+                    // that doesn't implement all the trait items.
+                    // it's left to the trait selection to select those trait predicates
+                    // and trigger an `Unimplemented` error in case the defaul_impl_check
+                    // is applicable
+                    let impl_not_implement_trait =
+                        if fcx.tcx.impl_is_default(item_def_id) &&
+                           !fcx.tcx.default_impl_implement_all_methods(item_def_id) {
+                            true
+                        } else {
+                            false
+                        };
+
                     for obligation in obligations {
-                        fcx.register_predicate(obligation);
+                        let register = match obligation.predicate {
+                            ty::Predicate::Trait(..)  => {
+                                if impl_not_implement_trait &&
+                                   !obligation.predicate.has_param_types() {
+                                    false
+                                } else {
+                                    true
+                                }
+                            }
+                            _ => true
+                        };
+
+                        if register {
+                            fcx.register_predicate(obligation);
+                        }
                     }
                 }
                 None => {

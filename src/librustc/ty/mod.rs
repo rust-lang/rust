@@ -1071,8 +1071,12 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub enum DefaultImplCheck { Yes, No, }
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitPredicate<'tcx> {
-    pub trait_ref: TraitRef<'tcx>
+    pub trait_ref: TraitRef<'tcx>,
+    pub default_impl_check: DefaultImplCheck
 }
 pub type PolyTraitPredicate<'tcx> = ty::Binder<TraitPredicate<'tcx>>;
 
@@ -1180,7 +1184,8 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
         assert!(!self.has_escaping_regions());
 
         ty::Predicate::Trait(ty::Binder(ty::TraitPredicate {
-            trait_ref: self.clone()
+            trait_ref: self.clone(),
+            default_impl_check: DefaultImplCheck::No
         }))
     }
 }
@@ -1293,6 +1298,36 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::WellFormed(..) |
             Predicate::ObjectSafe(..) |
             Predicate::ClosureKind(..) |
+            Predicate::ConstEvaluatable(..) => {
+                None
+            }
+        }
+    }
+
+    pub fn change_default_impl_check(&self, default_impl_check: ty::DefaultImplCheck)
+        -> Option<Predicate<'tcx>> {
+        match *self {
+            Predicate::Trait(ref t) => {
+                if t.skip_binder().default_impl_check != default_impl_check {
+                    Some(
+                        Predicate::Trait(ty::Binder(ty::TraitPredicate {
+                            trait_ref: t.skip_binder().trait_ref,
+                            default_impl_check: default_impl_check
+                        }))
+                    )
+                } else {
+                    None
+                }
+            }
+            Predicate::Trait(..) |
+            Predicate::Projection(..) |
+            Predicate::Equate(..) |
+            Predicate::Subtype(..) |
+            Predicate::RegionOutlives(..) |
+            Predicate::WellFormed(..) |
+            Predicate::ObjectSafe(..) |
+            Predicate::ClosureKind(..) |
+            Predicate::TypeOutlives(..) |
             Predicate::ConstEvaluatable(..) => {
                 None
             }

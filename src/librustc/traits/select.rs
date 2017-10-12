@@ -1083,11 +1083,38 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     // Treat negative impls as unimplemented
-    fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
-                             -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+    fn filter_negative_and_default_impls<'o>(&self,
+                                             candidate: SelectionCandidate<'tcx>,
+                                             stack: &TraitObligationStack<'o, 'tcx>)
+                                             -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+
         if let ImplCandidate(def_id) = candidate {
             if self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative {
                 return Err(Unimplemented)
+            }
+
+            // if def_id is a default impl and it doesn't implement all the trait items,
+            // the impl doesn't implement the trait.
+            // An `Unimplemented` error is returned only if the default_impl_check is
+            // applicable to the trait predicate or the cause of the predicate is an
+            // `ObjectCastObligation`
+            if self.tcx().impl_is_default(def_id) &&
+               !self.tcx().default_impl_implement_all_methods(def_id){
+                match stack.obligation.cause.code {
+                    ObligationCauseCode::ObjectCastObligation(_) =>  {
+                        return Err(Unimplemented)
+                    },
+                    ObligationCauseCode::ItemObligation(..) |
+                    ObligationCauseCode::MiscObligation =>  {
+                        if let ty::DefaultImplCheck::Yes = stack.obligation
+                                                                .predicate
+                                                                .skip_binder()
+                                                                .default_impl_check {
+                            return Err(Unimplemented)
+                        }
+                    },
+                    _ => {}
+                }
             }
         }
         Ok(Some(candidate))
@@ -1178,9 +1205,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // Instead, we select the right impl now but report `Bar does
         // not implement Clone`.
         if candidates.len() == 1 {
-            return self.filter_negative_impls(candidates.pop().unwrap());
+            return self.filter_negative_and_default_impls(candidates.pop().unwrap(), stack);
         }
-
         // Winnow, but record the exact outcome of evaluation, which
         // is needed for specialization.
         let mut candidates: Vec<_> = candidates.into_iter().filter_map(|c| {
@@ -1239,7 +1265,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_negative_impls(candidates.pop().unwrap().candidate)
+        self.filter_negative_and_default_impls(candidates.pop().unwrap().candidate, stack)
     }
 
     fn is_knowable<'o>(&mut self,

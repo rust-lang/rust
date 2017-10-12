@@ -582,7 +582,10 @@ impl<'tcx> PolyTraitRef<'tcx> {
 
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
         // Note that we preserve binding levels
-        Binder(ty::TraitPredicate { trait_ref: self.0.clone() })
+        Binder(ty::TraitPredicate {
+            trait_ref: self.0.clone(),
+            default_impl_check: ty::DefaultImplCheck::No
+        })
     }
 }
 
