@@ -27,9 +27,7 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(
-            SUGGEST_PRINT
-        )
+        lint_array!(SUGGEST_PRINT)
     }
 }
 
@@ -50,9 +48,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprPath(ref qpath) = dest_fun.node,
             let Some(dest_fun_id) =
                 opt_def_id(resolve_node(cx, qpath, dest_fun.hir_id)),
-            let Some(dest_name) = if match_def_path(cx.tcx, dest_fun_id, &["std", "io", "stdout"]) {
+            let Some(dest_name) = if match_def_path(cx.tcx, dest_fun_id, &["std", "io", "stdio", "stdout"]) {
                 Some("stdout")
-            } else if match_def_path(cx.tcx, dest_fun_id, &["std", "io", "stderr"]) {
+            } else if match_def_path(cx.tcx, dest_fun_id, &["std", "io", "stdio", "stderr"]) {
                 Some("stderr")
             } else {
                 None
