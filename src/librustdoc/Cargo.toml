@@ -18,4 +18,4 @@ html-diff = "0.0.4"
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-cc = "1.0"
+cc = "1.0.1"

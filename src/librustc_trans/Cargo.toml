@@ -32,4 +32,4 @@ syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 
 [target."cfg(windows)".dependencies]
-cc = "1.0"
+cc = "1.0.1"
