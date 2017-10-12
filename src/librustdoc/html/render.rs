@@ -256,6 +256,9 @@ pub struct Cache {
     // the access levels from crateanalysis.
     pub access_levels: Arc<AccessLevels<DefId>>,
 
+    /// The version of the crate being documented, if given fron the `--crate-version` flag.
+    pub crate_version: Option<String>,
+
     // Private fields only used when initially crawling a crate to build a cache
 
     stack: Vec<String>,
@@ -534,6 +537,7 @@ pub fn run(mut krate: clean::Crate,
         primitive_locations: FxHashMap(),
         stripped_mod: false,
         access_levels: krate.access_levels.clone(),
+        crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, FxHashMap()),
         deref_trait_did,
@@ -3432,6 +3436,16 @@ impl<'a> fmt::Display for Sidebar<'a> {
             }
             write!(fmt, "{}", it.name.as_ref().unwrap())?;
             write!(fmt, "</p>")?;
+
+            if it.is_crate() {
+                if let Some(ref version) = cache().crate_version {
+                    write!(fmt,
+                           "<div class='block version'>\
+                            <p>Version {}</p>\
+                            </div>",
+                           version)?;
+                }
+            }
 
             match it.inner {
                 clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,

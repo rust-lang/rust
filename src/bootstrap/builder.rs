@@ -418,7 +418,8 @@ impl<'a> Builder<'a> {
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
             .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(host));
+            .env("RUSTDOC_REAL", self.rustdoc(host))
+            .env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
         cmd
     }
 
@@ -573,6 +574,9 @@ impl<'a> Builder<'a> {
         if mode == Mode::Libstd && self.config.extended && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
+
+        // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
+        cargo.env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
 
         // Environment variables *required* throughout the build
         //

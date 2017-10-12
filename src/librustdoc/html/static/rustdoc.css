@@ -203,6 +203,15 @@ nav.sub {
 	word-wrap: break-word;
 }
 
+.sidebar .version {
+	font-size: 15px;
+	text-align: center;
+	border-bottom: #DDDDDD 1px solid;
+	overflow-wrap: break-word;
+	word-wrap: break-word; /* deprecated */
+	word-break: break-word; /* Chrome, non-standard */
+}
+
 .location:empty {
 	border: none;
 }
