@@ -245,7 +245,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
             "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
-                let f = self.value_to_primval(args[0])?.to_f32()?;
+                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = f32::from_bits(f as u32);
                 let f = match intrinsic_name {
                     "sinf32" => f.sin(),
                     "fabsf32" => f.abs(),
@@ -261,12 +262,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     "truncf32" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_primval(dest, PrimVal::from_f32(f), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_ty)?;
             }
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
             "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
-                let f = self.value_to_primval(args[0])?.to_f64()?;
+                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = f64::from_bits(f as u64);
                 let f = match intrinsic_name {
                     "sinf64" => f.sin(),
                     "fabsf64" => f.abs(),
@@ -282,7 +284,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     "truncf64" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_primval(dest, PrimVal::from_f64(f), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_ty)?;
             }
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
@@ -413,63 +415,75 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "powf32" => {
-                let f = self.value_to_primval(args[0])?.to_f32()?;
-                let f2 = self.value_to_primval(args[1])?.to_f32()?;
+                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = f32::from_bits(f as u32);
+                let f2 = self.value_to_primval(args[1])?.to_bytes()?;
+                let f2 = f32::from_bits(f2 as u32);
                 self.write_primval(
                     dest,
-                    PrimVal::from_f32(f.powf(f2)),
+                    PrimVal::Bytes(f.powf(f2).to_bits() as u128),
                     dest_ty,
                 )?;
             }
 
             "powf64" => {
-                let f = self.value_to_primval(args[0])?.to_f64()?;
-                let f2 = self.value_to_primval(args[1])?.to_f64()?;
+                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = f64::from_bits(f as u64);
+                let f2 = self.value_to_primval(args[1])?.to_bytes()?;
+                let f2 = f64::from_bits(f2 as u64);
                 self.write_primval(
                     dest,
-                    PrimVal::from_f64(f.powf(f2)),
+                    PrimVal::Bytes(f.powf(f2).to_bits() as u128),
                     dest_ty,
                 )?;
             }
 
             "fmaf32" => {
-                let a = self.value_to_primval(args[0])?.to_f32()?;
-                let b = self.value_to_primval(args[1])?.to_f32()?;
-                let c = self.value_to_primval(args[2])?.to_f32()?;
+                let a = self.value_to_primval(args[0])?.to_bytes()?;
+                let a = f32::from_bits(a as u32);
+                let b = self.value_to_primval(args[1])?.to_bytes()?;
+                let b = f32::from_bits(b as u32);
+                let c = self.value_to_primval(args[2])?.to_bytes()?;
+                let c = f32::from_bits(c as u32);
                 self.write_primval(
                     dest,
-                    PrimVal::from_f32(a * b + c),
+                    PrimVal::Bytes((a * b + c).to_bits() as u128),
                     dest_ty,
                 )?;
             }
 
             "fmaf64" => {
-                let a = self.value_to_primval(args[0])?.to_f64()?;
-                let b = self.value_to_primval(args[1])?.to_f64()?;
-                let c = self.value_to_primval(args[2])?.to_f64()?;
+                let a = self.value_to_primval(args[0])?.to_bytes()?;
+                let a = f64::from_bits(a as u64);
+                let b = self.value_to_primval(args[1])?.to_bytes()?;
+                let b = f64::from_bits(b as u64);
+                let c = self.value_to_primval(args[2])?.to_bytes()?;
+                let c = f64::from_bits(c as u64);
                 self.write_primval(
                     dest,
-                    PrimVal::from_f64(a * b + c),
+                    PrimVal::Bytes((a * b + c).to_bits() as u128),
                     dest_ty,
                 )?;
             }
 
             "powif32" => {
-                let f = self.value_to_primval(args[0])?.to_f32()?;
+                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = f32::from_bits(f as u32);
                 let i = self.value_to_primval(args[1])?.to_i128()?;
                 self.write_primval(
                     dest,
-                    PrimVal::from_f32(f.powi(i as i32)),
+                    PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
                     dest_ty,
                 )?;
             }
 
             "powif64" => {
-                let f = self.value_to_primval(args[0])?.to_f64()?;
+                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = f64::from_bits(f as u64);
                 let i = self.value_to_primval(args[1])?.to_i128()?;
                 self.write_primval(
                     dest,
-                    PrimVal::from_f64(f.powi(i as i32)),
+                    PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
                     dest_ty,
                 )?;
             }
