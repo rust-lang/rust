@@ -19,6 +19,7 @@ rust_dir = os.path.dirname(rust_dir)
 sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
 import bootstrap
 
+
 class Option:
     def __init__(self, name, rustbuild, desc, value):
         self.name = name
@@ -26,13 +27,17 @@ class Option:
         self.desc = desc
         self.value = value
 
+
 options = []
+
 
 def o(*args):
     options.append(Option(*args, value=False))
 
+
 def v(*args):
     options.append(Option(*args, value=True))
+
 
 o("debug", "rust.debug", "debug mode; disables optimization unless `--enable-optimize` given")
 o("docs", "build.docs", "build standard library documentation")
@@ -136,12 +141,15 @@ v("target", None, "GNUs ./configure syntax LLVM target triples")
 
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
+
 def p(msg):
     print("configure: " + msg)
+
 
 def err(msg):
     print("configure: error: " + msg)
     sys.exit(1)
+
 
 if '--help' in sys.argv or '-h' in sys.argv:
     print('Usage: ./configure [options]')
@@ -208,7 +216,7 @@ while i < len(sys.argv):
                 continue
 
         found = True
-        if not option.name in known_args:
+        if option.name not in known_args:
             known_args[option.name] = []
         known_args[option.name].append((option, value))
         break
@@ -227,27 +235,30 @@ if 'option-checking' not in known_args or known_args['option-checking'][1]:
 # TOML we're going to write out
 config = {}
 
+
 def build():
     if 'build' in known_args:
         return known_args['build'][0][1]
     return bootstrap.default_build_triple()
 
-def set(key, value):
-      s = "{:20} := {}".format(key, value)
-      if len(s) < 70:
-          p(s)
-      else:
-          p(s[:70] + " ...")
 
-      arr = config
-      parts = key.split('.')
-      for i, part in enumerate(parts):
-          if i == len(parts) - 1:
-              arr[part] = value
-          else:
-              if not part in arr:
-                  arr[part] = {}
-              arr = arr[part]
+def set(key, value):
+    s = "{:20} := {}".format(key, value)
+    if len(s) < 70:
+        p(s)
+    else:
+        p(s[:70] + " ...")
+
+    arr = config
+    parts = key.split('.')
+    for i, part in enumerate(parts):
+        if i == len(parts) - 1:
+            arr[part] = value
+        else:
+            if part not in arr:
+                arr[part] = {}
+            arr = arr[part]
+
 
 for key in known_args:
     # The `set` option is special and can be passed a bunch of times
@@ -345,6 +356,7 @@ for target in configured_targets:
     targets[target] = sections['target'][:]
     targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", target)
 
+
 # Here we walk through the constructed configuration we have from the parsed
 # command line arguments. We then apply each piece of configuration by
 # basically just doing a `sed` to change the various configuration line to what
@@ -362,6 +374,7 @@ def to_toml(value):
     else:
         raise RuntimeError('no toml')
 
+
 def configure_section(lines, config):
     for key in config:
         value = config[key]
@@ -375,9 +388,10 @@ def configure_section(lines, config):
         if not found:
             raise RuntimeError("failed to find config line for {}".format(key))
 
+
 for section_key in config:
     section_config = config[section_key]
-    if not section_key in sections:
+    if section_key not in sections:
         raise RuntimeError("config key {} not in sections".format(section_key))
 
     if section_key == 'target':

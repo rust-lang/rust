@@ -112,6 +112,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
 #[derive(Clone, Debug)]
 pub struct Crate {
     pub name: String,
+    pub version: Option<String>,
     pub src: PathBuf,
     pub module: Option<Item>,
     pub externs: Vec<(CrateNum, ExternalCrate)>,
@@ -183,6 +184,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         Crate {
             name,
+            version: None,
             src,
             module: Some(module),
             externs,
