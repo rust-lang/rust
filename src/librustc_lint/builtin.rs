@@ -153,7 +153,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
 declare_lint! {
     NON_SHORTHAND_FIELD_PATTERNS,
     Warn,
-    "using `Struct { x: x }` instead of `Struct { x }`"
+    "using `Struct { x: x }` instead of `Struct { x }` in a pattern"
 }
 
 #[derive(Copy, Clone)]
@@ -174,11 +174,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
                     if ident.node == fieldpat.node.name {
-                        cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS,
+                        let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
-                                     &format!("the `{}:` in this pattern is redundant and can \
-                                              be removed",
-                                              ident.node))
+                                     &format!("the `{}:` in this pattern is redundant",
+                                              ident.node));
+                        let subspan = cx.tcx.sess.codemap().span_through_char(fieldpat.span, ':');
+                        err.span_suggestion_short(subspan,
+                                                  "remove this",
+                                                  format!("{}", ident.node));
+                        err.emit();
                     }
                 }
             }
