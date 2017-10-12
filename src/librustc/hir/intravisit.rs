@@ -520,7 +520,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_variant_data(struct_definition, item.name, generics, item.id, item.span);
         }
-        ItemTrait(_, ref generics, ref bounds, ref trait_item_refs) => {
+        ItemTrait(.., ref generics, ref bounds, ref trait_item_refs) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_ty_param_bound, bounds);

@@ -309,11 +309,12 @@ declare_keywords! {
     (54, Yield,          "yield")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (55, Catch,          "catch")
-    (56, Default,        "default")
-    (57, Dyn,            "dyn")
-    (58, StaticLifetime, "'static")
-    (59, Union,          "union")
+    (55, Auto,           "auto")
+    (56, Catch,          "catch")
+    (57, Default,        "default")
+    (58, Dyn,            "dyn")
+    (59, StaticLifetime, "'static")
+    (60, Union,          "union")
 }
 
 // If an interner exists in TLS, return it. Otherwise, prepare a fresh one.

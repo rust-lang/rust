@@ -926,7 +926,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             folder.fold_ty(ty),
             impl_items.move_flat_map(|item| folder.fold_impl_item(item)),
         ),
-        ItemKind::Trait(unsafety, generics, bounds, items) => ItemKind::Trait(
+        ItemKind::Trait(is_auto, unsafety, generics, bounds, items) => ItemKind::Trait(
+            is_auto,
             unsafety,
             folder.fold_generics(generics),
             folder.fold_bounds(bounds),

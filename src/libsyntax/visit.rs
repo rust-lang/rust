@@ -300,7 +300,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_variant_data(struct_definition, item.ident,
                                      generics, item.id, item.span);
         }
-        ItemKind::Trait(_, ref generics, ref bounds, ref methods) => {
+        ItemKind::Trait(.., ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_trait_item, methods);

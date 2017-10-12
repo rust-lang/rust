@@ -944,7 +944,7 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemEnum(enum_def, generics),
     ItemStruct(variant_data, generics),
     ItemUnion(variant_data, generics),
-    ItemTrait(unsafety, generics, bounds, item_refs),
+    ItemTrait(is_auto, unsafety, generics, bounds, item_refs),
     ItemAutoImpl(unsafety, trait_ref),
     ItemImpl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
 });
@@ -1126,6 +1126,10 @@ impl_stable_hash_for!(enum hir::Mutability {
     MutImmutable
 });
 
+impl_stable_hash_for!(enum hir::IsAuto {
+    Yes,
+    No
+});
 
 impl_stable_hash_for!(enum hir::Unsafety {
     Unsafe,

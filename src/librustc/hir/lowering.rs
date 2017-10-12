@@ -198,7 +198,7 @@ impl<'a> LoweringContext<'a> {
                     ItemKind::Union(_, ref generics) |
                     ItemKind::Enum(_, ref generics) |
                     ItemKind::Ty(_, ref generics) |
-                    ItemKind::Trait(_, ref generics, ..) => {
+                    ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics.lifetimes.len();
                         self.lctx.type_def_lifetime_params.insert(def_id, count);
@@ -1515,10 +1515,11 @@ impl<'a> LoweringContext<'a> {
                               self.lower_ty(ty),
                               new_impl_items)
             }
-            ItemKind::Trait(unsafety, ref generics, ref bounds, ref items) => {
+            ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
                 let bounds = self.lower_bounds(bounds);
                 let items = items.iter().map(|item| self.lower_trait_item_ref(item)).collect();
-                hir::ItemTrait(self.lower_unsafety(unsafety),
+                hir::ItemTrait(self.lower_is_auto(is_auto),
+                               self.lower_unsafety(unsafety),
                                self.lower_generics(generics),
                                bounds,
                                items)
@@ -1738,6 +1739,13 @@ impl<'a> LoweringContext<'a> {
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
             decl: self.lower_fn_decl(&sig.decl),
+        }
+    }
+
+    fn lower_is_auto(&mut self, u: IsAuto) -> hir::IsAuto {
+        match u {
+            IsAuto::Yes => hir::IsAuto::Yes,
+            IsAuto::No => hir::IsAuto::No,
         }
     }
 

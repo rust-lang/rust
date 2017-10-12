@@ -16,12 +16,13 @@ use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, Crate};
+use ast::Generics;
 use ast::Defaultness;
 use ast::EnumDef;
 use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
-use ast::{Ident, ImplItem, Item, ItemKind};
+use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
 use ast::{Lifetime, LifetimeDef, Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
@@ -5078,7 +5079,17 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Ok((ident, ItemKind::Trait(unsafety, tps, bounds, trait_items), None))
+        Ok((ident, ItemKind::Trait(IsAuto::No, unsafety, tps, bounds, trait_items), None))
+    }
+
+    fn parse_item_auto_trait(&mut self, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
+        let ident = self.parse_ident()?;
+        self.expect(&token::OpenDelim(token::Brace))?;
+        self.expect(&token::CloseDelim(token::Brace))?;
+        // Auto traits cannot have generics, super traits nor contain items.
+        Ok((ident,
+            ItemKind::Trait(IsAuto::Yes, unsafety, Generics::default(), Vec::new(), Vec::new()),
+            None))
     }
 
     /// Parses items implementations variants
@@ -6119,6 +6130,37 @@ impl<'a> Parser<'a> {
             let (ident,
                  item_,
                  extra_attrs) = self.parse_item_impl(ast::Unsafety::Normal, defaultness)?;
+            let prev_span = self.prev_span;
+            let item = self.mk_item(lo.to(prev_span),
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return Ok(Some(item));
+        }
+        if self.eat_keyword(keywords::Auto) {
+            self.expect_keyword(keywords::Trait)?;
+            // AUTO TRAIT ITEM
+            let (ident,
+                 item_,
+                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Normal)?;
+            let prev_span = self.prev_span;
+            let item = self.mk_item(lo.to(prev_span),
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return Ok(Some(item));
+        }
+        if self.check_keyword(keywords::Unsafe) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Auto)) {
+            self.expect_keyword(keywords::Unsafe)?;
+            self.expect_keyword(keywords::Auto)?;
+            self.expect_keyword(keywords::Trait)?;
+            // UNSAFE AUTO TRAIT ITEM
+            let (ident,
+                 item_,
+                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Unsafe)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,

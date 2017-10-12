@@ -273,7 +273,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => generics,
-                ItemTrait(_, ref generics, ..) => {
+                ItemTrait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_node_id {
                         result.predicates.push(ty::TraitRef {
@@ -670,7 +670,7 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let (generics, bounds) = match item.node {
-        hir::ItemTrait(_, ref generics, ref supertraits, _) => (generics, supertraits),
+        hir::ItemTrait(.., ref generics, ref supertraits, _) => (generics, supertraits),
         _ => span_bug!(item.span,
                        "super_predicates invoked on non-trait"),
     };
@@ -713,7 +713,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let item = tcx.hir.expect_item(node_id);
 
     let unsafety = match item.node {
-        hir::ItemTrait(unsafety, ..) => unsafety,
+        hir::ItemTrait(_, unsafety, ..) => unsafety,
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -888,7 +888,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     generics
                 }
 
-                ItemTrait(_, ref generics, ..) => {
+                ItemTrait(_, _, ref generics, ..) => {
                     // Add in the self type parameter.
                     //
                     // Something of a hack: use the node id for the trait, also as
@@ -1350,7 +1350,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     generics
                 }
 
-                ItemTrait(_, ref generics, .., ref items) => {
+                ItemTrait(_, _, ref generics, .., ref items) => {
                     is_trait = Some((ty::TraitRef {
                         def_id,
                         substs: Substs::identity_for_item(tcx, def_id)
