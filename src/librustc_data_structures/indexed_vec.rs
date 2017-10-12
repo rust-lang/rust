@@ -40,10 +40,29 @@ impl Idx for u32 {
 
 #[macro_export]
 macro_rules! newtype_index {
+    // ---- public rules ----
+
+    // Use default constants
+    ($name:ident) => (
+        newtype_index!(
+            @type[$name]
+            @max[::std::u32::MAX]
+            @debug_name[unsafe {::std::intrinsics::type_name::<$name>() }]);
+    );
+
+    // Define any constants
+    ($name:ident { $($tokens:tt)+ }) => (
+        newtype_index!(
+            @type[$name]
+            @max[::std::u32::MAX]
+            @debug_name[unsafe {::std::intrinsics::type_name::<$name>() }]
+            $($tokens)+);
+    );
+
     // ---- private rules ----
 
     // Base case, user-defined constants (if any) have already been defined
-    (@type[$type:ident] @max[$max:expr] @descr[$descr:expr]) => (
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
             RustcEncodable, RustcDecodable)]
         pub struct $type(u32);
@@ -60,65 +79,35 @@ macro_rules! newtype_index {
 
         impl ::std::fmt::Debug for $type {
             fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                write!(fmt, "{}{}", $descr, self.0)
+                write!(fmt, "{}{}", $debug_name, self.0)
             }
         }
     );
 
-    // Replace existing default for max (as final param)
-    (@type[$type:ident] @max[$_max:expr] @descr[$descr:expr] MAX = $max:expr) => (
-        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
+    // Rewrite final without comma to one that includes comma
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr] $name:ident = $constant:expr) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $name = $constant,);
+    );
+
+    // Rewrite final const without comma to one that includes comma
+    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr] const $name:ident = $constant:expr) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] const $name = $constant,);
     );
 
     // Replace existing default for max
-    (@type[$type:ident] @max[$_max:expr] @descr[$descr:expr] MAX = $max:expr, $($idents:ident = $constants:expr),*) => (
-        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
+    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr] MAX = $max:expr, $($tokens:tt)*) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $(tokens)*);
     );
 
-    // Replace existing default for description (as final param)
-    (@type[$type:ident] @max[$max:expr] @descr[$_descr:expr] DESCRIPTION = $descr:expr) => (
-        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
-    );
-
-    // Replace existing default for description
-    (@type[$type:ident] @max[$max:expr] @descr[$_descr:expr] DESCRIPTION = $descr:expr, $($idents:ident = $constants:expr),*) => (
-        newtype_index!(@type[$type] @max[$max] @descr[$descr] $($idents = $constants),*);
+    // Replace existing default for debug_name
+    (@type[$type:ident] @max[$max:expr] @debug_name[$_debug_name:expr] DEBUG_NAME = $debug_name:expr, $($tokens:tt)*) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
     );
 
     // Assign a user-defined constant (as final param)
-    (@type[$type:ident] @max[$max:expr] @descr[$descr:expr] $name:ident = $constant:expr) => (
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr] const $name:ident = $constant:expr, $($tokens:tt)*) => (
         pub const $name: $type = $type($constant);
-        newtype_index!(@type[$type] @max[$max] @descr[$descr]);
-    );
-
-    // Assign a user-defined constant
-    (@type[$type:ident] @max[$max:expr] @descr[$descr:expr] $name:ident = $constant:expr, $($idents:ident = $constants:expr),*) => (
-        pub const $name: $type = $type($constant);
-        newtype_index!(@type[$type] @max[$max] @descr[$descr] $($idents = $constants),*);
-    );
-
-    // ---- public rules ----
-
-    // Use default constants
-    ($name:ident) => (
-        newtype_index!(
-            @type[$name]
-            @max[::std::u32::MAX]
-            @descr[unsafe {::std::intrinsics::type_name::<$name>() }]);
-    );
-
-    // Define any constants
-    ($name:ident, const { $($idents:ident = $constants:expr,)+ }) => (
-        newtype_index!(
-            @type[$name]
-            @max[::std::u32::MAX]
-            @descr[unsafe {::std::intrinsics::type_name::<$name>() }]
-            $($idents = $constants),+);
-    );
-
-    // Rewrite missing trailing comma in const to version with trailing comma
-    ($name:ident, const { $($idents:ident = $constants:expr),+ }) => (
-        newtype_index!($name, const { $($idents = $constants,)+ });
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
     );
 }
 
