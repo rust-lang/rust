@@ -363,6 +363,12 @@ macro_rules! define_maps {
                         tcx.dep_graph.read_index(dep_node_index);
                     }
                     Some(DepNodeColor::Red) => {
+                        // A DepNodeColor::Red DepNode means that this query was executed
+                        // before. We can not call `dep_graph.read()` here as we don't have
+                        // the DepNodeIndex. Instead, We call the query again to issue the
+                        // appropriate `dep_graph.read()` call. The performance cost this
+                        // introduces should be negligible as we'll immediately hit the
+                        // in-memory cache.
                         let _ = tcx.$name(key);
                     }
                     None => {
