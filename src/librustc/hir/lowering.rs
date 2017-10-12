@@ -1742,8 +1742,8 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_is_auto(&mut self, u: IsAuto) -> hir::IsAuto {
-        match u {
+    fn lower_is_auto(&mut self, a: IsAuto) -> hir::IsAuto {
+        match a {
             IsAuto::Yes => hir::IsAuto::Yes,
             IsAuto::No => hir::IsAuto::No,
         }

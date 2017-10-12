@@ -730,11 +730,14 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let def_path_hash = tcx.def_path_hash(def_id);
-    let has_auto_impl = tcx.hir.trait_is_auto(def_id);
+    let is_auto = match item.node {
+        hir::ItemTrait(hir::IsAuto::Yes, ..) => true,
+        _ => tcx.hir.trait_is_auto(def_id),
+    };
     let def = ty::TraitDef::new(def_id,
                                 unsafety,
                                 paren_sugar,
-                                has_auto_impl,
+                                is_auto,
                                 def_path_hash);
     tcx.alloc_trait_def(def)
 }
