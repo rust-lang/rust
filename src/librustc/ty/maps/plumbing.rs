@@ -360,7 +360,6 @@ macro_rules! define_maps {
                 use dep_graph::DepNodeColor;
                 match tcx.dep_graph.node_color(&dep_node) {
                     Some(DepNodeColor::Green(dep_node_index)) => {
-                        profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                         tcx.dep_graph.read_index(dep_node_index);
                     }
                     Some(DepNodeColor::Red) => {
@@ -375,7 +374,6 @@ macro_rules! define_maps {
                         match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
                             Some(dep_node_index) => {
                                 debug_assert!(tcx.dep_graph.is_green(dep_node_index));
-                                profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                                 tcx.dep_graph.read_index(dep_node_index);
                             }
                             None => {
