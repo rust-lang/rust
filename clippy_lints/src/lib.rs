@@ -145,6 +145,7 @@ pub mod serde_api;
 pub mod shadow;
 pub mod should_assert_eq;
 pub mod strings;
+pub mod suggest_print;
 pub mod swap;
 pub mod temporary_assignment;
 pub mod transmute;
@@ -326,6 +327,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box unused_io_amount::UnusedIoAmount);
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
     reg.register_late_lint_pass(box should_assert_eq::ShouldAssertEq);
+    reg.register_late_lint_pass(box suggest_print::Pass);
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
     reg.register_early_lint_pass(box literal_digit_grouping::LiteralDigitGrouping);
     reg.register_late_lint_pass(box use_self::UseSelf);
@@ -540,6 +542,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         serde_api::SERDE_API_MISUSE,
         should_assert_eq::SHOULD_ASSERT_EQ,
         strings::STRING_LIT_AS_BYTES,
+        suggest_print::SUGGEST_PRINT,
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
