@@ -99,6 +99,10 @@ impl Cfg {
                     }),
                 }
             }
+            MetaItemKind::TokenStream(_) => Err(InvalidCfgError {
+                msg: "invalid cfg pattern",
+                span: cfg.span,
+            })
         }
     }
 
