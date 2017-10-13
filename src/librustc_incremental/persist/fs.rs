@@ -256,11 +256,12 @@ pub fn prepare_session_directory(sess: &Session,
         debug!("attempting to copy data from source: {}",
                source_directory.display());
 
-        let print_file_copy_stats = sess.opts.debugging_opts.incremental_info;
+
 
         // Try copying over all files from the source directory
-        if let Ok(allows_links) = copy_files(&session_dir, &source_directory,
-                                             print_file_copy_stats) {
+        if let Ok(allows_links) = copy_files(sess,
+                                             &session_dir,
+                                             &source_directory) {
             debug!("successfully copied data from: {}",
                    source_directory.display());
 
@@ -390,9 +391,9 @@ pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
     Ok(())
 }
 
-fn copy_files(target_dir: &Path,
-              source_dir: &Path,
-              print_stats_on_success: bool)
+fn copy_files(sess: &Session,
+              target_dir: &Path,
+              source_dir: &Path)
               -> Result<bool, ()> {
     // We acquire a shared lock on the lock file of the directory, so that
     // nobody deletes it out from under us while we are reading from it.
@@ -440,9 +441,11 @@ fn copy_files(target_dir: &Path,
         }
     }
 
-    if print_stats_on_success {
-        eprintln!("incremental: session directory: {} files hard-linked", files_linked);
-        eprintln!("incremental: session directory: {} files copied", files_copied);
+    if sess.opts.debugging_opts.incremental_info {
+        println!("[incremental] session directory: \
+                  {} files hard-linked", files_linked);
+        println!("[incremental] session directory: \
+                 {} files copied", files_copied);
     }
 
     Ok(files_linked > 0 || files_copied == 0)

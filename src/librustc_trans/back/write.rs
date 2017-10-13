@@ -1079,13 +1079,9 @@ fn produce_final_output_artifacts(sess: &Session,
 }
 
 pub fn dump_incremental_data(trans: &CrateTranslation) {
-    let mut reuse = 0;
-    for mtrans in trans.modules.iter() {
-        if mtrans.pre_existing {
-            reuse += 1;
-        }
-    }
-    eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
+    println!("[incremental] Re-using {} out of {} modules",
+              trans.modules.iter().filter(|m| m.pre_existing).count(),
+              trans.modules.len());
 }
 
 enum WorkItem {
