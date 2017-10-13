@@ -1156,6 +1156,7 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
             }
 
             new_ht.size = self.size();
+            new_ht.set_tag(self.tag());
 
             new_ht
         }
