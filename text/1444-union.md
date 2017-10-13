@@ -277,7 +277,7 @@ require explicitly specifying them.
 ## Unions and undefined behavior
 
 Rust code must not use unions to invoke [undefined
-behavior](https://doc.rust-lang.org/nightly/reference.html#behavior-considered-undefined).
+behavior](https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html).
 In particular, Rust code must not use unions to break the pointer aliasing
 rules with raw pointers, or access a field containing a primitive type with an
 invalid value.
