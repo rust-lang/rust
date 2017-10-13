@@ -16,4 +16,8 @@ fn main() {
     [1, 2, 3].sort_by(|tuple| panic!());
     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
     f(|| panic!());
+
+    let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
+    let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
+    let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
 }

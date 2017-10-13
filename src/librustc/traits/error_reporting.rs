@@ -711,41 +711,105 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, _) => {
+            OutputTypeParameterMismatch(ref found_trait_ref, ref expected_trait_ref, _) => {
+                let found_trait_ref = self.resolve_type_vars_if_possible(&*found_trait_ref);
                 let expected_trait_ref = self.resolve_type_vars_if_possible(&*expected_trait_ref);
-                let actual_trait_ref = self.resolve_type_vars_if_possible(&*actual_trait_ref);
-                if actual_trait_ref.self_ty().references_error() {
+                if expected_trait_ref.self_ty().references_error() {
                     return;
                 }
-                let expected_trait_ty = expected_trait_ref.self_ty();
-                let found_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
+                let found_trait_ty = found_trait_ref.self_ty();
+
+                let found_did = found_trait_ty.ty_to_def_id();
+                let found_span = found_did.and_then(|did| {
                     self.tcx.hir.span_if_local(did)
                 });
 
-                let self_ty_count =
+                let found_ty_count =
+                    match found_trait_ref.skip_binder().substs.type_at(1).sty {
+                        ty::TyTuple(ref tys, _) => tys.len(),
+                        _ => 1,
+                    };
+                let (expected_tys, expected_ty_count) =
                     match expected_trait_ref.skip_binder().substs.type_at(1).sty {
-                        ty::TyTuple(ref tys, _) => tys.len(),
-                        _ => 1,
+                        ty::TyTuple(ref tys, _) =>
+                            (tys.iter().map(|t| &t.sty).collect(), tys.len()),
+                        ref sty => (vec![sty], 1),
                     };
-                let arg_ty_count =
-                    match actual_trait_ref.skip_binder().substs.type_at(1).sty {
-                        ty::TyTuple(ref tys, _) => tys.len(),
-                        _ => 1,
-                    };
-                if self_ty_count == arg_ty_count {
+                if found_ty_count == expected_ty_count {
                     self.report_closure_arg_mismatch(span,
                                                      found_span,
-                                                     expected_trait_ref,
-                                                     actual_trait_ref)
+                                                     found_trait_ref,
+                                                     expected_trait_ref)
                 } else {
-                    // Expected `|| { }`, found `|x, y| { }`
-                    // Expected `fn(x) -> ()`, found `|| { }`
+                    let expected_tuple = if expected_ty_count == 1 {
+                        expected_tys.first().and_then(|t| {
+                            if let &&ty::TyTuple(ref tuptys, _) = t {
+                                Some(tuptys.len())
+                            } else {
+                                None
+                            }
+                        })
+                    } else {
+                        None
+                    };
+
+                    // FIXME(#44150): Expand this to "N args expected but a N-tuple found."
+                    // Type of the 1st expected argument is somehow provided as type of a
+                    // found one in that case.
+                    //
+                    // ```
+                    // [1i32, 2, 3].sort_by(|(a, b)| ..)
+                    // //                   ^^^^^^^^
+                    // // expected_trait_ref:  std::ops::FnMut<(&i32, &i32)>
+                    // //    found_trait_ref:  std::ops::FnMut<(&i32,)>
+                    // ```
+
+                    let (closure_span, closure_args) = found_did
+                        .and_then(|did| self.tcx.hir.get_if_local(did))
+                        .and_then(|node| {
+                            if let hir::map::NodeExpr(
+                                &hir::Expr {
+                                    node: hir::ExprClosure(_, ref decl, id, span, _),
+                                    ..
+                                }) = node
+                            {
+                                let ty_snips = decl.inputs.iter()
+                                    .map(|ty| {
+                                        self.tcx.sess.codemap().span_to_snippet(ty.span).ok()
+                                            .and_then(|snip| {
+                                                // filter out dummy spans
+                                                if snip == "," || snip == "|" {
+                                                    None
+                                                } else {
+                                                    Some(snip)
+                                                }
+                                            })
+                                    })
+                                    .collect::<Vec<Option<String>>>();
+
+                                let body = self.tcx.hir.body(id);
+                                let pat_snips = body.arguments.iter()
+                                    .map(|arg|
+                                        self.tcx.sess.codemap().span_to_snippet(arg.pat.span).ok())
+                                    .collect::<Option<Vec<String>>>();
+
+                                Some((span, pat_snips, ty_snips))
+                            } else {
+                                None
+                            }
+                        })
+                        .map(|(span, pat, ty)| (Some(span), Some((pat, ty))))
+                        .unwrap_or((None, None));
+                    let closure_args = closure_args.and_then(|(pat, ty)| Some((pat?, ty)));
+
                     self.report_arg_count_mismatch(
                         span,
-                        found_span,
-                        arg_ty_count,
-                        self_ty_count,
-                        expected_trait_ty.is_closure()
+                        closure_span.or(found_span),
+                        expected_ty_count,
+                        expected_tuple,
+                        found_ty_count,
+                        closure_args,
+                        found_trait_ty.is_closure()
                     )
                 }
             }
@@ -767,32 +831,97 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         err.emit();
     }
 
-    fn report_arg_count_mismatch(&self,
-                                 span: Span,
-                                 found_span: Option<Span>,
-                                 expected: usize,
-                                 found: usize,
-                                 is_closure: bool)
-        -> DiagnosticBuilder<'tcx>
-    {
-        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
-            "{} takes {} argument{} but {} argument{} {} required",
-            if is_closure { "closure" } else { "function" },
-            found,
-            if found == 1 { "" } else { "s" },
-            expected,
-            if expected == 1 { "" } else { "s" },
-            if expected == 1 { "is" } else { "are" });
+    fn report_arg_count_mismatch(
+        &self,
+        span: Span,
+        found_span: Option<Span>,
+        expected: usize,
+        expected_tuple: Option<usize>,
+        found: usize,
+        closure_args: Option<(Vec<String>, Vec<Option<String>>)>,
+        is_closure: bool
+    ) -> DiagnosticBuilder<'tcx> {
+        use std::borrow::Cow;
 
-        err.span_label(span, format!("expected {} that takes {} argument{}",
-                                      if is_closure { "closure" } else { "function" },
-                                      expected,
-                                      if expected == 1 { "" } else { "s" }));
+        let kind = if is_closure { "closure" } else { "function" };
+
+        let args_str = |n, distinct| format!(
+                "{} {}argument{}",
+                n,
+                if distinct && n >= 2 { "distinct " } else { "" },
+                if n == 1 { "" } else { "s" },
+            );
+
+        let expected_str = if let Some(n) = expected_tuple {
+            assert!(expected == 1);
+            if closure_args.as_ref().map(|&(ref pats, _)| pats.len()) == Some(n) {
+                Cow::from("a single tuple as argument")
+            } else {
+                // be verbose when numbers differ
+                Cow::from(format!("a single {}-tuple as argument", n))
+            }
+        } else {
+            Cow::from(args_str(expected, false))
+        };
+
+        let found_str = if expected_tuple.is_some() {
+            args_str(found, true)
+        } else {
+            args_str(found, false)
+        };
+
+
+        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
+            "{} is expected to take {}, but it takes {}",
+            kind,
+            expected_str,
+            found_str,
+        );
+
+        err.span_label(
+            span,
+            format!(
+                "expected {} that takes {}",
+                kind,
+                expected_str,
+            )
+        );
+
         if let Some(span) = found_span {
-            err.span_label(span, format!("takes {} argument{}",
-                                          found,
-                                          if found == 1 { "" } else { "s" }));
+            if let (Some(expected_tuple), Some((pats, tys))) = (expected_tuple, closure_args) {
+                if expected_tuple != found || pats.len() != found {
+                    err.span_label(span, format!("takes {}", found_str));
+                } else {
+                    let sugg = format!(
+                        "|({}){}|",
+                        pats.join(", "),
+
+                        // add type annotations if available
+                        if tys.iter().any(|ty| ty.is_some()) {
+                            Cow::from(format!(
+                                ": ({})",
+                                tys.into_iter().map(|ty| if let Some(ty) = ty {
+                                    ty
+                                } else {
+                                    "_".to_string()
+                                }).collect::<Vec<String>>().join(", ")
+                            ))
+                        } else {
+                            Cow::from("")
+                        },
+                    );
+
+                    err.span_suggestion(
+                        span,
+                        "consider changing the closure to accept a tuple",
+                        sugg
+                    );
+                }
+            } else {
+                err.span_label(span, format!("takes {}", found_str));
+            }
         }
+
         err
     }
 
