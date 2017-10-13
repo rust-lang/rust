@@ -352,7 +352,7 @@ top_level_options!(
         actually_rustdoc: bool [TRACKED],
 
         // Number of object files/codegen units to produce on the backend
-        codegen_units: usize [UNTRACKED],
+        cli_forced_codegen_units: Option<usize> [UNTRACKED],
     }
 );
 
@@ -505,7 +505,7 @@ pub fn basic_options() -> Options {
         unstable_features: UnstableFeatures::Disallow,
         debug_assertions: true,
         actually_rustdoc: false,
-        codegen_units: 1,
+        cli_forced_codegen_units: None,
     }
 }
 
@@ -1711,48 +1711,6 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let incremental = debugging_opts.incremental.as_ref().map(|m| PathBuf::from(m));
 
-    let codegen_units = codegen_units.unwrap_or_else(|| {
-        match opt_level {
-            // If we're compiling at `-O0` then default to 16 codegen units.
-            // The number here shouldn't matter too too much as debug mode
-            // builds don't rely on performance at all, meaning that lost
-            // opportunities for inlining through multiple codegen units is
-            // a non-issue.
-            //
-            // Note that the high number here doesn't mean that we'll be
-            // spawning a large number of threads in parallel. The backend
-            // of rustc contains global rate limiting through the
-            // `jobserver` crate so we'll never overload the system with too
-            // much work, but rather we'll only be optimizing when we're
-            // otherwise cooperating with other instances of rustc.
-            //
-            // Rather the high number here means that we should be able to
-            // keep a lot of idle cpus busy. By ensuring that no codegen
-            // unit takes *too* long to build we'll be guaranteed that all
-            // cpus will finish pretty closely to one another and we should
-            // make relatively optimal use of system resources
-            //
-            // Another note worth mentioning here, however, is that this number
-            // isn't *too* high. When codegen units are increased that means we
-            // currently have to codegen `#[inline]` functions into each codegen
-            // unit, which means the more codegen units we're using the more we
-            // may be generating. In other words, increasing codegen units may
-            // increase the overall work the compiler does. If we don't have
-            // enough cores to make up for this loss then increasing the number
-            // of codegen units could become an overall loss!
-            //
-            // As a result we choose a hopefully conservative value 16, which
-            // should be more than the number of cpus of most hardware compiling
-            // Rust but also not too much for 2-4 core machines to have too much
-            // loss of compile time.
-            OptLevel::No => 16,
-
-            // All other optimization levels default use one codegen unit,
-            // the historical default in Rust for a Long Time.
-            _ => 1,
-        }
-    });
-
     (Options {
         crate_types,
         optimize: opt_level,
@@ -1777,7 +1735,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         unstable_features: UnstableFeatures::from_environment(),
         debug_assertions,
         actually_rustdoc: false,
-        codegen_units,
+        cli_forced_codegen_units: codegen_units,
     },
     cfg)
 }

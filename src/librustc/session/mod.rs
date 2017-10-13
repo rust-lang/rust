@@ -636,6 +636,43 @@ impl Session {
         }
         ret
     }
+
+    /// Returns the number of codegen units that should be used for this
+    /// compilation
+    pub fn codegen_units(&self) -> usize {
+        if let Some(n) = self.opts.cli_forced_codegen_units {
+            return n
+        }
+        if let Some(n) = self.target.target.options.default_codegen_units {
+            return n as usize
+        }
+
+        match self.opts.optimize {
+            // If we're compiling at `-O0` then default to 16 codegen units.
+            // The number here shouldn't matter too too much as debug mode
+            // builds don't rely on performance at all, meaning that lost
+            // opportunities for inlining through multiple codegen units is
+            // a non-issue.
+            //
+            // Note that the high number here doesn't mean that we'll be
+            // spawning a large number of threads in parallel. The backend
+            // of rustc contains global rate limiting through the
+            // `jobserver` crate so we'll never overload the system with too
+            // much work, but rather we'll only be optimizing when we're
+            // otherwise cooperating with other instances of rustc.
+            //
+            // Rather the high number here means that we should be able to
+            // keep a lot of idle cpus busy. By ensuring that no codegen
+            // unit takes *too* long to build we'll be guaranteed that all
+            // cpus will finish pretty closely to one another and we should
+            // make relatively optimal use of system resources
+            config::OptLevel::No => 16,
+
+            // All other optimization levels default use one codegen unit,
+            // the historical default in Rust for a Long Time.
+            _ => 1,
+        }
+    }
 }
 
 pub fn build_session(sopts: config::Options,

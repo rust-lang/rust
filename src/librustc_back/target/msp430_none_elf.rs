@@ -48,6 +48,11 @@ pub fn target() -> TargetResult {
             // code because of the extra costs it involves.
             relocation_model: "static".to_string(),
 
+            // Right now we invoke an external assembler and this isn't
+            // compatible with multiple codegen units, and plus we probably
+            // don't want to invoke that many gcc instances.
+            default_codegen_units: Some(1),
+
             .. Default::default( )
         }
     })

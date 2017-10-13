@@ -430,6 +430,9 @@ pub struct TargetOptions {
 
     /// The minimum alignment for global symbols.
     pub min_global_align: Option<u64>,
+
+    /// Default number of codegen units to use in debug mode
+    pub default_codegen_units: Option<u64>,
 }
 
 impl Default for TargetOptions {
@@ -492,6 +495,7 @@ impl Default for TargetOptions {
             crt_static_respected: false,
             stack_probes: false,
             min_global_align: None,
+            default_codegen_units: None,
         }
     }
 }
@@ -732,6 +736,7 @@ impl Target {
         key!(crt_static_respected, bool);
         key!(stack_probes, bool);
         key!(min_global_align, Option<u64>);
+        key!(default_codegen_units, Option<u64>);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -924,6 +929,7 @@ impl ToJson for Target {
         target_option_val!(crt_static_respected);
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
+        target_option_val!(default_codegen_units);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
