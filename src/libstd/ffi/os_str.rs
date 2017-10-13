@@ -32,18 +32,65 @@ use sys_common::{AsInner, IntoInner, FromInner};
 ///
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
-/// to be converted into an "OS" string with no cost.
+/// to be converted into an "OS" string with no cost if possible.
+///
+/// `OsString` is to [`OsStr`] as [`String`] is to [`&str`]: the former
+/// in each pair are owned strings; the latter are borrowed
+/// references.
+///
+/// # Creating an `OsString`
+///
+/// **From a Rust string**: `OsString` implements
+/// [`From`]`<`[`String`]`>`, so you can use `my_string.`[`from`] to
+/// create an `OsString` from a normal Rust string.
+///
+/// **From slices:** Just like you can start with an empty Rust
+/// [`String`] and then [`push_str`][String.push_str] `&str`
+/// sub-string slices into it, you can create an empty `OsString` with
+/// the [`new`] method and then push string slices into it with the
+/// [`push`] method.
+///
+/// # Extracting a borrowed reference to the whole OS string
+///
+/// You can use the [`as_os_str`] method to get an `&`[`OsStr`] from
+/// an `OsString`; this is effectively a borrowed reference to the
+/// whole string.
+///
+/// # Conversions
+///
+/// See the [module's toplevel documentation about conversions][conversions] for a discussion on
+/// the traits which `OsString` implements for conversions from/to native representations.
 ///
 /// [`OsStr`]: struct.OsStr.html
+/// [`From`]: ../convert/trait.From.html
+/// [`from`]: ../convert/trait.From.html#tymethod.from
+/// [`String`]: ../string/struct.String.html
+/// [`&str`]: ../primitive.str.html
+/// [`u8`]: ../primitive.u8.html
+/// [`u16`]: ../primitive.u16.html
+/// [String.push_str]: ../string/struct.String.html#method.push_str
+/// [`new`]: #method.new
+/// [`push`]: #method.push
+/// [`as_os_str`]: #method.as_os_str
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf
 }
 
-/// Slices into OS strings (see [`OsString`]).
+/// Borrowed reference to an OS string (see [`OsString`]).
+///
+/// This type represents a borrowed reference to a string in the operating system's preferred
+/// representation.
+///
+/// `OsStr` is to [`OsString`] as [`String`] is to [`&str`]: the former in each pair are borrowed
+/// references; the latter are owned strings.
+///
+/// See the [module's toplevel documentation about conversions][conversions] for a discussion on
+/// the traits which `OsStr` implements for conversions from/to native representations.
 ///
 /// [`OsString`]: struct.OsString.html
+/// [conversions]: index.html#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsStr {
     inner: Slice
