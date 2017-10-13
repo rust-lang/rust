@@ -1562,9 +1562,10 @@ impl Context {
                 // URL for the page.
                 let redir_name = format!("{}.{}.html", name, item_type.name_space());
                 let redir_dst = self.dst.join(redir_name);
-                if let Ok(mut redirect_out) = OpenOptions::new().create_new(true)
+                if let Ok(redirect_out) = OpenOptions::new().create_new(true)
                                                                 .write(true)
                                                                 .open(&redir_dst) {
+                    let mut redirect_out = BufWriter::new(redirect_out);
                     try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
                 }
 
@@ -1574,7 +1575,8 @@ impl Context {
                 if item_type == ItemType::Macro {
                     let redir_name = format!("{}.{}!.html", item_type, name);
                     let redir_dst = self.dst.join(redir_name);
-                    let mut redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                    let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                    let mut redirect_out = BufWriter::new(redirect_out);
                     try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
                 }
             }
