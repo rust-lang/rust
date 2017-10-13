@@ -1362,20 +1362,6 @@ pub fn rewrite_struct_field_prefix(
     })
 }
 
-fn rewrite_struct_field_type(
-    context: &RewriteContext,
-    last_line_width: usize,
-    field: &ast::StructField,
-    spacing: &str,
-    shape: Shape,
-) -> Option<String> {
-    let ty_shape = shape.offset_left(last_line_width + spacing.len())?;
-    field
-        .ty
-        .rewrite(context, ty_shape)
-        .map(|ty| format!("{}{}", spacing, ty))
-}
-
 impl Rewrite for ast::StructField {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         rewrite_struct_field(context, self, shape, 0)
@@ -1427,44 +1413,26 @@ pub fn rewrite_struct_field(
     if prefix.is_empty() && !attrs_str.is_empty() && attrs_extendable && spacing.is_empty() {
         spacing.push(' ');
     }
-    let ty_rewritten = rewrite_struct_field_type(context, overhead, field, &spacing, shape);
-    if let Some(ref ty) = ty_rewritten {
+    let ty_shape = shape.offset_left(overhead + spacing.len())?;
+    if let Some(ref ty) = field.ty.rewrite(context, ty_shape) {
         if !ty.contains('\n') {
-            return Some(attr_prefix + ty);
+            return Some(attr_prefix + &spacing + ty);
         }
     }
 
     // We must use multiline.
-    let last_line_width = last_line_width(&prefix);
-    let ty_rewritten = rewrite_struct_field_type(context, last_line_width, field, &spacing, shape);
+    let new_shape = shape.with_max_width(context.config);
+    let ty_rewritten = field.ty.rewrite(context, new_shape)?;
 
-    let type_offset = shape.indent.block_indent(context.config);
-    let rewrite_type_in_next_line = || {
-        field
-            .ty
-            .rewrite(context, Shape::indented(type_offset, context.config))
-    };
-
-    let field_str = match ty_rewritten {
-        // If we start from the next line and type fits in a single line, then do so.
-        Some(ref ty) => match rewrite_type_in_next_line() {
-            Some(ref new_ty) if !new_ty.contains('\n') => format!(
-                "{}\n{}{}",
-                prefix,
-                type_offset.to_string(context.config),
-                &new_ty
-            ),
-            _ => prefix + ty,
-        },
-        _ => {
-            let ty = rewrite_type_in_next_line()?;
-            format!(
-                "{}\n{}{}",
-                prefix,
-                type_offset.to_string(context.config),
-                &ty
-            )
-        }
+    let field_str = if prefix.is_empty() {
+        ty_rewritten
+    } else if prefix.len() + first_line_width(&ty_rewritten) + 1 <= shape.width {
+        prefix + " " + &ty_rewritten
+    } else {
+        let type_offset = shape.indent.block_indent(context.config);
+        let nested_shape = Shape::indented(type_offset, context.config);
+        let nested_ty = field.ty.rewrite(context, nested_shape)?;
+        prefix + "\n" + &type_offset.to_string(context.config) + &nested_ty
     };
     combine_strs_with_missing_comments(
         context,

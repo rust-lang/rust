@@ -35,3 +35,12 @@ fn new_foo() -> Foo {
         bar: 0,
     }
 }
+
+// #2044
+pub enum State {
+    Closure(#[cfg_attr(feature = "serde_derive", serde(state_with = "::serialization::closure"))] GcPtr<ClosureData>),
+}
+
+struct Fields(
+    #[cfg_attr(feature = "serde_derive", serde(state_with = "::base::serialization::shared"))] Arc<Vec<InternedStr>>,
+);
