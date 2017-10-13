@@ -19,6 +19,10 @@ use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
+use std::fmt;
+
+use util as mir_util;
+use self::mir_util::PassWhere;
 
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -134,7 +138,7 @@ pub struct NLL;
 impl MirPass for NLL {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
+                          source: MirSource,
                           mir: &mut Mir<'tcx>) {
         if !tcx.sess.opts.debugging_opts.nll {
             return;
@@ -145,14 +149,30 @@ impl MirPass for NLL {
             let mut renumbered_mir = mir.clone();
             let mut visitor = NLLVisitor::new(infcx);
             visitor.visit_mir(&mut renumbered_mir);
+            mir_util::dump_mir(tcx, None, "nll", &0, source, mir, |pass_where, out| {
+                if let PassWhere::BeforeCFG = pass_where {
+                    for (index, value) in visitor.regions.iter_enumerated() {
+                        writeln!(out, "// R{:03}: {:?}", index.0, value)?;
+                    }
+                }
+                Ok(())
+            });
             let _results = visitor.into_results();
         })
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 struct Region {
     points: FxHashSet<Location>,
 }
+
+impl fmt::Debug for Region {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(formatter, "{:?}", self.points)
+    }
+}
+
+
 
 newtype_index!(RegionIndex);
