@@ -1,0 +1,18 @@
+error: cannot use a comma after the base struct
+  --> $DIR/struct-field-init-syntax.rs:18:9
+   |
+18 |         ..Foo::default(),
+   |         ^^^^^^^^^^^^^^^^- help: remove this comma
+   |
+   = note: the base struct must always be the last field
+
+error: cannot use a comma after the base struct
+  --> $DIR/struct-field-init-syntax.rs:23:9
+   |
+23 |         ..Foo::default(),
+   |         ^^^^^^^^^^^^^^^^- help: remove this comma
+   |
+   = note: the base struct must always be the last field
+
+error: aborting due to 2 previous errors
+
