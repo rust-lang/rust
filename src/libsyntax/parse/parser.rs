@@ -2314,6 +2314,7 @@ impl<'a> Parser<'a> {
 
         while self.token != token::CloseDelim(token::Brace) {
             if self.eat(&token::DotDot) {
+                let exp_span = self.prev_span;
                 match self.parse_expr() {
                     Ok(e) => {
                         base = Some(e);
@@ -2322,6 +2323,16 @@ impl<'a> Parser<'a> {
                         e.emit();
                         self.recover_stmt();
                     }
+                }
+                if self.token == token::Comma {
+                    let mut err = self.sess.span_diagnostic.mut_span_err(
+                        exp_span.to(self.prev_span),
+                        "cannot use a comma after the base struct",
+                    );
+                    err.span_suggestion_short(self.span, "remove this comma", "".to_owned());
+                    err.note("the base struct must always be the last field");
+                    err.emit();
+                    self.recover_stmt();
                 }
                 break;
             }
@@ -2960,6 +2971,7 @@ impl<'a> Parser<'a> {
                 {                                  //     Foo<Bar<Baz<Qux, ()>>>
                     err.help(
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
+                    err.help("or use `(...)` if you meant to specify fn arguments");
                 }
                 err.emit();
             }

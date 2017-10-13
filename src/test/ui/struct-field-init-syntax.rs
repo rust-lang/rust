@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,17 +10,18 @@
 
 // compile-flags: -Z parse-only
 
-fn f<T>() {}
+// issue #41834
 
 fn main() {
-    false == false == false;
-    //~^ ERROR: chained comparison operators require parentheses
+    let foo = Foo {
+        one: 111,
+        ..Foo::default(),
+        //~^ ERROR cannot use a comma after struct expansion
+    };
 
-    false == 0 < 2;
-    //~^ ERROR: chained comparison operators require parentheses
-
-    f<X>();
-    //~^ ERROR: chained comparison operators require parentheses
-    //~| HELP: use `::<...>` instead of `<...>`
-    //~| HELP: or use `(...)`
+    let foo = Foo {
+        ..Foo::default(),
+        //~^ ERROR cannot use a comma after struct expansion
+        one: 111,
+    };
 }

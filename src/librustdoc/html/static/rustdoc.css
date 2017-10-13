@@ -394,7 +394,7 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li { margin-bottom: 3px; }
+.content .item-list li { margin-bottom: 1em; }
 
 .content .multi-column {
 	-moz-column-count: 5;
@@ -773,17 +773,19 @@ span.since {
 	}
 
 	.sidebar {
-		height: 40px;
+		height: 45px;
 		min-height: 40px;
-		width: 100%;
-		margin: 0px;
-		padding: 0px;
+		width: calc(100% + 30px);
+		margin: 0;
+		margin-left: -15px;
+		padding: 0 15px;
 		position: static;
 	}
 
 	.sidebar .location {
 		float: right;
 		margin: 0px;
+		margin-top: 2px;
 		padding: 3px 10px 1px 10px;
 		min-height: 39px;
 		background: inherit;
@@ -798,7 +800,7 @@ span.since {
 	.sidebar img {
 		width: 35px;
 		margin-top: 5px;
-		margin-bottom: 0px;
+		margin-bottom: 5px;
 		float: left;
 	}
 
