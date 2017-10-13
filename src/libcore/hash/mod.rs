@@ -103,6 +103,10 @@ pub use self::sip::SipHasher;
 #[allow(deprecated)]
 pub use self::sip::{SipHasher13, SipHasher24};
 
+#[unstable(feature = "sip_hash_128", issue = "9999999")]
+#[doc(hidden)]
+pub use self::sip::SipHasher24_128;
+
 mod sip;
 
 /// A hashable type.

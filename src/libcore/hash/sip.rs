@@ -26,7 +26,7 @@ use mem;
 #[unstable(feature = "sip_hash_13", issue = "34767")]
 #[rustc_deprecated(since = "1.13.0",
                    reason = "use `std::collections::hash_map::DefaultHasher` instead")]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SipHasher13 {
     hasher: Hasher<Sip13Rounds>,
 }
@@ -37,8 +37,19 @@ pub struct SipHasher13 {
 #[unstable(feature = "sip_hash_13", issue = "34767")]
 #[rustc_deprecated(since = "1.13.0",
                    reason = "use `std::collections::hash_map::DefaultHasher` instead")]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SipHasher24 {
+    hasher: Hasher<Sip24Rounds>,
+}
+
+/// An implementation of SipHash 2-4 creating 128 bit hash values.
+///
+/// See: https://131002.net/siphash/
+#[unstable(feature = "sip_hash_128", issue = "9999999")]
+#[doc(hidden)]
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone)]
+pub struct SipHasher24_128 {
     hasher: Hasher<Sip24Rounds>,
 }
 
@@ -176,7 +187,7 @@ impl SipHasher13 {
                        reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 {
-            hasher: Hasher::new_with_keys(key0, key1)
+            hasher: Hasher::new_with_keys_64(key0, key1)
         }
     }
 }
@@ -198,14 +209,40 @@ impl SipHasher24 {
                        reason = "use `std::collections::hash_map::DefaultHasher` instead")]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher24 {
         SipHasher24 {
-            hasher: Hasher::new_with_keys(key0, key1)
+            hasher: Hasher::new_with_keys_64(key0, key1)
         }
     }
 }
 
+impl SipHasher24_128 {
+    /// Creates a new `SipHasher24_128` with the two initial keys set to 0.
+    #[inline]
+    #[unstable(feature = "sip_hash_128", issue = "9999999")]
+    pub fn new() -> SipHasher24_128 {
+        SipHasher24_128::new_with_keys(0, 0)
+    }
+
+    /// Creates a `SipHasher24_128` that is keyed off the provided keys.
+    #[inline]
+    #[unstable(feature = "sip_hash_128", issue = "9999999")]
+    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher24_128 {
+        SipHasher24_128 {
+            hasher: Hasher::new_with_keys_128(key0, key1)
+        }
+    }
+
+    #[inline]
+    #[unstable(feature = "sip_hash_128", issue = "9999999")]
+    #[doc(hidden)]
+    pub fn finish128(&self) -> (u64, u64) {
+        self.hasher.finish128()
+    }
+}
+
+
 impl<S: Sip> Hasher<S> {
     #[inline]
-    fn new_with_keys(key0: u64, key1: u64) -> Hasher<S> {
+    fn new_with_keys_64(key0: u64, key1: u64) -> Hasher<S> {
         let mut state = Hasher {
             k0: key0,
             k1: key1,
@@ -221,6 +258,13 @@ impl<S: Sip> Hasher<S> {
             _marker: PhantomData,
         };
         state.reset();
+        state
+    }
+
+    #[inline]
+    fn new_with_keys_128(key0: u64, key1: u64) -> Hasher<S> {
+        let mut state = Self::new_with_keys_64(key0, key1);
+        state.state.v1 ^= 0xee;
         state
     }
 
@@ -264,6 +308,29 @@ impl<S: Sip> Hasher<S> {
         self.ntail = length - needed;
         self.tail = unsafe { u8to64_le(msg, needed, self.ntail) };
     }
+
+    #[inline]
+    fn finish128(&self) -> (u64, u64) {
+        let mut state = self.state;
+
+        let b: u64 = ((self.length as u64 & 0xff) << 56) | self.tail;
+
+        state.v3 ^= b;
+        S::c_rounds(&mut state);
+        state.v0 ^= b;
+
+        state.v2 ^= 0xee;
+        S::d_rounds(&mut state);
+
+        let _0 = state.v0 ^ state.v1 ^ state.v2 ^ state.v3;
+
+        state.v1 ^= 0xdd;
+        S::d_rounds(&mut state);
+
+        let _1 = state.v0 ^ state.v1 ^ state.v2 ^ state.v3;
+
+        (_0, _1)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -291,6 +358,19 @@ impl super::Hasher for SipHasher13 {
         self.hasher.finish()
     }
 }
+
+#[unstable(feature = "sip_hash_128", issue = "9999999")]
+impl super::Hasher for SipHasher24_128 {
+    #[inline]
+    fn write(&mut self, msg: &[u8]) {
+        self.hasher.write(msg)
+    }
+
+    fn finish(&self) -> u64 {
+        panic!("Cannot create 64 bit hash from SipHasher24_128")
+    }
+}
+
 
 #[unstable(feature = "sip_hash_13", issue = "34767")]
 impl super::Hasher for SipHasher24 {
@@ -393,11 +473,19 @@ impl<S: Sip> Clone for Hasher<S> {
     }
 }
 
-impl<S: Sip> Default for Hasher<S> {
-    /// Creates a `Hasher<S>` with the two initial keys set to 0.
+#[unstable(feature = "sip_hash_13", issue = "34767")]
+impl Default for SipHasher13 {
     #[inline]
-    fn default() -> Hasher<S> {
-        Hasher::new_with_keys(0, 0)
+    fn default() -> SipHasher13 {
+        SipHasher13::new_with_keys(0, 0)
+    }
+}
+
+#[unstable(feature = "sip_hash_13", issue = "34767")]
+impl Default for SipHasher24 {
+    #[inline]
+    fn default() -> SipHasher24 {
+        SipHasher24::new_with_keys(0, 0)
     }
 }
 
