@@ -126,7 +126,7 @@ install a nightly, presumably using `rustup`. You will then want to
 configure your directory to use this build, like so:
 
 ```
-# configure to use local rust instead of downloding a beta.
+# configure to use local rust instead of downloading a beta.
 # `--local-rust-root` is optional here. If elided, we will
 # use whatever rustc we find on your PATH.
 > configure --enable-rustbuild --local-rust-root=~/.cargo/ --enable-local-rebuild
