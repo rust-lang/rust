@@ -368,7 +368,8 @@ fn default_hook(info: &PanicInfo) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut ::io::Write| {
-        let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}:{}",
+        // Add a cariage return to reset cursor to the beginning of the line with rawmode tty's
+        let _ = write!(err, "thread '{}' panicked at '{}', {}:{}:{}\r\n",
                          name, msg, file, line, col);
 
         #[cfg(feature = "backtrace")]
