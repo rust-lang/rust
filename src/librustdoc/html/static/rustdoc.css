@@ -394,7 +394,7 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li { margin-bottom: 3px; }
+.content .item-list li { margin-bottom: 1em; }
 
 .content .multi-column {
 	-moz-column-count: 5;
