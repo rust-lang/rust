@@ -622,7 +622,7 @@ impl Rewrite for ast::TraitRef {
 impl Rewrite for ast::Ty {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
-            ast::TyKind::TraitObject(ref bounds) => bounds.rewrite(context, shape),
+            ast::TyKind::TraitObject(ref bounds, ..) => bounds.rewrite(context, shape),
             ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
                     Mutability::Mutable => "*mut ",
