@@ -364,7 +364,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'tcx>
             TerminatorKind::Resume |
             TerminatorKind::Return |
             TerminatorKind::GeneratorDrop |
-            TerminatorKind::Unreachable => {
+            TerminatorKind::Unreachable |
+            TerminatorKind::FalseEdges { .. } => {
                 // no data used, thus irrelevant to borrowck
             }
         }

@@ -305,6 +305,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             TerminatorKind::Goto { target: _ } |
             TerminatorKind::Resume |
             TerminatorKind::GeneratorDrop |
+            TerminatorKind::FalseEdges { .. } |
             TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {

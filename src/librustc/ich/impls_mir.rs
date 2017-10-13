@@ -62,7 +62,8 @@ for mir::Terminator<'gcx> {
             mir::TerminatorKind::Drop { .. } |
             mir::TerminatorKind::DropAndReplace { .. } |
             mir::TerminatorKind::Yield { .. } |
-            mir::TerminatorKind::Call { .. } => false,
+            mir::TerminatorKind::Call { .. } |
+            mir::TerminatorKind::FalseEdges { .. } => false,
         };
 
         if hash_spans_unconditionally {
@@ -209,6 +210,12 @@ for mir::TerminatorKind<'gcx> {
                 msg.hash_stable(hcx, hasher);
                 target.hash_stable(hcx, hasher);
                 cleanup.hash_stable(hcx, hasher);
+            }
+            mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
+                real_target.hash_stable(hcx, hasher);
+                for target in imaginary_targets {
+                    target.hash_stable(hcx, hasher);
+                }
             }
         }
     }

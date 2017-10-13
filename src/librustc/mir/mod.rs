@@ -682,6 +682,11 @@ pub enum TerminatorKind<'tcx> {
 
     /// Indicates the end of the dropping of a generator
     GeneratorDrop,
+
+    FalseEdges {
+        real_target: BasicBlock,
+        imaginary_targets: Vec<BasicBlock>
+    },
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -731,6 +736,11 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Assert { target, cleanup: Some(unwind), .. } => vec![target, unwind].into_cow(),
             Assert { ref target, .. } => slice::ref_slice(target).into_cow(),
+            FalseEdges { ref real_target, ref imaginary_targets } => {
+                let mut s = vec![*real_target];
+                s.extend_from_slice(imaginary_targets);
+                s.into_cow()
+            }
         }
     }
 
@@ -757,7 +767,12 @@ impl<'tcx> TerminatorKind<'tcx> {
                 vec![target]
             }
             Assert { ref mut target, cleanup: Some(ref mut unwind), .. } => vec![target, unwind],
-            Assert { ref mut target, .. } => vec![target]
+            Assert { ref mut target, .. } => vec![target],
+            FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
+                let mut s = vec![real_target];
+                s.extend(imaginary_targets.iter_mut());
+                s
+            }
         }
     }
 }
@@ -874,7 +889,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
 
                 write!(fmt, ")")
-            }
+            },
+            FalseEdges { .. } => write!(fmt, "falseEdges")
         }
     }
 
@@ -910,7 +926,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Assert { cleanup: None, .. } => vec!["".into()],
             Assert { .. } =>
-                vec!["success".into_cow(), "unwind".into_cow()]
+                vec!["success".into_cow(), "unwind".into_cow()],
+            FalseEdges { ref imaginary_targets, .. } => {
+                let mut l = vec!["real".into()];
+                l.resize(imaginary_targets.len() + 1, "imaginary".into());
+                l
+            }
         }
     }
 }
@@ -1878,6 +1899,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Resume => Resume,
             Return => Return,
             Unreachable => Unreachable,
+            FalseEdges { real_target, ref imaginary_targets } =>
+                FalseEdges { real_target, imaginary_targets: imaginary_targets.clone() }
         };
         Terminator {
             source_info: self.source_info,
@@ -1917,7 +1940,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Resume |
             Return |
             GeneratorDrop |
-            Unreachable => false
+            Unreachable |
+            FalseEdges { .. } => false
         }
     }
 }

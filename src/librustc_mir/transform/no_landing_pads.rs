@@ -45,7 +45,8 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
             TerminatorKind::Unreachable |
             TerminatorKind::GeneratorDrop |
             TerminatorKind::Yield { .. } |
-            TerminatorKind::SwitchInt { .. } => {
+            TerminatorKind::SwitchInt { .. } |
+            TerminatorKind::FalseEdges { .. } => {
                 /* nothing to do */
             },
             TerminatorKind::Call { cleanup: ref mut unwind, .. } |

@@ -720,6 +720,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 }
             }
             TerminatorKind::Unreachable => { }
+            TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
+                *real_target = self.update_target(*real_target);
+                for target in imaginary_targets {
+                    *target = self.update_target(*target);
+                }
+            }
         }
     }
 

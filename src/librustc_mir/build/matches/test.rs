@@ -598,6 +598,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
+            binding_start_block: candidate.binding_start_block,
+            next_candidate_binding_start_block: candidate.next_candidate_binding_start_block,
         }
     }
 
@@ -659,6 +661,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
             arm_index: candidate.arm_index,
+            binding_start_block: candidate.binding_start_block,
+            next_candidate_binding_start_block: candidate.next_candidate_binding_start_block,
         }
     }
 
