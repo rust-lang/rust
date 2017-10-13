@@ -129,7 +129,11 @@ fn main() {
     let dest_path = Path::new(&dest_path_str).join("src");
 
     let lang_features = collect_lang_features(src_path);
-    let lib_features = collect_lib_features(src_path);
+    let lib_features = collect_lib_features(src_path)
+                                            .iter()
+                                            .filter(|(name, _) {
+                                                !lang_features.contains_key(name)
+                                            }).collect();
 
     let doc_src_path = src_path.join(PATH_STR);
 
