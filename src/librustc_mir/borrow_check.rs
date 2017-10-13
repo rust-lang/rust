@@ -586,7 +586,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                                 context: Context,
                                                 (lvalue, span): (&Lvalue<'gcx>, Span),
                                                 flow_state: &InProgress<'b, 'gcx>) {
-        let move_data = flow_state.inits.base_results.operator().move_data();
+        let move_data = self.move_data;
 
         // determine if this path has a non-mut owner (and thus needs checking).
         let mut l = lvalue;
@@ -611,7 +611,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
         }
 
-        if let Some(mpi) = self.move_path_for_lvalue(context, move_data, lvalue) {
+        if let Some(mpi) = self.move_path_for_lvalue(lvalue) {
             if flow_state.inits.curr_state.contains(&mpi) {
                 // may already be assigned before reaching this statement;
                 // report error.
@@ -642,21 +642,107 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         let lvalue = self.base_path(lvalue_span.0);
 
         let maybe_uninits = &flow_state.uninits;
-        let move_data = maybe_uninits.base_results.operator().move_data();
-        if let Some(mpi) = self.move_path_for_lvalue(context, move_data, lvalue) {
-            if maybe_uninits.curr_state.contains(&mpi) {
-                // find and report move(s) that could cause this to be uninitialized
+
+        // Bad scenarios:
+        //
+        // 1. Move of `a.b.c`, use of `a.b.c`
+        // 2. Move of `a.b.c`, use of `a.b.c.d` (without first reinitializing `a.b.c.d`)
+        // 3. Move of `a.b.c`, use of `a` or `a.b`
+        // 4. Uninitialized `(a.b.c: &_)`, use of `*a.b.c`; note that with
+        //    partial initialization support, one might have `a.x`
+        //    initialized but not `a.b`.
+        //
+        // OK scenarios:
+        //
+        // 5. Move of `a.b.c`, use of `a.b.d`
+        // 6. Uninitialized `a.x`, initialized `a.b`, use of `a.b`
+        // 7. Copied `(a.b: &_)`, use of `*(a.b).c`; note that `a.b`
+        //    must have been initialized for the use to be sound.
+        // 8. Move of `a.b.c` then reinit of `a.b.c.d`, use of `a.b.c.d`
+
+        // The dataflow tracks shallow prefixes distinctly (that is,
+        // field-accesses on P distinctly from P itself), in order to
+        // track substructure initialization separately from the whole
+        // structure.
+        //
+        // E.g., when looking at (*a.b.c).d, if the closest prefix for
+        // which we have a MovePath is `a.b`, then that means that the
+        // initialization state of `a.b` is all we need to inspect to
+        // know if `a.b.c` is valid (and from that we infer that the
+        // dereference and `.d` access is also valid, since we assume
+        // `a.b.c` is assigned a reference to a initialized and
+        // well-formed record structure.)
+
+        // Therefore, if we seek out the *closest* prefix for which we
+        // have a MovePath, that should capture the initialization
+        // state for the lvalue scenario.
+        //
+        // This code covers scenarios 1, 2, and 4.
+
+        debug!("check_if_path_is_moved part1 lvalue: {:?}", lvalue);
+        match self.move_path_closest_to(lvalue) {
+            Ok(mpi) => {
+                if maybe_uninits.curr_state.contains(&mpi) {
+                    self.report_use_of_moved(context, desired_action, lvalue_span);
+                    return; // don't bother finding other problems.
+                }
+            }
+            Err(NoMovePathFound::ReachedStatic) => {
+                // Okay: we do not build MoveData for static variables
+            }
+
+            // Only query longest prefix with a MovePath, not further
+            // ancestors; dataflow recurs on children when parents
+            // move (to support partial (re)inits).
+            //
+            // (I.e. querying parents breaks scenario 8; but may want
+            // to do such a query based on partial-init feature-gate.)
+        }
+
+        // A move of any shallow suffix of `lvalue` also interferes
+        // with an attempt to use `lvalue`. This is scenario 3 above.
+        //
+        // (Distinct from handling of scenarios 1+2+4 above because
+        // `lvalue` does not interfere with suffixes of its prefixes,
+        // e.g. `a.b.c` does not interfere with `a.b.d`)
+
+        debug!("check_if_path_is_moved part2 lvalue: {:?}", lvalue);
+        if let Some(mpi) = self.move_path_for_lvalue(lvalue) {
+            if let Some(_) = maybe_uninits.has_any_child_of(mpi) {
                 self.report_use_of_moved(context, desired_action, lvalue_span);
-            } else {
-                // sanity check: initialized on *some* path, right?
-                assert!(flow_state.inits.curr_state.contains(&mpi));
+                return; // don't bother finding other problems.
             }
         }
     }
 
+    /// Currently MoveData does not store entries for all lvalues in
+    /// the input MIR. For example it will currently filter out
+    /// lvalues that are Copy; thus we do not track lvalues of shared
+    /// reference type. This routine will walk up an lvalue along its
+    /// prefixes, searching for a foundational lvalue that *is*
+    /// tracked in the MoveData.
+    ///
+    /// An Err result includes a tag indicated why the search failed.
+    /// Currenly this can only occur if the lvalue is built off of a
+    /// static variable, as we do not track those in the MoveData.
+    fn move_path_closest_to(&mut self, lvalue: &Lvalue<'gcx>)
+                            -> Result<MovePathIndex, NoMovePathFound>
+    {
+        let mut last_prefix = lvalue;
+        for prefix in self.prefixes(lvalue, PrefixSet::All) {
+            if let Some(mpi) = self.move_path_for_lvalue(prefix) {
+                return Ok(mpi);
+            }
+            last_prefix = prefix;
+        }
+        match *last_prefix {
+            Lvalue::Local(_) => panic!("should have move path for every Local"),
+            Lvalue::Projection(_) => panic!("PrefixSet::All meant dont stop for Projection"),
+            Lvalue::Static(_) => return Err(NoMovePathFound::ReachedStatic),
+        }
+    }
+
     fn move_path_for_lvalue(&mut self,
-                            _context: Context,
-                            move_data: &MoveData<'gcx>,
                             lvalue: &Lvalue<'gcx>)
                             -> Option<MovePathIndex>
     {
@@ -664,7 +750,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         // to a direct owner of `lvalue` (which means there is nothing
         // that borrowck tracks for its analysis).
 
-        match move_data.rev_lookup.find(lvalue) {
+        match self.move_data.rev_lookup.find(lvalue) {
             LookupResult::Parent(_) => None,
             LookupResult::Exact(mpi) => Some(mpi),
         }
@@ -731,6 +817,11 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
         }
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum NoMovePathFound {
+    ReachedStatic,
 }
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
@@ -846,12 +937,19 @@ mod prefixes {
 
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     pub(super) enum PrefixSet {
+        /// Doesn't stop until it returns the base case (a Local or
+        /// Static prefix).
         All,
+        /// Stops at any dereference.
         Shallow,
+        /// Stops at the deref of a shared reference.
         Supporting,
     }
 
     impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+        /// Returns an iterator over the prefixes of `lvalue`
+        /// (inclusive) from longest to smallest, potentially
+        /// terminating the iteration early based on `kind`.
         pub(super) fn prefixes<'d>(&self,
                                    lvalue: &'d Lvalue<'gcx>,
                                    kind: PrefixSet)
@@ -1337,6 +1435,35 @@ impl<'b, 'tcx: 'b> InProgress<'b, 'tcx> {
         s.push_str("]");
 
         return s;
+    }
+}
+
+impl<'b, 'tcx> FlowInProgress<MaybeUninitializedLvals<'b, 'tcx>> {
+    fn has_any_child_of(&self, mpi: MovePathIndex) -> Option<MovePathIndex> {
+        let move_data = self.base_results.operator().move_data();
+
+        let mut todo = vec![mpi];
+        let mut push_siblings = false; // don't look at siblings of original `mpi`.
+        while let Some(mpi) = todo.pop() {
+            if self.curr_state.contains(&mpi) {
+                return Some(mpi);
+            }
+            let move_path = &move_data.move_paths[mpi];
+            if let Some(child) = move_path.first_child {
+                todo.push(child);
+            }
+            if push_siblings {
+                if let Some(sibling) = move_path.next_sibling {
+                    todo.push(sibling);
+                }
+            } else {
+                // after we've processed the original `mpi`, we should
+                // always traverse the siblings of any of its
+                // children.
+                push_siblings = true;
+            }
+        }
+        return None;
     }
 }
 
