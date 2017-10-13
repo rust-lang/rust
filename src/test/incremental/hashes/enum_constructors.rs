@@ -74,6 +74,8 @@ fn change_field_order_struct_like() -> Enum {
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
+// FIXME(michaelwoerister):Interesting. I would have thought that that changes the MIR. And it
+// would if it were not all constants
 fn change_field_order_struct_like() -> Enum {
     Enum::Struct {
         y: 4,
@@ -156,7 +158,8 @@ mod change_constructor_path_indirectly_struct_like {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,TypeckTables"
+        except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,\
+                TypeckTables"
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
@@ -217,7 +220,10 @@ fn change_constructor_path_tuple_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated,TypeckTables")]
+#[rustc_clean(
+    cfg="cfail2",
+    except="HirBody,MirOptimized,MirValidated,TypeckTables"
+)]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
@@ -234,7 +240,10 @@ fn change_constructor_variant_tuple_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated,TypeckTables")]
+#[rustc_clean(
+    cfg="cfail2",
+    except="HirBody,MirOptimized,MirValidated,TypeckTables"
+)]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
@@ -252,7 +261,8 @@ mod change_constructor_path_indirectly_tuple_like {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,TypeckTables"
+        except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,\
+                TypeckTables"
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
@@ -335,7 +345,8 @@ mod change_constructor_path_indirectly_c_like {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,TypeckTables"
+        except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,\
+                TypeckTables"
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]

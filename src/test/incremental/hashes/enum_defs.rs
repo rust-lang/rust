@@ -444,7 +444,6 @@ enum EnumChangeNameOfTypeParameter<S> {
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumChangeNameOfTypeParameter<T> {
     Variant1(T),
 }
@@ -463,7 +462,6 @@ enum EnumAddTypeParameter<S> {
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddTypeParameter<S, T> {
     Variant1(S),
     Variant2(T),
@@ -482,7 +480,6 @@ enum EnumChangeNameOfLifetimeParameter<'a> {
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumChangeNameOfLifetimeParameter<'b> {
     Variant1(&'b u32),
 }
@@ -501,7 +498,6 @@ enum EnumAddLifetimeParameter<'a> {
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddLifetimeParameter<'a, 'b> {
     Variant1(&'a u32),
     Variant2(&'b u32),
@@ -517,11 +513,10 @@ enum EnumAddLifetimeParameterBound<'a, 'b> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="GenericsOfItem")]
+#[rustc_dirty(cfg="cfail2", except="GenericsOfItem,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddLifetimeParameterBound<'a, 'b: 'a> {
     Variant1(&'a u32),
     Variant2(&'b u32),
@@ -535,11 +530,10 @@ enum EnumAddLifetimeBoundToParameter<'a, T> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2")]
+#[rustc_dirty(cfg="cfail2", except="TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddLifetimeBoundToParameter<'a, T: 'a> {
     Variant1(T),
     Variant2(&'a u32),
@@ -558,7 +552,6 @@ enum EnumAddTraitBound<S> {
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddTraitBound<T: Sync> {
     Variant1(T),
 }
@@ -573,11 +566,10 @@ enum EnumAddLifetimeParameterBoundWhere<'a, 'b> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="GenericsOfItem")]
+#[rustc_dirty(cfg="cfail2", except="GenericsOfItem,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddLifetimeParameterBoundWhere<'a, 'b> where 'b: 'a {
     Variant1(&'a u32),
     Variant2(&'b u32),
@@ -593,11 +585,10 @@ enum EnumAddLifetimeBoundToParameterWhere<'a, T> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2")]
+#[rustc_dirty(cfg="cfail2", except="TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddLifetimeBoundToParameterWhere<'a, T> where T: 'a {
     Variant1(T),
     Variant2(&'a u32),
@@ -616,7 +607,6 @@ enum EnumAddTraitBoundWhere<S> {
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-#[repr(C)]
 enum EnumAddTraitBoundWhere<T> where T: Sync {
     Variant1(T),
 }

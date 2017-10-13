@@ -39,8 +39,6 @@
 //! previous revision to compare things to.
 //!
 
-#![allow(dead_code)]
-
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::vec::Vec;
@@ -141,14 +139,14 @@ const LABELS_CONST: &[&[&str]] = &[
 ];
 
 /// Constant/Typedef in an impl
-const LABELS_CONST_ASSOCIATED: &[&[&str]] = &[
+const LABELS_CONST_IN_IMPL: &[&[&str]] = &[
     BASE_HIR,
     BASE_CONST,
     EXTRA_ASSOCIATED,
 ];
 
 /// Trait-Const/Typedef DepNodes
-const LABELS_CONST_TRAIT: &[&[&str]] = &[
+const LABELS_CONST_IN_TRAIT: &[&[&str]] = &[
     BASE_HIR,
     BASE_CONST,
     EXTRA_ASSOCIATED,
@@ -163,7 +161,7 @@ const LABELS_FN: &[&[&str]] = &[
 ];
 
 /// Method DepNodes
-const LABELS_FN_ASSOCIATED: &[&[&str]] = &[
+const LABELS_FN_IN_IMPL: &[&[&str]] = &[
     BASE_HIR,
     BASE_MIR,
     BASE_FN,
@@ -171,7 +169,7 @@ const LABELS_FN_ASSOCIATED: &[&[&str]] = &[
 ];
 
 /// Trait-Method DepNodes
-const LABELS_FN_TRAIT: &[&[&str]] = &[
+const LABELS_FN_IN_TRAIT: &[&[&str]] = &[
     BASE_HIR,
     BASE_MIR,
     BASE_FN,
@@ -190,13 +188,14 @@ const LABELS_IMPL: &[&[&str]] = &[
     BASE_IMPL,
 ];
 
-/// Struct DepNodes
-const LABELS_STRUCT: &[&[&str]] = &[
+/// Abstract Data Type (Struct, Enum, Unions) DepNodes
+const LABELS_ADT: &[&[&str]] = &[
     BASE_HIR,
     BASE_STRUCT,
 ];
 
 /// Trait Definition DepNodes
+#[allow(dead_code)]
 const LABELS_TRAIT: &[&[&str]] = &[
     BASE_HIR,
     BASE_TRAIT_DEF,
@@ -382,16 +381,16 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     HirItem::ItemGlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
                     // A type alias, e.g. `type Foo = Bar<u8>`
-                    HirItem::ItemTy(..) => ("ItemTy", LABELS_CONST),
+                    HirItem::ItemTy(..) => ("ItemTy", LABELS_HIR_ONLY),
 
                     // An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
-                    HirItem::ItemEnum(..) => ("ItemEnum", LABELS_STRUCT),
+                    HirItem::ItemEnum(..) => ("ItemEnum", LABELS_ADT),
 
                     // A struct definition, e.g. `struct Foo<A> {x: A}`
-                    HirItem::ItemStruct(..) => ("ItemStruct", LABELS_STRUCT),
+                    HirItem::ItemStruct(..) => ("ItemStruct", LABELS_ADT),
 
                     // A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
-                    HirItem::ItemUnion(..) => ("ItemUnion", LABELS_STRUCT),
+                    HirItem::ItemUnion(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
                     // FIXME(michaelwoerister): trait declaration is buggy because sometimes some of
@@ -426,16 +425,16 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
             },
             HirNode::NodeTraitItem(item) => {
                 match item.node {
-                    TraitItemKind::Method(..) => ("NodeTraitItem", LABELS_FN_TRAIT),
-                    TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_TRAIT),
-                    TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_TRAIT),
+                    TraitItemKind::Method(..) => ("NodeTraitItem", LABELS_FN_IN_TRAIT),
+                    TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_IN_TRAIT),
+                    TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
                 }
             },
             HirNode::NodeImplItem(item) => {
                 match item.node {
-                    ImplItemKind::Method(..) => ("NodeImplItem", LABELS_FN_ASSOCIATED),
-                    ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_ASSOCIATED),
-                    ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_ASSOCIATED),
+                    ImplItemKind::Method(..) => ("NodeImplItem", LABELS_FN_IN_IMPL),
+                    ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
+                    ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                 }
             },
             _ => self.tcx.sess.span_fatal(

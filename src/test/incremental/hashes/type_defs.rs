@@ -35,7 +35,7 @@
 type ChangePrimitiveType = i32;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type ChangePrimitiveType = i64;
@@ -47,7 +47,7 @@ type ChangePrimitiveType = i64;
 type ChangeMutability = &'static i32;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type ChangeMutability = &'static mut i32;
@@ -59,7 +59,7 @@ type ChangeMutability = &'static mut i32;
 type ChangeLifetime<'a> = (&'static i32, &'a i32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type ChangeLifetime<'a> = (&'a i32, &'a i32);
@@ -74,7 +74,7 @@ struct Struct2;
 type ChangeTypeStruct = Struct1;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type ChangeTypeStruct = Struct2;
@@ -86,7 +86,7 @@ type ChangeTypeStruct = Struct2;
 type ChangeTypeTuple = (u32, u64);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type ChangeTypeTuple = (u32, i64);
@@ -107,7 +107,7 @@ enum Enum2 {
 type ChangeTypeEnum = Enum1;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type ChangeTypeEnum = Enum2;
@@ -119,7 +119,7 @@ type ChangeTypeEnum = Enum2;
 type AddTupleField = (i32, i64);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type AddTupleField = (i32, i64, i16);
@@ -131,7 +131,7 @@ type AddTupleField = (i32, i64, i16);
 type ChangeNestedTupleField = (i32, (i64, i16));
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type ChangeNestedTupleField = (i32, (i64, i8));
@@ -143,7 +143,7 @@ type ChangeNestedTupleField = (i32, (i64, i8));
 type AddTypeParam<T1> = (T1, T1);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type AddTypeParam<T1, T2> = (T1, T2);
@@ -179,7 +179,7 @@ type AddTypeParamBoundWhereClause<T1> where T1: Clone+Copy = (T1, u32);
 type AddLifetimeParam<'a> = (&'a u32, &'a u32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail3")]
 type AddLifetimeParam<'a, 'b> = (&'a u32, &'b u32);

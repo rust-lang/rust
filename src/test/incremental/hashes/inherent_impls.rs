@@ -370,6 +370,8 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
+    // FIXME(michaelwoerister): This is curious but an unused lifetime parameter doesn't seem to
+    // show up in any of the derived data structures.
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_clean(cfg="cfail2")]

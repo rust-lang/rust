@@ -171,13 +171,13 @@ pub fn change_to_ufcs() {
     s.method1('x', true);
 }
 
-// FIXME(vitiral): why would this change anything, doesn't the Mir/Hir expand this
-// sort of stuff?
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
+// One might think this would be expanded in the HirBody/Mir, but it actually
+// results in slightly different Hir/Mir.
 pub fn change_to_ufcs() {
     let s = Struct;
     Struct::method1(&s, 'x', true);
