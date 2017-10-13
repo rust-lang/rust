@@ -852,40 +852,45 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if n == 1 { "" } else { "s" },
             );
 
+        let expected_str = if let Some(n) = expected_tuple {
+            assert!(expected == 1);
+            if closure_args.as_ref().map(|&(ref pats, _)| pats.len()) == Some(n) {
+                Cow::from("a single tuple as argument")
+            } else {
+                // be verbose when numbers differ
+                Cow::from(format!("a single {}-tuple as argument", n))
+            }
+        } else {
+            Cow::from(args_str(expected, false))
+        };
+
+        let found_str = if expected_tuple.is_some() {
+            args_str(found, true)
+        } else {
+            args_str(found, false)
+        };
+
+
         let mut err = struct_span_err!(self.tcx.sess, span, E0593,
             "{} is expected to take {}, but it takes {}",
             kind,
-            if expected_tuple.is_some() {
-                Cow::from("a single tuple as argument")
-            } else {
-                Cow::from(args_str(expected, false))
-            },
-            if expected_tuple.is_some() {
-                args_str(found, true)
-            } else {
-                args_str(found, false)
-            },
+            expected_str,
+            found_str,
         );
 
         err.span_label(
             span,
             format!(
-                "expected {} that takes {}{}",
+                "expected {} that takes {}",
                 kind,
-                args_str(expected, false),
-                if let Some(n) = expected_tuple {
-                    assert!(expected == 1);
-                    Cow::from(format!(", a {}-tuple", n))
-                } else {
-                    Cow::from("")
-                }
+                expected_str,
             )
         );
 
         if let Some(span) = found_span {
             if let (Some(expected_tuple), Some((pats, tys))) = (expected_tuple, closure_args) {
                 if expected_tuple != found || pats.len() != found {
-                    err.span_label(span, format!("takes {}", args_str(found, true)));
+                    err.span_label(span, format!("takes {}", found_str));
                 } else {
                     let sugg = format!(
                         "|({}){}|",
@@ -906,10 +911,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         },
                     );
 
-                    err.span_suggestion(span, "consider changing to", sugg);
+                    err.span_suggestion(
+                        span,
+                        "consider changing the closure to accept a tuple",
+                        sugg
+                    );
                 }
             } else {
-                err.span_label(span, format!("takes {}", args_str(found, false)));
+                err.span_label(span, format!("takes {}", found_str));
             }
         }
 
