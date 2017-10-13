@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
 use std::ops::{Add, Sub};
 
 use Config;
@@ -21,6 +22,10 @@ pub struct Indent {
     pub alignment: usize,
 }
 
+// INDENT_BUFFER.len() = 80
+const INDENT_BUFFER_LEN: usize = 80;
+const INDENT_BUFFER: &str =
+    "                                                                                ";
 impl Indent {
     pub fn new(block_indent: usize, alignment: usize) -> Indent {
         Indent {
@@ -68,21 +73,25 @@ impl Indent {
         self.block_indent + self.alignment
     }
 
-    pub fn to_string(&self, config: &Config) -> String {
+    pub fn to_string(&self, config: &Config) -> Cow<'static, str> {
         let (num_tabs, num_spaces) = if config.hard_tabs() {
             (self.block_indent / config.tab_spaces(), self.alignment)
         } else {
             (0, self.width())
         };
         let num_chars = num_tabs + num_spaces;
-        let mut indent = String::with_capacity(num_chars);
-        for _ in 0..num_tabs {
-            indent.push('\t')
+        if num_tabs == 0 && num_chars <= INDENT_BUFFER_LEN {
+            Cow::from(&INDENT_BUFFER[0..num_chars])
+        } else {
+            let mut indent = String::with_capacity(num_chars);
+            for _ in 0..num_tabs {
+                indent.push('\t')
+            }
+            for _ in 0..num_spaces {
+                indent.push(' ')
+            }
+            Cow::from(indent)
         }
-        for _ in 0..num_spaces {
-            indent.push(' ')
-        }
-        indent
     }
 }
 

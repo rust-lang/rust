@@ -550,7 +550,7 @@ impl Rewrite for ast::TyParamBounds {
         let strs = self.iter()
             .map(|b| b.rewrite(context, shape))
             .collect::<Option<Vec<_>>>()?;
-        join_bounds(context, shape, &strs).rewrite(context, shape)
+        Some(join_bounds(context, shape, &strs))
     }
 }
 
@@ -660,7 +660,7 @@ impl Rewrite for ast::Ty {
                             mut_str,
                             mt.ty.rewrite(
                                 context,
-                                Shape::legacy(budget, shape.indent + 1 + mut_len),
+                                Shape::legacy(budget, shape.indent + 1 + mut_len)
                             )?
                         )
                     }

@@ -15,7 +15,7 @@ use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, Neste
                   Path, Visibility};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 
-use rewrite::{Rewrite, RewriteContext};
+use rewrite::RewriteContext;
 use shape::Shape;
 
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -171,12 +171,18 @@ pub fn trimmed_last_line_width(s: &str) -> usize {
 
 #[inline]
 pub fn last_line_extendable(s: &str) -> bool {
-    s.lines().last().map_or(false, |s| {
-        s.ends_with("\"#")
-            || s.trim()
-                .chars()
-                .all(|c| c == ')' || c == ']' || c == '}' || c == '?')
-    })
+    if s.ends_with("\"#") {
+        return true;
+    }
+    for c in s.chars().rev() {
+        match c {
+            ')' | ']' | '}' | '?' => continue,
+            '\n' => break,
+            _ if c.is_whitespace() => continue,
+            _ => return false,
+        }
+    }
+    true
 }
 
 #[inline]
@@ -390,45 +396,37 @@ macro_rules! skip_out_of_file_lines_range_visitor {
     }
 }
 
-// Wraps string-like values in an Option. Returns Some when the string adheres
-// to the Rewrite constraints defined for the Rewrite trait and else otherwise.
-pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S> {
-    {
-        let snippet = s.as_ref();
-
-        if !snippet.is_empty() {
-            if !snippet.contains('\n') && snippet.len() > shape.width {
-                return None;
-            } else {
-                let mut lines = snippet.lines();
-
-                if lines.next().unwrap().len() > shape.width {
-                    return None;
-                }
-
-                // The other lines must fit within the maximum width.
-                if lines.any(|line| line.len() > max_width) {
-                    return None;
-                }
-
-                // `width` is the maximum length of the last line, excluding
-                // indentation.
-                // A special check for the last line, since the caller may
-                // place trailing characters on this line.
-                if snippet.lines().rev().next().unwrap().len() > shape.used_width() + shape.width {
-                    return None;
-                }
-            }
-        }
+// Wraps String in an Option. Returns Some when the string adheres to the
+// Rewrite constraints defined for the Rewrite trait and else otherwise.
+pub fn wrap_str(s: String, max_width: usize, shape: Shape) -> Option<String> {
+    if is_valid_str(&s, max_width, shape) {
+        Some(s)
+    } else {
+        None
     }
-
-    Some(s)
 }
 
-impl Rewrite for String {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        wrap_str(self, context.config.max_width(), shape).map(ToOwned::to_owned)
+fn is_valid_str(snippet: &str, max_width: usize, shape: Shape) -> bool {
+    if !snippet.is_empty() {
+        // First line must fits with `shape.width`.
+        if first_line_width(snippet) > shape.width {
+            return false;
+        }
+        // If the snippet does not include newline, we are done.
+        if first_line_width(snippet) == snippet.len() {
+            return true;
+        }
+        // The other lines must fit within the maximum width.
+        if snippet.lines().skip(1).any(|line| line.len() > max_width) {
+            return false;
+        }
+        // A special check for the last line, since the caller may
+        // place trailing characters on this line.
+        if last_line_width(snippet) > shape.used_width() + shape.width {
+            return false;
+        }
     }
+    true
 }
 
 #[inline]

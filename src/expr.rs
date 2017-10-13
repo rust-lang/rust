@@ -718,9 +718,7 @@ fn rewrite_closure_block(
             if block_str.matches('\n').count() <= block_threshold as usize
                 && !need_block_indent(&block_str, shape)
             {
-                if let Some(block_str) = block_str.rewrite(context, shape) {
-                    return Some(format!("{} {}", prefix, block_str));
-                }
+                return Some(format!("{} {}", prefix, block_str));
             }
         }
     }

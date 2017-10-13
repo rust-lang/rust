@@ -24,6 +24,15 @@
 /// alignment).
 /// E.g., `let foo = { aaaa; bbb; ccc }.bar.baz();`, we would layout for the
 /// following values of `chain_indent`:
+/// Block:
+/// ```
+/// let foo = {
+///     aaaa;
+///     bbb;
+///     ccc
+/// }.bar
+///     .baz();
+/// ```
 /// Visual:
 /// ```
 /// let foo = {
@@ -34,46 +43,20 @@
 ///           .bar
 ///           .baz();
 /// ```
-/// Inherit:
-/// ```
-/// let foo = {
-///     aaaa;
-///     bbb;
-///     ccc
-/// }
-/// .bar
-/// .baz();
-/// ```
-/// Tabbed:
-/// ```
-/// let foo = {
-///         aaaa;
-///         bbb;
-///         ccc
-///     }
-///     .bar
-///     .baz();
-/// ```
 ///
 /// If the first item in the chain is a block expression, we align the dots with
 /// the braces.
+/// Block:
+/// ```
+/// let a = foo.bar
+///     .baz()
+///     .qux
+/// ```
 /// Visual:
 /// ```
 /// let a = foo.bar
 ///            .baz()
 ///            .qux
-/// ```
-/// Inherit:
-/// ```
-/// let a = foo.bar
-/// .baz()
-/// .qux
-/// ```
-/// Tabbed:
-/// ```
-/// let a = foo.bar
-///     .baz()
-///     .qux
 /// ```
 
 use shape::Shape;
@@ -182,13 +165,23 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let all_in_one_line = !parent_rewrite_contains_newline
         && rewrites.iter().all(|s| !s.contains('\n'))
         && almost_total < one_line_budget;
-    let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, nested_shape);
+    let last_shape = if rewrites.is_empty() {
+        // We only have a single child.
+        first_child_shape
+    } else {
+        match context.config.chain_indent() {
+            IndentStyle::Visual => other_child_shape.sub_width(shape.rhs_overhead(context.config))?,
+            IndentStyle::Block => other_child_shape,
+        }
+    };
+    let last_shape = last_shape.sub_width(suffix_try_num)?;
+    let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, last_shape);
     let (last_subexpr_str, fits_single_line) = if all_in_one_line || extend_last_subexr {
         parent_shape.offset_left(almost_total).map(|shape| {
             if let Some(rw) = rewrite_chain_subexpr(last_subexpr, total_span, context, shape) {
                 let line_count = rw.lines().count();
                 let fits_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
-                if (line_count >= 5 && fits_single_line) || extend_last_subexr {
+                if fits_single_line && (line_count >= 5 || extend_last_subexr) {
                     (Some(rw), true)
                 } else {
                     match rewrite_last() {
@@ -229,38 +222,37 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         connector.as_str()
     };
 
-    let subexpr_num = subexpr_list.len();
     let result = if is_small_parent && rewrites.len() > 1 {
-        let second_connector = choose_first_connector(
-            context,
-            &rewrites[0],
-            &rewrites[1],
-            &connector,
-            &subexpr_list[..subexpr_num - 1],
-            false,
-        );
+        let second_connector = if fits_single_line || rewrites[1] == "?"
+            || last_line_extendable(&rewrites[0])
+            || context.config.chain_indent() == IndentStyle::Visual
+        {
+            ""
+        } else {
+            &connector
+        };
         format!(
             "{}{}{}{}{}",
             parent_rewrite,
             first_connector,
             rewrites[0],
             second_connector,
-            join_rewrites(&rewrites[1..], &subexpr_list[..subexpr_num - 1], &connector)
+            join_rewrites(&rewrites[1..], &connector)
         )
     } else {
         format!(
             "{}{}{}",
             parent_rewrite,
             first_connector,
-            join_rewrites(&rewrites, subexpr_list, &connector)
+            join_rewrites(&rewrites, &connector)
         )
     };
     let result = format!("{}{}", result, repeat_try(suffix_try_num));
-    wrap_str(result, context.config.max_width(), shape)
-}
-
-fn is_extendable_parent(context: &RewriteContext, parent_str: &str) -> bool {
-    context.config.chain_indent() == IndentStyle::Block && last_line_extendable(parent_str)
+    if context.config.chain_indent() == IndentStyle::Visual {
+        wrap_str(result, context.config.max_width(), shape)
+    } else {
+        Some(result)
+    }
 }
 
 // True if the chain is only `?`s.
@@ -288,17 +280,14 @@ fn rewrite_try(
     Some(format!("{}{}", sub_expr, repeat_try(try_count)))
 }
 
-fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) -> String {
+fn join_rewrites(rewrites: &[String], connector: &str) -> String {
     let mut rewrite_iter = rewrites.iter();
     let mut result = rewrite_iter.next().unwrap().clone();
-    let mut subexpr_iter = subexps.iter().rev();
-    subexpr_iter.next();
 
-    for (rewrite, expr) in rewrite_iter.zip(subexpr_iter) {
-        match expr.node {
-            ast::ExprKind::Try(_) => (),
-            _ => result.push_str(connector),
-        };
+    for rewrite in rewrite_iter {
+        if rewrite != "?" {
+            result.push_str(connector);
+        }
         result.push_str(&rewrite[..]);
     }
 
@@ -428,32 +417,6 @@ fn is_try(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Try(..) => true,
         _ => false,
-    }
-}
-
-fn choose_first_connector<'a>(
-    context: &RewriteContext,
-    parent_str: &str,
-    first_child_str: &str,
-    connector: &'a str,
-    subexpr_list: &[ast::Expr],
-    extend: bool,
-) -> &'a str {
-    if subexpr_list.is_empty() {
-        ""
-    } else if extend || subexpr_list.last().map_or(false, is_try)
-        || is_extendable_parent(context, parent_str)
-    {
-        // 1 = ";", being conservative here.
-        if last_line_width(parent_str) + first_line_width(first_child_str) + 1
-            <= context.config.max_width()
-        {
-            ""
-        } else {
-            connector
-        }
-    } else {
-        connector
     }
 }
 
