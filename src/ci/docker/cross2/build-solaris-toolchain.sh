@@ -25,7 +25,7 @@ cd binutils
 curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.xz | tar xJf -
 mkdir binutils-build
 cd binutils-build
-hide_output ../binutils-$BINUTILS/configure --target=$ARCH-sun-solaris2.11
+hide_output ../binutils-$BINUTILS/configure --target=$ARCH-sun-solaris2.10
 hide_output make -j10
 hide_output make install
 
@@ -58,13 +58,17 @@ for deb in *$APT_ARCH.deb; do
   dpkg -x $deb .
 done
 
-mkdir                  /usr/local/$ARCH-sun-solaris2.11/usr
-mv usr/include         /usr/local/$ARCH-sun-solaris2.11/usr/include
-mv usr/lib/$LIB_ARCH/* /usr/local/$ARCH-sun-solaris2.11/lib
-mv     lib/$LIB_ARCH/* /usr/local/$ARCH-sun-solaris2.11/lib
+# Strip Solaris 11 functions that are optionally used by libbacktrace.
+# This is for Solaris 10 compatibility.
+$ARCH-sun-solaris2.10-strip -N dl_iterate_phdr -N strnlen lib/$LIB_ARCH/libc.so
 
-ln -s /usr/local/$ARCH-sun-solaris2.11/usr/include /usr/local/$ARCH-sun-solaris2.11/sys-include
-ln -s /usr/local/$ARCH-sun-solaris2.11/usr/include /usr/local/$ARCH-sun-solaris2.11/include
+mkdir                  /usr/local/$ARCH-sun-solaris2.10/usr
+mv usr/include         /usr/local/$ARCH-sun-solaris2.10/usr/include
+mv usr/lib/$LIB_ARCH/* /usr/local/$ARCH-sun-solaris2.10/lib
+mv     lib/$LIB_ARCH/* /usr/local/$ARCH-sun-solaris2.10/lib
+
+ln -s /usr/local/$ARCH-sun-solaris2.10/usr/include /usr/local/$ARCH-sun-solaris2.10/sys-include
+ln -s /usr/local/$ARCH-sun-solaris2.10/usr/include /usr/local/$ARCH-sun-solaris2.10/include
 
 cd ..
 rm -rf solaris
@@ -80,7 +84,7 @@ mkdir ../gcc-build
 cd ../gcc-build
 hide_output ../gcc-$GCC/configure \
   --enable-languages=c,c++        \
-  --target=$ARCH-sun-solaris2.11  \
+  --target=$ARCH-sun-solaris2.10  \
   --with-gnu-as                   \
   --with-gnu-ld                   \
   --disable-multilib              \
@@ -94,7 +98,7 @@ hide_output ../gcc-$GCC/configure \
   --disable-libsanitizer          \
   --disable-libquadmath-support   \
   --disable-lto                   \
-  --with-sysroot=/usr/local/$ARCH-sun-solaris2.11
+  --with-sysroot=/usr/local/$ARCH-sun-solaris2.10
 
 hide_output make -j10
 hide_output make install
