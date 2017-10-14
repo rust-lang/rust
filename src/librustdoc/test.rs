@@ -407,13 +407,33 @@ pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     // to be removed when hoedown will be definitely gone
     pub old_tests: HashMap<String, Vec<String>>,
+
+    // The name of the test displayed to the user, separated by `::`.
+    //
+    // In tests from Rust source, this is the path to the item
+    // e.g. `["std", "vec", "Vec", "push"]`.
+    //
+    // In tests from a markdown file, this is the titles of all headers (h1~h6)
+    // of the sections that contain the code block, e.g. if the markdown file is
+    // written as:
+    //
+    // ``````markdown
+    // # Title
+    //
+    // ## Subtitle
+    //
+    // ```rust
+    // assert!(true);
+    // ```
+    // ``````
+    //
+    // the `names` vector of that test will be `["Title", "Subtitle"]`.
     names: Vec<String>,
+
     cfgs: Vec<String>,
     libs: SearchPaths,
     externs: Externs,
-    cnt: usize,
     use_headers: bool,
-    current_header: Option<String>,
     cratename: String,
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
@@ -436,9 +456,7 @@ impl Collector {
             cfgs,
             libs,
             externs,
-            cnt: 0,
             use_headers,
-            current_header: None,
             cratename,
             opts,
             maybe_sysroot,
@@ -450,28 +468,12 @@ impl Collector {
     }
 
     fn generate_name(&self, line: usize, filename: &str) -> String {
-        if self.use_headers {
-            if let Some(ref header) = self.current_header {
-                format!("{} - {} (line {})", filename, header, line)
-            } else {
-                format!("{} - (line {})", filename, line)
-            }
-        } else {
-            format!("{} - {} (line {})", filename, self.names.join("::"), line)
-        }
+        format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
     // to be removed once hoedown is gone
     fn generate_name_beginning(&self, filename: &str) -> String {
-        if self.use_headers {
-            if let Some(ref header) = self.current_header {
-                format!("{} - {} (line", filename, header)
-            } else {
-                format!("{} - (line", filename)
-            }
-        } else {
-            format!("{} - {} (line", filename, self.names.join("::"))
-        }
+        format!("{} - {} (line", filename, self.names.join("::"))
     }
 
     pub fn add_old_test(&mut self, test: String, filename: String) {
@@ -579,7 +581,7 @@ impl Collector {
     }
 
     pub fn register_header(&mut self, name: &str, level: u32) {
-        if self.use_headers && level == 1 {
+        if self.use_headers {
             // we use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
@@ -591,9 +593,28 @@ impl Collector {
                     }
                 }).collect::<String>();
 
-            // new header => reset count.
-            self.cnt = 0;
-            self.current_header = Some(name);
+            // Here we try to efficiently assemble the header titles into the
+            // test name in the form of `h1::h2::h3::h4::h5::h6`.
+            //
+            // Suppose originally `self.names` contains `[h1, h2, h3]`...
+            let level = level as usize;
+            if level <= self.names.len() {
+                // ... Consider `level == 2`. All headers in the lower levels
+                // are irrelevant in this new level. So we should reset
+                // `self.names` to contain headers until <h2>, and replace that
+                // slot with the new name: `[h1, name]`.
+                self.names.truncate(level);
+                self.names[level - 1] = name;
+            } else {
+                // ... On the other hand, consider `level == 5`. This means we
+                // need to extend `self.names` to contain five headers. We fill
+                // in the missing level (<h4>) with `_`. Thus `self.names` will
+                // become `[h1, h2, h3, "_", name]`.
+                if level - 1 > self.names.len() {
+                    self.names.resize(level - 1, "_".to_owned());
+                }
+                self.names.push(name);
+            }
         }
     }
 }
@@ -624,7 +645,6 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
-            self.collector.cnt = 0;
             if self.collector.render_type == RenderType::Pulldown {
                 markdown::old_find_testable_code(doc, self.collector,
                                                  attrs.span.unwrap_or(DUMMY_SP));
