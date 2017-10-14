@@ -18,10 +18,18 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node4.EraseRegions.after.mir
 // fn main() -> () {
+//     ...
 //     bb1: {
+//         Validate(Acquire, [_2: std::boxed::Box<[i32; 3]>]);
 //         Validate(Release, [_2: std::boxed::Box<[i32; 3]>]);
 //         _1 = _2 as std::boxed::Box<[i32]> (Unsize);
 //         Validate(Acquire, [_1: std::boxed::Box<[i32]>]);
+//         StorageDead(_2);
+//         StorageDead(_3);
+//         _0 = ();
+//         Validate(Release, [_1: std::boxed::Box<[i32]>]);
+//         drop(_1) -> bb2;
 //     }
+//     ...
 // }
 // END rustc.node4.EraseRegions.after.mir

@@ -25,6 +25,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File, create_dir_all};
+use std::fmt;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -2228,7 +2229,7 @@ actual:\n\
             let (_, tests_text) = test_file_contents.split_at(idx + "// END_RUST SOURCE".len());
             let tests_text_str = String::from(tests_text);
             let mut curr_test : Option<&str> = None;
-            let mut curr_test_contents = Vec::new();
+            let mut curr_test_contents = vec![ExpectedLine::Elision];
             for l in tests_text_str.lines() {
                 debug!("line: {:?}", l);
                 if l.starts_with("// START ") {
@@ -2242,11 +2243,14 @@ actual:\n\
                     self.compare_mir_test_output(curr_test.unwrap(), &curr_test_contents);
                     curr_test = None;
                     curr_test_contents.clear();
+                    curr_test_contents.push(ExpectedLine::Elision);
                 } else if l.is_empty() {
                     // ignore
+                } else if l.starts_with("//") && l.split_at("//".len()).1.trim() == "..." {
+                    curr_test_contents.push(ExpectedLine::Elision)
                 } else if l.starts_with("// ") {
                     let (_, test_content) = l.split_at("// ".len());
-                    curr_test_contents.push(test_content);
+                    curr_test_contents.push(ExpectedLine::Text(test_content));
                 }
             }
         }
@@ -2264,7 +2268,7 @@ actual:\n\
         }
     }
 
-    fn compare_mir_test_output(&self, test_name: &str, expected_content: &[&str]) {
+    fn compare_mir_test_output(&self, test_name: &str, expected_content: &[ExpectedLine<&str>]) {
         let mut output_file = PathBuf::new();
         output_file.push(self.get_mir_dump_dir());
         output_file.push(test_name);
@@ -2276,38 +2280,77 @@ actual:\n\
         let mut dumped_string = String::new();
         dumped_file.read_to_string(&mut dumped_string).unwrap();
         let mut dumped_lines = dumped_string.lines().filter(|l| !l.is_empty());
-        let mut expected_lines = expected_content.iter().filter(|l| !l.is_empty());
-
-        // We expect each non-empty line from expected_content to appear
-        // in the dump in order, but there may be extra lines interleaved
-        while let Some(expected_line) = expected_lines.next() {
-            let e_norm = normalize_mir_line(expected_line);
-            if e_norm.is_empty() {
-                continue;
-            };
-            let mut found = false;
-            while let Some(dumped_line) = dumped_lines.next() {
-                let d_norm = normalize_mir_line(dumped_line);
-                debug!("found: {:?}", d_norm);
-                debug!("expected: {:?}", e_norm);
-                if e_norm == d_norm {
-                    found = true;
-                    break;
-                };
+        let mut expected_lines = expected_content.iter().filter(|&l| {
+            if let &ExpectedLine::Text(l) = l {
+                !l.is_empty()
+            } else {
+                true
             }
-            if !found {
-                let normalize_all = dumped_string.lines()
-                                                 .map(nocomment_mir_line)
-                                                 .filter(|l| !l.is_empty())
-                                                 .collect::<Vec<_>>()
-                                                 .join("\n");
-                panic!("ran out of mir dump output to match against.\n\
-                        Did not find expected line: {:?}\n\
-                        Expected:\n{}\n\
-                        Actual:\n{}",
-                        expected_line,
-                        expected_content.join("\n"),
-                        normalize_all);
+        }).peekable();
+
+        let compare = |expected_line, dumped_line| {
+            let e_norm = normalize_mir_line(expected_line);
+            let d_norm = normalize_mir_line(dumped_line);
+            debug!("found: {:?}", d_norm);
+            debug!("expected: {:?}", e_norm);
+            e_norm == d_norm
+        };
+
+        let error = |expected_line, extra_msg| {
+            let normalize_all = dumped_string.lines()
+                                             .map(nocomment_mir_line)
+                                             .filter(|l| !l.is_empty())
+                                             .collect::<Vec<_>>()
+                                             .join("\n");
+            let f = |l: &ExpectedLine<_>| match l {
+                &ExpectedLine::Elision => "... (elided)".into(),
+                &ExpectedLine::Text(t) => t
+            };
+            let expected_content = expected_content.iter()
+                                                   .map(|l| f(l))
+                                                   .collect::<Vec<_>>()
+                                                   .join("\n");
+            panic!("Did not find expected line, error: {}\n\
+                   Actual Line: {:?}\n\
+                   Expected:\n{}\n\
+                   Actual:\n{}",
+                   extra_msg,
+                   expected_line,
+                   expected_content,
+                   normalize_all);
+        };
+
+        // We expect each non-empty line to appear consecutively, non-consecutive lines
+        // must be separated by at least one Elision
+        while let Some(dumped_line) = dumped_lines.next() {
+            match expected_lines.next() {
+                Some(&ExpectedLine::Text(expected_line)) =>
+                    if !compare(expected_line, dumped_line) {
+                        error(expected_line,
+                              format!("Mismatch in lines\nExpected Line: {:?}", dumped_line));
+                    },
+                Some(&ExpectedLine::Elision) => {
+                    // skip any number of elisions in a row.
+                    while let Some(&&ExpectedLine::Elision) = expected_lines.peek() {
+                        expected_lines.next();
+                    }
+                    if let Some(&ExpectedLine::Text(expected_line)) = expected_lines.next() {
+                        let mut found = compare(expected_line, dumped_line);
+                        if found {
+                            continue;
+                        }
+                        while let Some(dumped_line) = dumped_lines.next() {
+                            found = compare(expected_line, dumped_line);
+                            if found {
+                                break;
+                            }
+                        }
+                        if !found {
+                            error(expected_line, "ran out of mir dump to match against".into());
+                        }
+                    }
+                },
+                None => {},
             }
         }
     }
@@ -2428,6 +2471,25 @@ impl ProcRes {
 enum TargetLocation {
     ThisFile(PathBuf),
     ThisDirectory(PathBuf),
+}
+
+#[derive(Clone, PartialEq, Eq)]
+enum ExpectedLine<T: AsRef<str>> {
+    Elision,
+    Text(T)
+}
+
+impl<T> fmt::Debug for ExpectedLine<T>
+where
+    T: AsRef<str> + fmt::Debug
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        if let &ExpectedLine::Text(ref t) = self {
+            write!(formatter, "{:?}", t)
+        } else {
+            write!(formatter, "\"...\" (Elision)")
+        }
+    }
 }
 
 fn normalize_mir_line(line: &str) -> String {

@@ -35,15 +35,19 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node17.EraseRegions.after.mir
 // fn test(_1: &ReErased mut i32) -> () {
+//     ...
 //     bb0: {
 //         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:4) => validate_5[8cd8]::test[0] }, BrAnon(0)) mut i32]);
+//         ...
 //         Validate(Release, [_3: bool, _4: *mut i32]);
 //         _3 = const write_42(_4) -> bb1;
 //     }
+//     ...
 // }
 // END rustc.node17.EraseRegions.after.mir
 // START rustc.node46.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(46)], _2: &ReErased mut i32) -> bool {
+//     ...
 //     bb0: {
 //         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:9) => validate_5[8cd8]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(46)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:9) => validate_5[8cd8]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
 //         StorageLive(_3);
@@ -59,5 +63,6 @@ fn main() {
 //         Validate(Release, [_0: bool, _4: *mut i32]);
 //         _0 = const write_42(_4) -> bb1;
 //     }
+//     ...
 // }
 // END rustc.node46.EraseRegions.after.mir

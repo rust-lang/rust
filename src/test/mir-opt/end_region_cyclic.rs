@@ -45,6 +45,7 @@ fn query() -> bool { true }
 //     scope 1 {
 //         let _2: S<'35_0rs>;
 //     }
+//     ...
 //     let mut _1: ();
 //     let mut _3: std::cell::Cell<std::option::Option<&'35_0rs S<'35_0rs>>>;
 //     let mut _4: std::option::Option<&'35_0rs S<'35_0rs>>;
