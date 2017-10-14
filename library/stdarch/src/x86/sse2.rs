@@ -1726,6 +1726,13 @@ pub unsafe fn _mm_cvtpd_ps(a: f64x2) -> f32x4 {
     cvtpd2ps(a)
 }
 
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(cvtps2pd))]
+pub unsafe fn _mm_cvtps_pd(a: f32x4) -> f64x2 {
+    cvtps2pd(a)
+}
+
 /// Convert packed double-precision (64-bit) floating-point elements in `a` to packed 32-bit integers.
 #[inline(always)]
 #[target_feature = "+sse2"]
@@ -1808,6 +1815,50 @@ pub unsafe fn _mm_cvttps_epi32(a: f32x4) -> i32x4 {
     cvttps2dq(a)
 }
 
+/// Copy double-precision (64-bit) floating-point element `a` to the lower element of the
+/// packed 64-bit return value
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_set_sd(a: f64) -> f64x2 {
+    f64x2::new(a, 0_f64)
+}
+
+/// Broadcast double-precision (64-bit) floating-point value a to all elements of the return value
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_set1_pd(a: f64) -> f64x2 {
+    f64x2::new(a, a)
+}
+
+/// Broadcast double-precision (64-bit) floating-point value a to all elements of the return value
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_set_pd1(a: f64) -> f64x2 {
+    f64x2::new(a, a)
+}
+
+/// Set packed double-precision (64-bit) floating-point elements in the return value with the
+/// supplied values.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_set_pd(a: f64, b: f64) -> f64x2 {
+    f64x2::new(a, b)
+}
+
+/// Set packed double-precision (64-bit) floating-point elements in the return value with the
+/// supplied values in reverse order.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_setr_pd(a: f64, b: f64) -> f64x2 {
+    f64x2::new(b, a)
+}
+
+/// returns packed double-precision (64-bit) floating-point elements with all zeros.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_setzero_pd() -> f64x2 {
+    f64x2::splat(0_f64)
+}
 
 /// Return a mask of the most significant bit of each element in `a`.
 ///
@@ -1991,6 +2042,8 @@ extern {
     fn movmskpd(a: f64x2) -> i32;
     #[link_name = "llvm.x86.sse2.cvtpd2ps"]
     fn cvtpd2ps(a: f64x2) -> f32x4;
+    #[link_name = "llvm.x86.sse2.cvtps2pd"]
+    fn cvtps2pd(a: f32x4) -> f64x2;
     #[link_name = "llvm.x86.sse2.cvtpd2dq"]
     fn cvtpd2dq(a: f64x2) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvtsd2si"]
@@ -3552,6 +3605,17 @@ mod tests {
     }
 
     #[simd_test = "sse2"]
+    unsafe fn _mm_cvtps_pd() {
+        use std::{f64, f32};
+
+        let r = sse2::_mm_cvtps_pd(f32x4::new(-1.0, 2.0, -3.0, 5.0));
+        assert_eq!(r, f64x2::new(-1.0, 2.0));
+
+        let r = sse2::_mm_cvtps_pd(f32x4::new(f32::MAX, f32::INFINITY, f32::NEG_INFINITY, f32::MIN));
+        assert_eq!(r, f64x2::new(f32::MAX as f64, f64::INFINITY));
+    }
+
+    #[simd_test = "sse2"]
     unsafe fn _mm_cvtpd_epi32() {
         use std::{f64, i32};
 
@@ -3687,6 +3751,42 @@ mod tests {
         let a = f32x4::new(f32::NEG_INFINITY, f32::INFINITY, f32::MIN, f32::MAX);
         let r = sse2::_mm_cvttps_epi32(a);
         assert_eq!(r, i32x4::new(i32::MIN, i32::MIN, i32::MIN, i32::MIN));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_set_sd() {
+        let r = sse2::_mm_set_sd(-1.0_f64);
+        assert_eq!(r, f64x2::new(-1.0_f64, 0_f64));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_set1_pd() {
+        let r = sse2::_mm_set1_pd(-1.0_f64);
+        assert_eq!(r, f64x2::new(-1.0_f64, -1.0_f64));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_set_pd1() {
+        let r = sse2::_mm_set_pd1(-2.0_f64);
+        assert_eq!(r, f64x2::new(-2.0_f64, -2.0_f64));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_set_pd() {
+        let r = sse2::_mm_set_pd(1.0_f64, 5.0_f64);
+        assert_eq!(r, f64x2::new(1.0_f64, 5.0_f64));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_setr_pd() {
+        let r = sse2::_mm_setr_pd(1.0_f64, -5.0_f64);
+        assert_eq!(r, f64x2::new(-5.0_f64, 1.0_f64));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_setzero_pd() {
+        let r = sse2::_mm_setzero_pd();
+        assert_eq!(r, f64x2::new(0_f64, 0_f64));
     }
 
     #[simd_test = "sse2"]
