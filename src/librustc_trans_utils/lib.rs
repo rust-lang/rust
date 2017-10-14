@@ -27,8 +27,6 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
-#![cfg_attr(stage0, feature(const_fn))]
-
 extern crate ar;
 extern crate flate2;
 extern crate owning_ref;

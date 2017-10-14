@@ -30,9 +30,8 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
-#![cfg_attr(stage0, feature(const_fn))]
-#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
-#![cfg_attr(not(stage0), feature(const_once_new))]
+#![feature(const_atomic_bool_new)]
+#![feature(const_once_new)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
