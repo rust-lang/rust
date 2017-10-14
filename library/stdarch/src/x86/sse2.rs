@@ -1742,6 +1742,15 @@ pub unsafe fn _mm_cvtsd_si32(a: f64x2) -> i32 {
     cvtsd2si(a)
 }
 
+/// Convert the lower double-precision (64-bit) floating-point element in a to a 64-bit integer.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(cvtsd2si))]
+pub unsafe fn _mm_cvtsd_si64(a: f64x2) -> i64 {
+    cvtsd2si64(a)
+}
+
 /// Convert the lower double-precision (64-bit) floating-point element in `b` to a
 /// single-precision (32-bit) floating-point element, store the result in the lower element
 /// of the return value, and copy the upper element from `a` to the upper element the return value.
@@ -1778,6 +1787,16 @@ pub unsafe fn _mm_cvttpd_epi32(a: f64x2) -> i32x4 {
 #[cfg_attr(test, assert_instr(cvttsd2si))]
 pub unsafe fn _mm_cvttsd_si32(a: f64x2) -> i32 {
     cvttsd2si(a)
+}
+
+/// Convert the lower double-precision (64-bit) floating-point element in `a` to a 64-bit integer
+/// with truncation.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(cvttsd2si))]
+pub unsafe fn _mm_cvttsd_si64(a: f64x2) -> i64 {
+    cvttsd2si64(a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in `a` to packed 32-bit
@@ -1976,6 +1995,8 @@ extern {
     fn cvtpd2dq(a: f64x2) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvtsd2si"]
     fn cvtsd2si(a: f64x2) -> i32;
+    #[link_name = "llvm.x86.sse2.cvtsd2si64"]
+    fn cvtsd2si64(a: f64x2) -> i64;
     #[link_name = "llvm.x86.sse2.cvtsd2ss"]
     fn cvtsd2ss(a: f32x4, b: f64x2) -> f32x4;
     #[link_name = "llvm.x86.sse2.cvtss2sd"]
@@ -1984,6 +2005,8 @@ extern {
     fn cvttpd2dq(a: f64x2) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvttsd2si"]
     fn cvttsd2si(a: f64x2) -> i32;
+    #[link_name = "llvm.x86.sse2.cvttsd2si64"]
+    fn cvttsd2si64(a: f64x2) -> i64;
     #[link_name = "llvm.x86.sse2.cvttps2dq"]
     fn cvttps2dq(a: f32x4) -> i32x4;
 }
@@ -3562,6 +3585,21 @@ mod tests {
         assert_eq!(r, i32::MIN);
     }
 
+    #[cfg(target_arch = "x86_64")]
+    #[simd_test = "sse2"]
+    unsafe fn _mm_cvtsd_si64() {
+        use std::{f64, i64};
+
+        let r = sse2::_mm_cvtsd_si64(f64x2::new(-2.0, 5.0));
+        assert_eq!(r, -2_i64);
+
+        let r = sse2::_mm_cvtsd_si64(f64x2::new(f64::MAX, f64::MIN));
+        assert_eq!(r, i64::MIN);
+
+        let r = sse2::_mm_cvtsd_si64(f64x2::new(f64::NAN, f64::NAN));
+        assert_eq!(r, i64::MIN);
+    }
+
     #[simd_test = "sse2"]
     unsafe fn _mm_cvtsd_ss() {
         use std::{f64, f32};
@@ -3622,6 +3660,20 @@ mod tests {
         let a = f64x2::new(f64::NEG_INFINITY, f64::NAN);
         let r = sse2::_mm_cvttsd_si32(a);
         assert_eq!(r, i32::MIN);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[simd_test = "sse2"]
+    unsafe fn _mm_cvttsd_si64() {
+        use std::{f64, i64};
+
+        let a = f64x2::new(-1.1, 2.2);
+        let r = sse2::_mm_cvttsd_si64(a);
+        assert_eq!(r, -1_i64);
+
+        let a = f64x2::new(f64::NEG_INFINITY, f64::NAN);
+        let r = sse2::_mm_cvttsd_si64(a);
+        assert_eq!(r, i64::MIN);
     }
 
     #[simd_test = "sse2"]
