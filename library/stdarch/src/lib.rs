@@ -66,7 +66,7 @@
 //! After verifying that a specified feature is available, use `target_feature`
 //! to enable a given feature and use the desired intrinsic.
 //!
-//! ```
+//! ```ignore
 //! # #![feature(cfg_target_feature)]
 //! # #![feature(target_feature)]
 //! # #[macro_use]
