@@ -33,7 +33,7 @@ use ast::{Stmt, StmtKind};
 use ast::{VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
-use ast::{TraitItem, TraitRef};
+use ast::{TraitItem, TraitRef, TraitObjectSyntax};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
@@ -362,6 +362,13 @@ impl TokenType {
 
 fn is_ident_or_underscore(t: &token::Token) -> bool {
     t.is_ident() || *t == token::Underscore
+}
+
+// Returns true if `IDENT t` can start a type - `IDENT::a::b`, `IDENT<u8, u8>`,
+// `IDENT<<u8 as Trait>::AssocTy>`, `IDENT(u8, u8) -> u8`.
+fn can_continue_type_after_ident(t: &token::Token) -> bool {
+    t == &token::ModSep || t == &token::Lt ||
+    t == &token::BinOp(token::Shl) || t == &token::OpenDelim(token::Paren)
 }
 
 /// Information about the path to a module.
@@ -1428,7 +1435,7 @@ impl<'a> Parser<'a> {
                     TyKind::Path(None, ref path) if maybe_bounds => {
                         self.parse_remaining_bounds(Vec::new(), path.clone(), lo, true)?
                     }
-                    TyKind::TraitObject(ref bounds)
+                    TyKind::TraitObject(ref bounds, TraitObjectSyntax::None)
                             if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
                         let path = match bounds[0] {
                             TraitTyParamBound(ref pt, ..) => pt.trait_ref.path.clone(),
@@ -1472,6 +1479,35 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
+        } else if self.token_is_bare_fn_keyword() {
+            // Function pointer type
+            self.parse_ty_bare_fn(Vec::new())?
+        } else if self.check_keyword(keywords::For) {
+            // Function pointer type or bound list (trait object type) starting with a poly-trait.
+            //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
+            //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
+            let lo = self.span;
+            let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+            if self.token_is_bare_fn_keyword() {
+                self.parse_ty_bare_fn(lifetime_defs)?
+            } else {
+                let path = self.parse_path(PathStyle::Type)?;
+                let parse_plus = allow_plus && self.check(&token::BinOp(token::Plus));
+                self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
+            }
+        } else if self.eat_keyword(keywords::Impl) {
+            // FIXME: figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
+            TyKind::ImplTrait(self.parse_ty_param_bounds()?)
+        } else if self.check_keyword(keywords::Dyn) &&
+                  self.look_ahead(1, |t| t.can_begin_bound() && !can_continue_type_after_ident(t)) {
+            // FIXME: figure out priority of `+` in `dyn Trait1 + Trait2` (#34511).
+            self.bump(); // `dyn`
+            TyKind::TraitObject(self.parse_ty_param_bounds()?, TraitObjectSyntax::Dyn)
+        } else if self.check(&token::Question) ||
+                  self.check_lifetime() && self.look_ahead(1, |t| t == &token::BinOp(token::Plus)) {
+            // Bound list (trait object type)
+            TyKind::TraitObject(self.parse_ty_param_bounds_common(allow_plus)?,
+                                TraitObjectSyntax::None)
         } else if self.eat_lt() {
             // Qualified path
             let (qself, path) = self.parse_qpath(PathStyle::Type)?;
@@ -1493,29 +1529,6 @@ impl<'a> Parser<'a> {
                     TyKind::Path(None, path)
                 }
             }
-        } else if self.token_is_bare_fn_keyword() {
-            // Function pointer type
-            self.parse_ty_bare_fn(Vec::new())?
-        } else if self.check_keyword(keywords::For) {
-            // Function pointer type or bound list (trait object type) starting with a poly-trait.
-            //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
-            //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
-            let lo = self.span;
-            let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-            if self.token_is_bare_fn_keyword() {
-                self.parse_ty_bare_fn(lifetime_defs)?
-            } else {
-                let path = self.parse_path(PathStyle::Type)?;
-                let parse_plus = allow_plus && self.check(&token::BinOp(token::Plus));
-                self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
-            }
-        } else if self.eat_keyword(keywords::Impl) {
-            // FIXME: figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
-            TyKind::ImplTrait(self.parse_ty_param_bounds()?)
-        } else if self.check(&token::Question) ||
-                  self.check_lifetime() && self.look_ahead(1, |t| t == &token::BinOp(token::Plus)){
-            // Bound list (trait object type)
-            TyKind::TraitObject(self.parse_ty_param_bounds_common(allow_plus)?)
         } else {
             let msg = format!("expected type, found {}", self.this_token_descr());
             return Err(self.fatal(&msg));
@@ -1538,7 +1551,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `+`
             bounds.append(&mut self.parse_ty_param_bounds()?);
         }
-        Ok(TyKind::TraitObject(bounds))
+        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
 
     fn maybe_recover_from_bad_type_plus(&mut self, allow_plus: bool, ty: &Ty) -> PResult<'a, ()> {
@@ -4256,6 +4269,7 @@ impl<'a> Parser<'a> {
     fn parse_ty_param_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, TyParamBounds> {
         let mut bounds = Vec::new();
         loop {
+            // This needs to be syncronized with `Token::can_begin_bound`.
             let is_bound_start = self.check_path() || self.check_lifetime() ||
                                  self.check(&token::Question) ||
                                  self.check_keyword(keywords::For) ||

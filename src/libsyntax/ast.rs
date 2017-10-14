@@ -1419,7 +1419,7 @@ pub enum TyKind {
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(TyParamBounds),
+    TraitObject(TyParamBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
     ImplTrait(TyParamBounds),
@@ -1436,6 +1436,13 @@ pub enum TyKind {
     Mac(Mac),
     /// Placeholder for a kind that has failed to be defined.
     Err,
+}
+
+/// Syntax used to declare a trait object.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum TraitObjectSyntax {
+    Dyn,
+    None,
 }
 
 /// Inline assembly dialect.

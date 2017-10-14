@@ -705,7 +705,7 @@ impl<'a> LoweringContext<'a> {
                 let expr = self.lower_body(None, |this| this.lower_expr(expr));
                 hir::TyTypeof(expr)
             }
-            TyKind::TraitObject(ref bounds) => {
+            TyKind::TraitObject(ref bounds, ..) => {
                 let mut lifetime_bound = None;
                 let bounds = bounds.iter().filter_map(|bound| {
                     match *bound {

@@ -398,6 +398,9 @@ declare_features! (
 
     // Default match binding modes (RFC 2005)
     (active, match_default_bindings, "1.22.0", Some(42640)),
+
+    // Trait object syntax with `dyn` prefix
+    (active, dyn_trait, "1.22.0", Some(44662)),
 );
 
 declare_features! (
@@ -1417,6 +1420,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, never_type, ty.span,
                                    "The `!` type is experimental");
             },
+            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::Dyn) => {
+                gate_feature_post!(&self, dyn_trait, ty.span,
+                                   "`dyn Trait` syntax is unstable");
+            }
             _ => {}
         }
         visit::walk_ty(self, ty)
