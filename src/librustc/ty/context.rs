@@ -62,7 +62,7 @@ use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use ordermap::{self, Entry};
-use std::hash::{Hash, Hasher};
+use std::hash::{BuildHasherDefault, Hash, Hasher};
 use std::mem;
 use std::ops::Deref;
 use std::iter;
@@ -300,7 +300,10 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         self.data.get_mut(&id.local_id)
     }
 
-    pub fn entry(&mut self, id: hir::HirId) -> Entry<hir::ItemLocalId, V, ::std::hash::BuildHasherDefault<rustc_data_structures::fx::FxHasher>> {
+    pub fn entry(
+        &mut self,
+        id: hir::HirId
+    ) -> Entry<hir::ItemLocalId, V, BuildHasherDefault<rustc_data_structures::fx::FxHasher>> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, true);
         self.data.entry(id.local_id)
     }

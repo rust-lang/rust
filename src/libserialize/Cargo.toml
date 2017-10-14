@@ -9,4 +9,4 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-ordermap = { path = "../ordermap" }
+ordermap = "0.3.0"
