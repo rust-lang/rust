@@ -1614,13 +1614,12 @@ impl<'a> Parser<'a> {
                 self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(keywords::Impl) {
-            // FIXME: figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
-            TyKind::ImplTrait(self.parse_ty_param_bounds()?)
+            TyKind::ImplTrait(self.parse_ty_param_bounds_common(allow_plus)?)
         } else if self.check_keyword(keywords::Dyn) &&
                   self.look_ahead(1, |t| t.can_begin_bound() && !can_continue_type_after_ident(t)) {
-            // FIXME: figure out priority of `+` in `dyn Trait1 + Trait2` (#34511).
             self.bump(); // `dyn`
-            TyKind::TraitObject(self.parse_ty_param_bounds()?, TraitObjectSyntax::Dyn)
+            TyKind::TraitObject(self.parse_ty_param_bounds_common(allow_plus)?,
+                                TraitObjectSyntax::Dyn)
         } else if self.check(&token::Question) ||
                   self.check_lifetime() && self.look_ahead(1, |t| t == &token::BinOp(token::Plus)) {
             // Bound list (trait object type)

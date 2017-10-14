@@ -72,7 +72,7 @@ mod m {
     impl TraitWithAssocTy for u8 { type AssocTy = Priv; }
     //~^ ERROR private type `m::Priv` in public interface
 
-    pub fn leak_anon1() -> impl Trait + 'static { 0 }
+    pub fn leak_anon1() -> (impl Trait + 'static) { 0 }
     pub fn leak_anon2() -> impl TraitWithTyParam<Alias> { 0 }
     pub fn leak_anon3() -> impl TraitWithAssocTy<AssocTy = Alias> { 0 }
 
