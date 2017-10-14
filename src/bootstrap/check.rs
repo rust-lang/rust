@@ -364,6 +364,7 @@ impl Step for Miri {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
+    stage: u32,
     host: Interned<String>,
 }
 
@@ -378,6 +379,7 @@ impl Step for Clippy {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Clippy {
+            stage: run.builder.top_stage,
             host: run.target,
         });
     }
@@ -385,10 +387,11 @@ impl Step for Clippy {
     /// Runs `cargo test` for clippy.
     fn run(self, builder: &Builder) {
         let build = builder.build;
+        let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(1, host);
+        let compiler = builder.compiler(stage, host);
 
-        let _clippy = builder.ensure(tool::Clippy { compiler, target: self.host });
+        let clippy = builder.ensure(tool::Clippy { compiler, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
 
@@ -396,6 +399,8 @@ impl Step for Clippy {
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
         // clippy tests need to know about the stage sysroot
         cargo.env("SYSROOT", builder.sysroot(compiler));
+        // clippy tests need to find the driver
+        cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
