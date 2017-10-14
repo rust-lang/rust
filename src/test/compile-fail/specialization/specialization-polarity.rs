@@ -15,6 +15,7 @@
 
 trait Foo {}
 
+#[allow(auto_impl)]
 impl Foo for .. {}
 
 impl<T> Foo for T {}
@@ -22,6 +23,7 @@ impl !Foo for u8 {} //~ ERROR E0119
 
 trait Bar {}
 
+#[allow(auto_impl)]
 impl Bar for .. {}
 
 impl<T> !Bar for T {}

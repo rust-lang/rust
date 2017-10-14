@@ -12,6 +12,7 @@
 
 trait MyTrait {}
 
+#[allow(auto_impl)]
 impl MyTrait for .. {}
 
 struct MyS;

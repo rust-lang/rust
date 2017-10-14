@@ -13,6 +13,7 @@
 
 trait Foo {}
 
+#[allow(auto_impl)]
 default impl Foo for .. {}
 //~^ ERROR `default impl` is not allowed for auto trait implementations
 

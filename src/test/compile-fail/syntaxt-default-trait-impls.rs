@@ -12,6 +12,7 @@
 
 trait MyAutoImpl {}
 
+#[allow(auto_impl)]
 impl<T> MyAutoImpl for .. {}
 //~^ ERROR auto trait implementations are not allowed to have generics
 

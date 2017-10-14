@@ -20,6 +20,7 @@ trait DummyTrait {
 auto trait AutoDummyTrait {}
 //~^ ERROR auto traits are experimental and possibly buggy
 
+#[allow(auto_impl)]
 impl DummyTrait for .. {}
 //~^ ERROR auto trait implementations are experimental and possibly buggy
 
