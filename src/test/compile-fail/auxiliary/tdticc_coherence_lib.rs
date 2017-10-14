@@ -12,6 +12,7 @@
 #![crate_type = "rlib"]
 
 pub trait DefaultedTrait { }
+#[allow(auto_impl)]
 impl DefaultedTrait for .. { }
 
 pub struct Something<T> { t: T }

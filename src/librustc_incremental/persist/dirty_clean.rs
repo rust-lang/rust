@@ -409,7 +409,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     //HirItem::ItemTrait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // `impl Trait for .. {}`
-                    HirItem::ItemDefaultImpl(..) => ("ItemDefaultImpl", LABELS_IMPL),
+                    HirItem::ItemAutoImpl(..) => ("ItemAutoImpl", LABELS_IMPL),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::ItemImpl(..) => ("ItemImpl", LABELS_IMPL),
