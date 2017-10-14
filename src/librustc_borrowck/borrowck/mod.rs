@@ -614,11 +614,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let partial = moved_lp.depth() > lp.depth();
                 let msg = if !has_fork && partial { "partially " }
                           else if has_fork && !has_common { "collaterally "}
-                          else { "" };
-                let mut err = struct_span_err!(
-                    self.tcx.sess, use_span, E0382,
-                    "{} of {}moved value: `{}`",
-                    verb, msg, nl);
+                else { "" };
+                let mut err = self.cannot_act_on_moved_value(use_span,
+                                                             verb,
+                                                             msg,
+                                                             &format!("{}", nl),
+                                                             Origin::Ast);
                 let need_note = match lp.ty.sty {
                     ty::TypeVariants::TyClosure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
@@ -698,10 +699,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             &self,
             span: Span,
             lp: &LoanPath<'tcx>) {
-        span_err!(
-            self.tcx.sess, span, E0383,
-            "partial reinitialization of uninitialized structure `{}`",
-            self.loan_path_to_string(lp));
+        self.cannot_partially_reinit_an_uninit_struct(span,
+                                                      &self.loan_path_to_string(lp),
+                                                      Origin::Ast)
+            .emit();
     }
 
     pub fn report_reassigned_immutable_variable(&self,
@@ -776,8 +777,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         db
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
-                        struct_span_err!(self.tcx.sess, error_span, E0595,
-                                         "closure cannot assign to {}", descr)
+                        self.closure_cannot_assign_to_borrowed(error_span, &descr, Origin::Ast)
                     }
                     BorrowViolation(euv::OverloadedOperator) |
                     BorrowViolation(euv::AddrOf) |
@@ -786,8 +786,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     BorrowViolation(euv::AutoUnsafe) |
                     BorrowViolation(euv::ForLoop) |
                     BorrowViolation(euv::MatchDiscriminant) => {
-                        struct_span_err!(self.tcx.sess, error_span, E0596,
-                                         "cannot borrow {} as mutable", descr)
+                        self.cannot_borrow_path_as_mutable(error_span, &descr, Origin::Ast)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
                         span_bug!(err.span,
@@ -869,21 +868,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 if let Some((yield_span, _)) = maybe_borrow_across_yield {
                     debug!("err_out_of_scope: opt_yield_span = {:?}", yield_span);
-                    struct_span_err!(self.tcx.sess,
-                                     error_span,
-                                     E0626,
-                                     "borrow may still be in use when generator yields")
-                        .span_label(yield_span, "possible yield occurs here")
+                    self.cannot_borrow_across_generator_yield(error_span, yield_span, Origin::Ast)
                         .emit();
                     return;
                 }
 
-                let mut db = struct_span_err!(self.tcx.sess,
-                                              error_span,
-                                              E0597,
-                                              "{} does not live long enough",
-                                              msg);
-
+                let mut db = self.path_does_not_live_long_enough(error_span, &msg, Origin::Ast);
                 let (value_kind, value_msg) = match err.cmt.cat {
                     mc::Categorization::Rvalue(..) =>
                         ("temporary value", "temporary value created here"),
@@ -992,11 +982,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = self.cmt_to_path_or_string(&err.cmt);
-                let mut db = struct_span_err!(self.tcx.sess, error_span, E0598,
-                                              "lifetime of {} is too short to guarantee \
-                                               its contents can be safely reborrowed",
-                                              descr);
-
+                let mut db = self.lifetime_too_short_for_reborrow(error_span, &descr, Origin::Ast);
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
                         format!("`{}`", self.loan_path_to_string(&lp))
@@ -1068,12 +1054,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         let blame = cmt.immutability_blame();
         let mut err = match blame {
             Some(ImmutabilityBlame::ClosureEnv(id)) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess, span, E0387,
-                    "{} in a captured outer variable in an `Fn` closure", prefix);
-
                 // FIXME: the distinction between these 2 messages looks wrong.
-                let help = if let BorrowViolation(euv::ClosureCapture(_)) = kind {
+                let help_msg = if let BorrowViolation(euv::ClosureCapture(_)) = kind {
                     // The aliasability violation with closure captures can
                     // happen for nested closures, so we know the enclosing
                     // closure incorrectly accepts an `Fn` while it needs to
@@ -1084,15 +1066,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     "consider changing this closure to take self by mutable reference"
                 };
                 let node_id = self.tcx.hir.def_index_to_node_id(id);
-                err.span_help(self.tcx.hir.span(node_id), help);
-                err
+                let help_span = self.tcx.hir.span(node_id);
+                self.cannot_act_on_capture_in_sharable_fn(span,
+                                                          prefix,
+                                                          (help_span, help_msg),
+                                                          Origin::Ast)
             }
             _ =>  {
-                let mut err = struct_span_err!(
-                    self.tcx.sess, span, E0389,
-                    "{} in a `&` reference", prefix);
-                err.span_label(span, "assignment into an immutable reference");
-                err
+                self.cannot_assign_into_immutable_reference(span, prefix,
+                                                            Origin::Ast)
             }
         };
         self.note_immutability_blame(&mut err, blame);
@@ -1244,17 +1226,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 Err(_) => format!("move |<args>| <body>")
             };
 
-        struct_span_err!(self.tcx.sess, err.span, E0373,
-                         "closure may outlive the current function, \
-                          but it borrows {}, \
-                          which is owned by the current function",
-                         cmt_path_or_string)
-            .span_label(capture_span,
-                       format!("{} is borrowed here",
-                                cmt_path_or_string))
-            .span_label(err.span,
-                       format!("may outlive borrowed value {}",
-                                cmt_path_or_string))
+        self.cannot_capture_in_long_lived_closure(err.span,
+                                                  &cmt_path_or_string,
+                                                  capture_span,
+                                                  Origin::Ast)
             .span_suggestion(err.span,
                              &format!("to force the closure to take ownership of {} \
                                        (and any other referenced variables), \
