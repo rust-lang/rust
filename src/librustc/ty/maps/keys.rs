@@ -143,6 +143,15 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
     }
 }
 
+impl<'tcx> Key for ty::PolyTraitRef<'tcx>{
+    fn map_crate(&self) -> CrateNum {
+        self.def_id().krate
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        tcx.def_span(self.def_id())
+    }
+}
+
 impl<'tcx> Key for Ty<'tcx> {
     fn map_crate(&self) -> CrateNum {
         LOCAL_CRATE

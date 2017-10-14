@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::traits;
 use callee;
 use common::*;
 use builder::Builder;
@@ -87,7 +86,8 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if let Some(trait_ref) = trait_ref {
         let trait_ref = trait_ref.with_self_ty(tcx, ty);
-        let methods = traits::get_vtable_methods(tcx, trait_ref).map(|opt_mth| {
+        let methods = tcx.vtable_methods(trait_ref);
+        let methods = methods.iter().cloned().map(|opt_mth| {
             opt_mth.map_or(nullptr, |(def_id, substs)| {
                 callee::resolve_and_get_fn(ccx, def_id, substs)
             })

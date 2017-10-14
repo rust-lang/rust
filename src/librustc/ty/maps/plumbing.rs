@@ -468,8 +468,7 @@ macro_rules! define_maps {
 
         define_provider_struct! {
             tcx: $tcx,
-            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*),
-            output: ()
+            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*)
         }
 
         impl<$tcx> Copy for Providers<$tcx> {}
@@ -480,78 +479,19 @@ macro_rules! define_maps {
 }
 
 macro_rules! define_map_struct {
-    // Initial state
     (tcx: $tcx:tt,
-     input: $input:tt) => {
-        define_map_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ()
-        }
-    };
-
-    // Final output
-    (tcx: $tcx:tt,
-     input: (),
-     output: ($($output:tt)*)) => {
+     input: ($(([$(modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($output)*
-        }
-    };
-
-    // Field recognized and ready to shift into the output
-    (tcx: $tcx:tt,
-     ready: ([$($pub:tt)*] [$($attr:tt)*] [$name:ident]),
-     input: $input:tt,
-     output: ($($output:tt)*)) => {
-        define_map_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ($($output)*
-                     $(#[$attr])* $($pub)* $name: RefCell<QueryMap<queries::$name<$tcx>>>,)
-        }
-    };
-
-    // No modifiers left? This is a private item.
-    (tcx: $tcx:tt,
-     input: (([] $attrs:tt $name:tt) $($input:tt)*),
-     output: $output:tt) => {
-        define_map_struct! {
-            tcx: $tcx,
-            ready: ([] $attrs $name),
-            input: ($($input)*),
-            output: $output
-        }
-    };
-
-    // Skip other modifiers
-    (tcx: $tcx:tt,
-     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
-     output: $output:tt) => {
-        define_map_struct! {
-            tcx: $tcx,
-            input: (([$($modifiers)*] $($fields)*) $($input)*),
-            output: $output
+            $($(#[$attr])*  $name: RefCell<QueryMap<queries::$name<$tcx>>>,)*
         }
     };
 }
 
 macro_rules! define_provider_struct {
-    // Initial state:
-    (tcx: $tcx:tt, input: $input:tt) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ()
-        }
-    };
-
-    // Final state:
     (tcx: $tcx:tt,
-     input: (),
-     output: ($(([$name:ident] [$K:ty] [$R:ty]))*)) => {
+     input: ($(([$($modifiers:tt)*] [$name:ident] [$K:ty] [$R:ty]))*)) => {
         pub struct Providers<$tcx> {
             $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)*
         }
@@ -564,41 +504,6 @@ macro_rules! define_provider_struct {
                 })*
                 Providers { $($name),* }
             }
-        }
-    };
-
-    // Something ready to shift:
-    (tcx: $tcx:tt,
-     ready: ($name:tt $K:tt $V:tt),
-     input: $input:tt,
-     output: ($($output:tt)*)) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ($($output)* ($name $K $V))
-        }
-    };
-
-    // Regular queries produce a `V` only.
-    (tcx: $tcx:tt,
-     input: (([] $name:tt $K:tt $V:tt) $($input:tt)*),
-     output: $output:tt) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            ready: ($name $K $V),
-            input: ($($input)*),
-            output: $output
-        }
-    };
-
-    // Skip modifiers.
-    (tcx: $tcx:tt,
-     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
-     output: $output:tt) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            input: (([$($modifiers)*] $($fields)*) $($input)*),
-            output: $output
         }
     };
 }
@@ -749,6 +654,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CodegenUnit |
         DepKind::CompileCodegenUnit |
         DepKind::FulfillObligation |
+        DepKind::VtableMethods |
 
         // These are just odd
         DepKind::Null |
