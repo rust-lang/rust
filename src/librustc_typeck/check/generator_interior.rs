@@ -81,7 +81,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 
-    let mut types: Vec<_> = visitor.types.drain().collect();
+    let mut types: Vec<_> = visitor.types.drain(..).collect();
 
     // Sort types by insertion order
     types.sort_by_key(|t| t.1);

@@ -40,6 +40,7 @@ extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
+extern crate ordermap;
 
 pub use rustc_serialize::hex::ToHex;
 

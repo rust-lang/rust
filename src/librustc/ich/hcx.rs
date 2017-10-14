@@ -21,7 +21,7 @@ use session::Session;
 use std::cmp::Ord;
 use std::hash as std_hash;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use ordermap::OrderMap;
 
 use syntax::ast;
 use syntax::attr;
@@ -426,7 +426,7 @@ pub fn hash_stable_trait_impls<'gcx, W, R>(
     hcx: &mut StableHashingContext<'gcx>,
     hasher: &mut StableHasher<W>,
     blanket_impls: &Vec<DefId>,
-    non_blanket_impls: &HashMap<fast_reject::SimplifiedType, Vec<DefId>, R>)
+    non_blanket_impls: &OrderMap<fast_reject::SimplifiedType, Vec<DefId>, R>)
     where W: StableHasherResult,
           R: std_hash::BuildHasher,
 {

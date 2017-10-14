@@ -32,6 +32,7 @@ extern crate log;
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
+extern crate ordermap;
 
 mod diagnostics;
 

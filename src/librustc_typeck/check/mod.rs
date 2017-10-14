@@ -108,7 +108,7 @@ use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
-use std::collections::hash_map::Entry;
+use ordermap::Entry;
 use std::cmp;
 use std::fmt::Display;
 use std::mem::replace;

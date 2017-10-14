@@ -19,7 +19,7 @@ use check::{FnCtxt, Expectation, Diverges};
 use check::coercion::CoerceMany;
 use util::nodemap::FxHashMap;
 
-use std::collections::hash_map::Entry::{Occupied, Vacant};
+use ordermap::Entry::{Occupied, Vacant};
 use std::cmp;
 use syntax::ast;
 use syntax::codemap::Spanned;

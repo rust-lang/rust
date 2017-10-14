@@ -290,7 +290,7 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
         // external item to be parents).
         visible_parent_map: |tcx, cnum| {
             use std::collections::vec_deque::VecDeque;
-            use std::collections::hash_map::Entry;
+            use ordermap::Entry;
 
             assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
@@ -313,7 +313,7 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
                     }
 
                     match visible_parent_map.entry(child) {
-                        Entry::Occupied(mut entry) => {
+                        Entry::Occupied(entry) => {
                             // If `child` is defined in crate `cnum`, ensure
                             // that it is mapped to a parent in `cnum`.
                             if child.krate == cnum && entry.get().krate != cnum {

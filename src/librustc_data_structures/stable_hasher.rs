@@ -13,6 +13,7 @@ use std::marker::PhantomData;
 use std::mem;
 use blake2b::Blake2bHasher;
 use rustc_serialize::leb128;
+use ordermap::OrderMap;
 
 fn write_unsigned_leb128_to_buf(buf: &mut [u8; 16], value: u64) -> usize {
     leb128::write_unsigned_leb128_to(value as u128, |i, v| buf[i] = v)
@@ -482,7 +483,7 @@ impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::indexed_set::IdxSetBuf<I>
 impl_stable_hash_via_hash!(::std::path::Path);
 impl_stable_hash_via_hash!(::std::path::PathBuf);
 
-impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
+impl<K, V, R, HCX> HashStable<HCX> for OrderMap<K, V, R>
     where K: ToStableHashKey<HCX> + Eq + Hash,
           V: HashStable<HCX>,
           R: BuildHasher,
@@ -542,7 +543,7 @@ impl<K, HCX> HashStable<HCX> for ::std::collections::BTreeSet<K>
 pub fn hash_stable_hashmap<HCX, K, V, R, SK, F, W>(
     hcx: &mut HCX,
     hasher: &mut StableHasher<W>,
-    map: &::std::collections::HashMap<K, V, R>,
+    map: &OrderMap<K, V, R>,
     to_stable_hash_key: F)
     where K: Eq + Hash,
           V: HashStable<HCX>,

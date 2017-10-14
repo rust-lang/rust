@@ -117,7 +117,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 
     pub fn region_span(&self, region: &Region) -> Span {
-        let opt_span = self.region_span_map.get(region);
+        let opt_span = self.region_span_map.get(*region);
         assert!(opt_span.is_some(), "end region not found for {:?}", region);
         *opt_span.unwrap()
     }

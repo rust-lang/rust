@@ -15,7 +15,7 @@ use util::nodemap::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
 
-use std::collections::hash_map::Entry::{Occupied, Vacant};
+use ordermap::Entry::{Occupied, Vacant};
 
 use syntax::ast;
 use syntax::attr;

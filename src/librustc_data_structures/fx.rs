@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::default::Default;
 use std::hash::{Hasher, Hash, BuildHasherDefault};
 use std::ops::BitXor;
+use ordermap::OrderMap;
 
-pub type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
+// pub type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 pub type FxHashSet<V> = HashSet<V, BuildHasherDefault<FxHasher>>;
+
+pub type FxHashMap<K, V> = OrderMap<K, V, BuildHasherDefault<FxHasher>>;
 
 #[allow(non_snake_case)]
 pub fn FxHashMap<K: Hash + Eq, V>() -> FxHashMap<K, V> {
-    HashMap::default()
+    Default::default()
 }
 
 #[allow(non_snake_case)]

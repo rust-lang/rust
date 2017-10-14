@@ -41,6 +41,7 @@ extern crate log;
 extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
+extern crate ordermap;
 
 use rustc::lint;
 use rustc::middle;

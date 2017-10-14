@@ -41,7 +41,7 @@ impl DepGraphQuery {
     }
 
     pub fn contains_node(&self, node: &DepNode) -> bool {
-        self.indices.contains_key(&node)
+        self.indices.contains_key(node)
     }
 
     pub fn nodes(&self) -> Vec<&DepNode> {
@@ -83,7 +83,7 @@ impl DepGraphQuery {
 
     /// Just the outgoing edges from `node`.
     pub fn immediate_successors(&self, node: &DepNode) -> Vec<&DepNode> {
-        if let Some(&index) = self.indices.get(&node) {
+        if let Some(&index) = self.indices.get(node) {
             self.graph.successor_nodes(index)
                       .map(|s| self.graph.node_data(s))
                       .collect()

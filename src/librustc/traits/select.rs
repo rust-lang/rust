@@ -1263,7 +1263,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let trait_ref = &cache_fresh_trait_pred.0.trait_ref;
         if self.can_use_global_caches(param_env) {
             let cache = tcx.selection_cache.hashmap.borrow();
-            if let Some(cached) = cache.get(&trait_ref) {
+            if let Some(cached) = cache.get(trait_ref) {
                 return Some(cached.get(tcx));
             }
         }

@@ -28,7 +28,7 @@ use infer::region_inference::RegionVarBindings;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
-use std::collections::hash_map::Entry::Vacant;
+use ordermap::Entry::Vacant;
 use std::env;
 use std::fs::File;
 use std::io;
