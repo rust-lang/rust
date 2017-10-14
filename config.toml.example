@@ -250,13 +250,10 @@
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
-# The default linker that will be used by the generated compiler. Note that this
-# is not the linker used to link said compiler.
+# The default linker that will be hard-coded into the generated compiler for
+# targets that don't specify linker explicitly in their target specifications.
+# Note that this is not the linker used to link said compiler.
 #default-linker = "cc"
-
-# The default ar utility that will be used by the generated compiler if LLVM
-# cannot be used. Note that this is not used to assemble said compiler.
-#default-ar = "ar"
 
 # The "channel" for the Rust build to produce. The stable/beta channels only
 # allow using stable features, whereas the nightly and dev channels allow using

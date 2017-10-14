@@ -88,7 +88,6 @@ pub struct Config {
     pub rust_debuginfo_only_std: bool,
     pub rust_rpath: bool,
     pub rustc_default_linker: Option<String>,
-    pub rustc_default_ar: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
     pub rust_dist_src: bool,
@@ -262,7 +261,6 @@ struct Rust {
     use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
     default_linker: Option<String>,
-    default_ar: Option<String>,
     channel: Option<String>,
     musl_root: Option<String>,
     rpath: Option<bool>,
@@ -464,7 +462,6 @@ impl Config {
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
             config.rustc_default_linker = rust.default_linker.clone();
-            config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
 
             match rust.codegen_units {

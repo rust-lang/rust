@@ -268,8 +268,6 @@ pub struct TargetOptions {
 
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
-    /// Archive utility to use when managing archives. Defaults to "ar".
-    pub ar: String,
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
@@ -442,7 +440,6 @@ impl Default for TargetOptions {
         TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
-            ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
@@ -684,7 +681,6 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(linker);
-        key!(ar);
         key!(pre_link_args, link_args);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);
@@ -877,7 +873,6 @@ impl ToJson for Target {
 
         target_option_val!(is_builtin);
         target_option_val!(linker);
-        target_option_val!(ar);
         target_option_val!(link_args - pre_link_args);
         target_option_val!(pre_link_objects_exe);
         target_option_val!(pre_link_objects_dll);

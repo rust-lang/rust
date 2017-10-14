@@ -124,9 +124,8 @@ v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
 
-# Used on systems where "cc" and "ar" are unavailable
+# Used on systems where "cc" is unavailable
 v("default-linker", "rust.default-linker", "the default linker")
-v("default-ar", "rust.default-ar", "the default ar")
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).

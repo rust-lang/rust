@@ -31,8 +31,7 @@ pub struct ArchiveConfig<'a> {
     pub lib_search_paths: Vec<PathBuf>,
 }
 
-/// Helper for adding many files to an archive with a single invocation of
-/// `ar`.
+/// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
 pub struct ArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
@@ -201,8 +200,8 @@ impl<'a> ArchiveBuilder<'a> {
         });
     }
 
-    /// Indicate that the next call to `build` should updates all symbols in
-    /// the archive (run 'ar s' over it).
+    /// Indicate that the next call to `build` should update all symbols in
+    /// the archive (equivalent to running 'ar s' over it).
     pub fn update_symbols(&mut self) {
         self.should_update_symbols = true;
     }
