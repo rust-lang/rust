@@ -5,7 +5,7 @@
 [![Current Version](http://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MPL-2.0](https://img.shields.io/crates/l/clippy.svg)](#License)
 
-A collection of lints to catch common mistakes and improve your Rust code.
+A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
 [There are 209 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
 
