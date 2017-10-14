@@ -10,22 +10,55 @@
 
 //! A module for working with processes.
 //!
+//! This module provides a [`Command`] struct that can be used to configure and
+//! spawn a process, as well as a [`Child`] struct that represents a running or
+//! terminated process.
+//!
 //! # Examples
 //!
-//! Basic usage where we try to execute the `cat` shell command:
+//! Hello world, `std::process` edition:
 //!
-//! ```should_panic
-//! use std::process::Command;
+//! ```
+//! use std::process:Command;
 //!
-//! let mut child = Command::new("/bin/cat")
-//!                         .arg("file.txt")
+//! // Note that by default, the output of the command will be sent to stdout
+//! let child = Command::new("echo")
+//!                         .arg("Hello world")
 //!                         .spawn()
-//!                         .expect("failed to execute child");
+//!                         .expect("Failed to start process");
 //!
 //! let ecode = child.wait()
-//!                  .expect("failed to wait on child");
+//!                  .expect("Failed to wait on child");
 //!
 //! assert!(ecode.success());
+//! ```
+//!
+//! Piping output from one command into another command:
+//!
+//! ```
+//! use std::process::{Command, Stdio};
+//!
+//! // stdout must be configured with `Stdio::piped` in order to use
+//! // `echo_child.stdout`
+//! let echo_child = Command::new("echo")
+//!     .arg("Oh no, a tpyo!")
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("Failed to start echo process");
+//!
+//! // Note that `echo_child` is moved here, but we won't be needing
+//! // `echo_child` anymore
+//! let echo_out = echo_child.stdout.expect("Failed to open echo stdout");
+//!
+//! let mut sed_child = Command::new("sed")
+//!     .arg("s/tpyo/typo/")
+//!     .stdin(Stdio::from(echo_out))
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("Failed to start sed process");
+//!
+//! let output = sed_child.wait_with_output().expect("Failed to wait on sed");
+//! assert_eq!(b"Oh no, a typo!\n", output.stdout.as_slice());
 //! ```
 //!
 //! Calling a command with input and reading its output:
@@ -52,6 +85,9 @@
 //!
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
+//!
+//! [`Command`]: struct.Command.html
+//! [`Child`]: struct.Child.html
 
 #![stable(feature = "process", since = "1.0.0")]
 
