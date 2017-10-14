@@ -163,6 +163,20 @@
         return String.fromCharCode(c);
     }
 
+    function displayHelp(display, ev) {
+        if (display === true) {
+            if (hasClass(help, "hidden")) {
+                ev.preventDefault();
+                removeClass(help, "hidden");
+                addClass(document.body, "blur");
+            }
+        } else if (!hasClass(help, "hidden")) {
+            ev.preventDefault();
+            addClass(help, "hidden");
+            removeClass(document.body, "blur");
+        }
+    }
+
     function handleShortcut(ev) {
         if (document.activeElement.tagName === "INPUT")
             return;
@@ -176,9 +190,7 @@
         case "Escape":
             var search = document.getElementById("search");
             if (!hasClass(help, "hidden")) {
-                ev.preventDefault();
-                addClass(help, "hidden");
-                removeClass(document.body, "blur");
+                displayHelp(false, ev);
             } else if (!hasClass(search, "hidden")) {
                 ev.preventDefault();
                 addClass(search, "hidden");
@@ -188,6 +200,7 @@
 
         case "s":
         case "S":
+            displayHelp(false, ev);
             ev.preventDefault();
             focusSearchBar();
             break;
@@ -198,10 +211,8 @@
             break;
 
         case "?":
-            if (ev.shiftKey && hasClass(help, "hidden")) {
-                ev.preventDefault();
-                removeClass(help, "hidden");
-                addClass(document.body, "blur");
+            if (ev.shiftKey) {
+                displayHelp(true, ev);
             }
             break;
         }
