@@ -16,6 +16,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
+use rustc_const_math::MAX_F32_PLUS_HALF_ULP;
 use std::{u128, i128};
 
 use base;
@@ -827,9 +828,9 @@ fn cast_int_to_float(bcx: &Builder,
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
     let is_u128_to_f32 = !signed && int_ty.int_width() == 128 && float_ty.float_width() == 32;
     if is_u128_to_f32 && bcx.sess().opts.debugging_opts.saturating_float_casts {
-        // f32::MAX + 0.5 ULP as u128. All inputs greater or equal to this should be
-        // rounded to infinity, for everything else LLVM's uitofp works just fine.
-        let max = C_big_integral(int_ty, 0xffffff80000000000000000000000000_u128);
+        // All inputs greater or equal to (f32::MAX + 0.5 ULP) are rounded to infinity,
+        // and for everything else LLVM's uitofp works just fine.
+        let max = C_big_integral(int_ty, MAX_F32_PLUS_HALF_ULP);
         let overflow = bcx.icmp(llvm::IntUGE, x, max);
         let infinity_bits = C_u32(bcx.ccx, ieee::Single::INFINITY.to_bits() as u32);
         let infinity = consts::bitcast(infinity_bits, float_ty);

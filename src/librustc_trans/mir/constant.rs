@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc_const_math::ConstInt::*;
-use rustc_const_math::{ConstInt, ConstMathErr};
+use rustc_const_math::{ConstInt, ConstMathErr, MAX_F32_PLUS_HALF_ULP};
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::traits;
@@ -986,10 +986,10 @@ unsafe fn const_cast_int_to_float(ccx: &CrateContext,
         panic!("could not get z128 value of constant integer {:?}",
                Value(llval));
     });
-    // If this is an u128 cast and the value is > f32::MAX + 0.5 ULP, round up to infinity.
     if signed {
         llvm::LLVMConstSIToFP(llval, float_ty.to_ref())
-    } else if value >= 0xffffff80000000000000000000000000_u128 && float_ty.float_width() == 32 {
+    } else if float_ty.float_width() == 32 && value >= MAX_F32_PLUS_HALF_ULP {
+        // We're casting to f32 and the value is > f32::MAX + 0.5 ULP -> round up to infinity.
         let infinity_bits = C_u32(ccx, ieee::Single::INFINITY.to_bits() as u32);
         consts::bitcast(infinity_bits, float_ty)
     } else {
