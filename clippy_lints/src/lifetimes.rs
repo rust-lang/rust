@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, id) = item.node {
-            check_fn_inner(cx, &sig.decl, Some(id), &sig.generics, item.span);
+            check_fn_inner(cx, &sig.decl, Some(id), &item.generics, item.span);
         }
     }
 
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
                 TraitMethod::Required(_) => None,
                 TraitMethod::Provided(id) => Some(id),
             };
-            check_fn_inner(cx, &sig.decl, body, &sig.generics, item.span);
+            check_fn_inner(cx, &sig.decl, body, &item.generics, item.span);
         }
     }
 }
