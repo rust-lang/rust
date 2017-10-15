@@ -229,6 +229,7 @@ impl<'a> FmtVisitor<'a> {
     fn visit_fn(
         &mut self,
         fk: visit::FnKind,
+        generics: &ast::Generics,
         fd: &ast::FnDecl,
         s: Span,
         _: ast::NodeId,
@@ -238,12 +239,12 @@ impl<'a> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, _, _, _, _, _, b) => {
+            visit::FnKind::ItemFn(ident, _, _, _, _, b) => {
                 block = b;
                 self.rewrite_fn(
                     indent,
                     ident,
-                    &FnSig::from_fn_kind(&fk, fd, defaultness),
+                    &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                     b,
                 )
@@ -253,7 +254,7 @@ impl<'a> FmtVisitor<'a> {
                 self.rewrite_fn(
                     indent,
                     ident,
-                    &FnSig::from_fn_kind(&fk, fd, defaultness),
+                    &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                     b,
                 )
@@ -411,15 +412,8 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 self.visit_fn(
-                    visit::FnKind::ItemFn(
-                        item.ident,
-                        generics,
-                        unsafety,
-                        constness,
-                        abi,
-                        &item.vis,
-                        body,
-                    ),
+                    visit::FnKind::ItemFn(item.ident, unsafety, constness, abi, &item.vis, body),
+                    generics,
                     decl,
                     item.span,
                     item.id,
@@ -490,12 +484,14 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::TraitItemKind::Method(ref sig, None) => {
                 let indent = self.block_indent;
-                let rewrite = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
+                let rewrite =
+                    self.rewrite_required_fn(indent, ti.ident, sig, &ti.generics, ti.span);
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, Some(ref body)) => {
                 self.visit_fn(
                     visit::FnKind::Method(ti.ident, sig, None, body),
+                    &ti.generics,
                     &sig.decl,
                     ti.span,
                     ti.id,
@@ -531,6 +527,7 @@ impl<'a> FmtVisitor<'a> {
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.visit_fn(
                     visit::FnKind::Method(ii.ident, sig, Some(&ii.vis), body),
+                    &ii.generics,
                     &sig.decl,
                     ii.span,
                     ii.id,

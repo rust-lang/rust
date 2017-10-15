@@ -184,25 +184,29 @@ impl<'a> FnSig<'a> {
         }
     }
 
-    pub fn from_method_sig(method_sig: &'a ast::MethodSig) -> FnSig {
+    pub fn from_method_sig(
+        method_sig: &'a ast::MethodSig,
+        generics: &'a ast::Generics,
+    ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.unsafety,
             constness: method_sig.constness.node,
             defaultness: ast::Defaultness::Final,
             abi: method_sig.abi,
             decl: &*method_sig.decl,
-            generics: &method_sig.generics,
+            generics: generics,
             visibility: ast::Visibility::Inherited,
         }
     }
 
     pub fn from_fn_kind(
         fn_kind: &'a visit::FnKind,
+        generics: &'a ast::Generics,
         decl: &'a ast::FnDecl,
         defualtness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::ItemFn(_, generics, unsafety, constness, abi, visibility, _) => FnSig {
+            visit::FnKind::ItemFn(_, unsafety, constness, abi, visibility, _) => FnSig {
                 decl: decl,
                 generics: generics,
                 abi: abi,
@@ -212,7 +216,7 @@ impl<'a> FnSig<'a> {
                 visibility: visibility.clone(),
             },
             visit::FnKind::Method(_, ref method_sig, vis, _) => {
-                let mut fn_sig = FnSig::from_method_sig(method_sig);
+                let mut fn_sig = FnSig::from_method_sig(method_sig, generics);
                 fn_sig.defaultness = defualtness;
                 if let Some(vis) = vis {
                     fn_sig.visibility = vis.clone();
@@ -338,6 +342,7 @@ impl<'a> FmtVisitor<'a> {
         indent: Indent,
         ident: ast::Ident,
         sig: &ast::MethodSig,
+        generics: &ast::Generics,
         span: Span,
     ) -> Option<String> {
         // Drop semicolon or it will be interpreted as comment.
@@ -348,7 +353,7 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &FnSig::from_method_sig(sig),
+            &FnSig::from_method_sig(sig, generics),
             span,
             false,
             false,
