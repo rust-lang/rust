@@ -1,4 +1,4 @@
-#![warn(suggest_print)]
+#![warn(explicit_write)]
 
 
 fn stdout() -> String {

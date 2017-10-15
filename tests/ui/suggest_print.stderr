@@ -4,7 +4,7 @@ error: use of `write!(stdout(), ...).unwrap()`. Consider using `print!` instead
 16 |         write!(std::io::stdout(), "test").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D suggest-print` implied by `-D warnings`
+   = note: `-D explicit-write` implied by `-D warnings`
 
 error: use of `write!(stderr(), ...).unwrap()`. Consider using `eprint!` instead
   --> $DIR/suggest_print.rs:17:9

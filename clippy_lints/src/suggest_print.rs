@@ -16,7 +16,7 @@ use utils::opt_def_id;
 /// writeln!(&mut io::stderr(), "foo: {:?}", bar).unwrap();
 /// ```
 declare_lint! {
-    pub SUGGEST_PRINT,
+    pub EXPLICIT_WRITE,
     Warn,
     "using `write!()` family of functions instead of `print!()` family of \
      functions, when using the latter would work"
@@ -27,7 +27,7 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SUGGEST_PRINT)
+        lint_array!(EXPLICIT_WRITE)
     }
 }
 
@@ -74,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(macro_name) = calling_macro {
                 span_lint(
                     cx,
-                    SUGGEST_PRINT,
+                    EXPLICIT_WRITE,
                     expr.span,
                     &format!(
                         "use of `{}!({}(), ...).unwrap()`. Consider using `{}{}!` instead",
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             } else {
                 span_lint(
                     cx,
-                    SUGGEST_PRINT,
+                    EXPLICIT_WRITE,
                     expr.span,
                     &format!(
                         "use of `{}().write_fmt(...).unwrap()`. Consider using `{}print!` instead",

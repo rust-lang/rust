@@ -542,7 +542,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         serde_api::SERDE_API_MISUSE,
         should_assert_eq::SHOULD_ASSERT_EQ,
         strings::STRING_LIT_AS_BYTES,
-        suggest_print::SUGGEST_PRINT,
+        suggest_print::EXPLICIT_WRITE,
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
