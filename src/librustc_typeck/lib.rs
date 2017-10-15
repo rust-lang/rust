@@ -123,6 +123,7 @@ mod constrained_type_params;
 mod impl_wf_check;
 mod coherence;
 mod variance;
+mod namespace;
 
 pub struct TypeAndSubsts<'tcx> {
     substs: &'tcx Substs<'tcx>,

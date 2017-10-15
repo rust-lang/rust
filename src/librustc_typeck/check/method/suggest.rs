@@ -17,6 +17,7 @@ use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
+use namespace::Namespace;
 use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::FxHashSet;
 
@@ -92,12 +93,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     CandidateSource::ImplSource(impl_did) => {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
-                        let item = self.associated_item(impl_did, item_name)
+                        let item = self.associated_item(impl_did, item_name, Namespace::Value)
                             .or_else(|| {
                                 self.associated_item(
                                     self.tcx.impl_trait_ref(impl_did).unwrap().def_id,
-
-                                    item_name
+                                    item_name,
+                                    Namespace::Value,
                                 )
                             }).unwrap();
                         let note_span = self.tcx.hir.span_if_local(item.def_id).or_else(|| {
@@ -127,7 +128,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     CandidateSource::TraitSource(trait_did) => {
-                        let item = self.associated_item(trait_did, item_name).unwrap();
+                        let item = self
+                            .associated_item(trait_did, item_name, Namespace::Value)
+                            .unwrap();
                         let item_span = self.tcx.def_span(item.def_id);
                         span_note!(err,
                                    item_span,
@@ -402,7 +405,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // implementing a trait would be legal but is rejected
                 // here).
                 (type_is_local || info.def_id.is_local())
-                    && self.associated_item(info.def_id, item_name).is_some()
+                    && self.associated_item(info.def_id, item_name, Namespace::Value).is_some()
             })
             .collect::<Vec<_>>();
 

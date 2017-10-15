@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use namespace::Namespace;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::traits;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 
 pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                     crate_num: CrateNum) {
@@ -28,19 +29,10 @@ struct InherentOverlapChecker<'a, 'tcx: 'a> {
 impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
     fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId,
                                        overlap: traits::OverlapResult) {
-        #[derive(Copy, Clone, PartialEq)]
-        enum Namespace {
-            Type,
-            Value,
-        }
 
         let name_and_namespace = |def_id| {
             let item = self.tcx.associated_item(def_id);
-            (item.name, match item.kind {
-                ty::AssociatedKind::Type => Namespace::Type,
-                ty::AssociatedKind::Const |
-                ty::AssociatedKind::Method => Namespace::Value,
-            })
+            (item.name, Namespace::from(item.kind))
         };
 
         let impl_items1 = self.tcx.associated_item_def_ids(impl1);
