@@ -378,7 +378,7 @@ pub trait Float
     fn from_bits(input: u128) -> Self;
     fn from_i128_r(input: i128, round: Round) -> StatusAnd<Self> {
         if input < 0 {
-            Self::from_u128_r(-input as u128, -round).map(|r| -r)
+            Self::from_u128_r(input.wrapping_neg() as u128, -round).map(|r| -r)
         } else {
             Self::from_u128_r(input as u128, round)
         }
