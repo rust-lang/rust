@@ -18,8 +18,8 @@ use utils::opt_def_id;
 declare_lint! {
     pub EXPLICIT_WRITE,
     Warn,
-    "using `write!()` family of functions instead of `print!()` family of \
-     functions, when using the latter would work"
+    "using the `write!()` family of functions instead of the `print!()` family \
+     of functions, when using the latter would work"
 }
 
 #[derive(Copy, Clone, Debug)]
