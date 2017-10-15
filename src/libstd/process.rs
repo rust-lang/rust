@@ -19,7 +19,7 @@
 //! Hello world, `std::process` edition:
 //!
 //! ```
-//! use std::process:Command;
+//! use std::process::Command;
 //!
 //! // Note that by default, the output of the command will be sent to stdout
 //! let child = Command::new("echo")
