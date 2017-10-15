@@ -7,7 +7,8 @@ use utils::{in_macro, span_lint};
 /// **What it does:** Checks for erasing operations, e.g. `x * 0`.
 ///
 /// **Why is this bad?** The whole expression can be replaced by zero.
-/// Most likely mistake was made and code should be reviewed or simplified.
+/// This is most likely not the intended outcome and should probably be
+/// corrected
 ///
 /// **Known problems:** None.
 ///
@@ -55,7 +56,7 @@ fn check(cx: &LateContext, e: &Expr, span: Span) {
                 cx,
                 ERASING_OP,
                 span,
-                "the operation is ineffective. Consider reducing it to `0`",
+                "this operation will always return zero. This is likely not the intended outcome",
             );
         }
     }
