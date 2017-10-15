@@ -344,6 +344,52 @@ macro_rules! define_maps {
                 }
             }
 
+            /// Ensure that either this query has all green inputs or been executed.
+            /// Executing query::ensure(D) is considered a read of the dep-node D.
+            ///
+            /// This function is particularly useful when executing passes for their
+            /// side-effects -- e.g., in order to report errors for erroneous programs.
+            ///
+            /// Note: The optimization is only available during incr. comp.
+            pub fn ensure(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> () {
+                let dep_node = Self::to_dep_node(tcx, &key);
+
+                // Ensuring an "input" or anonymous query makes no sense
+                assert!(!dep_node.kind.is_anon());
+                assert!(!dep_node.kind.is_input());
+                use dep_graph::DepNodeColor;
+                match tcx.dep_graph.node_color(&dep_node) {
+                    Some(DepNodeColor::Green(dep_node_index)) => {
+                        tcx.dep_graph.read_index(dep_node_index);
+                    }
+                    Some(DepNodeColor::Red) => {
+                        // A DepNodeColor::Red DepNode means that this query was executed
+                        // before. We can not call `dep_graph.read()` here as we don't have
+                        // the DepNodeIndex. Instead, We call the query again to issue the
+                        // appropriate `dep_graph.read()` call. The performance cost this
+                        // introduces should be negligible as we'll immediately hit the
+                        // in-memory cache.
+                        let _ = tcx.$name(key);
+                    }
+                    None => {
+                        // Huh
+                        if !tcx.dep_graph.is_fully_enabled() {
+                            let _ = tcx.$name(key);
+                            return;
+                        }
+                        match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
+                            Some(dep_node_index) => {
+                                debug_assert!(tcx.dep_graph.is_green(dep_node_index));
+                                tcx.dep_graph.read_index(dep_node_index);
+                            }
+                            None => {
+                                let _ = tcx.$name(key);
+                            }
+                        }
+                    }
+                }
+            }
+
             fn compute_result(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> $V {
                 let provider = tcx.maps.providers[key.map_crate()].$name;
                 provider(tcx.global_tcx(), key)
