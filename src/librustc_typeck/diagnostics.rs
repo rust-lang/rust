@@ -1854,7 +1854,7 @@ unsafe impl !Clone for Foo { }
 
 This will compile:
 
-```
+```ignore (ignore auto_trait future compatibility warning)
 #![feature(optin_builtin_traits)]
 
 struct Foo;
