@@ -89,7 +89,7 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_target_machine(sess);
 
     let whitelist = match &*sess.target.target.arch {
-        "arm" => ARM_WHITELIST,
+        "arm" | "aarch64" => ARM_WHITELIST,
         "x86" | "x86_64" => X86_WHITELIST,
         "hexagon" => HEXAGON_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
