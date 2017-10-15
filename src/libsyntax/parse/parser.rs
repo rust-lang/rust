@@ -16,7 +16,6 @@ use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, Crate};
-use ast::Generics;
 use ast::Defaultness;
 use ast::EnumDef;
 use ast::{Expr, ExprKind, RangeLimits};
@@ -3874,6 +3873,16 @@ impl<'a> Parser<'a> {
         self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 
+    fn eat_auto_trait(&mut self) -> bool {
+        if self.token.is_keyword(keywords::Auto)
+            && self.look_ahead(1, |t| t.is_keyword(keywords::Trait))
+        {
+            self.eat_keyword(keywords::Auto) && self.eat_keyword(keywords::Trait)
+        } else {
+            false
+        }
+    }
+
     fn is_defaultness(&self) -> bool {
         // `pub` is included for better error messages
         self.token.is_keyword(keywords::Default) &&
@@ -5052,7 +5061,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse trait Foo { ... }
-    fn parse_item_trait(&mut self, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
+    fn parse_item_trait(&mut self, is_auto: IsAuto, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
 
@@ -5079,17 +5088,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Ok((ident, ItemKind::Trait(IsAuto::No, unsafety, tps, bounds, trait_items), None))
-    }
-
-    fn parse_item_auto_trait(&mut self, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
-        let ident = self.parse_ident()?;
-        self.expect(&token::OpenDelim(token::Brace))?;
-        self.expect(&token::CloseDelim(token::Brace))?;
-        // Auto traits cannot have generics, super traits nor contain items.
-        Ok((ident,
-            ItemKind::Trait(IsAuto::Yes, unsafety, Generics::default(), Vec::new(), Vec::new()),
-            None))
+        Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, trait_items), None))
     }
 
     /// Parses items implementations variants
@@ -5999,44 +5998,19 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
         if self.check_keyword(keywords::Unsafe) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Trait))
+            (self.look_ahead(1, |t| t.is_keyword(keywords::Trait)) ||
+            self.look_ahead(1, |t| t.is_keyword(keywords::Auto)))
         {
             // UNSAFE TRAIT ITEM
             self.expect_keyword(keywords::Unsafe)?;
-            self.expect_keyword(keywords::Trait)?;
+            let is_auto = if self.eat_keyword(keywords::Trait) {
+                IsAuto::No
+            } else {
+                self.eat_auto_trait();
+                IsAuto::Yes
+            };
             let (ident, item_, extra_attrs) =
-                self.parse_item_trait(ast::Unsafety::Unsafe)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
-        }
-        if self.eat_keyword(keywords::Auto) {
-            self.expect_keyword(keywords::Trait)?;
-            // AUTO TRAIT ITEM
-            let (ident,
-                 item_,
-                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Normal)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
-        }
-        if self.check_keyword(keywords::Unsafe) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Auto)) {
-            self.expect_keyword(keywords::Unsafe)?;
-            self.expect_keyword(keywords::Auto)?;
-            self.expect_keyword(keywords::Trait)?;
-            // UNSAFE AUTO TRAIT ITEM
-            let (ident,
-                 item_,
-                 extra_attrs) = self.parse_item_auto_trait(ast::Unsafety::Unsafe)?;
+                self.parse_item_trait(is_auto, ast::Unsafety::Unsafe)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
@@ -6139,10 +6113,19 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if self.eat_keyword(keywords::Trait) {
+        if self.check_keyword(keywords::Trait)
+            || (self.check_keyword(keywords::Auto)
+                && self.look_ahead(1, |t| t.is_keyword(keywords::Trait)))
+        {
+            let is_auto = if self.eat_keyword(keywords::Trait) {
+                IsAuto::No
+            } else {
+                self.eat_auto_trait();
+                IsAuto::Yes
+            };
             // TRAIT ITEM
             let (ident, item_, extra_attrs) =
-                self.parse_item_trait(ast::Unsafety::Normal)?;
+                self.parse_item_trait(is_auto, ast::Unsafety::Normal)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,

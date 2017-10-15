@@ -8,7 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+macro_rules! auto {
+    () => (struct S;)
+}
 
-auto trait Auto { fn item() }
-//~^ ERROR: expected `}`, found `fn`
+auto!();
+
+fn auto() {}
+
+fn main() {
+    auto();
+    let auto = 10;
+    auto;
+    auto as u8;
+}
