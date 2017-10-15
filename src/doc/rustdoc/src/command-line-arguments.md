@@ -96,7 +96,7 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs --crate-name mycrate
 ```
 
-By default, `rustodc` assumes that the name of your crate is the same name
+By default, `rustdoc` assumes that the name of your crate is the same name
 as the `.rs` file. `--crate-name` lets you override this assumption with
 whatever name you choose.
 
@@ -253,7 +253,7 @@ $ rustdoc README.md --html-before-content extra.html
 ```
 
 This flag takes a list of files, and inserts them inside the `<body>` tag but
-before the other content `rustodc` would normally produce in the rendered
+before the other content `rustdoc` would normally produce in the rendered
 documentation.
 
 ## `--html-after-content`: include more HTML after the content
@@ -266,7 +266,7 @@ $ rustdoc README.md --html-after-content extra.html
 ```
 
 This flag takes a list of files, and inserts them before the `</body>` tag but
-after the other content `rustodc` would normally produce in the rendered
+after the other content `rustdoc` would normally produce in the rendered
 documentation.
 
 
