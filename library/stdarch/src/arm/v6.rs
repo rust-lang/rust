@@ -19,3 +19,26 @@ pub unsafe fn _rev_u16(x: u16) -> u16 {
 pub unsafe fn _rev_u32(x: u32) -> u32 {
     x.swap_bytes() as u32
 }
+
+#[cfg(test)]
+mod tests {
+    use stdsimd_test::simd_test;
+
+    use arm::v6;
+
+    #[test]
+    fn _rev_u16() {
+        unsafe {
+            assert_eq!(v6::_rev_u16(0b0000_0000_1111_1111_u16), 0b1111_1111_0000_0000_u16);
+        }
+    }
+
+    #[test]
+    fn _rev_u32() {
+        unsafe {
+            assert_eq!(v6::_rev_u32(
+                0b0000_0000_1111_1111_0000_0000_1111_1111_u32
+            ), 0b1111_1111_0000_0000_1111_1111_0000_0000_u32);
+        }
+    }
+}
