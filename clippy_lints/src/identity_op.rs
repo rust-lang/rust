@@ -58,18 +58,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
     }
 }
 
-fn no_zeros(v: &ConstInt) -> bool {
+fn all_ones(v: &ConstInt) -> bool {
     match *v {
-        ConstInt::I8(i) => i.count_zeros() == 0,
-        ConstInt::I16(i) => i.count_zeros() == 0,
-        ConstInt::I32(i) => i.count_zeros() == 0,
-        ConstInt::I64(i) => i.count_zeros() == 0,
-        ConstInt::I128(i) => i.count_zeros() == 0,
-        ConstInt::U8(i) => i.count_zeros() == 0,
-        ConstInt::U16(i) => i.count_zeros() == 0,
-        ConstInt::U32(i) => i.count_zeros() == 0,
-        ConstInt::U64(i) => i.count_zeros() == 0,
-        ConstInt::U128(i) => i.count_zeros() == 0,
+        ConstInt::I8(i) => i == !0,
+        ConstInt::I16(i) => i == !0,
+        ConstInt::I32(i) => i == !0,
+        ConstInt::I64(i) => i == !0,
+        ConstInt::I128(i) => i == !0,
+        ConstInt::U8(i) => i == !0,
+        ConstInt::U16(i) => i == !0,
+        ConstInt::U32(i) => i == !0,
+        ConstInt::U64(i) => i == !0,
+        ConstInt::U128(i) => i == !0,
         _ => false
     }
 }
@@ -79,7 +79,7 @@ fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, e) {
         if match m {
             0 => v.to_u128_unchecked() == 0,
-            -1 => no_zeros(&v),
+            -1 => all_ones(&v),
             1 => v.to_u128_unchecked() == 1,
             _ => unreachable!(),
         } {
