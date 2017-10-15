@@ -214,6 +214,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
                            .into_iter()
                            .map(|e| to_fulfillment_error(e))
                            .collect();
+        debug!("select_all_or_error: errors={:?}", errors);
         if errors.is_empty() {
             Ok(())
         } else {
