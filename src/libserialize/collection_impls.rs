@@ -14,6 +14,7 @@ use std::hash::{Hash, BuildHasher};
 
 use {Decodable, Encodable, Decoder, Encoder};
 use std::collections::{LinkedList, VecDeque, BTreeMap, BTreeSet, HashMap, HashSet};
+use ordermap::OrderMap;
 
 impl<
     T: Encodable
@@ -153,6 +154,43 @@ impl<K, V, S> Decodable for HashMap<K, V, S>
         d.read_map(|d, len| {
             let state = Default::default();
             let mut map = HashMap::with_capacity_and_hasher(len, state);
+            for i in 0..len {
+                let key = d.read_map_elt_key(i, |d| Decodable::decode(d))?;
+                let val = d.read_map_elt_val(i, |d| Decodable::decode(d))?;
+                map.insert(key, val);
+            }
+            Ok(map)
+        })
+    }
+}
+
+impl<K, V, S> Encodable for OrderMap<K, V, S>
+    where K: Encodable + Hash + Eq,
+          V: Encodable,
+          S: BuildHasher,
+{
+    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        e.emit_map(self.len(), |e| {
+            let mut i = 0;
+            for (key, val) in self {
+                e.emit_map_elt_key(i, |e| key.encode(e))?;
+                e.emit_map_elt_val(i, |e| val.encode(e))?;
+                i += 1;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<K, V, S> Decodable for OrderMap<K, V, S>
+    where K: Decodable + Hash + Eq,
+          V: Decodable,
+          S: BuildHasher + Default,
+{
+    fn decode<D: Decoder>(d: &mut D) -> Result<OrderMap<K, V, S>, D::Error> {
+        d.read_map(|d, len| {
+            let state = Default::default();
+            let mut map = OrderMap::with_capacity_and_hasher(len, state);
             for i in 0..len {
                 let key = d.read_map_elt_key(i, |d| Decodable::decode(d))?;
                 let val = d.read_map_elt_val(i, |d| Decodable::decode(d))?;

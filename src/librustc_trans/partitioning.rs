@@ -111,7 +111,7 @@ use rustc::middle::trans::{Linkage, Visibility};
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use std::collections::hash_map::Entry;
+use ordermap::Entry;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{TransItem, TransItemExt, InstantiationMode};
@@ -398,7 +398,7 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 
-        for (k, v) in smallest.items_mut().drain() {
+        for (k, v) in smallest.items_mut().drain(..) {
             second_smallest.items_mut().insert(k, v);
         }
     }

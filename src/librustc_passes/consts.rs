@@ -50,7 +50,7 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
-use std::collections::hash_map::Entry;
+use ordermap::Entry;
 use std::cmp::Ordering;
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {

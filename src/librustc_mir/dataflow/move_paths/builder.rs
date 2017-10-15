@@ -16,7 +16,7 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 
 use syntax::codemap::DUMMY_SP;
 
-use std::collections::hash_map::Entry;
+use ordermap::Entry;
 use std::mem;
 
 use super::abs_domain::Lift;

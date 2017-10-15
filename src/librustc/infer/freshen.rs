@@ -47,7 +47,7 @@ use ty::subst::Substs;
 use util::nodemap::FxHashMap;
 use hir::def_id::DefId;
 
-use std::collections::hash_map::Entry;
+use ordermap::Entry;
 
 use super::InferCtxt;
 use super::unify_key::ToType;

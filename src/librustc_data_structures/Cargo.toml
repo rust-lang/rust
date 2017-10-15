@@ -11,3 +11,4 @@ crate-type = ["dylib"]
 [dependencies]
 log = "0.3"
 serialize = { path = "../libserialize" }
+ordermap = "0.3.0"

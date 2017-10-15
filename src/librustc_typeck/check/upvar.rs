@@ -54,7 +54,7 @@ use rustc::hir::def_id::DefIndex;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::util::nodemap::FxHashMap;
 
-use std::collections::hash_map::Entry;
+use ordermap::Entry;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_analyze(&self, body: &'gcx hir::Body) {

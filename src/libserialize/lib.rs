@@ -27,6 +27,8 @@ Core encoding and decoding interfaces.
 #![feature(specialization)]
 #![cfg_attr(test, feature(test))]
 
+extern crate ordermap;
+
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};
 
 pub use self::serialize::{SpecializationError, SpecializedEncoder, SpecializedDecoder};

@@ -54,6 +54,7 @@ extern crate rustc_trans_utils;
 extern crate rustc_demangle;
 extern crate jobserver;
 extern crate num_cpus;
+extern crate ordermap;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
