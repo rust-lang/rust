@@ -64,6 +64,7 @@ pub fn provide(providers: &mut Providers) {
         type_of,
         generics_of,
         predicates_of,
+        explicit_predicates_of,
         super_predicates_of,
         type_param_predicates,
         trait_def,
@@ -1296,13 +1297,17 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> ty::GenericPredicates<'tcx> {
     let explicit = explicit_predicates_of(tcx, def_id);
+    let predicates = if tcx.sess.features_untracked().infer_outlives_requirements {
+        [&explicit.predicates[..], &tcx.inferred_outlives_of(def_id)[..]].concat()
+    } else { explicit.predicates };
+
     ty::GenericPredicates {
         parent: explicit.parent,
-        predicates: [&explicit.predicates[..], &tcx.inferred_outlives_of(def_id)[..]].concat()
+        predicates: predicates,
     }
 }
 
-fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> ty::GenericPredicates<'tcx> {
     use rustc::hir::map::*;

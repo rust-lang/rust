@@ -1100,6 +1100,20 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::CrateVariancesMap {
     }
 }
 
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::CratePredicatesMap<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::CratePredicatesMap {
+            ref predicates,
+            // This is just an irrelevant helper value.
+            empty_predicate: _,
+        } = *self;
+
+        predicates.hash_stable(hcx, hasher);
+    }
+}
+
 impl_stable_hash_for!(struct ty::AssociatedItem {
     def_id,
     name,

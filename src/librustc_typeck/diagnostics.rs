@@ -4840,11 +4840,11 @@ register_diagnostics! {
     E0588, // packed type cannot transitively contain a `[repr(align)]` type
     E0592, // duplicate definitions with name `{}`
 //  E0613, // Removed (merged with E0609)
-    E0640, // infer outlives
     E0627, // yield statement outside of generator literal
     E0632, // cannot provide explicit type parameters when `impl Trait` is used in
            // argument position.
     E0634, // type has conflicting packed representaton hints
+    E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
     E0907, // type inside generator must be known in this context

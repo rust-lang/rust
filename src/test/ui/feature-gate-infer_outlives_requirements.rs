@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
+// Needs an explicit where clause stating outlives condition. (RFC 2093)
 
-// Test that the outlives computation runs for now...
-
-#![feature(rustc_attrs)]
-
-//todo add all the test cases
-// https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md#example-1-a-reference
-
-#[rustc_outlives]
-struct Direct<'a, T> { //~ ERROR 21:1: 23:2: [Binder(OutlivesPredicate(T, ReEarlyBound(0, 'a)))] [E0640]
-    field: &'a T
+// Type T needs to outlive lifetime 'a.
+struct Foo<'a, T> {
+    bar: &'a [T] //~ ERROR the parameter type `T` may not live long enough [E0309]
 }
 
 fn main() { }

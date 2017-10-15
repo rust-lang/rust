@@ -10,16 +10,21 @@
 
 // ignore-tidy-linelength
 
-// Test that the outlives computation runs for now...
+// Needs an explicit where clause stating outlives condition. (RFC 2093)
 
-#![feature(rustc_attrs)]
+trait MakeRef<'a> {
+    type Type;
+}
 
-//todo add all the test cases
-// https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md#example-1-a-reference
+impl<'a, T> MakeRef<'a> for Vec<T>
+  where T: 'a
+{
+    type Type = &'a T;
+}
 
-#[rustc_outlives]
-struct Direct<'a, T> { //~ ERROR 21:1: 23:2: [Binder(OutlivesPredicate(T, ReEarlyBound(0, 'a)))] [E0640]
-    field: &'a T
+// Type T needs to outlive lifetime 'a, as stated in impl.
+struct Foo<'a, T> {
+    foo: <Vec<T> as MakeRef<'a>>::Type //~ Error the parameter type `T` may not live long enough [E0309]
 }
 
 fn main() { }
