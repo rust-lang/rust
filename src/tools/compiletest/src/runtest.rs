@@ -1041,7 +1041,7 @@ actual:\n\
                 None => {
                     if self.is_unexpected_compiler_message(actual_error, expect_help, expect_note) {
                         self.error(
-                            &format!("{}:{}: unexpected {:?}: '{}'",
+                            &format!("{}:{}: unexpected {}: '{}'",
                                      file_name,
                                      actual_error.line_num,
                                      actual_error.kind.as_ref()
