@@ -22,7 +22,7 @@
 //! use std::process::Command;
 //!
 //! // Note that by default, the output of the command will be sent to stdout
-//! let child = Command::new("echo")
+//! let mut child = Command::new("echo")
 //!                         .arg("Hello world")
 //!                         .spawn()
 //!                         .expect("Failed to start process");
