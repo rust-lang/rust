@@ -95,6 +95,7 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-unknown-freebsd",
     "x86_64-unknown-fuchsia",
     "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnux32",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
     "x86_64-unknown-redox",
