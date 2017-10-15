@@ -19,6 +19,8 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 use rustc::util::nodemap::DefIdSet;
 
+use check::get_used_trait_imports;
+
 struct CheckVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     used_trait_imports: DefIdSet,
@@ -66,10 +68,9 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut used_trait_imports = DefIdSet();
     for &body_id in tcx.hir.krate().bodies.keys() {
         let item_def_id = tcx.hir.body_owner_def_id(body_id);
-        let tables = tcx.typeck_tables_of(item_def_id);
-        let imports = &tables.used_trait_imports;
+        let imports = get_used_trait_imports(tcx, item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
-        used_trait_imports.extend(imports);
+        used_trait_imports.extend(imports.borrow().iter());
     }
 
     let mut visitor = CheckVisitor { tcx, used_trait_imports };
