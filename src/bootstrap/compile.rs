@@ -29,7 +29,7 @@ use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 use serde_json;
 
-use util::{exe, libdir, is_dylib, copy, read_stamp_file};
+use util::{exe, libdir, is_dylib, copy, read_stamp_file, CiEnv};
 use {Build, Compiler, Mode};
 use native;
 use tool;
@@ -792,7 +792,7 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
     cargo.arg("--message-format").arg("json")
          .stdout(Stdio::piped());
 
-    if stderr_isatty() {
+    if stderr_isatty() && build.ci_env == CiEnv::None {
         // since we pass message-format=json to cargo, we need to tell the rustc
         // wrapper to give us colored output if necessary. This is because we
         // only want Cargo's JSON output, not rustcs.
