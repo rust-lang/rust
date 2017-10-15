@@ -420,7 +420,7 @@ impl<'a> Builder<'a> {
            .env("RUSTDOC_REAL", self.rustdoc(host))
            .env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
         if let Some(linker) = self.build.linker(host) {
-            cmd.env("RUSTDOC_LINKER", linker);
+            cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         cmd
     }
@@ -484,11 +484,13 @@ impl<'a> Builder<'a> {
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
-             .env("TEST_MIRI", self.config.test_miri.to_string())
-             .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
+             .env("TEST_MIRI", self.config.test_miri.to_string());
 
-        if let Some(linker) = self.build.linker(target) {
-            cargo.env("RUSTDOC_LINKER", linker);
+        if let Some(host_linker) = self.build.linker(compiler.host) {
+            cargo.env("RUSTC_HOST_LINKER", host_linker);
+        }
+        if let Some(target_linker) = self.build.linker(target) {
+            cargo.env("RUSTC_TARGET_LINKER", target_linker);
         }
 
         if mode != Mode::Tool {

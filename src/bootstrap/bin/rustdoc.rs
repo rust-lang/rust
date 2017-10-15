@@ -47,7 +47,7 @@ fn main() {
     if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
-    if let Some(linker) = env::var_os("RUSTDOC_LINKER") {
+    if let Some(linker) = env::var_os("RUSTC_TARGET_LINKER") {
         cmd.arg("--linker").arg(linker).arg("-Z").arg("unstable-options");
     }
 

@@ -1444,6 +1444,9 @@ actual:\n\
         } else {
             rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
         }
+        if let Some(ref linker) = self.config.linker {
+            rustc.arg(format!("-Clinker={}", linker));
+        }
 
         rustc.args(&self.props.compile_flags);
 

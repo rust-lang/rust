@@ -120,6 +120,11 @@ fn main() {
             cmd.arg("-L").arg(&root);
         }
 
+        // Override linker if necessary.
+        if let Ok(target_linker) = env::var("RUSTC_TARGET_LINKER") {
+            cmd.arg(format!("-Clinker={}", target_linker));
+        }
+
         // Pass down incremental directory, if any.
         if let Ok(dir) = env::var("RUSTC_INCREMENTAL") {
             cmd.arg(format!("-Zincremental={}", dir));
@@ -246,13 +251,11 @@ fn main() {
         if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
             cmd.arg("-Z").arg("force-unstable-if-unmarked");
         }
-    }
-
-    // Pass down extra flags, commonly used to configure `-Clinker`.
-    // Linker options should be set for build scripts as well,
-    // can't link a build script executable without a linker!
-    if let Ok(s) = env::var("RUSTC_FLAGS") {
-        cmd.args(&s.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>());
+    } else {
+        // Override linker if necessary.
+        if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
+            cmd.arg(format!("-Clinker={}", host_linker));
+        }
     }
 
     let color = match env::var("RUSTC_COLOR") {

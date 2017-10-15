@@ -649,10 +649,6 @@ impl Build {
         self.ar.get(&target).map(|p| &**p)
     }
 
-    fn linker(&self, target: Interned<String>) -> Option<&Path> {
-        self.config.target_config.get(&target).and_then(|c| c.linker.as_ref().map(|p| &**p))
-    }
-
     /// Returns the path to the C++ compiler for the target specified.
     fn cxx(&self, target: Interned<String>) -> Result<&Path, String> {
         match self.cxx.get(&target) {
@@ -663,24 +659,16 @@ impl Build {
         }
     }
 
-    /// Returns flags to pass to the compiler to generate code for `target`.
-    fn rustc_flags(&self, target: Interned<String>) -> Vec<String> {
-        // New flags should be added here with great caution!
-        //
-        // It's quite unfortunate to **require** flags to generate code for a
-        // target, so it should only be passed here if absolutely necessary!
-        // Most default configuration should be done through target specs rather
-        // than an entry here.
-
-        let mut base = Vec::new();
-        if let Some(linker) = self.linker(target) {
-            // If linker was explictly provided, force it on all the compiled Rust code.
-            base.push(format!("-Clinker={}", linker.display()));
-        } else if target != self.config.build && !target.contains("msvc") &&
-            !target.contains("emscripten") {
-            base.push(format!("-Clinker={}", self.cc(target).display()));
+    /// Returns the path to the linker for the given target if it needs to be overriden.
+    fn linker(&self, target: Interned<String>) -> Option<&Path> {
+        if let Some(config) = self.config.target_config.get(&target) {
+            config.linker.as_ref().map(|p| &**p)
+        } else if target != self.config.build &&
+                  !target.contains("msvc") && !target.contains("emscripten") {
+            Some(self.cc(target))
+        } else {
+            None
         }
-        base
     }
 
     /// Returns if this target should statically link the C runtime, if specified

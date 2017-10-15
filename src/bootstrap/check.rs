@@ -725,9 +725,6 @@ impl Step for Compiletest {
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc" || mode == "run-make" {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
-            if let Some(linker) = build.linker(target) {
-                cmd.arg("--linker").arg(linker);
-            }
         }
 
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
@@ -750,12 +747,14 @@ impl Step for Compiletest {
             flags.push("-g".to_string());
         }
 
-        let mut hostflags = build.rustc_flags(compiler.host);
-        hostflags.extend(flags.clone());
+        if let Some(linker) = build.linker(target) {
+            cmd.arg("--linker").arg(linker);
+        }
+
+        let hostflags = flags.clone();
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
-        let mut targetflags = build.rustc_flags(target);
-        targetflags.extend(flags);
+        let mut targetflags = flags.clone();
         targetflags.push(format!("-Lnative={}",
                                  build.test_helpers_out(target).display()));
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
