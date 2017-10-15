@@ -831,6 +831,10 @@ span.since {
 	.toggle-wrapper {
 		height: 1.5em;
 	}
+
+	#search {
+		margin-left: 0;
+	}
 }
 
 @media print {
