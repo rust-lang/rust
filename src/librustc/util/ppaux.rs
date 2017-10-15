@@ -1015,6 +1015,10 @@ define_print! {
                 TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
                 TyProjection(ref data) => data.print(f, cx),
                 TyAnon(def_id, substs) => {
+                    if cx.is_verbose {
+                        return write!(f, "TyAnon({:?}, {:?})", def_id, substs);
+                    }
+
                     ty::tls::with(|tcx| {
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                         // by looking up the projections associated with the def_id.

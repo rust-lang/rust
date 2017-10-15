@@ -591,8 +591,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             }
             visitor.visit_lifetime(lifetime);
         }
-        TyImplTraitExistential(ref bounds) => {
+        TyImplTraitExistential(ref existty, ref lifetimes) => {
+            let ExistTy { ref generics, ref bounds } = *existty;
+            walk_generics(visitor, generics);
             walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_lifetime, lifetimes);
         }
         TyImplTraitUniversal(_, ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);

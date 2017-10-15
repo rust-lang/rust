@@ -421,8 +421,10 @@ impl<'a> State<'a> {
                     self.print_lifetime(lifetime)?;
                 }
             }
-            hir::TyImplTraitExistential(ref bounds) |
-                hir::TyImplTraitUniversal(_, ref bounds) => {
+            hir::TyImplTraitExistential(ref existty, ref _lifetimes) => {
+                self.print_bounds("impl", &existty.bounds[..])?;
+            }
+            hir::TyImplTraitUniversal(_, ref bounds) => {
                 self.print_bounds("impl", &bounds[..])?;
             }
             hir::TyArray(ref ty, v) => {

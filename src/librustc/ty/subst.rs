@@ -220,11 +220,11 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         tcx.intern_substs(&result)
     }
 
-    fn fill_item<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
-                         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         defs: &ty::Generics,
-                         mk_region: &mut FR,
-                         mk_type: &mut FT)
+    pub fn fill_item<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
+                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                             defs: &ty::Generics,
+                             mk_region: &mut FR,
+                             mk_type: &mut FT)
     where FR: FnMut(&ty::RegionParameterDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
           FT: FnMut(&ty::TypeParameterDef, &[Kind<'tcx>]) -> Ty<'tcx> {
 
