@@ -1373,19 +1373,6 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *hig
     return true;
 }
 
-extern "C" uint64_t LLVMRustConstFloatGetBits(LLVMValueRef CV) {
-    auto C = unwrap<llvm::ConstantFP>(CV);
-    APInt Bits = C->getValueAPF().bitcastToAPInt();
-    if (!Bits.isIntN(64)) {
-      report_fatal_error("Float bit pattern >64 bits");
-    }
-    return Bits.getLimitedValue();
-}
-
-extern "C" bool LLVMRustIsConstantFP(LLVMValueRef CV) {
-  return isa<llvm::ConstantFP>(unwrap<llvm::Value>(CV));
-}
-
 extern "C" LLVMContextRef LLVMRustGetValueContext(LLVMValueRef V) {
   return wrap(&unwrap(V)->getContext());
 }

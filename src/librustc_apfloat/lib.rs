@@ -96,7 +96,7 @@ impl Status {
 }
 
 impl<T> StatusAnd<T> {
-    fn map<F: FnOnce(T) -> U, U>(self, f: F) -> StatusAnd<U> {
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> StatusAnd<U> {
         StatusAnd {
             status: self.status,
             value: f(self.value),

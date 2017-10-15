@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -22,15 +22,28 @@ macro_rules! test {
     ($val:expr, $src_ty:ident -> $dest_ty:ident, $expected:expr) => (
         // black_box disables constant evaluation to test run-time conversions:
         assert_eq!(black_box::<$src_ty>($val) as $dest_ty, $expected,
-                    "run time {} -> {}", stringify!($src_ty), stringify!($dest_ty));
-        // ... whereas this variant triggers constant evaluation:
+                    "run-time {} -> {}", stringify!($src_ty), stringify!($dest_ty));
+    );
+
+    ($fval:expr, f* -> $ity:ident, $ival:expr) => (
+        test!($fval, f32 -> $ity, $ival);
+        test!($fval, f64 -> $ity, $ival);
+    )
+}
+
+// This macro tests const eval in addition to run-time evaluation.
+// If and when saturating casts are adopted, this macro should be merged with test!() to ensure
+// that run-time and const eval agree on inputs that currently trigger a const eval error.
+macro_rules! test_c {
+    ($val:expr, $src_ty:ident -> $dest_ty:ident, $expected:expr) => ({
+        test!($val, $src_ty -> $dest_ty, $expected);
         {
             const X: $src_ty = $val;
             const Y: $dest_ty = X as $dest_ty;
             assert_eq!(Y, $expected,
                         "const eval {} -> {}", stringify!($src_ty), stringify!($dest_ty));
         }
-    );
+    });
 
     ($fval:expr, f* -> $ity:ident, $ival:expr) => (
         test!($fval, f32 -> $ity, $ival);
@@ -48,11 +61,11 @@ macro_rules! common_fptoi_tests {
         // as well, the test is just slightly misplaced.
         test!($ity::MIN as $fty, $fty -> $ity, $ity::MIN);
         test!($ity::MAX as $fty, $fty -> $ity, $ity::MAX);
-        test!(0., $fty -> $ity, 0);
-        test!($fty::MIN_POSITIVE, $fty -> $ity, 0);
+        test_c!(0., $fty -> $ity, 0);
+        test_c!($fty::MIN_POSITIVE, $fty -> $ity, 0);
         test!(-0.9, $fty -> $ity, 0);
-        test!(1., $fty -> $ity, 1);
-        test!(42., $fty -> $ity, 42);
+        test_c!(1., $fty -> $ity, 1);
+        test_c!(42., $fty -> $ity, 42);
     )+ });
 
     (f* -> $($ity:ident)+) => ({
@@ -84,58 +97,58 @@ pub fn main() {
 
     // The following tests cover edge cases for some integer types.
 
-    // u8
-    test!(254., f* -> u8, 254);
+    // # u8
+    test_c!(254., f* -> u8, 254);
     test!(256., f* -> u8, 255);
 
-    // i8
-    test!(-127., f* -> i8, -127);
+    // # i8
+    test_c!(-127., f* -> i8, -127);
     test!(-129., f* -> i8, -128);
-    test!(126., f* -> i8, 126);
+    test_c!(126., f* -> i8, 126);
     test!(128., f* -> i8, 127);
 
-    // i32
+    // # i32
     // -2147483648. is i32::MIN (exactly)
-    test!(-2147483648., f* -> i32, i32::MIN);
+    test_c!(-2147483648., f* -> i32, i32::MIN);
     // 2147483648. is i32::MAX rounded up
     test!(2147483648., f32 -> i32, 2147483647);
     // With 24 significand bits, floats with magnitude in [2^30 + 1, 2^31] are rounded to
     // multiples of 2^7. Therefore, nextDown(round(i32::MAX)) is 2^31 - 128:
-    test!(2147483520., f32 -> i32, 2147483520);
+    test_c!(2147483520., f32 -> i32, 2147483520);
     // Similarly, nextUp(i32::MIN) is i32::MIN + 2^8 and nextDown(i32::MIN) is i32::MIN - 2^7
     test!(-2147483904., f* -> i32, i32::MIN);
-    test!(-2147483520., f* -> i32, -2147483520);
+    test_c!(-2147483520., f* -> i32, -2147483520);
 
-    // u32 -- round(MAX) and nextUp(round(MAX))
-    test!(4294967040., f* -> u32, 4294967040);
+    // # u32
+    // round(MAX) and nextUp(round(MAX))
+    test_c!(4294967040., f* -> u32, 4294967040);
     test!(4294967296., f* -> u32, 4294967295);
 
-    // u128
-    // # float->int
-    test!(f32::MAX, f32 -> u128, 0xffffff00000000000000000000000000);
+    // # u128
+    // float->int:
+    test_c!(f32::MAX, f32 -> u128, 0xffffff00000000000000000000000000);
     // nextDown(f32::MAX) = 2^128 - 2 * 2^104
     const SECOND_LARGEST_F32: f32 = 340282326356119256160033759537265639424.;
-    test!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
-    // # int->float
-    // f32::MAX - 0.5 ULP and smaller should be rounded down
-    test!(0xfffffe00000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
-    test!(0xfffffe7fffffffffffffffffffffffff, u128 -> f32, SECOND_LARGEST_F32);
-    test!(0xfffffe80000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
-    // numbers within < 0.5 ULP of f32::MAX it should be rounded to f32::MAX
-    test!(0xfffffe80000000000000000000000001, u128 -> f32, f32::MAX);
-    test!(0xfffffeffffffffffffffffffffffffff, u128 -> f32, f32::MAX);
-    test!(0xffffff00000000000000000000000000, u128 -> f32, f32::MAX);
-    test!(0xffffff00000000000000000000000001, u128 -> f32, f32::MAX);
-    test!(0xffffff7fffffffffffffffffffffffff, u128 -> f32, f32::MAX);
-    // f32::MAX + 0.5 ULP and greater should be rounded to infinity
-    test!(0xffffff80000000000000000000000000, u128 -> f32, f32::INFINITY);
-    test!(0xffffff80000000f00000000000000000, u128 -> f32, f32::INFINITY);
-    test!(0xffffff87ffffffffffffffff00000001, u128 -> f32, f32::INFINITY);
+    test_c!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
 
-    test!(!0, u128 -> f32, f32::INFINITY);
+    // int->float:
+    // f32::MAX - 0.5 ULP and smaller should be rounded down
+    test_c!(0xfffffe00000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
+    test_c!(0xfffffe7fffffffffffffffffffffffff, u128 -> f32, SECOND_LARGEST_F32);
+    test_c!(0xfffffe80000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
+    // numbers within < 0.5 ULP of f32::MAX it should be rounded to f32::MAX
+    test_c!(0xfffffe80000000000000000000000001, u128 -> f32, f32::MAX);
+    test_c!(0xfffffeffffffffffffffffffffffffff, u128 -> f32, f32::MAX);
+    test_c!(0xffffff00000000000000000000000000, u128 -> f32, f32::MAX);
+    test_c!(0xffffff00000000000000000000000001, u128 -> f32, f32::MAX);
+    test_c!(0xffffff7fffffffffffffffffffffffff, u128 -> f32, f32::MAX);
+    // f32::MAX + 0.5 ULP and greater should be rounded to infinity
+    test_c!(0xffffff80000000000000000000000000, u128 -> f32, f32::INFINITY);
+    test_c!(0xffffff80000000f00000000000000000, u128 -> f32, f32::INFINITY);
+    test_c!(0xffffff87ffffffffffffffff00000001, u128 -> f32, f32::INFINITY);
 
     // u128->f64 should not be affected by the u128->f32 checks
-    test!(0xffffff80000000000000000000000000, u128 -> f64,
+    test_c!(0xffffff80000000000000000000000000, u128 -> f64,
           340282356779733661637539395458142568448.0);
-    test!(u128::MAX, u128 -> f64, 340282366920938463463374607431768211455.0);
+    test_c!(u128::MAX, u128 -> f64, 340282366920938463463374607431768211455.0);
 }
