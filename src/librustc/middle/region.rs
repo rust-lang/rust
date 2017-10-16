@@ -156,26 +156,11 @@ pub struct BlockRemainder {
     pub first_statement_index: FirstStatementIndex,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-         RustcDecodable, Copy)]
-pub struct FirstStatementIndex { pub idx: u32 }
-
-impl Idx for FirstStatementIndex {
-    fn new(idx: usize) -> Self {
-        assert!(idx <= SCOPE_DATA_REMAINDER_MAX as usize);
-        FirstStatementIndex { idx: idx as u32 }
-    }
-
-    fn index(self) -> usize {
-        self.idx as usize
-    }
-}
-
-impl fmt::Debug for FirstStatementIndex {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.index(), formatter)
-    }
-}
+newtype_index!(FirstStatementIndex
+    {
+        DEBUG_NAME = "",
+        MAX = SCOPE_DATA_REMAINDER_MAX,
+    });
 
 impl From<ScopeData> for Scope {
     #[inline]
@@ -208,7 +193,7 @@ impl Scope {
             SCOPE_DATA_DESTRUCTION => ScopeData::Destruction(self.id),
             idx => ScopeData::Remainder(BlockRemainder {
                 block: self.id,
-                first_statement_index: FirstStatementIndex { idx }
+                first_statement_index: FirstStatementIndex::new(idx as usize)
             })
         }
     }

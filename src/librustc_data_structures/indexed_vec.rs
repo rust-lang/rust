@@ -65,7 +65,7 @@ macro_rules! newtype_index {
     (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
             RustcEncodable, RustcDecodable)]
-        pub struct $type(u32);
+        pub struct $type(pub u32);
 
         impl Idx for $type {
             fn new(value: usize) -> Self {
@@ -99,7 +99,7 @@ macro_rules! newtype_index {
     // Replace existing default for max
     (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr]
             MAX = $max:expr, $($tokens:tt)*) => (
-        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $(tokens)*);
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
     );
 
     // Replace existing default for debug_name
