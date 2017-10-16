@@ -61,37 +61,6 @@ impl<W: StableHasherResult> StableHasher<W> {
     }
 }
 
-impl StableHasherResult for [u8; 20] {
-    fn finish(hasher: StableHasher<Self>) -> Self {
-        let (_0, _1) = hasher.finalize();
-
-        [
-            (_0 >>  0) as u8,
-            (_0 >>  8) as u8,
-            (_0 >> 16) as u8,
-            (_0 >> 24) as u8,
-            (_0 >> 32) as u8,
-            (_0 >> 40) as u8,
-            (_0 >> 48) as u8,
-            (_0 >> 56) as u8,
-
-            17,
-            33,
-            47,
-            3,
-
-            (_1 >>  0) as u8,
-            (_1 >>  8) as u8,
-            (_1 >> 16) as u8,
-            (_1 >> 24) as u8,
-            (_1 >> 32) as u8,
-            (_1 >> 40) as u8,
-            (_1 >> 48) as u8,
-            (_1 >> 56) as u8,
-        ]
-    }
-}
-
 impl StableHasherResult for u128 {
     fn finish(hasher: StableHasher<Self>) -> Self {
         let (_0, _1) = hasher.finalize();
