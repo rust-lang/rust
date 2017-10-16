@@ -2323,6 +2323,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         tcx.sess.features.borrow().clone_closures
     };
     providers.normalize_ty = |tcx, ty| {
-        tcx.trans_normalize_associated_types_in(&ty)
+        tcx.fully_normalize_associated_types_in(&ty)
     };
 }

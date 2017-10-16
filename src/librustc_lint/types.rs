@@ -431,7 +431,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // fields are actually safe.
                         let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
-                            let field_ty = cx.trans_normalize_associated_types_in(
+                            let field_ty = cx.fully_normalize_associated_types_in(
                                 &field.ty(cx, substs)
                             );
                             let r = self.check_type_for_ffi(cache, field_ty);
@@ -465,7 +465,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
-                            let field_ty = cx.trans_normalize_associated_types_in(
+                            let field_ty = cx.fully_normalize_associated_types_in(
                                 &field.ty(cx, substs)
                             );
                             let r = self.check_type_for_ffi(cache, field_ty);
@@ -520,7 +520,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // Check the contained variants.
                         for variant in &def.variants {
                             for field in &variant.fields {
-                                let arg = cx.trans_normalize_associated_types_in(
+                                let arg = cx.fully_normalize_associated_types_in(
                                     &field.ty(cx, substs)
                                 );
                                 let r = self.check_type_for_ffi(cache, arg);
@@ -635,7 +635,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
-        let ty = self.cx.tcx.trans_normalize_associated_types_in(&ty);
+        let ty = self.cx.tcx.fully_normalize_associated_types_in(&ty);
 
         match self.check_type_for_ffi(&mut FxHashSet(), ty) {
             FfiResult::FfiSafe => {}
