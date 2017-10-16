@@ -165,3 +165,9 @@ fn issue1713() {
         || recurse(right, is_less, Some(pivot), limit),
     );
 }
+
+fn issue2063() {
+    |ctx: Ctx<(String, String)>| -> io::Result<Response> {
+        Ok(Response::new().with_body(ctx.params.0))
+    }
+}
