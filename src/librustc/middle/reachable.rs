@@ -37,7 +37,7 @@ use hir::intravisit;
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.
 fn generics_require_inlining(generics: &hir::Generics) -> bool {
-    !generics.ty_params.is_empty()
+    generics.params.iter().any(|param| param.is_type_param())
 }
 
 // Returns true if the given item must be inlined because it may be

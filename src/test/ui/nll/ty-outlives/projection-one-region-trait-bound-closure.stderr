@@ -94,7 +94,7 @@ note: External requirements
     = note: number of external vids: 3
     = note: where '_#1r: '_#2r
 
-error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:17), 'a))`
+error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`
   --> $DIR/projection-one-region-trait-bound-closure.rs:48:20
    |
 48 |     with_signature(cell, t, |cell, t| require(cell, t));

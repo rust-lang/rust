@@ -253,7 +253,9 @@ impl<'a> LoweringContext<'a> {
                     ItemKind::Ty(_, ref generics) |
                     ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
-                        let count = generics.lifetimes.len();
+                        let count = generics.params.iter()
+                            .filter(|param| param.is_lifetime_param())
+                            .count();
                         self.lctx.type_def_lifetime_params.insert(def_id, count);
                     }
                     _ => {}
@@ -306,8 +308,8 @@ impl<'a> LoweringContext<'a> {
                     let item_lifetimes = match self.lctx.items.get(&item.id).unwrap().node {
                         hir::Item_::ItemImpl(_,_,_,ref generics,..) |
                         hir::Item_::ItemTrait(_,_,ref generics,..) =>
-                            generics.lifetimes.clone(),
-                        _ => Vec::new().into(),
+                            generics.lifetimes().cloned().collect::<Vec<_>>(),
+                        _ => Vec::new(),
                     };
 
                     self.lctx.with_parent_impl_lifetime_defs(&item_lifetimes, |this| {
@@ -532,14 +534,14 @@ impl<'a> LoweringContext<'a> {
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }
 
-    // Creates a new hir::LifetimeDef for every new lifetime encountered
-    // while evaluating `f`. Definitions are created with the parent provided.
-    // If no `parent_id` is provided, no definitions will be returned.
+    // Creates a new hir::GenericParam for every new lifetime and type parameter
+    // encountered while evaluating `f`. Definitions are created with the parent
+    // provided. If no `parent_id` is provided, no definitions will be returned.
     fn collect_in_band_defs<T, F>(
         &mut self,
         parent_id: Option<DefId>,
         f: F
-    ) -> (Vec<hir::TyParam>, Vec<hir::LifetimeDef>, T) where F: FnOnce(&mut LoweringContext) -> T
+    ) -> (Vec<hir::GenericParam>, T) where F: FnOnce(&mut LoweringContext) -> T
     {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
@@ -554,7 +556,7 @@ impl<'a> LoweringContext<'a> {
         let in_band_ty_params = self.in_band_ty_params.split_off(0);
         let lifetimes_to_define = self.lifetimes_to_define.split_off(0);
 
-        let lifetime_defs = match parent_id {
+        let mut params = match parent_id {
             Some(parent_id) => lifetimes_to_define.into_iter().map(|(span, name)| {
                     let def_node_id = self.next_id().node_id;
 
@@ -567,7 +569,7 @@ impl<'a> LoweringContext<'a> {
                         Mark::root()
                     );
 
-                    hir::LifetimeDef {
+                    hir::GenericParam::Lifetime(hir::LifetimeDef {
                         lifetime: hir::Lifetime {
                             id: def_node_id,
                             span,
@@ -576,12 +578,14 @@ impl<'a> LoweringContext<'a> {
                         bounds: Vec::new().into(),
                         pure_wrt_drop: false,
                         in_band: true,
-                    }
+                    })
                 }).collect(),
             None => Vec::new(),
         };
 
-        (in_band_ty_params, lifetime_defs, res)
+        params.extend(in_band_ty_params.into_iter().map(|tp| hir::GenericParam::Type(tp)));
+
+        (params, res)
     }
 
     // Evaluates `f` with the lifetimes in `lt_defs` in-scope.
@@ -635,24 +639,24 @@ impl<'a> LoweringContext<'a> {
     ) -> (hir::Generics, T)
         where F: FnOnce(&mut LoweringContext) -> T
     {
-        let (in_band_ty_defs, in_band_lifetime_defs, (mut lowered_generics, res)) =
-            self.with_in_scope_lifetime_defs(&generics.lifetimes, |this| {
-                this.collect_in_band_defs(parent_id, |this| {
-                    (this.lower_generics(generics), f(this))
-                })
-            });
+        let (in_band_defs, (mut lowered_generics, res)) =
+            self.with_in_scope_lifetime_defs(
+                &generics.params
+                    .iter()
+                    .filter_map(|p| match *p {
+                        GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>(),
+                |this| {
+                    this.collect_in_band_defs(parent_id, |this| {
+                        (this.lower_generics(generics), f(this))
+                    })
+                }
+            );
 
-        lowered_generics.ty_params =
-            lowered_generics.ty_params
-                .iter().cloned()
-                .chain(in_band_ty_defs.into_iter())
-                .collect();
-
-        lowered_generics.lifetimes =
-            lowered_generics.lifetimes
-                .iter().cloned()
-               .chain(in_band_lifetime_defs.into_iter())
-               .collect();
+        lowered_generics.params =
+            lowered_generics.params.iter().cloned().chain(in_band_defs).collect();
 
         (lowered_generics, res)
     }
@@ -877,9 +881,16 @@ impl<'a> LoweringContext<'a> {
                 hir::TyRptr(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(ref f) => {
-                self.with_in_scope_lifetime_defs(&f.lifetimes, |this|
-                    hir::TyBareFn(P(hir::BareFnTy {
-                        lifetimes: this.lower_lifetime_defs(&f.lifetimes),
+                self.with_in_scope_lifetime_defs(
+                    &f.generic_params
+                        .iter()
+                        .filter_map(|p| match *p {
+                            GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>(),
+                    |this| hir::TyBareFn(P(hir::BareFnTy {
+                        generic_params: this.lower_generic_params(&f.generic_params, &NodeMap()),
                         unsafety: this.lower_unsafety(f.unsafety),
                         abi: f.abi,
                         decl: this.lower_fn_decl(&f.decl, None, false),
@@ -954,9 +965,7 @@ impl<'a> LoweringContext<'a> {
 
                         hir::TyImplTraitExistential(hir::ExistTy {
                             generics: hir::Generics {
-                                lifetimes: lifetime_defs,
-                                // Type parameters are taken from environment:
-                                ty_params: Vec::new().into(),
+                                params: lifetime_defs,
                                 where_clause: hir::WhereClause {
                                     id: self.next_id().node_id,
                                     predicates: Vec::new().into(),
@@ -1027,7 +1036,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         parent_index: DefIndex,
         bounds: &hir::TyParamBounds
-    ) -> (HirVec<hir::Lifetime>, HirVec<hir::LifetimeDef>) {
+    ) -> (HirVec<hir::Lifetime>, HirVec<hir::GenericParam>) {
 
         // This visitor walks over impl trait bounds and creates defs for all lifetimes which
         // appear in the bounds, excluding lifetimes that are created within the bounds.
@@ -1039,7 +1048,7 @@ impl<'a> LoweringContext<'a> {
             currently_bound_lifetimes: Vec<hir::LifetimeName>,
             already_defined_lifetimes: HashSet<hir::LifetimeName>,
             output_lifetimes: Vec<hir::Lifetime>,
-            output_lifetime_defs: Vec<hir::LifetimeDef>,
+            output_lifetime_params: Vec<hir::GenericParam>,
         }
 
         impl<'r, 'a: 'r, 'v> hir::intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a> {
@@ -1078,14 +1087,16 @@ impl<'a> LoweringContext<'a> {
                 let old_len = self.currently_bound_lifetimes.len();
 
                 // Record the introduction of 'a in `for<'a> ...`
-                for lt_def in &polytr.bound_lifetimes {
-                    // Introduce lifetimes one at a time so that we can handle
-                    // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
-                    self.currently_bound_lifetimes.push(lt_def.lifetime.name);
+                for param in &polytr.bound_generic_params {
+                    if let hir::GenericParam::Lifetime(ref lt_def) = *param {
+                        // Introduce lifetimes one at a time so that we can handle
+                        // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
+                        self.currently_bound_lifetimes.push(lt_def.lifetime.name);
 
-                    // Visit the lifetime bounds
-                    for lt_bound in &lt_def.bounds {
-                        self.visit_lifetime(&lt_bound);
+                        // Visit the lifetime bounds
+                        for lt_bound in &lt_def.bounds {
+                            self.visit_lifetime(&lt_bound);
+                        }
                     }
                 }
 
@@ -1133,12 +1144,12 @@ impl<'a> LoweringContext<'a> {
                         span: lifetime.span,
                         name: name,
                     };
-                    self.output_lifetime_defs.push(hir::LifetimeDef {
+                    self.output_lifetime_params.push(hir::GenericParam::Lifetime(hir::LifetimeDef {
                         lifetime: def_lifetime,
                         bounds: Vec::new().into(),
                         pure_wrt_drop: false,
                         in_band: false,
-                    });
+                    }));
                 }
             }
         }
@@ -1150,7 +1161,7 @@ impl<'a> LoweringContext<'a> {
             currently_bound_lifetimes: Vec::new(),
             already_defined_lifetimes: HashSet::new(),
             output_lifetimes: Vec::new(),
-            output_lifetime_defs: Vec::new(),
+            output_lifetime_params: Vec::new(),
         };
 
         for bound in bounds {
@@ -1159,7 +1170,7 @@ impl<'a> LoweringContext<'a> {
 
         (
             lifetime_collector.output_lifetimes.into(),
-            lifetime_collector.output_lifetime_defs.into()
+            lifetime_collector.output_lifetime_params.into()
         )
     }
 
@@ -1568,13 +1579,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty_params(&mut self, tps: &Vec<TyParam>, add_bounds: &NodeMap<Vec<TyParamBound>>)
-                       -> hir::HirVec<hir::TyParam> {
-        tps.iter().map(|tp| {
-            self.lower_ty_param(tp, add_bounds.get(&tp.id).map_or(&[][..], |x| &x))
-        }).collect()
-    }
-
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         let name = match self.lower_ident(l.ident) {
             x if x == "'_" => hir::LifetimeName::Underscore,
@@ -1620,12 +1624,31 @@ impl<'a> LoweringContext<'a> {
         lts.iter().map(|l| self.lower_lifetime(l)).collect()
     }
 
-    fn lower_lifetime_defs(&mut self, lts: &Vec<LifetimeDef>) -> hir::HirVec<hir::LifetimeDef> {
-        lts.iter().map(|l| self.lower_lifetime_def(l)).collect()
+    fn lower_generic_params(
+        &mut self,
+        params: &Vec<GenericParam>,
+        add_bounds: &NodeMap<Vec<TyParamBound>>,
+    ) -> hir::HirVec<hir::GenericParam> {
+        params.iter()
+            .map(|param| match *param {
+                GenericParam::Lifetime(ref lifetime_def) => {
+                    hir::GenericParam::Lifetime(self.lower_lifetime_def(lifetime_def))
+                }
+                GenericParam::Type(ref ty_param) => {
+                    hir::GenericParam::Type(self.lower_ty_param(
+                        ty_param,
+                        add_bounds.get(&ty_param.id).map_or(&[][..], |x| &x)
+                    ))
+                }
+            })
+            .collect()
     }
 
     fn lower_generics(&mut self, g: &Generics) -> hir::Generics {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
+        // FIXME: This could probably be done with less rightward drift. Also looks like two control
+        //        paths where report_error is called are also the only paths that advance to after
+        //        the match statement, so the error reporting could probably just be moved there.
         let mut add_bounds = NodeMap();
         for pred in &g.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
@@ -1640,17 +1663,20 @@ impl<'a> LoweringContext<'a> {
                         match bound_pred.bounded_ty.node {
                             TyKind::Path(None, ref path)
                                     if path.segments.len() == 1 &&
-                                       bound_pred.bound_lifetimes.is_empty() => {
+                                       bound_pred.bound_generic_params.is_empty() => {
                                 if let Some(Def::TyParam(def_id)) =
                                         self.resolver.get_resolution(bound_pred.bounded_ty.id)
                                                      .map(|d| d.base_def()) {
                                     if let Some(node_id) =
                                             self.resolver.definitions().as_local_node_id(def_id) {
-                                        for ty_param in &g.ty_params {
-                                            if node_id == ty_param.id {
-                                                add_bounds.entry(ty_param.id).or_insert(Vec::new())
-                                                                            .push(bound.clone());
-                                                continue 'next_bound;
+                                        for param in &g.params {
+                                            if let GenericParam::Type(ref ty_param) = *param {
+                                                if node_id == ty_param.id {
+                                                    add_bounds.entry(ty_param.id)
+                                                        .or_insert(Vec::new())
+                                                        .push(bound.clone());
+                                                    continue 'next_bound;
+                                                }
                                             }
                                         }
                                     }
@@ -1665,8 +1691,7 @@ impl<'a> LoweringContext<'a> {
         }
 
         hir::Generics {
-            ty_params: self.lower_ty_params(&g.ty_params, &add_bounds),
-            lifetimes: self.lower_lifetime_defs(&g.lifetimes),
+            params: self.lower_generic_params(&g.params, &add_bounds),
             where_clause: self.lower_where_clause(&g.where_clause),
             span: g.span,
         }
@@ -1684,24 +1709,33 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate {
         match *pred {
-            WherePredicate::BoundPredicate(WhereBoundPredicate{ ref bound_lifetimes,
+            WherePredicate::BoundPredicate(WhereBoundPredicate{ ref bound_generic_params,
                                                                 ref bounded_ty,
                                                                 ref bounds,
                                                                 span}) => {
-                self.with_in_scope_lifetime_defs(bound_lifetimes, |this| {
-                    hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                        bound_lifetimes: this.lower_lifetime_defs(bound_lifetimes),
-                        bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::Disallowed),
-                        bounds: bounds.iter().filter_map(|bound| match *bound {
-                            // Ignore `?Trait` bounds.
-                            // Tthey were copied into type parameters already.
-                            TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
-                            _ => Some(this.lower_ty_param_bound(
-                                    bound, ImplTraitContext::Disallowed))
-                        }).collect(),
-                        span,
-                    })
-                })
+                self.with_in_scope_lifetime_defs(
+                    &bound_generic_params.iter()
+                        .filter_map(|p| match *p {
+                            GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>(),
+                    |this| {
+                        hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                            bound_generic_params:
+                                this.lower_generic_params(bound_generic_params, &NodeMap()),
+                            bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::Disallowed),
+                            bounds: bounds.iter().filter_map(|bound| match *bound {
+                                // Ignore `?Trait` bounds.
+                                // Tthey were copied into type parameters already.
+                                TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                                _ => Some(this.lower_ty_param_bound(
+                                        bound, ImplTraitContext::Disallowed))
+                            }).collect(),
+                            span,
+                        })
+                    }
+                )
             }
             WherePredicate::RegionPredicate(WhereRegionPredicate{ ref lifetime,
                                                                   ref bounds,
@@ -1761,12 +1795,19 @@ impl<'a> LoweringContext<'a> {
                             p: &PolyTraitRef,
                             itctx: ImplTraitContext)
                             -> hir::PolyTraitRef {
-        let bound_lifetimes = self.lower_lifetime_defs(&p.bound_lifetimes);
-        let trait_ref = self.with_parent_impl_lifetime_defs(&bound_lifetimes,
-                                |this| this.lower_trait_ref(&p.trait_ref, itctx));
+        let bound_generic_params = self.lower_generic_params(&p.bound_generic_params, &NodeMap());
+        let trait_ref = self.with_parent_impl_lifetime_defs(
+            &bound_generic_params.iter()
+                .filter_map(|p| match *p {
+                    hir::GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            |this| this.lower_trait_ref(&p.trait_ref, itctx),
+        );
 
         hir::PolyTraitRef {
-            bound_lifetimes,
+            bound_generic_params,
             trait_ref,
             span: p.span,
         }
@@ -1945,11 +1986,19 @@ impl<'a> LoweringContext<'a> {
                     });
 
                 let new_impl_items = self.with_in_scope_lifetime_defs(
-                                            &ast_generics.lifetimes, |this| {
-                    impl_items.iter()
-                              .map(|item| this.lower_impl_item_ref(item))
-                              .collect()
-                });
+                    &ast_generics.params
+                        .iter()
+                        .filter_map(|p| match *p {
+                            GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>(),
+                    |this| {
+                        impl_items.iter()
+                            .map(|item| this.lower_impl_item_ref(item))
+                            .collect()
+                    }
+                );
 
 
                 hir::ItemImpl(self.lower_unsafety(unsafety),
@@ -3621,7 +3670,7 @@ impl<'a> LoweringContext<'a> {
                 // Turn trait object paths into `TyTraitObject` instead.
                 if let Def::Trait(_) = path.def {
                     let principal = hir::PolyTraitRef {
-                        bound_lifetimes: hir_vec![],
+                        bound_generic_params: hir::HirVec::new(),
                         trait_ref: hir::TraitRef {
                             path: path.and_then(|path| path),
                             ref_id: id.node_id,

@@ -48,6 +48,8 @@ use rustc_data_structures::indexed_vec;
 use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::iter;
+use std::slice;
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
@@ -398,12 +400,67 @@ pub struct TyParam {
     pub synthetic: Option<SyntheticTyParamKind>,
 }
 
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum GenericParam {
+    Lifetime(LifetimeDef),
+    Type(TyParam),
+}
+
+impl GenericParam {
+    pub fn is_lifetime_param(&self) -> bool {
+        match *self {
+            GenericParam::Lifetime(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_type_param(&self) -> bool {
+        match *self {
+            GenericParam::Type(_) => true,
+            _ => false,
+        }
+    }
+}
+
+pub trait GenericParamsExt {
+    fn lifetimes<'a>(&'a self) -> iter::FilterMap<
+        slice::Iter<GenericParam>,
+        fn(&GenericParam) -> Option<&LifetimeDef>,
+    >;
+
+    fn ty_params<'a>(&'a self) -> iter::FilterMap<
+        slice::Iter<GenericParam>,
+        fn(&GenericParam) -> Option<&TyParam>,
+    >;
+}
+
+impl GenericParamsExt for [GenericParam] {
+    fn lifetimes<'a>(&'a self) -> iter::FilterMap<
+        slice::Iter<GenericParam>,
+        fn(&GenericParam) -> Option<&LifetimeDef>,
+    > {
+        self.iter().filter_map(|param| match *param {
+            GenericParam::Lifetime(ref l) => Some(l),
+            _ => None,
+        })
+    }
+
+    fn ty_params<'a>(&'a self) -> iter::FilterMap<
+        slice::Iter<GenericParam>,
+        fn(&GenericParam) -> Option<&TyParam>,
+    > {
+        self.iter().filter_map(|param| match *param {
+            GenericParam::Type(ref t) => Some(t),
+            _ => None,
+        })
+    }
+}
+
 /// Represents lifetimes and type parameters attached to a declaration
 /// of a function, enum, trait, etc.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
-    pub lifetimes: HirVec<LifetimeDef>,
-    pub ty_params: HirVec<TyParam>,
+    pub params: HirVec<GenericParam>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
@@ -411,8 +468,7 @@ pub struct Generics {
 impl Generics {
     pub fn empty() -> Generics {
         Generics {
-            lifetimes: HirVec::new(),
-            ty_params: HirVec::new(),
+            params: HirVec::new(),
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: HirVec::new(),
@@ -422,15 +478,19 @@ impl Generics {
     }
 
     pub fn is_lt_parameterized(&self) -> bool {
-        !self.lifetimes.is_empty()
+        self.params.iter().any(|param| param.is_lifetime_param())
     }
 
     pub fn is_type_parameterized(&self) -> bool {
-        !self.ty_params.is_empty()
+        self.params.iter().any(|param| param.is_type_param())
     }
 
-    pub fn is_parameterized(&self) -> bool {
-        self.is_lt_parameterized() || self.is_type_parameterized()
+    pub fn lifetimes<'a>(&'a self) -> impl Iterator<Item = &'a LifetimeDef> {
+        self.params.lifetimes()
+    }
+
+    pub fn ty_params<'a>(&'a self) -> impl Iterator<Item = &'a TyParam> {
+        self.params.ty_params()
     }
 }
 
@@ -450,17 +510,22 @@ impl UnsafeGeneric {
 
 impl Generics {
     pub fn carries_unsafe_attr(&self) -> Option<UnsafeGeneric> {
-        for r in &self.lifetimes {
-            if r.pure_wrt_drop {
-                return Some(UnsafeGeneric::Region(r.clone(), "may_dangle"));
+        for param in &self.params {
+            match *param {
+                GenericParam::Lifetime(ref l) => {
+                    if l.pure_wrt_drop {
+                        return Some(UnsafeGeneric::Region(l.clone(), "may_dangle"));
+                    }
+                }
+                GenericParam::Type(ref t) => {
+                    if t.pure_wrt_drop {
+                        return Some(UnsafeGeneric::Type(t.clone(), "may_dangle"));
+                    }
+                }
             }
         }
-        for t in &self.ty_params {
-            if t.pure_wrt_drop {
-                return Some(UnsafeGeneric::Type(t.clone(), "may_dangle"));
-            }
-        }
-        return None;
+
+        None
     }
 }
 
@@ -493,8 +558,8 @@ pub enum WherePredicate {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
-    /// Any lifetimes from a `for` binding
-    pub bound_lifetimes: HirVec<LifetimeDef>,
+    /// Any generics from a `for` binding
+    pub bound_generic_params: HirVec<GenericParam>,
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
@@ -1475,7 +1540,7 @@ pub enum PrimTy {
 pub struct BareFnTy {
     pub unsafety: Unsafety,
     pub abi: Abi,
-    pub lifetimes: HirVec<LifetimeDef>,
+    pub generic_params: HirVec<GenericParam>,
     pub decl: P<FnDecl>,
     pub arg_names: HirVec<Spanned<Name>>,
 }
@@ -1733,7 +1798,7 @@ pub struct TraitRef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `<'a> Foo<&'a T>`
-    pub bound_lifetimes: HirVec<LifetimeDef>,
+    pub bound_generic_params: HirVec<GenericParam>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`
     pub trait_ref: TraitRef,

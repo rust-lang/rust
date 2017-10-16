@@ -45,15 +45,23 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     match *item {
         Annotatable::Item(ref annitem) => {
             match annitem.node {
-                ItemKind::Struct(_, Generics { ref ty_params, .. }) |
-                ItemKind::Enum(_, Generics { ref ty_params, .. })
-                        if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
-                           ty_params.is_empty() => {
-                    bounds = vec![];
-                    is_shallow = true;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_shallow("Clone", c, s, sub, false)
-                    }));
+                ItemKind::Struct(_, Generics { ref params, .. }) |
+                ItemKind::Enum(_, Generics { ref params, .. }) => {
+                    if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
+                        !params.iter().any(|param| param.is_type_param())
+                    {
+                        bounds = vec![];
+                        is_shallow = true;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone_shallow("Clone", c, s, sub, false)
+                        }));
+                    } else {
+                        bounds = vec![];
+                        is_shallow = false;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone("Clone", c, s, sub)
+                        }));
+                    }
                 }
                 ItemKind::Union(..) => {
                     bounds = vec![Literal(path_std!(cx, marker::Copy))];

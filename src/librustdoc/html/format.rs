@@ -118,30 +118,11 @@ impl<'a> fmt::Display for TyParamBounds<'a> {
     }
 }
 
-impl fmt::Display for clean::Generics {
+impl fmt::Display for clean::GenericParam {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.lifetimes.is_empty() && self.type_params.is_empty() { return Ok(()) }
-        if f.alternate() {
-            f.write_str("<")?;
-        } else {
-            f.write_str("&lt;")?;
-        }
-
-        for (i, life) in self.lifetimes.iter().enumerate() {
-            if i > 0 {
-                f.write_str(", ")?;
-            }
-            write!(f, "{}", *life)?;
-        }
-
-        if !self.type_params.is_empty() {
-            if !self.lifetimes.is_empty() {
-                f.write_str(", ")?;
-            }
-            for (i, tp) in self.type_params.iter().enumerate() {
-                if i > 0 {
-                    f.write_str(", ")?
-                }
+        match *self {
+            clean::GenericParam::Lifetime(ref lp) => write!(f, "{}", lp),
+            clean::GenericParam::Type(ref tp) => {
                 f.write_str(&tp.name)?;
 
                 if !tp.bounds.is_empty() {
@@ -158,15 +139,22 @@ impl fmt::Display for clean::Generics {
                     } else {
                         write!(f, "&nbsp;=&nbsp;{}", ty)?;
                     }
-                };
+                }
+
+                Ok(())
             }
         }
+    }
+}
+
+impl fmt::Display for clean::Generics {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.params.is_empty() { return Ok(()) }
         if f.alternate() {
-            f.write_str(">")?;
+            write!(f, "<{:#}>", CommaSep(&self.params))
         } else {
-            f.write_str("&gt;")?;
+            write!(f, "&lt;{}&gt;", CommaSep(&self.params))
         }
-        Ok(())
     }
 }
 
@@ -259,22 +247,11 @@ impl fmt::Display for clean::Lifetime {
 
 impl fmt::Display for clean::PolyTrait {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if !self.lifetimes.is_empty() {
+        if !self.generic_params.is_empty() {
             if f.alternate() {
-                f.write_str("for<")?;
+                write!(f, "for<{:#}> ", CommaSep(&self.generic_params))?;
             } else {
-                f.write_str("for&lt;")?;
-            }
-            for (i, lt) in self.lifetimes.iter().enumerate() {
-                if i > 0 {
-                    f.write_str(", ")?;
-                }
-                write!(f, "{}", lt)?;
-            }
-            if f.alternate() {
-                f.write_str("> ")?;
-            } else {
-                f.write_str("&gt; ")?;
+                write!(f, "for&lt;{}&gt; ", CommaSep(&self.generic_params))?;
             }
         }
         if f.alternate() {
@@ -602,12 +579,12 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 write!(f, "{}{:#}fn{:#}{:#}",
                        UnsafetySpace(decl.unsafety),
                        AbiSpace(decl.abi),
-                       decl.generics,
+                       CommaSep(&decl.generic_params),
                        decl.decl)
             } else {
                 write!(f, "{}{}", UnsafetySpace(decl.unsafety), AbiSpace(decl.abi))?;
                 primitive_link(f, PrimitiveType::Fn, "fn")?;
-                write!(f, "{}{}", decl.generics, decl.decl)
+                write!(f, "{}{}", CommaSep(&decl.generic_params), decl.decl)
             }
         }
         clean::Tuple(ref typs) => {

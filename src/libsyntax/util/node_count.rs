@@ -71,6 +71,10 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_ty(self, t)
     }
+    fn visit_generic_param(&mut self, param: &GenericParam) {
+        self.count += 1;
+        walk_generic_param(self, param)
+    }
     fn visit_generics(&mut self, g: &Generics) {
         self.count += 1;
         walk_generics(self, g)
@@ -120,10 +124,6 @@ impl<'ast> Visitor<'ast> for NodeCounter {
     fn visit_lifetime(&mut self, lifetime: &Lifetime) {
         self.count += 1;
         walk_lifetime(self, lifetime)
-    }
-    fn visit_lifetime_def(&mut self, lifetime: &LifetimeDef) {
-        self.count += 1;
-        walk_lifetime_def(self, lifetime)
     }
     fn visit_mac(&mut self, _mac: &Mac) {
         self.count += 1;

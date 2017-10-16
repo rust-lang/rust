@@ -111,7 +111,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
-        for param in &generics.ty_params {
+        for param in generics.ty_params() {
             if param.default.is_some() {
                 let def_id = self.tcx.hir.local_def_id(param.id);
                 self.tcx.type_of(def_id);
@@ -315,8 +315,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
                                          -> Vec<ty::Predicate<'tcx>>
     {
         let from_ty_params =
-            ast_generics.ty_params
-                .iter()
+            ast_generics.ty_params()
                 .filter(|p| p.id == param_id)
                 .flat_map(|p| p.bounds.iter())
                 .flat_map(|b| predicates_from_bound(self, ty, b));
@@ -365,7 +364,7 @@ fn ensure_no_ty_param_bounds(tcx: TyCtxt,
                              thing: &'static str) {
     let mut warn = false;
 
-    for ty_param in generics.ty_params.iter() {
+    for ty_param in generics.ty_params() {
         for bound in ty_param.bounds.iter() {
             match *bound {
                 hir::TraitTyParamBound(..) => {
@@ -804,7 +803,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut visitor = LateBoundRegionsDetector {
             tcx, binder_depth: 1, has_late_bound_regions: None
         };
-        for lifetime in &generics.lifetimes {
+        for lifetime in generics.lifetimes() {
             let hir_id = tcx.hir.node_to_hir_id(lifetime.lifetime.id);
             if tcx.is_late_bound(hir_id) {
                 return Some(lifetime.lifetime.span);
@@ -964,7 +963,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Now create the real type parameters.
     let type_start = own_start + regions.len() as u32;
-    let types = ast_generics.ty_params.iter().enumerate().map(|(i, p)| {
+    let types = ast_generics.ty_params().enumerate().map(|(i, p)| {
         if p.name == keywords::SelfType.name() {
             span_bug!(p.span, "`Self` should not be the name of a regular parameter");
         }
@@ -1359,8 +1358,7 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     -> impl Iterator<Item=&'a hir::LifetimeDef>
 {
     ast_generics
-        .lifetimes
-        .iter()
+        .lifetimes()
         .filter(move |l| {
             let hir_id = tcx.hir.node_to_hir_id(l.lifetime.id);
             !tcx.is_late_bound(hir_id)
@@ -1492,7 +1490,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
-    for param in &ast_generics.ty_params {
+    for param in ast_generics.ty_params() {
         let param_ty = ty::ParamTy::new(index, param.name).to_ty(tcx);
         index += 1;
 

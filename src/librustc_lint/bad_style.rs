@@ -126,8 +126,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
         self.check_case(cx, "variant", v.node.name, v.span);
     }
 
-    fn check_generics(&mut self, cx: &LateContext, it: &hir::Generics) {
-        for gen in it.ty_params.iter() {
+    fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
+        if let hir::GenericParam::Type(ref gen) = *param {
             self.check_case(cx, "type parameter", gen.name, gen.span);
         }
     }
@@ -232,6 +232,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         }
     }
 
+    fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
+        if let hir::GenericParam::Lifetime(ref ld) = *param {
+            self.check_snake_case(
+                cx,
+                "lifetime",
+                &ld.lifetime.name.name().as_str(),
+                Some(ld.lifetime.span)
+            );
+        }
+    }
+
     fn check_fn(&mut self,
                 cx: &LateContext,
                 fk: FnKind,
@@ -278,13 +289,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                 self.check_snake_case(cx, "variable", &name.node.as_str(), Some(name.span));
             }
         }
-    }
-
-    fn check_lifetime_def(&mut self, cx: &LateContext, t: &hir::LifetimeDef) {
-        self.check_snake_case(cx,
-                              "lifetime",
-                              &t.lifetime.name.name().as_str(),
-                              Some(t.lifetime.span));
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {

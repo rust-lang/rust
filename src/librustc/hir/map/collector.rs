@@ -326,7 +326,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generics(&mut self, generics: &'hir Generics) {
-        for ty_param in generics.ty_params.iter() {
+        for ty_param in generics.ty_params() {
             self.insert(ty_param.id, NodeTyParam(ty_param));
         }
 

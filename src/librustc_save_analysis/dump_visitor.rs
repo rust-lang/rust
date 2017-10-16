@@ -36,7 +36,12 @@ use syntax::ast::{self, Attribute, NodeId, PatKind, CRATE_NODE_ID};
 use syntax::parse::token;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
-use syntax::print::pprust::{bounds_to_string, generics_to_string, path_to_string, ty_to_string};
+use syntax::print::pprust::{
+    bounds_to_string,
+    generic_params_to_string,
+    path_to_string,
+    ty_to_string
+};
 use syntax::ptr::P;
 use syntax::codemap::{Spanned, DUMMY_SP};
 use syntax_pos::*;
@@ -438,35 +443,37 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         prefix: &str,
         id: NodeId,
     ) {
-        for param in &generics.ty_params {
-            let param_ss = param.span;
-            let name = escape(self.span.snippet(param_ss));
-            // Append $id to name to make sure each one is unique
-            let qualname = format!("{}::{}${}", prefix, name, id);
-            if !self.span.filter_generated(Some(param_ss), full_span) {
-                let id = ::id_from_node_id(param.id, &self.save_ctxt);
-                let span = self.span_from_span(param_ss);
+        for param in &generics.params {
+            if let ast::GenericParam::Type(ref ty_param) = *param {
+                let param_ss = ty_param.span;
+                let name = escape(self.span.snippet(param_ss));
+                // Append $id to name to make sure each one is unique
+                let qualname = format!("{}::{}${}", prefix, name, id);
+                if !self.span.filter_generated(Some(param_ss), full_span) {
+                    let id = ::id_from_node_id(ty_param.id, &self.save_ctxt);
+                    let span = self.span_from_span(param_ss);
 
-                self.dumper.dump_def(
-                    &Access {
-                        public: false,
-                        reachable: false,
-                    },
-                    Def {
-                        kind: DefKind::Type,
-                        id,
-                        span,
-                        name,
-                        qualname,
-                        value: String::new(),
-                        parent: None,
-                        children: vec![],
-                        decl_id: None,
-                        docs: String::new(),
-                        sig: None,
-                        attributes: vec![],
-                    },
-                );
+                    self.dumper.dump_def(
+                        &Access {
+                            public: false,
+                            reachable: false,
+                        },
+                        Def {
+                            kind: DefKind::Type,
+                            id,
+                            span,
+                            name,
+                            qualname,
+                            value: String::new(),
+                            parent: None,
+                            children: vec![],
+                            decl_id: None,
+                            docs: String::new(),
+                            sig: None,
+                            attributes: vec![],
+                        },
+                    );
+                }
             }
         }
         self.visit_generics(generics);
@@ -787,8 +794,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let name = item.ident.to_string();
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
         let mut val = name.clone();
-        if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
-            val.push_str(&generics_to_string(generics));
+        if !generics.params.is_empty() {
+            val.push_str(&generic_params_to_string(&generics.params));
         }
         if !trait_refs.is_empty() {
             val.push_str(": ");
@@ -1478,14 +1485,16 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
     }
 
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
-        for param in generics.ty_params.iter() {
-            for bound in param.bounds.iter() {
-                if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
-                    self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+        for param in &generics.params {
+            if let ast::GenericParam::Type(ref ty_param) = *param {
+                for bound in ty_param.bounds.iter() {
+                    if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
+                        self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+                    }
                 }
-            }
-            if let Some(ref ty) = param.default {
-                self.visit_ty(&ty);
+                if let Some(ref ty) = ty_param.default {
+                    self.visit_ty(&ty);
+                }
             }
         }
     }

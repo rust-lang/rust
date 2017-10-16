@@ -462,7 +462,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
-            bound_lifetimes: Vec::new(),
+            bound_generic_params: Vec::new(),
             trait_ref: self.trait_ref(path),
             span,
         }

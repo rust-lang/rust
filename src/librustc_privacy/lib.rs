@@ -1236,7 +1236,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
-        for ty_param in generics.ty_params.iter() {
+        for ty_param in generics.ty_params() {
             for bound in ty_param.bounds.iter() {
                 self.check_ty_param_bound(bound)
             }

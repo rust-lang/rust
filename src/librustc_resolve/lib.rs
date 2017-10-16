@@ -53,7 +53,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
-use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
+use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParam, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
@@ -790,25 +790,30 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         // to following type parameters, as the Substs can only
         // provide previous type parameters as they're built.
         let mut default_ban_rib = Rib::new(ForwardTyParamBanRibKind);
-        default_ban_rib.bindings.extend(generics.ty_params.iter()
+        default_ban_rib.bindings.extend(generics.params.iter()
+            .filter_map(|p| if let GenericParam::Type(ref tp) = *p { Some(tp) } else { None })
             .skip_while(|p| p.default.is_none())
             .map(|p| (Ident::with_empty_ctxt(p.ident.name), Def::Err)));
 
-        for param in &generics.ty_params {
-            for bound in &param.bounds {
-                self.visit_ty_param_bound(bound);
-            }
+        for param in &generics.params {
+            match *param {
+                GenericParam::Lifetime(_) => self.visit_generic_param(param),
+                GenericParam::Type(ref ty_param) => {
+                    for bound in &ty_param.bounds {
+                        self.visit_ty_param_bound(bound);
+                    }
 
-            if let Some(ref ty) = param.default {
-                self.ribs[TypeNS].push(default_ban_rib);
-                self.visit_ty(ty);
-                default_ban_rib = self.ribs[TypeNS].pop().unwrap();
-            }
+                    if let Some(ref ty) = ty_param.default {
+                        self.ribs[TypeNS].push(default_ban_rib);
+                        self.visit_ty(ty);
+                        default_ban_rib = self.ribs[TypeNS].pop().unwrap();
+                    }
 
-            // Allow all following defaults to refer to this type parameter.
-            default_ban_rib.bindings.remove(&Ident::with_empty_ctxt(param.ident.name));
+                    // Allow all following defaults to refer to this type parameter.
+                    default_ban_rib.bindings.remove(&Ident::with_empty_ctxt(ty_param.ident.name));
+                }
+            }
         }
-        for lt in &generics.lifetimes { self.visit_lifetime_def(lt); }
         for p in &generics.where_clause.predicates { self.visit_where_predicate(p); }
     }
 }
@@ -2022,23 +2027,27 @@ impl<'a> Resolver<'a> {
             HasTypeParameters(generics, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap();
-                for type_parameter in &generics.ty_params {
-                    let ident = type_parameter.ident.modern();
-                    debug!("with_type_parameter_rib: {}", type_parameter.id);
+                for param in &generics.params {
+                    if let GenericParam::Type(ref type_parameter) = *param {
+                        let ident = type_parameter.ident.modern();
+                        debug!("with_type_parameter_rib: {}", type_parameter.id);
 
-                    if seen_bindings.contains_key(&ident) {
-                        let span = seen_bindings.get(&ident).unwrap();
-                        let err =
-                            ResolutionError::NameAlreadyUsedInTypeParameterList(ident.name, span);
-                        resolve_error(self, type_parameter.span, err);
+                        if seen_bindings.contains_key(&ident) {
+                            let span = seen_bindings.get(&ident).unwrap();
+                            let err = ResolutionError::NameAlreadyUsedInTypeParameterList(
+                                ident.name,
+                                span,
+                            );
+                            resolve_error(self, type_parameter.span, err);
+                        }
+                        seen_bindings.entry(ident).or_insert(type_parameter.span);
+
+                        // plain insert (no renaming)
+                        let def_id = self.definitions.local_def_id(type_parameter.id);
+                        let def = Def::TyParam(def_id);
+                        function_type_rib.bindings.insert(ident, def);
+                        self.record_def(type_parameter.id, PathResolution::new(def));
                     }
-                    seen_bindings.entry(ident).or_insert(type_parameter.span);
-
-                    // plain insert (no renaming)
-                    let def_id = self.definitions.local_def_id(type_parameter.id);
-                    let def = Def::TyParam(def_id);
-                    function_type_rib.bindings.insert(ident, def);
-                    self.record_def(type_parameter.id, PathResolution::new(def));
                 }
                 self.ribs[TypeNS].push(function_type_rib);
             }

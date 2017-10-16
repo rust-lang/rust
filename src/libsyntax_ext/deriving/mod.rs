@@ -121,10 +121,12 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
     let mut typaram = String::from(base);
     if let Annotatable::Item(ref item) = *item {
         match item.node {
-            ast::ItemKind::Struct(_, ast::Generics { ref ty_params, .. }) |
-            ast::ItemKind::Enum(_, ast::Generics { ref ty_params, .. }) => {
-                for ty in ty_params.iter() {
-                    typaram.push_str(&ty.ident.name.as_str());
+            ast::ItemKind::Struct(_, ast::Generics { ref params, .. }) |
+            ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
+                for param in params.iter() {
+                    if let ast::GenericParam::Type(ref ty) = *param{
+                        typaram.push_str(&ty.ident.name.as_str());
+                    }
                 }
             }
 

@@ -592,13 +592,9 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 continue;
             }
 
-            let (span, name) = if index < ast_generics.lifetimes.len() {
-                (ast_generics.lifetimes[index].lifetime.span,
-                 ast_generics.lifetimes[index].lifetime.name.name())
-            } else {
-                let index = index - ast_generics.lifetimes.len();
-                (ast_generics.ty_params[index].span,
-                 ast_generics.ty_params[index].name)
+            let (span, name) = match ast_generics.params[index] {
+                hir::GenericParam::Lifetime(ref ld) => (ld.lifetime.span, ld.lifetime.name.name()),
+                hir::GenericParam::Type(ref tp) => (tp.span, tp.name),
             };
             self.report_bivariance(span, name);
         }

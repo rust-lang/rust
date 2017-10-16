@@ -237,8 +237,12 @@ pub trait Folder : Sized {
         noop_fold_ty_param(tp, self)
     }
 
-    fn fold_ty_params(&mut self, tps: Vec<TyParam>) -> Vec<TyParam> {
-        noop_fold_ty_params(tps, self)
+    fn fold_generic_param(&mut self, param: GenericParam) -> GenericParam {
+        noop_fold_generic_param(param, self)
+    }
+
+    fn fold_generic_params(&mut self, params: Vec<GenericParam>) -> Vec<GenericParam> {
+        noop_fold_generic_params(params, self)
     }
 
     fn fold_tt(&mut self, tt: TokenTree) -> TokenTree {
@@ -363,8 +367,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 TyKind::Rptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
             }
             TyKind::BareFn(f) => {
-                TyKind::BareFn(f.map(|BareFnTy {lifetimes, unsafety, abi, decl}| BareFnTy {
-                    lifetimes: fld.fold_lifetime_defs(lifetimes),
+                TyKind::BareFn(f.map(|BareFnTy {generic_params, unsafety, abi, decl}| BareFnTy {
+                    generic_params: fld.fold_generic_params(generic_params),
                     unsafety,
                     abi,
                     decl: fld.fold_fn_decl(decl)
@@ -677,8 +681,18 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn noop_fold_ty_params<T: Folder>(tps: Vec<TyParam>, fld: &mut T) -> Vec<TyParam> {
-    tps.move_map(|tp| fld.fold_ty_param(tp))
+pub fn noop_fold_generic_param<T: Folder>(param: GenericParam, fld: &mut T) -> GenericParam {
+    match param {
+        GenericParam::Lifetime(l) => GenericParam::Lifetime(fld.fold_lifetime_def(l)),
+        GenericParam::Type(t) => GenericParam::Type(fld.fold_ty_param(t)),
+    }
+}
+
+pub fn noop_fold_generic_params<T: Folder>(
+    params: Vec<GenericParam>,
+    fld: &mut T
+) -> Vec<GenericParam> {
+    params.move_map(|p| fld.fold_generic_param(p))
 }
 
 pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
@@ -716,11 +730,10 @@ pub fn noop_fold_opt_lifetime<T: Folder>(o_lt: Option<Lifetime>, fld: &mut T)
     o_lt.map(|lt| fld.fold_lifetime(lt))
 }
 
-pub fn noop_fold_generics<T: Folder>(Generics {ty_params, lifetimes, where_clause, span}: Generics,
+pub fn noop_fold_generics<T: Folder>(Generics { params, where_clause, span }: Generics,
                                      fld: &mut T) -> Generics {
     Generics {
-        ty_params: fld.fold_ty_params(ty_params),
-        lifetimes: fld.fold_lifetime_defs(lifetimes),
+        params: fld.fold_generic_params(params),
         where_clause: fld.fold_where_clause(where_clause),
         span: fld.new_span(span),
     }
@@ -744,12 +757,12 @@ pub fn noop_fold_where_predicate<T: Folder>(
                                  fld: &mut T)
                                  -> WherePredicate {
     match pred {
-        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bound_lifetimes,
+        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bound_generic_params,
                                                                      bounded_ty,
                                                                      bounds,
                                                                      span}) => {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                bound_lifetimes: fld.fold_lifetime_defs(bound_lifetimes),
+                bound_generic_params: fld.fold_generic_params(bound_generic_params),
                 bounded_ty: fld.fold_ty(bounded_ty),
                 bounds: bounds.move_map(|x| fld.fold_ty_param_bound(x)),
                 span: fld.new_span(span)
@@ -806,7 +819,7 @@ pub fn noop_fold_trait_ref<T: Folder>(p: TraitRef, fld: &mut T) -> TraitRef {
 
 pub fn noop_fold_poly_trait_ref<T: Folder>(p: PolyTraitRef, fld: &mut T) -> PolyTraitRef {
     ast::PolyTraitRef {
-        bound_lifetimes: fld.fold_lifetime_defs(p.bound_lifetimes),
+        bound_generic_params: fld.fold_generic_params(p.bound_generic_params),
         trait_ref: fld.fold_trait_ref(p.trait_ref),
         span: fld.new_span(p.span),
     }
