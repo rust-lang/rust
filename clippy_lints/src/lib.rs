@@ -100,6 +100,7 @@ pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
+pub mod impl_from_str;
 pub mod infinite_iter;
 pub mod int_plus_one;
 pub mod invalid_ref;
@@ -341,6 +342,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
     reg.register_early_lint_pass(box const_static_lifetime::StaticConst);
+    reg.register_late_lint_pass(box impl_from_str::ImplFromStr);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -446,6 +448,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
+        impl_from_str::IMPL_FROM_STR,
         infinite_iter::INFINITE_ITER,
         invalid_ref::INVALID_REF,
         is_unit_expr::UNIT_EXPR,
