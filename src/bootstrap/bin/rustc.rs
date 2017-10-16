@@ -120,10 +120,9 @@ fn main() {
             cmd.arg("-L").arg(&root);
         }
 
-        // Pass down extra flags, commonly used to configure `-Clinker` when
-        // cross compiling.
-        if let Ok(s) = env::var("RUSTC_FLAGS") {
-            cmd.args(&s.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>());
+        // Override linker if necessary.
+        if let Ok(target_linker) = env::var("RUSTC_TARGET_LINKER") {
+            cmd.arg(format!("-Clinker={}", target_linker));
         }
 
         // Pass down incremental directory, if any.
@@ -251,6 +250,11 @@ fn main() {
         // also in the sysroot.
         if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
             cmd.arg("-Z").arg("force-unstable-if-unmarked");
+        }
+    } else {
+        // Override linker if necessary.
+        if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
+            cmd.arg(format!("-Clinker={}", host_linker));
         }
     }
 

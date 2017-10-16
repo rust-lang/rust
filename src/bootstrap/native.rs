@@ -227,6 +227,13 @@ impl Step for Llvm {
             cfg.build_arg("-j").build_arg(build.jobs().to_string());
             cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
             cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
+            if let Some(ar) = build.ar(target) {
+                if ar.is_absolute() {
+                    // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
+                    // tries to resolve this path in the LLVM build directory.
+                    cfg.define("CMAKE_AR", sanitize_cc(ar));
+                }
+            }
         };
 
         configure_compilers(&mut cfg);

@@ -747,12 +747,14 @@ impl Step for Compiletest {
             flags.push("-g".to_string());
         }
 
-        let mut hostflags = build.rustc_flags(compiler.host);
-        hostflags.extend(flags.clone());
+        if let Some(linker) = build.linker(target) {
+            cmd.arg("--linker").arg(linker);
+        }
+
+        let hostflags = flags.clone();
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
-        let mut targetflags = build.rustc_flags(target);
-        targetflags.extend(flags);
+        let mut targetflags = flags.clone();
         targetflags.push(format!("-Lnative={}",
                                  build.test_helpers_out(target).display()));
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
@@ -806,6 +808,9 @@ impl Step for Compiletest {
                 .arg("--cflags").arg(build.cflags(target).join(" "))
                 .arg("--llvm-components").arg(llvm_components.trim())
                 .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());
+                if let Some(ar) = build.ar(target) {
+                    cmd.arg("--ar").arg(ar);
+                }
             }
         }
         if suite == "run-make" && !build.config.llvm_enabled {
@@ -831,7 +836,7 @@ impl Step for Compiletest {
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
         if target.contains("msvc") {
-            for &(ref k, ref v) in build.cc[&target].0.env() {
+            for &(ref k, ref v) in build.cc[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
                 }

@@ -240,10 +240,11 @@ pub struct Build {
     lldb_python_dir: Option<String>,
 
     // Runtime state filled in later on
-    // target -> (cc, ar)
-    cc: HashMap<Interned<String>, (cc::Tool, Option<PathBuf>)>,
-    // host -> (cc, ar)
+    // C/C++ compilers and archiver for all targets
+    cc: HashMap<Interned<String>, cc::Tool>,
     cxx: HashMap<Interned<String>, cc::Tool>,
+    ar: HashMap<Interned<String>, PathBuf>,
+    // Misc
     crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
@@ -324,6 +325,7 @@ impl Build {
             rls_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
+            ar: HashMap::new(),
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
@@ -612,7 +614,7 @@ impl Build {
 
     /// Returns the path to the C compiler for the target specified.
     fn cc(&self, target: Interned<String>) -> &Path {
-        self.cc[&target].0.path()
+        self.cc[&target].path()
     }
 
     /// Returns a list of flags to pass to the C compiler for the target
@@ -620,7 +622,7 @@ impl Build {
     fn cflags(&self, target: Interned<String>) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // cc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[&target].0.args().iter()
+        let mut base = self.cc[&target].args().iter()
                            .map(|s| s.to_string_lossy().into_owned())
                            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
                            .collect::<Vec<_>>();
@@ -644,7 +646,7 @@ impl Build {
 
     /// Returns the path to the `ar` archive utility for the target specified.
     fn ar(&self, target: Interned<String>) -> Option<&Path> {
-        self.cc[&target].1.as_ref().map(|p| &**p)
+        self.ar.get(&target).map(|p| &**p)
     }
 
     /// Returns the path to the C++ compiler for the target specified.
@@ -657,21 +659,17 @@ impl Build {
         }
     }
 
-    /// Returns flags to pass to the compiler to generate code for `target`.
-    fn rustc_flags(&self, target: Interned<String>) -> Vec<String> {
-        // New flags should be added here with great caution!
-        //
-        // It's quite unfortunate to **require** flags to generate code for a
-        // target, so it should only be passed here if absolutely necessary!
-        // Most default configuration should be done through target specs rather
-        // than an entry here.
-
-        let mut base = Vec::new();
-        if target != self.config.build && !target.contains("msvc") &&
-            !target.contains("emscripten") {
-            base.push(format!("-Clinker={}", self.cc(target).display()));
+    /// Returns the path to the linker for the given target if it needs to be overriden.
+    fn linker(&self, target: Interned<String>) -> Option<&Path> {
+        if let Some(linker) = self.config.target_config.get(&target)
+                                                       .and_then(|c| c.linker.as_ref()) {
+            Some(linker)
+        } else if target != self.config.build &&
+                  !target.contains("msvc") && !target.contains("emscripten") {
+            Some(self.cc(target))
+        } else {
+            None
         }
-        base
     }
 
     /// Returns if this target should statically link the C runtime, if specified

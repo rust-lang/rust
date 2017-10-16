@@ -1155,6 +1155,9 @@ actual:\n\
             .arg("-o").arg(out_dir)
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
+        if let Some(ref linker) = self.config.linker {
+            rustdoc.arg("--linker").arg(linker).arg("-Z").arg("unstable-options");
+        }
 
         self.compose_and_run_compiler(rustdoc, None)
     }
@@ -1440,6 +1443,9 @@ actual:\n\
             rustc.args(self.split_maybe_args(&self.config.host_rustcflags));
         } else {
             rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
+        }
+        if let Some(ref linker) = self.config.linker {
+            rustc.arg(format!("-Clinker={}", linker));
         }
 
         rustc.args(&self.props.compile_flags);
@@ -2101,6 +2107,10 @@ actual:\n\
            .env("LLVM_COMPONENTS", &self.config.llvm_components)
            .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags);
 
+        if let Some(ref linker) = self.config.linker {
+            cmd.env("RUSTC_LINKER", linker);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
@@ -2123,7 +2133,8 @@ actual:\n\
                .env("CXX", &self.config.cxx);
         } else {
             cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
-               .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags));
+               .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags))
+               .env("AR", &self.config.ar);
 
             if self.config.target.contains("windows") {
                 cmd.env("IS_WINDOWS", "1");
