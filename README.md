@@ -187,7 +187,7 @@ as a "very minor change" is up to the sub-team to decide; check
 ## Reviewing RFCs
 [Reviewing RFCs]: #reviewing-rfcs
 
-While the RFC pull request is up, the shepherd may schedule meetings with the
+While the RFC pull request is up, the sub-team may schedule meetings with the
 author and/or relevant stakeholders to discuss the issues in greater detail,
 and in some cases the topic may be discussed at a sub-team meeting. In either
 case a summary from the meeting will be posted back to the RFC pull request.
