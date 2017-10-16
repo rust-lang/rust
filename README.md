@@ -208,7 +208,8 @@ options covering different styles. File an issue, or even better, submit a PR.
     ```
 * When you run rustfmt, place a file named `rustfmt.toml` or `.rustfmt.toml` in
   target file directory or its parents to override the default settings of
-  rustfmt.
+  rustfmt. You can generate a file containing the default configuration with
+  `rustfm --dump-default-config rustfmt.toml` and customize as needed.
 * After successful compilation, a `rustfmt` executable can be found in the
   target directory.
 * If you're having issues compiling Rustfmt (or compile errors when trying to

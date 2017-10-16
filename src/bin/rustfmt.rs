@@ -128,8 +128,7 @@ fn make_opts() -> Options {
     opts.opt(
         "",
         "dump-default-config",
-        "Dumps the default configuration to a file and exits. PATH defaults to rustfmt.toml if \
-         omitted.",
+	"Dumps default configuration to PATH. PATH defaults to stdout, if omitted."
         "PATH",
         HasArg::Maybe,
         Occur::Optional,
