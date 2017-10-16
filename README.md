@@ -16,6 +16,7 @@ Read ["Installation"] from [The Book].
 ## Building from Source
 [building-from-source]: #building-from-source
 
+### Building on *nix
 1. Make sure you have installed the dependencies:
 
    * `g++` 4.7 or later or `clang++` 3.x or later
