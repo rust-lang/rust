@@ -64,7 +64,8 @@ pub fn opts() -> TargetOptions {
     ]);
 
     TargetOptions {
-        function_sections: true,
+        // FIXME(#13846) this should be enabled for windows
+        function_sections: false,
         linker: "gcc".to_string(),
         dynamic_linking: true,
         executables: true,
