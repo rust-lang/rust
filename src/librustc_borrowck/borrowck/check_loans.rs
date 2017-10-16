@@ -770,7 +770,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let lp = opt_loan_path(&assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
-                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);
+                    self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                 } else {
                     self.bccx.report_reassigned_immutable_variable(
                         assignment_span,

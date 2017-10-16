@@ -21,5 +21,6 @@ fn main() {
 
     f<X>();
     //~^ ERROR: chained comparison operators require parentheses
-    //~^^ HELP: use `::<...>` instead of `<...>`
+    //~| HELP: use `::<...>` instead of `<...>`
+    //~| HELP: or use `(...)`
 }

@@ -442,13 +442,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             wrapped_path = match current_path.kind {
                 LpVar(local_id) => {
                     if !through_borrow {
-                        self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                        let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);
+                        self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                     }
                     None
                 }
                 LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
-                    let local_id = self.tcx().hir.hir_to_node_id(var_id);
-                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    self.bccx.used_mut_nodes.borrow_mut().insert(var_id);
                     None
                 }
                 LpExtend(ref base, mc::McInherited, LpDeref(pointer_kind)) |

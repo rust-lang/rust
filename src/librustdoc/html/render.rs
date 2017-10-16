@@ -125,6 +125,21 @@ pub struct SharedContext {
     /// Warnings for the user if rendering would differ using different markdown
     /// parsers.
     pub markdown_warnings: RefCell<Vec<(Span, String, Vec<html_diff::Difference>)>>,
+    /// The directories that have already been created in this doc run. Used to reduce the number
+    /// of spurious `create_dir_all` calls.
+    pub created_dirs: RefCell<FxHashSet<PathBuf>>,
+}
+
+impl SharedContext {
+    fn ensure_dir(&self, dst: &Path) -> io::Result<()> {
+        let mut dirs = self.created_dirs.borrow_mut();
+        if !dirs.contains(dst) {
+            fs::create_dir_all(dst)?;
+            dirs.insert(dst.to_path_buf());
+        }
+
+        Ok(())
+    }
 }
 
 /// Indicates where an external crate can be found.
@@ -255,6 +270,9 @@ pub struct Cache {
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
     pub access_levels: Arc<AccessLevels<DefId>>,
+
+    /// The version of the crate being documented, if given fron the `--crate-version` flag.
+    pub crate_version: Option<String>,
 
     // Private fields only used when initially crawling a crate to build a cache
 
@@ -460,6 +478,7 @@ pub fn run(mut krate: clean::Crate,
         },
         css_file_extension: css_file_extension.clone(),
         markdown_warnings: RefCell::new(vec![]),
+        created_dirs: RefCell::new(FxHashSet()),
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -534,6 +553,7 @@ pub fn run(mut krate: clean::Crate,
         primitive_locations: FxHashMap(),
         stripped_mod: false,
         access_levels: krate.access_levels.clone(),
+        crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, FxHashMap()),
         deref_trait_did,
@@ -790,7 +810,6 @@ fn write_shared(cx: &Context,
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
-    try_err!(fs::create_dir_all(&cx.dst), &cx.dst);
     let _lock = flock::Lock::panicking_new(&cx.dst.join(".lock"), true, true, true);
 
     // Add all the static files. These may already exist, but we just
@@ -1306,7 +1325,8 @@ impl DocFolder for Cache {
                 // Figure out the id of this impl. This may map to a
                 // primitive rather than always to a struct/enum.
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
-                let did = if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
+                let mut dids = vec![];
+                if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
                     let masked_trait = i.trait_.def_id().map_or(false,
                         |d| self.masked_crates.contains(&d.krate));
                     if !masked_trait {
@@ -1315,23 +1335,33 @@ impl DocFolder for Cache {
                             clean::BorrowedRef {
                                 type_: box clean::ResolvedPath { did, .. }, ..
                             } => {
-                                Some(did)
+                                dids.push(did);
                             }
                             ref t => {
-                                t.primitive_type().and_then(|t| {
+                                let did = t.primitive_type().and_then(|t| {
                                     self.primitive_locations.get(&t).cloned()
-                                })
+                                });
+
+                                if let Some(did) = did {
+                                    dids.push(did);
+                                }
                             }
                         }
-                    } else {
-                        None
+                    }
+
+                    if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
+                        for bound in generics {
+                            if let Some(did) = bound.def_id() {
+                                dids.push(did);
+                            }
+                        }
                     }
                 } else {
                     unreachable!()
                 };
-                if let Some(did) = did {
+                for did in dids {
                     self.impls.entry(did).or_insert(vec![]).push(Impl {
-                        impl_item: item,
+                        impl_item: item.clone(),
                     });
                 }
                 None
@@ -1503,8 +1533,8 @@ impl Context {
                 this.render_item(&mut buf, &item, false).unwrap();
                 // buf will be empty if the module is stripped and there is no redirect for it
                 if !buf.is_empty() {
+                    try_err!(this.shared.ensure_dir(&this.dst), &this.dst);
                     let joint_dst = this.dst.join("index.html");
-                    try_err!(fs::create_dir_all(&this.dst), &this.dst);
                     let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                     try_err!(dst.write_all(&buf), &joint_dst);
                 }
@@ -1538,8 +1568,8 @@ impl Context {
                 let name = item.name.as_ref().unwrap();
                 let item_type = item.type_();
                 let file_name = &item_path(item_type, name);
+                try_err!(self.shared.ensure_dir(&self.dst), &self.dst);
                 let joint_dst = self.dst.join(file_name);
-                try_err!(fs::create_dir_all(&self.dst), &self.dst);
                 let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                 try_err!(dst.write_all(&buf), &joint_dst);
 
@@ -1547,9 +1577,10 @@ impl Context {
                 // URL for the page.
                 let redir_name = format!("{}.{}.html", name, item_type.name_space());
                 let redir_dst = self.dst.join(redir_name);
-                if let Ok(mut redirect_out) = OpenOptions::new().create_new(true)
+                if let Ok(redirect_out) = OpenOptions::new().create_new(true)
                                                                 .write(true)
                                                                 .open(&redir_dst) {
+                    let mut redirect_out = BufWriter::new(redirect_out);
                     try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
                 }
 
@@ -1559,7 +1590,8 @@ impl Context {
                 if item_type == ItemType::Macro {
                     let redir_name = format!("{}.{}!.html", item_type, name);
                     let redir_dst = self.dst.join(redir_name);
-                    let mut redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                    let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                    let mut redirect_out = BufWriter::new(redirect_out);
                     try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
                 }
             }
@@ -3421,6 +3453,16 @@ impl<'a> fmt::Display for Sidebar<'a> {
             }
             write!(fmt, "{}", it.name.as_ref().unwrap())?;
             write!(fmt, "</p>")?;
+
+            if it.is_crate() {
+                if let Some(ref version) = cache().crate_version {
+                    write!(fmt,
+                           "<div class='block version'>\
+                            <p>Version {}</p>\
+                            </div>",
+                           version)?;
+                }
+            }
 
             match it.inner {
                 clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,

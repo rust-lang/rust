@@ -57,7 +57,7 @@ static AtomicOrdering fromRust(LLVMAtomicOrdering Ordering) {
   llvm_unreachable("Invalid LLVMAtomicOrdering value!");
 }
 
-static char *LastError;
+static LLVM_THREAD_LOCAL char *LastError;
 
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {

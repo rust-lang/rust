@@ -1,16 +1,16 @@
-error[E0593]: closure takes 0 arguments but 2 arguments are required
+error[E0593]: closure is expected to take 2 arguments, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:15
    |
 15 |     [1, 2, 3].sort_by(|| panic!());
-   |               ^^^^^^^ ----------- takes 0 arguments
+   |               ^^^^^^^ -- takes 0 arguments
    |               |
    |               expected closure that takes 2 arguments
 
-error[E0593]: closure takes 1 argument but 2 arguments are required
+error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:16:15
    |
 16 |     [1, 2, 3].sort_by(|tuple| panic!());
-   |               ^^^^^^^ ---------------- takes 1 argument
+   |               ^^^^^^^ ------- takes 1 argument
    |               |
    |               expected closure that takes 2 arguments
 
@@ -23,23 +23,47 @@ error[E0308]: mismatched types
    = note: expected type `&{integer}`
               found type `(_, _)`
 
-error[E0593]: closure takes 1 argument but 2 arguments are required
+error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:17:15
    |
 17 |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
-   |               ^^^^^^^ -------------------------- takes 1 argument
+   |               ^^^^^^^ ----------------- takes 1 argument
    |               |
    |               expected closure that takes 2 arguments
 
-error[E0593]: closure takes 0 arguments but 1 argument is required
+error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:18:5
    |
 18 |     f(|| panic!());
-   |     ^ ----------- takes 0 arguments
+   |     ^ -- takes 0 arguments
    |     |
    |     expected closure that takes 1 argument
    |
    = note: required by `f`
 
-error: aborting due to 5 previous errors
+error[E0593]: closure is expected to take a single tuple as argument, but it takes 2 distinct arguments
+  --> $DIR/closure-arg-count.rs:20:53
+   |
+20 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
+   |                                                     ^^^ ------ help: consider changing the closure to accept a tuple: `|(i, x)|`
+   |                                                     |
+   |                                                     expected closure that takes a single tuple as argument
+
+error[E0593]: closure is expected to take a single tuple as argument, but it takes 2 distinct arguments
+  --> $DIR/closure-arg-count.rs:21:53
+   |
+21 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
+   |                                                     ^^^ ------------- help: consider changing the closure to accept a tuple: `|(i, x): (usize, _)|`
+   |                                                     |
+   |                                                     expected closure that takes a single tuple as argument
+
+error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
+  --> $DIR/closure-arg-count.rs:22:53
+   |
+22 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
+   |                                                     ^^^ --------- takes 3 distinct arguments
+   |                                                     |
+   |                                                     expected closure that takes a single 2-tuple as argument
+
+error: aborting due to 8 previous errors
 

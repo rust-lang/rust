@@ -25,6 +25,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File, create_dir_all};
+use std::fmt;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -571,9 +572,10 @@ actual:\n\
                 }
             }
 
-            _=> {
-                let rust_src_root = self.find_rust_src_root()
-                                        .expect("Could not find Rust source root");
+            _ => {
+                let rust_src_root = self.config.find_rust_src_root().expect(
+                    "Could not find Rust source root",
+                );
                 let rust_pp_module_rel_path = Path::new("./src/etc");
                 let rust_pp_module_abs_path = rust_src_root.join(rust_pp_module_rel_path)
                                                            .to_str()
@@ -664,19 +666,6 @@ actual:\n\
         self.check_debugger_output(&debugger_run_result, &check_lines);
     }
 
-    fn find_rust_src_root(&self) -> Option<PathBuf> {
-        let mut path = self.config.src_base.clone();
-        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
-
-        while path.pop() {
-            if path.join(&path_postfix).is_file() {
-                return Some(path);
-            }
-        }
-
-        None
-    }
-
     fn run_debuginfo_lldb_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
@@ -735,7 +724,9 @@ actual:\n\
         script_str.push_str("version\n");
 
         // Switch LLDB into "Rust mode"
-        let rust_src_root = self.find_rust_src_root().expect("Could not find Rust source root");
+        let rust_src_root = self.config.find_rust_src_root().expect(
+            "Could not find Rust source root",
+        );
         let rust_pp_module_rel_path = Path::new("./src/etc/lldb_rust_formatters.py");
         let rust_pp_module_abs_path = rust_src_root.join(rust_pp_module_rel_path)
                                                    .to_str()
@@ -1050,7 +1041,7 @@ actual:\n\
                 None => {
                     if self.is_unexpected_compiler_message(actual_error, expect_help, expect_note) {
                         self.error(
-                            &format!("{}:{}: unexpected {:?}: '{}'",
+                            &format!("{}:{}: unexpected {}: '{}'",
                                      file_name,
                                      actual_error.line_num,
                                      actual_error.kind.as_ref()
@@ -1164,6 +1155,9 @@ actual:\n\
             .arg("-o").arg(out_dir)
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
+        if let Some(ref linker) = self.config.linker {
+            rustdoc.arg("--linker").arg(linker).arg("-Z").arg("unstable-options");
+        }
 
         self.compose_and_run_compiler(rustdoc, None)
     }
@@ -1450,6 +1444,9 @@ actual:\n\
         } else {
             rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
         }
+        if let Some(ref linker) = self.config.linker {
+            rustc.arg(format!("-Clinker={}", linker));
+        }
 
         rustc.args(&self.props.compile_flags);
 
@@ -1717,11 +1714,13 @@ actual:\n\
         if self.props.check_test_line_numbers_match {
             self.check_rustdoc_test_option(proc_res);
         } else {
-            let root = self.find_rust_src_root().unwrap();
-            let res = self.cmd2procres(Command::new(&self.config.docck_python)
-                                       .arg(root.join("src/etc/htmldocck.py"))
-                                       .arg(out_dir)
-                                       .arg(&self.testpaths.file));
+            let root = self.config.find_rust_src_root().unwrap();
+            let res = self.cmd2procres(
+                Command::new(&self.config.docck_python)
+                    .arg(root.join("src/etc/htmldocck.py"))
+                    .arg(out_dir)
+                    .arg(&self.testpaths.file),
+            );
             if !res.status.success() {
                 self.fatal_proc_rec("htmldocck failed!", &res);
             }
@@ -2036,7 +2035,6 @@ actual:\n\
         // Add an extra flag pointing at the incremental directory.
         let mut revision_props = self.props.clone();
         revision_props.incremental_dir = Some(incremental_dir);
-        revision_props.compile_flags.push(String::from("-Zincremental-info"));
 
         let revision_cx = TestCx {
             config: self.config,
@@ -2109,6 +2107,10 @@ actual:\n\
            .env("LLVM_COMPONENTS", &self.config.llvm_components)
            .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags);
 
+        if let Some(ref linker) = self.config.linker {
+            cmd.env("RUSTC_LINKER", linker);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
@@ -2131,7 +2133,8 @@ actual:\n\
                .env("CXX", &self.config.cxx);
         } else {
             cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
-               .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags));
+               .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags))
+               .env("AR", &self.config.ar);
 
             if self.config.target.contains("windows") {
                 cmd.env("IS_WINDOWS", "1");
@@ -2237,7 +2240,7 @@ actual:\n\
             let (_, tests_text) = test_file_contents.split_at(idx + "// END_RUST SOURCE".len());
             let tests_text_str = String::from(tests_text);
             let mut curr_test : Option<&str> = None;
-            let mut curr_test_contents = Vec::new();
+            let mut curr_test_contents = vec![ExpectedLine::Elision];
             for l in tests_text_str.lines() {
                 debug!("line: {:?}", l);
                 if l.starts_with("// START ") {
@@ -2251,11 +2254,14 @@ actual:\n\
                     self.compare_mir_test_output(curr_test.unwrap(), &curr_test_contents);
                     curr_test = None;
                     curr_test_contents.clear();
+                    curr_test_contents.push(ExpectedLine::Elision);
                 } else if l.is_empty() {
                     // ignore
+                } else if l.starts_with("//") && l.split_at("//".len()).1.trim() == "..." {
+                    curr_test_contents.push(ExpectedLine::Elision)
                 } else if l.starts_with("// ") {
                     let (_, test_content) = l.split_at("// ".len());
-                    curr_test_contents.push(test_content);
+                    curr_test_contents.push(ExpectedLine::Text(test_content));
                 }
             }
         }
@@ -2273,7 +2279,7 @@ actual:\n\
         }
     }
 
-    fn compare_mir_test_output(&self, test_name: &str, expected_content: &[&str]) {
+    fn compare_mir_test_output(&self, test_name: &str, expected_content: &[ExpectedLine<&str>]) {
         let mut output_file = PathBuf::new();
         output_file.push(self.get_mir_dump_dir());
         output_file.push(test_name);
@@ -2285,38 +2291,77 @@ actual:\n\
         let mut dumped_string = String::new();
         dumped_file.read_to_string(&mut dumped_string).unwrap();
         let mut dumped_lines = dumped_string.lines().filter(|l| !l.is_empty());
-        let mut expected_lines = expected_content.iter().filter(|l| !l.is_empty());
-
-        // We expect each non-empty line from expected_content to appear
-        // in the dump in order, but there may be extra lines interleaved
-        while let Some(expected_line) = expected_lines.next() {
-            let e_norm = normalize_mir_line(expected_line);
-            if e_norm.is_empty() {
-                continue;
-            };
-            let mut found = false;
-            while let Some(dumped_line) = dumped_lines.next() {
-                let d_norm = normalize_mir_line(dumped_line);
-                debug!("found: {:?}", d_norm);
-                debug!("expected: {:?}", e_norm);
-                if e_norm == d_norm {
-                    found = true;
-                    break;
-                };
+        let mut expected_lines = expected_content.iter().filter(|&l| {
+            if let &ExpectedLine::Text(l) = l {
+                !l.is_empty()
+            } else {
+                true
             }
-            if !found {
-                let normalize_all = dumped_string.lines()
-                                                 .map(nocomment_mir_line)
-                                                 .filter(|l| !l.is_empty())
-                                                 .collect::<Vec<_>>()
-                                                 .join("\n");
-                panic!("ran out of mir dump output to match against.\n\
-                        Did not find expected line: {:?}\n\
-                        Expected:\n{}\n\
-                        Actual:\n{}",
-                        expected_line,
-                        expected_content.join("\n"),
-                        normalize_all);
+        }).peekable();
+
+        let compare = |expected_line, dumped_line| {
+            let e_norm = normalize_mir_line(expected_line);
+            let d_norm = normalize_mir_line(dumped_line);
+            debug!("found: {:?}", d_norm);
+            debug!("expected: {:?}", e_norm);
+            e_norm == d_norm
+        };
+
+        let error = |expected_line, extra_msg| {
+            let normalize_all = dumped_string.lines()
+                                             .map(nocomment_mir_line)
+                                             .filter(|l| !l.is_empty())
+                                             .collect::<Vec<_>>()
+                                             .join("\n");
+            let f = |l: &ExpectedLine<_>| match l {
+                &ExpectedLine::Elision => "... (elided)".into(),
+                &ExpectedLine::Text(t) => t
+            };
+            let expected_content = expected_content.iter()
+                                                   .map(|l| f(l))
+                                                   .collect::<Vec<_>>()
+                                                   .join("\n");
+            panic!("Did not find expected line, error: {}\n\
+                   Actual Line: {:?}\n\
+                   Expected:\n{}\n\
+                   Actual:\n{}",
+                   extra_msg,
+                   expected_line,
+                   expected_content,
+                   normalize_all);
+        };
+
+        // We expect each non-empty line to appear consecutively, non-consecutive lines
+        // must be separated by at least one Elision
+        while let Some(dumped_line) = dumped_lines.next() {
+            match expected_lines.next() {
+                Some(&ExpectedLine::Text(expected_line)) =>
+                    if !compare(expected_line, dumped_line) {
+                        error(expected_line,
+                              format!("Mismatch in lines\nExpected Line: {:?}", dumped_line));
+                    },
+                Some(&ExpectedLine::Elision) => {
+                    // skip any number of elisions in a row.
+                    while let Some(&&ExpectedLine::Elision) = expected_lines.peek() {
+                        expected_lines.next();
+                    }
+                    if let Some(&ExpectedLine::Text(expected_line)) = expected_lines.next() {
+                        let mut found = compare(expected_line, dumped_line);
+                        if found {
+                            continue;
+                        }
+                        while let Some(dumped_line) = dumped_lines.next() {
+                            found = compare(expected_line, dumped_line);
+                            if found {
+                                break;
+                            }
+                        }
+                        if !found {
+                            error(expected_line, "ran out of mir dump to match against".into());
+                        }
+                    }
+                },
+                None => {},
             }
         }
     }
@@ -2437,6 +2482,25 @@ impl ProcRes {
 enum TargetLocation {
     ThisFile(PathBuf),
     ThisDirectory(PathBuf),
+}
+
+#[derive(Clone, PartialEq, Eq)]
+enum ExpectedLine<T: AsRef<str>> {
+    Elision,
+    Text(T)
+}
+
+impl<T> fmt::Debug for ExpectedLine<T>
+where
+    T: AsRef<str> + fmt::Debug
+{
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        if let &ExpectedLine::Text(ref t) = self {
+            write!(formatter, "{:?}", t)
+        } else {
+            write!(formatter, "\"...\" (Elision)")
+        }
+    }
 }
 
 fn normalize_mir_line(line: &str) -> String {

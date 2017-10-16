@@ -44,6 +44,10 @@
 // gdb-command: print some_string
 // gdb-check:$8 = Some = {"IAMA optional string!"}
 
+// gdb-command: set print length 5
+// gdb-command: print some_string
+// gdb-check:$8 = Some = {"IAMA "...}
+
 
 // === LLDB TESTS ==================================================================================
 

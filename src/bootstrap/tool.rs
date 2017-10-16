@@ -387,7 +387,7 @@ pub struct Clippy {
 
 impl Step for Clippy {
     type Output = PathBuf;
-    const DEFAULT: bool = false;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -411,7 +411,7 @@ impl Step for Clippy {
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
-            tool: "clippy",
+            tool: "clippy-driver",
             mode: Mode::Librustc,
             path: "src/tools/clippy",
             expectation: builder.build.config.toolstate.clippy.passes(ToolState::Compiling),
@@ -561,7 +561,7 @@ impl<'a> Builder<'a> {
         if compiler.host.contains("msvc") {
             let curpaths = env::var_os("PATH").unwrap_or_default();
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
-            for &(ref k, ref v) in self.cc[&compiler.host].0.env() {
+            for &(ref k, ref v) in self.cc[&compiler.host].env() {
                 if k != "PATH" {
                     continue
                 }

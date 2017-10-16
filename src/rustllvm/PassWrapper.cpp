@@ -901,9 +901,7 @@ addPreservedGUID(const ModuleSummaryIndex &Index,
       }
     }
 
-    GlobalValueSummary *GVSummary = Summary.get();
-    if (isa<FunctionSummary>(GVSummary)) {
-      FunctionSummary *FS = cast<FunctionSummary>(GVSummary);
+    if (auto *FS = dyn_cast<FunctionSummary>(Summary.get())) {
       for (auto &Call: FS->calls()) {
         if (Call.first.isGUID()) {
           addPreservedGUID(Index, Preserved, Call.first.getGUID());
@@ -915,6 +913,10 @@ addPreservedGUID(const ModuleSummaryIndex &Index,
       for (auto &GUID: FS->type_tests()) {
         addPreservedGUID(Index, Preserved, GUID);
       }
+    }
+    if (auto *AS = dyn_cast<AliasSummary>(Summary.get())) {
+      auto GUID = AS->getAliasee().getOriginalName();
+      addPreservedGUID(Index, Preserved, GUID);
     }
   }
 }
@@ -963,12 +965,13 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // combined index
   //
   // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
-  computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
+  auto DeadSymbols = computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
   ComputeCrossModuleImport(
     Ret->Index,
     Ret->ModuleToDefinedGVSummaries,
     Ret->ImportLists,
-    Ret->ExportLists
+    Ret->ExportLists,
+    &DeadSymbols
   );
 
   // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it

@@ -163,10 +163,27 @@ pub trait CodegenUnitExt<'tcx> {
         fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    item: TransItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
-                TransItem::Fn(instance) => {
-                    tcx.hir.as_local_node_id(instance.def_id())
+                TransItem::Fn(ref instance) => {
+                    match instance.def {
+                        // We only want to take NodeIds of user-defined
+                        // instances into account. The others don't matter for
+                        // the codegen tests and can even make item order
+                        // unstable.
+                        InstanceDef::Item(def_id) => {
+                            tcx.hir.as_local_node_id(def_id)
+                        }
+                        InstanceDef::Intrinsic(..) |
+                        InstanceDef::FnPtrShim(..) |
+                        InstanceDef::Virtual(..) |
+                        InstanceDef::ClosureOnceShim { .. } |
+                        InstanceDef::DropGlue(..) |
+                        InstanceDef::CloneShim(..) => {
+                            None
+                        }
+                    }
                 }
-                TransItem::Static(node_id) | TransItem::GlobalAsm(node_id) => {
+                TransItem::Static(node_id) |
+                TransItem::GlobalAsm(node_id) => {
                     Some(node_id)
                 }
             }, item.symbol_name(tcx))
@@ -279,75 +296,74 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut internalization_candidates = FxHashSet();
 
     for trans_item in trans_items {
-        let is_root = trans_item.instantiation_mode(tcx) == InstantiationMode::GloballyShared;
+        match trans_item.instantiation_mode(tcx) {
+            InstantiationMode::GloballyShared { .. } => {}
+            InstantiationMode::LocalCopy => continue,
+        }
 
-        if is_root {
-            let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
-            let is_volatile = is_incremental_build &&
-                              trans_item.is_generic_fn();
+        let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
+        let is_volatile = is_incremental_build &&
+                          trans_item.is_generic_fn();
 
-            let codegen_unit_name = match characteristic_def_id {
-                Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
-                None => Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str(),
-            };
+        let codegen_unit_name = match characteristic_def_id {
+            Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
+            None => Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str(),
+        };
 
-            let make_codegen_unit = || {
-                CodegenUnit::new(codegen_unit_name.clone())
-            };
+        let make_codegen_unit = || {
+            CodegenUnit::new(codegen_unit_name.clone())
+        };
 
-            let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
-                                                .or_insert_with(make_codegen_unit);
+        let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
+                                            .or_insert_with(make_codegen_unit);
 
-            let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
-                Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
-                None => {
-                    match trans_item {
-                        TransItem::Fn(ref instance) => {
-                            let visibility = match instance.def {
-                                InstanceDef::Item(def_id) => {
-                                    if def_id.is_local() {
-                                        if tcx.is_exported_symbol(def_id) {
-                                            Visibility::Default
-                                        } else {
-                                            internalization_candidates.insert(trans_item);
-                                            Visibility::Hidden
-                                        }
+        let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
+            Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
+            None => {
+                match trans_item {
+                    TransItem::Fn(ref instance) => {
+                        let visibility = match instance.def {
+                            InstanceDef::Item(def_id) => {
+                                if def_id.is_local() {
+                                    if tcx.is_exported_symbol(def_id) {
+                                        Visibility::Default
                                     } else {
-                                        internalization_candidates.insert(trans_item);
                                         Visibility::Hidden
                                     }
+                                } else {
+                                    Visibility::Hidden
                                 }
-                                InstanceDef::FnPtrShim(..) |
-                                InstanceDef::Virtual(..) |
-                                InstanceDef::Intrinsic(..) |
-                                InstanceDef::ClosureOnceShim { .. } |
-                                InstanceDef::DropGlue(..) |
-                                InstanceDef::CloneShim(..) => {
-                                    bug!("partitioning: Encountered unexpected
-                                          root translation item: {:?}",
-                                          trans_item)
-                                }
-                            };
-                            (Linkage::External, visibility)
-                        }
-                        TransItem::Static(node_id) |
-                        TransItem::GlobalAsm(node_id) => {
-                            let def_id = tcx.hir.local_def_id(node_id);
-                            let visibility = if tcx.is_exported_symbol(def_id) {
-                                Visibility::Default
-                            } else {
-                                internalization_candidates.insert(trans_item);
+                            }
+                            InstanceDef::FnPtrShim(..) |
+                            InstanceDef::Virtual(..) |
+                            InstanceDef::Intrinsic(..) |
+                            InstanceDef::ClosureOnceShim { .. } |
+                            InstanceDef::DropGlue(..) |
+                            InstanceDef::CloneShim(..) => {
                                 Visibility::Hidden
-                            };
-                            (Linkage::External, visibility)
-                        }
+                            }
+                        };
+                        (Linkage::External, visibility)
+                    }
+                    TransItem::Static(node_id) |
+                    TransItem::GlobalAsm(node_id) => {
+                        let def_id = tcx.hir.local_def_id(node_id);
+                        let visibility = if tcx.is_exported_symbol(def_id) {
+                            Visibility::Default
+                        } else {
+                            Visibility::Hidden
+                        };
+                        (Linkage::External, visibility)
                     }
                 }
-            };
-
-            codegen_unit.items_mut().insert(trans_item, (linkage, visibility));
-            roots.insert(trans_item);
+            }
+        };
+        if visibility == Visibility::Hidden {
+            internalization_candidates.insert(trans_item);
         }
+
+        codegen_unit.items_mut().insert(trans_item, (linkage, visibility));
+        roots.insert(trans_item);
     }
 
     // always ensure we have at least one CGU; otherwise, if we have a

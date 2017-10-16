@@ -336,6 +336,12 @@ struct CollectPrivateImplItemsVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
+        // Anything which has custom linkage gets thrown on the worklist no
+        // matter where it is in the crate.
+        if attr::contains_name(&item.attrs, "linkage") {
+            self.worklist.push(item.id);
+        }
+
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
             if !self.access_levels.is_reachable(item.id) {

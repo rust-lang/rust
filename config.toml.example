@@ -250,13 +250,10 @@
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
-# The default linker that will be used by the generated compiler. Note that this
-# is not the linker used to link said compiler.
+# The default linker that will be hard-coded into the generated compiler for
+# targets that don't specify linker explicitly in their target specifications.
+# Note that this is not the linker used to link said compiler.
 #default-linker = "cc"
-
-# The default ar utility that will be used by the generated compiler if LLVM
-# cannot be used. Note that this is not used to assemble said compiler.
-#default-ar = "ar"
 
 # The "channel" for the Rust build to produce. The stable/beta channels only
 # allow using stable features, whereas the nightly and dev channels allow using
@@ -303,7 +300,7 @@
 # =============================================================================
 [target.x86_64-unknown-linux-gnu]
 
-# C compiler to be used to compiler C code and link Rust code. Note that the
+# C compiler to be used to compiler C code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
 #cc = "cc"
@@ -311,6 +308,15 @@
 # C++ compiler to be used to compiler C++ code (e.g. LLVM and our LLVM shims).
 # This is only used for host targets.
 #cxx = "c++"
+
+# Archiver to be used to assemble static libraries compiled from C/C++ code.
+# Note: an absolute path should be used, otherwise LLVM build will break.
+#ar = "ar"
+
+# Linker to be used to link Rust code. Note that the
+# default value is platform specific, and if not specified it may also depend on
+# what platform is crossing to what platform.
+#linker = "cc"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specifed we don't compile LLVM at all for this

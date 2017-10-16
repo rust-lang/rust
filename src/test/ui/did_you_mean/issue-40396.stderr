@@ -5,6 +5,7 @@ error: chained comparison operators require parentheses
    |                                     ^^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
 
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:16:25
@@ -13,6 +14,7 @@ error: chained comparison operators require parentheses
    |                         ^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
 
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:20:37
@@ -21,6 +23,7 @@ error: chained comparison operators require parentheses
    |                                     ^^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
 
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:20:41
@@ -29,6 +32,7 @@ error: chained comparison operators require parentheses
    |                                         ^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
 
 error: aborting due to 4 previous errors
 

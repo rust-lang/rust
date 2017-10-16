@@ -31,20 +31,51 @@
 //! ever be probed for. Instead the compilers found here will be used for
 //! everything.
 
+use std::collections::HashSet;
+use std::{env, iter};
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::iter;
 
-use build_helper::{cc2ar, output};
+use build_helper::output;
 use cc;
 
 use Build;
 use config::Target;
 use cache::Interned;
 
+// The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
+// so use some simplified logic here. First we respect the environment variable `AR`, then
+// try to infer the archiver path from the C compiler path.
+// In the future this logic should be replaced by calling into the `cc` crate.
+fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
+    if let Some(ar) = env::var_os("AR") {
+        Some(PathBuf::from(ar))
+    } else if target.contains("msvc") {
+        None
+    } else if target.contains("musl") {
+        Some(PathBuf::from("ar"))
+    } else if target.contains("openbsd") {
+        Some(PathBuf::from("ar"))
+    } else {
+        let parent = cc.parent().unwrap();
+        let file = cc.file_name().unwrap().to_str().unwrap();
+        for suffix in &["gcc", "cc", "clang"] {
+            if let Some(idx) = file.rfind(suffix) {
+                let mut file = file[..idx].to_owned();
+                file.push_str("ar");
+                return Some(parent.join(&file));
+            }
+        }
+        Some(parent.join(file))
+    }
+}
+
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
-    for target in build.targets.iter().chain(&build.hosts).cloned().chain(iter::once(build.build)) {
+    let targets = build.targets.iter().chain(&build.hosts).cloned().chain(iter::once(build.build))
+                               .collect::<HashSet<_>>();
+    for target in targets.into_iter() {
         let mut cfg = cc::Build::new();
         cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false)
            .target(&target).host(&build.build);
@@ -57,16 +88,23 @@ pub fn find(build: &mut Build) {
         }
 
         let compiler = cfg.get_compiler();
-        let ar = cc2ar(compiler.path(), &target);
+        let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
+            ar
+        } else {
+            cc2ar(compiler.path(), &target)
+        };
+
         build.verbose(&format!("CC_{} = {:?}", &target, compiler.path()));
-        if let Some(ref ar) = ar {
+        build.cc.insert(target, compiler);
+        if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target, ar));
+            build.ar.insert(target, ar);
         }
-        build.cc.insert(target, (compiler, ar));
     }
 
     // For all host triples we need to find a C++ compiler as well
-    for host in build.hosts.iter().cloned().chain(iter::once(build.build)) {
+    let hosts = build.hosts.iter().cloned().chain(iter::once(build.build)).collect::<HashSet<_>>();
+    for host in hosts.into_iter() {
         let mut cfg = cc::Build::new();
         cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false).cpp(true)
            .target(&host).host(&build.build);

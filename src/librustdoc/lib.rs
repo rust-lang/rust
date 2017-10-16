@@ -243,6 +243,12 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable("display-warnings", |o| {
             o.optflag("", "display-warnings", "to print code warnings when testing doc")
         }),
+        unstable("crate-version", |o| {
+            o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")
+        }),
+        unstable("linker", |o| {
+            o.optopt("", "linker", "linker used for building executable test code", "PATH")
+        }),
     ]
 }
 
@@ -354,15 +360,16 @@ pub fn main_args(args: &[String]) -> isize {
     let playground_url = matches.opt_str("playground-url");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let display_warnings = matches.opt_present("display-warnings");
+    let linker = matches.opt_str("linker");
 
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot, render_type,
-                                  display_warnings)
+                                  display_warnings, linker)
         }
         (true, false) => {
             return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot,
-                             render_type, display_warnings)
+                             render_type, display_warnings, linker)
         }
         (false, true) => return markdown::render(input,
                                                  output.unwrap_or(PathBuf::from("doc")),
@@ -460,6 +467,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let triple = matches.opt_str("target");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let crate_name = matches.opt_str("crate-name");
+    let crate_version = matches.opt_str("crate-version");
     let plugin_path = matches.opt_str("plugin-path");
 
     let cr = PathBuf::from(cratefile);
@@ -483,6 +491,8 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         if let Some(name) = crate_name {
             krate.name = name
         }
+
+        krate.version = crate_version;
 
         // Process all of the crate attributes, extracting plugin metadata along
         // with the passes which we are supposed to run.

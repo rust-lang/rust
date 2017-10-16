@@ -342,6 +342,17 @@
                 }
             }
 
+            function findArg(obj, val) {
+                if (obj && obj.type && obj.type.inputs.length > 0) {
+                    for (var i = 0; i < obj.type.inputs.length; i++) {
+                        if (obj.type.inputs[i].name === val) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
             function typePassesFilter(filter, type) {
                 // No filter
                 if (filter < 0) return true;
@@ -376,18 +387,28 @@
                         if (typePassesFilter(typeFilter, searchIndex[i].ty)) {
                             results.push({id: i, index: -1});
                         }
+                    } else if (findArg(searchIndex[i], val.toLowerCase()) ||
+                               (searchIndex[i].type &&
+                                searchIndex[i].type.output &&
+                                searchIndex[i].type.output.name === val.toLowerCase())) {
+                        if (typePassesFilter(typeFilter, searchIndex[i].ty)) {
+                            results.push({id: i, index: -1, dontValidate: true});
+                        }
                     }
                     if (results.length === max) {
                         break;
                     }
                 }
+                query.inputs = [val];
+                query.output = val;
+                query.search = val;
             // searching by type
             } else if (val.search("->") > -1) {
                 var trimmer = function (s) { return s.trim(); };
                 var parts = val.split("->").map(trimmer);
                 var input = parts[0];
                 // sort inputs so that order does not matter
-                var inputs = input.split(",").map(trimmer).sort().toString();
+                var inputs = input.split(",").map(trimmer).sort();
                 var output = parts[1];
 
                 for (var i = 0; i < nSearchWords; ++i) {
@@ -403,12 +424,30 @@
 
                     // allow searching for void (no output) functions as well
                     var typeOutput = type.output ? type.output.name : "";
-                    if ((inputs === "*" || inputs === typeInputs.toString()) &&
-                        (output === "*" || output == typeOutput)) {
-                        results.push({id: i, index: -1, dontValidate: true});
+                    if (output === "*" || output == typeOutput) {
+                        if (input === "*") {
+                            results.push({id: i, index: -1, dontValidate: true});
+                        } else {
+                            var allFound = true;
+                            for (var it = 0; allFound === true && it < inputs.length; it++) {
+                                var found = false;
+                                for (var y = 0; found === false && y < typeInputs.length; y++) {
+                                    found = typeInputs[y] === inputs[it];
+                                }
+                                allFound = found;
+                            }
+                            if (allFound === true) {
+                                results.push({id: i, index: -1, dontValidate: true});
+                            }
+                        }
                     }
                 }
+                query.inputs = inputs;
+                query.output = output;
             } else {
+                query.inputs = [val];
+                query.output = val;
+                query.search = val;
                 // gather matching search results up to a certain maximum
                 val = val.replace(/\_/g, "");
                 for (var i = 0; i < split.length; ++i) {
@@ -429,6 +468,15 @@
                         } else if (
                             (lev_distance = levenshtein(searchWords[j], val)) <=
                                 MAX_LEV_DISTANCE) {
+                            if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
+                                results.push({
+                                    id: j,
+                                    index: 0,
+                                    // we want lev results to go lower than others
+                                    lev: lev_distance,
+                                });
+                            }
+                        } else if (findArg(searchIndex[j], val)) {
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
                                 results.push({
                                     id: j,
@@ -576,8 +624,7 @@
                     (parent !== undefined &&
                         parent.name.toLowerCase().indexOf(keys[i]) > -1) ||
                     // lastly check to see if the name was a levenshtein match
-                    levenshtein(name.toLowerCase(), keys[i]) <=
-                        MAX_LEV_DISTANCE)) {
+                    levenshtein(name.toLowerCase(), keys[i]) <= MAX_LEV_DISTANCE)) {
                     return false;
                 }
             }
@@ -692,18 +739,18 @@
             return h1.innerHTML;
         }
 
-        function showResults(results) {
-            var output, shown, query = getQuery();
+        function addTab(array, query, display) {
+            var extraStyle = '';
+            if (display === false) {
+                extraStyle = ' style="display: none;"';
+            }
 
-            currentResults = query.id;
-            output = '<h1>Results for ' + escape(query.query) +
-                (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>';
-            output += '<table class="search-results">';
+            var output = '';
+            if (array.length > 0) {
+                output = `<table class="search-results"${extraStyle}>`;
+                var shown = [];
 
-            if (results.length > 0) {
-                shown = [];
-
-                results.forEach(function(item) {
+                array.forEach(function(item) {
                     var name, type, href, displayPath;
 
                     if (shown.indexOf(item) !== -1) {
@@ -752,13 +799,32 @@
                               '<span class="desc">' + escape(item.desc) +
                               '&nbsp;</span></a></td></tr>';
                 });
+                output += '</table>';
             } else {
-                output += 'No results :( <a href="https://duckduckgo.com/?q=' +
+                output = `<div class="search-failed"${extraStyle}>No results :(<br/>` +
+                    'Try on <a href="https://duckduckgo.com/?q=' +
                     encodeURIComponent('rust ' + query.query) +
-                    '">Try on DuckDuckGo?</a>';
+                    '">DuckDuckGo</a>?</div>';
             }
+            return output;
+        }
 
-            output += "</p>";
+        function showResults(results) {
+            var output, query = getQuery();
+
+            currentResults = query.id;
+            output = '<h1>Results for ' + escape(query.query) +
+                (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
+                '<div id="titles">' +
+                '<div class="selected">Types/modules</div>' +
+                '<div>As parameters</div>' +
+                '<div>As return value</div></div><div id="results">';
+
+            output += addTab(results['others'], query);
+            output += addTab(results['in_args'], query, false);
+            output += addTab(results['returned'], query, false);
+            output += '</div>';
+
             addClass(document.getElementById('main'), 'hidden');
             var search = document.getElementById('search');
             removeClass(search, 'hidden');
@@ -773,13 +839,17 @@
                 e.style.width = width + 'px';
             });
             initSearchNav();
+            var elems = document.getElementById('titles').childNodes;
+            elems[0].onclick = function() { printTab(0); };
+            elems[1].onclick = function() { printTab(1); };
+            elems[2].onclick = function() { printTab(2); };
         }
 
         function search(e) {
             var query,
                 filterdata = [],
                 obj, i, len,
-                results = [],
+                results = {"in_args": [], "returned": [], "others": []},
                 maxResults = 200,
                 resultIndex;
             var params = getQueryStringParams();
@@ -810,11 +880,43 @@
             len = resultIndex.length;
             for (i = 0; i < len; ++i) {
                 if (resultIndex[i].id > -1) {
+                    var added = false;
                     obj = searchIndex[resultIndex[i].id];
                     filterdata.push([obj.name, obj.ty, obj.path, obj.desc]);
-                    results.push(obj);
+                    if (obj.type) {
+                        if (results['returned'].length < maxResults &&
+                            obj.type.output &&
+                            obj.type.output.name.toLowerCase() === query.output) {
+                            results['returned'].push(obj);
+                            added = true;
+                        }
+                        if (results['in_args'].length < maxResults && obj.type.inputs.length > 0) {
+                            var all_founds = true;
+                            for (var it = 0;
+                                 all_founds === true && it < query.inputs.length;
+                                 it++) {
+                                var found = false;
+                                for (var y = 0;
+                                     found === false && y < obj.type.inputs.length;
+                                     y++) {
+                                    found = query.inputs[it] === obj.type.inputs[y].name;
+                                }
+                                all_founds = found;
+                            }
+                            if (all_founds === true) {
+                                results['in_args'].push(obj);
+                                added = true;
+                            }
+                        }
+                    }
+                    if (results['others'].length < maxResults &&
+                        ((query.search && obj.name.indexOf(query.search)) || added === false)) {
+                        results['others'].push(obj);
+                    }
                 }
-                if (results.length >= maxResults) {
+                if (results['others'].length >= maxResults &&
+                    results['in_args'].length >= maxResults &&
+                    results['returned'].length >= maxResults) {
                     break;
                 }
             }
@@ -1288,6 +1390,27 @@
         wrapper.className = 'toggle-wrapper toggle-attributes';
         wrapper.appendChild(toggle);
         return wrapper;
+    }
+
+    // In the search display, allows to switch between tabs.
+    function printTab(nb) {
+        var nb_copy = nb;
+        onEach(document.getElementById('titles').childNodes, function(elem) {
+            if (nb_copy === 0) {
+                addClass(elem, 'selected');
+            } else {
+                removeClass(elem, 'selected');
+            }
+            nb_copy -= 1;
+        });
+        onEach(document.getElementById('results').childNodes, function(elem) {
+            if (nb === 0) {
+                elem.style.display = '';
+            } else {
+                elem.style.display = 'none';
+            }
+            nb -= 1;
+        });
     }
 
     onEach(document.getElementById('main').getElementsByTagName('pre'), function(e) {

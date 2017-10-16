@@ -28,29 +28,35 @@ fn main() {}
 // END RUST SOURCE
 // START rustc.node12.Deaggregator.before.mir
 //  bb1: {
+//      StorageLive(_6);
 //      _6 = _4;
 //      _0 = Foo::A(_6,);
+//      StorageDead(_6);
 //      goto -> bb3;
 //  }
-//
 //  bb2: {
+//      StorageLive(_7);
 //      _7 = _4;
 //      _0 = Foo::B(_7,);
+//      StorageDead(_7);
 //      goto -> bb3;
 //  }
 // END rustc.node12.Deaggregator.before.mir
 // START rustc.node12.Deaggregator.after.mir
 //  bb1: {
+//      StorageLive(_6);
 //      _6 = _4;
 //      ((_0 as A).0: i32) = _6;
 //      discriminant(_0) = 0;
+//      StorageDead(_6);
 //      goto -> bb3;
 //  }
-//
 //  bb2: {
+//      StorageLive(_7);
 //      _7 = _4;
 //      ((_0 as B).0: i32) = _7;
 //      discriminant(_0) = 1;
+//      StorageDead(_7);
 //      goto -> bb3;
 //  }
 // END rustc.node12.Deaggregator.after.mir

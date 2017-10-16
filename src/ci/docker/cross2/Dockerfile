@@ -5,6 +5,7 @@ RUN sh /scripts/cross-apt-packages.sh
 
 RUN apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommends \
   build-essential \
+  gcc-multilib \
   libedit-dev \
   libgmp-dev \
   libisl-dev \
@@ -36,17 +37,18 @@ ENV \
     AR_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-ar \
     CC_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang \
     CXX_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang++ \
-    AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.11-ar \
-    CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.11-gcc \
-    CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.11-g++ \
-    AR_x86_64_sun_solaris=x86_64-sun-solaris2.11-ar \
-    CC_x86_64_sun_solaris=x86_64-sun-solaris2.11-gcc \
-    CXX_x86_64_sun_solaris=x86_64-sun-solaris2.11-g++
+    AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
+    CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
+    CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
+    AR_x86_64_sun_solaris=x86_64-sun-solaris2.10-ar \
+    CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
+    CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++
 
 ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
+ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS

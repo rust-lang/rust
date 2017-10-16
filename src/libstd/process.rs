@@ -702,6 +702,15 @@ impl AsInnerMut<imp::Command> for Command {
 }
 
 /// The output of a finished process.
+///
+/// This is returned in a Result by either the [`output`] method of a
+/// [`Command`], or the [`wait_with_output`] method of a [`Child`]
+/// process.
+///
+/// [`Command`]: struct.Command.html
+/// [`Child`]: struct.Child.html
+/// [`output`]: struct.Command.html#method.output
+/// [`wait_with_output`]: struct.Child.html#method.wait_with_output
 #[derive(PartialEq, Eq, Clone)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Output {
@@ -742,21 +751,128 @@ impl fmt::Debug for Output {
     }
 }
 
-/// Describes what to do with a standard I/O stream for a child process.
+/// Describes what to do with a standard I/O stream for a child process when
+/// passed to the [`stdin`], [`stdout`], and [`stderr`] methods of [`Command`].
+///
+/// [`stdin`]: struct.Command.html#method.stdin
+/// [`stdout`]: struct.Command.html#method.stdout
+/// [`stderr`]: struct.Command.html#method.stderr
+/// [`Command`]: struct.Command.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(imp::Stdio);
 
 impl Stdio {
     /// A new pipe should be arranged to connect the parent and child processes.
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "Hello, world!\n");
+    /// // Nothing echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::io::Write;
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let mut child = Command::new("rev")
+    ///     .stdin(Stdio::piped())
+    ///     .stdout(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("Failed to spawn child process");
+    ///
+    /// {
+    ///     let mut stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
+    /// }
+    ///
+    /// let output = child.wait_with_output().expect("Failed to read stdout");
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH\n");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
 
     /// The child inherits from the corresponding parent descriptor.
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::inherit())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // "Hello, world!" echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("rev")
+    ///     .stdin(Stdio::inherit())
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// println!("You piped in the reverse of: {}", String::from_utf8_lossy(&output.stdout));
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::null())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // Nothing echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("rev")
+    ///     .stdin(Stdio::null())
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // Ignores any piped-in input
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn null() -> Stdio { Stdio(imp::Stdio::Null) }
 }
@@ -1083,8 +1199,6 @@ impl Child {
 /// function and compute the exit code from its return value:
 ///
 /// ```
-/// use std::io::{self, Write};
-///
 /// fn run_app() -> Result<(), ()> {
 ///     // Application logic here
 ///     Ok(())
@@ -1094,7 +1208,7 @@ impl Child {
 ///     ::std::process::exit(match run_app() {
 ///        Ok(_) => 0,
 ///        Err(err) => {
-///            writeln!(io::stderr(), "error: {:?}", err).unwrap();
+///            eprintln!("error: {:?}", err);
 ///            1
 ///        }
 ///     });

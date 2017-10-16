@@ -36,7 +36,6 @@ rustc_tsan = { path = "../librustc_tsan" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-cc = "1.0"
 
 [features]
 backtrace = []

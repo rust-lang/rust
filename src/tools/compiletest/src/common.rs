@@ -201,6 +201,8 @@ pub struct Config {
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
+    pub ar: String,
+    pub linker: Option<String>,
     pub llvm_components: String,
     pub llvm_cxxflags: String,
     pub nodejs: Option<String>,

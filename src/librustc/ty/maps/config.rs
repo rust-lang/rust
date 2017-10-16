@@ -221,6 +221,12 @@ impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::trans_fulfill_obligation<'tcx> {
+    fn describe(tcx: TyCtxt, key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> String {
+        format!("checking if `{}` fulfills its obligations", tcx.item_path_str(key.1.def_id()))
+    }
+}
+
 impl<'tcx> QueryDescription for queries::trait_impls_of<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("trait impls of `{}`", tcx.item_path_str(def_id))
@@ -494,6 +500,12 @@ impl<'tcx> QueryDescription for queries::output_filenames<'tcx> {
 impl<'tcx> QueryDescription for queries::has_clone_closures<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("seeing if the crate has enabled `Clone` closures")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::vtable_methods<'tcx> {
+    fn describe(tcx: TyCtxt, key: ty::PolyTraitRef<'tcx> ) -> String {
+        format!("finding all methods for trait {}", tcx.item_path_str(key.def_id()))
     }
 }
 

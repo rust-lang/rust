@@ -1218,7 +1218,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     let strategy = if tcx.sess.opts.debugging_opts.incremental.is_some() {
         PartitioningStrategy::PerModule
     } else {
-        PartitioningStrategy::FixedUnitCount(tcx.sess.opts.codegen_units)
+        PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
     };
 
     let codegen_units = time(time_passes, "codegen unit partitioning", || {

@@ -227,6 +227,13 @@ impl Step for Llvm {
             cfg.build_arg("-j").build_arg(build.jobs().to_string());
             cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
             cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
+            if let Some(ar) = build.ar(target) {
+                if ar.is_absolute() {
+                    // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
+                    // tries to resolve this path in the LLVM build directory.
+                    cfg.define("CMAKE_AR", sanitize_cc(ar));
+                }
+            }
         };
 
         configure_compilers(&mut cfg);
@@ -352,34 +359,51 @@ impl Step for Openssl {
             // originally from https://www.openssl.org/source/...
             let url = format!("https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/{}",
                               name);
-            let mut ok = false;
+            let mut last_error = None;
             for _ in 0..3 {
                 let status = Command::new("curl")
                                 .arg("-o").arg(&tmp)
+                                .arg("-f")  // make curl fail if the URL does not return HTTP 200
                                 .arg(&url)
                                 .status()
                                 .expect("failed to spawn curl");
-                if status.success() {
-                    ok = true;
-                    break
+
+                // Retry if download failed.
+                if !status.success() {
+                    last_error = Some(status.to_string());
+                    continue;
                 }
+
+                // Ensure the hash is correct.
+                let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
+                    let mut cmd = Command::new("shasum");
+                    cmd.arg("-a").arg("256");
+                    cmd
+                } else {
+                    Command::new("sha256sum")
+                };
+                let output = output(&mut shasum.arg(&tmp));
+                let found = output.split_whitespace().next().unwrap();
+
+                // If the hash is wrong, probably the download is incomplete or S3 served an error
+                // page. In any case, retry.
+                if found != OPENSSL_SHA256 {
+                    last_error = Some(format!(
+                        "downloaded openssl sha256 different\n\
+                         expected: {}\n\
+                         found:    {}\n",
+                        OPENSSL_SHA256,
+                        found
+                    ));
+                    continue;
+                }
+
+                // Everything is fine, so exit the retry loop.
+                last_error = None;
+                break;
             }
-            if !ok {
-                panic!("failed to download openssl source")
-            }
-            let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
-                let mut cmd = Command::new("shasum");
-                cmd.arg("-a").arg("256");
-                cmd
-            } else {
-                Command::new("sha256sum")
-            };
-            let output = output(&mut shasum.arg(&tmp));
-            let found = output.split_whitespace().next().unwrap();
-            if found != OPENSSL_SHA256 {
-                panic!("downloaded openssl sha256 different\n\
-                        expected: {}\n\
-                        found:    {}\n", OPENSSL_SHA256, found);
+            if let Some(error) = last_error {
+                panic!("failed to download openssl source: {}", error);
             }
             t!(fs::rename(&tmp, &tarball));
         }

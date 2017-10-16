@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 // compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zinline-in-all-cgus
 
 //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<drop_in_place_intrinsic::StructWithDtor[0]> @@ drop_in_place_intrinsic0[Internal]
 struct StructWithDtor(u32);

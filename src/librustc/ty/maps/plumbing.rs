@@ -344,6 +344,52 @@ macro_rules! define_maps {
                 }
             }
 
+            /// Ensure that either this query has all green inputs or been executed.
+            /// Executing query::ensure(D) is considered a read of the dep-node D.
+            ///
+            /// This function is particularly useful when executing passes for their
+            /// side-effects -- e.g., in order to report errors for erroneous programs.
+            ///
+            /// Note: The optimization is only available during incr. comp.
+            pub fn ensure(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> () {
+                let dep_node = Self::to_dep_node(tcx, &key);
+
+                // Ensuring an "input" or anonymous query makes no sense
+                assert!(!dep_node.kind.is_anon());
+                assert!(!dep_node.kind.is_input());
+                use dep_graph::DepNodeColor;
+                match tcx.dep_graph.node_color(&dep_node) {
+                    Some(DepNodeColor::Green(dep_node_index)) => {
+                        tcx.dep_graph.read_index(dep_node_index);
+                    }
+                    Some(DepNodeColor::Red) => {
+                        // A DepNodeColor::Red DepNode means that this query was executed
+                        // before. We can not call `dep_graph.read()` here as we don't have
+                        // the DepNodeIndex. Instead, We call the query again to issue the
+                        // appropriate `dep_graph.read()` call. The performance cost this
+                        // introduces should be negligible as we'll immediately hit the
+                        // in-memory cache.
+                        let _ = tcx.$name(key);
+                    }
+                    None => {
+                        // Huh
+                        if !tcx.dep_graph.is_fully_enabled() {
+                            let _ = tcx.$name(key);
+                            return;
+                        }
+                        match tcx.dep_graph.try_mark_green(tcx, &dep_node) {
+                            Some(dep_node_index) => {
+                                debug_assert!(tcx.dep_graph.is_green(dep_node_index));
+                                tcx.dep_graph.read_index(dep_node_index);
+                            }
+                            None => {
+                                let _ = tcx.$name(key);
+                            }
+                        }
+                    }
+                }
+            }
+
             fn compute_result(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> $V {
                 let provider = tcx.maps.providers[key.map_crate()].$name;
                 provider(tcx.global_tcx(), key)
@@ -468,8 +514,7 @@ macro_rules! define_maps {
 
         define_provider_struct! {
             tcx: $tcx,
-            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*),
-            output: ()
+            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*)
         }
 
         impl<$tcx> Copy for Providers<$tcx> {}
@@ -480,78 +525,19 @@ macro_rules! define_maps {
 }
 
 macro_rules! define_map_struct {
-    // Initial state
     (tcx: $tcx:tt,
-     input: $input:tt) => {
-        define_map_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ()
-        }
-    };
-
-    // Final output
-    (tcx: $tcx:tt,
-     input: (),
-     output: ($($output:tt)*)) => {
+     input: ($(([$(modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($output)*
-        }
-    };
-
-    // Field recognized and ready to shift into the output
-    (tcx: $tcx:tt,
-     ready: ([$($pub:tt)*] [$($attr:tt)*] [$name:ident]),
-     input: $input:tt,
-     output: ($($output:tt)*)) => {
-        define_map_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ($($output)*
-                     $(#[$attr])* $($pub)* $name: RefCell<QueryMap<queries::$name<$tcx>>>,)
-        }
-    };
-
-    // No modifiers left? This is a private item.
-    (tcx: $tcx:tt,
-     input: (([] $attrs:tt $name:tt) $($input:tt)*),
-     output: $output:tt) => {
-        define_map_struct! {
-            tcx: $tcx,
-            ready: ([] $attrs $name),
-            input: ($($input)*),
-            output: $output
-        }
-    };
-
-    // Skip other modifiers
-    (tcx: $tcx:tt,
-     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
-     output: $output:tt) => {
-        define_map_struct! {
-            tcx: $tcx,
-            input: (([$($modifiers)*] $($fields)*) $($input)*),
-            output: $output
+            $($(#[$attr])*  $name: RefCell<QueryMap<queries::$name<$tcx>>>,)*
         }
     };
 }
 
 macro_rules! define_provider_struct {
-    // Initial state:
-    (tcx: $tcx:tt, input: $input:tt) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ()
-        }
-    };
-
-    // Final state:
     (tcx: $tcx:tt,
-     input: (),
-     output: ($(([$name:ident] [$K:ty] [$R:ty]))*)) => {
+     input: ($(([$($modifiers:tt)*] [$name:ident] [$K:ty] [$R:ty]))*)) => {
         pub struct Providers<$tcx> {
             $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)*
         }
@@ -566,43 +552,51 @@ macro_rules! define_provider_struct {
             }
         }
     };
-
-    // Something ready to shift:
-    (tcx: $tcx:tt,
-     ready: ($name:tt $K:tt $V:tt),
-     input: $input:tt,
-     output: ($($output:tt)*)) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            input: $input,
-            output: ($($output)* ($name $K $V))
-        }
-    };
-
-    // Regular queries produce a `V` only.
-    (tcx: $tcx:tt,
-     input: (([] $name:tt $K:tt $V:tt) $($input:tt)*),
-     output: $output:tt) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            ready: ($name $K $V),
-            input: ($($input)*),
-            output: $output
-        }
-    };
-
-    // Skip modifiers.
-    (tcx: $tcx:tt,
-     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
-     output: $output:tt) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            input: (([$($modifiers)*] $($fields)*) $($input)*),
-            output: $output
-        }
-    };
 }
 
+
+/// The red/green evaluation system will try to mark a specific DepNode in the
+/// dependency graph as green by recursively trying to mark the dependencies of
+/// that DepNode as green. While doing so, it will sometimes encounter a DepNode
+/// where we don't know if it is red or green and we therefore actually have
+/// to recompute its value in order to find out. Since the only piece of
+/// information that we have at that point is the DepNode we are trying to
+/// re-evaluate, we need some way to re-run a query from just that. This is what
+/// `force_from_dep_node()` implements.
+///
+/// In the general case, a DepNode consists of a DepKind and an opaque
+/// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
+/// is usually constructed by computing a stable hash of the query-key that the
+/// DepNode corresponds to. Consequently, it is not in general possible to go
+/// back from hash to query-key (since hash functions are not reversible). For
+/// this reason `force_from_dep_node()` is expected to fail from time to time
+/// because we just cannot find out, from the DepNode alone, what the
+/// corresponding query-key is and therefore cannot re-run the query.
+///
+/// The system deals with this case letting `try_mark_green` fail which forces
+/// the root query to be re-evaluated.
+///
+/// Now, if force_from_dep_node() would always fail, it would be pretty useless.
+/// Fortunately, we can use some contextual information that will allow us to
+/// reconstruct query-keys for certain kinds of DepNodes. In particular, we
+/// enforce by construction that the GUID/fingerprint of certain DepNodes is a
+/// valid DefPathHash. Since we also always build a huge table that maps every
+/// DefPathHash in the current codebase to the corresponding DefId, we have
+/// everything we need to re-run the query.
+///
+/// Take the `mir_validated` query as an example. Like many other queries, it
+/// just has a single parameter: the DefId of the item it will compute the
+/// validated MIR for. Now, when we call `force_from_dep_node()` on a dep-node
+/// with kind `MirValidated`, we know that the GUID/fingerprint of the dep-node
+/// is actually a DefPathHash, and can therefore just look up the corresponding
+/// DefId in `tcx.def_path_hash_to_def_id`.
+///
+/// When you implement a new query, it will likely have a corresponding new
+/// DepKind, and you'll have to support it here in `force_from_dep_node()`. As
+/// a rule of thumb, if your query takes a DefId or DefIndex as sole parameter,
+/// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
+/// add it to the "We don't have enough information to reconstruct..." group in
+/// the match below.
 pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
                                            dep_node: &DepNode)
                                            -> bool {
@@ -687,16 +681,16 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::Hir |
 
         // This are anonymous nodes
+        DepKind::TraitSelect |
+
+        // We don't have enough information to reconstruct the query key of
+        // these
         DepKind::IsCopy |
         DepKind::IsSized |
         DepKind::IsFreeze |
         DepKind::NeedsDrop |
         DepKind::Layout |
-        DepKind::TraitSelect |
         DepKind::ConstEval |
-
-        // We don't have enough information to reconstruct the query key of
-        // these
         DepKind::InstanceSymbolName |
         DepKind::MirShim |
         DepKind::BorrowCheckKrate |
@@ -705,6 +699,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::TypeParamPredicates |
         DepKind::CodegenUnit |
         DepKind::CompileCodegenUnit |
+        DepKind::FulfillObligation |
+        DepKind::VtableMethods |
 
         // These are just odd
         DepKind::Null |

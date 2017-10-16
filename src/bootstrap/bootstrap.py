@@ -302,6 +302,7 @@ def default_build_triple():
 
     return "{}-{}".format(cputype, ostype)
 
+
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
@@ -498,7 +499,7 @@ class RustBuild(object):
 
         If the key does not exists, the result is None:
 
-        >>> rb.get_toml("key3") == None
+        >>> rb.get_toml("key3") is None
         True
         """
         for line in self.config_toml.splitlines():

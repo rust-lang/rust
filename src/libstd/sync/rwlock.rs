@@ -428,11 +428,18 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
 impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_read() {
-            Ok(guard) => write!(f, "RwLock {{ data: {:?} }}", &*guard),
+            Ok(guard) => f.debug_struct("RwLock").field("data", &&*guard).finish(),
             Err(TryLockError::Poisoned(err)) => {
-                write!(f, "RwLock {{ data: Poisoned({:?}) }}", &**err.get_ref())
+                f.debug_struct("RwLock").field("data", &&**err.get_ref()).finish()
             },
-            Err(TryLockError::WouldBlock) => write!(f, "RwLock {{ <locked> }}")
+            Err(TryLockError::WouldBlock) => {
+                struct LockedPlaceholder;
+                impl fmt::Debug for LockedPlaceholder {
+                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str("<locked>") }
+                }
+
+                f.debug_struct("RwLock").field("data", &LockedPlaceholder).finish()
+            }
         }
     }
 }

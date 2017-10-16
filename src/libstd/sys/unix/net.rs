@@ -176,11 +176,16 @@ impl Socket {
                 }
                 0 => {}
                 _ => {
-                    if pollfd.revents & libc::POLLOUT == 0 {
-                        if let Some(e) = self.take_error()? {
-                            return Err(e);
-                        }
+                    // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
+                    // for POLLHUP rather than read readiness
+                    if pollfd.revents & libc::POLLHUP != 0 {
+                        let e = self.take_error()?
+                            .unwrap_or_else(|| {
+                                io::Error::new(io::ErrorKind::Other, "no error set after POLLHUP")
+                            });
+                        return Err(e);
                     }
+
                     return Ok(());
                 }
             }

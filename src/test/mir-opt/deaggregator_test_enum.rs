@@ -28,18 +28,26 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node10.Deaggregator.before.mir
 // bb0: {
+//     StorageLive(_2);
 //     _2 = _1;
+//     StorageLive(_3);
 //     _3 = _2;
 //     _0 = Baz::Foo { x: _3 };
+//     StorageDead(_3);
+//     StorageDead(_2);
 //     return;
 // }
 // END rustc.node10.Deaggregator.before.mir
 // START rustc.node10.Deaggregator.after.mir
 // bb0: {
+//     StorageLive(_2);
 //     _2 = _1;
+//     StorageLive(_3);
 //     _3 = _2;
 //     ((_0 as Foo).0: usize) = _3;
 //     discriminant(_0) = 1;
+//     StorageDead(_3);
+//     StorageDead(_2);
 //     return;
 // }
 // END rustc.node10.Deaggregator.after.mir

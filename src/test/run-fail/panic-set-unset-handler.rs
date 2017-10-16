@@ -13,11 +13,10 @@
 #![feature(panic_handler)]
 
 use std::panic;
-use std::io::{self, Write};
 
 fn main() {
     panic::set_hook(Box::new(|i| {
-        write!(io::stderr(), "greetings from the panic handler");
+        eprint!("greetings from the panic handler");
     }));
     panic::take_hook();
     panic!("foobar");

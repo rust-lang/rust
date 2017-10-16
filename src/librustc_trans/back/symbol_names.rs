@@ -98,8 +98,10 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use monomorphize::Instance;
+use trans_item::{TransItemExt, InstantiationMode};
 
 use rustc::middle::weak_lang_items;
+use rustc::middle::trans::TransItem;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -150,7 +152,10 @@ pub fn provide(providers: &mut Providers) {
 fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                              // the DefId of the item this name is for
-                             def_id: Option<DefId>,
+                             def_id: DefId,
+
+                             // instance this name will be for
+                             instance: Instance<'tcx>,
 
                              // type of the item, without any generic
                              // parameters substituted; this is
@@ -160,7 +165,7 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                              // values for generic type parameters,
                              // if any.
-                             substs: Option<&'tcx Substs<'tcx>>)
+                             substs: &'tcx Substs<'tcx>)
                              -> u64 {
     debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
 
@@ -170,7 +175,7 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // the main symbol name is not necessarily unique; hash in the
         // compiler's internal def-path, guaranteeing each symbol has a
         // truly unique path
-        hasher.hash(def_id.map(|def_id| tcx.def_path_hash(def_id)));
+        hasher.hash(tcx.def_path_hash(def_id));
 
         // Include the main item-type. Note that, in this case, the
         // assertions about `needs_subst` may not hold, but this item-type
@@ -186,19 +191,36 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // also include any type parameters (for generic items)
-        if let Some(substs) = substs {
-            assert!(!substs.has_erasable_regions());
-            assert!(!substs.needs_subst());
-            substs.visit_with(&mut hasher);
+        assert!(!substs.has_erasable_regions());
+        assert!(!substs.needs_subst());
+        substs.visit_with(&mut hasher);
 
-            // If this is an instance of a generic function, we also hash in
-            // the ID of the instantiating crate. This avoids symbol conflicts
-            // in case the same instances is emitted in two crates of the same
-            // project.
-            if substs.types().next().is_some() {
-                hasher.hash(tcx.crate_name.as_str());
-                hasher.hash(tcx.sess.local_crate_disambiguator().as_str());
+        let mut avoid_cross_crate_conflicts = false;
+
+        // If this is an instance of a generic function, we also hash in
+        // the ID of the instantiating crate. This avoids symbol conflicts
+        // in case the same instances is emitted in two crates of the same
+        // project.
+        if substs.types().next().is_some() {
+            avoid_cross_crate_conflicts = true;
+        }
+
+        // If we're dealing with an instance of a function that's inlined from
+        // another crate but we're marking it as globally shared to our
+        // compliation (aka we're not making an internal copy in each of our
+        // codegen units) then this symbol may become an exported (but hidden
+        // visibility) symbol. This means that multiple crates may do the same
+        // and we want to be sure to avoid any symbol conflicts here.
+        match TransItem::Fn(instance).instantiation_mode(tcx) {
+            InstantiationMode::GloballyShared { may_conflict: true } => {
+                avoid_cross_crate_conflicts = true;
             }
+            _ => {}
+        }
+
+        if avoid_cross_crate_conflicts {
+            hasher.hash(tcx.crate_name.as_str());
+            hasher.hash(tcx.sess.local_crate_disambiguator().as_str());
         }
     });
 
@@ -309,7 +331,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     // and should not matter anyhow.
     let instance_ty = tcx.erase_regions(&instance_ty);
 
-    let hash = get_symbol_hash(tcx, Some(def_id), instance_ty, Some(substs));
+    let hash = get_symbol_hash(tcx, def_id, instance, instance_ty, substs);
 
     SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(hash)
 }

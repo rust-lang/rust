@@ -8,40 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:specialization_cross_crate.rs
+// Test that specialization works even if only the upstream crate enables it
 
-#![feature(specialization)]
+// aux-build:cross_crate.rs
 
-extern crate specialization_cross_crate;
+extern crate cross_crate;
 
-use specialization_cross_crate::*;
-
-struct NotClone;
-
-#[derive(Clone)]
-struct MarkedAndClone;
-impl MyMarker for MarkedAndClone {}
-
-struct MyType<T>(T);
-default impl<T> Foo for MyType<T> {
-    fn foo(&self) -> &'static str {
-        "generic MyType"
-    }
-}
-
-impl Foo for MyType<u8> {
-    fn foo(&self) -> &'static str {
-        "MyType<u8>"
-    }
-}
-
-struct MyOtherType;
-impl Foo for MyOtherType {}
+use cross_crate::*;
 
 fn  main() {
-    assert!(NotClone.foo() == "generic");
     assert!(0u8.foo() == "generic Clone");
-    assert!(vec![NotClone].foo() == "generic");
     assert!(vec![0u8].foo() == "generic Vec");
     assert!(vec![0i32].foo() == "Vec<i32>");
     assert!(0i32.foo() == "i32");
@@ -50,9 +26,4 @@ fn  main() {
     assert!(((), ()).foo() == "generic uniform pair");
     assert!((0u8, 0u32).foo() == "(u8, u32)");
     assert!((0u8, 0u8).foo() == "(u8, u8)");
-    assert!(MarkedAndClone.foo() == "generic Clone + MyMarker");
-
-    assert!(MyType(()).foo() == "generic MyType");
-    assert!(MyType(0u8).foo() == "MyType<u8>");
-    assert!(MyOtherType.foo() == "generic");
 }

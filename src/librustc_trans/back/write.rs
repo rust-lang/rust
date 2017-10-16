@@ -217,7 +217,7 @@ pub struct ModuleConfig {
     passes: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
     /// absolutely no optimizations (used for the metadata module).
-    opt_level: Option<llvm::CodeGenOptLevel>,
+    pub opt_level: Option<llvm::CodeGenOptLevel>,
 
     /// Some(level) to optimize binary size, or None to not affect program size.
     opt_size: Option<llvm::CodeGenOptSize>,
@@ -507,7 +507,8 @@ unsafe fn optimize(cgcx: &CodegenContext,
         if !config.no_prepopulate_passes {
             llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
             llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-            with_llvm_pmb(llmod, &config, &mut |b| {
+            let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
+            with_llvm_pmb(llmod, &config, opt_level, &mut |b| {
                 llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
                 llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
             })
@@ -1037,10 +1038,10 @@ fn produce_final_output_artifacts(sess: &Session,
         let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
 
         let keep_numbered_bitcode = needs_crate_bitcode ||
-                (user_wants_bitcode && sess.opts.codegen_units > 1);
+                (user_wants_bitcode && sess.codegen_units() > 1);
 
         let keep_numbered_objects = needs_crate_object ||
-                (user_wants_objects && sess.opts.codegen_units > 1);
+                (user_wants_objects && sess.codegen_units() > 1);
 
         for module in compiled_modules.modules.iter() {
             let module_name = Some(&module.name[..]);
@@ -1079,13 +1080,9 @@ fn produce_final_output_artifacts(sess: &Session,
 }
 
 pub fn dump_incremental_data(trans: &CrateTranslation) {
-    let mut reuse = 0;
-    for mtrans in trans.modules.iter() {
-        if mtrans.pre_existing {
-            reuse += 1;
-        }
-    }
-    eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
+    println!("[incremental] Re-using {} out of {} modules",
+              trans.modules.iter().filter(|m| m.pre_existing).count(),
+              trans.modules.len());
 }
 
 enum WorkItem {
@@ -1247,7 +1244,7 @@ fn start_executing_work(tcx: TyCtxt,
                         modules_config: Arc<ModuleConfig>,
                         metadata_config: Arc<ModuleConfig>,
                         allocator_config: Arc<ModuleConfig>)
-                        -> thread::JoinHandle<CompiledModules> {
+                        -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tcx.tx_to_llvm_workers.clone();
     let mut exported_symbols = FxHashMap();
     exported_symbols.insert(LOCAL_CRATE, tcx.exported_symbols(LOCAL_CRATE));
@@ -1695,7 +1692,7 @@ fn start_executing_work(tcx: TyCtxt,
                 Message::Done { result: Err(()), worker_id: _ } => {
                     shared_emitter.fatal("aborting due to worker thread failure");
                     // Exit the coordinator thread
-                    panic!("aborting due to worker thread failure")
+                    return Err(())
                 }
                 Message::TranslateItem => {
                     bug!("the coordinator should not receive translation requests")
@@ -1721,11 +1718,11 @@ fn start_executing_work(tcx: TyCtxt,
         let compiled_metadata_module = compiled_metadata_module
             .expect("Metadata module not compiled?");
 
-        CompiledModules {
+        Ok(CompiledModules {
             modules: compiled_modules,
             metadata_module: compiled_metadata_module,
             allocator_module: compiled_allocator_module,
-        }
+        })
     });
 
     // A heuristic that determines if we have enough LLVM WorkItems in the
@@ -1846,16 +1843,17 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
 
 pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
                             config: &ModuleConfig,
+                            opt_level: llvm::CodeGenOptLevel,
                             f: &mut FnMut(llvm::PassManagerBuilderRef)) {
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
-    let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
     let opt_size = config.opt_size.unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
-    llvm::LLVMRustConfigurePassManagerBuilder(builder, opt_level,
+    llvm::LLVMRustConfigurePassManagerBuilder(builder,
+                                              opt_level,
                                               config.merge_functions,
                                               config.vectorize_slp,
                                               config.vectorize_loop);
@@ -2018,7 +2016,7 @@ pub struct OngoingCrateTranslation {
     coordinator_send: Sender<Box<Any + Send>>,
     trans_worker_receive: Receiver<Message>,
     shared_emitter_main: SharedEmitterMain,
-    future: thread::JoinHandle<CompiledModules>,
+    future: thread::JoinHandle<Result<CompiledModules, ()>>,
     output_filenames: Arc<OutputFilenames>,
 }
 
@@ -2026,7 +2024,11 @@ impl OngoingCrateTranslation {
     pub fn join(self, sess: &Session, dep_graph: &DepGraph) -> CrateTranslation {
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = match self.future.join() {
-            Ok(compiled_modules) => compiled_modules,
+            Ok(Ok(compiled_modules)) => compiled_modules,
+            Ok(Err(())) => {
+                sess.abort_if_errors();
+                panic!("expected abort due to worker thread errors")
+            },
             Err(_) => {
                 sess.fatal("Error during translation/LLVM phase.");
             }
@@ -2048,7 +2050,7 @@ impl OngoingCrateTranslation {
 
         // FIXME: time_llvm_passes support - does this use a global context or
         // something?
-        if sess.opts.codegen_units == 1 && sess.time_llvm_passes() {
+        if sess.codegen_units() == 1 && sess.time_llvm_passes() {
             unsafe { llvm::LLVMRustPrintPassTimings(); }
         }
 
