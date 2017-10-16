@@ -4284,6 +4284,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             CoerceMany::with_coercion_sites(coerce_to_ty, tail_expr)
         };
 
+        let prev_diverges = self.diverges.get();
         let ctxt = BreakableCtxt {
             coerce: Some(coerce),
             may_break: false,
@@ -4332,6 +4333,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         });
+
+        if ctxt.may_break {
+            // If we can break from the block, then the block's exit is always reachable
+            // (... as long as the entry is reachable) - regardless of the tail of the block.
+            self.diverges.set(prev_diverges);
+        }
 
         let mut ty = ctxt.coerce.unwrap().complete(self);
 
