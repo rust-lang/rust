@@ -385,16 +385,19 @@ impl Build {
     /// Clear out `dir` if `input` is newer.
     ///
     /// After this executes, it will also ensure that `dir` exists.
-    fn clear_if_dirty(&self, dir: &Path, input: &Path) {
+    fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
         let stamp = dir.join(".stamp");
+        let mut cleared = false;
         if mtime(&stamp) < mtime(input) {
             self.verbose(&format!("Dirty - {}", dir.display()));
             let _ = fs::remove_dir_all(dir);
+            cleared = true;
         } else if stamp.exists() {
-            return
+            return cleared;
         }
         t!(fs::create_dir_all(dir));
         t!(File::create(stamp));
+        cleared
     }
 
     /// Get the space-separated set of activated features for the standard
@@ -433,6 +436,12 @@ impl Build {
     /// release/debug)
     fn cargo_dir(&self) -> &'static str {
         if self.config.rust_optimize {"release"} else {"debug"}
+    }
+
+    fn tools_dir(&self, compiler: Compiler) -> PathBuf {
+        let out = self.out.join(&*compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
+        t!(fs::create_dir_all(&out));
+        out
     }
 
     /// Get the directory for incremental by-products when using the

@@ -38,24 +38,40 @@ impl Step for CleanTools {
         run.never()
     }
 
-    /// Build a tool in `src/tools`
-    ///
-    /// This will build the specified tool with the specified `host` compiler in
-    /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
 
-        let stamp = match mode {
-            Mode::Libstd => libstd_stamp(build, compiler, target),
-            Mode::Libtest => libtest_stamp(build, compiler, target),
-            Mode::Librustc => librustc_stamp(build, compiler, target),
-            _ => panic!(),
+        // This is for the original compiler, but if we're forced to use stage 1, then
+        // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
+        // we copy the libs forward.
+        let tools_dir = build.stage_out(compiler, Mode::Tool);
+        let compiler = if builder.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
+        } else {
+            compiler
         };
-        let out_dir = build.cargo_out(compiler, Mode::Tool, target);
-        build.clear_if_dirty(&out_dir, &stamp);
+
+        for &cur_mode in &[Mode::Libstd, Mode::Libtest, Mode::Librustc] {
+            let stamp = match cur_mode {
+                Mode::Libstd => libstd_stamp(build, compiler, target),
+                Mode::Libtest => libtest_stamp(build, compiler, target),
+                Mode::Librustc => librustc_stamp(build, compiler, target),
+                _ => panic!(),
+            };
+
+            if build.clear_if_dirty(&tools_dir, &stamp) {
+                break;
+            }
+
+            // If we are a rustc tool, and std changed, we also need to clear ourselves out -- our
+            // dependencies depend on std. Therefore, we iterate up until our own mode.
+            if mode == cur_mode {
+                break;
+            }
+        }
     }
 }
 
@@ -100,7 +116,11 @@ impl Step for ToolBuild {
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
         build.run_expecting(&mut cargo, expectation);
-        build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
+        let cargo_out = build.cargo_out(compiler, Mode::Tool, target)
+            .join(exe(tool, &compiler.host));
+        let bin = build.tools_dir(compiler).join(exe(tool, &compiler.host));
+        copy(&cargo_out, &bin);
+        bin
     }
 }
 
