@@ -35,7 +35,7 @@
 # If an external LLVM root is specified, we automatically check the version by
 # default to make sure it's within the range that we're expecting, but setting
 # this flag will indicate that this version check should not be done.
-#version-check = false
+#version-check = true
 
 # Link libstdc++ statically into the librustc_llvm instead of relying on a
 # dynamic version to be available.

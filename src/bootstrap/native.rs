@@ -259,11 +259,14 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
 
     let mut cmd = Command::new(llvm_config);
     let version = output(cmd.arg("--version"));
-    if version.starts_with("3.5") || version.starts_with("3.6") ||
-       version.starts_with("3.7") {
-        return
+    let mut parts = version.split('.').take(2)
+        .filter_map(|s| s.parse::<u32>().ok());
+    if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
+        if major > 3 || (major == 3 && minor >= 9) {
+            return
+        }
     }
-    panic!("\n\nbad LLVM version: {}, need >=3.5\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=3.9\n\n", version)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
