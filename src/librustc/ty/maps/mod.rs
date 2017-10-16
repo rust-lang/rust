@@ -121,6 +121,9 @@ define_maps! { <'tcx>
     /// (inferred) variance.
     [] fn variances_of: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
 
+    /// Maps from def-id of a type to its (inferred) outlives.
+    [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Vec<ty::Predicate<'tcx>>,
+
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
     [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
 

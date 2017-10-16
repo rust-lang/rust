@@ -4676,6 +4676,7 @@ register_diagnostics! {
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
 //  E0613, // Removed (merged with E0609)
+    E0640, // infer outlives
     E0627, // yield statement outside of generator literal
     E0632, // cannot provide explicit type parameters when `impl Trait` is used in
            // argument position.

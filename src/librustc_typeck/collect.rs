@@ -1332,7 +1332,11 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
 fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> ty::GenericPredicates<'tcx> {
-    explicit_predicates_of(tcx, def_id)
+    let explicit = explicit_predicates_of(tcx, def_id);
+    ty::GenericPredicates {
+        parent: explicit.parent,
+        predicates: [&explicit.predicates[..], &tcx.inferred_outlives_of(def_id)[..]].concat()
+    }
 }
 
 fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
