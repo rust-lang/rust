@@ -20,6 +20,7 @@ pub use self::MovedValueUseKind::*;
 
 use self::InteriorKind::*;
 
+use rustc::hir::HirId;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::cfg;
@@ -27,6 +28,7 @@ use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
+use rustc::middle::borrowck::BorrowCheckResult;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
@@ -37,7 +39,9 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
+use rustc::util::nodemap::FxHashSet;
 
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
@@ -53,6 +57,8 @@ pub mod check_loans;
 pub mod gather_loans;
 
 pub mod move_data;
+
+mod unused;
 
 #[derive(Clone, Copy)]
 pub struct LoanDataFlowOperator;
@@ -79,7 +85,9 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
+fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
+    -> Rc<BorrowCheckResult>
+{
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
     let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
@@ -91,7 +99,9 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
             // those things (notably the synthesized constructors from
             // tuple structs/variants) do not have an associated body
             // and do not need borrowchecking.
-            return;
+            return Rc::new(BorrowCheckResult {
+                used_mut_nodes: FxHashSet(),
+            })
         }
         _ => { }
     }
@@ -100,7 +110,14 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_scope_tree = tcx.region_scope_tree(owner_def_id);
     let body = tcx.hir.body(body_id);
-    let bccx = &mut BorrowckCtxt { tcx, tables, region_scope_tree, owner_def_id, body };
+    let mut bccx = BorrowckCtxt {
+        tcx,
+        tables,
+        region_scope_tree,
+        owner_def_id,
+        body,
+        used_mut_nodes: RefCell::new(FxHashSet()),
+    };
 
     // Eventually, borrowck will always read the MIR, but at the
     // moment we do not. So, for now, we always force MIR to be
@@ -118,14 +135,19 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     if let Some(AnalysisData { all_loans,
                                loans: loan_dfcx,
                                move_data: flowed_moves }) =
-        build_borrowck_dataflow_data(bccx, false, body_id,
+        build_borrowck_dataflow_data(&mut bccx, false, body_id,
                                      |bccx| {
                                          cfg = Some(cfg::CFG::new(bccx.tcx, &body));
                                          cfg.as_mut().unwrap()
                                      })
     {
-        check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
+        check_loans::check_loans(&mut bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
     }
+    unused::check(&mut bccx, body);
+
+    Rc::new(BorrowCheckResult {
+        used_mut_nodes: bccx.used_mut_nodes.into_inner(),
+    })
 }
 
 fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tcx>,
@@ -198,7 +220,14 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_scope_tree = tcx.region_scope_tree(owner_def_id);
     let body = tcx.hir.body(body_id);
-    let mut bccx = BorrowckCtxt { tcx, tables, region_scope_tree, owner_def_id, body };
+    let mut bccx = BorrowckCtxt {
+        tcx,
+        tables,
+        region_scope_tree,
+        owner_def_id,
+        body,
+        used_mut_nodes: RefCell::new(FxHashSet()),
+    };
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx, true, body_id, |_| cfg);
     (bccx, dataflow_data.unwrap())
@@ -219,6 +248,8 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     owner_def_id: DefId,
 
     body: &'tcx hir::Body,
+
+    used_mut_nodes: RefCell<FxHashSet<HirId>>,
 }
 
 impl<'b, 'tcx: 'b> BorrowckErrors for BorrowckCtxt<'b, 'tcx> {

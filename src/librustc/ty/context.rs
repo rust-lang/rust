@@ -898,11 +898,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, DefIdForest>>,
 
-    /// Set of nodes which mark locals as mutable which end up getting used at
-    /// some point. Local variable definitions not in this set can be warned
-    /// about.
-    pub used_mut_nodes: RefCell<NodeSet>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
@@ -1185,7 +1180,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
-            used_mut_nodes: RefCell::new(NodeSet()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),

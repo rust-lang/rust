@@ -21,6 +21,7 @@
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
+extern crate rustc_back;
 
 // for "clarity", rename the graphviz crate to dot; graphviz within `borrowck`
 // refers to the borrowck-specific graphviz adapter traits.
