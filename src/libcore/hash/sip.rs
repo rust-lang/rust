@@ -72,6 +72,7 @@ struct Hasher<S: Sip> {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[repr(C)]
 struct State {
     // v0, v2 and v1, v3 show up in pairs in the algorithm,
     // and simd implementations of SipHash will use vectors
