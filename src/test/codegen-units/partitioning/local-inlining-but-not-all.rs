@@ -20,7 +20,7 @@
 mod inline {
 
     //~ TRANS_ITEM fn local_inlining_but_not_all::inline[0]::inlined_function[0] @@ local_inlining_but_not_all-inline[External]
-    #[inline(always)]
+    #[inline]
     pub fn inlined_function()
     {
 
