@@ -77,7 +77,7 @@ loop {
 }
 ```
 
-Another major motivation of the RFC is concistency with `match`.
+Another major motivation of the RFC is consistency with `match`.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -231,7 +231,7 @@ It's one more addition to the grammar.
 This could simply not be done.
 Consistency with `match` is however on its own reason enough to do this.
 
-It could be claimed that the `if/while let` RFCs already mandates this RFC,
+It could be claimed that the `if/while let` RFCs already mandate this RFC,
 this RFC does answer that question and instead simply mandates it now.
 
 # Unresolved questions
@@ -239,6 +239,6 @@ this RFC does answer that question and instead simply mandates it now.
 
 The exact syntax transformations should be deferred to the implementation.
 This RFC does not mandate exactly how the AST:s should be transformed, only
-that the feature be supported.
+that the or-pattern feature be supported.
 
 There are no unresolved questions.
