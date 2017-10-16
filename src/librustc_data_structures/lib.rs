@@ -28,6 +28,7 @@
 #![feature(fn_traits)]
 #![feature(unsize)]
 #![feature(i128_type)]
+#![feature(i128)]
 #![feature(conservative_impl_trait)]
 #![feature(specialization)]
 
