@@ -10,28 +10,35 @@
 
 //! A module for working with processes.
 //!
-//! This module provides a [`Command`] struct that can be used to configure and
-//! spawn a process, as well as a [`Child`] struct that represents a running or
-//! terminated process.
+//! This module is mostly concerned with spawning and interacting with child
+//! processes, but it also provides [`abort`] and [`exit`] for terminating the
+//! current process.
 //!
-//! # Examples
+//! # Spawning a process
 //!
-//! Hello world, `std::process` edition:
+//! The [`Command`] struct is used to configure and spawn processes:
 //!
 //! ```
 //! use std::process::Command;
 //!
-//! // Note that by default, the output of the command will be sent to stdout
-//! let mut child = Command::new("echo")
-//!                         .arg("Hello world")
-//!                         .spawn()
-//!                         .expect("Failed to start process");
+//! let output = Command::new("echo")
+//!                      .arg("Hello world")
+//!                      .output()
+//!                      .expect("Failed to execute command");
 //!
-//! let ecode = child.wait()
-//!                  .expect("Failed to wait on child");
-//!
-//! assert!(ecode.success());
+//! assert_eq!(b"Hello world\n", output.stdout.as_slice());
 //! ```
+//!
+//! Several methods on [`Command`], such as [`spawn`] or [`output`], can be used
+//! to spawn a process. In particular, [`output`] spawns the child process and
+//! waits until the process terminates, while [`spawn`] will return a [`Child`]
+//! that represents the spawned child process.
+//!
+//! # Handling I/O
+//!
+//! TODO
+//!
+//! # Examples
 //!
 //! Piping output from one command into another command:
 //!
@@ -86,8 +93,15 @@
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
 //!
+//! [`abort`]: fn.abort.html
+//! [`exit`]: fn.exit.html
+//!
 //! [`Command`]: struct.Command.html
+//! [`spawn`]: struct.Command.html#method.spawn
+//! [`output`]: struct.Command.html#method.output
+//!
 //! [`Child`]: struct.Child.html
+//! [`Stdio`]: struct.Stdio.html
 
 #![stable(feature = "process", since = "1.0.0")]
 
