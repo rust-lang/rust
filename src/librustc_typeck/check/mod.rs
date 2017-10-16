@@ -88,6 +88,7 @@ use astconv::AstConv;
 use hir::def::{Def, CtorKind};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
+use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
@@ -1293,7 +1294,13 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for impl_item in impl_items() {
         let ty_impl_item = tcx.associated_item(tcx.hir.local_def_id(impl_item.id));
         let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
-            .find(|ac| tcx.hygienic_eq(ty_impl_item.name, ac.name, impl_trait_ref.def_id));
+            .find(|ac| Namespace::from(&impl_item.node) == Namespace::from(ac.kind) &&
+                         tcx.hygienic_eq(ty_impl_item.name, ac.name, impl_trait_ref.def_id))
+            .or_else(|| {
+                // Not compatible, but needed for the error message
+                tcx.associated_items(impl_trait_ref.def_id)
+                   .find(|ac| tcx.hygienic_eq(ty_impl_item.name, ac.name, impl_trait_ref.def_id))
+            });
 
         // Check that impl definition matches trait definition
         if let Some(ty_trait_item) = ty_trait_item {

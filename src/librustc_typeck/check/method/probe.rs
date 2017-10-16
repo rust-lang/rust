@@ -16,6 +16,7 @@ use super::suggest;
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
+use namespace::Namespace;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
@@ -1317,11 +1318,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.tcx.associated_items(def_id)
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.name.as_str());
-                        dist > 0 && dist <= max_dist
+                        Namespace::from(x.kind) == Namespace::Value && dist > 0
+                        && dist <= max_dist
                     })
                     .collect()
             } else {
-                self.fcx.associated_item(def_id, name).map_or(Vec::new(), |x| vec![x])
+                self.fcx
+                    .associated_item(def_id, name, Namespace::Value)
+                    .map_or(Vec::new(), |x| vec![x])
             }
         } else {
             self.tcx.associated_items(def_id).collect()
