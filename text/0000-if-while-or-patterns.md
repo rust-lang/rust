@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Enables "or" patterns for [`if let` and `while let` expressions](https://github.com/rust-lang/rfcs/pull/160). In other words, examples like the following are now possible:
+Enables "or" patterns for [`if let`](https://github.com/rust-lang/rfcs/pull/160) and [`while let`](https://github.com/rust-lang/rfcs/pull/214) expressions. In other words, examples like the following are now possible:
 
 ```rust
 enum E<T> {
