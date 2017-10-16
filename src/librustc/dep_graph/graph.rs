@@ -427,40 +427,6 @@ impl DepGraph {
         self.data.as_ref().and_then(|data| data.colors.borrow().get(dep_node).cloned())
     }
 
-    /// Try to read a node index for the node dep_node.
-    /// A node will have an index, when it's already been marked green, or when we can mark it
-    /// green. This function will mark the current task as a reader of the specified node, when
-    /// the a node index can be found for that node.
-    pub fn read_node_index(&self, tcx: TyCtxt, dep_node: &DepNode) -> Option<DepNodeIndex> {
-        match self.node_color(dep_node) {
-            Some(DepNodeColor::Green(dep_node_index)) => {
-                self.read_index(dep_node_index);
-                Some(dep_node_index)
-            }
-            Some(DepNodeColor::Red) => {
-                None
-            }
-            None => {
-                // try_mark_green (called below) will panic when full incremental
-                // compilation is disabled. If that's the case, we can't try to mark nodes
-                // as green anyway, so we can safely return None here.
-                if !self.is_fully_enabled() {
-                    return None;
-                }
-                match self.try_mark_green(tcx, &dep_node) {
-                    Some(dep_node_index) => {
-                        debug_assert!(tcx.dep_graph.is_green(dep_node_index));
-                        tcx.dep_graph.read_index(dep_node_index);
-                        Some(dep_node_index)
-                    }
-                    None => {
-                        None
-                    }
-                }
-            }
-        }
-    }
-
     pub fn try_mark_green(&self,
                           tcx: TyCtxt,
                           dep_node: &DepNode)
