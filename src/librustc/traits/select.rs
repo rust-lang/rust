@@ -910,7 +910,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate {
             ty::Predicate::Trait(ref data) => {
-                self.tcx().trait_has_auto_impl(data.def_id())
+                self.tcx().trait_is_auto(data.def_id())
             }
             _ => {
                 false
@@ -1697,7 +1697,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         let def_id = obligation.predicate.def_id();
 
-        if self.tcx().trait_has_auto_impl(def_id) {
+        if self.tcx().trait_is_auto(def_id) {
             match self_ty.sty {
                 ty::TyDynamic(..) => {
                     // For object types, we don't know what the closed

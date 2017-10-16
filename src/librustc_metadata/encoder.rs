@@ -970,7 +970,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
                     paren_sugar: trait_def.paren_sugar,
-                    has_auto_impl: tcx.trait_has_auto_impl(def_id),
+                    has_auto_impl: tcx.trait_is_auto(def_id),
                     super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
                 };
 

@@ -2308,7 +2308,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.get_attrs(did).iter().any(|item| item.check_name(attr))
     }
 
-    pub fn trait_has_auto_impl(self, trait_def_id: DefId) -> bool {
+    /// Returns true if this is an `auto trait`.
+    ///
+    /// NB. For a limited time, also returns true if `impl Trait for .. { }` is in the code-base.
+    pub fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_auto_impl
     }
 
