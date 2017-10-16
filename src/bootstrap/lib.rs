@@ -661,8 +661,9 @@ impl Build {
 
     /// Returns the path to the linker for the given target if it needs to be overriden.
     fn linker(&self, target: Interned<String>) -> Option<&Path> {
-        if let Some(config) = self.config.target_config.get(&target) {
-            config.linker.as_ref().map(|p| &**p)
+        if let Some(linker) = self.config.target_config.get(&target)
+                                                       .and_then(|c| c.linker.as_ref()) {
+            Some(linker)
         } else if target != self.config.build &&
                   !target.contains("msvc") && !target.contains("emscripten") {
             Some(self.cc(target))
