@@ -177,6 +177,17 @@ fn generator(a: &Allocator, run_count: usize) {
     }
 }
 
+fn mixed_drop_and_nondrop(a: &Allocator) {
+    // check that destructor panics handle drop
+    // and non-drop blocks in the same scope correctly.
+    //
+    // Surprisingly enough, this used to not work.
+    let (x, y, z);
+    x = a.alloc();
+    y = 5;
+    z = a.alloc();
+}
+
 #[allow(unreachable_code)]
 fn vec_unreachable(a: &Allocator) {
     let _x = vec![a.alloc(), a.alloc(), a.alloc(), return];
@@ -244,11 +255,12 @@ fn main() {
     run_test(|a| field_assignment(a, false));
     run_test(|a| field_assignment(a, true));
 
-    // FIXME: fix leaks on panics
-    run_test_nopanic(|a| generator(a, 0));
-    run_test_nopanic(|a| generator(a, 1));
-    run_test_nopanic(|a| generator(a, 2));
-    run_test_nopanic(|a| generator(a, 3));
+    run_test(|a| generator(a, 0));
+    run_test(|a| generator(a, 1));
+    run_test(|a| generator(a, 2));
+    run_test(|a| generator(a, 3));
+
+    run_test(|a| mixed_drop_and_nondrop(a));
 
     run_test_nopanic(|a| union1(a));
 }

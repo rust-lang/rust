@@ -836,24 +836,22 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            generator_drop: bool)
                            -> BlockAnd<()> {
     debug!("build_scope_drops({:?} -> {:?})", block, scope);
-    let mut iter = scope.drops.iter().rev().peekable();
+    let mut iter = scope.drops.iter().rev();
     while let Some(drop_data) = iter.next() {
         let source_info = scope.source_info(drop_data.span);
         match drop_data.kind {
             DropKind::Value { .. } => {
                 // Try to find the next block with its cached block
                 // for us to diverge into in case the drop panics.
-                let on_diverge = iter.peek().iter().filter_map(|dd| {
+                let on_diverge = iter.clone().filter_map(|dd| {
                     match dd.kind {
-                        DropKind::Value { cached_block } => {
-                            let result = cached_block.get(generator_drop);
-                            if result.is_none() {
-                                span_bug!(drop_data.span, "cached block not present?")
-                            }
-                            result
-                        },
+                        DropKind::Value { cached_block } => Some(cached_block),
                         DropKind::Storage => None
                     }
+                }).map(|cached_block| {
+                    cached_block
+                        .get(generator_drop)
+                        .unwrap_or_else(|| span_bug!(drop_data.span, "cached block not present?"))
                 }).next();
                 // If there’s no `cached_block`s within current scope,
                 // we must look for one in the enclosing scope.
