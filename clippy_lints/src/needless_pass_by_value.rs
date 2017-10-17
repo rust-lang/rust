@@ -121,6 +121,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             .zip(&body.arguments)
             .enumerate()
         {
+            // All spans generated from a proc-macro invocation are the same...
+            if span == input.span {
+                return;
+            }
+
             // * Exclude a type that is specifically bounded by `Borrow`.
             // * Exclude a type whose reference also fulfills its bound.
             //   (e.g. `std::convert::AsRef`, `serde::Serialize`)
