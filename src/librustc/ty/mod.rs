@@ -90,6 +90,7 @@ pub mod adjustment;
 pub mod binding;
 pub mod cast;
 pub mod error;
+mod erase_regions;
 pub mod fast_reject;
 pub mod fold;
 pub mod inhabitedness;
@@ -2575,6 +2576,7 @@ fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn provide(providers: &mut ty::maps::Providers) {
     util::provide(providers);
     context::provide(providers);
+    erase_regions::provide(providers);
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,

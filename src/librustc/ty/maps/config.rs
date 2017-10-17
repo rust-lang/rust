@@ -75,6 +75,12 @@ impl<'tcx> QueryDescription for queries::super_predicates_of<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::erase_regions_ty<'tcx> {
+    fn describe(_tcx: TyCtxt, ty: Ty<'tcx>) -> String {
+        format!("erasing regions from `{:?}`", ty)
+    }
+}
+
 impl<'tcx> QueryDescription for queries::type_param_predicates<'tcx> {
     fn describe(tcx: TyCtxt, (_, def_id): (DefId, DefId)) -> String {
         let id = tcx.hir.as_local_node_id(def_id).unwrap();

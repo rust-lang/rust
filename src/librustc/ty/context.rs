@@ -892,9 +892,6 @@ pub struct GlobalCtxt<'tcx> {
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
-    // FIXME dep tracking -- should be harmless enough
-    pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
@@ -1172,7 +1169,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             maps: maps::Maps::new(providers),
             mir_passes,
             rcache: RefCell::new(FxHashMap()),
-            normalized_cache: RefCell::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             crate_name: Symbol::intern(crate_name),

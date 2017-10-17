@@ -341,11 +341,20 @@ define_maps! { <'tcx>
 
     [] fn has_copy_closures: HasCopyClosures(CrateNum) -> bool,
     [] fn has_clone_closures: HasCloneClosures(CrateNum) -> bool,
+
+    // Erases regions from `ty` to yield a new type.
+    // Normally you would just use `tcx.erase_regions(&value)`,
+    // however, which uses this query as a kind of cache.
+    [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
 }
 
 //////////////////////////////////////////////////////////////////////
 // These functions are little shims used to find the dep-node for a
 // given query when there is not a *direct* mapping:
+
+fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::EraseRegionsTy { ty }
+}
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::TypeParamPredicates {
