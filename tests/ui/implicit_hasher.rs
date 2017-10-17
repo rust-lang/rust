@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::cmp::Eq;
 use std::hash::{Hash, BuildHasher};
 
-trait Foo<T>: Sized {
+pub trait Foo<T>: Sized {
     fn make() -> (Self, Self);
 }
 

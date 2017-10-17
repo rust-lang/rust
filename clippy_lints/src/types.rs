@@ -1453,15 +1453,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
     }
 }
 
-/// **What it does:** Checks for `impl` or `fn` missing generalization over
+/// **What it does:** Checks for public `impl` or `fn` missing generalization over
 /// different hashers and implicitly defaulting to the default hashing
-/// algorithm (SipHash). This lint ignores private free-functions.
+/// algorithm (SipHash).
 ///
 /// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
 /// used with them.
 ///
-/// **Known problems:** Suggestions for replacing constructors contains
-/// false-positives. Also applying suggestion can require modification of other
+/// **Known problems:** Suggestions for replacing constructors can contain
+/// false-positives. Also applying suggestions can require modification of other
 /// pieces of code, possibly including external crates.
 ///
 /// **Example:**
@@ -1530,9 +1530,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             if !vis.suggestions.is_empty() {
                 multispan_sugg(db, "...and use generic constructor".into(), vis.suggestions);
             }
-            // for (span, sugg) in vis.suggestions {
-            //     db.span_suggestion(span, "...and use generic constructor here", sugg);
-            // }
+        }
+
+        if !cx.access_levels.is_exported(item.id) {
+            return;
         }
 
         match item.node {
@@ -1565,10 +1566,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                 }
             },
             ItemFn(ref decl, .., ref generics, body_id) => {
-                if item.vis != Public {
-                    return;
-                }
-
                 let body = cx.tcx.hir.body(body_id);
 
                 for ty in &decl.inputs {
