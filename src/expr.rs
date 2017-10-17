@@ -585,8 +585,6 @@ fn rewrite_closure_fn_decl(
     };
     let list_str = write_list(&item_vec, &fmt)?;
     let mut prefix = format!("{}|{}|", mover, list_str);
-    // 1 = space between `|...|` and body.
-    let extra_offset = extra_offset(&prefix, shape) + 1;
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
@@ -597,6 +595,8 @@ fn rewrite_closure_fn_decl(
         }
         prefix.push_str(&ret_str);
     }
+    // 1 = space between `|...|` and body.
+    let extra_offset = last_line_width(&prefix) + 1;
 
     Some((prefix, extra_offset))
 }
