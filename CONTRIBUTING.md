@@ -15,7 +15,7 @@ High level approach:
 
 All issues on Clippy are mentored, if you want help with a bug just ask @Manishearth, @llogiq, @mcarton or @oli-obk.
 
-Some issues are easier than others. The [E-easy](https://github.com/rust-lang-nursery/rust-clippy/labels/E-easy)
+Some issues are easier than others. The [good first issue](https://github.com/rust-lang-nursery/rust-clippy/labels/good%20first%20issue)
 label can be used to find the easy issues. If you want to work on an issue, please leave a comment
 so that we can assign it to you!
 
