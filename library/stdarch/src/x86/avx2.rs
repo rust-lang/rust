@@ -1,4 +1,4 @@
-use simd_llvm::simd_shuffle32;
+use simd_llvm::{simd_shuffle8, simd_shuffle32};
 use v256::*;
 use v128::*;
 use x86::__m256i;
@@ -184,8 +184,57 @@ pub unsafe fn _mm256_avg_epu8 (a: u8x32, b: u8x32) -> u8x32 {
     pavgb(a, b)
 }
 
+/// Blend packed 32-bit integers from `a` and `b` using control mask `imm8`.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpblendd, imm8 = 9))]
+pub unsafe fn _mm_blend_epi32(a: i32x8, b: i32x8, imm8: i32) -> i32x8 {
+    let imm8 = (imm8 & 0xFF) as u8;
+    macro_rules! blend4 {
+        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr) => {
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+        }
+    }
+    macro_rules! blend3 {
+        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr) => {
+            match (imm8 >> 6) & 0b11 {
+                0b00 => blend4!($a, $b, $c, $d, $e, $f, 6, 7),
+                0b01 => blend4!($a, $b, $c, $d, $e, $f, 14, 7),
+                0b10 => blend4!($a, $b, $c, $d, $e, $f, 6, 15),
+                _ => blend4!($a, $b, $c, $d, $e, $f, 14, 15),
+            }
+        }
+    }
+    macro_rules! blend2 {
+        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+            match (imm8 >> 4) & 0b11 {
+                0b00 => blend3!($a, $b, $c, $d, 4, 5),
+                0b01 => blend3!($a, $b, $c, $d, 12, 5),
+                0b10 => blend3!($a, $b, $c, $d, 4, 13),
+                _ => blend3!($a, $b, $c, $d, 12, 13),
+            }
+        }
+    }
+    macro_rules! blend1 {
+        ($a:expr, $b:expr) => {
+            match (imm8 >> 2) & 0b11 {
+                0b00 => blend2!($a, $b, 2, 3),
+                0b01 => blend2!($a, $b, 10, 3),
+                0b10 => blend2!($a, $b, 2, 11),
+                _ => blend2!($a, $b, 10, 11),
+            }
+        }
+    }
+    match imm8 & 0b11 {
+        0b00 => blend1!(0, 1),
+        0b01 => blend1!(8, 1),
+        0b10 => blend1!(0, 9),
+        _ => blend1!(8, 9),
+    }
+}
+
+
 // TODO _mm256_blend_epi16
-// TODO _mm_blend_epi32
 // TODO _mm256_blend_epi32
 
 /// Blend packed 8-bit integers from `a` and `b` using `mask`.
@@ -1442,6 +1491,22 @@ mod tests {
         let (a, b) = (u16x16::splat(3), u16x16::splat(9));
         let r = avx2::_mm256_avg_epu16(a, b);
         assert_eq!(r, u16x16::splat(6));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm_blend_epi32() {
+        let (a, b) = (i32x8::splat(3), i32x8::splat(9));
+        let e = i32x8::splat(3).replace(0, 9);
+        let r = avx2::_mm_blend_epi32(a, b, 0x01 as i32);
+        assert_eq!(r, e);
+
+        let e = i32x8::splat(3).replace(1, 9).replace(7, 9);
+        let r = avx2::_mm_blend_epi32(a, b, 0x82 as i32);
+        assert_eq!(r, e);
+
+        let e = i32x8::splat(9).replace(0, 3).replace(1, 3).replace(7, 3);
+        let r = avx2::_mm_blend_epi32(a, b, 0x7C as i32);
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx2"]
