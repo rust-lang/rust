@@ -57,8 +57,8 @@ done
 # This is for Solaris 10 compatibility.
 rm usr/include/link.h
 patch -p0  << 'EOF'
---- usr/include/string.h	2017-10-09 03:15:04.000000000 +0200
-+++ usr/include/string10.h	2017-10-16 11:27:26.498764422 +0200
+--- usr/include/string.h
++++ usr/include/string10.h
 @@ -93 +92,0 @@
 -extern size_t strnlen(const char *, size_t);
 EOF
