@@ -387,8 +387,9 @@ pub struct TypeckTables<'tcx> {
     cast_kinds: ItemLocalMap<ty::cast::CastKind>,
 
     /// Set of trait imports actually used in the method resolution.
-    /// This is used for warning unused imports.
-    pub used_trait_imports: Rc<RefCell<DefIdSet>>,
+    /// This is used for warning unused imports. During type
+    /// checking, this field should not be cloned.
+    pub used_trait_imports: Rc<DefIdSet>,
 
     /// If any errors occurred while type-checking this body,
     /// this field will be set to `true`.
@@ -418,7 +419,7 @@ impl<'tcx> TypeckTables<'tcx> {
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
             cast_kinds: ItemLocalMap(),
-            used_trait_imports: Rc::new(RefCell::new(DefIdSet())),
+            used_trait_imports: Rc::new(DefIdSet()),
             tainted_by_errors: false,
             free_region_map: FreeRegionMap::new(),
         }
@@ -782,7 +783,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             cast_kinds.hash_stable(hcx, hasher);
             generator_sigs.hash_stable(hcx, hasher);
             generator_interiors.hash_stable(hcx, hasher);
-            used_trait_imports.borrow_mut().hash_stable(hcx, hasher);
+            used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
         })

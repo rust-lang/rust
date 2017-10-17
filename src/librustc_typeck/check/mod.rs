@@ -743,6 +743,7 @@ pub fn provide(providers: &mut Providers) {
         closure_kind,
         generator_sig,
         adt_destructor,
+        used_trait_imports,
         ..*providers
     };
 }
@@ -846,6 +847,12 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     primary_body_of(tcx, id).is_some()
 }
 
+fn used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              def_id: DefId)
+                              -> Rc<DefIdSet> {
+    Rc::clone(&tcx.typeck_tables_of(def_id).used_trait_imports)
+}
+
 fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
                               -> &'tcx ty::TypeckTables<'tcx> {
@@ -920,12 +927,6 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_eq!(tables.local_id_root,
                Some(DefId::local(tcx.hir.definitions().node_to_hir_id(id).owner)));
     tables
-}
-
-pub fn get_used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        def_id: DefId)
-                                        -> Rc<RefCell<DefIdSet>> {
-    Rc::clone(&tcx.typeck_tables_of(def_id).used_trait_imports)
 }
 
 fn check_abi<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, abi: Abi) {

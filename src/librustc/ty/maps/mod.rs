@@ -183,6 +183,8 @@ define_maps! { <'tcx>
 
     [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
+    [] fn used_trait_imports: UsedTraitImports(DefId) -> Rc<DefIdSet>,
+
     [] fn has_typeck_tables: HasTypeckTables(DefId) -> bool,
 
     [] fn coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
