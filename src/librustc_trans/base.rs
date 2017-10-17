@@ -78,7 +78,7 @@ use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use std::any::Any;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
@@ -812,47 +812,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     return (metadata_llcx, metadata_llmod, metadata, hashes);
 }
 
-// Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
-// This is required to satisfy `dllimport` references to static data in .rlibs
-// when using MSVC linker.  We do this only for data, as linker can fix up
-// code references on its own.
-// See #26591, #27438
-fn create_imps(sess: &Session,
-               llvm_module: &ModuleLlvm) {
-    // The x86 ABI seems to require that leading underscores are added to symbol
-    // names, so we need an extra underscore on 32-bit. There's also a leading
-    // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
-    // underscores added in front).
-    let prefix = if sess.target.target.target_pointer_width == "32" {
-        "\x01__imp__"
-    } else {
-        "\x01__imp_"
-    };
-    unsafe {
-        let exported: Vec<_> = iter_globals(llvm_module.llmod)
-                                   .filter(|&val| {
-                                       llvm::LLVMRustGetLinkage(val) ==
-                                       llvm::Linkage::ExternalLinkage &&
-                                       llvm::LLVMIsDeclaration(val) == 0
-                                   })
-                                   .collect();
-
-        let i8p_ty = Type::i8p_llcx(llvm_module.llcx);
-        for val in exported {
-            let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-            let mut imp_name = prefix.as_bytes().to_vec();
-            imp_name.extend(name.to_bytes());
-            let imp_name = CString::new(imp_name).unwrap();
-            let imp = llvm::LLVMAddGlobal(llvm_module.llmod,
-                                          i8p_ty.to_ref(),
-                                          imp_name.as_ptr() as *const _);
-            llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
-            llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
-        }
-    }
-}
-
-struct ValueIter {
+pub struct ValueIter {
     cur: ValueRef,
     step: unsafe extern "C" fn(ValueRef) -> ValueRef,
 }
@@ -871,7 +831,7 @@ impl Iterator for ValueIter {
     }
 }
 
-fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
+pub fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
     unsafe {
         ValueIter {
             cur: llvm::LLVMGetFirstGlobal(llmod),
@@ -1436,12 +1396,6 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 llmod: ccx.llmod(),
                 tm: create_target_machine(ccx.sess()),
             };
-
-            // Adjust exported symbols for MSVC dllimport
-            if ccx.sess().target.target.options.is_like_msvc &&
-               ccx.sess().crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-                create_imps(ccx.sess(), &llvm_module);
-            }
 
             ModuleTranslation {
                 name: cgu_name,
