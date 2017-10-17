@@ -100,7 +100,7 @@ By default, `rustdoc` assumes that the name of your crate is the same name
 as the `.rs` file. `--crate-name` lets you override this assumption with
 whatever name you choose.
 
-## `-L`/`--library-path`: 
+## `-L`/`--library-path`: where to look for dependencies
 
 Using this flag looks like this:
 
@@ -186,7 +186,7 @@ on documentation tests](documentation-tests.html).
 
 See also `--test-args`.
 
-## `--test-args`: 
+## `--test-args`: pass options to test runner
 
 Using this flag looks like this:
 
@@ -199,7 +199,7 @@ For more, see [the chapter on documentation tests](documentation-tests.html).
 
 See also `--test`.
 
-## `--target`: 
+## `--target`: generate documentation for the specified target triple
 
 Using this flag looks like this:
 
