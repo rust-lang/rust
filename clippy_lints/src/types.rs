@@ -1453,8 +1453,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
     }
 }
 
-/// **What it does:** Checks for public `impl` or `fn` missing generalization over
-/// different hashers and implicitly defaulting to the default hashing
+/// **What it does:** Checks for public `impl` or `fn` missing generalization
+/// over different hashers and implicitly defaulting to the default hashing
 /// algorithm (SipHash).
 ///
 /// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
@@ -1505,26 +1505,29 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                 &generics_snip[1..generics_snip.len() - 1]
             };
 
-            db.span_suggestion(
-                generics_suggestion_span,
-                "consider adding a type parameter",
-                format!(
-                    "<{}{}S: ::std::hash::BuildHasher{}>",
-                    generics_snip,
-                    if generics_snip.is_empty() { "" } else { ", " },
-                    if vis.suggestions.is_empty() {
-                        ""
-                    } else {
-                        // request users to add `Default` bound so that generic constructors can be used
-                        " + Default"
-                    },
-                ),
-            );
-
-            db.span_suggestion(
-                target.span(),
-                "...and change the type to",
-                format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
+            multispan_sugg(
+                db,
+                "consider adding a type parameter".to_string(),
+                vec![
+                    (
+                        generics_suggestion_span,
+                        format!(
+                            "<{}{}S: ::std::hash::BuildHasher{}>",
+                            generics_snip,
+                            if generics_snip.is_empty() { "" } else { ", " },
+                            if vis.suggestions.is_empty() {
+                                ""
+                            } else {
+                                // request users to add `Default` bound so that generic constructors can be used
+                                " + Default"
+                            },
+                        ),
+                    ),
+                    (
+                        target.span(),
+                        format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
+                    ),
+                ],
             );
 
             if !vis.suggestions.is_empty() {
