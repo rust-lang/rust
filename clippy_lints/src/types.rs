@@ -1,16 +1,21 @@
 use reexport::*;
 use rustc::hir;
 use rustc::hir::*;
-use rustc::hir::intravisit::{walk_ty, FnKind, NestedVisitorMap, Visitor};
+use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::*;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
 use rustc::ty::subst::Substs;
+use rustc_typeck::hir_ty_to_ty;
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
+use std::borrow::Cow;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
+use syntax::errors::DiagnosticBuilder;
 use utils::{comparisons, higher, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
-            opt_def_id, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_sugg, type_size};
+            multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
+            span_lint_and_sugg, span_lint_and_then, type_size};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -182,21 +187,19 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             match *qpath {
                 QPath::Resolved(Some(ref ty), ref p) => {
                     check_ty(cx, ty, is_local);
-                    for ty in p.segments
-                        .iter()
-                        .flat_map(|seg| seg.parameters.as_ref()
-                                           .map_or_else(|| [].iter(),
-                                                        |params| params.types.iter()))
-                    {
+                    for ty in p.segments.iter().flat_map(|seg| {
+                        seg.parameters
+                            .as_ref()
+                            .map_or_else(|| [].iter(), |params| params.types.iter())
+                    }) {
                         check_ty(cx, ty, is_local);
                     }
                 },
-                QPath::Resolved(None, ref p) => for ty in p.segments
-                    .iter()
-                    .flat_map(|seg| seg.parameters.as_ref()
-                                       .map_or_else(|| [].iter(),
-                                                    |params| params.types.iter()))
-                {
+                QPath::Resolved(None, ref p) => for ty in p.segments.iter().flat_map(|seg| {
+                    seg.parameters
+                        .as_ref()
+                        .map_or_else(|| [].iter(), |params| params.types.iter())
+                }) {
                     check_ty(cx, ty, is_local);
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
@@ -605,7 +608,7 @@ fn span_lossless_lint(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, c
     let opt = snippet_opt(cx, op.span);
     let sugg = if let Some(ref snip) = opt {
         if should_strip_parens(op, snip) {
-            &snip[1..snip.len()-1]
+            &snip[1..snip.len() - 1]
         } else {
             snip.as_str()
         }
@@ -1447,5 +1450,317 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
             upcast_comparison_bounds_err(cx, &expr.span, rel, lhs_bounds, normalized_lhs, normalized_rhs, false);
             upcast_comparison_bounds_err(cx, &expr.span, rel, rhs_bounds, normalized_rhs, normalized_lhs, true);
         }
+    }
+}
+
+/// **What it does:** Checks for public `impl` or `fn` missing generalization
+/// over different hashers and implicitly defaulting to the default hashing
+/// algorithm (SipHash).
+///
+/// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
+/// used with them.
+///
+/// **Known problems:** Suggestions for replacing constructors can contain
+/// false-positives. Also applying suggestions can require modification of other
+/// pieces of code, possibly including external crates.
+///
+/// **Example:**
+/// ```rust
+/// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { ... }
+///
+/// pub foo(map: &mut HashMap<i32, i32>) { .. }
+/// ```
+declare_lint! {
+    pub IMPLICIT_HASHER,
+    Warn,
+    "missing generalization over different hashers"
+}
+
+pub struct ImplicitHasher;
+
+impl LintPass for ImplicitHasher {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(IMPLICIT_HASHER)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
+    #[allow(cast_possible_truncation)]
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+        use syntax_pos::BytePos;
+
+        fn suggestion<'a, 'tcx>(
+            cx: &LateContext<'a, 'tcx>,
+            db: &mut DiagnosticBuilder,
+            generics_span: Span,
+            generics_suggestion_span: Span,
+            target: &ImplicitHasherType,
+            vis: ImplicitHasherConstructorVisitor,
+        ) {
+            let generics_snip = snippet(cx, generics_span, "");
+            // trim `<` `>`
+            let generics_snip = if generics_snip.is_empty() {
+                ""
+            } else {
+                &generics_snip[1..generics_snip.len() - 1]
+            };
+
+            multispan_sugg(
+                db,
+                "consider adding a type parameter".to_string(),
+                vec![
+                    (
+                        generics_suggestion_span,
+                        format!(
+                            "<{}{}S: ::std::hash::BuildHasher{}>",
+                            generics_snip,
+                            if generics_snip.is_empty() { "" } else { ", " },
+                            if vis.suggestions.is_empty() {
+                                ""
+                            } else {
+                                // request users to add `Default` bound so that generic constructors can be used
+                                " + Default"
+                            },
+                        ),
+                    ),
+                    (
+                        target.span(),
+                        format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
+                    ),
+                ],
+            );
+
+            if !vis.suggestions.is_empty() {
+                multispan_sugg(db, "...and use generic constructor".into(), vis.suggestions);
+            }
+        }
+
+        if !cx.access_levels.is_exported(item.id) {
+            return;
+        }
+
+        match item.node {
+            ItemImpl(_, _, _, ref generics, _, ref ty, ref items) => {
+                let mut vis = ImplicitHasherTypeVisitor::new(cx);
+                vis.visit_ty(ty);
+
+                for target in &vis.found {
+                    let generics_suggestion_span = generics.span.substitute_dummy({
+                        let pos = snippet_opt(cx, item.span.until(target.span()))
+                            .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)))
+                            .expect("failed to create span for type arguments");
+                        Span::new(pos, pos, item.span.data().ctxt)
+                    });
+
+                    let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
+                    for item in items.iter().map(|item| cx.tcx.hir.impl_item(item.id)) {
+                        ctr_vis.visit_impl_item(item);
+                    }
+
+                    span_lint_and_then(
+                        cx,
+                        IMPLICIT_HASHER,
+                        target.span(),
+                        &format!("impl for `{}` should be generarized over different hashers", target.type_name()),
+                        move |db| {
+                            suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
+                        },
+                    );
+                }
+            },
+            ItemFn(ref decl, .., ref generics, body_id) => {
+                let body = cx.tcx.hir.body(body_id);
+
+                for ty in &decl.inputs {
+                    let mut vis = ImplicitHasherTypeVisitor::new(cx);
+                    vis.visit_ty(ty);
+
+                    for target in &vis.found {
+                        let generics_suggestion_span = generics.span.substitute_dummy({
+                            let pos = snippet_opt(cx, item.span.until(body.arguments[0].pat.span))
+                                .and_then(|snip| {
+                                    let i = snip.find("fn")?;
+                                    Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
+                                })
+                                .expect("failed to create span for type parameters");
+                            Span::new(pos, pos, item.span.data().ctxt)
+                        });
+
+                        let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
+                        ctr_vis.visit_body(body);
+                        assert!(ctr_vis.suggestions.is_empty());
+
+                        span_lint_and_then(
+                            cx,
+                            IMPLICIT_HASHER,
+                            target.span(),
+                            &format!(
+                                "parameter of type `{}` should be generarized over different hashers",
+                                target.type_name()
+                            ),
+                            move |db| {
+                                suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
+                            },
+                        );
+                    }
+                }
+            },
+            _ => {},
+        }
+    }
+}
+
+enum ImplicitHasherType<'tcx> {
+    HashMap(Span, Ty<'tcx>, Cow<'static, str>, Cow<'static, str>),
+    HashSet(Span, Ty<'tcx>, Cow<'static, str>),
+}
+
+impl<'tcx> ImplicitHasherType<'tcx> {
+    /// Checks that `ty` is a target type without a BuildHasher.
+    fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
+        if let TyPath(QPath::Resolved(None, ref path)) = hir_ty.node {
+            let params = &path.segments.last().as_ref()?.parameters.as_ref()?.types;
+            let params_len = params.len();
+
+            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+
+            if match_path(path, &paths::HASHMAP) && params_len == 2 {
+                Some(ImplicitHasherType::HashMap(
+                    hir_ty.span,
+                    ty,
+                    snippet(cx, params[0].span, "K"),
+                    snippet(cx, params[1].span, "V"),
+                ))
+            } else if match_path(path, &paths::HASHSET) && params_len == 1 {
+                Some(ImplicitHasherType::HashSet(hir_ty.span, ty, snippet(cx, params[0].span, "T")))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn type_name(&self) -> &'static str {
+        match *self {
+            ImplicitHasherType::HashMap(..) => "HashMap",
+            ImplicitHasherType::HashSet(..) => "HashSet",
+        }
+    }
+
+    fn type_arguments(&self) -> String {
+        match *self {
+            ImplicitHasherType::HashMap(.., ref k, ref v) => format!("{}, {}", k, v),
+            ImplicitHasherType::HashSet(.., ref t) => format!("{}", t),
+        }
+    }
+
+    fn ty(&self) -> Ty<'tcx> {
+        match *self {
+            ImplicitHasherType::HashMap(_, ty, ..) | ImplicitHasherType::HashSet(_, ty, ..) => ty,
+        }
+    }
+
+    fn span(&self) -> Span {
+        match *self {
+            ImplicitHasherType::HashMap(span, ..) | ImplicitHasherType::HashSet(span, ..) => span,
+        }
+    }
+}
+
+struct ImplicitHasherTypeVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    found: Vec<ImplicitHasherType<'tcx>>,
+}
+
+impl<'a, 'tcx: 'a> ImplicitHasherTypeVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+        Self { cx, found: vec![] }
+    }
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
+        if let Some(target) = ImplicitHasherType::new(self.cx, t) {
+            self.found.push(target);
+        }
+
+        walk_ty(self, t);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+}
+
+/// Looks for default-hasher-dependent constructors like `HashMap::new`.
+struct ImplicitHasherConstructorVisitor<'a, 'b, 'tcx: 'a + 'b> {
+    cx: &'a LateContext<'a, 'tcx>,
+    body: &'a TypeckTables<'tcx>,
+    target: &'b ImplicitHasherType<'tcx>,
+    suggestions: BTreeMap<Span, String>,
+}
+
+impl<'a, 'b, 'tcx: 'a + 'b> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+    fn new(cx: &'a LateContext<'a, 'tcx>, target: &'b ImplicitHasherType<'tcx>) -> Self {
+        Self {
+            cx,
+            body: cx.tables,
+            target,
+            suggestions: BTreeMap::new(),
+        }
+    }
+}
+
+impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+    fn visit_body(&mut self, body: &'tcx Body) {
+        self.body = self.cx.tcx.body_tables(body.id());
+        walk_body(self, body);
+    }
+
+    fn visit_expr(&mut self, e: &'tcx Expr) {
+        if_let_chain!{[
+            let ExprCall(ref fun, ref args) = e.node,
+            let ExprPath(QPath::TypeRelative(ref ty, ref method)) = fun.node,
+            let TyPath(QPath::Resolved(None, ref ty_path)) = ty.node,
+        ], {
+            if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
+                return;
+            }
+
+            if match_path(ty_path, &paths::HASHMAP) {
+                if method.name == "new" {
+                    self.suggestions
+                        .insert(e.span, "HashMap::default()".to_string());
+                } else if method.name == "with_capacity" {
+                    self.suggestions.insert(
+                        e.span,
+                        format!(
+                            "HashMap::with_capacity_and_hasher({}, Default::default())",
+                            snippet(self.cx, args[0].span, "capacity"),
+                        ),
+                    );
+                }
+            } else if match_path(ty_path, &paths::HASHSET) {
+                if method.name == "new" {
+                    self.suggestions
+                        .insert(e.span, "HashSet::default()".to_string());
+                } else if method.name == "with_capacity" {
+                    self.suggestions.insert(
+                        e.span,
+                        format!(
+                            "HashSet::with_capacity_and_hasher({}, Default::default())",
+                            snippet(self.cx, args[0].span, "capacity"),
+                        ),
+                    );
+                }
+            }
+        }}
+
+        walk_expr(self, e);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir)
     }
 }
