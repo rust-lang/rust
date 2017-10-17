@@ -11,6 +11,7 @@
 
 # ignore-tidy-linelength
 
+from __future__ import absolute_import, division, print_function
 import sys
 import os
 rust_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +21,7 @@ sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
 import bootstrap
 
 
-class Option:
+class Option(object):
     def __init__(self, name, rustbuild, desc, value):
         self.name = name
         self.rustbuild = rustbuild
