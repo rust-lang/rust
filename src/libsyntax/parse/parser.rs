@@ -4088,11 +4088,11 @@ impl<'a> Parser<'a> {
                     node: StmtKind::Item(i),
                 },
                 None => {
-                    let unused_attrs = |attrs: &[_], s: &mut Self| {
+                    let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
                         if !attrs.is_empty() {
                             if s.prev_token_kind == PrevTokenKind::DocComment {
                                 s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
-                            } else {
+                            } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
                                 s.span_err(s.span, "expected statement after outer attribute");
                             }
                         }
