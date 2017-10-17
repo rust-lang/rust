@@ -154,6 +154,11 @@ struct CachedBlock {
     unwind: Option<BasicBlock>,
 
     /// The cached block for unwinds during cleanups-on-generator-drop path
+    ///
+    /// This is split from the standard unwind path here to prevent drop
+    /// elaboration from creating drop flags that would have to be captured
+    /// by the generator. I'm not sure how important this optimization is,
+    /// but it is here.
     generator_drop: Option<BasicBlock>,
 }
 
@@ -217,13 +222,26 @@ impl<'tcx> Scope<'tcx> {
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
     /// larger extent of code.
     ///
-    /// `unwind` controls whether caches for the unwind branch are also invalidated.
-    fn invalidate_cache(&mut self, unwind: bool) {
+    /// `storage_only` controls whether to invalidate only drop paths run `StorageDead`.
+    /// `this_scope_only` controls whether to invalidate only drop paths that refer to the current
+    /// top-of-scope (as opposed to dependent scopes).
+    fn invalidate_cache(&mut self, storage_only: bool, this_scope_only: bool) {
+        // FIXME: maybe do shared caching of `cached_exits` etc. to handle functions
+        // with lots of `try!`?
+
+        // cached exits drop storage and refer to the top-of-scope
         self.cached_exits.clear();
-        if !unwind { return; }
-        for dropdata in &mut self.drops {
-            if let DropKind::Value { ref mut cached_block } = dropdata.kind {
-                cached_block.invalidate();
+
+        if !storage_only {
+            // the current generator drop ignores storage but refers to top-of-scope
+            self.cached_generator_drop = None;
+        }
+
+        if !storage_only && !this_scope_only {
+            for dropdata in &mut self.drops {
+                if let DropKind::Value { ref mut cached_block } = dropdata.kind {
+                    cached_block.invalidate();
+                }
             }
         }
     }
@@ -672,8 +690,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // invalidating caches of each scope visited. This way bare minimum of the
             // caches gets invalidated. i.e. if a new drop is added into the middle scope, the
             // cache of outer scpoe stays intact.
-            let invalidate_unwind = needs_drop && !this_scope;
-            scope.invalidate_cache(invalidate_unwind);
+            scope.invalidate_cache(!needs_drop, this_scope);
             if this_scope {
                 if let DropKind::Value { .. } = drop_kind {
                     scope.needs_cleanup = true;
@@ -941,6 +958,8 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         cfg.terminate(block, source_info(span), TerminatorKind::Goto { target: target });
         target = block
     }
+
+    debug!("build_diverge_scope({:?}, {:?}) = {:?}", scope, span, target);
 
     target
 }
