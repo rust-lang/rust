@@ -971,6 +971,169 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> f32x4 {
     simd_shuffle4(a, a, [3, 2, 1, 0])
 }
 
+/// Store the upper half of `a` (64 bits) into memory.
+///
+/// This intrinsic corresponds to the `MOVHPS` instruction. The compiler may
+/// choose to generate an equivalent sequence of other instructions.
+#[inline(always)]
+#[target_feature = "+sse"]
+// On i686 and up LLVM actually generates MOVHPD instead of MOVHPS, that's fine.
+// On i586 (no SSE2) it just generates plain MOV instructions.
+#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    assert_instr(movhpd))]
+pub unsafe fn _mm_storeh_pi(p: *mut u64, a: f32x4) {
+    if cfg!(target_arch = "x86") {
+        // If this is a `f64x2` then on i586, LLVM generates fldl & fstpl which
+        // is just silly
+        let a64: u64x2 = mem::transmute(a);
+        let a_hi = a64.extract(1);
+        *p = mem::transmute(a_hi);
+    } else { // target_arch = "x86_64"
+        // If this is a `u64x2` LLVM generates a pshufd + movq, but we really
+        // want a a MOVHPD or MOVHPS here.
+        let a64: f64x2 = mem::transmute(a);
+        let a_hi = a64.extract(1);
+        *p = mem::transmute(a_hi);
+    }
+}
+
+/// Store the lower half of `a` (64 bits) into memory.
+///
+/// This intrinsic corresponds to the `MOVQ` instruction. The compiler may
+/// choose to generate an equivalent sequence of other instructions.
+#[inline(always)]
+#[target_feature = "+sse"]
+// On i586 the codegen just generates plane MOVs. No need to test for that.
+#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2"),
+               not(target_family = "windows")),
+    assert_instr(movlps))]
+// Win64 passes `a` by reference, which causes it to generate two 64 bit moves.
+#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2"),
+               target_family = "windows"),
+    assert_instr(movsd))]
+pub unsafe fn _mm_storel_pi(p: *mut u64, a: f32x4) {
+    if cfg!(target_arch = "x86") {
+        // Same as for _mm_storeh_pi: i586 code gen would use floating point
+        // stack.
+        let a64: u64x2 = mem::transmute(a);
+        let a_hi = a64.extract(0);
+        *p = mem::transmute(a_hi);
+    } else { // target_arch = "x86_64"
+        let a64: f64x2 = mem::transmute(a);
+        let a_hi = a64.extract(0);
+        *p = mem::transmute(a_hi);
+    }
+}
+
+/// Store the lowest 32 bit float of `a` into memory.
+///
+/// This intrinsic corresponds to the `MOVSS` instruction.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movss))]
+pub unsafe fn _mm_store_ss(p: *mut f32, a: f32x4) {
+    *p = a.extract(0)
+}
+
+/// Store the lowest 32 bit float of `a` repeated four times into *aligned*
+/// memory.
+///
+/// If the pointer is not aligned to a 128-bit boundary (16 bytes) a general
+/// protection fault will be triggered (fatal program crash).
+///
+/// Functionally equivalent to the following code sequence (assuming `p`
+/// satisfies the alignment restrictions):
+///
+/// ```text
+/// let x = a.extract(0);
+/// *p = x;
+/// *p.offset(1) = x;
+/// *p.offset(2) = x;
+/// *p.offset(3) = x;
+/// ```
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movaps))]
+pub unsafe fn _mm_store1_ps(p: *mut f32, a: f32x4) {
+    let b: f32x4 = simd_shuffle4(a, a, [0, 0, 0, 0]);
+    *(p as *mut f32x4) = b;
+}
+
+/// Alias for [`_mm_store1_ps`](fn._mm_store1_ps.html)
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movaps))]
+pub unsafe fn _mm_store_ps1(p: *mut f32, a: f32x4) {
+    _mm_store1_ps(p, a);
+}
+
+/// Store four 32-bit floats into *aligned* memory.
+///
+/// If the pointer is not aligned to a 128-bit boundary (16 bytes) a general
+/// protection fault will be triggered (fatal program crash).
+///
+/// Use [`_mm_storeu_ps`](fn._mm_storeu_ps.html) for potentially unaligned
+/// memory.
+///
+/// This corresponds to instructions `VMOVAPS` / `MOVAPS`.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movaps))]
+pub unsafe fn _mm_store_ps(p: *mut f32, a: f32x4) {
+    *(p as *mut f32x4) = a;
+}
+
+/// Store four 32-bit floats into memory. There are no restrictions on memory
+/// alignment. For aligned memory [`_mm_store_ps`](fn._mm_store_ps.html) may be
+/// faster.
+///
+/// This corresponds to instructions `VMOVUPS` / `MOVUPS`.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movups))]
+pub unsafe fn _mm_storeu_ps(p: *mut f32, a: f32x4) {
+    ptr::copy_nonoverlapping(
+        &a as *const f32x4 as *const u8,
+        p as *mut u8,
+        mem::size_of::<f32x4>());
+}
+
+/// Store four 32-bit floats into *aligned* memory in reverse order.
+///
+/// If the pointer is not aligned to a 128-bit boundary (16 bytes) a general
+/// protection fault will be triggered (fatal program crash).
+///
+/// Functionally equivalent to the following code sequence (assuming `p`
+/// satisfies the alignment restrictions):
+///
+/// ```text
+/// *p = a.extract(3);
+/// *p.offset(1) = a.extract(2);
+/// *p.offset(2) = a.extract(1);
+/// *p.offset(3) = a.extract(0);
+/// ```
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movaps))]
+pub unsafe fn _mm_storer_ps(p: *mut f32, a: f32x4) {
+    let b: f32x4 = simd_shuffle4(a, a, [3, 2, 1, 0]);
+    *(p as *mut f32x4) = b;
+}
+
+/// Return a `f32x4` with the first component from `b` and the remaining
+/// components from `a`.
+///
+/// In other words for any `a` and `b`:
+/// ```text
+/// _mm_move_ss(a, b) == a.replace(0, b.extract(0))
+/// ```
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movss))]
+pub unsafe fn _mm_move_ss(a: f32x4, b: f32x4) -> f32x4 {
+    simd_shuffle4(a, b, [4, 1, 2, 3])
+}
+
 /// Perform a serializing operation on all store-to-memory instructions that
 /// were issued prior to this instruction.
 ///
@@ -2524,6 +2687,155 @@ mod tests {
 
         let r = sse::_mm_loadr_ps(p);
         assert_eq!(r, f32x4::new(4.0, 3.0, 2.0, 1.0) + f32x4::splat(fixup));
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_storeh_pi() {
+        let mut vals = [0.0f32; 8];
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        sse::_mm_storeh_pi(vals.as_mut_ptr() as *mut f32 as *mut u64, a);
+
+        assert_eq!(vals[0], 3.0);
+        assert_eq!(vals[1], 4.0);
+        assert_eq!(vals[2], 0.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_storel_pi() {
+        let mut vals = [0.0f32; 8];
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        sse::_mm_storel_pi(vals.as_mut_ptr() as *mut f32 as *mut u64, a);
+
+        assert_eq!(vals[0], 1.0);
+        assert_eq!(vals[1], 2.0);
+        assert_eq!(vals[2], 0.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_store_ss() {
+        let mut vals = [0.0f32; 8];
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        sse::_mm_store_ss(vals.as_mut_ptr().offset(1), a);
+
+        assert_eq!(vals[0], 0.0);
+        assert_eq!(vals[1], 1.0);
+        assert_eq!(vals[2], 0.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_store1_ps() {
+        let mut vals = [0.0f32; 8];
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+
+        let mut ofs = 0;
+        let mut p = vals.as_mut_ptr();
+
+        if (p as usize) & 0xf != 0 {
+            ofs = (16 - (p as usize) & 0xf) >> 2;
+            p = p.offset(ofs as isize);
+        }
+
+        sse::_mm_store1_ps(p, *black_box(&a));
+
+        if ofs > 0 {
+            assert_eq!(vals[ofs - 1], 0.0);
+        }
+        assert_eq!(vals[ofs + 0], 1.0);
+        assert_eq!(vals[ofs + 1], 1.0);
+        assert_eq!(vals[ofs + 2], 1.0);
+        assert_eq!(vals[ofs + 3], 1.0);
+        assert_eq!(vals[ofs + 4], 0.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_store_ps() {
+        let mut vals = [0.0f32; 8];
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+
+        let mut ofs = 0;
+        let mut p = vals.as_mut_ptr();
+
+        // Align p to 16-byte boundary
+        if (p as usize) & 0xf != 0 {
+            ofs = (16 - (p as usize) & 0xf) >> 2;
+            p = p.offset(ofs as isize);
+        }
+
+        sse::_mm_store_ps(p, *black_box(&a));
+
+        if ofs > 0 {
+            assert_eq!(vals[ofs - 1], 0.0);
+        }
+        assert_eq!(vals[ofs + 0], 1.0);
+        assert_eq!(vals[ofs + 1], 2.0);
+        assert_eq!(vals[ofs + 2], 3.0);
+        assert_eq!(vals[ofs + 3], 4.0);
+        assert_eq!(vals[ofs + 4], 0.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_storer_ps() {
+        let mut vals = [0.0f32; 8];
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+
+        let mut ofs = 0;
+        let mut p = vals.as_mut_ptr();
+
+        // Align p to 16-byte boundary
+        if (p as usize) & 0xf != 0 {
+            ofs = (16 - (p as usize) & 0xf) >> 2;
+            p = p.offset(ofs as isize);
+        }
+
+        sse::_mm_storer_ps(p, *black_box(&a));
+
+        if ofs > 0 {
+            assert_eq!(vals[ofs - 1], 0.0);
+        }
+        assert_eq!(vals[ofs + 0], 4.0);
+        assert_eq!(vals[ofs + 1], 3.0);
+        assert_eq!(vals[ofs + 2], 2.0);
+        assert_eq!(vals[ofs + 3], 1.0);
+        assert_eq!(vals[ofs + 4], 0.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_storeu_ps() {
+        let mut vals = [0.0f32; 8];
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+
+        let mut ofs = 0;
+        let mut p = vals.as_mut_ptr();
+
+        // Make sure p is *not* aligned to 16-byte boundary
+        if (p as usize) & 0xf == 0 {
+            ofs = 1;
+            p = p.offset(1);
+        }
+
+        sse::_mm_storeu_ps(p, *black_box(&a));
+
+        if ofs > 0 {
+            assert_eq!(vals[ofs - 1], 0.0);
+        }
+        assert_eq!(vals[ofs + 0], 1.0);
+        assert_eq!(vals[ofs + 1], 2.0);
+        assert_eq!(vals[ofs + 2], 3.0);
+        assert_eq!(vals[ofs + 3], 4.0);
+        assert_eq!(vals[ofs + 4], 0.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_move_ss() {
+        let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
+
+        let r1 = sse::_mm_move_ss(a, b);
+        let r2 = a.replace(0, b.extract(0));
+
+        let e = f32x4::new(5.0, 2.0, 3.0, 4.0);
+        assert_eq!(e, r1);
+        assert_eq!(e, r2);
     }
 
     #[simd_test = "sse"]
