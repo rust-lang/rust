@@ -128,7 +128,7 @@ fn make_opts() -> Options {
     opts.opt(
         "",
         "dump-default-config",
-	"Dumps default configuration to PATH. PATH defaults to stdout, if omitted."
+        "Dumps default configuration to PATH. PATH defaults to stdout, if omitted.",
         "PATH",
         HasArg::Maybe,
         Occur::Optional,
