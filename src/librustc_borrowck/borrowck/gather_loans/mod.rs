@@ -406,7 +406,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         self.all_loans.push(loan);
 
         // if loan_gen_scope != borrow_id {
-            // FIXME(#6268) Nested method calls
+            // FIXME(https://github.com/rust-lang/rfcs/issues/811) Nested method calls
             //
             // Typically, the scope of the loan includes the point at
             // which the loan is originated. This
@@ -417,9 +417,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             //let restr = restrictions::compute_restrictions(
             //    self.bccx, borrow_span, cmt, RESTR_EMPTY);
             //let loan = {
-            //    let all_loans = &mut *self.all_loans; // FIXME(#5074)
             //    Loan {
-            //        index: all_loans.len(),
+            //        index: self.all_loans.len(),
             //        loan_path,
             //        cmt,
             //        mutbl: ConstMutability,
