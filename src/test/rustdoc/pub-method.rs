@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags: --no-defaults --passes collapse-docs --passes unindent-comments --passes strip-priv-imports
+// compile-flags: --document-private-items
 
 #![crate_name = "foo"]
 
