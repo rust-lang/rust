@@ -1,3 +1,5 @@
+#![deny(fallible_impl_from)]
+
 // docs example
 struct Foo(i32);
 impl From<String> for Foo {
@@ -14,16 +16,8 @@ impl<'a> From<&'a str> for Valid {
         Valid(s.to_owned().into_bytes())
     }
 }
-impl From<String> for Valid {
-    fn from(s: String) -> Valid {
-        Valid(s.into_bytes())
-    }
-}
 impl From<usize> for Valid {
     fn from(i: usize) -> Valid {
-        if i == 0 {
-            panic!();
-        }
         Valid(Vec::with_capacity(i))
     }
 }
@@ -31,17 +25,18 @@ impl From<usize> for Valid {
 
 struct Invalid;
 
-impl<'a> From<&'a str> for Invalid {
-    fn from(s: &'a str) -> Invalid {
-        if !s.is_empty() {
+impl From<usize> for Invalid {
+    fn from(i: usize) -> Invalid {
+        if i != 42 {
             panic!();
         }
         Invalid
     }
 }
 
-impl From<String> for Invalid {
-    fn from(s: String) -> Invalid {
+impl From<Option<String>> for Invalid {
+    fn from(s: Option<String>) -> Invalid {
+        let s = s.unwrap();
         if !s.is_empty() {
             panic!(42);
         } else if s.parse::<u32>().unwrap() != 42 {

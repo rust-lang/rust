@@ -3,12 +3,11 @@ use rustc::hir;
 use rustc::ty;
 use syntax_pos::Span;
 use utils::{method_chain_args, match_def_path, span_lint_and_then, walk_ptrs_ty};
-use utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT, STRING};
+use utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
 
-/// **What it does:** Checks for impls of `From<&str>` and `From<String>` that contain `panic!()` or
-/// `unwrap()`
+/// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
 ///
-/// **Why is this bad?** `FromStr` should be used if there's a possibility of failure.
+/// **Why is this bad?** `TryFrom` should be used if there's a possibility of failure.
 ///
 /// **Known problems:** None.
 ///
@@ -22,19 +21,19 @@ use utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT, STR
 /// }
 /// ```
 declare_lint! {
-    pub IMPL_FROM_STR, Warn,
-    "Warn on impls of `From<&str>` and `From<String>` that contain `panic!()` or `unwrap()`"
+    pub FALLIBLE_IMPL_FROM, Allow,
+    "Warn on impls of `From<..>` that contain `panic!()` or `unwrap()`"
 }
 
-pub struct ImplFromStr;
+pub struct FallibleImplFrom;
 
-impl LintPass for ImplFromStr {
+impl LintPass for FallibleImplFrom {
     fn get_lints(&self) -> LintArray {
-        lint_array!(IMPL_FROM_STR)
+        lint_array!(FALLIBLE_IMPL_FROM)
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplFromStr {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         // check for `impl From<???> for ..`
         let impl_def_id = cx.tcx.hir.local_def_id(item.id);
@@ -43,15 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplFromStr {
             let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id),
             match_def_path(cx.tcx, impl_trait_ref.def_id, &FROM_TRAIT),
         ], {
-            // check if the type parameter is `str` or `String`
-            let from_ty_param = impl_trait_ref.substs.type_at(1);
-            let base_from_ty_param =
-                walk_ptrs_ty(cx.tcx.normalize_associated_type(&from_ty_param));
-            if base_from_ty_param.sty == ty::TyStr ||
-                match_type(cx.tcx, base_from_ty_param, &STRING)
-            {
-                lint_impl_body(cx, item.span, impl_items);
-            }
+            lint_impl_body(cx, item.span, impl_items);
         }}
     }
 }
@@ -117,10 +108,13 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
             if !fpu.result.is_empty() {
                 span_lint_and_then(
                     cx,
-                    IMPL_FROM_STR,
+                    FALLIBLE_IMPL_FROM,
                     impl_span,
-                    "consider implementing `FromStr` instead",
+                    "consider implementing `TryFrom` instead",
                     move |db| {
+                        db.help(
+                            "`From` is intended for infallible conversions only. \
+                             Use `TryFrom` if there's a possibility for the conversion to fail.");
                         db.span_note(fpu.result, "potential failure(s)");
                     });
             }
