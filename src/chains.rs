@@ -64,7 +64,8 @@ use config::IndentStyle;
 use expr::rewrite_call;
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{first_line_width, last_line_extendable, last_line_width, mk_sp, wrap_str};
+use utils::{first_line_width, last_line_extendable, last_line_width, mk_sp,
+            trimmed_last_line_width, wrap_str};
 
 use std::cmp::min;
 use std::iter;
@@ -125,7 +126,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     let first_child_shape = if extend {
         let overhead = last_line_width(&parent_rewrite);
-        let offset = parent_rewrite.lines().rev().next().unwrap().trim().len();
+        let offset = trimmed_last_line_width(&parent_rewrite);
         match context.config.chain_indent() {
             IndentStyle::Visual => parent_shape.offset_left(overhead)?,
             IndentStyle::Block => parent_shape.block().offset_left(offset)?,
