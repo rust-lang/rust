@@ -6,7 +6,11 @@
 # Summary
 [summary]: #summary
 
-Enables "or" patterns for [`if let`](https://github.com/rust-lang/rfcs/pull/160) and [`while let`](https://github.com/rust-lang/rfcs/pull/214) expressions. In other words, examples like the following are now possible:
+[`if let`]: https://github.com/rust-lang/rfcs/pull/160
+[`while let`]: https://github.com/rust-lang/rfcs/pull/214
+
+Enables "or" patterns for [`if let`] and [`while let`] expressions. In other
+words, examples like the following are now possible:
 
 ```rust
 enum E<T> {
@@ -27,7 +31,12 @@ while let A(x) | B(x) = source() {
 # Motivation
 [motivation]: #motivation
 
-While nothing in this RFC is currently impossible in Rust, the changes the RFC proposes improves the ergonomics of control flow when dealing with `enum`s (sum types) with three or more variants where the program should react in one way to a group of variants, and another way to another group of variants. Examples of when such sum types occur are protocols and when dealing with languages (ASTs).
+While nothing in this RFC is currently impossible in Rust, the changes the RFC
+proposes improves the ergonomics of control flow when dealing with `enum`s
+(sum types) with three or more variants where the program should react in one
+way to a group of variants, and another way to another group of variants.
+Examples of when such sum types occur are protocols, when dealing with
+languages (ASTs), and non-trivial iterators.
 
 The following snippet (written with this RFC):
 
@@ -56,7 +65,51 @@ match expr {
 }
 ```
 
-With `while let`, the ergonomics and in particular the readability can be significantly improved.
+[`std::iter`]: https://doc.rust-lang.org/nightly/src/core/iter/mod.rs.html#691
+
+This way of using `match` is seen multiple times in [`std::iter`] when dealing
+with the `Chain` iterator adapter. An example of this is:
+
+```rust
+    fn fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        match self.state {
+            ChainState::Both | ChainState::Front => {
+                accum = self.a.fold(accum, &mut f);
+            }
+            _ => { }
+        }
+        match self.state {
+            ChainState::Both | ChainState::Back => {
+                accum = self.b.fold(accum, &mut f);
+            }
+            _ => { }
+        }
+        accum
+    }
+```
+
+which could have been written as:
+
+```rust
+    fn fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        use ChainState::*;
+        let mut accum = init;
+        if let Both | Front = self.state { accum = self.a.fold(accum, &mut f); }
+        if let Both | Back  = self.state { accum = self.b.fold(accum, &mut f); }
+        accum
+    }
+```
+
+This version is both shorter and clearer.
+
+
+With `while let`, the ergonomics and in particular the readability can be
+significantly improved.
 
 The following snippet (written with this RFC):
 
@@ -82,11 +135,18 @@ Another major motivation of the RFC is consistency with `match`.
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-[RFC 2005](https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#examples), in describing the third example in the section "Examples", refers to patterns with `|` in them as "or" patterns. This RFC adopts the same terminology.
+[RFC 2005]: https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#examples
 
-While the "sum" of all patterns in `match` must be irrefutable, or in other words: cover all cases, be exhaustive, this is not the case (currently) with `if/while let`, which may have a refutable pattern. This RFC does not change this.
+[RFC 2005], in describing the third example in the section "Examples", refers to
+patterns with `|` in them as "or" patterns. This RFC adopts the same terminology.
 
-The RFC only extends the use of or-patterns from `match`es to `if let` and `while let` expressions.
+While the "sum" of all patterns in `match` must be irrefutable, or in other
+words: cover all cases, be exhaustive, this is not the case (currently) with
+`if/while let`, which may have a refutable pattern.
+This RFC does not change this.
+
+The RFC only extends the use of or-patterns from `match`es to `if let` and
+`while let` expressions.
 
 For examples, see [motivation].
 
@@ -95,9 +155,12 @@ For examples, see [motivation].
 
 ## Grammar
 
+[§ 7.2.24]: https://doc.rust-lang.org/grammar.html#if-let-expressions
+[§ 7.2.25]: https://doc.rust-lang.org/grammar.html#while-let-loops
+
 ### `if let`
 
-The grammar in [§ 7.2.24](https://doc.rust-lang.org/grammar.html#if-let-expressions) is changed from:
+The grammar in [§ 7.2.24] is changed from:
 
 ```
 if_let_expr : "if" "let" pat '=' expr '{' block '}'
@@ -113,7 +176,7 @@ if_let_expr : "if" "let" pat [ '|' pat ] * '=' expr '{' block '}'
 
 ### `while let`
 
-The grammar in [§ 7.2.25](https://doc.rust-lang.org/grammar.html#while-let-loops) is changed from:
+The grammar in [§ 7.2.25] is changed from:
 
 ```
 while_let_expr : [ lifetime ':' ] ? "while" "let" pat '=' expr '{' block '}' ;
@@ -127,11 +190,15 @@ while_let_expr : [ lifetime ':' ] ? "while" "let" pat [ '|' pat ] * '=' expr '{'
 
 ## Syntax lowering
 
-The changes proposed in this RFC can be implemented by transforming the `if/while let` constructs with a syntax-lowering pass into `match` and `loop` + `match` expressions.
+The changes proposed in this RFC can be implemented by transforming the
+`if/while let` constructs with a syntax-lowering pass into `match` and
+`loop` + `match` expressions.
 
 ### Examples, `if let`
 
-These examples are extensions on the [`if let` RFC](https://github.com/rust-lang/rfcs/pull/160). Therefore, the RFC avoids
+[`if let` RFC]: https://github.com/rust-lang/rfcs/pull/160
+
+These examples are extensions on the [`if let` RFC]. Therefore, the RFC avoids
 duplicating any details already specified there.
 
 Source:
@@ -202,7 +269,9 @@ match EXPR {
 
 ### Examples, `while let`
 
-The following example is an extension on the [`while let` RFC](https://github.com/rust-lang/rfcs/pull/214).
+[`while let` RFC]: https://github.com/rust-lang/rfcs/pull/214
+
+The following example is an extension on the [`while let` RFC].
 
 Source
 ```rust
