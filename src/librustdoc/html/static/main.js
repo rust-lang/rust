@@ -39,6 +39,13 @@
                      "associatedconstant",
                      "union"];
 
+    // On the search screen, so you remain on the last tab you opened.
+    //
+    // 0 for "Types/modules"
+    // 1 for "As parameters"
+    // 2 for "As return value"
+    var currentTab = 0;
+
     function hasClass(elem, className) {
         if (elem && className && elem.className) {
             var elemClass = elem.className;
@@ -758,7 +765,7 @@
 
             var output = '';
             if (array.length > 0) {
-                output = `<table class="search-results"${extraStyle}>`;
+                output = '<table class="search-results"' + extraStyle + '>';
                 var shown = [];
 
                 array.forEach(function(item) {
@@ -812,12 +819,19 @@
                 });
                 output += '</table>';
             } else {
-                output = `<div class="search-failed"${extraStyle}>No results :(<br/>` +
+                output = '<div class="search-failed"' + extraStyle + '>No results :(<br/>' +
                     'Try on <a href="https://duckduckgo.com/?q=' +
                     encodeURIComponent('rust ' + query.query) +
                     '">DuckDuckGo</a>?</div>';
             }
             return output;
+        }
+
+        function makeTabHeader(tabNb, text) {
+            if (currentTab === tabNb) {
+                return '<div class="selected">' + text + '</div>';
+            }
+            return '<div>' + text + '</div>';
         }
 
         function showResults(results) {
@@ -827,9 +841,10 @@
             output = '<h1>Results for ' + escape(query.query) +
                 (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
                 '<div id="titles">' +
-                '<div class="selected">Types/modules</div>' +
-                '<div>As parameters</div>' +
-                '<div>As return value</div></div><div id="results">';
+                makeTabHeader(0, "Types/modules") +
+                makeTabHeader(1, "As parameters") +
+                makeTabHeader(2, "As return value") +
+                '</div><div id="results">';
 
             output += addTab(results['others'], query);
             output += addTab(results['in_args'], query, false);
@@ -1405,6 +1420,9 @@
 
     // In the search display, allows to switch between tabs.
     function printTab(nb) {
+        if (nb === 0 || nb === 1 || nb === 2) {
+            currentTab = nb;
+        }
         var nb_copy = nb;
         onEach(document.getElementById('titles').childNodes, function(elem) {
             if (nb_copy === 0) {

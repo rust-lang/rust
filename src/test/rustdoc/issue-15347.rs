@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--no-defaults --passes collapse-docs --passes unindent-comments
+// compile-flags: --no-defaults --passes collapse-docs --passes unindent-comments
 
 // @has issue_15347/fn.foo.html
 #[doc(hidden)]
