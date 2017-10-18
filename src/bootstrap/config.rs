@@ -299,6 +299,7 @@ impl Config {
         let mut config = Config::default();
         config.llvm_enabled = true;
         config.llvm_optimize = true;
+        config.llvm_version_check = true;
         config.use_jemalloc = true;
         config.backtrace = true;
         config.rust_optimize = true;
