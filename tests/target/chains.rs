@@ -183,3 +183,11 @@ fn issue1392() {
         "#.trim(),
     );
 }
+
+// #2067
+impl Settings {
+    fn save(&self) -> Result<()> {
+        let mut file = File::create(&settings_path)
+            .chain_err(|| ErrorKind::WriteError(settings_path.clone()))?;
+    }
+}
