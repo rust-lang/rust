@@ -363,46 +363,56 @@ outside the submodule.
 It can also be more convenient during development to set `submodules = false`
 in the `config.toml` to prevent `x.py` from resetting to the original branch.
 
-#### Breaking rustfmt or rls
-[breaking-rustfmt-or-rls]: #breaking-rustfmt-or-rls
+#### Breaking Tools Built With The Compiler
+[breaking-tools-built-with-the-compiler]: #breaking-tools-built-with-the-compiler
 
-Rust's build system also builds the
-[RLS](https://github.com/rust-lang-nursery/rls)
-and [rustfmt](https://github.com/rust-lang-nursery/rustfmt). If these tools
+Rust's build system builds a number of tools that make use of the
+internals of the compiler. This includes clippy,
+[RLS](https://github.com/rust-lang-nursery/rls) and
+[rustfmt](https://github.com/rust-lang-nursery/rustfmt). If these tools
 break because of your changes, you may run into a sort of "chicken and egg"
-problem. Both tools rely on the latest compiler to be built so you can't update
-them until the changes you are making to the compiler land. In the meantime, you
-can't land your changes to the compiler because the build won't pass until those
-tools are fixed.
+problem. These tools rely on the latest compiler to be built so you can't update
+them to reflect your changes to the compiler until those changes are merged into
+the compiler. At the same time, you can't get your changes merged into the compiler
+because the rust-lang/rust build won't pass until those tools build and pass their
+tests.
 
-That means that, in the default state, you can't update the compiler without
-fixing rustfmt and rls first.
+That means that, in the default state, you can't update the compiler without first
+fixing rustfmt, rls and the other tools that the compiler builds.
 
-When this happens, follow these steps:
+Luckily, a feature was [added to Rust's build](https://github.com/rust-lang/rust/pull/45243)
+to make all of this easy to handle. The idea is that you mark the tools as "broken",
+so that the rust-lang/rust build passes without trying to build them, then land the change
+in the compiler, wait for a nightly, and go update the tools that you broke. Once you're done
+and the tools are working again, you go back in the compiler and change the tools back
+from "broken".
 
-1. First, if it doesn't exist already, create a `config.toml` by copying
+This should avoid a bunch of synchronization dances and is also much easier on contributors as
+there's no need to block on rls/rustfmt/other tools changes going upstream.
+
+Here are those same steps in detail:
+
+1. (optional) First, if it doesn't exist already, create a `config.toml` by copying
    `config.toml.example` in the root directory of the Rust repository.
    Set `submodules = false` in the `[build]` section. This will prevent `x.py`
    from resetting to the original branch after you make your changes. If you
    need to [update any submodules to their latest versions][updating-submodules],
    see the section of this file about that for more information.
-2. Run `./x.py test src/tools/rustfmt`. Fix any errors in the submodule itself
-   (the `src/tools/rustfmt` directory) until it works.
-3. Run `./x.py test src/tools/rls`. Fix any errors in the submodule itself
-   (the `src/tools/rls` directory) until it works.
-4. Make a commit for `rustfmt`, if necessary, and send a PR to the master
-   branch of rust-lang-nursery/rustfmt
-5. Do the same, if necessary for the RLS
-6. A maintainer of rls/rustfmt will **not** merge the PR. The PR can't be
-   merged because CI will be broken. Instead a new branch will be created,
-   and the PR will be pushed to the branch (the PR is left open)
-7. On your branch, update the rls/rustfmt submodules to these branches
-8. Commit the changes, update your PR to rust-lang/rust
-9. Wait for the branch to merge
-10. Wait for a nightly
-11. A maintainer of rls/rustfmt will merge the original PRs to rls/rustfmt
-12. Eventually the rls/rustfmt submodules will get re-updated back to the
-    master branch
+2. (optional) Run `./x.py test src/tools/rustfmt` (substituting the submodule
+   that broke for `rustfmt`). Fix any errors in the submodule (and possibly others).
+3. (optional) Make commits for your changes and send them to upstream repositories as a PR.
+4. (optional) Maintainers of these submodules will **not** merge the PR. The PR can't be
+   merged because CI will be broken. You'll want to write a message on the PR referencing
+   your change, and how the PR should be merged once your change makes it into a nightly.
+5. Update `src/tools/toolstate.toml` to indicate that the tool in question is "broken",
+   that will disable building it on CI. See the documentation in that file for the exact
+   configuration values you can use.
+6. Commit the changes to `src/tools/toolstate.toml`, **do not update submodules in your commit**,
+   and then update the PR you have for rust-lang/rust.
+7. Wait for your PR to merge.
+8. Wait for a nightly
+9. (optional) Help land your PR on the upstream repository now that your changes are in nightly.
+10. (optional) Send a PR to rust-lang/rust updating the submodule, reverting `src/tools/toolstate.toml` back to a "building" or "testing" state.
 
 #### Updating submodules
 [updating-submodules]: #updating-submodules
