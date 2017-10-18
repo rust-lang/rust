@@ -24,7 +24,6 @@ use std::cmp::Ordering;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::symbol::keywords;
-use util::nodemap::FxHashMap;
 
 use serialize;
 
@@ -1068,54 +1067,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyTuple(_, true) => true,
             _ => false,
         }
-    }
-
-    /// Checks whether a type is visibly uninhabited from a particular module.
-    /// # Example
-    /// ```rust
-    /// enum Void {}
-    /// mod a {
-    ///     pub mod b {
-    ///         pub struct SecretlyUninhabited {
-    ///             _priv: !,
-    ///         }
-    ///     }
-    /// }
-    ///
-    /// mod c {
-    ///     pub struct AlsoSecretlyUninhabited {
-    ///         _priv: Void,
-    ///     }
-    ///     mod d {
-    ///     }
-    /// }
-    ///
-    /// struct Foo {
-    ///     x: a::b::SecretlyUninhabited,
-    ///     y: c::AlsoSecretlyUninhabited,
-    /// }
-    /// ```
-    /// In this code, the type `Foo` will only be visibly uninhabited inside the
-    /// modules b, c and d. This effects pattern-matching on `Foo` or types that
-    /// contain `Foo`.
-    ///
-    /// # Example
-    /// ```rust
-    /// let foo_result: Result<T, Foo> = ... ;
-    /// let Ok(t) = foo_result;
-    /// ```
-    /// This code should only compile in modules where the uninhabitedness of Foo is
-    /// visible.
-    pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        let mut visited = FxHashMap::default();
-        let forest = self.uninhabited_from(&mut visited, tcx);
-
-        // To check whether this type is uninhabited at all (not just from the
-        // given node) you could check whether the forest is empty.
-        // ```
-        // forest.is_empty()
-        // ```
-        forest.contains(tcx, module)
     }
 
     pub fn is_primitive(&self) -> bool {

@@ -48,7 +48,13 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
-    euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_scope_tree, bccx.tables)
+    let rvalue_promotable_map = bccx.tcx.rvalue_promotable_map(def_id);
+    euv::ExprUseVisitor::new(&mut glcx,
+                             bccx.tcx,
+                             param_env,
+                             &bccx.region_scope_tree,
+                             bccx.tables,
+                             Some(rvalue_promotable_map))
         .consume_body(bccx.body);
 
     glcx.report_potential_errors();

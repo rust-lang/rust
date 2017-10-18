@@ -701,6 +701,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CompileCodegenUnit |
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
+        DepKind::EraseRegionsTy |
 
         // These are just odd
         DepKind::Null |
@@ -774,6 +775,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::ConstIsRvaluePromotableToStatic => {
             force!(const_is_rvalue_promotable_to_static, def_id!());
         }
+        DepKind::RvaluePromotableMap => { force!(rvalue_promotable_map, def_id!()); }
         DepKind::ImplParent => { force!(impl_parent, def_id!()); }
         DepKind::TraitOfItem => { force!(trait_of_item, def_id!()); }
         DepKind::IsExportedSymbol => { force!(is_exported_symbol, def_id!()); }

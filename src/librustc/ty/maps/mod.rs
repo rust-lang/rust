@@ -37,7 +37,7 @@ use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::layout::{Layout, LayoutError};
 use ty::steal::Steal;
 use ty::subst::Substs;
-use util::nodemap::{DefIdSet, DefIdMap};
+use util::nodemap::{DefIdSet, DefIdMap, ItemLocalMap};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -231,6 +231,7 @@ define_maps! { <'tcx>
     [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
     [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
+    [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Rc<ItemLocalMap<bool>>,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
     [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
                           -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,
@@ -343,11 +344,20 @@ define_maps! { <'tcx>
 
     [] fn has_copy_closures: HasCopyClosures(CrateNum) -> bool,
     [] fn has_clone_closures: HasCloneClosures(CrateNum) -> bool,
+
+    // Erases regions from `ty` to yield a new type.
+    // Normally you would just use `tcx.erase_regions(&value)`,
+    // however, which uses this query as a kind of cache.
+    [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
 }
 
 //////////////////////////////////////////////////////////////////////
 // These functions are little shims used to find the dep-node for a
 // given query when there is not a *direct* mapping:
+
+fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::EraseRegionsTy { ty }
+}
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::TypeParamPredicates {

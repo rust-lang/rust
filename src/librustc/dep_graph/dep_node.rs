@@ -554,6 +554,7 @@ define_dep_nodes!( <'tcx>
     [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),
     [] ConstIsRvaluePromotableToStatic(DefId),
+    [] RvaluePromotableMap(DefId),
     [] ImplParent(DefId),
     [] TraitOfItem(DefId),
     [] IsExportedSymbol(DefId),
@@ -609,6 +610,7 @@ define_dep_nodes!( <'tcx>
     [] PostorderCnums,
     [] HasCloneClosures(CrateNum),
     [] HasCopyClosures(CrateNum),
+    [] EraseRegionsTy { ty: Ty<'tcx> },
 
     [] Freevars(DefId),
     [] MaybeUnusedTraitImport(DefId),

@@ -43,7 +43,6 @@ use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
-use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
@@ -893,11 +892,6 @@ pub struct GlobalCtxt<'tcx> {
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
-    // FIXME dep tracking -- should be harmless enough
-    pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
-
-    pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, DefIdForest>>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
@@ -906,9 +900,6 @@ pub struct GlobalCtxt<'tcx> {
     /// for things that do not have to do with the parameters in scope.
     /// Merge this with `selection_cache`?
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
-
-    /// Maps Expr NodeId's to `true` iff `&expr` can have 'static lifetime.
-    pub rvalue_promotable_to_static: RefCell<NodeMap<bool>>,
 
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
@@ -1178,11 +1169,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             maps: maps::Maps::new(providers),
             mir_passes,
             rcache: RefCell::new(FxHashMap()),
-            normalized_cache: RefCell::new(FxHashMap()),
-            inhabitedness_cache: RefCell::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            rvalue_promotable_to_static: RefCell::new(NodeMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout,
             layout_interner: RefCell::new(FxHashSet()),
