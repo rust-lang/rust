@@ -21,8 +21,8 @@ The behaviour of division and modulo, as implemented by Rust's (truncated) divis
 ```rust
 // Comparison of the behaviour of Rust's truncating division
 // and remainder, vs Euclidean division & modulo.
-(-8 / 3,      -8 % 3)       // (-2, -2)
-(-8.div_e(3), -8.mod_e(3))  // (-3,  1)
+(-8 / 3,      -8 % 3)           // (-2, -2)
+((-8).div_e(3), (-8).mod_e(3))  // (-3,  1)
 ```
 Euclidean division & modulo for integers will be achieved using the `div_e` and `mod_e` methods. The `%` operator has identical behaviour to `mod_e` for unsigned integers. However, when using signed integers, you should be careful to consider the behaviour you want: often Euclidean modulo will be more appropriate.
 
