@@ -573,9 +573,6 @@ pub unsafe fn _mm256_movemask_epi8(a: i8x32) -> i32 {
     pmovmskb(a)
 }
 
-/*
-LLVM ERROR: Cannot select: intrinsic %llvm.x86.avx2.mpsadbw
-
 /// Compute the sum of absolute differences (SADs) of quadruplets of unsigned
 /// 8-bit integers in `a` compared to those in `b`, and store the 16-bit
 /// results in dst. Eight SADs are performed for each 128-bit lane using one
@@ -585,11 +582,13 @@ LLVM ERROR: Cannot select: intrinsic %llvm.x86.avx2.mpsadbw
 /// starting at the offset specified in `imm8`.
 #[inline(always)]
 #[target_feature = "+avx2"]
-#[cfg_attr(test, assert_instr(vmpsadbw))]
+#[cfg_attr(test, assert_instr(vmpsadbw, imm8 = 0))]
 pub unsafe fn _mm256_mpsadbw_epu8(a: u8x32, b: u8x32, imm8: i32) -> u16x16 {
-    mpsadbw(a, b, imm8)
+    macro_rules! call {
+        ($imm8:expr) => (mpsadbw(a, b, $imm8))
+    }
+    constify_imm8!(imm8, call)
 }
-*/
 
 /// Multiply the low 32-bit integers from each packed 64-bit element in
 /// `a` and `b`
@@ -1767,7 +1766,6 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    /*
     #[simd_test = "avx2"]
     unsafe fn _mm256_mpsadbw_epu8() {
         let a = u8x32::splat(2);
@@ -1776,7 +1774,6 @@ mod tests {
         let e = u16x16::splat(8);
         assert_eq!(r, e);
     }
-    */
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_mul_epi32() {
