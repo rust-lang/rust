@@ -26,8 +26,23 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match layout.abi {
         layout::Abi::Scalar(_) => bug!("handled elsewhere"),
         layout::Abi::Vector => {
-            return Type::vector(&layout.field(ccx, 0).llvm_type(ccx),
-                                layout.fields.count() as u64);
+            // LLVM has a separate type for 64-bit SIMD vectors on X86 called
+            // `x86_mmx` which is needed for some SIMD operations. As a bit of a
+            // hack (all SIMD definitions are super unstable anyway) we
+            // recognize any one-element SIMD vector as "this should be an
+            // x86_mmx" type. In general there shouldn't be a need for other
+            // one-element SIMD vectors, so it's assumed this won't clash with
+            // much else.
+            let use_x86_mmx = layout.fields.count() == 1 &&
+                layout.size.bits() == 64 &&
+                (ccx.sess().target.target.arch == "x86" ||
+                 ccx.sess().target.target.arch == "x86_64");
+            if use_x86_mmx {
+                return Type::x86_mmx(ccx)
+            } else {
+                return Type::vector(&layout.field(ccx, 0).llvm_type(ccx),
+                                    layout.fields.count() as u64);
+            }
         }
         layout::Abi::ScalarPair(..) => {
             return Type::struct_(ccx, &[

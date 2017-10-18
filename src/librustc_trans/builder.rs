@@ -612,6 +612,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn nontemporal_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
+        debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
+        assert!(!self.llbuilder.is_null());
+        self.count_insn("store.nontemporal");
+        let ptr = self.check_store(val, ptr);
+        unsafe {
+            let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+
+            // According to LLVM [1] building a nontemporal store must *always*
+            // point to a metadata value of the integer 1. Who knew?
+            //
+            // [1]: http://llvm.org/docs/LangRef.html#store-instruction
+            let one = C_i32(self.ccx, 1);
+            let node = llvm::LLVMMDNodeInContext(self.ccx.llcx(),
+                                                 &one,
+                                                 1);
+            llvm::LLVMSetMetadata(insn,
+                                  llvm::MD_nontemporal as c_uint,
+                                  node);
+            insn
+        }
+    }
+
     pub fn gep(&self, ptr: ValueRef, indices: &[ValueRef]) -> ValueRef {
         self.count_insn("gep");
         unsafe {

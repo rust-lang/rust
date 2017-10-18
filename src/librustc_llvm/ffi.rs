@@ -587,6 +587,7 @@ extern "C" {
 
     // Operations on other types
     pub fn LLVMVoidTypeInContext(C: ContextRef) -> TypeRef;
+    pub fn LLVMX86MMXTypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMRustMetadataTypeInContext(C: ContextRef) -> TypeRef;
 
     // Operations on all values
