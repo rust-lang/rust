@@ -170,6 +170,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
         stable("no-default", |o| {
             o.optflag("", "no-defaults", "don't run the default passes")
         }),
+        stable("document-private-items", |o| {
+            o.optflag("", "document-private-items", "document private items")
+        }),
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner",
@@ -274,6 +277,9 @@ pub fn main_args(args: &[String]) -> isize {
     };
     // Check for unstable options.
     nightly_options::check_nightly_options(&matches, &opts());
+
+    // check for deprecated options
+    check_deprecated_options(&matches);
 
     if matches.opt_present("h") || matches.opt_present("help") {
         usage("rustdoc");
@@ -458,6 +464,18 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
 
+    // We hardcode in the passes here, as this is a new flag and we
+    // are generally deprecating passes.
+    if matches.opt_present("document-private-items") {
+        default_passes = false;
+
+        passes = vec![
+            String::from("strip-hidden"),
+            String::from("collapse-docs"),
+            String::from("unindent-comments"),
+        ];
+    }
+
     // First, parse the crate and extract all relevant information.
     let mut paths = SearchPaths::new();
     for s in &matches.opt_strs("L") {
@@ -549,4 +567,27 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
     });
     rx.recv().unwrap()
+}
+
+/// Prints deprecation warnings for deprecated options
+fn check_deprecated_options(matches: &getopts::Matches) {
+    let deprecated_flags = [
+       "input-format",
+       "output-format",
+       "plugin-path",
+       "plugins",
+       "no-defaults",
+       "passes",
+    ];
+
+    for flag in deprecated_flags.into_iter() {
+        if matches.opt_present(flag) {
+            eprintln!("WARNING: the '{}' flag is considered deprecated", flag);
+            eprintln!("WARNING: please see https://github.com/rust-lang/rust/issues/44136");
+        }
+    }
+
+    if matches.opt_present("no-defaults") {
+        eprintln!("WARNING: (you may want to use --document-private-items)");
+    }
 }
