@@ -51,6 +51,8 @@ pub fn simd_test(attr: proc_macro::TokenStream,
         fn #name() {
             if cfg_feature_enabled!(#target_feature) {
                 return unsafe { #name() };
+            } else {
+                ::stdsimd_test::assert_skip_test_ok(stringify!(#name));
             }
 
             #[target_feature = #enable_feature]

@@ -294,3 +294,10 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         panic!("too many instructions in the disassembly");
     }
 }
+
+pub fn assert_skip_test_ok(name: &str) {
+    if env::var("STDSIMD_TEST_EVERYTHING").is_err() {
+        return
+    }
+    panic!("skipped test `{}` when it shouldn't be skipped", name);
+}

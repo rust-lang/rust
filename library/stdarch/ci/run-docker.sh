@@ -7,6 +7,7 @@ run() {
     echo $1
     docker build -t stdsimd ci/docker/$1
     mkdir -p target
+    target=$(echo $1 | sed 's/-emulated//')
     docker run \
       --user `id -u`:`id -g` \
       --rm \
@@ -14,13 +15,15 @@ run() {
       --volume $HOME/.cargo:/cargo \
       --env CARGO_HOME=/cargo \
       --volume `rustc --print sysroot`:/rust:ro \
-      --env TARGET=$1 \
+      --env TARGET=$target \
+      --env STDSIMD_TEST_EVERYTHING \
       --volume `pwd`:/checkout:ro \
       --volume `pwd`/target:/checkout/target \
       --workdir /checkout \
+      --privileged \
       stdsimd \
       bash \
-      -c 'PATH=$PATH:/rust/bin exec ci/run.sh $1'
+      -c 'PATH=$PATH:/rust/bin exec ci/run.sh'
 }
 
 if [ -z "$1" ]; then
