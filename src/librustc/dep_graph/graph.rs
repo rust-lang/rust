@@ -200,10 +200,26 @@ impl DepGraph {
         where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
               R: HashStable<HCX>,
     {
+        self.with_task_impl(key, cx, arg, task,
+            |data, key| data.borrow_mut().push_task(key),
+            |data, key| data.borrow_mut().pop_task(key))
+    }
+
+    fn with_task_impl<C, A, R, HCX>(&self,
+                                    key: DepNode,
+                                    cx: C,
+                                    arg: A,
+                                    task: fn(C, A) -> R,
+                                    push: fn(&RefCell<CurrentDepGraph>, DepNode),
+                                    pop: fn(&RefCell<CurrentDepGraph>, DepNode) -> DepNodeIndex)
+                                    -> (R, DepNodeIndex)
+        where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
+              R: HashStable<HCX>,
+    {
         if let Some(ref data) = self.data {
             debug_assert!(!data.colors.borrow().contains_key(&key));
 
-            data.current.borrow_mut().push_task(key);
+            push(&data.current, key);
             if cfg!(debug_assertions) {
                 profq_msg(ProfileQueriesMsg::TaskBegin(key.clone()))
             };
@@ -220,7 +236,7 @@ impl DepGraph {
                 profq_msg(ProfileQueriesMsg::TaskEnd)
             };
 
-            let dep_node_index = data.current.borrow_mut().pop_task(key);
+            let dep_node_index = pop(&data.current, key);
 
             let mut stable_hasher = StableHasher::new();
             result.hash_stable(&mut hcx, &mut stable_hasher);
@@ -288,6 +304,22 @@ impl DepGraph {
         } else {
             (op(), DepNodeIndex::INVALID)
         }
+    }
+
+    /// Execute something within an "eval-always" task which is a task
+    // that runs whenever anything changes.
+    pub fn with_eval_always_task<C, A, R, HCX>(&self,
+                                   key: DepNode,
+                                   cx: C,
+                                   arg: A,
+                                   task: fn(C, A) -> R)
+                                   -> (R, DepNodeIndex)
+        where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
+              R: HashStable<HCX>,
+    {
+        self.with_task_impl(key, cx, arg, task,
+            |data, key| data.borrow_mut().push_eval_always_task(key),
+            |data, key| data.borrow_mut().pop_eval_always_task(key))
     }
 
     #[inline]
@@ -788,6 +820,24 @@ impl CurrentDepGraph {
         }
     }
 
+    fn push_eval_always_task(&mut self, key: DepNode) {
+        self.task_stack.push(OpenTask::EvalAlways { node: key });
+    }
+
+    fn pop_eval_always_task(&mut self, key: DepNode) -> DepNodeIndex {
+        let popped_node = self.task_stack.pop().unwrap();
+
+        if let OpenTask::EvalAlways {
+            node,
+        } = popped_node {
+            debug_assert_eq!(node, key);
+            let krate_idx = self.node_to_node_index[&DepNode::new_no_params(DepKind::Krate)];
+            self.alloc_node(node, vec![krate_idx])
+        } else {
+            bug!("pop_eval_always_task() - Expected eval always task to be popped");
+        }
+    }
+
     fn read_index(&mut self, source: DepNodeIndex) {
         match self.task_stack.last_mut() {
             Some(&mut OpenTask::Regular {
@@ -818,7 +868,8 @@ impl CurrentDepGraph {
                     reads.push(source);
                 }
             }
-            Some(&mut OpenTask::Ignore) | None => {
+            Some(&mut OpenTask::Ignore) |
+            Some(&mut OpenTask::EvalAlways { .. }) | None => {
                 // ignore
             }
         }
@@ -851,4 +902,7 @@ enum OpenTask {
         read_set: FxHashSet<DepNodeIndex>,
     },
     Ignore,
+    EvalAlways {
+        node: DepNode,
+    },
 }
