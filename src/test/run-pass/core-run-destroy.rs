@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags:--test
-// ignore-emscripten
+// ignore-emscripten no processes
 
 // NB: These tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here
