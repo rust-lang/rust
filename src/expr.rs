@@ -1871,7 +1871,9 @@ fn rewrite_pat_expr(
         } else {
             format!("{} ", matcher)
         };
-        let pat_shape = shape.offset_left(matcher.len())?.sub_width(connector.len())?;
+        let pat_shape = shape
+            .offset_left(matcher.len())?
+            .sub_width(connector.len())?;
         let pat_string = pat.rewrite(context, pat_shape)?;
         let result = format!("{}{}{}", matcher, pat_string, connector);
         return rewrite_assign_rhs(context, result, expr, shape);

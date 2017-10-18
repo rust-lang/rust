@@ -2037,9 +2037,7 @@ fn rewrite_args(
     generics_str_contains_newline: bool,
 ) -> Option<String> {
     let mut arg_item_strs = args.iter()
-        .map(|arg| {
-            arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent))
-        })
+        .map(|arg| arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent)))
         .collect::<Option<Vec<_>>>()?;
 
     // Account for sugary self.
@@ -2713,17 +2711,15 @@ impl Rewrite for ast::ForeignItem {
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
         let item_str = match self.node {
-            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => {
-                rewrite_fn_base(
-                    context,
-                    shape.indent,
-                    self.ident,
-                    &FnSig::new(fn_decl, generics, self.vis.clone()),
-                    span,
-                    false,
-                    false,
-                ).map(|(s, _)| format!("{};", s))
-            }
+            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => rewrite_fn_base(
+                context,
+                shape.indent,
+                self.ident,
+                &FnSig::new(fn_decl, generics, self.vis.clone()),
+                span,
+                false,
+                false,
+            ).map(|(s, _)| format!("{};", s)),
             ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.
