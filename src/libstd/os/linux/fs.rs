@@ -34,7 +34,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -56,7 +56,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -73,7 +73,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -90,7 +90,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -107,7 +107,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -124,7 +124,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -141,7 +141,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -158,7 +158,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -178,7 +178,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -195,7 +195,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -212,7 +212,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -229,7 +229,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -246,7 +246,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -263,7 +263,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -280,7 +280,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -297,7 +297,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
@@ -314,7 +314,7 @@ pub trait MetadataExt {
     ///
     /// ```
     /// use std::fs;
-    /// use std::os::unix::prelude::*;
+    /// use std::os::linux::fs::MetadataExt;
     ///
     /// # use std::io;
     /// # fn f() -> io::Result<()> {
