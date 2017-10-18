@@ -238,6 +238,7 @@ impl Clean<ExternalCrate> for CrateNum {
                             if prim.is_some() {
                                 break;
                             }
+                            // FIXME: should warn on unknown primitives?
                         }
                     }
                 }
@@ -1627,6 +1628,7 @@ pub enum PrimitiveType {
     Slice,
     Array,
     Tuple,
+    Unit,
     RawPointer,
     Reference,
     Fn,
@@ -1662,7 +1664,11 @@ impl Type {
             Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
             Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
             Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
-            Tuple(..) => Some(PrimitiveType::Tuple),
+            Tuple(ref tys) => if tys.is_empty() {
+                Some(PrimitiveType::Unit)
+            } else {
+                Some(PrimitiveType::Tuple)
+            },
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
             BareFunction(..) => Some(PrimitiveType::Fn),
@@ -1708,7 +1714,11 @@ impl GetDefId for Type {
             BorrowedRef { type_: box Generic(..), .. } =>
                 Primitive(PrimitiveType::Reference).def_id(),
             BorrowedRef { ref type_, .. } => type_.def_id(),
-            Tuple(..) => Primitive(PrimitiveType::Tuple).def_id(),
+            Tuple(ref tys) => if tys.is_empty() {
+                Primitive(PrimitiveType::Unit).def_id()
+            } else {
+                Primitive(PrimitiveType::Tuple).def_id()
+            },
             BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
             Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
             Array(..) => Primitive(PrimitiveType::Array).def_id(),
@@ -1742,6 +1752,7 @@ impl PrimitiveType {
             "array" => Some(PrimitiveType::Array),
             "slice" => Some(PrimitiveType::Slice),
             "tuple" => Some(PrimitiveType::Tuple),
+            "unit" => Some(PrimitiveType::Unit),
             "pointer" => Some(PrimitiveType::RawPointer),
             "reference" => Some(PrimitiveType::Reference),
             "fn" => Some(PrimitiveType::Fn),
@@ -1772,6 +1783,7 @@ impl PrimitiveType {
             Array => "array",
             Slice => "slice",
             Tuple => "tuple",
+            Unit => "unit",
             RawPointer => "pointer",
             Reference => "reference",
             Fn => "fn",
@@ -2693,6 +2705,7 @@ fn build_deref_target_impls(cx: &DocContext,
             Slice => tcx.lang_items().slice_impl(),
             Array => tcx.lang_items().slice_impl(),
             Tuple => None,
+            Unit => None,
             RawPointer => tcx.lang_items().const_ptr_impl(),
             Reference => None,
             Fn => None,
