@@ -113,6 +113,10 @@ impl ArgAttributes {
         self
     }
 
+    pub fn contains(&self, attr: ArgAttribute) -> bool {
+        self.regular.contains(attr)
+    }
+
     pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
         unsafe {
             self.regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
