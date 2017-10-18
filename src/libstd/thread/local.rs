@@ -325,7 +325,10 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// Once the initialization expression succeeds, the key transitions to the
     /// `Valid` state which will guarantee that future calls to [`with`] will
-    /// succeed within the thread.
+    /// succeed within the thread. Some keys might skip the `Uninitialized`
+    /// state altogether and start in the `Valid` state as an optimization
+    /// (e.g. keys initialized with a constant expression), but no guarantees
+    /// are made.
     ///
     /// When a thread exits, each key will be destroyed in turn, and as keys are
     /// destroyed they will enter the `Destroyed` state just before the
