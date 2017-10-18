@@ -610,7 +610,14 @@ define_dep_nodes!( <'tcx>
     [] PostorderCnums,
     [] HasCloneClosures(CrateNum),
     [] HasCopyClosures(CrateNum),
-    [] EraseRegionsTy { ty: Ty<'tcx> },
+
+    // This query is not expected to have inputs -- as a result, it's
+    // not a good candidate for "replay" because it's essentially a
+    // pure function of its input (and hence the expectation is that
+    // no caller would be green **apart** from just this
+    // query). Making it anonymous avoids hashing the result, which
+    // may save a bit of time.
+    [anon] EraseRegionsTy { ty: Ty<'tcx> },
 
     [] Freevars(DefId),
     [] MaybeUnusedTraitImport(DefId),
