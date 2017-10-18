@@ -129,7 +129,7 @@ configure your directory to use this build, like so:
 # configure to use local rust instead of downloading a beta.
 # `--local-rust-root` is optional here. If elided, we will
 # use whatever rustc we find on your PATH.
-> configure --enable-rustbuild --local-rust-root=~/.cargo/ --enable-local-rebuild
+> configure --local-rust-root=~/.cargo/ --enable-local-rebuild
 ```
 
 After that, you can use the `--incremental` flag to actually do
