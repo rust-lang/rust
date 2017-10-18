@@ -157,7 +157,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         last_line_width(&parent_rewrite)
     } else {
         rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len()
-    };
+    } + suffix_try_num;
     let one_line_budget = if rewrites.is_empty() && !context.config.chain_split_single_child() {
         shape.width
     } else {
