@@ -632,10 +632,9 @@ define_dep_nodes!( <'tcx>
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [] OutputFilenames,
-
+    [] NormalizeTy,
     // We use this for most things when incr. comp. is turned off.
     [] Null,
-    [] NormalizeTy,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
