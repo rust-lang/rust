@@ -1,4 +1,5 @@
-use simd_llvm::{simd_shuffle8, simd_shuffle32};
+use simd_llvm::{simd_shuffle2, simd_shuffle4, simd_shuffle8};
+use simd_llvm::{simd_shuffle16, simd_shuffle32};
 use v256::*;
 use v128::*;
 use x86::__m256i;
@@ -245,20 +246,130 @@ pub unsafe fn _mm256_blendv_epi8(a:i8x32,b:i8x32,mask:__m256i) -> i8x32 {
     pblendvb(a,b,mask)
 }
 
-// TODO _mm_broadcastb_epi8
-// TODO _mm256_broadcastb_epi8
-// TODO _mm_broadcastd_epi32
-// TODO _mm256_broadcastd_epi32
-// TODO _mm_broadcastq_epi64
-// TODO _mm256_broadcastq_epi64
-// TODO _mm_broadcastsd_pd
-// TODO _mm256_broadcastsd_pd
-// TODO _mm_broadcastsi128_si256
-// TODO _mm256_broadcastsi128_si256
-// TODO _mm_broadcastss_ps
-// TODO _mm256_broadcastss_ps
-// TODO _mm_broadcastw_epi16
-// TODO _mm256_broadcastw_epi16
+/// Broadcast the low packed 8-bit integer from `a` to all elements of
+/// the 128-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpbroadcastb))]
+pub unsafe fn _mm_broadcastb_epi8(a: i8x16) -> i8x16 {
+    simd_shuffle16(a, i8x16::splat(0i8), [0u32; 16])
+}
+
+/// Broadcast the low packed 8-bit integer from `a` to all elements of
+/// the 256-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpbroadcastb))]
+pub unsafe fn _mm256_broadcastb_epi8(a: i8x16) -> i8x32 {
+    simd_shuffle32(a, i8x16::splat(0i8), [0u32; 32])
+}
+
+// NB: simd_shuffle4 with integer data types for `a` and `b` is
+// often compiled to vbroadcastss.
+/// Broadcast the low packed 32-bit integer from `a` to all elements of
+/// the 128-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vbroadcastss))]
+pub unsafe fn _mm_broadcastd_epi32(a: i32x4) -> i32x4 {
+    simd_shuffle4(a, i32x4::splat(0i32), [0u32; 4])
+}
+
+// NB: simd_shuffle4 with integer data types for `a` and `b` is
+// often compiled to vbroadcastss.
+/// Broadcast the low packed 32-bit integer from `a` to all elements of
+/// the 256-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vbroadcastss))]
+pub unsafe fn _mm256_broadcastd_epi32(a: i32x4) -> i32x8 {
+    simd_shuffle8(a, i32x4::splat(0i32), [0u32; 8])
+}
+
+/// Broadcast the low packed 64-bit integer from `a` to all elements of
+/// the 128-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpbroadcastq))]
+pub unsafe fn _mm_broadcastq_epi64(a: i64x2) -> i64x2 {
+    simd_shuffle2(a, i64x2::splat(0i64), [0u32; 2])
+}
+
+// NB: simd_shuffle4 with integer data types for `a` and `b` is
+// often compiled to vbroadcastsd.
+/// Broadcast the low packed 64-bit integer from `a` to all elements of
+/// the 256-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vbroadcastsd))]
+pub unsafe fn _mm256_broadcastq_epi64(a: i64x2) -> i64x4 {
+    simd_shuffle4(a, i64x2::splat(0i64), [0u32; 4])
+}
+
+/// Broadcast the low double-precision (64-bit) floating-point element
+/// from `a` to all elements of the 128-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vmovddup))]
+pub unsafe fn _mm_broadcastsd_pd(a: f64x2) -> f64x2 {
+    simd_shuffle2(a, f64x2::splat(0f64), [0u32; 2])
+}
+
+/// Broadcast the low double-precision (64-bit) floating-point element
+/// from `a` to all elements of the 256-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vbroadcastsd))]
+pub unsafe fn _mm256_broadcastsd_pd(a: f64x2) -> f64x4 {
+    simd_shuffle4(a, f64x2::splat(0f64), [0u32; 4])
+}
+
+// NB: broadcastsi128_si256 is often compiled to vinsertf128 or
+// vbroadcastf128.
+/// Broadcast 128 bits of integer data from a to all 128-bit lanes in
+/// the 256-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+pub unsafe fn _mm256_broadcastsi128_si256(a: i64x2) -> i64x4 {
+    simd_shuffle4(a, i64x2::splat(0i64), [0, 1, 0, 1])
+}
+
+/// Broadcast the low single-precision (32-bit) floating-point element
+/// from `a` to all elements of the 128-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vbroadcastss))]
+pub unsafe fn _mm_broadcastss_ps(a: f32x4) -> f32x4 {
+    simd_shuffle4(a, f32x4::splat(0f32), [0u32; 4])
+}
+
+/// Broadcast the low single-precision (32-bit) floating-point element
+/// from `a` to all elements of the 256-bit returned value.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vbroadcastss))]
+pub unsafe fn _mm256_broadcastss_ps(a: f32x4) -> f32x8 {
+    simd_shuffle8(a, f32x4::splat(0f32), [0u32; 8])
+}
+
+/// Broadcast the low packed 16-bit integer from a to all elements of
+/// the 128-bit returned value
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpbroadcastw))]
+pub unsafe fn _mm_broadcastw_epi16(a: i16x8) -> i16x8 {
+    simd_shuffle8(a, i16x8::splat(0i16), [0u32; 8])
+}
+
+/// Broadcast the low packed 16-bit integer from a to all elements of
+/// the 256-bit returned value
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpbroadcastw))]
+pub unsafe fn _mm256_broadcastw_epi16(a: i16x8) -> i16x16 {
+    simd_shuffle16(a, i16x8::splat(0i16), [0u32; 16])
+}
+
 // TODO _mm256_bslli_epi128
 // TODO _mm256_bsrli_epi128
 
@@ -1515,6 +1626,99 @@ mod tests {
         let e = i8x32::splat(4).replace(2,2);
         let r= avx2::_mm256_blendv_epi8(a,b,mask);
         assert_eq!(r,e);
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm_broadcastb_epi8() {
+        let a = i8x16::splat(0x00).replace(0, 0x2a);
+        let res = avx2::_mm_broadcastb_epi8(a);
+        assert_eq!(res, i8x16::splat(0x2a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_broadcastb_epi8() {
+        let a = i8x16::splat(0x00).replace(0, 0x2a);
+        let res = avx2::_mm256_broadcastb_epi8(a);
+        assert_eq!(res, i8x32::splat(0x2a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm_broadcastd_epi32() {
+        let a = i32x4::splat(0x00).replace(0, 0x2a).replace(1, 0x8000000);
+        let res = avx2::_mm_broadcastd_epi32(a);
+        assert_eq!(res, i32x4::splat(0x2a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_broadcastd_epi32() {
+        let a = i32x4::splat(0x00).replace(0, 0x2a).replace(1, 0x8000000);
+        let res = avx2::_mm256_broadcastd_epi32(a);
+        assert_eq!(res, i32x8::splat(0x2a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm_broadcastq_epi64() {
+        let a = i64x2::splat(0x00).replace(0, 0x1ffffffff);
+        let res = avx2::_mm_broadcastq_epi64(a);
+        assert_eq!(res, i64x2::splat(0x1ffffffff));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_broadcastq_epi64() {
+        let a = i64x2::splat(0x00).replace(0, 0x1ffffffff);
+        let res = avx2::_mm256_broadcastq_epi64(a);
+        assert_eq!(res, i64x4::splat(0x1ffffffff));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm_broadcastsd_pd() {
+        let a = f64x2::splat(3.14f64).replace(0, 6.28f64);
+        let res = avx2::_mm_broadcastsd_pd(a);
+        assert_eq!(res, f64x2::splat(6.28f64));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_broadcastsd_pd() {
+        let a = f64x2::splat(3.14f64).replace(0, 6.28f64);
+        let res = avx2::_mm256_broadcastsd_pd(a);
+        assert_eq!(res, f64x4::splat(6.28f64));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_broadcastsi128_si256() {
+        let a = i64x2::new(0x0987654321012334, 0x5678909876543210);
+        let res = avx2::_mm256_broadcastsi128_si256(a);
+        let retval = i64x4::new(0x0987654321012334, 0x5678909876543210,
+                                0x0987654321012334, 0x5678909876543210);
+        assert_eq!(res, retval);
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm_broadcastss_ps() {
+        let a = f32x4::splat(3.14f32).replace(0, 6.28f32);
+        let res = avx2::_mm_broadcastss_ps(a);
+        assert_eq!(res, f32x4::splat(6.28f32));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_broadcastss_ps() {
+        let a = f32x4::splat(3.14f32).replace(0, 6.28f32);
+        let res = avx2::_mm256_broadcastss_ps(a);
+        assert_eq!(res, f32x8::splat(6.28f32));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm_broadcastw_epi16() {
+        let a = i16x8::splat(0x2a).replace(0, 0x22b);
+        let res = avx2::_mm_broadcastw_epi16(a);
+        assert_eq!(res, i16x8::splat(0x22b));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_broadcastw_epi16() {
+        let a = i16x8::splat(0x2a).replace(0, 0x22b);
+        let res = avx2::_mm256_broadcastw_epi16(a);
+        assert_eq!(res, i16x16::splat(0x22b));
     }
 
     #[simd_test = "avx2"]
