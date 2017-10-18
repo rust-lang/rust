@@ -52,5 +52,3 @@ serde = "1.0"
 
 [features]
 debugging = []
-
-[workspace]
