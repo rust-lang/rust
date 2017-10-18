@@ -471,6 +471,17 @@ impl CodeMap {
         }
     }
 
+    /// Given a `Span`, try to get a shorter span ending just after the first
+    /// occurrence of `char` `c`.
+    pub fn span_through_char(&self, sp: Span, c: char) -> Span {
+        if let Ok(snippet) = self.span_to_snippet(sp) {
+            if let Some(offset) = snippet.find(c) {
+                return sp.with_hi(BytePos(sp.lo().0 + (offset + c.len_utf8()) as u32));
+            }
+        }
+        sp
+    }
+
     pub fn def_span(&self, sp: Span) -> Span {
         self.span_until_char(sp, '{')
     }
