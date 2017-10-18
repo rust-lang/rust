@@ -36,11 +36,11 @@
 //!
 //! # Handling I/O
 //!
-//! TODO
-//!
-//! # Examples
-//!
-//! Piping output from one command into another command:
+//! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be
+//! configured by passing an [`Stdio`] to the corresponding method on
+//! [`Command`]. Once spawned, they can be accessed from the [`Child`]. For
+//! example, piping output from one command into another command can be done
+//! like so:
 //!
 //! ```
 //! use std::process::{Command, Stdio};
@@ -68,9 +68,10 @@
 //! assert_eq!(b"Oh no, a typo!\n", output.stdout.as_slice());
 //! ```
 //!
-//! Calling a command with input and reading its output:
+//! Note that [`ChildStderr`] and [`ChildStdout`] implement [`Write`] and
+//! [`ChildStdin`] implements [`Read`]:
 //!
-//! ```no_run
+//! ```
 //! use std::process::{Command, Stdio};
 //! use std::io::Write;
 //!
@@ -101,7 +102,17 @@
 //! [`output`]: struct.Command.html#method.output
 //!
 //! [`Child`]: struct.Child.html
+//! [`ChildStdin`]: struct.ChildStdin.html
+//! [`ChildStdout`]: struct.ChildStdout.html
+//! [`ChildStderr`]: struct.ChildStderr.html
 //! [`Stdio`]: struct.Stdio.html
+//!
+//! [`stdout`]: struct.Command.html#method.stdout
+//! [`stdin`]: struct.Command.html#method.stdin
+//! [`stderr`]: struct.Command.html#method.stderr
+//!
+//! [`Write`]: ../io/trait.Write.html
+//! [`Read`]: ../io/trait.Read.html
 
 #![stable(feature = "process", since = "1.0.0")]
 
