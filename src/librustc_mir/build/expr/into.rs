@@ -247,7 +247,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     let args: Vec<_> =
                         args.into_iter()
-                            .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
+                            .map(|arg| {
+                                let scope = this.local_scope();
+                                let operand = unpack!(block = this.as_temp(block, scope, arg));
+                                Operand::Consume(Lvalue::Local(operand))
+                            })
                             .collect();
 
                     let success = this.cfg.start_new_block();

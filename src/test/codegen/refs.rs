@@ -13,7 +13,7 @@
 #![crate_type = "lib"]
 
 // Hack to get the correct size for the length part in slices
-// CHECK: @helper([[USIZE:i[0-9]+]])
+// CHECK: @helper([[USIZE:i[0-9]+]] %arg0)
 #[no_mangle]
 fn helper(_: usize) {
 }
@@ -24,9 +24,9 @@ pub fn ref_dst(s: &[u8]) {
     // We used to generate an extra alloca and memcpy to ref the dst, so check that we copy
     // directly to the alloca for "x"
 // CHECK: [[X0:%[0-9]+]] = getelementptr {{.*}} { i8*, [[USIZE]] }* %x, i32 0, i32 0
-// CHECK: store i8* %0, i8** [[X0]]
+// CHECK: store i8* %s.ptr, i8** [[X0]]
 // CHECK: [[X1:%[0-9]+]] = getelementptr {{.*}} { i8*, [[USIZE]] }* %x, i32 0, i32 1
-// CHECK: store [[USIZE]] %1, [[USIZE]]* [[X1]]
+// CHECK: store [[USIZE]] %s.meta, [[USIZE]]* [[X1]]
 
     let x = &*s;
     &x; // keep variable in an alloca

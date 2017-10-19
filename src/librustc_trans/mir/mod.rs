@@ -386,6 +386,12 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         let arg_decl = &mir.local_decls[local];
         let arg_ty = mircx.monomorphize(&arg_decl.ty);
 
+        let name = if let Some(name) = arg_decl.name {
+            name.as_str().to_string()
+        } else {
+            format!("arg{}", arg_index)
+        };
+
         if Some(local) == mir.spread_arg {
             // This argument (e.g. the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
@@ -397,7 +403,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let lvalue = LvalueRef::alloca(bcx, arg_ty, &format!("arg{}", arg_index));
+            let lvalue = LvalueRef::alloca(bcx, arg_ty, &name);
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
                 let (dst, _) = lvalue.trans_field_ptr(bcx, i);
                 let arg = &mircx.fn_ty.args[idx];
@@ -444,6 +450,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 llarg_idx += 1;
             }
             let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            bcx.set_value_name(llarg, &name);
             llarg_idx += 1;
             llarg
         } else if !lvalue_locals.contains(local.index()) &&
@@ -481,10 +488,13 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
 
                 let llarg = bcx.pointercast(llarg, data_llty.ptr_to());
+                bcx.set_value_name(llarg, &(name.clone() + ".ptr"));
                 let llmeta = bcx.pointercast(llmeta, meta_llty);
+                bcx.set_value_name(llmeta, &(name + ".meta"));
 
                 OperandValue::Pair(llarg, llmeta)
             } else {
+                bcx.set_value_name(llarg, &name);
                 OperandValue::Immediate(llarg)
             };
             let operand = OperandRef {
@@ -493,7 +503,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             };
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
-            let lltemp = LvalueRef::alloca(bcx, arg_ty, &format!("arg{}", arg_index));
+            let lltemp = LvalueRef::alloca(bcx, arg_ty, &name);
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,

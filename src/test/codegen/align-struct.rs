@@ -42,7 +42,6 @@ pub fn align64(i : i32) -> Align64 {
 #[no_mangle]
 pub fn nested64(a: Align64, b: i32, c: i32, d: i8) -> Nested64 {
 // CHECK: %n64 = alloca %Nested64, align 64
-// CHECK: %a = alloca %Align64, align 64
     let n64 = Nested64 { a, b, c, d };
     n64
 }
@@ -51,7 +50,6 @@ pub fn nested64(a: Align64, b: i32, c: i32, d: i8) -> Nested64 {
 #[no_mangle]
 pub fn enum64(a: Align64) -> Enum64 {
 // CHECK: %e64 = alloca %Enum64, align 64
-// CHECK: %a = alloca %Align64, align 64
     let e64 = Enum64::A(a);
     e64
 }
