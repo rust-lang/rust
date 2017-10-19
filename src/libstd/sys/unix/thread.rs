@@ -149,7 +149,7 @@ impl Thread {
 
     pub fn sleep(dur: Duration) {
         let mut secs = dur.as_secs();
-        let mut nsecs = dur.subsec_nanos() as libc::c_long;
+        let mut nsecs = dur.subsec_nanos() as _;
 
         // If we're awoken with a signal then the return value will be -1 and
         // nanosleep will fill in `ts` with the remaining time.
