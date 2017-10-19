@@ -183,6 +183,26 @@ mod test {
     }
 
     #[test]
+    fn diff_simple2() {
+        let src = "one\ntwo\nthree\nfour\nfive\nsix\nseven\n";
+        let dest= "one\ntwo\ntrois\nfour\ncinq\nsix\nseven\n";
+        let diff = make_diff(src, dest, 1);
+        assert_eq!(diff, vec![Mismatch { line_number: 2,
+                                         lines: vec![
+                                             Context("two".into()),
+                                             Resulting("three".into()),
+                                             Expected("trois".into()),
+                                             Context("four".into()),
+                                         ] },
+                              Mismatch { line_number: 5,
+                                         lines: vec![
+                                             Resulting("five".into()),
+                                             Expected("cinq".into()),
+                                             Context("six".into()),
+                                         ] }]);
+    }
+
+    #[test]
     fn diff_zerocontext() {
         let src = "one\ntwo\nthree\nfour\nfive\n";
         let dest= "one\ntwo\ntrois\nfour\nfive\n";
