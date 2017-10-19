@@ -15,6 +15,7 @@ use rustc::hir::svh::Svh;
 use rustc::ich::Fingerprint;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc::ty::maps::OnDiskCache;
 use rustc::util::nodemap::DefIdMap;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
@@ -193,5 +194,17 @@ pub fn load_dep_graph(sess: &Session) -> PreviousDepGraph {
         PreviousDepGraph::new(dep_graph)
     } else {
         empty
+    }
+}
+
+pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess> {
+    if sess.opts.incremental.is_none() {
+        return OnDiskCache::new_empty(sess.codemap());
+    }
+
+    if let Some(bytes) = load_data(sess, &query_cache_path(sess)) {
+        OnDiskCache::new(sess, &bytes[..])
+    } else {
+        OnDiskCache::new_empty(sess.codemap())
     }
 }

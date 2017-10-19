@@ -63,6 +63,12 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            e));
     }
 
+    time(sess.time_passes(), "persist query result cache", || {
+        save_in(sess,
+                query_cache_path(sess),
+                |e| encode_query_cache(tcx, e));
+    });
+
     time(sess.time_passes(), "persist dep-graph", || {
         save_in(sess,
                 dep_graph_path(sess),
@@ -297,4 +303,10 @@ fn encode_work_products(dep_graph: &DepGraph,
         .collect();
 
     work_products.encode(encoder)
+}
+
+fn encode_query_cache(tcx: TyCtxt,
+                      encoder: &mut Encoder)
+                      -> io::Result<()> {
+    tcx.serialize_query_result_cache(encoder)
 }

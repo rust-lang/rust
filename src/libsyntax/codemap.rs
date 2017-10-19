@@ -17,11 +17,15 @@
 //! within the CodeMap, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
+
 pub use syntax_pos::*;
 pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo, NameAndSpan};
 pub use self::ExpnFormat::*;
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::StableHasher;
 use std::cell::{RefCell, Ref};
+use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -98,6 +102,24 @@ impl FileLoader for RealFileLoader {
     }
 }
 
+// This is a FileMap identifier that is used to correlate FileMaps between
+// subsequent compilation sessions (which is something we need to do during
+// incremental compilation).
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct StableFilemapId(u128);
+
+impl StableFilemapId {
+    pub fn new(filemap: &FileMap) -> StableFilemapId {
+        let mut hasher = StableHasher::new();
+
+        filemap.name.hash(&mut hasher);
+        filemap.name_was_remapped.hash(&mut hasher);
+        filemap.unmapped_path.hash(&mut hasher);
+
+        StableFilemapId(hasher.finish())
+    }
+}
+
 // _____________________________________________________________________________
 // CodeMap
 //
@@ -108,6 +130,7 @@ pub struct CodeMap {
     // This is used to apply the file path remapping as specified via
     // -Zremap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
+    stable_id_to_filemap: RefCell<FxHashMap<StableFilemapId, Rc<FileMap>>>,
 }
 
 impl CodeMap {
@@ -116,6 +139,7 @@ impl CodeMap {
             files: RefCell::new(Vec::new()),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
+            stable_id_to_filemap: RefCell::new(FxHashMap()),
         }
     }
 
@@ -126,6 +150,7 @@ impl CodeMap {
             files: RefCell::new(Vec::new()),
             file_loader,
             path_mapping,
+            stable_id_to_filemap: RefCell::new(FxHashMap()),
         }
     }
 
@@ -144,6 +169,10 @@ impl CodeMap {
 
     pub fn files(&self) -> Ref<Vec<Rc<FileMap>>> {
         self.files.borrow()
+    }
+
+    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Rc<FileMap>> {
+        self.stable_id_to_filemap.borrow().get(&stable_id).map(|fm| fm.clone())
     }
 
     fn next_start_pos(&self) -> usize {
@@ -179,6 +208,10 @@ impl CodeMap {
         ));
 
         files.push(filemap.clone());
+
+        self.stable_id_to_filemap
+            .borrow_mut()
+            .insert(StableFilemapId::new(&filemap), filemap.clone());
 
         filemap
     }
@@ -240,6 +273,10 @@ impl CodeMap {
         });
 
         files.push(filemap.clone());
+
+        self.stable_id_to_filemap
+            .borrow_mut()
+            .insert(StableFilemapId::new(&filemap), filemap.clone());
 
         filemap
     }

@@ -17,6 +17,9 @@
 
 #![feature(rand)]
 #![feature(conservative_impl_trait)]
+#![feature(i128_type)]
+#![feature(inclusive_range_syntax)]
+#![feature(specialization)]
 
 extern crate graphviz;
 #[macro_use] extern crate rustc;
@@ -31,8 +34,9 @@ mod assert_dep_graph;
 mod persist;
 
 pub use assert_dep_graph::assert_dep_graph;
-pub use persist::load_dep_graph;
 pub use persist::dep_graph_tcx_init;
+pub use persist::load_dep_graph;
+pub use persist::load_query_result_cache;
 pub use persist::save_dep_graph;
 pub use persist::save_trans_partition;
 pub use persist::save_work_products;

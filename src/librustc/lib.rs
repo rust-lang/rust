@@ -46,6 +46,7 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
+#![feature(inclusive_range_syntax)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(nonzero)]
