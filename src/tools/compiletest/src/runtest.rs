@@ -2378,8 +2378,15 @@ actual:\n\
 
     fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
         let parent_dir = self.testpaths.file.parent().unwrap();
-        let parent_dir_str = parent_dir.display().to_string();
+        let cflags = self.props.compile_flags.join(" ");
+        let parent_dir_str = if cflags.contains("--error-format json") {
+            parent_dir.display().to_string().replace("\\", "\\\\")
+        } else {
+            parent_dir.display().to_string()
+        };
+
         let mut normalized = output.replace(&parent_dir_str, "$DIR")
+              .replace("\\\\", "\\") // denormalize for paths on windows
               .replace("\\", "/") // normalize for paths on windows
               .replace("\r\n", "\n") // normalize for linebreaks on windows
               .replace("\t", "\\t"); // makes tabs visible
