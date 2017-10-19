@@ -47,7 +47,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     for result in diff::lines(expected, actual) {
         match result {
             diff::Result::Left(str) => {
-                if lines_since_mismatch >= context_size {
+                if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
                     mismatch = Mismatch::new(line_number - context_queue.len() as u32);
                 }
@@ -60,7 +60,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                 lines_since_mismatch = 0;
             }
             diff::Result::Right(str) => {
-                if lines_since_mismatch >= context_size {
+                if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
                     mismatch = Mismatch::new(line_number - context_queue.len() as u32);
                 }
@@ -80,7 +80,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 
                 if lines_since_mismatch < context_size {
                     mismatch.lines.push(DiffLine::Context(str.to_owned()));
-                } else {
+                } else if context_size > 0 {
                     context_queue.push_back(str);
                 }
 
