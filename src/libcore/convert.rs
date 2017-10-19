@@ -382,14 +382,6 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U>
     }
 }
 
-// FIXME (#23442): replace the above impls for &/&mut with the following more general one:
-// // As lifts over Deref
-// impl<D: ?Sized + Deref, U: ?Sized> AsRef<U> for D where D::Target: AsRef<U> {
-//     fn as_ref(&self) -> &U {
-//         self.deref().as_ref()
-//     }
-// }
-
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U>
@@ -398,14 +390,6 @@ impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U>
         (*self).as_mut()
     }
 }
-
-// FIXME (#23442): replace the above impl for &mut with the following more general one:
-// // AsMut lifts over DerefMut
-// impl<D: ?Sized + Deref, U: ?Sized> AsMut<U> for D where D::Target: AsMut<U> {
-//     fn as_mut(&mut self) -> &mut U {
-//         self.deref_mut().as_mut()
-//     }
-// }
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
