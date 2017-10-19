@@ -1390,7 +1390,7 @@ fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: &[Option<NodeId>
     let mut delegate = MutateDelegate { node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
     let def_id = def_id::DefId::local(body.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
-    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
+    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(body);
     delegate.mutation_span()
 }
 
