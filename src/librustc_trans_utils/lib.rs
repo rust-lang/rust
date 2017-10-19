@@ -38,6 +38,7 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
+extern crate rustc_data_structures;
 extern crate syntax;
 extern crate syntax_pos;
 
@@ -49,7 +50,11 @@ use rustc::util::nodemap::NodeSet;
 
 use syntax::attr;
 
+mod common;
 pub mod link;
+pub mod collector;
+pub mod trans_item;
+pub mod monomorphize;
 pub mod trans_crate;
 
 /// check for the #[rustc_error] annotation, which forces an

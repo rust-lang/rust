@@ -70,7 +70,7 @@ use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
-use trans_item::{TransItem, TransItemExt, DefPathBasedNames};
+use trans_item::{TransItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of;
 use value::Value;
@@ -93,6 +93,7 @@ use syntax::ast;
 use mir::lvalue::Alignment;
 
 pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
+pub use rustc_trans_utils::trans_item::linkage_by_name;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
@@ -616,33 +617,6 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let mir = ccx.tcx().instance_mir(instance.def);
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
-}
-
-pub fn linkage_by_name(name: &str) -> Option<Linkage> {
-    use rustc::middle::trans::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but whitelist them anyway and trust that
-    // the user knows what s/he's doing. Who knows, unanticipated use cases
-    // may pop up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "appending" => Some(Appending),
-        "available_externally" => Some(AvailableExternally),
-        "common" => Some(Common),
-        "extern_weak" => Some(ExternalWeak),
-        "external" => Some(External),
-        "internal" => Some(Internal),
-        "linkonce" => Some(LinkOnceAny),
-        "linkonce_odr" => Some(LinkOnceODR),
-        "private" => Some(Private),
-        "weak" => Some(WeakAny),
-        "weak_odr" => Some(WeakODR),
-        _ => None,
-    }
 }
 
 pub fn set_link_section(ccx: &CrateContext,

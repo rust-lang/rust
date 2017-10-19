@@ -83,6 +83,9 @@ use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
+use rustc_trans_utils::collector;
+use rustc_trans_utils::monomorphize;
+
 mod diagnostics;
 
 pub mod back {
@@ -124,7 +127,6 @@ mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
 mod callee;
-mod collector;
 mod common;
 mod consts;
 mod context;
@@ -137,7 +139,6 @@ mod machine;
 mod metadata;
 mod meth;
 mod mir;
-mod monomorphize;
 mod partitioning;
 mod symbol_names_test;
 mod time_graph;
