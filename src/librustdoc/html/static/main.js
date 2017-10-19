@@ -712,41 +712,56 @@
             });
 
             var search_input = document.getElementsByClassName('search-input')[0];
-            search_input.onkeydown = null;
             search_input.onkeydown = function(e) {
-                var actives = [];
+                // "actives" references the currently highlighted item in each search tab.
+                // Each array in "actives" represents a tab.
+                var actives = [[], [], []];
+                // "current" is used to know which tab we're looking into.
+                var current = 0;
                 onEach(document.getElementsByClassName('search-results'), function(e) {
-                    onEach(document.getElementsByClassName('highlighted'), function(e) {
-                        actives.push(e);
+                    onEach(e.getElementsByClassName('highlighted'), function(e) {
+                        actives[current].push(e);
                     });
+                    current += 1;
                 });
 
                 if (e.which === 38) { // up
-                    if (!actives.length || !actives[0].previousElementSibling) {
+                    if (!actives[currentTab].length ||
+                        !actives[currentTab][0].previousElementSibling) {
                         return;
                     }
 
-                    addClass(actives[0].previousElementSibling, 'highlighted');
-                    removeClass(actives[0], 'highlighted');
+                    addClass(actives[currentTab][0].previousElementSibling, 'highlighted');
+                    removeClass(actives[currentTab][0], 'highlighted');
                 } else if (e.which === 40) { // down
-                    if (!actives.length) {
+                    if (!actives[currentTab].length) {
                         var results = document.getElementsByClassName('search-results');
                         if (results.length > 0) {
-                            var res = results[0].getElementsByClassName('result');
+                            var res = results[currentTab].getElementsByClassName('result');
                             if (res.length > 0) {
                                 addClass(res[0], 'highlighted');
                             }
                         }
-                    } else if (actives[0].nextElementSibling) {
-                        addClass(actives[0].nextElementSibling, 'highlighted');
-                        removeClass(actives[0], 'highlighted');
+                    } else if (actives[currentTab][0].nextElementSibling) {
+                        addClass(actives[currentTab][0].nextElementSibling, 'highlighted');
+                        removeClass(actives[currentTab][0], 'highlighted');
                     }
                 } else if (e.which === 13) { // return
-                    if (actives.length) {
-                        document.location.href = actives[0].getElementsByTagName('a')[0].href;
+                    if (actives[currentTab].length) {
+                        document.location.href =
+                            actives[currentTab][0].getElementsByTagName('a')[0].href;
                     }
-                } else if (actives.length > 0) {
-                    removeClass(actives[0], 'highlighted');
+                } else if (e.which === 9) { // tab
+                    if (e.shiftKey) {
+                        printTab(currentTab > 0 ? currentTab - 1 : 2);
+                    } else {
+                        printTab(currentTab > 1 ? 0 : currentTab + 1);
+                    }
+                    e.preventDefault();
+                } else if (e.which === 16) { // shift
+                    // Does nothing, it's just to avoid losing "focus" on the highlighted element.
+                } else if (actives[currentTab].length > 0) {
+                    removeClass(actives[currentTab][0], 'highlighted');
                 }
             };
         }
