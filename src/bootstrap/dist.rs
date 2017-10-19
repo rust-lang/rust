@@ -1073,10 +1073,12 @@ impl Step for Rls {
         t!(fs::create_dir_all(&image));
 
         // Prepare the image directory
+        // We expect RLS to build, because we've exited this step above if tool
+        // state for RLS isn't testing.
         let rls = builder.ensure(tool::Rls {
             compiler: builder.compiler(stage, build.build),
             target
-        });
+        }).expect("Rls to build: toolstate is testing");
         install(&rls, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rls");
         install(&src.join("README.md"), &doc, 0o644);
