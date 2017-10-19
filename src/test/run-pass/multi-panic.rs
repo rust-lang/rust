@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten
+// ignore-emscripten no processes
 
 fn check_for_no_backtrace(test: std::process::Output) {
     assert!(!test.status.success());

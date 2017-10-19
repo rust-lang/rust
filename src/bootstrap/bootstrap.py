@@ -532,7 +532,7 @@ class RustBuild(object):
         """
         config = self.get_toml(program)
         if config:
-            return config
+            return os.path.expanduser(config)
         return os.path.join(self.bin_root(), "bin", "{}{}".format(
             program, self.exe_suffix()))
 

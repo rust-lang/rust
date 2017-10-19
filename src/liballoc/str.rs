@@ -959,13 +959,15 @@ impl str {
     /// assert_eq!(s.find("Léopard"), Some(13));
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// More complex patterns using point-free style and closures:
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find(char::is_whitespace), Some(5));
     /// assert_eq!(s.find(char::is_lowercase), Some(1));
+    /// assert_eq!(s.find(|c: char| c.is_whitespace() || c.is_lowercase()), Some(1));
+    /// assert_eq!(s.find(|c: char| (c < 'o') && (c > 'a')), Some(4));
     /// ```
     ///
     /// Not finding the pattern:
