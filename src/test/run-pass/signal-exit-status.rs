@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-windows
-// ignore-emscripten
+// ignore-emscripten no processes
 
 use std::env;
 use std::process::Command;

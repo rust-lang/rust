@@ -12,7 +12,7 @@
 
 // ignore-android
 // ignore-windows
-// ignore-emscripten
+// ignore-emscripten no execve
 // no-prefer-dynamic
 
 #![feature(libc)]

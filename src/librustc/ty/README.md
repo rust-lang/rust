@@ -42,7 +42,7 @@ wasteful.
 Often, we wish to write code that explicitly asserts that it is not
 taking place during inference. In that case, there is no "local"
 arena, and all the types that you can access are allocated in the
-global arena.  To express this, the idea is to us the same lifetime
+global arena.  To express this, the idea is to use the same lifetime
 for the `'gcx` and `'tcx` parameters of `TyCtxt`. Just to be a touch
 confusing, we tend to use the name `'tcx` in such contexts. Here is an
 example:
@@ -100,10 +100,10 @@ fn test_type<'tcx>(ty: Ty<'tcx>) {
 
 The `sty` field (the origin of this name is unclear to me; perhaps
 structural type?) is of type `TypeVariants<'tcx>`, which is an enum
-definined all of the different kinds of types in the compiler.
+defining all of the different kinds of types in the compiler.
 
 > NB: inspecting the `sty` field on types during type inference can be
-> risky, as there are may be inference variables and other things to
+> risky, as there may be inference variables and other things to
 > consider, or sometimes types are not yet known that will become
 > known later.).
 
@@ -132,7 +132,7 @@ a safe approximation, so that is what you get back.
 > you are going to be testing for type equality, you probably need to
 > start looking into the inference code to do it right.
 
-You can also find various common types in the tcx itself by accessing
+You can also find various common types in the `tcx` itself by accessing
 `tcx.types.bool`, `tcx.types.char`, etc (see `CommonTypes` for more).
 
 ### Beyond types: Other kinds of arena-allocated data structures
@@ -143,7 +143,7 @@ module. Here are a few examples:
 
 - `Substs`, allocated with `mk_substs` -- this will intern a slice of types, often used to
   specify the values to be substituted for generics (e.g., `HashMap<i32, u32>`
-  would be represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`.
+  would be represented as a slice `&'tcx [tcx.types.i32, tcx.types.u32]`).
 - `TraitRef`, typically passed by value -- a **trait reference**
   consists of a reference to a trait along with its various type
   parameters (including `Self`), like `i32: Display` (here, the def-id
