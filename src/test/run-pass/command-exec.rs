@@ -10,7 +10,8 @@
 
 // ignore-windows - this is a unix-specific test
 // ignore-pretty issue #37199
-// ignore-emscripten
+// ignore-emscripten no processes
+
 #![feature(process_exec)]
 
 use std::env;
