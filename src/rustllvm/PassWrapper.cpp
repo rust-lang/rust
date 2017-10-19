@@ -26,11 +26,13 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 #if LLVM_VERSION_GE(4, 0)
-#include "llvm/Object/ModuleSummaryIndexObjectFile.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
+#if LLVM_VERSION_LE(4, 0)
+#include "llvm/Object/ModuleSummaryIndexObjectFile.h"
+#endif
 #endif
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
@@ -888,6 +890,33 @@ addPreservedGUID(const ModuleSummaryIndex &Index,
     return;
   Preserved.insert(GUID);
 
+#if LLVM_VERSION_GE(5, 0)
+  auto Info = Index.getValueInfo(GUID);
+  if (!Info) {
+    return;
+  }
+  for (auto &Summary : Info.getSummaryList()) {
+    for (auto &Ref : Summary->refs()) {
+      addPreservedGUID(Index, Preserved, Ref.getGUID());
+    }
+
+    GlobalValueSummary *GVSummary = Summary.get();
+    if (isa<FunctionSummary>(GVSummary)) {
+      auto *FS = cast<FunctionSummary>(GVSummary);
+      for (auto &Call: FS->calls()) {
+        addPreservedGUID(Index, Preserved, Call.first.getGUID());
+      }
+      for (auto &GUID: FS->type_tests()) {
+        addPreservedGUID(Index, Preserved, GUID);
+      }
+    }
+    if (isa<AliasSummary>(GVSummary)) {
+      auto *AS = cast<AliasSummary>(GVSummary);
+      auto GUID = AS->getAliasee().getOriginalName();
+      addPreservedGUID(Index, Preserved, GUID);
+    }
+  }
+#else
   auto SummaryList = Index.findGlobalValueSummaryList(GUID);
   if (SummaryList == Index.end())
     return;
@@ -919,6 +948,7 @@ addPreservedGUID(const ModuleSummaryIndex &Index,
       addPreservedGUID(Index, Preserved, GUID);
     }
   }
+#endif
 }
 
 // The main entry point for creating the global ThinLTO analysis. The structure
@@ -939,6 +969,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
 
     Ret->ModuleMap[module->identifier] = mem_buffer;
 
+#if LLVM_VERSION_GE(5, 0)
+    if (Error Err = readModuleSummaryIndex(mem_buffer, Ret->Index, i)) {
+      LLVMRustSetLastError(toString(std::move(Err)).c_str());
+      return nullptr;
+    }
+#else
     Expected<std::unique_ptr<object::ModuleSummaryIndexObjectFile>> ObjOrErr =
       object::ModuleSummaryIndexObjectFile::create(mem_buffer);
     if (!ObjOrErr) {
@@ -947,6 +983,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     }
     auto Index = (*ObjOrErr)->takeIndex();
     Ret->Index.mergeFrom(std::move(Index), i);
+#endif
   }
 
   // Collect for each module the list of function it defines (GUID -> Summary)
@@ -965,6 +1002,15 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // combined index
   //
   // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
+#if LLVM_VERSION_GE(5, 0)
+  computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
+  ComputeCrossModuleImport(
+    Ret->Index,
+    Ret->ModuleToDefinedGVSummaries,
+    Ret->ImportLists,
+    Ret->ExportLists
+  );
+#else
   auto DeadSymbols = computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
   ComputeCrossModuleImport(
     Ret->Index,
@@ -973,6 +1019,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     Ret->ExportLists,
     &DeadSymbols
   );
+#endif
 
   // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it
   // impacts the caching.
@@ -981,8 +1028,13 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
+#if LLVM_VERSION_GE(5, 0)
+    if (I.second.SummaryList.size() > 1)
+      PrevailingCopy[I.first] = getFirstDefinitionForLinker(I.second.SummaryList);
+#else
     if (I.second.size() > 1)
       PrevailingCopy[I.first] = getFirstDefinitionForLinker(I.second);
+#endif
   }
   auto isPrevailing = [&](GlobalValue::GUID GUID, const GlobalValueSummary *S) {
     const auto &Prevailing = PrevailingCopy.find(GUID);
