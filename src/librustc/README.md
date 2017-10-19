@@ -98,7 +98,7 @@ entire program, and each did a particular check of transformation.
 We are gradually replacing this pass-based code with an alternative
 setup based on on-demand **queries**. In the query-model, we work
 backwards, executing a *query* that expresses our ultimate goal (e.g.,
-"compiler this crate"). This query in turn may make other queries
+"compile this crate"). This query in turn may make other queries
 (e.g., "get me a list of all modules in the crate"). Those queries
 make other queries that ultimately bottom out in the base operations,
 like parsing the input, running the type-checker, and so forth. This
@@ -162,7 +162,7 @@ The compiler uses a number of...idiosyncratic abbreviations and
 things. This glossary attempts to list them and give you a few
 pointers for understanding them better.
 
-- AST -- the **abstract syntax tree** produced the `syntax` crate; reflects user syntax
+- AST -- the **abstract syntax tree** produced by the `syntax` crate; reflects user syntax
   very closely. 
 - codegen unit -- when we produce LLVM IR, we group the Rust code into a number of codegen
   units. Each of these units is processed by LLVM independently from one another,
