@@ -318,37 +318,13 @@ error: unnecessary structure name repetition
 263 |         fn new() -> Foo { Foo }
     |                     ^^^ help: use the applicable keyword: `Self`
 
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:281:5
-    |
-281 |     with_constructor.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_constructor.unwrap_or_else(make)`
-    |
-    = note: `-D or-fun-call` implied by `-D warnings`
-
 error: use of `unwrap_or` followed by a call to `new`
    --> $DIR/methods.rs:284:5
     |
 284 |     with_new.unwrap_or(Vec::new());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
-
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:287:5
     |
-287 |     with_const_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
-
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:290:5
-    |
-290 |     with_err.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err.unwrap_or_else(|_| make())`
-
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:293:5
-    |
-293 |     with_err_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
+    = note: `-D or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `default`
    --> $DIR/methods.rs:296:5
@@ -361,36 +337,6 @@ error: use of `unwrap_or` followed by a call to `default`
     |
 299 |     with_default_type.unwrap_or(u64::default());
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
-
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:302:5
-    |
-302 |     with_vec.unwrap_or(vec![]);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
-
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:307:5
-    |
-307 |     without_default.unwrap_or(Foo::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `without_default.unwrap_or_else(Foo::new)`
-
-error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:310:5
-    |
-310 |     map.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `map.entry(42).or_insert_with(String::new)`
-
-error: use of `or_insert` followed by a function call
-   --> $DIR/methods.rs:313:5
-    |
-313 |     btree.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `btree.entry(42).or_insert_with(String::new)`
-
-error: use of `unwrap_or` followed by a function call
-   --> $DIR/methods.rs:316:13
-    |
-316 |     let _ = stringy.unwrap_or("".to_owned());
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `stringy.unwrap_or_else(|| "".to_owned())`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
    --> $DIR/methods.rs:327:23

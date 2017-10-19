@@ -821,18 +821,6 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         or_has_args: bool,
         span: Span,
     ) {
-        // don't lint for constant values
-        // FIXME: can we `expect` here instead of match?
-        let promotable = cx.tcx
-            .rvalue_promotable_to_static
-            .borrow()
-            .get(&arg.id)
-            .cloned()
-            .unwrap_or(true);
-        if promotable {
-            return;
-        }
-
         // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] = &[
             (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
@@ -840,6 +828,22 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
             (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
             (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
         ];
+
+        // early check if the name is one we care about
+        if know_types.iter().all(|k| !k.2.contains(&name)) {
+            return;
+        }
+
+        // don't lint for constant values
+        // FIXME: can we `expect` here instead of match?
+        let owner = cx.tcx.hir.get_parent(arg.id);
+        let owner_def = cx.tcx.hir.local_def_id(owner);
+        let promotable = cx.tcx
+            .rvalue_promotable_map(owner_def)
+            .contains_key(&arg.hir_id.local_id);
+        if promotable {
+            return;
+        }
 
         let self_ty = cx.tables.expr_ty(self_expr);
 
