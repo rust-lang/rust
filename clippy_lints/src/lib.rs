@@ -144,7 +144,6 @@ pub mod regex;
 pub mod returns;
 pub mod serde_api;
 pub mod shadow;
-pub mod should_assert_eq;
 pub mod strings;
 pub mod explicit_write;
 pub mod swap;
@@ -200,6 +199,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     };
 
     let mut store = reg.sess.lint_store.borrow_mut();
+    store.register_removed(
+        "should_assert_eq",
+        "`assert!()` will be more flexible with RFC 2011"
+    );
     store.register_removed(
         "extend_from_slice",
         "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice",
@@ -327,7 +330,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box double_parens::DoubleParens);
     reg.register_late_lint_pass(box unused_io_amount::UnusedIoAmount);
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
-    reg.register_late_lint_pass(box should_assert_eq::ShouldAssertEq);
     reg.register_late_lint_pass(box explicit_write::Pass);
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
     reg.register_early_lint_pass(box literal_digit_grouping::LiteralDigitGrouping);
@@ -542,7 +544,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         serde_api::SERDE_API_MISUSE,
-        should_assert_eq::SHOULD_ASSERT_EQ,
         strings::STRING_LIT_AS_BYTES,
         explicit_write::EXPLICIT_WRITE,
         swap::ALMOST_SWAPPED,
