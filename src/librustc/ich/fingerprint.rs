@@ -9,8 +9,6 @@
 // except according to those terms.
 
 use rustc_data_structures::stable_hasher;
-use std::mem;
-use std::slice;
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
 pub struct Fingerprint(u64, u64);
@@ -54,16 +52,9 @@ impl ::std::fmt::Display for Fingerprint {
 }
 
 impl stable_hasher::StableHasherResult for Fingerprint {
-    fn finish(mut hasher: stable_hasher::StableHasher<Self>) -> Self {
-        let hash_bytes: &[u8] = hasher.finalize();
-
-        assert!(hash_bytes.len() >= mem::size_of::<u64>() * 2);
-        let hash_bytes: &[u64] = unsafe {
-            slice::from_raw_parts(hash_bytes.as_ptr() as *const u64, 2)
-        };
-
-        // The bytes returned bytes the Blake2B hasher are always little-endian.
-        Fingerprint(u64::from_le(hash_bytes[0]), u64::from_le(hash_bytes[1]))
+    fn finish(hasher: stable_hasher::StableHasher<Self>) -> Self {
+        let (_0, _1) = hasher.finalize();
+        Fingerprint(_0, _1)
     }
 }
 

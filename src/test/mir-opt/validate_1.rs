@@ -30,7 +30,7 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node12.EraseRegions.after.mir
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[8cd8]::{{impl}}[0]::foo[0] }, BrAnon(0)) Test, _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[8cd8]::{{impl}}[0]::foo[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[e36f]::{{impl}}[0]::foo[0] }, BrAnon(0)) Test, _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[e36f]::{{impl}}[0]::foo[0] }, BrAnon(1)) mut i32]);
 //         ...
 //         return;
 //     }
@@ -62,7 +62,7 @@ fn main() {
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(50)], _2: &ReErased mut i32) -> i32 {
 //     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[8cd8]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(50)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[8cd8]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[e36f]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(50)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[e36f]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
 //         StorageLive(_3);
 //         _3 = _2;
 //         StorageLive(_4);
