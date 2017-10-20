@@ -751,10 +751,10 @@ fn get_indexed_assignments<'a, 'tcx>(
             match (get_fixed_offset_var(cx, lhs, var), fetch_cloned_fixed_offset_var(cx, rhs, var)) {
                 (Some(offset_left), Some(offset_right)) => {
                     // Source and destination must be different
-                    if offset_left.var_name != offset_right.var_name {
-                        Some((offset_left, offset_right))
-                    } else {
+                    if offset_left.var_name == offset_right.var_name {
                         None
+                    } else {
+                        Some((offset_left, offset_right))
                     }
                 },
                 _ => None,
