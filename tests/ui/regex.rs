@@ -9,8 +9,8 @@ extern crate regex;
 use regex::{Regex, RegexSet, RegexBuilder};
 use regex::bytes::{Regex as BRegex, RegexSet as BRegexSet, RegexBuilder as BRegexBuilder};
 
-const OPENING_PAREN : &'static str = "(";
-const NOT_A_REAL_REGEX : &'static str = "foobar";
+const OPENING_PAREN: &str = "(";
+const NOT_A_REAL_REGEX: &str = "foobar";
 
 fn syntax_error() {
     let pipe_in_wrong_position = Regex::new("|");
