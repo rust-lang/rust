@@ -4,6 +4,14 @@ macro_rules! declare_deprecated_lint {
     }
 }
 
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** This used to check for `assert!(a == b)` and recommend 
+/// replacement with `assert_eq!(a, b)`, but this is no longer needed after RFC 2011.
+declare_deprecated_lint! {
+    pub SHOULD_ASSERT_EQ,
+    "`assert!()` will be more flexible with RFC 2011"
+}
 
 /// **What it does:** Nothing. This lint has been deprecated.
 ///
