@@ -2547,7 +2547,7 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // Err(err) => #[allow(unreachable_code)]
-                //             return Carrier::from_error(From::from(err)),
+                //             return Try::from_error(From::from(err)),
                 let err_arm = {
                     let err_ident = self.str_to_ident("err");
                     let err_local = self.pat_ident(e.span, err_ident);
