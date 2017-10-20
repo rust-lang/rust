@@ -2392,9 +2392,10 @@ impl<'a> Parser<'a> {
         self.expect(&token::OpenDelim(token::Brace))?;
 
         let mut attrs = outer_attrs;
-        attrs.extend(self.parse_inner_attributes()?);
+        let inner_attrs = self.parse_inner_attributes()?;
+        attrs.extend(inner_attrs.clone());
 
-        let blk = self.parse_block_tail(lo, blk_mode)?;
+        let blk = self.parse_block_tail(lo, blk_mode, ThinVec::from(inner_attrs))?;
         return Ok(self.mk_expr(blk.span, ExprKind::Block(blk), attrs));
     }
 
@@ -4171,7 +4172,7 @@ impl<'a> Parser<'a> {
             return Err(e);
         }
 
-        self.parse_block_tail(lo, BlockCheckMode::Default)
+        self.parse_block_tail(lo, BlockCheckMode::Default, ThinVec::new())
     }
 
     /// Parse a block. Inner attrs are allowed.
@@ -4180,13 +4181,18 @@ impl<'a> Parser<'a> {
 
         let lo = self.span;
         self.expect(&token::OpenDelim(token::Brace))?;
-        Ok((self.parse_inner_attributes()?,
-            self.parse_block_tail(lo, BlockCheckMode::Default)?))
+        let attrs = self.parse_inner_attributes()?;
+        Ok((attrs.clone(),
+            self.parse_block_tail(lo, BlockCheckMode::Default, ThinVec::from(attrs))?))
     }
 
     /// Parse the rest of a block expression or function body
     /// Precondition: already parsed the '{'.
-    fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
+    fn parse_block_tail(&mut self,
+                        lo: Span,
+                        s: BlockCheckMode,
+                        attrs: ThinVec<Attribute>)
+                        -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
 
         while !self.eat(&token::CloseDelim(token::Brace)) {
@@ -4205,6 +4211,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             rules: s,
             span: lo.to(self.prev_span),
+            attrs: attrs,
         }))
     }
 

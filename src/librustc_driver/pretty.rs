@@ -732,6 +732,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
                 rules,
                 id: ast::DUMMY_NODE_ID,
                 span: syntax_pos::DUMMY_SP,
+                attrs: ast::ThinVec::new(),
             })
         }
 
