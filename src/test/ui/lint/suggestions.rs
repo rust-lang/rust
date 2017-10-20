@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![warn(unused_mut)] // UI tests pass `-A unused`—see Issue #43896
+#![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
 #![feature(no_debug)]
 
 #[no_mangle] static SHENZHOU: usize = 1; // should suggest `pub`

@@ -47,6 +47,7 @@
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
 #![cfg_attr(windows, feature(libc))]
+#![feature(macro_vis_matcher)]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]
