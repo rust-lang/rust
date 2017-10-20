@@ -1,16 +1,18 @@
 use syntax::ast::{Item, ItemKind, TyKind, Ty};
 use rustc::lint::{LintPass, EarlyLintPass, LintArray, EarlyContext};
-use utils::{span_help_and_lint, in_macro};
+use utils::{span_lint_and_then, in_macro};
 
 /// **What it does:** Checks for constants with an explicit `'static` lifetime.
 ///
-/// **Why is this bad?** Adding `'static` to every reference can create very complicated types.
+/// **Why is this bad?** Adding `'static` to every reference can create very
+/// complicated types.
 ///
 /// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
-///  const FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] = &[..]
+/// const FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] =
+/// &[...]
 /// ```
 /// This code can be rewritten as
 /// ```rust
@@ -52,11 +54,12 @@ impl StaticConst {
                     if let TyKind::Path(_, _) = borrow_type.ty.node {
                         // Verify that the path is a str
                         if lifetime.ident.name == "'static" {
-                            span_help_and_lint(cx,
+                            let mut sug: String = String::new();
+                            span_lint_and_then(cx,
                                                CONST_STATIC_LIFETIME,
                                                lifetime.span,
                                                "Constants have by default a `'static` lifetime",
-                                               "consider removing `'static`");
+                                               |db| {db.span_suggestion(lifetime.span,"consider removing `'static`",sug);});
                         }
                     }
                 }
