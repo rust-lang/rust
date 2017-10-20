@@ -77,12 +77,25 @@ CFLAGS="" \
 hide_output make -j$(nproc)
 hide_output make install
 cd ..
+rm -rf musl-$MUSL
+
+tar xf musl-$MUSL.tar.gz
+cd musl-$MUSL
+CC=powerpc-linux-gnu-gcc \
+CFLAGS="" \
+    hide_output ./configure \
+        --prefix=/usr/local/ppc-linux-musl \
+        --enable-wrapper=gcc
+hide_output make -j$(nproc)
+hide_output make install
+cd ..
 rm -rf musl-$MUSL*
 
 ln -nsf ../arm-linux-musleabi/bin/musl-gcc /usr/local/bin/arm-linux-musleabi-gcc
 ln -nsf ../arm-linux-musleabihf/bin/musl-gcc /usr/local/bin/arm-linux-musleabihf-gcc
 ln -nsf ../armv7-linux-musleabihf/bin/musl-gcc /usr/local/bin/armv7-linux-musleabihf-gcc
 ln -nsf ../aarch64-linux-musl/bin/musl-gcc /usr/local/bin/aarch64-unknown-linux-musl-gcc
+ln -nsf ../ppc-linux-musl/bin/musl-gcc /usr/local/bin/powerpc-unknown-linux-musl-gcc
 
 curl -L https://github.com/llvm-mirror/llvm/archive/release_39.tar.gz | tar xzf -
 curl -L https://github.com/llvm-mirror/libunwind/archive/release_39.tar.gz | tar xzf -
@@ -140,6 +153,20 @@ cmake ../libunwind-release_39 \
           -DCMAKE_CXX_FLAGS=""
 make -j$(nproc)
 cp lib/libunwind.a /usr/local/aarch64-linux-musl/lib
+cd ..
+rm -rf libunwind-build
+
+mkdir libunwind-build
+cd libunwind-build
+cmake ../libunwind-release_39 \
+          -DLLVM_PATH=/tmp/llvm-release_39 \
+          -DLIBUNWIND_ENABLE_SHARED=0 \
+          -DCMAKE_C_COMPILER=powerpc-linux-gnu-gcc \
+          -DCMAKE_CXX_COMPILER=powerpc-linux-gnu-g++ \
+          -DCMAKE_C_FLAGS="" \
+          -DCMAKE_CXX_FLAGS=""
+make -j$(nproc)
+cp lib/libunwind.a /usr/local/ppc-linux-musl/lib
 cd ..
 rm -rf libunwind-build
 
