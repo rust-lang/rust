@@ -182,7 +182,7 @@ define_Conf! {
 /// Search for the configuration file.
 pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
     /// Possible filename to search for.
-    const CONFIG_FILE_NAMES: [&'static str; 2] = [".clippy.toml", "clippy.toml"];
+    const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];
 
     let mut current = try!(env::current_dir());
 

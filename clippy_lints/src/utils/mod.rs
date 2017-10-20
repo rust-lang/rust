@@ -169,7 +169,7 @@ pub fn match_def_path(tcx: TyCtxt, def_id: DefId, path: &[&str]) -> bool {
 
     impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
         fn root_mode(&self) -> &ty::item_path::RootMode {
-            const ABSOLUTE: &'static ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
+            const ABSOLUTE: &ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
             ABSOLUTE
         }
 

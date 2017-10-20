@@ -33,7 +33,7 @@ declare_lint! {
 }
 
 // Tuples are of the form (constant, name, min_digits)
-const KNOWN_CONSTS: &'static [(f64, &'static str, usize)] = &[
+const KNOWN_CONSTS: &[(f64, &str, usize)] = &[
     (f64::E, "E", 4),
     (f64::FRAC_1_PI, "FRAC_1_PI", 4),
     (f64::FRAC_1_SQRT_2, "FRAC_1_SQRT_2", 5),

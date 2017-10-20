@@ -76,6 +76,7 @@ pub mod block_in_if_condition;
 pub mod booleans;
 pub mod bytecount;
 pub mod collapsible_if;
+pub mod const_static_lifetime;
 pub mod copies;
 pub mod cyclomatic_complexity;
 pub mod derive;
@@ -339,6 +340,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box invalid_ref::InvalidRef);
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
+    reg.register_early_lint_pass(box const_static_lifetime::StaticConst);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -349,6 +351,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
 
     reg.register_lint_group("clippy_pedantic", vec![
         booleans::NONMINIMAL_BOOL,
+        const_static_lifetime::CONST_STATIC_LIFETIME,
         empty_enum::EMPTY_ENUM,
         enum_glob_use::ENUM_GLOB_USE,
         enum_variants::PUB_ENUM_VARIANT_NAMES,

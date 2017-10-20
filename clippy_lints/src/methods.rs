@@ -1531,7 +1531,7 @@ enum Convention {
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const CONVENTIONS: [(Convention, &'static [SelfKind]); 6] = [
+const CONVENTIONS: [(Convention, &[SelfKind]); 6] = [
     (Convention::Eq("new"), &[SelfKind::No]),
     (Convention::StartsWith("as_"), &[SelfKind::Ref, SelfKind::RefMut]),
     (Convention::StartsWith("from_"), &[SelfKind::No]),
@@ -1541,7 +1541,7 @@ const CONVENTIONS: [(Convention, &'static [SelfKind]); 6] = [
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
+const TRAIT_METHODS: [(&str, usize, SelfKind, OutType, &str); 30] = [
     ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
     ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
     ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
@@ -1575,7 +1575,7 @@ const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const PATTERN_METHODS: [(&'static str, usize); 17] = [
+const PATTERN_METHODS: [(&str, usize); 17] = [
     ("contains", 1),
     ("starts_with", 1),
     ("ends_with", 1),

@@ -1,0 +1,50 @@
+error: Constants have by default a `'static` lifetime
+ --> $DIR/const_static_lifetime.rs:4:17
+  |
+4 | const VAR_ONE: &'static str = "Test constant #1"; // ERROR Consider removing 'static.
+  |                 ^^^^^^^ help: consider removing `'static`
+  |
+  = note: `-D const-static-lifetime` implied by `-D warnings`
+
+error: Constants have by default a `'static` lifetime
+ --> $DIR/const_static_lifetime.rs:8:21
+  |
+8 | const VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR Consider removing 'static
+  |                     ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:10:32
+   |
+10 | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
+   |                                ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:10:47
+   |
+10 | const VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
+   |                                               ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:12:30
+   |
+12 | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
+   |                              ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:14:17
+   |
+14 | const VAR_SIX: &'static u8 = &5;
+   |                 ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:16:39
+   |
+16 | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                                       ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:18:20
+   |
+18 | const VAR_HEIGHT: &'static Foo = &Foo {};
+   |                    ^^^^^^^ help: consider removing `'static`
+

@@ -7,7 +7,7 @@
 /// See also [the reference][reference-types] for a list of such types.
 ///
 /// [reference-types]: https://doc.rust-lang.org/reference.html#types
-pub const BUILTIN_TYPES: &'static [&'static str] = &[
+pub const BUILTIN_TYPES: &[&str] = &[
     "i8",
     "u8",
     "i16",

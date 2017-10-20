@@ -88,7 +88,7 @@ impl<'a> Iterator for Parser<'a> {
 #[allow(cast_possible_truncation)]
 pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(usize, Span)>) {
     // one-line comments lose their prefix
-    const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
+    const ONELINERS: &[&str] = &["///!", "///", "//!", "//"];
     for prefix in ONELINERS {
         if comment.starts_with(*prefix) {
             let doc = &comment[prefix.len()..];

@@ -71,8 +71,8 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     }
 }
 
-const BRACED_EXPR_MESSAGE: &'static str = "omit braces around single expression condition";
-const COMPLEX_BLOCK_MESSAGE: &'static str = "in an 'if' condition, avoid complex blocks or closures with blocks; \
+const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression condition";
+const COMPLEX_BLOCK_MESSAGE: &str = "in an 'if' condition, avoid complex blocks or closures with blocks; \
                                              instead, move the block or closure higher and bind it with a 'let'";
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
