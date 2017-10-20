@@ -343,7 +343,7 @@ impl Command {
     /// The search path to be used may be controlled by setting the
     /// `PATH` environment variable on the Command,
     /// but this has some implementation limitations on Windows
-    /// (see https://github.com/rust-lang/rust/issues/37519).
+    /// (see <https://github.com/rust-lang/rust/issues/37519>).
     ///
     /// # Examples
     ///
