@@ -5,6 +5,7 @@ members = [
   "libstd",
   "libtest",
   "tools/cargotest",
+  "tools/clippy",
   "tools/compiletest",
   "tools/error_index_generator",
   "tools/linkchecker",
