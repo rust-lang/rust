@@ -1,0 +1,25 @@
+Source: rustc
+Section: rust
+Priority: optional
+Maintainer: Onur Aslan <onur@onur.im>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.8
+Homepage: http://www.rust-lang.org/
+Vcs-Git: https://github.com/onur/rust.git
+Vcs-Browser: https://github.com/onur/rust
+
+Package: rustc
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Rust systems programming language
+ Rust is a curly-brace, block-structured expression language.  It
+ visually resembles the C language family, but differs significantly
+ in syntactic and semantic details.  Its design is oriented toward
+ concerns of "programming in the large", that is, of creating and
+ maintaining boundaries - both abstract and operational - that
+ preserve large-system integrity, availability and concurrency.
+ .
+ It supports a mixture of imperative procedural, concurrent actor,
+ object-oriented and pure functional styles.  Rust also supports
+ generic programming and meta-programming, in both static and dynamic
+ styles.

@@ -1,0 +1,26 @@
+rustc (1.22.0-dev-20170921-1) unstable; urgency=low
+
+  * New upstream release.
+  * Set `ignore-git` to false in build configuration files.
+
+ -- Onur Aslan <onur@onur.im>  Fri, 22 Sep 2017 12:04:49 +0300
+
+rustc (1.21.0-dev-20170829-1) unstable; urgency=low
+
+  * New upstream release.
+  * Drop pc-windows-gnu targets.
+
+ -- Onur Aslan <onur@onur.im>  Wed, 30 Aug 2017 00:49:56 +0300
+
+rustc (1.20.0-dev-20170709-1) unstable; urgency=low
+
+  * Rename dh_override_auto_test rule to test.
+  * Add MSVC target platforms for Windows builds.
+
+ -- Onur Aslan <onur@onur.im>  Thu, 16 Jun 2017 19:48:28 +0300
+
+rustc (1.19.0-dev-20170531-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Onur Aslan <onur@onur.im>  Tue, 31 May 2017 16:45:11 +0300
