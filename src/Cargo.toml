@@ -22,6 +22,7 @@ members = [
   # FIXME(https://github.com/rust-lang/cargo/issues/4089): move these to exclude
   "tools/rls/test_data/borrow_error",
   "tools/rls/test_data/common",
+  "tools/rls/test_data/features",
   "tools/rls/test_data/find_all_refs_no_cfg_test",
   "tools/rls/test_data/reformat",
   "tools/rls/test_data/multiple_bins",

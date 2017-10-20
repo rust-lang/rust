@@ -507,6 +507,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "features"
+version = "0.1.0"
+
+[[package]]
 name = "filetime"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1330,7 +1334,7 @@ dependencies = [
  "rls-rustc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustfmt-nightly 0.2.8",
+ "rustfmt-nightly 0.2.9",
  "serde 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1812,7 +1816,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "diff 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
