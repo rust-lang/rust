@@ -163,10 +163,27 @@ pub trait CodegenUnitExt<'tcx> {
         fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    item: TransItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
-                TransItem::Fn(instance) => {
-                    tcx.hir.as_local_node_id(instance.def_id())
+                TransItem::Fn(ref instance) => {
+                    match instance.def {
+                        // We only want to take NodeIds of user-defined
+                        // instances into account. The others don't matter for
+                        // the codegen tests and can even make item order
+                        // unstable.
+                        InstanceDef::Item(def_id) => {
+                            tcx.hir.as_local_node_id(def_id)
+                        }
+                        InstanceDef::Intrinsic(..) |
+                        InstanceDef::FnPtrShim(..) |
+                        InstanceDef::Virtual(..) |
+                        InstanceDef::ClosureOnceShim { .. } |
+                        InstanceDef::DropGlue(..) |
+                        InstanceDef::CloneShim(..) => {
+                            None
+                        }
+                    }
                 }
-                TransItem::Static(node_id) | TransItem::GlobalAsm(node_id) => {
+                TransItem::Static(node_id) |
+                TransItem::GlobalAsm(node_id) => {
                     Some(node_id)
                 }
             }, item.symbol_name(tcx))

@@ -61,6 +61,9 @@ for ty::RegionKind {
                 def_id.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
+            ty::ReLateBound(db, ty::BrEnv) => {
+                db.depth.hash_stable(hcx, hasher);
+            }
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
                 def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
