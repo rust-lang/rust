@@ -81,7 +81,7 @@ pub struct Config {
 
     // rust codegen options
     pub rust_optimize: bool,
-    pub rust_codegen_units: u32,
+    pub rust_codegen_units: Option<u32>,
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
@@ -307,7 +307,6 @@ impl Config {
         config.submodules = true;
         config.docs = true;
         config.rust_rpath = true;
-        config.rust_codegen_units = 1;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
         config.ignore_git = false;
@@ -470,8 +469,8 @@ impl Config {
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
 
             match rust.codegen_units {
-                Some(0) => config.rust_codegen_units = num_cpus::get() as u32,
-                Some(n) => config.rust_codegen_units = n,
+                Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
+                Some(n) => config.rust_codegen_units = Some(n),
                 None => {}
             }
         }
