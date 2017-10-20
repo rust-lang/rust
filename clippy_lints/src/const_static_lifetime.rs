@@ -63,7 +63,7 @@ impl StaticConst {
                 self.visit_type(&*borrow_type.ty, cx);
             },
             TyKind::Slice(ref ty) => {
-                self.visit_type(&ty, cx);
+                self.visit_type(ty, cx);
             },
             _ => {},
         }
