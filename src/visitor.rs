@@ -150,8 +150,17 @@ impl<'a> FmtVisitor<'a> {
         }
 
         // Format inner attributes if available.
-        if let Some(attrs) = inner_attrs {
-            self.visit_attrs(attrs, ast::AttrStyle::Inner);
+        let skip_rewrite = if let Some(attrs) = inner_attrs {
+            self.visit_attrs(attrs, ast::AttrStyle::Inner)
+        } else {
+            false
+        };
+
+        if skip_rewrite {
+            self.push_rewrite(b.span, None);
+            self.close_block(false);
+            self.last_pos = source!(self, b.span).hi();
+            return;
         }
 
         self.walk_block_stmts(b);
