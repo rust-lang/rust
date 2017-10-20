@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 
 use file_lines::FileLines;
 use lists::{ListTactic, SeparatorPlace, SeparatorTactic};
+use Summary;
 
 macro_rules! configuration_option_enum{
     ($e:ident: $( $x:ident ),+ $(,)*) => {
@@ -272,6 +273,23 @@ macro_rules! create_config {
         }
 
         impl Config {
+            pub fn version_meets_requirement(&self, error_summary: &mut Summary) -> bool {
+                if self.was_set().required_version() {
+                    let version = env!("CARGO_PKG_VERSION");
+                    let required_version = self.required_version();
+                    if version != required_version {
+                        println!(
+                            "Error: rustfmt version ({}) doesn't match the required version ({})",
+                            version,
+                            required_version,
+                        );
+                        error_summary.add_formatting_error();
+                        return false;
+                    }
+                }
+
+                true
+            }
 
             $(
             pub fn $i(&self) -> $ty {
@@ -622,6 +640,8 @@ create_config! {
     merge_derives: bool, true, "Merge multiple `#[derive(...)]` into a single one";
     binop_separator: SeparatorPlace, SeparatorPlace::Front,
         "Where to put a binary operator when a binary expression goes multiline.";
+    required_version: String, env!("CARGO_PKG_VERSION").to_owned(),
+        "Require a specific version of rustfmt."
 }
 
 #[cfg(test)]

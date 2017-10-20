@@ -201,7 +201,12 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 }
             }
 
-            Ok(run(Input::Text(input), &config))
+            let mut error_summary = Summary::default();
+            if config.version_meets_requirement(&mut error_summary) {
+                error_summary.add(run(Input::Text(input), &config));
+            }
+
+            Ok(error_summary)
         }
         Operation::Format {
             files,
@@ -251,6 +256,10 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                             }
                         }
                         config = config_tmp;
+                    }
+
+                    if !config.version_meets_requirement(&mut error_summary) {
+                        break;
                     }
 
                     options.clone().apply_to(&mut config);
