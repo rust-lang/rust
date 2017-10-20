@@ -39,7 +39,6 @@ impl StaticConst {
         match ty.node {
             // Be carefull of nested structures (arrays and tuples)
             TyKind::Array(ref ty, _) => {
-                println!("array");
                 self.visit_type(&*ty, cx);
             },
             TyKind::Tup(ref tup) => {

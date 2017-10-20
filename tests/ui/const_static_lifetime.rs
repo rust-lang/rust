@@ -1,5 +1,3 @@
-#![feature(plugin)]
-
 #[derive(Debug)]
 struct Foo {}
 
