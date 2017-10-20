@@ -388,7 +388,8 @@ pub struct TypeckTables<'tcx> {
 
     /// Set of trait imports actually used in the method resolution.
     /// This is used for warning unused imports. During type
-    /// checking, this field should not be cloned.
+    /// checking, this `Rc` should not be cloned: it must have a ref-count
+    /// of 1 so that we can insert things into the set mutably.
     pub used_trait_imports: Rc<DefIdSet>,
 
     /// If any errors occurred while type-checking this body,

@@ -850,7 +850,7 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
                               -> Rc<DefIdSet> {
-    Rc::clone(&tcx.typeck_tables_of(def_id).used_trait_imports)
+    tcx.typeck_tables_of(def_id).used_trait_imports.clone()
 }
 
 fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
