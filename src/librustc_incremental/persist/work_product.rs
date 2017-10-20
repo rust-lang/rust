@@ -11,9 +11,8 @@
 //! This module contains files for saving intermediate work-products.
 
 use persist::fs::*;
-use rustc::dep_graph::{WorkProduct, WorkProductId, DepGraph};
+use rustc::dep_graph::{WorkProduct, WorkProductId, DepGraph, WorkProductFileKind};
 use rustc::session::Session;
-use rustc::session::config::OutputType;
 use rustc::util::fs::link_or_copy;
 use std::path::PathBuf;
 use std::fs as std_fs;
@@ -21,19 +20,24 @@ use std::fs as std_fs;
 pub fn save_trans_partition(sess: &Session,
                             dep_graph: &DepGraph,
                             cgu_name: &str,
-                            files: &[(OutputType, PathBuf)]) {
+                            files: &[(WorkProductFileKind, PathBuf)]) {
     debug!("save_trans_partition({:?},{:?})",
            cgu_name,
            files);
     if sess.opts.incremental.is_none() {
-        return;
+        return
     }
     let work_product_id = WorkProductId::from_cgu_name(cgu_name);
 
     let saved_files: Option<Vec<_>> =
         files.iter()
              .map(|&(kind, ref path)| {
-                 let file_name = format!("cgu-{}.{}", cgu_name, kind.extension());
+                 let extension = match kind {
+                     WorkProductFileKind::Object => "o",
+                     WorkProductFileKind::Bytecode => "bc",
+                     WorkProductFileKind::BytecodeCompressed => "bc-compressed",
+                 };
+                 let file_name = format!("cgu-{}.{}", cgu_name, extension);
                  let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
                  match link_or_copy(path, &path_in_incr_dir) {
                      Ok(_) => Some((kind, file_name)),
