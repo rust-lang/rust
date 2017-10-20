@@ -19,7 +19,7 @@ fn main() {
 
     // Note that this one works with default binding modes.
     match &[0, 1, 2] {
-        [..] => {} //~ ERROR expected an array or slice, found `&[{integer}; 3]` [E0529]
+        [..] => {} //~ ERROR non-reference pattern used to match a reference
     };
 
     match &[0, 1, 2] {

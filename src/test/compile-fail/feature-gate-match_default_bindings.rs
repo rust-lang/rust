@@ -10,7 +10,8 @@
 
 pub fn main() {
     match &Some(3) {
-        Some(n) => {}, //~ ERROR mismatched types [E0308]
+        Some(n) => {},
+        //~^ ERROR non-reference pattern used to match a reference
         _ => panic!(),
     }
 }
