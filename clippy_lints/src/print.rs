@@ -1,10 +1,29 @@
+use std::ops::Deref;
 use rustc::hir::*;
 use rustc::hir::map::Node::{NodeImplItem, NodeItem};
 use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::symbol::InternedString;
+use syntax_pos::Span;
 use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint};
 use utils::{paths, opt_def_id};
+
+/// **What it does:** This lint warns when you using `println!("")` to
+/// print a newline.
+///
+/// **Why is this bad?** You should use `println!()`, which is simpler.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// println!("");
+/// ```
+declare_lint! {
+    pub PRINTLN_EMPTY_STRING,
+    Warn,
+    "using `print!()` with a format string that ends in a newline"
+}
 
 /// **What it does:** This lint warns when you using `print!()` with a format
 /// string that
@@ -64,7 +83,7 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PRINT_WITH_NEWLINE, PRINT_STDOUT, USE_DEBUG)
+        lint_array!(PRINT_WITH_NEWLINE, PRINTLN_EMPTY_STRING, PRINT_STDOUT, USE_DEBUG)
     }
 }
 
@@ -88,10 +107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
                     span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
 
-                    // Check print! with format string ending in "\n".
                     if_let_chain!{[
-                        name == "print",
-
                         // ensure we're calling Arguments::new_v1
                         args.len() == 1,
                         let ExprCall(ref args_fun, ref args_args) = args[0].node,
@@ -102,20 +118,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let ExprAddrOf(_, ref match_expr) = args_args[1].node,
                         let ExprMatch(ref args, _, _) = match_expr.node,
                         let ExprTup(ref args) = args.node,
-
-                        // collect the format string parts and check the last one
                         let Some((fmtstr, fmtlen)) = get_argument_fmtstr_parts(&args_args[0]),
-                        let Some('\n') = fmtstr.chars().last(),
-
-                        // "foo{}bar" is made into two strings + one argument,
-                        // if the format string starts with `{}` (eg. "{}foo"),
-                        // the string array is prepended an empty string "".
-                        // We only want to check the last string after any `{}`:
-                        args.len() < fmtlen,
                     ], {
-                        span_lint(cx, PRINT_WITH_NEWLINE, span,
-                                  "using `print!()` with a format string that ends in a \
-                                   newline, consider using `println!()` instead");
+                        match name {
+                            "print" => check_print(cx, span, args, fmtstr, fmtlen),
+                            "println" => check_println(cx, span, fmtstr, fmtlen),
+                            _ => (),
+                        }
                     }}
                 }
             }
@@ -133,6 +142,46 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
         }}
     }
+}
+
+// Check for print!("... \n", ...).
+fn check_print<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    span: Span,
+    args: &HirVec<Expr>,
+    fmtstr: InternedString,
+    fmtlen: usize,
+) {
+    if_let_chain!{[
+        // check the final format string part
+        let Some('\n') = fmtstr.chars().last(),
+
+        // "foo{}bar" is made into two strings + one argument,
+        // if the format string starts with `{}` (eg. "{}foo"),
+        // the string array is prepended an empty string "".
+        // We only want to check the last string after any `{}`:
+        args.len() < fmtlen,
+    ], {
+        span_lint(cx, PRINT_WITH_NEWLINE, span,
+                  "using `print!()` with a format string that ends in a \
+                   newline, consider using `println!()` instead");
+    }}
+}
+
+/// Check for println!("")
+fn check_println<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: InternedString, fmtlen: usize) {
+    if_let_chain!{[
+        // check that the string is empty
+        fmtlen == 1,
+        fmtstr.deref() == "\n",
+
+        // check the presence of that string
+        let Ok(snippet) = cx.sess().codemap().span_to_snippet(span),
+        snippet.contains("\"\""),
+    ], {
+        span_lint(cx, PRINT_WITH_NEWLINE, span,
+                  "using `println!(\"\")`, consider using `println!()` instead");
+     }}
 }
 
 fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {

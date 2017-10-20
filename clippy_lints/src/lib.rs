@@ -538,6 +538,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
         print::PRINT_WITH_NEWLINE,
+        print::PRINTLN_EMPTY_STRING,
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,
         ptr::PTR_ARG,

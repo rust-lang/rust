@@ -1,0 +1,8 @@
+error: using `println!("")`, consider using `println!()` instead
+ --> $DIR/println_empty_string.rs:3:5
+  |
+3 |     println!("");
+  |     ^^^^^^^^^^^^^
+  |
+  = note: `-D print-with-newline` implied by `-D warnings`
+
