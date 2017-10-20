@@ -12,6 +12,8 @@ use back::lto;
 use back::link::{self, get_linker, remove};
 use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
+use base;
+use consts;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
@@ -35,12 +37,13 @@ use syntax::attr;
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
+use type_::Type;
 use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
 use std::any::Any;
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -315,6 +318,8 @@ pub struct CodegenContext {
     metadata_module_config: Arc<ModuleConfig>,
     allocator_module_config: Arc<ModuleConfig>,
     pub tm_factory: Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
+    pub msvc_imps_needed: bool,
+    pub target_pointer_width: String,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -585,6 +590,10 @@ unsafe fn codegen(cgcx: &CodegenContext,
     let module_name = mtrans.name.clone();
     let module_name = Some(&module_name[..]);
     let handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
+
+    if cgcx.msvc_imps_needed {
+        create_msvc_imps(cgcx, llcx, llmod);
+    }
 
     // A codegen-specific pass manager is used to generate object
     // files for an LLVM module.
@@ -1300,6 +1309,8 @@ fn start_executing_work(tcx: TyCtxt,
         allocator_module_config: allocator_config,
         tm_factory: target_machine_factory(tcx.sess),
         total_cgus,
+        msvc_imps_needed: msvc_imps_needed(tcx),
+        target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -2132,4 +2143,52 @@ pub fn submit_translated_module_to_llvm(tcx: TyCtxt,
         llvm_work_item,
         cost,
     })));
+}
+
+fn msvc_imps_needed(tcx: TyCtxt) -> bool {
+    tcx.sess.target.target.options.is_like_msvc &&
+        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib)
+}
+
+// Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
+// This is required to satisfy `dllimport` references to static data in .rlibs
+// when using MSVC linker.  We do this only for data, as linker can fix up
+// code references on its own.
+// See #26591, #27438
+fn create_msvc_imps(cgcx: &CodegenContext, llcx: ContextRef, llmod: ModuleRef) {
+    if !cgcx.msvc_imps_needed {
+        return
+    }
+    // The x86 ABI seems to require that leading underscores are added to symbol
+    // names, so we need an extra underscore on 32-bit. There's also a leading
+    // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
+    // underscores added in front).
+    let prefix = if cgcx.target_pointer_width == "32" {
+        "\x01__imp__"
+    } else {
+        "\x01__imp_"
+    };
+    unsafe {
+        let i8p_ty = Type::i8p_llcx(llcx);
+        let globals = base::iter_globals(llmod)
+            .filter(|&val| {
+                llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage &&
+                    llvm::LLVMIsDeclaration(val) == 0
+            })
+            .map(move |val| {
+                let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
+                let mut imp_name = prefix.as_bytes().to_vec();
+                imp_name.extend(name.to_bytes());
+                let imp_name = CString::new(imp_name).unwrap();
+                (imp_name, val)
+            })
+            .collect::<Vec<_>>();
+        for (imp_name, val) in globals {
+            let imp = llvm::LLVMAddGlobal(llmod,
+                                          i8p_ty.to_ref(),
+                                          imp_name.as_ptr() as *const _);
+            llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
+            llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
+        }
+    }
 }
