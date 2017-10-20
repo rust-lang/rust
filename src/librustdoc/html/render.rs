@@ -1826,37 +1826,32 @@ fn render_markdown(w: &mut fmt::Formatter,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    // We only emit warnings if the user has opted-in to Pulldown rendering.
-    let output = if render_type == RenderType::Pulldown {
-        // Save the state of USED_ID_MAP so it only gets updated once even
-        // though we're rendering twice.
-        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
-        let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
-        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
-        let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
-        let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
-        differences.retain(|s| {
-            match *s {
-                html_diff::Difference::NodeText { ref elem_text,
-                                                  ref opposite_elem_text,
-                                                  .. }
-                    if elem_text.split_whitespace().eq(opposite_elem_text.split_whitespace()) => {
-                        false
-                }
-                _ => true,
+    // Save the state of USED_ID_MAP so it only gets updated once even
+    // though we're rendering twice.
+    let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+    let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
+    USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
+    let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
+    let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
+    differences.retain(|s| {
+        match *s {
+            html_diff::Difference::NodeText { ref elem_text,
+                                              ref opposite_elem_text,
+                                              .. }
+                if elem_text.split_whitespace().eq(opposite_elem_text.split_whitespace()) => {
+                    false
             }
-        });
-
-        if !differences.is_empty() {
-            scx.markdown_warnings.borrow_mut().push((span, md_text.to_owned(), differences));
+            _ => true,
         }
+    });
 
-        pulldown_output
-    } else {
-        format!("{}", Markdown(md_text, RenderType::Hoedown))
-    };
+    if !differences.is_empty() {
+        scx.markdown_warnings.borrow_mut().push((span, md_text.to_owned(), differences));
+    }
 
-    write!(w, "<div class='docblock'>{}{}</div>", prefix, output)
+    write!(w, "<div class='docblock'>{}{}</div>",
+           prefix,
+           if render_type == RenderType::Pulldown { pulldown_output } else { hoedown_output })
 }
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
