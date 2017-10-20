@@ -548,3 +548,11 @@ pub fn manual_clone(src: &[String], dst: &mut [String]) {
         dst[i] = src[i].clone();
     }
 }
+
+#[warn(needless_range_loop)]
+pub fn manual_copy_same_destination(dst: &mut [i32], d: usize, s: usize) {
+    // Same source and destination - don't trigger lint
+    for i in 0..dst.len() {
+        dst[d + i] = dst[s + i];
+    }
+}
