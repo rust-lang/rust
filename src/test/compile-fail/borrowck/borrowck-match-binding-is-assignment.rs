@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Zemit-end-regions -Zborrowck-mir
+
 // Test that immutable pattern bindings cannot be reassigned.
 
 #![feature(slice_patterns)]
@@ -23,31 +26,41 @@ struct S {
 pub fn main() {
     match 1 {
         x => {
-            x += 1; //~ ERROR re-assignment of immutable variable `x`
+            x += 1; //[ast]~ ERROR re-assignment of immutable variable `x`
+                    //[mir]~^ ERROR (Mir) [E0384]
+                    //[mir]~| ERROR (Ast) [E0384]
         }
     }
 
     match E::Foo(1) {
         E::Foo(x) => {
-            x += 1; //~ ERROR re-assignment of immutable variable `x`
+            x += 1; //[ast]~ ERROR re-assignment of immutable variable `x`
+                    //[mir]~^ ERROR (Mir) [E0384]
+                    //[mir]~| ERROR (Ast) [E0384]
         }
     }
 
     match (S { bar: 1 }) {
         S { bar: x } => {
-            x += 1; //~ ERROR re-assignment of immutable variable `x`
+            x += 1; //[ast]~ ERROR re-assignment of immutable variable `x`
+                    //[mir]~^ ERROR (Mir) [E0384]
+                    //[mir]~| ERROR (Ast) [E0384]
         }
     }
 
     match (1,) {
         (x,) => {
-            x += 1; //~ ERROR re-assignment of immutable variable `x`
+            x += 1; //[ast]~ ERROR re-assignment of immutable variable `x`
+                    //[mir]~^ ERROR (Mir) [E0384]
+                    //[mir]~| ERROR (Ast) [E0384]
         }
     }
 
     match [1,2,3] {
         [x,_,_] => {
-            x += 1; //~ ERROR re-assignment of immutable variable `x`
+            x += 1; //[ast]~ ERROR re-assignment of immutable variable `x`
+                    //[mir]~^ ERROR (Mir) [E0384]
+                    //[mir]~| ERROR (Ast) [E0384]
         }
     }
 }

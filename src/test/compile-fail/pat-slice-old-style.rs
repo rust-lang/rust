@@ -10,13 +10,19 @@
 
 #![feature(slice_patterns)]
 
+// NB: this test was introduced in #23121 and will have to change when default match binding modes
+// stabilizes.
+
 fn slice_pat(x: &[u8]) {
     // OLD!
     match x {
-        [a, b..] => {}
+        [a, b..] => {},
         //~^ ERROR expected an array or slice, found `&[u8]`
         //~| HELP the semantics of slice patterns changed recently; see issue #23121
+        _ => panic!(),
     }
 }
 
-fn main() {}
+fn main() {
+    slice_pat("foo".as_bytes());
+}

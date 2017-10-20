@@ -959,13 +959,15 @@ impl str {
     /// assert_eq!(s.find("Léopard"), Some(13));
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// More complex patterns using point-free style and closures:
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find(char::is_whitespace), Some(5));
     /// assert_eq!(s.find(char::is_lowercase), Some(1));
+    /// assert_eq!(s.find(|c: char| c.is_whitespace() || c.is_lowercase()), Some(1));
+    /// assert_eq!(s.find(|c: char| (c < 'o') && (c > 'a')), Some(4));
     /// ```
     ///
     /// Not finding the pattern:
@@ -2047,10 +2049,8 @@ impl str {
     /// ```
     #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_string(self: Box<str>) -> String {
-        unsafe {
-            let slice = mem::transmute::<Box<str>, Box<[u8]>>(self);
-            String::from_utf8_unchecked(slice.into_vec())
-        }
+        let slice = Box::<[u8]>::from(self);
+        unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
     /// Create a [`String`] by repeating a string `n` times.
@@ -2087,5 +2087,5 @@ impl str {
 /// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    mem::transmute(v)
+    Box::from_raw(Box::into_raw(v) as *mut str)
 }

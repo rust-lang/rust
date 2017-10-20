@@ -29,6 +29,21 @@ pub mod cx;
 
 pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
 
+#[derive(Copy, Clone, Debug)]
+pub enum LintLevel {
+    Inherited,
+    Explicit(ast::NodeId)
+}
+
+impl LintLevel {
+    pub fn is_explicit(self) -> bool {
+        match self {
+            LintLevel::Inherited => false,
+            LintLevel::Explicit(_) => true
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {
     pub targeted_by_break: bool,
@@ -37,6 +52,15 @@ pub struct Block<'tcx> {
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
     pub expr: Option<ExprRef<'tcx>>,
+    pub safety_mode: BlockSafety,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum BlockSafety {
+    Safe,
+    ExplicitUnsafe(ast::NodeId),
+    PushUnsafe,
+    PopUnsafe
 }
 
 #[derive(Clone, Debug)]
@@ -73,7 +97,10 @@ pub enum StmtKind<'tcx> {
         pattern: Pattern<'tcx>,
 
         /// let pat = <INIT> ...
-        initializer: Option<ExprRef<'tcx>>
+        initializer: Option<ExprRef<'tcx>>,
+
+        /// the lint level for this let-statement
+        lint_level: LintLevel,
     },
 }
 
@@ -111,6 +138,7 @@ pub struct Expr<'tcx> {
 pub enum ExprKind<'tcx> {
     Scope {
         region_scope: region::Scope,
+        lint_level: LintLevel,
         value: ExprRef<'tcx>,
     },
     Box {
@@ -275,6 +303,7 @@ pub struct Arm<'tcx> {
     pub patterns: Vec<Pattern<'tcx>>,
     pub guard: Option<ExprRef<'tcx>>,
     pub body: ExprRef<'tcx>,
+    pub lint_level: LintLevel,
 }
 
 #[derive(Copy, Clone, Debug)]

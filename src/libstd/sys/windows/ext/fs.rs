@@ -393,8 +393,8 @@ pub trait MetadataExt {
     /// to. For a directory, the structure specifies when the directory was
     /// created.
     ///
-    /// If the underlying filesystem does not support the last write time
-    /// time, the returned value is 0.
+    /// If the underlying filesystem does not support the last write time,
+    /// the returned value is 0.
     ///
     /// # Examples
     ///

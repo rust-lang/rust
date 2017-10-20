@@ -152,6 +152,8 @@ pub enum Token {
     Dot,
     DotDot,
     DotDotDot,
+    DotDotEq,
+    DotEq, // HACK(durka42) never produced by the parser, only used for libproc_macro
     Comma,
     Semi,
     Colon,
@@ -212,18 +214,19 @@ impl Token {
     pub fn can_begin_expr(&self) -> bool {
         match *self {
             Ident(ident)                => ident_can_begin_expr(ident), // value name or keyword
-            OpenDelim(..)               | // tuple, array or block
-            Literal(..)                 | // literal
-            Not                         | // operator not
-            BinOp(Minus)                | // unary minus
-            BinOp(Star)                 | // dereference
-            BinOp(Or) | OrOr            | // closure
-            BinOp(And)                  | // reference
-            AndAnd                      | // double reference
-            DotDot | DotDotDot          | // range notation
-            Lt | BinOp(Shl)             | // associated path
-            ModSep                      | // global path
-            Pound                       => true, // expression attributes
+            OpenDelim(..)                     | // tuple, array or block
+            Literal(..)                       | // literal
+            Not                               | // operator not
+            BinOp(Minus)                      | // unary minus
+            BinOp(Star)                       | // dereference
+            BinOp(Or) | OrOr                  | // closure
+            BinOp(And)                        | // reference
+            AndAnd                            | // double reference
+            DotDot | DotDotDot | DotDotEq     | // range notation
+                // SNAP remove DotDotDot
+            Lt | BinOp(Shl)                   | // associated path
+            ModSep                            | // global path
+            Pound                             => true, // expression attributes
             Interpolated(ref nt) => match nt.0 {
                 NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) => true,
                 _ => false,
@@ -253,6 +256,12 @@ impl Token {
             },
             _ => false,
         }
+    }
+
+    /// Returns `true` if the token can appear at the start of a generic bound.
+    pub fn can_begin_bound(&self) -> bool {
+        self.is_path_start() || self.is_lifetime() || self.is_keyword(keywords::For) ||
+        self == &Question || self == &OpenDelim(Paren)
     }
 
     /// Returns `true` if the token is any literal
@@ -402,10 +411,12 @@ impl Token {
             Dot => match joint {
                 Dot => DotDot,
                 DotDot => DotDotDot,
+                DotEq => DotDotEq,
                 _ => return None,
             },
             DotDot => match joint {
                 Dot => DotDotDot,
+                Eq => DotDotEq,
                 _ => return None,
             },
             Colon => match joint {
@@ -413,9 +424,9 @@ impl Token {
                 _ => return None,
             },
 
-            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot | Comma |
-            Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question |
-            OpenDelim(..) | CloseDelim(..) | Underscore => return None,
+            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot | DotEq |
+            DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
+            Question | OpenDelim(..) | CloseDelim(..) | Underscore => return None,
 
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
             Whitespace | Comment | Shebang(..) | Eof => return None,

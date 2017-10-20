@@ -722,16 +722,16 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     unsafe extern "system" fn callback(
         _TotalFileSize: c::LARGE_INTEGER,
-        TotalBytesTransferred: c::LARGE_INTEGER,
+        _TotalBytesTransferred: c::LARGE_INTEGER,
         _StreamSize: c::LARGE_INTEGER,
-        _StreamBytesTransferred: c::LARGE_INTEGER,
-        _dwStreamNumber: c::DWORD,
+        StreamBytesTransferred: c::LARGE_INTEGER,
+        dwStreamNumber: c::DWORD,
         _dwCallbackReason: c::DWORD,
         _hSourceFile: c::HANDLE,
         _hDestinationFile: c::HANDLE,
         lpData: c::LPVOID,
     ) -> c::DWORD {
-        *(lpData as *mut i64) = TotalBytesTransferred;
+        if dwStreamNumber == 1 {*(lpData as *mut i64) = StreamBytesTransferred;}
         c::PROGRESS_CONTINUE
     }
     let pfrom = to_u16s(from)?;

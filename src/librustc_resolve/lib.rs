@@ -137,7 +137,7 @@ enum ResolutionError<'a> {
     /// error E0416: identifier is bound more than once in the same pattern
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
     /// error E0426: use of undeclared label
-    UndeclaredLabel(&'a str),
+    UndeclaredLabel(&'a str, Option<Name>),
     /// error E0429: `self` imports are only allowed within a { } list
     SelfImportsOnlyAllowedWithin,
     /// error E0430: `self` import can only appear once in the list
@@ -263,13 +263,17 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err.span_label(span, "used in a pattern more than once");
             err
         }
-        ResolutionError::UndeclaredLabel(name) => {
+        ResolutionError::UndeclaredLabel(name, lev_candidate) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0426,
                                            "use of undeclared label `{}`",
                                            name);
-            err.span_label(span, format!("undeclared label `{}`", name));
+            if let Some(lev_candidate) = lev_candidate {
+                err.span_label(span, format!("did you mean `{}`?", lev_candidate));
+            } else {
+                err.span_label(span, format!("undeclared label `{}`", name));
+            }
             err
         }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
@@ -605,7 +609,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
-                    if item.span == DUMMY_SP {
+                    if item.span.ctxt().outer().expn_info().is_none() {
                         self.span = Some(item.span.with_hi(item.span.lo()));
                         self.found_use = true;
                         return;
@@ -615,11 +619,22 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => if self.span.map_or(true, |span| item.span < span ) {
-                    self.span = Some(item.span.with_hi(item.span.lo()));
+                    if item.span.ctxt().outer().expn_info().is_none() {
+                        // don't insert between attributes and an item
+                        if item.attrs.is_empty() {
+                            self.span = Some(item.span.with_hi(item.span.lo()));
+                        } else {
+                            // find the first attribute on the item
+                            for attr in &item.attrs {
+                                if self.span.map_or(true, |span| attr.span < span) {
+                                    self.span = Some(attr.span.with_hi(attr.span.lo()));
+                                }
+                            }
+                        }
+                    }
                 },
             }
         }
-        assert!(self.span.is_some(), "a file can't have no items and emit suggestions");
     }
 }
 
@@ -1779,9 +1794,13 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Searches the current set of local scopes for labels.
+    /// Searches the current set of local scopes for labels. Returns the first non-None label that
+    /// is returned by the given predicate function
+    ///
     /// Stops after meeting a closure.
-    fn search_label(&self, mut ident: Ident) -> Option<Def> {
+    fn search_label<P, R>(&self, mut ident: Ident, pred: P) -> Option<R>
+        where P: Fn(&Rib, Ident) -> Option<R>
+    {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
                 NormalRibKind => {}
@@ -1797,9 +1816,9 @@ impl<'a> Resolver<'a> {
                     return None;
                 }
             }
-            let result = rib.bindings.get(&ident).cloned();
-            if result.is_some() {
-                return result;
+            let r = pred(rib, ident);
+            if r.is_some() {
+                return r;
             }
         }
         None
@@ -3191,12 +3210,20 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                match self.search_label(label.node) {
+                match self.search_label(label.node, |rib, id| rib.bindings.get(&id).cloned()) {
                     None => {
+                        // Search again for close matches...
+                        // Picks the first label that is "close enough", which is not necessarily
+                        // the closest match
+                        let close_match = self.search_label(label.node, |rib, ident| {
+                            let names = rib.bindings.iter().map(|(id, _)| &id.name);
+                            find_best_match_for_name(names, &*ident.name.as_str(), None)
+                        });
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.span,
-                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str()));
+                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str(),
+                                                                       close_match));
                     }
                     Some(def @ Def::Label(_)) => {
                         // Since this def is a label, it is never read.
@@ -3553,8 +3580,7 @@ impl<'a> Resolver<'a> {
             };
             visit::walk_crate(&mut finder, krate);
             if !candidates.is_empty() {
-                let span = finder.span.expect("did not find module");
-                show_candidates(&mut err, span, &candidates, better, finder.found_use);
+                show_candidates(&mut err, finder.span, &candidates, better, finder.found_use);
             }
             err.emit();
         }
@@ -3748,7 +3774,8 @@ fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, St
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
 fn show_candidates(err: &mut DiagnosticBuilder,
-                   span: Span,
+                   // This is `None` if all placement locations are inside expansions
+                   span: Option<Span>,
                    candidates: &[ImportSuggestion],
                    better: bool,
                    found_use: bool) {
@@ -3766,18 +3793,27 @@ fn show_candidates(err: &mut DiagnosticBuilder,
     };
     let msg = format!("possible {}candidate{} into scope", better, msg_diff);
 
-    for candidate in &mut path_strings {
-        // produce an additional newline to separate the new use statement
-        // from the directly following item.
-        let additional_newline = if found_use {
-            ""
-        } else {
-            "\n"
-        };
-        *candidate = format!("use {};\n{}", candidate, additional_newline);
-    }
+    if let Some(span) = span {
+        for candidate in &mut path_strings {
+            // produce an additional newline to separate the new use statement
+            // from the directly following item.
+            let additional_newline = if found_use {
+                ""
+            } else {
+                "\n"
+            };
+            *candidate = format!("use {};\n{}", candidate, additional_newline);
+        }
 
-    err.span_suggestions(span, &msg, path_strings);
+        err.span_suggestions(span, &msg, path_strings);
+    } else {
+        let mut msg = msg;
+        msg.push(':');
+        for candidate in path_strings {
+            msg.push('\n');
+            msg.push_str(&candidate);
+        }
+    }
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.

@@ -22,7 +22,6 @@ use tidy::*;
 use std::process;
 use std::path::PathBuf;
 use std::env;
-use std::io::{self, Write};
 
 fn main() {
     let path = env::args_os().skip(1).next().expect("need an argument");
@@ -44,7 +43,7 @@ fn main() {
     }
 
     if bad {
-        writeln!(io::stderr(), "some tidy checks failed").expect("could not write to stderr");
+        eprintln!("some tidy checks failed");
         process::exit(1);
     }
 }

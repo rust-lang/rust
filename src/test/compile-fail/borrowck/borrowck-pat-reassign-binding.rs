@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+
 fn main() {
     let mut x: Option<isize> = None;
     match x {
@@ -17,7 +20,9 @@ fn main() {
       }
       Some(ref i) => {
           // But on this branch, `i` is an outstanding borrow
-          x = Some(*i+1); //~ ERROR cannot assign to `x`
+          x = Some(*i+1); //[ast]~ ERROR cannot assign to `x`
+                          //[mir]~^ ERROR cannot assign to `x` because it is borrowed (Ast)
+                          //[mir]~| ERROR cannot assign to `x` because it is borrowed (Mir)
       }
     }
     x.clone(); // just to prevent liveness warnings

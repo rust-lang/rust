@@ -272,6 +272,8 @@ fn hash_token<'gcx, W: StableHasherResult>(token: &token::Token,
         token::Token::Dot |
         token::Token::DotDot |
         token::Token::DotDotDot |
+        token::Token::DotDotEq |
+        token::Token::DotEq |
         token::Token::Comma |
         token::Token::Semi |
         token::Token::Colon |
@@ -352,6 +354,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
         let FileMap {
             ref name,
             name_was_remapped,
+            unmapped_path: _,
             crate_of_origin,
             // Do not hash the source as it is not encoded
             src: _,

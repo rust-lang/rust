@@ -13,6 +13,7 @@ use rustc::ty;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
 
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
@@ -250,7 +251,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                     _ => (),
                 }
             }
-            FnKind::ItemFn(name, ..) => {
+            FnKind::ItemFn(name, _, _, _, abi, _, attrs) => {
+                // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
+                if abi != Abi::Rust && attr::find_by_name(attrs, "no_mangle").is_some() {
+                    return;
+                }
                 self.check_snake_case(cx, "function", &name.as_str(), Some(span))
             }
             FnKind::Closure(_) => (),
@@ -278,7 +283,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_lifetime_def(&mut self, cx: &LateContext, t: &hir::LifetimeDef) {
         self.check_snake_case(cx,
                               "lifetime",
-                              &t.lifetime.name.as_str(),
+                              &t.lifetime.name.name().as_str(),
                               Some(t.lifetime.span));
     }
 

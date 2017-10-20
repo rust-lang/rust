@@ -4,6 +4,7 @@
     "llvm-target": "i686-unknown-linux-gnu",
     "target-endian": "little",
     "target-pointer-width": "32",
+    "target-c-int-width": "32",
     "arch": "x86",
     "os": "linux",
     "morestack": false

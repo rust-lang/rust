@@ -361,13 +361,13 @@ fn test_slice_fail() {
 #[test]
 #[should_panic]
 fn test_str_slice_rangetoinclusive_max_panics() {
-    &"hello"[...usize::max_value()];
+    &"hello"[..=usize::max_value()];
 }
 
 #[test]
 #[should_panic]
 fn test_str_slice_rangeinclusive_max_panics() {
-    &"hello"[1...usize::max_value()];
+    &"hello"[1..=usize::max_value()];
 }
 
 #[test]
@@ -375,7 +375,7 @@ fn test_str_slice_rangeinclusive_max_panics() {
 fn test_str_slicemut_rangetoinclusive_max_panics() {
     let mut s = "hello".to_owned();
     let s: &mut str = &mut s;
-    &mut s[...usize::max_value()];
+    &mut s[..=usize::max_value()];
 }
 
 #[test]
@@ -383,7 +383,7 @@ fn test_str_slicemut_rangetoinclusive_max_panics() {
 fn test_str_slicemut_rangeinclusive_max_panics() {
     let mut s = "hello".to_owned();
     let s: &mut str = &mut s;
-    &mut s[1...usize::max_value()];
+    &mut s[1..=usize::max_value()];
 }
 
 #[test]
@@ -391,13 +391,13 @@ fn test_str_get_maxinclusive() {
     let mut s = "hello".to_owned();
     {
         let s: &str = &s;
-        assert_eq!(s.get(...usize::max_value()), None);
-        assert_eq!(s.get(1...usize::max_value()), None);
+        assert_eq!(s.get(..=usize::max_value()), None);
+        assert_eq!(s.get(1..=usize::max_value()), None);
     }
     {
         let s: &mut str = &mut s;
-        assert_eq!(s.get(...usize::max_value()), None);
-        assert_eq!(s.get(1...usize::max_value()), None);
+        assert_eq!(s.get(..=usize::max_value()), None);
+        assert_eq!(s.get(1..=usize::max_value()), None);
     }
 }
 

@@ -267,6 +267,8 @@ pub trait CrateStore {
     fn export_macros_untracked(&self, cnum: CrateNum);
     fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind;
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> Symbol;
+    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
     fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
     fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -336,6 +338,10 @@ impl CrateStore for DummyCrateStore {
     fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros_untracked(&self, cnum: CrateNum) { bug!("export_macros") }
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> Symbol {
+        bug!("crate_disambiguator")
+    }
+    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }

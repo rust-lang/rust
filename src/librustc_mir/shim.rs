@@ -140,6 +140,7 @@ fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
     LocalDecl {
         mutability, ty, name: None,
         source_info: SourceInfo { scope: ARGUMENT_VISIBILITY_SCOPE, span },
+        lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
         internal: false,
         is_user_variable: false
     }
@@ -195,6 +196,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         IndexVec::from_elem_n(
             VisibilityScopeData { span: span, parent_scope: None }, 1
         ),
+        ClearOnDecode::Clear,
         IndexVec::new(),
         sig.output(),
         None,
@@ -342,6 +344,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             IndexVec::from_elem_n(
                 VisibilityScopeData { span: self.span, parent_scope: None }, 1
             ),
+            ClearOnDecode::Clear,
             IndexVec::new(),
             self.sig.output(),
             None,
@@ -804,6 +807,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         IndexVec::from_elem_n(
             VisibilityScopeData { span: span, parent_scope: None }, 1
         ),
+        ClearOnDecode::Clear,
         IndexVec::new(),
         sig.output(),
         None,
@@ -876,6 +880,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         IndexVec::from_elem_n(
             VisibilityScopeData { span: span, parent_scope: None }, 1
         ),
+        ClearOnDecode::Clear,
         IndexVec::new(),
         sig.output(),
         None,

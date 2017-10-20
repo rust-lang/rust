@@ -106,15 +106,18 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 pub struct Child {
     handle: imp::Process,
 
-    /// The handle for writing to the child's stdin, if it has been captured
+    /// The handle for writing to the child's standard input (stdin), if it has
+    /// been captured.
     #[stable(feature = "process", since = "1.0.0")]
     pub stdin: Option<ChildStdin>,
 
-    /// The handle for reading from the child's stdout, if it has been captured
+    /// The handle for reading from the child's standard output (stdout), if it
+    /// has been captured.
     #[stable(feature = "process", since = "1.0.0")]
     pub stdout: Option<ChildStdout>,
 
-    /// The handle for reading from the child's stderr, if it has been captured
+    /// The handle for reading from the child's standard error (stderr), if it
+    /// has been captured.
     #[stable(feature = "process", since = "1.0.0")]
     pub stderr: Option<ChildStderr>,
 }
@@ -149,12 +152,17 @@ impl fmt::Debug for Child {
     }
 }
 
-/// A handle to a child process's stdin.
+/// A handle to a child process's standard input (stdin).
 ///
 /// This struct is used in the [`stdin`] field on [`Child`].
 ///
+/// When an instance of `ChildStdin` is [dropped], the `ChildStdin`'s underlying
+/// file handle will be closed. If the child process was blocked on input prior
+/// to being dropped, it will become unblocked after dropping.
+///
 /// [`Child`]: struct.Child.html
 /// [`stdin`]: struct.Child.html#structfield.stdin
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe
@@ -192,12 +200,16 @@ impl fmt::Debug for ChildStdin {
     }
 }
 
-/// A handle to a child process's stdout.
+/// A handle to a child process's standard output (stdout).
 ///
 /// This struct is used in the [`stdout`] field on [`Child`].
 ///
+/// When an instance of `ChildStdout` is [dropped], the `ChildStdout`'s
+/// underlying file handle will be closed.
+///
 /// [`Child`]: struct.Child.html
 /// [`stdout`]: struct.Child.html#structfield.stdout
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe
@@ -239,8 +251,12 @@ impl fmt::Debug for ChildStdout {
 ///
 /// This struct is used in the [`stderr`] field on [`Child`].
 ///
+/// When an instance of `ChildStderr` is [dropped], the `ChildStderr`'s
+/// underlying file handle will be closed.
+///
 /// [`Child`]: struct.Child.html
 /// [`stderr`]: struct.Child.html#structfield.stderr
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe
@@ -534,7 +550,13 @@ impl Command {
         self
     }
 
-    /// Configuration for the child process's stdin handle (file descriptor 0).
+    /// Configuration for the child process's standard input (stdin) handle.
+    ///
+    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
+    /// defaults to [`piped`] when used with `output`.
+    ///
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
     ///
     /// # Examples
     ///
@@ -554,7 +576,13 @@ impl Command {
         self
     }
 
-    /// Configuration for the child process's stdout handle (file descriptor 1).
+    /// Configuration for the child process's standard output (stdout) handle.
+    ///
+    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
+    /// defaults to [`piped`] when used with `output`.
+    ///
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
     ///
     /// # Examples
     ///
@@ -574,7 +602,13 @@ impl Command {
         self
     }
 
-    /// Configuration for the child process's stderr handle (file descriptor 2).
+    /// Configuration for the child process's standard error (stderr) handle.
+    ///
+    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
+    /// defaults to [`piped`] when used with `output`.
+    ///
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
     ///
     /// # Examples
     ///
@@ -686,6 +720,15 @@ impl AsInnerMut<imp::Command> for Command {
 }
 
 /// The output of a finished process.
+///
+/// This is returned in a Result by either the [`output`] method of a
+/// [`Command`], or the [`wait_with_output`] method of a [`Child`]
+/// process.
+///
+/// [`Command`]: struct.Command.html
+/// [`Child`]: struct.Child.html
+/// [`output`]: struct.Command.html#method.output
+/// [`wait_with_output`]: struct.Child.html#method.wait_with_output
 #[derive(PartialEq, Eq, Clone)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Output {
@@ -726,21 +769,128 @@ impl fmt::Debug for Output {
     }
 }
 
-/// Describes what to do with a standard I/O stream for a child process.
+/// Describes what to do with a standard I/O stream for a child process when
+/// passed to the [`stdin`], [`stdout`], and [`stderr`] methods of [`Command`].
+///
+/// [`stdin`]: struct.Command.html#method.stdin
+/// [`stdout`]: struct.Command.html#method.stdout
+/// [`stderr`]: struct.Command.html#method.stderr
+/// [`Command`]: struct.Command.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(imp::Stdio);
 
 impl Stdio {
     /// A new pipe should be arranged to connect the parent and child processes.
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "Hello, world!\n");
+    /// // Nothing echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::io::Write;
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let mut child = Command::new("rev")
+    ///     .stdin(Stdio::piped())
+    ///     .stdout(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("Failed to spawn child process");
+    ///
+    /// {
+    ///     let mut stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
+    /// }
+    ///
+    /// let output = child.wait_with_output().expect("Failed to read stdout");
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH\n");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
 
     /// The child inherits from the corresponding parent descriptor.
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::inherit())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // "Hello, world!" echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("rev")
+    ///     .stdin(Stdio::inherit())
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// println!("You piped in the reverse of: {}", String::from_utf8_lossy(&output.stdout));
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::null())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // Nothing echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("rev")
+    ///     .stdin(Stdio::null())
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // Ignores any piped-in input
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn null() -> Stdio { Stdio(imp::Stdio::Null) }
 }
@@ -1067,8 +1217,6 @@ impl Child {
 /// function and compute the exit code from its return value:
 ///
 /// ```
-/// use std::io::{self, Write};
-///
 /// fn run_app() -> Result<(), ()> {
 ///     // Application logic here
 ///     Ok(())
@@ -1078,7 +1226,7 @@ impl Child {
 ///     ::std::process::exit(match run_app() {
 ///        Ok(_) => 0,
 ///        Err(err) => {
-///            writeln!(io::stderr(), "error: {:?}", err).unwrap();
+///            eprintln!("error: {:?}", err);
 ///            1
 ///        }
 ///     });
@@ -1108,7 +1256,15 @@ pub fn exit(code: i32) -> ! {
 ///
 /// Note that because this function never returns, and that it terminates the
 /// process, no destructors on the current stack or any other thread's stack
-/// will be run. If a clean shutdown is needed it is recommended to only call
+/// will be run.
+///
+/// This is in contrast to the default behaviour of [`panic!`] which unwinds
+/// the current thread's stack and calls all destructors.
+/// When `panic="abort"` is set, either as an argument to `rustc` or in a
+/// crate's Cargo.toml, [`panic!`] and `abort` are similar. However,
+/// [`panic!`] will still call the [panic hook] while `abort` will not.
+///
+/// If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
 /// to run.
 ///
@@ -1126,7 +1282,7 @@ pub fn exit(code: i32) -> ! {
 /// }
 /// ```
 ///
-/// The [`abort`] function terminates the process, so the destructor will not
+/// The `abort` function terminates the process, so the destructor will not
 /// get run on the example below:
 ///
 /// ```no_run
@@ -1146,6 +1302,9 @@ pub fn exit(code: i32) -> ! {
 ///     // the destructor implemented for HasDrop will never get run
 /// }
 /// ```
+///
+/// [`panic!`]: ../../std/macro.panic.html
+/// [panic hook]: ../../std/panic/fn.set_hook.html
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     unsafe { ::sys::abort_internal() };

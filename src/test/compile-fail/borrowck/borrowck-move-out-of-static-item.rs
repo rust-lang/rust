@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+
 // Ensure that moves out of static items is forbidden
 
 struct Foo {
@@ -22,5 +25,7 @@ fn test(f: Foo) {
 }
 
 fn main() {
-    test(BAR); //~ ERROR cannot move out of static item
+    test(BAR); //[ast]~ ERROR cannot move out of static item [E0507]
+               //[mir]~^ ERROR (Ast) [E0507]
+               //[mir]~| ERROR (Mir) [E0507]
 }

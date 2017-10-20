@@ -15,6 +15,7 @@ use infer::InferCtxt;
 use ty::{self, Region, Ty};
 use hir::def_id::DefId;
 use hir::map as hir_map;
+use syntax_pos::Span;
 
 macro_rules! or_false {
      ($v:expr) => {
@@ -163,7 +164,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // Here, we check for the case where the anonymous region
     // is in the return type.
     // FIXME(#42703) - Need to handle certain cases here.
-    pub fn is_return_type_anon(&self, scope_def_id: DefId, br: ty::BoundRegion) -> bool {
+    pub fn is_return_type_anon(&self,
+                               scope_def_id: DefId,
+                               br: ty::BoundRegion,
+                               decl: &hir::FnDecl)
+                               -> Option<Span> {
         let ret_ty = self.tcx.type_of(scope_def_id);
         match ret_ty.sty {
             ty::TyFnDef(_, _) => {
@@ -171,12 +176,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let late_bound_regions = self.tcx
                     .collect_referenced_late_bound_regions(&sig.output());
                 if late_bound_regions.iter().any(|r| *r == br) {
-                    return true;
+                    return Some(decl.output.span());
                 }
             }
             _ => {}
         }
-        false
+        None
     }
     // Here we check for the case where anonymous region
     // corresponds to self and if yes, we display E0312.

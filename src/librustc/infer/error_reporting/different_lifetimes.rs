@@ -18,6 +18,7 @@ use infer::region_inference::RegionResolutionError;
 use hir::map as hir_map;
 use middle::resolve_lifetime as rl;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
+use infer::error_reporting::util::AnonymousArgInfo;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // This method prints the error message for lifetime errors when both the concerned regions
@@ -57,6 +58,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let ty_sup = or_false!(self.find_anon_type(sup, &bregion_sup));
 
         let ty_sub = or_false!(self.find_anon_type(sub, &bregion_sub));
+
         debug!("try_report_anon_anon_conflict: found_arg1={:?} sup={:?} br1={:?}",
                ty_sub,
                sup,
@@ -66,56 +68,70 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                sub,
                bregion_sub);
 
-        let (main_label, label1, label2) = if let (Some(sup_arg), Some(sub_arg)) =
-            (self.find_arg_with_region(sup, sup), self.find_arg_with_region(sub, sub)) {
+        let (ty_sup, ty_fndecl_sup) = ty_sup;
+        let (ty_sub, ty_fndecl_sub) = ty_sub;
 
-            let (anon_arg_sup, is_first_sup, anon_arg_sub, is_first_sub) =
-                (sup_arg.arg, sup_arg.is_first, sub_arg.arg, sub_arg.is_first);
-            if self.is_self_anon(is_first_sup, scope_def_id_sup) ||
-               self.is_self_anon(is_first_sub, scope_def_id_sub) {
-                return false;
-            }
+        let AnonymousArgInfo { arg: anon_arg_sup, .. } =
+            or_false!(self.find_arg_with_region(sup, sup));
+        let AnonymousArgInfo { arg: anon_arg_sub, .. } =
+            or_false!(self.find_arg_with_region(sub, sub));
 
-            if self.is_return_type_anon(scope_def_id_sup, bregion_sup) ||
-               self.is_return_type_anon(scope_def_id_sub, bregion_sub) {
-                return false;
-            }
+        let sup_is_ret_type =
+            self.is_return_type_anon(scope_def_id_sup, bregion_sup, ty_fndecl_sup);
+        let sub_is_ret_type =
+            self.is_return_type_anon(scope_def_id_sub, bregion_sub, ty_fndecl_sub);
 
-            if anon_arg_sup == anon_arg_sub {
-                (format!("this type was declared with multiple lifetimes..."),
-                 format!(" with one lifetime"),
-                 format!(" into the other"))
-            } else {
-                let span_label_var1 = if let Some(simple_name) = anon_arg_sup.pat.simple_name() {
-                    format!(" from `{}`", simple_name)
-                } else {
-                    format!("")
-                };
-
-                let span_label_var2 = if let Some(simple_name) = anon_arg_sub.pat.simple_name() {
-                    format!(" into `{}`", simple_name)
-                } else {
-                    format!("")
-                };
-
-                let span_label =
-                    format!("these two types are declared with different lifetimes...",);
-
-                (span_label, span_label_var1, span_label_var2)
-            }
+        let span_label_var1 = if let Some(simple_name) = anon_arg_sup.pat.simple_name() {
+            format!(" from `{}`", simple_name)
         } else {
-            debug!("no arg with anon region found");
-            debug!("try_report_anon_anon_conflict: is_suitable(sub) = {:?}",
-                   self.is_suitable_region(sub));
-            debug!("try_report_anon_anon_conflict: is_suitable(sup) = {:?}",
-                   self.is_suitable_region(sup));
-            return false;
+            format!("")
         };
 
+        let span_label_var2 = if let Some(simple_name) = anon_arg_sub.pat.simple_name() {
+            format!(" into `{}`", simple_name)
+        } else {
+            format!("")
+        };
+
+
+        let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
+            (None, None) => {
+                let (main_label_1, span_label_1) = if ty_sup == ty_sub {
+
+                    (format!("this type is declared with multiple lifetimes..."),
+                     format!("...but data{} flows{} here",
+                             format!(" with one lifetime"),
+                             format!(" into the other")))
+                } else {
+                    (format!("these two types are declared with different lifetimes..."),
+                     format!("...but data{} flows{} here",
+                             span_label_var1,
+                             span_label_var2))
+                };
+                (ty_sup.span, ty_sub.span, main_label_1, span_label_1)
+            }
+
+            (Some(ret_span), _) => {
+                (ty_sub.span,
+                 ret_span,
+                 format!("this parameter and the return type are declared \
+                          with different lifetimes...",),
+                 format!("...but data{} is returned here", span_label_var1))
+            }
+            (_, Some(ret_span)) => {
+                (ty_sup.span,
+                 ret_span,
+                 format!("this parameter and the return type are declared \
+                          with different lifetimes...",),
+                 format!("...but data{} is returned here", span_label_var1))
+            }
+        };
+
+
         struct_span_err!(self.tcx.sess, span, E0623, "lifetime mismatch")
-            .span_label(ty_sup.span, main_label)
-            .span_label(ty_sub.span, format!(""))
-            .span_label(span, format!("...but data{} flows{} here", label1, label2))
+            .span_label(span_1, main_label)
+            .span_label(span_2, format!(""))
+            .span_label(span, span_label)
             .emit();
         return true;
     }
@@ -135,28 +151,32 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// ```
     /// The function returns the nested type corresponding to the anonymous region
     /// for e.g. `&u8` and Vec<`&u8`.
-    pub fn find_anon_type(&self, region: Region<'tcx>, br: &ty::BoundRegion) -> Option<&hir::Ty> {
+    pub fn find_anon_type(&self,
+                          region: Region<'tcx>,
+                          br: &ty::BoundRegion)
+                          -> Option<(&hir::Ty, &hir::FnDecl)> {
         if let Some(anon_reg) = self.is_suitable_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                let inputs: &[_] = match self.tcx.hir.get(node_id) {
+                let fndecl = match self.tcx.hir.get(node_id) {
                     hir_map::NodeItem(&hir::Item { node: hir::ItemFn(ref fndecl, ..), .. }) => {
-                        &fndecl.inputs
+                        &fndecl
                     }
                     hir_map::NodeTraitItem(&hir::TraitItem {
-                                               node: hir::TraitItemKind::Method(ref fndecl, ..), ..
-                                           }) => &fndecl.decl.inputs,
+                                               node: hir::TraitItemKind::Method(ref m, ..), ..
+                                           }) |
                     hir_map::NodeImplItem(&hir::ImplItem {
-                                              node: hir::ImplItemKind::Method(ref fndecl, ..), ..
-                                          }) => &fndecl.decl.inputs,
-
-                    _ => &[],
+                                              node: hir::ImplItemKind::Method(ref m, ..), ..
+                                          }) => &m.decl,
+                    _ => return None,
                 };
 
-                return inputs
+                return fndecl
+                           .inputs
                            .iter()
-                           .filter_map(|arg| self.find_component_for_bound_region(&**arg, br))
-                           .next();
+                           .filter_map(|arg| self.find_component_for_bound_region(arg, br))
+                           .next()
+                           .map(|ty| (ty, &**fndecl));
             }
         }
         None

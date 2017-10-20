@@ -48,7 +48,7 @@ impl Emitter for EmitterWriter {
                sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
                 let substitution = &sugg.substitution_parts[0].substitutions[0];
                 let msg = if substitution.len() == 0 || !sugg.show_code_when_inline {
-                    // This substitution is only removal or we explicitely don't want to show the
+                    // This substitution is only removal or we explicitly don't want to show the
                     // code inline, don't show it
                     format!("help: {}", sugg.msg)
                 } else {

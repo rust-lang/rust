@@ -16,6 +16,7 @@ pub fn target() -> TargetResult {
         llvm_target: "msp430-none-elf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "16".to_string(),
+        target_c_int_width: "16".to_string(),
         data_layout: "e-m:e-p:16:16-i32:16-i64:16-f32:16-f64:16-a:8-n8:16-S16".to_string(),
         arch: "msp430".to_string(),
         target_os: "none".to_string(),
@@ -46,6 +47,11 @@ pub fn target() -> TargetResult {
             // Similarly, one almost always never wants to use relocatable
             // code because of the extra costs it involves.
             relocation_model: "static".to_string(),
+
+            // Right now we invoke an external assembler and this isn't
+            // compatible with multiple codegen units, and plus we probably
+            // don't want to invoke that many gcc instances.
+            default_codegen_units: Some(1),
 
             .. Default::default( )
         }

@@ -21,7 +21,7 @@ use rustc::mir::*;
 use rustc::hir;
 use hair::*;
 use syntax::ast::{Name, NodeId};
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
 
 // helper functions, broken out by category:
 mod simplify;
@@ -46,8 +46,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Get the arm bodies and their scopes, while declaring bindings.
         let arm_bodies: Vec<_> = arms.iter().map(|arm| {
+            // BUG: use arm lint level
             let body = self.hir.mirror(arm.body.clone());
-            let scope = self.declare_bindings(None, body.span, &arm.patterns[0]);
+            let scope = self.declare_bindings(None, body.span,
+                                              LintLevel::Inherited,
+                                              &arm.patterns[0]);
             (body, scope.unwrap_or(self.visibility_scope))
         }).collect();
 
@@ -171,11 +174,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn declare_bindings(&mut self,
                             mut var_scope: Option<VisibilityScope>,
                             scope_span: Span,
+                            lint_level: LintLevel,
                             pattern: &Pattern<'tcx>)
                             -> Option<VisibilityScope> {
+        assert!(!(var_scope.is_some() && lint_level.is_explicit()),
+               "can't have both a var and a lint scope at the same time");
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
-                var_scope = Some(this.new_visibility_scope(scope_span));
+                var_scope = Some(this.new_visibility_scope(scope_span,
+                                                           LintLevel::Inherited,
+                                                           None));
+                // If we have lints, create a new visibility scope
+                // that marks the lints for the locals.
+                if lint_level.is_explicit() {
+                    this.visibility_scope =
+                        this.new_visibility_scope(scope_span, lint_level, None);
+                }
             }
             let source_info = SourceInfo {
                 span,
@@ -183,6 +197,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             };
             this.declare_binding(source_info, mutability, name, var, ty);
         });
+        // Pop any scope we created for the locals.
+        if let Some(var_scope) = var_scope {
+            self.visibility_scope = var_scope;
+        }
         var_scope
     }
 
@@ -380,10 +398,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             candidates.iter().take_while(|c| c.match_pairs.is_empty()).count();
         debug!("match_candidates: {:?} candidates fully matched", fully_matched);
         let mut unmatched_candidates = candidates.split_off(fully_matched);
-        for candidate in candidates {
+        for (index, candidate) in candidates.into_iter().enumerate() {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
-            if let Some(b) = self.bind_and_guard_matched_candidate(block, arm_blocks, candidate) {
+            let is_last = index == fully_matched - 1;
+            if let Some(b) = self.bind_and_guard_matched_candidate(block, arm_blocks,
+                                                                   candidate, is_last) {
                 block = b;
             } else {
                 // if None is returned, then any remaining candidates
@@ -646,7 +666,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn bind_and_guard_matched_candidate<'pat>(&mut self,
                                               mut block: BasicBlock,
                                               arm_blocks: &mut ArmBlocks,
-                                              candidate: Candidate<'pat, 'tcx>)
+                                              candidate: Candidate<'pat, 'tcx>,
+                                              is_last_arm: bool)
                                               -> Option<BasicBlock> {
         debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
                block, candidate);
@@ -667,10 +688,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.cfg.terminate(block, source_info,
                                TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
             Some(otherwise)
+        } else if !is_last_arm {
+            // Add always true guard in case of more than one arm
+            // it creates false edges and allow MIR borrowck detects errors
+            // FIXME(#45184) -- permit "false edges"
+            let source_info = self.source_info(candidate.span);
+            let true_expr = Expr {
+                temp_lifetime: None,
+                ty: self.hir.tcx().types.bool,
+                span: DUMMY_SP,
+                kind: ExprKind::Literal{literal: self.hir.true_literal()},
+            };
+            let cond = unpack!(block = self.as_local_operand(block, true_expr));
+            let otherwise = self.cfg.start_new_block();
+            self.cfg.terminate(block, source_info,
+                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
+            Some(otherwise)
         } else {
             let source_info = self.source_info(candidate.span);
             self.cfg.terminate(block, source_info,
-                               TerminatorKind::Goto { target: arm_block });
+                               TerminatorKind::Goto { target: arm_block  });
             None
         }
     }
@@ -712,6 +749,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty: var_ty.clone(),
             name: Some(name),
             source_info,
+            lexical_scope: self.visibility_scope,
             internal: false,
             is_user_variable: true,
         });

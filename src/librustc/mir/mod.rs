@@ -18,6 +18,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
+use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use ty::subst::{Subst, Substs};
@@ -33,7 +34,7 @@ use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
 use std::vec::IntoIter;
-use syntax::ast::Name;
+use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
 mod cache;
@@ -41,30 +42,6 @@ pub mod tcx;
 pub mod visit;
 pub mod transform;
 pub mod traversal;
-
-macro_rules! newtype_index {
-    ($name:ident, $debug_name:expr) => (
-        #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
-         RustcEncodable, RustcDecodable)]
-        pub struct $name(u32);
-
-        impl Idx for $name {
-            fn new(value: usize) -> Self {
-                assert!(value < (u32::MAX) as usize);
-                $name(value as u32)
-            }
-            fn index(self) -> usize {
-                self.0 as usize
-            }
-        }
-
-        impl Debug for $name {
-            fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-                write!(fmt, "{}{}", $debug_name, self.0)
-            }
-        }
-    )
-}
 
 /// Types for locals
 type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
@@ -95,6 +72,10 @@ pub struct Mir<'tcx> {
     /// List of visibility (lexical) scopes; these are referenced by statements
     /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
     pub visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+
+    /// Crate-local information for each visibility scope, that can't (and
+    /// needn't) be tracked across crates.
+    pub visibility_scope_info: ClearOnDecode<IndexVec<VisibilityScope, VisibilityScopeInfo>>,
 
     /// Rvalues promoted from this function, such as borrows of constants.
     /// Each of them is the Mir of a constant with the fn's type parameters
@@ -151,6 +132,8 @@ pub const START_BLOCK: BasicBlock = BasicBlock(0);
 impl<'tcx> Mir<'tcx> {
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
                visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+               visibility_scope_info: ClearOnDecode<IndexVec<VisibilityScope,
+                                                             VisibilityScopeInfo>>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                return_ty: Ty<'tcx>,
                yield_ty: Option<Ty<'tcx>>,
@@ -167,6 +150,7 @@ impl<'tcx> Mir<'tcx> {
         Mir {
             basic_blocks,
             visibility_scopes,
+            visibility_scope_info,
             promoted,
             return_ty,
             yield_ty,
@@ -276,11 +260,44 @@ impl<'tcx> Mir<'tcx> {
         debug_assert!(location.statement_index < block.statements.len());
         block.statements[location.statement_index].make_nop()
     }
+
+    /// Returns the source info associated with `location`.
+    pub fn source_info(&self, location: Location) -> &SourceInfo {
+        let block = &self[location.block];
+        let stmts = &block.statements;
+        let idx = location.statement_index;
+        if location.statement_index < stmts.len() {
+            &stmts[idx].source_info
+        } else {
+            assert!(location.statement_index == stmts.len());
+            &block.terminator().source_info
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct VisibilityScopeInfo {
+    /// A NodeId with lint levels equivalent to this scope's lint levels.
+    pub lint_root: ast::NodeId,
+    /// The unsafe block that contains this node.
+    pub safety: Safety,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Safety {
+    Safe,
+    /// Unsafe because of a PushUnsafeBlock
+    BuiltinUnsafe,
+    /// Unsafe because of an unsafe fn
+    FnUnsafe,
+    /// Unsafe because of an `unsafe` block
+    ExplicitUnsafe(ast::NodeId)
 }
 
 impl_stable_hash_for!(struct Mir<'tcx> {
     basic_blocks,
     visibility_scopes,
+    visibility_scope_info,
     promoted,
     return_ty,
     yield_ty,
@@ -310,10 +327,28 @@ impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum ClearOnDecode<T> {
+    Clear,
+    Set(T)
+}
+
+impl<T> serialize::Encodable for ClearOnDecode<T> {
+    fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        serialize::Encodable::encode(&(), s)
+    }
+}
+
+impl<T> serialize::Decodable for ClearOnDecode<T> {
+    fn decode<D: serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        serialize::Decodable::decode(d).map(|()| ClearOnDecode::Clear)
+    }
+}
+
 /// Grouped information about the source code origin of a MIR entity.
 /// Intended to be inspected by diagnostics and debuginfo.
 /// Most passes can work with it as a whole, within a single function.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct SourceInfo {
     /// Source span for the AST pertaining to this MIR entity.
     pub span: Span,
@@ -380,9 +415,11 @@ pub enum BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-newtype_index!(Local, "_");
-
-pub const RETURN_POINTER: Local = Local(0);
+newtype_index!(Local
+    {
+        DEBUG_NAME = "_",
+        const RETURN_POINTER = 0,
+    });
 
 /// Classifies locals into categories. See `Mir::local_kind`.
 #[derive(PartialEq, Eq, Debug)]
@@ -414,13 +451,16 @@ pub struct LocalDecl<'tcx> {
     /// True if this is an internal local
     ///
     /// These locals are not based on types in the source code and are only used
-    /// for drop flags at the moment.
+    /// for a few desugarings at the moment.
     ///
     /// The generator transformation will sanity check the locals which are live
     /// across a suspension point against the type components of the generator
     /// which type checking knows are live across a suspension point. We need to
     /// flag drop flags to avoid triggering this check as they are introduced
     /// after typeck.
+    ///
+    /// Unsafety checking will also ignore dereferences of these locals,
+    /// so they can be used for raw pointers only used in a desugaring.
     ///
     /// This should be sound because the drop flags are fully algebraic, and
     /// therefore don't affect the OIBIT or outlives properties of the
@@ -438,6 +478,12 @@ pub struct LocalDecl<'tcx> {
 
     /// Source info of the local.
     pub source_info: SourceInfo,
+
+    /// The *lexical* visibility scope the local is defined
+    /// in. If the local was defined in a let-statement, this
+    /// is *within* the let-statement, rather than outside
+    /// of it.
+    pub lexical_scope: VisibilityScope,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -452,6 +498,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
+            lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
             internal: false,
             is_user_variable: false
         }
@@ -468,6 +515,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
+            lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
             internal: true,
             is_user_variable: false
         }
@@ -485,6 +533,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
+            lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
             internal: false,
             name: None,     // FIXME maybe we do want some name here?
             is_user_variable: false
@@ -504,7 +553,7 @@ pub struct UpvarDecl {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-newtype_index!(BasicBlock, "bb");
+newtype_index!(BasicBlock { DEBUG_NAME = "bb" });
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
@@ -1084,7 +1133,7 @@ pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>
 /// and the index is a local.
 pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
-newtype_index!(Field, "field");
+newtype_index!(Field { DEBUG_NAME = "field" });
 
 impl<'tcx> Lvalue<'tcx> {
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Lvalue<'tcx> {
@@ -1149,8 +1198,11 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-newtype_index!(VisibilityScope, "scope");
-pub const ARGUMENT_VISIBILITY_SCOPE : VisibilityScope = VisibilityScope(0);
+newtype_index!(VisibilityScope
+    {
+        DEBUG_NAME = "scope",
+        const ARGUMENT_VISIBILITY_SCOPE = 0,
+    });
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VisibilityScopeData {
@@ -1475,7 +1527,7 @@ pub struct Constant<'tcx> {
     pub literal: Literal<'tcx>,
 }
 
-newtype_index!(Promoted, "promoted");
+newtype_index!(Promoted { DEBUG_NAME = "promoted" });
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
@@ -1592,6 +1644,13 @@ impl Location {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnsafetyViolation {
+    pub source_info: SourceInfo,
+    pub description: &'static str,
+    pub lint_node_id: Option<ast::NodeId>,
+}
+
 /// The layout of generator state
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct GeneratorLayout<'tcx> {
@@ -1607,6 +1666,7 @@ impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
         Mir {
             basic_blocks: self.basic_blocks.fold_with(folder),
             visibility_scopes: self.visibility_scopes.clone(),
+            visibility_scope_info: self.visibility_scope_info.clone(),
             promoted: self.promoted.fold_with(folder),
             return_ty: self.return_ty.fold_with(folder),
             yield_ty: self.yield_ty.fold_with(folder),

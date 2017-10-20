@@ -126,6 +126,21 @@ pub struct SharedContext {
     /// Warnings for the user if rendering would differ using different markdown
     /// parsers.
     pub markdown_warnings: RefCell<Vec<(Span, String, Vec<html_diff::Difference>)>>,
+    /// The directories that have already been created in this doc run. Used to reduce the number
+    /// of spurious `create_dir_all` calls.
+    pub created_dirs: RefCell<FxHashSet<PathBuf>>,
+}
+
+impl SharedContext {
+    fn ensure_dir(&self, dst: &Path) -> io::Result<()> {
+        let mut dirs = self.created_dirs.borrow_mut();
+        if !dirs.contains(dst) {
+            fs::create_dir_all(dst)?;
+            dirs.insert(dst.to_path_buf());
+        }
+
+        Ok(())
+    }
 }
 
 /// Indicates where an external crate can be found.
@@ -256,6 +271,9 @@ pub struct Cache {
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
     pub access_levels: Arc<AccessLevels<DefId>>,
+
+    /// The version of the crate being documented, if given fron the `--crate-version` flag.
+    pub crate_version: Option<String>,
 
     // Private fields only used when initially crawling a crate to build a cache
 
@@ -462,6 +480,7 @@ pub fn run(mut krate: clean::Crate,
         },
         css_file_extension: css_file_extension.clone(),
         markdown_warnings: RefCell::new(vec![]),
+        created_dirs: RefCell::new(FxHashSet()),
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -536,6 +555,7 @@ pub fn run(mut krate: clean::Crate,
         primitive_locations: FxHashMap(),
         stripped_mod: false,
         access_levels: krate.access_levels.clone(),
+        crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, FxHashMap()),
         deref_trait_did,
@@ -794,7 +814,6 @@ fn write_shared(cx: &Context,
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
-    try_err!(fs::create_dir_all(&cx.dst), &cx.dst);
     let _lock = flock::Lock::panicking_new(&cx.dst.join(".lock"), true, true, true);
 
     // Add all the static files. These may already exist, but we just
@@ -1321,7 +1340,8 @@ impl DocFolder for Cache {
                 // Figure out the id of this impl. This may map to a
                 // primitive rather than always to a struct/enum.
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
-                let did = if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
+                let mut dids = vec![];
+                if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
                     let masked_trait = i.trait_.def_id().map_or(false,
                         |d| self.masked_crates.contains(&d.krate));
                     if !masked_trait {
@@ -1330,23 +1350,33 @@ impl DocFolder for Cache {
                             clean::BorrowedRef {
                                 type_: box clean::ResolvedPath { did, .. }, ..
                             } => {
-                                Some(did)
+                                dids.push(did);
                             }
                             ref t => {
-                                t.primitive_type().and_then(|t| {
+                                let did = t.primitive_type().and_then(|t| {
                                     self.primitive_locations.get(&t).cloned()
-                                })
+                                });
+
+                                if let Some(did) = did {
+                                    dids.push(did);
+                                }
                             }
                         }
-                    } else {
-                        None
+                    }
+
+                    if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
+                        for bound in generics {
+                            if let Some(did) = bound.def_id() {
+                                dids.push(did);
+                            }
+                        }
                     }
                 } else {
                     unreachable!()
                 };
-                if let Some(did) = did {
+                for did in dids {
                     self.impls.entry(did).or_insert(vec![]).push(Impl {
-                        impl_item: item,
+                        impl_item: item.clone(),
                     });
                 }
                 None
@@ -1518,8 +1548,8 @@ impl Context {
                 this.render_item(&mut buf, &item, false).unwrap();
                 // buf will be empty if the module is stripped and there is no redirect for it
                 if !buf.is_empty() {
+                    try_err!(this.shared.ensure_dir(&this.dst), &this.dst);
                     let joint_dst = this.dst.join("index.html");
-                    try_err!(fs::create_dir_all(&this.dst), &this.dst);
                     let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                     try_err!(dst.write_all(&buf), &joint_dst);
                 }
@@ -1553,8 +1583,8 @@ impl Context {
                 let name = item.name.as_ref().unwrap();
                 let item_type = item.type_();
                 let file_name = &item_path(item_type, name);
+                try_err!(self.shared.ensure_dir(&self.dst), &self.dst);
                 let joint_dst = self.dst.join(file_name);
-                try_err!(fs::create_dir_all(&self.dst), &self.dst);
                 let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                 try_err!(dst.write_all(&buf), &joint_dst);
 
@@ -1562,9 +1592,10 @@ impl Context {
                 // URL for the page.
                 let redir_name = format!("{}.{}.html", name, item_type.name_space());
                 let redir_dst = self.dst.join(redir_name);
-                if let Ok(mut redirect_out) = OpenOptions::new().create_new(true)
+                if let Ok(redirect_out) = OpenOptions::new().create_new(true)
                                                                 .write(true)
                                                                 .open(&redir_dst) {
+                    let mut redirect_out = BufWriter::new(redirect_out);
                     try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
                 }
 
@@ -1574,7 +1605,8 @@ impl Context {
                 if item_type == ItemType::Macro {
                     let redir_name = format!("{}.{}!.html", item_type, name);
                     let redir_dst = self.dst.join(redir_name);
-                    let mut redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                    let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                    let mut redirect_out = BufWriter::new(redirect_out);
                     try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
                 }
             }
@@ -1809,37 +1841,32 @@ fn render_markdown(w: &mut fmt::Formatter,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    // We only emit warnings if the user has opted-in to Pulldown rendering.
-    let output = if render_type == RenderType::Pulldown {
-        // Save the state of USED_ID_MAP so it only gets updated once even
-        // though we're rendering twice.
-        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
-        let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
-        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
-        let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
-        let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
-        differences.retain(|s| {
-            match *s {
-                html_diff::Difference::NodeText { ref elem_text,
-                                                  ref opposite_elem_text,
-                                                  .. }
-                    if elem_text.split_whitespace().eq(opposite_elem_text.split_whitespace()) => {
-                        false
-                }
-                _ => true,
+    // Save the state of USED_ID_MAP so it only gets updated once even
+    // though we're rendering twice.
+    let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+    let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
+    USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
+    let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
+    let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
+    differences.retain(|s| {
+        match *s {
+            html_diff::Difference::NodeText { ref elem_text,
+                                              ref opposite_elem_text,
+                                              .. }
+                if elem_text.split_whitespace().eq(opposite_elem_text.split_whitespace()) => {
+                    false
             }
-        });
-
-        if !differences.is_empty() {
-            scx.markdown_warnings.borrow_mut().push((span, md_text.to_owned(), differences));
+            _ => true,
         }
+    });
 
-        pulldown_output
-    } else {
-        format!("{}", Markdown(md_text, RenderType::Hoedown))
-    };
+    if !differences.is_empty() {
+        scx.markdown_warnings.borrow_mut().push((span, md_text.to_owned(), differences));
+    }
 
-    write!(w, "<div class='docblock'>{}{}</div>", prefix, output)
+    write!(w, "<div class='docblock'>{}{}</div>",
+           prefix,
+           if render_type == RenderType::Pulldown { pulldown_output } else { hoedown_output })
 }
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
@@ -2268,6 +2295,18 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     document(w, cx, it)
 }
 
+fn implementor2item<'a>(cache: &'a Cache, imp : &Implementor) -> Option<&'a clean::Item> {
+    if let Some(t_did) = imp.impl_.for_.def_id() {
+        if let Some(impl_item) = cache.impls.get(&t_did).and_then(|i| i.iter()
+            .find(|i| i.impl_item.def_id == imp.def_id))
+        {
+            let i = &impl_item.impl_item;
+            return Some(i);
+        }
+    }
+    None
+}
+
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut bounds = String::new();
@@ -2478,19 +2517,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             ")?;
 
             for implementor in foreign {
-                // need to get from a clean::Impl to a clean::Item so i can use render_impl
-                if let Some(t_did) = implementor.impl_.for_.def_id() {
-                    if let Some(impl_item) = cache.impls.get(&t_did).and_then(|i| i.iter()
-                        .find(|i| i.impl_item.def_id == implementor.def_id))
-                    {
-                        let i = &impl_item.impl_item;
-                        let impl_ = Impl { impl_item: i.clone() };
-                        let assoc_link = AssocItemLink::GotoSource(
-                            i.def_id, &implementor.impl_.provided_trait_methods
-                        );
-                        render_impl(w, cx, &impl_, assoc_link,
-                                    RenderMode::Normal, i.stable_since(), false)?;
-                    }
+                if let Some(i) = implementor2item(&cache, implementor) {
+                    let impl_ = Impl { impl_item: i.clone() };
+                    let assoc_link = AssocItemLink::GotoSource(
+                        i.def_id, &implementor.impl_.provided_trait_methods
+                    );
+                    render_impl(w, cx, &impl_, assoc_link,
+                                RenderMode::Normal, i.stable_since(), false)?;
                 }
             }
         }
@@ -2498,7 +2531,16 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "{}", impl_header)?;
 
         for implementor in local {
-            write!(w, "<li><code>")?;
+            write!(w, "<li>")?;
+            if let Some(item) = implementor2item(&cache, implementor) {
+                if let Some(l) = (Item { cx, item }).src_href() {
+                    write!(w, "<div class='out-of-band'>")?;
+                    write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                                l, "goto source code")?;
+                    write!(w, "</div>")?;
+                }
+            }
+            write!(w, "<code>")?;
             // If there's already another implementor that has the same abbridged name, use the
             // full path, for example in `std::iter::ExactSizeIterator`
             let use_absolute = match implementor.impl_.for_ {
@@ -2636,7 +2678,8 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        let mut head_len = format!("{}{}{:#}fn {}{:#}",
+        let mut head_len = format!("{}{}{}{:#}fn {}{:#}",
+                                   VisSpace(&meth.visibility),
                                    ConstnessSpace(constness),
                                    UnsafetySpace(unsafety),
                                    AbiSpace(abi),
@@ -2648,8 +2691,9 @@ fn render_assoc_item(w: &mut fmt::Formatter,
         } else {
             (0, true)
         };
-        write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+        write!(w, "{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
+               VisSpace(&meth.visibility),
                ConstnessSpace(constness),
                UnsafetySpace(unsafety),
                AbiSpace(abi),
@@ -3419,6 +3463,16 @@ impl<'a> fmt::Display for Sidebar<'a> {
             }
             write!(fmt, "{}", it.name.as_ref().unwrap())?;
             write!(fmt, "</p>")?;
+
+            if it.is_crate() {
+                if let Some(ref version) = cache().crate_version {
+                    write!(fmt,
+                           "<div class='block version'>\
+                            <p>Version {}</p>\
+                            </div>",
+                           version)?;
+                }
+            }
 
             match it.inner {
                 clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,

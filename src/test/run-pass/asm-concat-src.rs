@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // pretty-expanded FIXME #23616
-// ignore-emscripten
+// ignore-emscripten no asm
 
 #![feature(asm)]
 

@@ -97,6 +97,17 @@ impl serialize::UseSpecializedDecodable for CrateNum {
            RustcDecodable, Hash, Copy)]
 pub struct DefIndex(u32);
 
+impl Idx for DefIndex {
+    fn new(value: usize) -> Self {
+        assert!(value < (u32::MAX) as usize);
+        DefIndex(value as u32)
+    }
+
+    fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
 impl fmt::Debug for DefIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
@@ -186,12 +197,12 @@ pub struct DefId {
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "DefId {{ krate: {:?}, node: {:?}",
+        write!(f, "DefId {{ krate: {:?}, index: {:?}",
                self.krate, self.index)?;
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                write!(f, " => {}", tcx.def_path(*self).to_string(tcx))?;
+                write!(f, " => {}", tcx.def_path_debug_str(*self))?;
             }
             Ok(())
         })?;

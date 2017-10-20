@@ -48,22 +48,24 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: expr.to_ref(),
+                lint_level: cx.lint_level_of(self.id),
             },
         };
 
         // Finally, create a destruction scope, if any.
         if let Some(region_scope) =
-                cx.region_scope_tree.opt_destruction_scope(self.hir_id.local_id) {
-            expr = Expr {
-                temp_lifetime,
-                ty: expr.ty,
-                span: self.span,
-                kind: ExprKind::Scope {
-                    region_scope,
-                    value: expr.to_ref(),
-                },
-            };
-        }
+            cx.region_scope_tree.opt_destruction_scope(self.hir_id.local_id) {
+                expr = Expr {
+                    temp_lifetime,
+                    ty: expr.ty,
+                    span: self.span,
+                    kind: ExprKind::Scope {
+                        region_scope,
+                        value: expr.to_ref(),
+                        lint_level: LintLevel::Inherited,
+                    },
+                };
+            }
 
         // OK, all done!
         expr
@@ -619,6 +621,8 @@ fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm)
         patterns: arm.pats.iter().map(|p| cx.pattern_from_hir(p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
+        // BUG: fix this
+        lint_level: LintLevel::Inherited,
     }
 }
 

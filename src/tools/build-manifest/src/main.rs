@@ -50,6 +50,7 @@ static TARGETS: &'static [&'static str] = &[
     "aarch64-unknown-fuchsia",
     "aarch64-linux-android",
     "aarch64-unknown-linux-gnu",
+    "aarch64-unknown-linux-musl",
     "arm-linux-androideabi",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
@@ -82,6 +83,7 @@ static TARGETS: &'static [&'static str] = &[
     "powerpc64le-unknown-linux-gnu",
     "s390x-unknown-linux-gnu",
     "sparc64-unknown-linux-gnu",
+    "sparcv9-sun-solaris",
     "wasm32-unknown-emscripten",
     "x86_64-linux-android",
     "x86_64-apple-darwin",
@@ -89,9 +91,11 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
     "x86_64-rumprun-netbsd",
+    "x86_64-sun-solaris",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-fuchsia",
     "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnux32",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
     "x86_64-unknown-redox",
@@ -108,6 +112,7 @@ struct Manifest {
     manifest_version: String,
     date: String,
     pkg: BTreeMap<String, Package>,
+    renames: BTreeMap<String, Rename>
 }
 
 #[derive(Serialize)]
@@ -115,6 +120,11 @@ struct Package {
     version: String,
     git_commit_hash: Option<String>,
     target: BTreeMap<String, Target>,
+}
+
+#[derive(Serialize)]
+struct Rename {
+    to: String,
 }
 
 #[derive(Serialize)]
@@ -236,6 +246,7 @@ impl Builder {
             manifest_version: "2".to_string(),
             date: self.date.to_string(),
             pkg: BTreeMap::new(),
+            renames: BTreeMap::new(),
         };
 
         self.package("rustc", &mut manifest.pkg, HOSTS);
@@ -244,13 +255,10 @@ impl Builder {
         self.package("rust-std", &mut manifest.pkg, TARGETS);
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
-        let rls_package_name = if self.rust_release == "nightly" {
-            "rls"
-        } else {
-            "rls-preview"
-        };
-        self.package(rls_package_name, &mut manifest.pkg, HOSTS);
+        self.package("rls-preview", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
+
+        manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
 
         let mut pkg = Package {
             version: self.cached_version("rust").to_string(),
@@ -287,7 +295,7 @@ impl Builder {
             }
 
             extensions.push(Component {
-                pkg: rls_package_name.to_string(),
+                pkg: "rls-preview".to_string(),
                 target: host.to_string(),
             });
             extensions.push(Component {
@@ -319,7 +327,7 @@ impl Builder {
         }
         manifest.pkg.insert("rust".to_string(), pkg);
 
-        return manifest
+        return manifest;
     }
 
     fn package(&mut self,
@@ -452,6 +460,7 @@ impl Builder {
         cmd.arg("--no-tty")
             .arg("--yes")
             .arg("--passphrase-fd").arg("0")
+            .arg("--personal-digest-preferences").arg("SHA512")
             .arg("--armor")
             .arg("--output").arg(&asc)
             .arg("--detach-sign").arg(path)

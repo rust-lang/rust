@@ -456,9 +456,9 @@ fn test_splice_char_boundary() {
 #[test]
 fn test_splice_inclusive_range() {
     let mut v = String::from("12345");
-    v.splice(2...3, "789");
+    v.splice(2..=3, "789");
     assert_eq!(v, "127895");
-    v.splice(1...2, "A");
+    v.splice(1..=2, "A");
     assert_eq!(v, "1A895");
 }
 
@@ -473,7 +473,7 @@ fn test_splice_out_of_bounds() {
 #[should_panic]
 fn test_splice_inclusive_out_of_bounds() {
     let mut s = String::from("12345");
-    s.splice(5...5, "789");
+    s.splice(5..=5, "789");
 }
 
 #[test]

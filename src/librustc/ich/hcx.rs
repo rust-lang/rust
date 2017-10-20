@@ -43,6 +43,7 @@ thread_local!(static IGNORED_ATTR_NAMES: RefCell<FxHashSet<Symbol>> =
 /// enough information to transform DefIds and HirIds into stable DefPaths (i.e.
 /// a reference to the TyCtxt) and it holds a few caches for speeding up various
 /// things (e.g. each DefId/DefPath is only hashed once).
+#[derive(Clone)]
 pub struct StableHashingContext<'gcx> {
     sess: &'gcx Session,
     definitions: &'gcx Definitions,
@@ -169,6 +170,11 @@ impl<'gcx> StableHashingContext<'gcx> {
     }
 
     #[inline]
+    pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
+        self.definitions.node_to_hir_id(node_id)
+    }
+
+    #[inline]
     pub fn hash_spans(&self) -> bool {
         self.hash_spans
     }
@@ -258,6 +264,18 @@ impl<'a, 'gcx, 'lcx> StableHashingContextProvider for TyCtxt<'a, 'gcx, 'lcx> {
         (*self).create_stable_hashing_context()
     }
 }
+
+
+impl<'gcx> StableHashingContextProvider for StableHashingContext<'gcx> {
+    type ContextType = StableHashingContext<'gcx>;
+    fn create_stable_hashing_context(&self) -> Self::ContextType {
+        self.clone()
+    }
+}
+
+impl<'gcx> ::dep_graph::DepGraphSafe for StableHashingContext<'gcx> {
+}
+
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::BodyId {
     fn hash_stable<W: StableHasherResult>(&self,

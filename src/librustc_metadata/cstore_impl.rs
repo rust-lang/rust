@@ -55,9 +55,14 @@ macro_rules! provide {
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
-                let def_path_hash = $tcx.def_path_hash($def_id);
-                let dep_node = def_path_hash.to_dep_node(::rustc::dep_graph::DepKind::MetaData);
-
+                let def_path_hash = $tcx.def_path_hash(DefId {
+                    krate: $def_id.krate,
+                    index: CRATE_DEF_INDEX
+                });
+                let dep_node = def_path_hash
+                    .to_dep_node(::rustc::dep_graph::DepKind::CrateMetadata);
+                // The DepNodeIndex of the DepNode::CrateMetadata should be
+                // cached somewhere, so that we can use read_index().
                 $tcx.dep_graph.read(dep_node);
 
                 let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
@@ -377,6 +382,16 @@ impl CrateStore for cstore::CStore {
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name
+    }
+
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> Symbol
+    {
+        self.get_crate_data(cnum).disambiguator()
+    }
+
+    fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
+    {
+        self.get_crate_data(cnum).hash()
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

@@ -65,7 +65,18 @@ impl PassHook for DumpMir {
                                pass_name,
                                &Disambiguator { is_after },
                                source,
-                               mir);
+                               mir,
+                               |_, _| Ok(()) );
+            for (index, promoted_mir) in mir.promoted.iter_enumerated() {
+                let promoted_source = MirSource::Promoted(source.item_id(), index);
+                mir_util::dump_mir(tcx,
+                                   Some((suite, pass_num)),
+                                   pass_name,
+                                   &Disambiguator { is_after },
+                                   promoted_source,
+                                   promoted_mir,
+                                   |_, _| Ok(()) );
+            }
         }
     }
 }

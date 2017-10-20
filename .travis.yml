@@ -12,7 +12,7 @@ matrix:
   fast_finish: true
   include:
     # Images used in testing PR and try-build should be run first.
-    - env: IMAGE=x86_64-gnu-llvm-3.7 RUST_BACKTRACE=1
+    - env: IMAGE=x86_64-gnu-llvm-3.9 RUST_BACKTRACE=1
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
@@ -36,7 +36,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7
+      osx_image: xcode7.3
       if: branch = auto
 
     # macOS builders. These are placed near the beginning because they are very
@@ -57,7 +57,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
       if: branch = auto
 
     - env: >
@@ -71,7 +71,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
       if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
@@ -91,7 +91,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7
+      osx_image: xcode7.3
       if: branch = auto
 
     - env: >
@@ -105,7 +105,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7
+      osx_image: xcode7.3
       if: branch = auto
 
     # Linux builders, remaining docker images
@@ -114,6 +114,8 @@ matrix:
     - env: IMAGE=armhf-gnu
       if: branch = auto
     - env: IMAGE=cross DEPLOY=1
+      if: branch = auto
+    - env: IMAGE=cross2 DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
       if: branch = auto
@@ -124,8 +126,6 @@ matrix:
     - env: IMAGE=dist-armhf-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-armv7-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-fuchsia DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-i586-gnu-i686-musl DEPLOY=1
       if: branch = auto

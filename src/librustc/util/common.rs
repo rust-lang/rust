@@ -20,7 +20,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
-use syntax_pos::{Span};
+use syntax_pos::{SpanData};
 use ty::maps::{QueryMsg};
 use dep_graph::{DepNode};
 
@@ -61,7 +61,8 @@ pub enum ProfileQueriesMsg {
     /// end a task
     TaskEnd,
     /// begin a new query
-    QueryBegin(Span, QueryMsg),
+    /// can't use `Span` because queries are sent to other thread
+    QueryBegin(SpanData, QueryMsg),
     /// query is satisfied by using an already-known value for the given key
     CacheHit,
     /// query requires running a provider; providers may nest, permitting queries to nest.

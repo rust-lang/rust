@@ -13,6 +13,7 @@ use rustc::middle::lang_items;
 use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
+use rustc::traits;
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
@@ -429,7 +430,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let (instance, mut llfn) = match callee.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
-                        (Some(monomorphize::resolve(bcx.ccx.tcx(), def_id, substs)),
+                        (Some(ty::Instance::resolve(bcx.ccx.tcx(),
+                                                    ty::ParamEnv::empty(traits::Reveal::All),
+                                                    def_id,
+                                                    substs).unwrap()),
                          None)
                     }
                     ty::TyFnPtr(_) => {

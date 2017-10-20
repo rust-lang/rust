@@ -25,7 +25,7 @@ trait Copy {}
 trait Freeze {}
 impl Freeze for .. {}
 
-#[lang="drop_in_place"]
+#[lang = "drop_in_place"]
 #[inline]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {

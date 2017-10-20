@@ -560,9 +560,6 @@ pub fn rustc_cargo(build: &Build,
     if let Some(ref s) = build.config.rustc_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
-    if let Some(ref s) = build.config.rustc_default_ar {
-        cargo.env("CFG_DEFAULT_AR", s);
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

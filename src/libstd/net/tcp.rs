@@ -167,7 +167,7 @@ impl TcpStream {
     /// connection request.
     ///
     /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-    #[stable(feature = "tcpstream_connect_timeout", since = "1.22.0")]
+    #[stable(feature = "tcpstream_connect_timeout", since = "1.21.0")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
     }
@@ -194,12 +194,12 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+    /// use std::net::{IpAddr, Ipv4Addr, TcpStream};
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// assert_eq!(stream.local_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080)));
+    /// assert_eq!(stream.local_addr().unwrap().ip(),
+    ///            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -1575,6 +1575,21 @@ mod tests {
         let addr = "10.255.255.1:80".parse().unwrap();
         let e = TcpStream::connect_timeout(&addr, Duration::from_millis(250)).unwrap_err();
         assert!(e.kind() == io::ErrorKind::TimedOut ||
+                e.kind() == io::ErrorKind::Other,
+                "bad error: {} {:?}", e, e.kind());
+    }
+
+    #[test]
+    fn connect_timeout_unbound() {
+        // bind and drop a socket to track down a "probably unassigned" port
+        let socket = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = socket.local_addr().unwrap();
+        drop(socket);
+
+        let timeout = Duration::from_secs(1);
+        let e = TcpStream::connect_timeout(&addr, timeout).unwrap_err();
+        assert!(e.kind() == io::ErrorKind::ConnectionRefused ||
+                e.kind() == io::ErrorKind::TimedOut ||
                 e.kind() == io::ErrorKind::Other,
                 "bad error: {} {:?}", e, e.kind());
     }

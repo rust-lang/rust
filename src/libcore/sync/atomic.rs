@@ -119,7 +119,9 @@ pub fn hint_core_should_pause()
 
 /// A boolean type which can be safely shared between threads.
 ///
-/// This type has the same in-memory representation as a `bool`.
+/// This type has the same in-memory representation as a [`bool`].
+///
+/// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct AtomicBool {
@@ -246,10 +248,12 @@ impl AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
 
-    /// Returns a mutable reference to the underlying `bool`.
+    /// Returns a mutable reference to the underlying [`bool`].
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
+    ///
+    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -369,7 +373,7 @@ impl AtomicBool {
         unsafe { atomic_swap(self.v.get(), val as u8, order) != 0 }
     }
 
-    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
     /// The return value is always the previous value. If it is equal to `current`, then the value
     /// was updated.
@@ -378,6 +382,7 @@ impl AtomicBool {
     /// ordering of this operation.
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -401,7 +406,7 @@ impl AtomicBool {
         }
     }
 
-    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
     /// The return value is a result indicating whether the new value was written and containing
     /// the previous value. On success this value is guaranteed to be equal to `current`.
@@ -412,6 +417,7 @@ impl AtomicBool {
     /// operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and must
     /// be equivalent or weaker than the success ordering.
     ///
+    /// [`bool`]: ../../../std/primitive.bool.html
     /// [`Ordering`]: enum.Ordering.html
     /// [`Release`]: enum.Ordering.html#variant.Release
     /// [`AcqRel`]: enum.Ordering.html#variant.Release
@@ -452,7 +458,7 @@ impl AtomicBool {
         }
     }
 
-    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
     /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even when the
     /// comparison succeeds, which can result in more efficient code on some platforms. The
@@ -465,6 +471,7 @@ impl AtomicBool {
     /// failure ordering can't be [`Release`] or [`AcqRel`] and must be equivalent or
     /// weaker than the success ordering.
     ///
+    /// [`bool`]: ../../../std/primitive.bool.html
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -926,10 +933,24 @@ macro_rules! atomic_int {
      $stable_cxchg:meta,
      $stable_debug:meta,
      $stable_access:meta,
+     $s_int_type:expr, $int_ref:expr,
      $int_type:ident $atomic_type:ident $atomic_init:ident) => {
         /// An integer type which can be safely shared between threads.
         ///
-        /// This type has the same in-memory representation as the underlying integer type.
+        /// This type has the same in-memory representation as the underlying
+        /// integer type, [`
+        #[doc = $s_int_type]
+        /// `](
+        #[doc = $int_ref]
+        /// ). For more about the differences between atomic types and
+        /// non-atomic types, please see the [module-level documentation].
+        ///
+        /// Please note that examples are shared between atomic variants of
+        /// primitive integer types, so it's normal that they are all
+        /// demonstrating [`AtomicIsize`].
+        ///
+        /// [module-level documentation]: index.html
+        /// [`AtomicIsize`]: struct.AtomicIsize.html
         #[$stable]
         pub struct $atomic_type {
             v: UnsafeCell<$int_type>,
@@ -1339,6 +1360,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "i8", "../../../std/primitive.i8.html",
     i8 AtomicI8 ATOMIC_I8_INIT
 }
 #[cfg(target_has_atomic = "8")]
@@ -1348,6 +1370,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "u8", "../../../std/primitive.u8.html",
     u8 AtomicU8 ATOMIC_U8_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1357,6 +1380,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "i16", "../../../std/primitive.i16.html",
     i16 AtomicI16 ATOMIC_I16_INIT
 }
 #[cfg(target_has_atomic = "16")]
@@ -1366,6 +1390,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "u16", "../../../std/primitive.u16.html",
     u16 AtomicU16 ATOMIC_U16_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1375,6 +1400,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "i32", "../../../std/primitive.i32.html",
     i32 AtomicI32 ATOMIC_I32_INIT
 }
 #[cfg(target_has_atomic = "32")]
@@ -1384,6 +1410,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "u32", "../../../std/primitive.u32.html",
     u32 AtomicU32 ATOMIC_U32_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1393,6 +1420,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "i64", "../../../std/primitive.i64.html",
     i64 AtomicI64 ATOMIC_I64_INIT
 }
 #[cfg(target_has_atomic = "64")]
@@ -1402,6 +1430,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "u64", "../../../std/primitive.u64.html",
     u64 AtomicU64 ATOMIC_U64_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -1411,6 +1440,7 @@ atomic_int!{
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
+    "isize", "../../../std/primitive.isize.html",
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -1420,6 +1450,7 @@ atomic_int!{
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
+    "usize", "../../../std/primitive.usize.html",
     usize AtomicUsize ATOMIC_USIZE_INIT
 }
 
@@ -1752,7 +1783,7 @@ pub fn fence(order: Ordering) {
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 /// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
-#[stable(feature = "compiler_fences", since = "1.22.0")]
+#[stable(feature = "compiler_fences", since = "1.21.0")]
 pub fn compiler_fence(order: Ordering) {
     unsafe {
         match order {

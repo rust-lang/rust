@@ -187,7 +187,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         }
 
         // Consider coercing the subtype to a DST
-        let unsize = self.coerce_unsized(a, b);
+        //
+        // NOTE: this is wrapped in a `commit_if_ok` because it creates
+        // a "spurious" type variable, and we don't want to have that
+        // type variable in memory if the coercion fails.
+        let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
         if unsize.is_ok() {
             debug!("coerce: unsize successful");
             return unsize;

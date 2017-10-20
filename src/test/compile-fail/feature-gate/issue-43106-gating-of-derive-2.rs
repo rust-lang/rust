@@ -8,23 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// `#![derive]` is interpreted (and raises errors) when it occurs at
-// contexts other than ADT definitions. This test checks cases where
-// the derive-macro does not exist.
+// This test checks cases where the derive-macro does not exist.
 
-#![derive(x3300)]
-//~^ ERROR cannot find derive macro `x3300` in this scope
-
-#[derive(x3300)]
-//~^ ERROR cannot find derive macro `x3300` in this scope
 mod derive {
-    mod inner { #![derive(x3300)] }
-    //~^ ERROR cannot find derive macro `x3300` in this scope
-
-    #[derive(x3300)]
-    //~^ ERROR cannot find derive macro `x3300` in this scope
-    fn derive() { }
-
     #[derive(x3300)]
     //~^ ERROR cannot find derive macro `x3300` in this scope
     union U { f: i32 }
@@ -36,12 +22,4 @@ mod derive {
     #[derive(x3300)]
     //~^ ERROR cannot find derive macro `x3300` in this scope
     struct S;
-
-    #[derive(x3300)]
-    //~^ ERROR cannot find derive macro `x3300` in this scope
-    type T = S;
-
-    #[derive(x3300)]
-    //~^ ERROR cannot find derive macro `x3300` in this scope
-    impl S { }
 }

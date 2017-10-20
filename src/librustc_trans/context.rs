@@ -320,19 +320,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: Arc<CodegenUnit<'tcx>>)
+               codegen_unit: Arc<CodegenUnit<'tcx>>,
+               llmod_id: &str)
                -> LocalCrateContext<'a, 'tcx> {
         unsafe {
-            // Append ".rs" to LLVM module identifier.
-            //
-            // LLVM code generator emits a ".file filename" directive
-            // for ELF backends. Value of the "filename" is set as the
-            // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-            // crashes if the module identifier is same as other symbols
-            // such as a function name in the module.
-            // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-            let llmod_id = format!("{}.rs", codegen_unit.name());
-
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess,
                                                           &llmod_id[..]);
 

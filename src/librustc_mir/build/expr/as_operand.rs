@@ -55,10 +55,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("expr_as_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
-        if let ExprKind::Scope { region_scope, value } = expr.kind {
+        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
-            return this.in_scope(region_scope, block, |this| {
+            return this.in_scope(region_scope, lint_level, block, |this| {
                 this.as_operand(block, scope, value)
             });
         }

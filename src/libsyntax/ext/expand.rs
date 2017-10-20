@@ -35,7 +35,6 @@ use visit::Visitor;
 
 use std::collections::HashMap;
 use std::mem;
-use std::path::PathBuf;
 use std::rc::Rc;
 
 macro_rules! expansions {
@@ -200,7 +199,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.crate_root = std_inject::injected_crate_name(&krate);
         let mut module = ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
-            directory: PathBuf::from(self.cx.codemap().span_to_filename(krate.span)),
+            directory: self.cx.codemap().span_to_unmapped_path(krate.span),
         };
         module.directory.pop();
         self.cx.current_expansion.module = Rc::new(module);
@@ -282,7 +281,33 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let expansion = self.expand_invoc(invoc, ext);
                     self.collect_invocations(expansion, &[])
                 } else if let InvocationKind::Attr { attr: None, traits, item } = invoc.kind {
-                    let item = item
+                    let derive_allowed = match item {
+                        Annotatable::Item(ref item) => match item.node {
+                            ast::ItemKind::Struct(..) |
+                            ast::ItemKind::Enum(..) |
+                            ast::ItemKind::Union(..) => true,
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+                    if !derive_allowed {
+                        let attr = item.attrs().iter()
+                            .find(|attr| attr.check_name("derive"))
+                            .expect("`derive` attribute should exist");
+                        let span = attr.span;
+                        let mut err = self.cx.mut_span_err(span,
+                                                           "`derive` may only be applied to \
+                                                            structs, enums and unions");
+                        if let ast::AttrStyle::Inner = attr.style {
+                            let trait_list = traits.iter()
+                                .map(|t| format!("{}", t)).collect::<Vec<_>>();
+                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
+                            err.span_suggestion(span, "try an outer attribute", suggestion);
+                        }
+                        err.emit();
+                    }
+
+                    let item = self.fully_configure(item)
                         .map_attrs(|mut attrs| { attrs.retain(|a| a.path != "derive"); attrs });
                     let item_with_markers =
                         add_derived_markers(&mut self.cx, item.span(), &traits, item.clone());
@@ -372,6 +397,27 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         result
+    }
+
+    fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
+        let mut cfg = StripUnconfigured {
+            should_test: self.cx.ecfg.should_test,
+            sess: self.cx.parse_sess,
+            features: self.cx.ecfg.features,
+        };
+        // Since the item itself has already been configured by the InvocationCollector,
+        // we know that fold result vector will contain exactly one element
+        match item {
+            Annotatable::Item(item) => {
+                Annotatable::Item(cfg.fold_item(item).pop().unwrap())
+            }
+            Annotatable::TraitItem(item) => {
+                Annotatable::TraitItem(item.map(|item| cfg.fold_trait_item(item).pop().unwrap()))
+            }
+            Annotatable::ImplItem(item) => {
+                Annotatable::ImplItem(item.map(|item| cfg.fold_impl_item(item).pop().unwrap()))
+            }
+        }
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
@@ -714,15 +760,6 @@ struct InvocationCollector<'a, 'b: 'a> {
     monotonic: bool,
 }
 
-macro_rules! fully_configure {
-    ($this:ident, $node:ident, $noop_fold:ident) => {
-        match $noop_fold($node, &mut $this.cfg).pop() {
-            Some(node) => node,
-            None => return SmallVector::new(),
-        }
-    }
-}
-
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, expansion_kind: ExpansionKind, kind: InvocationKind) -> Expansion {
         let mark = Mark::fresh(self.cx.current_expansion.mark);
@@ -748,13 +785,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     item: Annotatable,
                     kind: ExpansionKind)
                     -> Expansion {
-        if !traits.is_empty() &&
-           (kind == ExpansionKind::TraitItems || kind == ExpansionKind::ImplItems) {
-            self.cx.span_err(traits[0].span, "`derive` can be only be applied to items");
-            self.cx.trace_macros_diag();
-            return kind.expect_from_annotatables(::std::iter::once(item));
-        }
-        self.collect(kind, InvocationKind::Attr { attr: attr, traits: traits, item: item })
+        self.collect(kind, InvocationKind::Attr { attr, traits, item })
     }
 
     // If `item` is an attr invocation, remove and return the macro attribute.
@@ -880,7 +911,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (attr, traits, mut item) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
-            let item = Annotatable::Item(fully_configure!(self, item, noop_fold_item));
+            let item = Annotatable::Item(item);
             return self.collect_attr(attr, traits, item, ExpansionKind::Items).make_items();
         }
 
@@ -920,8 +951,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         module.directory.push(&*item.ident.name.as_str());
                     }
                 } else {
-                    let mut path =
-                        PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner));
+                    let mut path = self.cx.parse_sess.codemap().span_to_unmapped_path(inner);
                     let directory_ownership = match path.file_name().unwrap().to_str() {
                         Some("mod.rs") => DirectoryOwnership::Owned,
                         _ => DirectoryOwnership::UnownedViaMod(false),
@@ -954,8 +984,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (attr, traits, item) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
-            let item =
-                Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
+            let item = Annotatable::TraitItem(P(item));
             return self.collect_attr(attr, traits, item, ExpansionKind::TraitItems)
                 .make_trait_items()
         }
@@ -975,7 +1004,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (attr, traits, item) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
-            let item = Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
+            let item = Annotatable::ImplItem(P(item));
             return self.collect_attr(attr, traits, item, ExpansionKind::ImplItems)
                 .make_impl_items();
         }

@@ -197,7 +197,7 @@ fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: &Path) -> PathBuf {
     // after macro expansion (that is, they are unhygienic).
     if !arg.is_absolute() {
         let callsite = sp.source_callsite();
-        let mut path = PathBuf::from(&cx.codemap().span_to_filename(callsite));
+        let mut path = cx.codemap().span_to_unmapped_path(callsite);
         path.pop();
         path.push(arg);
         path

@@ -47,6 +47,17 @@ fn main() {
     if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
+    if let Some(linker) = env::var_os("RUSTC_TARGET_LINKER") {
+        cmd.arg("--linker").arg(linker).arg("-Z").arg("unstable-options");
+    }
+
+    // Bootstrap's Cargo-command builder sets this variable to the current Rust version; let's pick
+    // it up so we can make rustdoc print this into the docs
+    if let Some(version) = env::var_os("RUSTDOC_CRATE_VERSION") {
+        // This "unstable-options" can be removed when `--crate-version` is stabilized
+        cmd.arg("-Z").arg("unstable-options")
+           .arg("--crate-version").arg(version);
+    }
 
     std::process::exit(match cmd.status() {
         Ok(s) => s.code().unwrap_or(1),

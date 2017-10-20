@@ -261,6 +261,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 None
             }
+            (_, &ty::TyRef(_, checked)) => {
+                // We have `&T`, check if what was expected was `T`. If so,
+                // we may want to suggest adding a `*`, or removing
+                // a `&`.
+                //
+                // (But, also check check the `expn_info()` to see if this is
+                // a macro; if so, it's hard to extract the text and make a good
+                // suggestion, so don't bother.)
+                if self.infcx.can_sub(self.param_env, checked.ty, &expected).is_ok() &&
+                   expr.span.ctxt().outer().expn_info().is_none() {
+                    match expr.node {
+                        // Maybe remove `&`?
+                        hir::ExprAddrOf(_, ref expr) => {
+                            if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                                return Some(format!("try with `{}`", code));
+                            }
+                        }
+
+                        // Maybe add `*`? Only if `T: Copy`.
+                        _ => {
+                            if !self.infcx.type_moves_by_default(self.param_env,
+                                                                checked.ty,
+                                                                expr.span) {
+                                let sp = self.sess().codemap().call_span_if_macro(expr.span);
+                                if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                                    return Some(format!("try with `*{}`", code));
+                                }
+                            }
+                        },
+                    }
+                }
+                None
+            }
             _ => None,
         }
     }

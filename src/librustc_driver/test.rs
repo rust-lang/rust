@@ -30,6 +30,7 @@ use rustc::hir::map as hir_map;
 use rustc::mir::transform::Passes;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
+use rustc_trans_utils::trans_crate::TransCrate;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -105,7 +106,7 @@ fn test_env<F>(source_string: &str,
     options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
-    let cstore = Rc::new(CStore::new(box ::MetadataLoader));
+    let cstore = Rc::new(CStore::new(::DefaultTransCrate::metadata_loader()));
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
@@ -133,7 +134,7 @@ fn test_env<F>(source_string: &str,
 
     let arena = DroplessArena::new();
     let arenas = ty::GlobalArenas::new();
-    let hir_map = hir_map::map_crate(&mut hir_forest, &defs);
+    let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
     let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);

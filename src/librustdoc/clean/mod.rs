@@ -112,6 +112,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
 #[derive(Clone, Debug)]
 pub struct Crate {
     pub name: String,
+    pub version: Option<String>,
     pub src: PathBuf,
     pub module: Option<Item>,
     pub externs: Vec<(CrateNum, ExternalCrate)>,
@@ -183,6 +184,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         Crate {
             name,
+            version: None,
             src,
             module: Some(module),
             externs,
@@ -236,6 +238,7 @@ impl Clean<ExternalCrate> for CrateNum {
                             if prim.is_some() {
                                 break;
                             }
+                            // FIXME: should warn on unknown primitives?
                         }
                     }
                 }
@@ -876,7 +879,7 @@ impl Clean<Lifetime> for hir::Lifetime {
             }
             _ => {}
         }
-        Lifetime(self.name.to_string())
+        Lifetime(self.name.name().to_string())
     }
 }
 
@@ -884,14 +887,14 @@ impl Clean<Lifetime> for hir::LifetimeDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
         if self.bounds.len() > 0 {
             let mut s = format!("{}: {}",
-                                self.lifetime.name.to_string(),
-                                self.bounds[0].name.to_string());
+                                self.lifetime.name.name(),
+                                self.bounds[0].name.name());
             for bound in self.bounds.iter().skip(1) {
-                s.push_str(&format!(" + {}", bound.name.to_string()));
+                s.push_str(&format!(" + {}", bound.name.name()));
             }
             Lifetime(s)
         } else {
-            Lifetime(self.lifetime.name.to_string())
+            Lifetime(self.lifetime.name.name().to_string())
         }
     }
 }
@@ -1625,6 +1628,7 @@ pub enum PrimitiveType {
     Slice,
     Array,
     Tuple,
+    Unit,
     RawPointer,
     Reference,
     Fn,
@@ -1660,7 +1664,11 @@ impl Type {
             Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
             Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
             Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
-            Tuple(..) => Some(PrimitiveType::Tuple),
+            Tuple(ref tys) => if tys.is_empty() {
+                Some(PrimitiveType::Unit)
+            } else {
+                Some(PrimitiveType::Tuple)
+            },
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
             BareFunction(..) => Some(PrimitiveType::Fn),
@@ -1681,6 +1689,21 @@ impl Type {
             _ => false
         }
     }
+
+    pub fn generics(&self) -> Option<&[Type]> {
+        match *self {
+            ResolvedPath { ref path, .. } => {
+                path.segments.last().and_then(|seg| {
+                    if let PathParameters::AngleBracketed { ref types, .. } = seg.params {
+                        Some(&**types)
+                    } else {
+                        None
+                    }
+                })
+            }
+            _ => None,
+        }
+    }
 }
 
 impl GetDefId for Type {
@@ -1691,7 +1714,11 @@ impl GetDefId for Type {
             BorrowedRef { type_: box Generic(..), .. } =>
                 Primitive(PrimitiveType::Reference).def_id(),
             BorrowedRef { ref type_, .. } => type_.def_id(),
-            Tuple(..) => Primitive(PrimitiveType::Tuple).def_id(),
+            Tuple(ref tys) => if tys.is_empty() {
+                Primitive(PrimitiveType::Unit).def_id()
+            } else {
+                Primitive(PrimitiveType::Tuple).def_id()
+            },
             BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
             Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
             Array(..) => Primitive(PrimitiveType::Array).def_id(),
@@ -1725,6 +1752,7 @@ impl PrimitiveType {
             "array" => Some(PrimitiveType::Array),
             "slice" => Some(PrimitiveType::Slice),
             "tuple" => Some(PrimitiveType::Tuple),
+            "unit" => Some(PrimitiveType::Unit),
             "pointer" => Some(PrimitiveType::RawPointer),
             "reference" => Some(PrimitiveType::Reference),
             "fn" => Some(PrimitiveType::Fn),
@@ -1755,6 +1783,7 @@ impl PrimitiveType {
             Array => "array",
             Slice => "slice",
             Tuple => "tuple",
+            Unit => "unit",
             RawPointer => "pointer",
             Reference => "reference",
             Fn => "fn",
@@ -1852,25 +1881,27 @@ impl Clean<Type> for hir::Ty {
                 };
 
                 if let Some(&hir::ItemTy(ref ty, ref generics)) = alias {
-                    let provided_params = &path.segments.last().unwrap().parameters;
+                    let provided_params = &path.segments.last().unwrap();
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
-                    for (i, ty_param) in generics.ty_params.iter().enumerate() {
-                        let ty_param_def = Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
-                        if let Some(ty) = provided_params.types.get(i).cloned() {
-                            ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
-                        } else if let Some(default) = ty_param.default.clone() {
-                            ty_substs.insert(ty_param_def, default.unwrap().clean(cx));
-                        }
-                    }
-                    for (i, lt_param) in generics.lifetimes.iter().enumerate() {
-                        if let Some(lt) = provided_params.lifetimes.get(i).cloned() {
-                            if !lt.is_elided() {
-                                let lt_def_id = cx.tcx.hir.local_def_id(lt_param.lifetime.id);
-                                lt_substs.insert(lt_def_id, lt.clean(cx));
+                    provided_params.with_parameters(|provided_params| {
+                        for (i, ty_param) in generics.ty_params.iter().enumerate() {
+                            let ty_param_def = Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
+                            if let Some(ty) = provided_params.types.get(i).cloned() {
+                                ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
+                            } else if let Some(default) = ty_param.default.clone() {
+                                ty_substs.insert(ty_param_def, default.unwrap().clean(cx));
                             }
                         }
-                    }
+                        for (i, lt_param) in generics.lifetimes.iter().enumerate() {
+                            if let Some(lt) = provided_params.lifetimes.get(i).cloned() {
+                                if !lt.is_elided() {
+                                    let lt_def_id = cx.tcx.hir.local_def_id(lt_param.lifetime.id);
+                                    lt_substs.insert(lt_def_id, lt.clean(cx));
+                                }
+                            }
+                        }
+                    });
                     return cx.enter_alias(ty_substs, lt_substs, || ty.clean(cx));
                 }
                 resolve_type(cx, path.clean(cx), self.id)
@@ -2419,7 +2450,7 @@ impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
         PathSegment {
             name: self.name.clean(cx),
-            params: self.parameters.clean(cx)
+            params: self.with_parameters(|parameters| parameters.clean(cx))
         }
     }
 }
@@ -2489,7 +2520,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
                 type_params: Vec::new(),
                 where_predicates: Vec::new()
             },
-            decl: (&*self.decl, &[][..]).clean(cx),
+            decl: (&*self.decl, &self.arg_names[..]).clean(cx),
             abi: self.abi,
         }
     }
@@ -2674,6 +2705,7 @@ fn build_deref_target_impls(cx: &DocContext,
             Slice => tcx.lang_items().slice_impl(),
             Array => tcx.lang_items().slice_impl(),
             Tuple => None,
+            Unit => None,
             RawPointer => tcx.lang_items().const_ptr_impl(),
             Reference => None,
             Fn => None,

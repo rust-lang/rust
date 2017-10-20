@@ -88,7 +88,6 @@ pub struct Config {
     pub rust_debuginfo_only_std: bool,
     pub rust_rpath: bool,
     pub rustc_default_linker: Option<String>,
-    pub rustc_default_ar: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
     pub rust_dist_src: bool,
@@ -144,6 +143,8 @@ pub struct Target {
     pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
+    pub ar: Option<PathBuf>,
+    pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
@@ -262,7 +263,6 @@ struct Rust {
     use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
     default_linker: Option<String>,
-    default_ar: Option<String>,
     channel: Option<String>,
     musl_root: Option<String>,
     rpath: Option<bool>,
@@ -284,6 +284,8 @@ struct TomlTarget {
     jemalloc: Option<String>,
     cc: Option<String>,
     cxx: Option<String>,
+    ar: Option<String>,
+    linker: Option<String>,
     android_ndk: Option<String>,
     crt_static: Option<bool>,
     musl_root: Option<String>,
@@ -297,6 +299,7 @@ impl Config {
         let mut config = Config::default();
         config.llvm_enabled = true;
         config.llvm_optimize = true;
+        config.llvm_version_check = true;
         config.use_jemalloc = true;
         config.backtrace = true;
         config.rust_optimize = true;
@@ -464,7 +467,6 @@ impl Config {
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
             config.rustc_default_linker = rust.default_linker.clone();
-            config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
 
             match rust.codegen_units {
@@ -487,8 +489,10 @@ impl Config {
                 if let Some(ref s) = cfg.android_ndk {
                     target.ndk = Some(env::current_dir().unwrap().join(s));
                 }
-                target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
+                target.cxx = cfg.cxx.clone().map(PathBuf::from);
+                target.ar = cfg.ar.clone().map(PathBuf::from);
+                target.linker = cfg.linker.clone().map(PathBuf::from);
                 target.crt_static = cfg.crt_static.clone();
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);

@@ -34,16 +34,19 @@ pub use mod1::*;
 // @has foo/struct.Mod2Public.html
 // @!has foo/struct.Mod2Private.html
 
+// @has-dir foo/mod1
 // @!has foo/mod1/index.html
 // @has foo/mod1/struct.Mod1Public.html
 // @!has foo/mod1/struct.Mod1Private.html
 // @!has foo/mod1/struct.Mod2Public.html
 // @!has foo/mod1/struct.Mod2Private.html
 
+// @has-dir foo/mod1/mod2
 // @!has foo/mod1/mod2/index.html
 // @has foo/mod1/mod2/struct.Mod2Public.html
 // @!has foo/mod1/mod2/struct.Mod2Private.html
 
+// @!has-dir foo/mod2
 // @!has foo/mod2/index.html
 // @!has foo/mod2/struct.Mod2Public.html
 // @!has foo/mod2/struct.Mod2Private.html

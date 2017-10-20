@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate gcc;
+extern crate cc;
 extern crate build_helper;
 
 use std::process::Command;
@@ -88,7 +88,7 @@ fn main() {
     let is_crossed = target != host;
 
     let mut optional_components =
-        vec!["x86", "arm", "aarch64", "mips", "powerpc", "pnacl",
+        vec!["x86", "arm", "aarch64", "mips", "powerpc",
              "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
 
     let mut version_cmd = Command::new(&llvm_config);
@@ -115,6 +115,7 @@ fn main() {
                                 "linker",
                                 "asmparser",
                                 "mcjit",
+                                "lto",
                                 "interpreter",
                                 "instrumentation"];
 
@@ -136,7 +137,7 @@ fn main() {
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--cxxflags");
     let cxxflags = output(&mut cmd);
-    let mut cfg = gcc::Build::new();
+    let mut cfg = cc::Build::new();
     cfg.warnings(false);
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build

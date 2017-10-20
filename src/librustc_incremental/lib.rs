@@ -28,17 +28,15 @@ extern crate syntax;
 extern crate syntax_pos;
 
 mod assert_dep_graph;
-mod calculate_svh;
 mod persist;
 
 pub use assert_dep_graph::assert_dep_graph;
-pub use calculate_svh::compute_incremental_hashes_map;
-pub use calculate_svh::IncrementalHashesMap;
-pub use calculate_svh::IchHasher;
 pub use persist::load_dep_graph;
+pub use persist::dep_graph_tcx_init;
 pub use persist::save_dep_graph;
 pub use persist::save_trans_partition;
 pub use persist::save_work_products;
 pub use persist::in_incr_comp_dir;
 pub use persist::prepare_session_directory;
 pub use persist::finalize_session_directory;
+pub use persist::delete_workproduct_files;

@@ -22,9 +22,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
         match expr.kind {
-            ExprKind::Scope { region_scope, value } => {
+            ExprKind::Scope { region_scope, lint_level, value } => {
                 let value = this.hir.mirror(value);
-                this.in_scope((region_scope, source_info), block, |this| {
+                this.in_scope((region_scope, source_info), lint_level, block, |this| {
                     this.stmt_expr(block, value)
                 })
             }

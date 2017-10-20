@@ -30,13 +30,16 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node12.EraseRegions.after.mir
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(0:5) => validate_1/8cd878b::{{impl}}[0]::foo[0] }, BrAnon(0)) Test, _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(0:5) => validate_1/8cd878b::{{impl}}[0]::foo[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[e36f]::{{impl}}[0]::foo[0] }, BrAnon(0)) Test, _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[e36f]::{{impl}}[0]::foo[0] }, BrAnon(1)) mut i32]);
+//         ...
 //         return;
 //     }
 // END rustc.node12.EraseRegions.after.mir
 // START rustc.node23.EraseRegions.after.mir
 // fn main() -> () {
+//     ...
 //     bb0: {
+//         ...
 //         Validate(Suspend(ReScope(Node(ItemLocalId(10)))), [_1: i32]);
 //         _6 = &ReErased mut _1;
 //         Validate(Acquire, [(*_6): i32/ReScope(Node(ItemLocalId(10)))]);
@@ -50,14 +53,16 @@ fn main() {
 //     bb1: {
 //         Validate(Acquire, [_2: ()]);
 //         EndRegion(ReScope(Node(ItemLocalId(10))));
+//         ...
 //         return;
 //     }
 // }
 // END rustc.node23.EraseRegions.after.mir
 // START rustc.node50.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(50)], _2: &ReErased mut i32) -> i32 {
+//     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:11) => validate_1/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(50)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:11) => validate_1/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[e36f]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(50)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[e36f]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
 //         StorageLive(_3);
 //         _3 = _2;
 //         StorageLive(_4);

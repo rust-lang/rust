@@ -13,6 +13,7 @@
 use check::FnCtxt;
 use hir::def::Def;
 use hir::def_id::DefId;
+use namespace::Namespace;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
@@ -70,6 +71,7 @@ pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
     pub out_of_scope_traits: Vec<DefId>,
+    pub lev_candidate: Option<ty::AssociatedItem>,
     pub mode: probe::Mode,
 }
 
@@ -77,12 +79,14 @@ impl<'tcx> NoMatchData<'tcx> {
     pub fn new(static_candidates: Vec<CandidateSource>,
                unsatisfied_predicates: Vec<TraitRef<'tcx>>,
                out_of_scope_traits: Vec<DefId>,
+               lev_candidate: Option<ty::AssociatedItem>,
                mode: probe::Mode)
                -> Self {
         NoMatchData {
             static_candidates,
             unsatisfied_predicates,
             out_of_scope_traits,
+            lev_candidate,
             mode,
         }
     }
@@ -272,7 +276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = self.associated_item(trait_def_id, m_name).unwrap();
+        let method_item = self.associated_item(trait_def_id, m_name, Namespace::Value).unwrap();
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
         assert_eq!(generics.types.len(), 0);
@@ -368,9 +372,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Find item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    pub fn associated_item(&self, def_id: DefId, item_name: ast::Name)
+    pub fn associated_item(&self, def_id: DefId, item_name: ast::Name, ns: Namespace)
                            -> Option<ty::AssociatedItem> {
-        let ident = self.tcx.adjust(item_name, def_id, self.body_id).0;
-        self.tcx.associated_items(def_id).find(|item| item.name.to_ident() == ident)
+        self.tcx.associated_items(def_id)
+                .find(|item| Namespace::from(item.kind) == ns &&
+                             self.tcx.hygienic_eq(item_name, item.name, def_id))
     }
 }

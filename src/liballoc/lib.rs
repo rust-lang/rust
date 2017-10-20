@@ -98,6 +98,7 @@
 #![feature(generic_param_attrs)]
 #![feature(i128_type)]
 #![feature(inclusive_range)]
+#![feature(iter_rfold)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]
@@ -120,6 +121,7 @@
 #![feature(unique)]
 #![feature(unsize)]
 #![feature(allocator_internals)]
+#![feature(on_unimplemented)]
 
 #![cfg_attr(not(test), feature(fused, fn_traits, placement_new_protocol, swap_with_slice, i128))]
 #![cfg_attr(test, feature(test, box_heap))]

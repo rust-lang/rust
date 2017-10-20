@@ -17,6 +17,7 @@
 
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
+extern crate rustc_typeck;
 extern crate syntax_pos;
 
 use rustc::hir::{self, PatKind};
@@ -658,65 +659,6 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
         }
         false
     }
-
-    fn check_item(&mut self, item_id: ast::NodeId) -> &mut Self {
-        self.current_item = self.tcx.hir.local_def_id(item_id);
-        self.span = self.tcx.hir.span(item_id);
-        self
-    }
-
-    // Convenience methods for checking item interfaces
-    fn ty(&mut self) -> &mut Self {
-        self.tcx.type_of(self.current_item).visit_with(self);
-        self
-    }
-
-    fn generics(&mut self) -> &mut Self {
-        for def in &self.tcx.generics_of(self.current_item).types {
-            if def.has_default {
-                self.tcx.type_of(def.def_id).visit_with(self);
-            }
-        }
-        self
-    }
-
-    fn predicates(&mut self) -> &mut Self {
-        let predicates = self.tcx.predicates_of(self.current_item);
-        for predicate in &predicates.predicates {
-            predicate.visit_with(self);
-            match predicate {
-                &ty::Predicate::Trait(poly_predicate) => {
-                    self.check_trait_ref(poly_predicate.skip_binder().trait_ref);
-                },
-                &ty::Predicate::Projection(poly_predicate) => {
-                    let tcx = self.tcx;
-                    self.check_trait_ref(
-                        poly_predicate.skip_binder().projection_ty.trait_ref(tcx)
-                    );
-                },
-                _ => (),
-            };
-        }
-        self
-    }
-
-    fn impl_trait_ref(&mut self) -> &mut Self {
-        if let Some(impl_trait_ref) = self.tcx.impl_trait_ref(self.current_item) {
-            self.check_trait_ref(impl_trait_ref);
-        }
-        self.tcx.predicates_of(self.current_item).visit_with(self);
-        self
-    }
-
-    fn check_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>) -> bool {
-        if !self.item_is_accessible(trait_ref.def_id) {
-            let msg = format!("trait `{}` is private", trait_ref);
-            self.tcx.sess.span_err(self.span, &msg);
-            return true;
-        }
-
-        trait_ref.super_visit_with(self)
-    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
@@ -731,6 +673,35 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         let body = self.tcx.hir.body(body);
         self.visit_body(body);
         self.tables = orig_tables;
+    }
+
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty) {
+        self.span = hir_ty.span;
+        if let Some(ty) = self.tables.node_id_to_type_opt(hir_ty.hir_id) {
+            // Types in bodies.
+            if ty.visit_with(self) {
+                return;
+            }
+        } else {
+            // Types in signatures.
+            // FIXME: This is very ineffective. Ideally each HIR type should be converted
+            // into a semantic type only once and the result should be cached somehow.
+            if rustc_typeck::hir_ty_to_ty(self.tcx, hir_ty).visit_with(self) {
+                return;
+            }
+        }
+
+        intravisit::walk_ty(self, hir_ty);
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef) {
+        if !self.item_is_accessible(trait_ref.path.def.def_id()) {
+            let msg = format!("trait `{:?}` is private", trait_ref.path);
+            self.tcx.sess.span_err(self.span, &msg);
+            return;
+        }
+
+        intravisit::walk_trait_ref(self, trait_ref);
     }
 
     // Check types of expressions
@@ -807,63 +778,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                                         item.id,
                                         &mut self.tables,
                                         self.empty_tables);
-
-        match item.node {
-            hir::ItemExternCrate(..) | hir::ItemMod(..) |
-            hir::ItemUse(..) | hir::ItemGlobalAsm(..) => {}
-            hir::ItemConst(..) | hir::ItemStatic(..) |
-            hir::ItemTy(..) | hir::ItemFn(..) => {
-                self.check_item(item.id).generics().predicates().ty();
-            }
-            hir::ItemTrait(.., ref trait_item_refs) => {
-                self.check_item(item.id).generics().predicates();
-                for trait_item_ref in trait_item_refs {
-                    let check = self.check_item(trait_item_ref.id.node_id);
-                    check.generics().predicates();
-                    if trait_item_ref.kind != hir::AssociatedItemKind::Type ||
-                       trait_item_ref.defaultness.has_value() {
-                        check.ty();
-                    }
-                }
-            }
-            hir::ItemEnum(ref def, _) => {
-                self.check_item(item.id).generics().predicates();
-                for variant in &def.variants {
-                    for field in variant.node.data.fields() {
-                        self.check_item(field.id).ty();
-                    }
-                }
-            }
-            hir::ItemForeignMod(ref foreign_mod) => {
-                for foreign_item in &foreign_mod.items {
-                    self.check_item(foreign_item.id).generics().predicates().ty();
-                }
-            }
-            hir::ItemStruct(ref struct_def, _) |
-            hir::ItemUnion(ref struct_def, _) => {
-                self.check_item(item.id).generics().predicates();
-                for field in struct_def.fields() {
-                    self.check_item(field.id).ty();
-                }
-            }
-            hir::ItemDefaultImpl(..) => {
-                self.check_item(item.id).impl_trait_ref();
-            }
-            hir::ItemImpl(.., ref trait_ref, _, ref impl_item_refs) => {
-                {
-                    let check = self.check_item(item.id);
-                    check.ty().generics().predicates();
-                    if trait_ref.is_some() {
-                        check.impl_trait_ref();
-                    }
-                }
-                for impl_item_ref in impl_item_refs {
-                    let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
-                    self.check_item(impl_item.id).generics().predicates().ty();
-                }
-            }
-        }
-
         self.current_item = self.tcx.hir.local_def_id(item.id);
         intravisit::walk_item(self, item);
         self.tables = orig_tables;
@@ -924,8 +838,13 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                 }
             }
             ty::TyProjection(ref proj) => {
-                let tcx = self.tcx;
-                if self.check_trait_ref(proj.trait_ref(tcx)) {
+                let trait_ref = proj.trait_ref(self.tcx);
+                if !self.item_is_accessible(trait_ref.def_id) {
+                    let msg = format!("trait `{}` is private", trait_ref);
+                    self.tcx.sess.span_err(self.span, &msg);
+                    return true;
+                }
+                if trait_ref.super_visit_with(self) {
                     return true;
                 }
             }

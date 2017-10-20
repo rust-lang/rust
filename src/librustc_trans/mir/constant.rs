@@ -14,6 +14,7 @@ use rustc_const_math::ConstInt::*;
 use rustc_const_math::{ConstInt, ConstMathErr};
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
+use rustc::traits;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -30,7 +31,6 @@ use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_big_integral, C_u32, C_u
 use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, is_undef};
 use common::const_to_opt_u128;
 use consts;
-use monomorphize;
 use type_of;
 use type_::Type;
 use value::Value;
@@ -261,7 +261,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                  substs: &'tcx Substs<'tcx>,
                  args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
                  -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
-        let instance = monomorphize::resolve(ccx.tcx(), def_id, substs);
+        let instance = ty::Instance::resolve(ccx.tcx(),
+                                             ty::ParamEnv::empty(traits::Reveal::All),
+                                             def_id,
+                                             substs).unwrap();
         let mir = ccx.tcx().instance_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }

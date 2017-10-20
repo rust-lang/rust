@@ -18,7 +18,7 @@ use std::hash::Hash;
 use std::mem;
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
     // List of elements. This is used to map from a T to a usize.
     elements: Vec<T>,
@@ -42,10 +42,10 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
     closure: RefCell<Option<BitMatrix>>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
 struct Index(usize);
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 struct Edge {
     source: Index,
     target: Index,

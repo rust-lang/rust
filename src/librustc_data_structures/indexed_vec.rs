@@ -38,6 +38,84 @@ impl Idx for u32 {
     fn index(self) -> usize { self as usize }
 }
 
+#[macro_export]
+macro_rules! newtype_index {
+    // ---- public rules ----
+
+    // Use default constants
+    ($name:ident) => (
+        newtype_index!(
+            @type[$name]
+            @max[::std::u32::MAX]
+            @debug_name[unsafe {::std::intrinsics::type_name::<$name>() }]);
+    );
+
+    // Define any constants
+    ($name:ident { $($tokens:tt)+ }) => (
+        newtype_index!(
+            @type[$name]
+            @max[::std::u32::MAX]
+            @debug_name[unsafe {::std::intrinsics::type_name::<$name>() }]
+            $($tokens)+);
+    );
+
+    // ---- private rules ----
+
+    // Base case, user-defined constants (if any) have already been defined
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr]) => (
+        #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord,
+            RustcEncodable, RustcDecodable)]
+        pub struct $type(pub u32);
+
+        impl Idx for $type {
+            fn new(value: usize) -> Self {
+                assert!(value < ($max) as usize);
+                $type(value as u32)
+            }
+            fn index(self) -> usize {
+                self.0 as usize
+            }
+        }
+
+        impl ::std::fmt::Debug for $type {
+            fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                write!(fmt, "{}{}", $debug_name, self.0)
+            }
+        }
+    );
+
+    // Rewrite final without comma to one that includes comma
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr]
+            $name:ident = $constant:expr) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $name = $constant,);
+    );
+
+    // Rewrite final const without comma to one that includes comma
+    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr]
+            const $name:ident = $constant:expr) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] const $name = $constant,);
+    );
+
+    // Replace existing default for max
+    (@type[$type:ident] @max[$_max:expr] @debug_name[$debug_name:expr]
+            MAX = $max:expr, $($tokens:tt)*) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
+    );
+
+    // Replace existing default for debug_name
+    (@type[$type:ident] @max[$max:expr] @debug_name[$_debug_name:expr]
+            DEBUG_NAME = $debug_name:expr, $($tokens:tt)*) => (
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
+    );
+
+    // Assign a user-defined constant (as final param)
+    (@type[$type:ident] @max[$max:expr] @debug_name[$debug_name:expr]
+            const $name:ident = $constant:expr, $($tokens:tt)*) => (
+        pub const $name: $type = $type($constant);
+        newtype_index!(@type[$type] @max[$max] @debug_name[$debug_name] $($tokens)*);
+    );
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,

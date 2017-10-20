@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::option::*;
+
 fn op1() -> Result<isize, &'static str> { Ok(666) }
 fn op2() -> Result<isize, &'static str> { Err("sadface") }
 
@@ -201,4 +203,31 @@ pub fn test_iter_mut() {
 pub fn test_unwrap_or_default() {
     assert_eq!(op1().unwrap_or_default(), 666);
     assert_eq!(op2().unwrap_or_default(), 0);
+}
+
+#[test]
+fn test_try() {
+    fn try_result_some() -> Option<u8> {
+        let val = Ok(1)?;
+        Some(val)
+    }
+    assert_eq!(try_result_some(), Some(1));
+
+    fn try_result_none() -> Option<u8> {
+        let val = Err(NoneError)?;
+        Some(val)
+    }
+    assert_eq!(try_result_none(), None);
+
+    fn try_result_ok() -> Result<u8, u8> {
+        let val = Ok(1)?;
+        Ok(val)
+    }
+    assert_eq!(try_result_ok(), Ok(1));
+
+    fn try_result_err() -> Result<u8, u8> {
+        let val = Err(1)?;
+        Ok(val)
+    }
+    assert_eq!(try_result_err(), Err(1));
 }

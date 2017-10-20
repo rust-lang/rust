@@ -43,6 +43,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
+#![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
 #![cfg_attr(windows, feature(libc))]
@@ -59,7 +60,7 @@
 #![cfg_attr(stage0, feature(const_fn))]
 #![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
 
-#![recursion_limit="256"]
+#![recursion_limit="512"]
 
 extern crate arena;
 #[macro_use] extern crate bitflags;
@@ -71,7 +72,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate owning_ref;
 extern crate rustc_back;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
 extern crate rustc_const_math;
 extern crate rustc_errors as errors;
@@ -105,13 +106,13 @@ pub mod lint;
 
 pub mod middle {
     pub mod allocator;
+    pub mod borrowck;
     pub mod expr_use_visitor;
     pub mod const_val;
     pub mod cstore;
     pub mod dataflow;
     pub mod dead;
     pub mod dependency_format;
-    pub mod effect;
     pub mod entry;
     pub mod exported_symbols;
     pub mod free_region;
