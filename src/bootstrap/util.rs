@@ -14,8 +14,9 @@
 //! not a lot of interesting happenings here unfortunately.
 
 use std::env;
-use std::fs;
-use std::io::{self, Write};
+use std::str;
+use std::fs::{self, File};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, Instant};
@@ -48,6 +49,22 @@ pub fn copy(src: &Path, dst: &Path) {
     let atime = FileTime::from_last_access_time(&metadata);
     let mtime = FileTime::from_last_modification_time(&metadata);
     t!(filetime::set_file_times(dst, atime, mtime));
+}
+
+pub fn read_stamp_file(stamp: &Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    let mut contents = Vec::new();
+    t!(t!(File::open(stamp)).read_to_end(&mut contents));
+    // This is the method we use for extracting paths from the stamp file passed to us. See
+    // run_cargo for more information (in compile.rs).
+    for part in contents.split(|b| *b == 0) {
+        if part.is_empty() {
+            continue
+        }
+        let path = PathBuf::from(t!(str::from_utf8(part)));
+        paths.push(path);
+    }
+    paths
 }
 
 /// Copies the `src` directory recursively to `dst`. Both are assumed to exist

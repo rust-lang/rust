@@ -612,7 +612,7 @@ impl<'a> Builder<'a> {
         // Set this for all builds to make sure doc builds also get it.
         cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.channel);
 
-        if self.is_verbose() {
+        if self.is_very_verbose() {
             cargo.arg("-v");
         }
         // FIXME: cargo bench does not accept `--release`

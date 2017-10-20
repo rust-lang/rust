@@ -38,24 +38,40 @@ impl Step for CleanTools {
         run.never()
     }
 
-    /// Build a tool in `src/tools`
-    ///
-    /// This will build the specified tool with the specified `host` compiler in
-    /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
 
-        let stamp = match mode {
-            Mode::Libstd => libstd_stamp(build, compiler, target),
-            Mode::Libtest => libtest_stamp(build, compiler, target),
-            Mode::Librustc => librustc_stamp(build, compiler, target),
-            _ => panic!(),
+        // This is for the original compiler, but if we're forced to use stage 1, then
+        // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
+        // we copy the libs forward.
+        let tools_dir = build.stage_out(compiler, Mode::Tool);
+        let compiler = if builder.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
+        } else {
+            compiler
         };
-        let out_dir = build.cargo_out(compiler, Mode::Tool, target);
-        build.clear_if_dirty(&out_dir, &stamp);
+
+        for &cur_mode in &[Mode::Libstd, Mode::Libtest, Mode::Librustc] {
+            let stamp = match cur_mode {
+                Mode::Libstd => libstd_stamp(build, compiler, target),
+                Mode::Libtest => libtest_stamp(build, compiler, target),
+                Mode::Librustc => librustc_stamp(build, compiler, target),
+                _ => panic!(),
+            };
+
+            if build.clear_if_dirty(&tools_dir, &stamp) {
+                break;
+            }
+
+            // If we are a rustc tool, and std changed, we also need to clear ourselves out -- our
+            // dependencies depend on std. Therefore, we iterate up until our own mode.
+            if mode == cur_mode {
+                break;
+            }
+        }
     }
 }
 
@@ -70,7 +86,7 @@ struct ToolBuild {
 }
 
 impl Step for ToolBuild {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.never()
@@ -80,7 +96,7 @@ impl Step for ToolBuild {
     ///
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
@@ -100,7 +116,15 @@ impl Step for ToolBuild {
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
         build.run_expecting(&mut cargo, expectation);
-        build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
+        if expectation == BuildExpectation::Succeeding || expectation == BuildExpectation::None {
+            let cargo_out = build.cargo_out(compiler, Mode::Tool, target)
+                .join(exe(tool, &compiler.host));
+            let bin = build.tools_dir(compiler).join(exe(tool, &compiler.host));
+            copy(&cargo_out, &bin);
+            Some(bin)
+        } else {
+            None
+        }
     }
 }
 
@@ -209,7 +233,7 @@ macro_rules! tool {
                     mode: $mode,
                     path: $path,
                     expectation: BuildExpectation::None,
-                })
+                }).expect("expected to build -- BuildExpectation::None")
             }
         }
         )+
@@ -257,7 +281,7 @@ impl Step for RemoteTestServer {
             mode: Mode::Libstd,
             path: "src/tools/remote-test-server",
             expectation: BuildExpectation::None,
-        })
+        }).expect("expected to build -- BuildExpectation::None")
     }
 }
 
@@ -375,7 +399,7 @@ impl Step for Cargo {
             mode: Mode::Librustc,
             path: "src/tools/cargo",
             expectation: BuildExpectation::None,
-        })
+        }).expect("BuildExpectation::None - expected to build")
     }
 }
 
@@ -386,7 +410,7 @@ pub struct Clippy {
 }
 
 impl Step for Clippy {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -401,7 +425,7 @@ impl Step for Clippy {
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         // Clippy depends on procedural macros (serde), which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
@@ -426,7 +450,7 @@ pub struct Rls {
 }
 
 impl Step for Rls {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -442,7 +466,7 @@ impl Step for Rls {
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         builder.ensure(native::Openssl {
             target: self.target,
         });
@@ -470,7 +494,7 @@ pub struct Rustfmt {
 }
 
 impl Step for Rustfmt {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -486,7 +510,7 @@ impl Step for Rustfmt {
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
@@ -506,7 +530,7 @@ pub struct Miri {
 }
 
 impl Step for Miri {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -522,7 +546,7 @@ impl Step for Miri {
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,

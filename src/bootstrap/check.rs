@@ -340,25 +340,28 @@ impl Step for Miri {
         let host = self.host;
         let compiler = builder.compiler(1, host);
 
-        let miri = builder.ensure(tool::Miri { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
+        if let Some(miri) = builder.ensure(tool::Miri { compiler, target: self.host }) {
+            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
 
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-        // miri tests need to know about the stage sysroot
-        cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
-        cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-        cargo.env("MIRI_PATH", miri);
+            // Don't build tests dynamically, just a pain to work with
+            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+            // miri tests need to know about the stage sysroot
+            cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
+            cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
+            cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+            cargo.env("MIRI_PATH", miri);
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+            builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run_expecting(
-            build,
-            &mut cargo,
-            builder.build.config.toolstate.miri.passes(ToolState::Testing),
-        );
+            try_run_expecting(
+                build,
+                &mut cargo,
+                builder.build.config.toolstate.miri.passes(ToolState::Testing),
+            );
+        } else {
+            eprintln!("failed to test miri: could not build");
+        }
     }
 }
 
@@ -391,24 +394,27 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let clippy = builder.ensure(tool::Clippy { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
+        if let Some(clippy) = builder.ensure(tool::Clippy { compiler, target: self.host }) {
+            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
 
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-        // clippy tests need to know about the stage sysroot
-        cargo.env("SYSROOT", builder.sysroot(compiler));
-        // clippy tests need to find the driver
-        cargo.env("CLIPPY_DRIVER_PATH", clippy);
+            // Don't build tests dynamically, just a pain to work with
+            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+            // clippy tests need to know about the stage sysroot
+            cargo.env("SYSROOT", builder.sysroot(compiler));
+            // clippy tests need to find the driver
+            cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+            builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run_expecting(
-            build,
-            &mut cargo,
-            builder.build.config.toolstate.clippy.passes(ToolState::Testing),
-        );
+            try_run_expecting(
+                build,
+                &mut cargo,
+                builder.build.config.toolstate.clippy.passes(ToolState::Testing),
+            );
+        } else {
+            eprintln!("failed to test clippy: could not build");
+        }
     }
 }
 

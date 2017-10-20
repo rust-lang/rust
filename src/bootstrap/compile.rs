@@ -29,7 +29,7 @@ use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 use serde_json;
 
-use util::{exe, libdir, is_dylib, copy};
+use util::{exe, libdir, is_dylib, copy, read_stamp_file};
 use {Build, Compiler, Mode};
 use native;
 use tool;
@@ -102,7 +102,7 @@ impl Step for Std {
             copy_musl_third_party_objects(build, target, &libdir);
         }
 
-        let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
+        let out_dir = build.stage_out(compiler, Mode::Libstd);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         std_cargo(build, &compiler, target, &mut cargo);
@@ -354,7 +354,7 @@ impl Step for Test {
         let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
         println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target);
-        let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
+        let out_dir = build.stage_out(compiler, Mode::Libtest);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         test_cargo(build, &compiler, target, &mut cargo);
@@ -480,8 +480,9 @@ impl Step for Rustc {
         println!("Building stage{} compiler artifacts ({} -> {})",
                  compiler.stage, &compiler.host, target);
 
-        let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
-        build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
+        let stage_out = builder.stage_out(compiler, Mode::Librustc);
+        build.clear_if_dirty(&stage_out, &libstd_stamp(build, compiler, target));
+        build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         rustc_cargo(build, &compiler, target, &mut cargo);
@@ -757,15 +758,7 @@ impl Step for Assemble {
 /// `sysroot_dst` provided.
 fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
     t!(fs::create_dir_all(&sysroot_dst));
-    let mut contents = Vec::new();
-    t!(t!(File::open(stamp)).read_to_end(&mut contents));
-    // This is the method we use for extracting paths from the stamp file passed to us. See
-    // run_cargo for more information (in this file).
-    for part in contents.split(|b| *b == 0) {
-        if part.is_empty() {
-            continue
-        }
-        let path = Path::new(t!(str::from_utf8(part)));
+    for path in read_stamp_file(stamp) {
         copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
     }
 }
@@ -938,6 +931,8 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
     let max = max.unwrap();
     let max_path = max_path.unwrap();
     if stamp_contents == new_contents && max <= stamp_mtime {
+        build.verbose(&format!("not updating {:?}; contents equal and {} <= {}",
+                stamp, max, stamp_mtime));
         return
     }
     if max > stamp_mtime {
