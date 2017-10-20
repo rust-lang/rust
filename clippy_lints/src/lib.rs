@@ -91,6 +91,7 @@ pub mod eq_op;
 pub mod escape;
 pub mod eta_reduction;
 pub mod eval_order_dependence;
+pub mod explicit_write;
 pub mod format;
 pub mod formatting;
 pub mod functions;
@@ -146,7 +147,6 @@ pub mod serde_api;
 pub mod shadow;
 pub mod should_assert_eq;
 pub mod strings;
-pub mod explicit_write;
 pub mod swap;
 pub mod temporary_assignment;
 pub mod transmute;
@@ -354,7 +354,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
         int_plus_one::INT_PLUS_ONE,
-        invalid_ref::INVALID_REF,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         matches::SINGLE_MATCH_ELSE,
         mem_forget::MEM_FORGET,
@@ -372,6 +371,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         non_expressive_names::SIMILAR_NAMES,
         print::PRINT_STDOUT,
         print::USE_DEBUG,
+        ranges::RANGE_PLUS_ONE,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,
@@ -431,6 +431,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         eta_reduction::REDUNDANT_CLOSURE,
         eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         eval_order_dependence::EVAL_ORDER_DEPENDENCE,
+        explicit_write::EXPLICIT_WRITE,
         format::USELESS_FORMAT,
         formatting::POSSIBLE_MISSING_COMMA,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
@@ -441,6 +442,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
         infinite_iter::INFINITE_ITER,
+        invalid_ref::INVALID_REF,
         is_unit_expr::UNIT_EXPR,
         large_enum_variant::LARGE_ENUM_VARIANT,
         len_zero::LEN_WITHOUT_IS_EMPTY,
@@ -485,6 +487,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::ITER_SKIP_NEXT,
         methods::NEW_RET_NO_SELF,
         methods::OK_EXPECT,
+        methods::OPTION_MAP_OR_NONE,
         methods::OR_FUN_CALL,
         methods::SEARCH_IS_SOME,
         methods::SHOULD_IMPLEMENT_TRAIT,
@@ -534,6 +537,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ptr::MUT_FROM_REF,
         ptr::PTR_ARG,
         ranges::ITERATOR_STEP_BY_ZERO,
+        ranges::RANGE_MINUS_ONE,
         ranges::RANGE_ZIP_WITH_LEN,
         reference::DEREF_ADDROF,
         regex::INVALID_REGEX,
@@ -544,17 +548,16 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         serde_api::SERDE_API_MISUSE,
         should_assert_eq::SHOULD_ASSERT_EQ,
         strings::STRING_LIT_AS_BYTES,
-        explicit_write::EXPLICIT_WRITE,
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::CROSSPOINTER_TRANSMUTE,
+        transmute::TRANSMUTE_INT_TO_BOOL,
+        transmute::TRANSMUTE_INT_TO_CHAR,
+        transmute::TRANSMUTE_INT_TO_FLOAT,
         transmute::TRANSMUTE_PTR_TO_REF,
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
-        transmute::TRANSMUTE_INT_TO_CHAR,
-        transmute::TRANSMUTE_INT_TO_BOOL,
-        transmute::TRANSMUTE_INT_TO_FLOAT,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BORROWED_BOX,
         types::BOX_VEC,
