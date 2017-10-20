@@ -836,11 +836,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 
         // don't lint for constant values
         // FIXME: can we `expect` here instead of match?
-        let owner = cx.tcx.hir.get_parent(arg.id);
-        let owner_def = cx.tcx.hir.local_def_id(owner);
+        let owner_def = cx.tcx.hir.get_parent_did(arg.id);
         let promotable = cx.tcx
             .rvalue_promotable_map(owner_def)
-            .contains_key(&arg.hir_id.local_id);
+            [&arg.hir_id.local_id];
         if promotable {
             return;
         }
