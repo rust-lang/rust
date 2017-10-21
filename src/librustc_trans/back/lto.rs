@@ -343,8 +343,7 @@ fn thin_lto(diag_handler: &Handler,
             info!("local module: {} - {}", i, module.llmod_id);
             let llvm = module.llvm().expect("can't lto pretranslated module");
             let name = CString::new(module.llmod_id.clone()).unwrap();
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(llvm.llmod);
-            let buffer = ThinBuffer(buffer);
+            let buffer = ThinBuffer::new(llvm.llmod);
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: name.as_ptr(),
                 data: buffer.data().as_ptr(),
@@ -499,13 +498,13 @@ unsafe impl Send for ModuleBuffer {}
 unsafe impl Sync for ModuleBuffer {}
 
 impl ModuleBuffer {
-    fn new(m: ModuleRef) -> ModuleBuffer {
+    pub fn new(m: ModuleRef) -> ModuleBuffer {
         ModuleBuffer(unsafe {
             llvm::LLVMRustModuleBufferCreate(m)
         })
     }
 
-    fn data(&self) -> &[u8] {
+    pub fn data(&self) -> &[u8] {
         unsafe {
             let ptr = llvm::LLVMRustModuleBufferPtr(self.0);
             let len = llvm::LLVMRustModuleBufferLen(self.0);
@@ -545,13 +544,20 @@ impl Drop for ThinData {
     }
 }
 
-struct ThinBuffer(*mut llvm::ThinLTOBuffer);
+pub struct ThinBuffer(*mut llvm::ThinLTOBuffer);
 
 unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    fn data(&self) -> &[u8] {
+    pub fn new(m: ModuleRef) -> ThinBuffer {
+        unsafe {
+            let buffer = llvm::LLVMRustThinLTOBufferCreate(m);
+            ThinBuffer(buffer)
+        }
+    }
+
+    pub fn data(&self) -> &[u8] {
         unsafe {
             let ptr = llvm::LLVMRustThinLTOBufferPtr(self.0) as *const _;
             let len = llvm::LLVMRustThinLTOBufferLen(self.0);

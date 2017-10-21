@@ -64,6 +64,7 @@ extern crate serialize;
 extern crate cc; // Used to locate MSVC
 
 pub use base::trans_crate;
+use back::bytecode::RLIB_BYTECODE_EXTENSION;
 
 pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
@@ -90,7 +91,7 @@ mod diagnostics;
 
 pub mod back {
     mod archive;
-    mod bytecode;
+    pub mod bytecode;
     mod command;
     pub(crate) mod linker;
     pub mod link;
@@ -227,21 +228,37 @@ impl ModuleTranslation {
     pub fn into_compiled_module(self,
                                 emit_obj: bool,
                                 emit_bc: bool,
+                                emit_bc_compressed: bool,
                                 outputs: &OutputFilenames) -> CompiledModule {
         let pre_existing = match self.source {
             ModuleSource::Preexisting(_) => true,
             ModuleSource::Translated(_) => false,
         };
-        let object = outputs.temp_path(OutputType::Object, Some(&self.name));
+        let object = if emit_obj {
+            Some(outputs.temp_path(OutputType::Object, Some(&self.name)))
+        } else {
+            None
+        };
+        let bytecode = if emit_bc {
+            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name)))
+        } else {
+            None
+        };
+        let bytecode_compressed = if emit_bc_compressed {
+            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name))
+                    .with_extension(RLIB_BYTECODE_EXTENSION))
+        } else {
+            None
+        };
 
         CompiledModule {
             llmod_id: self.llmod_id,
             name: self.name.clone(),
             kind: self.kind,
             pre_existing,
-            emit_obj,
-            emit_bc,
             object,
+            bytecode,
+            bytecode_compressed,
         }
     }
 }
@@ -250,11 +267,11 @@ impl ModuleTranslation {
 pub struct CompiledModule {
     pub name: String,
     pub llmod_id: String,
-    pub object: PathBuf,
     pub kind: ModuleKind,
     pub pre_existing: bool,
-    pub emit_obj: bool,
-    pub emit_bc: bool,
+    pub object: Option<PathBuf>,
+    pub bytecode: Option<PathBuf>,
+    pub bytecode_compressed: Option<PathBuf>,
 }
 
 pub enum ModuleSource {
@@ -289,6 +306,7 @@ pub struct CrateTranslation {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
     allocator_module: Option<CompiledModule>,
+    metadata_module: CompiledModule,
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
     windows_subsystem: Option<String>,
