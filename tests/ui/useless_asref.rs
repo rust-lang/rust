@@ -1,5 +1,7 @@
 #![deny(useless_asref)]
 
+use std::fmt::Debug;
+
 struct FakeAsRef;
 
 #[allow(should_implement_trait)]
@@ -54,6 +56,9 @@ fn not_ok() {
         foo_rslice(mrrrrrslice);
     }
     foo_rrrrmr((&&&&MoreRef).as_ref());
+
+    generic_not_ok(mrslice);
+    generic_ok(mrslice);
 }
 
 fn ok() {
@@ -87,7 +92,26 @@ fn ok() {
     }
     FakeAsRef.as_ref();
     foo_rrrrmr(MoreRef.as_ref());
+
+    generic_not_ok(arr.as_mut());
+    generic_ok(&mut arr);
 }
+
+fn foo_mrt<T: Debug + ?Sized>(t: &mut T) { println!("{:?}", t); }
+fn foo_rt<T: Debug + ?Sized>(t: &T) { println!("{:?}", t); }
+
+fn generic_not_ok<T: AsMut<T> + AsRef<T> + Debug + ?Sized>(mrt: &mut T) {
+    foo_mrt(mrt.as_mut());
+    foo_mrt(mrt);
+    foo_rt(mrt.as_ref());
+    foo_rt(mrt);
+}
+
+fn generic_ok<U: AsMut<T> + AsRef<T> + ?Sized, T: Debug + ?Sized>(mru: &mut U) {
+    foo_mrt(mru.as_mut());
+    foo_rt(mru.as_ref());
+}
+
 fn main() {
     not_ok();
     ok();
