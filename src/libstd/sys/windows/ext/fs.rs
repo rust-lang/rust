@@ -32,7 +32,7 @@ pub trait FileExt {
     /// function, it is set to the end of the read.
     ///
     /// Reading beyond the end of the file will always return with a length of
-    /// 0.
+    /// 0\.
     ///
     /// Note that similar to `File::read`, it is not an error to return with a
     /// short read. When returning from such a short read, the file pointer is

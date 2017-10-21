@@ -411,10 +411,12 @@ pub trait AsciiExt {
     fn is_ascii_hexdigit(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII punctuation character:
+    ///
     /// U+0021 ... U+002F `! " # $ % & ' ( ) * + , - . /`
     /// U+003A ... U+0040 `: ; < = > ? @`
-    /// U+005B ... U+0060 `[ \\ ] ^ _ \``
+    /// U+005B ... U+0060 ``[ \\ ] ^ _ ` ``
     /// U+007B ... U+007E `{ | } ~`
+    ///
     /// For strings, true if all characters in the string are
     /// ASCII punctuation.
     ///

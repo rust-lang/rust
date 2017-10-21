@@ -498,18 +498,46 @@ impl TcpStream {
 
     /// Moves this TCP stream into or out of nonblocking mode.
     ///
-    /// On Unix this corresponds to calling fcntl, and on Windows this
-    /// corresponds to calling ioctlsocket.
+    /// This will result in `read`, `write`, `recv` and `send` operations
+    /// becoming nonblocking, i.e. immediately returning from their calls.
+    /// If the IO operation is successful, `Ok` is returned and no further
+    /// action is required. If the IO operation could not be completed and needs
+    /// to be retried, an error with kind [`io::ErrorKind::WouldBlock`] is
+    /// returned.
+    ///
+    /// On Unix platforms, calling this method corresponds to calling `fcntl`
+    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples
     ///
+    /// Reading bytes from a TCP stream in non-blocking mode:
+    ///
     /// ```no_run
+    /// use std::io::{self, Read};
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
-    ///                        .expect("Couldn't connect to the server...");
+    /// let mut stream = TcpStream::connect("127.0.0.1:7878")
+    ///     .expect("Couldn't connect to the server...");
     /// stream.set_nonblocking(true).expect("set_nonblocking call failed");
+    ///
+    /// # fn wait_for_fd() { unimplemented!() }
+    /// let mut buf = vec![];
+    /// loop {
+    ///     match stream.read_to_end(&mut buf) {
+    ///         Ok(_) => break,
+    ///         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///             // wait until network socket is ready, typically implemented
+    ///             // via platform-specific APIs such as epoll or IOCP
+    ///             wait_for_fd();
+    ///         }
+    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///     };
+    /// };
+    /// println!("bytes: {:?}", buf);
     /// ```
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
@@ -780,17 +808,48 @@ impl TcpListener {
 
     /// Moves this TCP stream into or out of nonblocking mode.
     ///
-    /// On Unix this corresponds to calling fcntl, and on Windows this
-    /// corresponds to calling ioctlsocket.
+    /// This will result in the `accept` operation becoming nonblocking,
+    /// i.e. immediately returning from their calls. If the IO operation is
+    /// successful, `Ok` is returned and no further action is required. If the
+    /// IO operation could not be completed and needs to be retried, an error
+    /// with kind [`io::ErrorKind::WouldBlock`] is returned.
+    ///
+    /// On Unix platforms, calling this method corresponds to calling `fcntl`
+    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples
     ///
+    /// Bind a TCP listener to an address, listen for connections, and read
+    /// bytes in nonblocking mode:
+    ///
     /// ```no_run
+    /// use std::io;
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     /// listener.set_nonblocking(true).expect("Cannot set non-blocking");
+    ///
+    /// # fn wait_for_fd() { unimplemented!() }
+    /// # fn handle_connection(stream: std::net::TcpStream) { unimplemented!() }
+    /// for stream in listener.incoming() {
+    ///     match stream {
+    ///         Ok(s) => {
+    ///             // do something with the TcpStream
+    ///             handle_connection(s);
+    ///         }
+    ///         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///             // wait until network socket is ready, typically implemented
+    ///             // via platform-specific APIs such as epoll or IOCP
+    ///             wait_for_fd();
+    ///             continue;
+    ///         }
+    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///     }
+    /// }
     /// ```
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
