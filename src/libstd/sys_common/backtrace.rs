@@ -71,9 +71,9 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
         filter_frames(&frames[..nb_frames], format, &context);
     if skipped_before + skipped_after > 0 {
         writeln!(w, "note: Some details are omitted, \
-                     run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
+                     run with `RUST_BACKTRACE=full` for a verbose backtrace.\r")?;
     }
-    writeln!(w, "stack backtrace:")?;
+    writeln!(w, "\rstack backtrace:")?;
 
     let filtered_frames = &frames[..nb_frames - skipped_after];
     for (index, frame) in filtered_frames.iter().skip(skipped_before).enumerate() {
@@ -84,7 +84,7 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
             output_fileline(w, file, line, format)
         }, &context)?;
         if has_more_filenames {
-            w.write_all(b" <... and possibly more>")?;
+            w.write_all(b"\r <... and possibly more>")?;
         }
     }
 
@@ -194,7 +194,7 @@ fn output(w: &mut Write, idx: usize, frame: Frame,
         Some(string) => demangle(w, string, format)?,
         None => w.write_all(b"<unknown>")?,
     }
-    w.write_all(b"\n")
+    w.write_all(b"\r\n")
 }
 
 /// Print the filename and line number of the backtrace frame.
