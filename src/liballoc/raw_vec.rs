@@ -235,7 +235,60 @@ impl<T, A: Alloc> RawVec<T, A> {
         }
     }
 
-    /// Doubles the size of the type's backing allocation. This is common enough
+    /// Grows the vector capacity by `capacity_increase`.
+    ///
+    /// It allows implementing amortized O(1) `push` on vector-like containers.
+    ///
+    /// # Attributes
+    ///
+    /// - `#[inline]`: LLVM is able to completely elide memory allocations in
+    ///   many cases if it can "see" where memory is allocated and freed.
+    /// - `#[cold]`: calling this function is a "rare" event
+    ///
+    #[inline]
+    #[cold]
+    pub fn grow_by(&mut self, capacity_increase: usize) {
+        let elem_size = mem::size_of::<T>();
+        assert!(elem_size != 0, "RawVecs of zero-sized types can't grow");
+
+        let (new_cap, uniq) = match self.current_layout() {
+            Some(cur) => {
+                // The invariant `elem_size * self.cap <= isize::MAX` is
+                // maintained by `alloc_guard`; the alignment will never be too
+                // large as to "not be specifiable" (so we can use
+                // `from_size_align_unchecked`).
+                let new_cap = Self::suitable_capacity(self.cap, capacity_increase);
+                let new_size = new_cap * elem_size;
+                let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, cur.align()) };
+                let (_, usable_size) = self.a.usable_size(&new_layout);
+                let new_layout = unsafe { Layout::from_size_align_unchecked(usable_size, cur.align()) };
+                alloc_guard(usable_size);
+                let ptr_res = unsafe { self.a.realloc(self.ptr.as_ptr() as *mut u8,
+                                             cur,
+                                                      new_layout) };
+                match ptr_res {
+                    Ok(ptr) => (new_cap, unsafe { Unique::new_unchecked(ptr as *mut T) }),
+                    Err(e) => self.a.oom(e),
+                }
+            }
+            None => {
+                let new_cap = Self::suitable_capacity(self.cap, capacity_increase);
+                let align = mem::align_of::<T>();
+                let new_size = new_cap * elem_size;
+                let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, align) };
+                let (_, new_cap) = self.a.usable_size(&new_layout);;
+                alloc_guard(new_cap);
+                match self.a.alloc_array::<T>(new_cap) {
+                    Ok(ptr) => (new_cap, ptr),
+                    Err(e) => self.a.oom(e),
+                }
+            }
+        };
+        self.ptr = uniq;
+        self.cap = new_cap;
+    }
+
+    /// Increases the size of the type's backing allocation. This is common enough
     /// to want to do that it's easiest to just have a dedicated method. Slightly
     /// more efficient logic can be provided for this than the general case.
     ///
@@ -286,53 +339,77 @@ impl<T, A: Alloc> RawVec<T, A> {
     #[inline(never)]
     #[cold]
     pub fn double(&mut self) {
-        unsafe {
-            let elem_size = mem::size_of::<T>();
-
-            // since we set the capacity to usize::MAX when elem_size is
-            // 0, getting to here necessarily means the RawVec is overfull.
-            assert!(elem_size != 0, "capacity overflow");
-
-            let (new_cap, uniq) = match self.current_layout() {
-                Some(cur) => {
-                    // Since we guarantee that we never allocate more than
-                    // isize::MAX bytes, `elem_size * self.cap <= isize::MAX` as
-                    // a precondition, so this can't overflow. Additionally the
-                    // alignment will never be too large as to "not be
-                    // satisfiable", so `Layout::from_size_align` will always
-                    // return `Some`.
-                    //
-                    // tl;dr; we bypass runtime checks due to dynamic assertions
-                    // in this module, allowing us to use
-                    // `from_size_align_unchecked`.
-                    let new_cap = 2 * self.cap;
-                    let new_size = new_cap * elem_size;
-                    let new_layout = Layout::from_size_align_unchecked(new_size, cur.align());
-                    alloc_guard(new_size);
-                    let ptr_res = self.a.realloc(self.ptr.as_ptr() as *mut u8,
-                                                 cur,
-                                                 new_layout);
-                    match ptr_res {
-                        Ok(ptr) => (new_cap, Unique::new_unchecked(ptr as *mut T)),
-                        Err(e) => self.a.oom(e),
-                    }
-                }
-                None => {
-                    // skip to 4 because tiny Vec's are dumb; but not if that
-                    // would cause overflow
-                    let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
-                    match self.a.alloc_array::<T>(new_cap) {
-                        Ok(ptr) => (new_cap, ptr),
-                        Err(e) => self.a.oom(e),
-                    }
-                }
-            };
-            self.ptr = uniq;
-            self.cap = new_cap;
-        }
+        let cap = self.cap;
+        self.grow_by(cap)
     }
 
-    /// Attempts to double the size of the type's backing allocation in place. This is common
+    /// Given a `current_capacity` and a desired `capacity_increase` returns a
+    /// suitable capacity for the `RawVec` such that `suitable_capacity >=
+    /// current_capacity + capacity_increase`.
+    ///
+    /// # Panics
+    ///
+    /// Panics on overflow if `current_capacity + capacity_increase >
+    /// std::usize::MAX`.
+    /// 
+    ///
+    /// # Growth strategy
+    ///
+    /// RawVec grows differently depending on:
+    ///
+    /// - 1. initial size: grows from zero to at least 64 bytes;
+    ///   use `with_capacity` to avoid a growth from zero.
+    ///
+    /// - 2. vector size:
+    ///   - small vectors (<= 4096 bytes) and large vectors (>= 4096 * 32 bytes)
+    ///   grow with a growth factor of 2x.
+    ///   - otherwise (medium-sized vectors) grow with a growth factor of 1.5x.
+    ///
+    /// # Growth factor
+    ///
+    /// Medium-sized vectors' growth-factor is chosen to allow reusing memory from
+    /// previous allocations. Previously freed memory can be reused after
+    ///
+    /// - 4 reallocations for a growth factor of 1.5x
+    /// - 3 reallocations for a growth factor of 1.45x
+    /// - 2 reallocations for a growth factor of 1.3x
+    ///
+    /// Which one is better [is application
+    /// dependent](https://stackoverflow.com/questions/1100311/what-is-the-ideal-growth-rate-for-a-dynamically-allocated-array),
+    /// also some claim that [the golden ration (1.618) is
+    /// optimal](https://crntaylor.wordpress.com/2011/07/15/optimal-memory-reallocation-and-the-golden-ratio/).
+    /// The trade-off is having to wait for many reallocations to be able to
+    /// reuse old memory.
+    ///
+    /// Note: a factor of 2x _never_ allows reusing previously-freed memory.
+    ///
+    #[inline]
+    fn suitable_capacity(current_capacity: usize, capacity_increase: usize) -> usize {
+        let elem_size = mem::size_of::<T>();
+        assert!(elem_size != 0, "RawVecs of zero-sized types can't grow");
+
+        // Computes the capacity from the `current_capacity` following the
+        // growth-strategy:
+        let growth_capacity = match current_capacity {
+            // Empty vector => at least 64 bytes
+            0 => (64 / elem_size).max(1),
+            // Small and large vectors (<= 4096 bytes, and >= 4096 * 32 bytes):
+            //
+            // FIXME: jemalloc specific behavior, allocators should provide a
+            // way to query the byte size of blocks that can grow inplace.
+            //
+            // jemalloc can never grow in place small blocks but blocks larger
+            // than or equal to 4096 bytes can be expanded in place:
+            c if c <  4096 / elem_size => 2 * c,
+            c if c > 4096 * 32 / elem_size => 2 * c,
+            // Medium sized vectors in the [4096, 4096 * 32) bytes range:
+            c => (c * 3 + 1) / 2
+        };
+
+        growth_capacity.max(current_capacity + capacity_increase)
+    }
+
+    /// Attempts to increase the size of the type's backing allocation in place. This is common
     /// enough to want to do that it's easiest to just have a dedicated method. Slightly
     /// more efficient logic can be provided for this than the general case.
     ///
@@ -344,41 +421,50 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///   all `usize::MAX` slots in your imaginary buffer.
     /// * Panics on 32-bit platforms if the requested capacity exceeds
     ///   `isize::MAX` bytes.
+    pub fn double_in_place(&mut self) -> bool {
+        let capacity_increase = self.cap;
+        self.grow_by_in_place(capacity_increase)
+    }
+
+    /// Attempts to grow the vector capacity by `capacity_increase`.
+    ///
+    /// It allows implementing amortized O(1) `push` on vector-like containers.
+    ///
+    /// # Attributes
+    ///
+    /// - `#[inline]`: LLVM is able to completely elide memory allocations in
+    ///   many cases if it can "see" where memory is allocated and freed.
+    /// - `#[cold]`: calling this function is a "rare" event
+    ///
     #[inline(never)]
     #[cold]
-    pub fn double_in_place(&mut self) -> bool {
-        unsafe {
-            let elem_size = mem::size_of::<T>();
-            let old_layout = match self.current_layout() {
-                Some(layout) => layout,
-                None => return false, // nothing to double
-            };
+    pub fn grow_by_in_place(&mut self, capacity_increase: usize) -> bool {
+        let elem_size = mem::size_of::<T>();
+        assert!(elem_size != 0, "RawVecs of zero-sized types can't grow");
+        let old_layout = match self.current_layout() {
+            Some(layout) => layout,
+            None => return false, // nothing to grow
+        };
 
-            // since we set the capacity to usize::MAX when elem_size is
-            // 0, getting to here necessarily means the RawVec is overfull.
-            assert!(elem_size != 0, "capacity overflow");
-
-            // Since we guarantee that we never allocate more than isize::MAX
-            // bytes, `elem_size * self.cap <= isize::MAX` as a precondition, so
-            // this can't overflow.
-            //
-            // Similarly like with `double` above we can go straight to
-            // `Layout::from_size_align_unchecked` as we know this won't
-            // overflow and the alignment is sufficiently small.
-            let new_cap = 2 * self.cap;
-            let new_size = new_cap * elem_size;
-            alloc_guard(new_size);
-            let ptr = self.ptr() as *mut _;
-            let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
-            match self.a.grow_in_place(ptr, old_layout, new_layout) {
-                Ok(_) => {
-                    // We can't directly divide `size`.
-                    self.cap = new_cap;
-                    true
-                }
-                Err(_) => {
-                    false
-                }
+        // The invariant `elem_size * self.cap <= isize::MAX` is
+        // maintained by `alloc_guard`; the alignment will never be too
+        // large as to "not be satisfiable" (so we can use
+        // `from_size_align_unchecked`).
+        let new_cap = Self::suitable_capacity(self.cap, capacity_increase);
+        let new_size = new_cap * elem_size;
+        let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, old_layout.align()) };
+        let (_, usable_size) = self.a.usable_size(&new_layout);
+        let new_layout = unsafe { Layout::from_size_align_unchecked(usable_size, old_layout.align()) };
+        alloc_guard(usable_size);
+        let ptr = self.ptr() as *mut _;
+        match unsafe { self.a.grow_in_place(ptr, old_layout, new_layout) } {
+            Ok(_) => {
+                // We can't directly divide `size`.
+                self.cap = new_cap;
+                true
+            }
+            Err(_) => {
+                false
             }
         }
     }
@@ -792,6 +878,7 @@ mod tests {
             assert!(v.cap() >= 12 + 12 / 2);
         }
     }
+
 
 
 }

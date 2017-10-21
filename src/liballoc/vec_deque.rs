@@ -25,6 +25,7 @@ use core::ops::{Index, IndexMut, Place, Placer, InPlace};
 use core::ptr;
 use core::ptr::Shared;
 use core::slice;
+use core::intrinsics;
 
 use core::hash::{Hash, Hasher};
 use core::cmp;
@@ -139,7 +140,7 @@ impl<T> VecDeque<T> {
     /// Returns `true` if and only if the buffer is at full capacity.
     #[inline]
     fn is_full(&self) -> bool {
-        self.cap() - self.len() == 1
+        unsafe { intrinsics::unlikely(self.cap() - self.len() == 1) }
     }
 
     /// Returns the index in the underlying buffer for a given logical element
@@ -1754,7 +1755,7 @@ impl<T> VecDeque<T> {
     fn grow_if_necessary(&mut self) {
         if self.is_full() {
             let old_cap = self.cap();
-            self.buf.double();
+            self.buf.grow_by(1);
             unsafe {
                 self.handle_cap_increase(old_cap);
             }
