@@ -301,6 +301,7 @@ impl<'a> FmtVisitor<'a> {
         fn_sig: &FnSig,
         span: Span,
         block: &ast::Block,
+        inner_attrs: Option<&[ast::Attribute]>,
     ) -> Option<String> {
         let context = self.get_context();
 
@@ -329,7 +330,8 @@ impl<'a> FmtVisitor<'a> {
             result.push(' ');
         }
 
-        self.single_line_fn(&result, block).or_else(|| Some(result))
+        self.single_line_fn(&result, block, inner_attrs)
+            .or_else(|| Some(result))
     }
 
     pub fn rewrite_required_fn(
@@ -360,20 +362,25 @@ impl<'a> FmtVisitor<'a> {
         Some(result)
     }
 
-    fn single_line_fn(&self, fn_str: &str, block: &ast::Block) -> Option<String> {
-        if fn_str.contains('\n') {
+    fn single_line_fn(
+        &self,
+        fn_str: &str,
+        block: &ast::Block,
+        inner_attrs: Option<&[ast::Attribute]>,
+    ) -> Option<String> {
+        if fn_str.contains('\n') || inner_attrs.map_or(false, |a| !a.is_empty()) {
             return None;
         }
 
         let codemap = self.get_context().codemap;
 
-        if self.config.empty_item_single_line() && is_empty_block(block, codemap)
+        if self.config.empty_item_single_line() && is_empty_block(block, None, codemap)
             && self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width()
         {
             return Some(format!("{}{{}}", fn_str));
         }
 
-        if self.config.fn_single_line() && is_simple_block_stmt(block, codemap) {
+        if self.config.fn_single_line() && is_simple_block_stmt(block, None, codemap) {
             let rewrite = {
                 if let Some(stmt) = block.stmts.first() {
                     match stmt_expr(stmt) {

@@ -115,16 +115,25 @@ pub fn format_expr(
             match expr_type {
                 ExprType::Statement => {
                     if is_unsafe_block(block) {
-                        block.rewrite(context, shape)
-                    } else if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
+                        rewrite_block(block, Some(&expr.attrs), context, shape)
+                    } else if let rw @ Some(_) =
+                        rewrite_empty_block(context, block, Some(&expr.attrs), "", shape)
+                    {
                         // Rewrite block without trying to put it in a single line.
                         rw
                     } else {
                         let prefix = block_prefix(context, block, shape)?;
-                        rewrite_block_with_visitor(context, &prefix, block, shape, true)
+                        rewrite_block_with_visitor(
+                            context,
+                            &prefix,
+                            block,
+                            Some(&expr.attrs),
+                            shape,
+                            true,
+                        )
                     }
                 }
-                ExprType::SubExpression => block.rewrite(context, shape),
+                ExprType::SubExpression => rewrite_block(block, Some(&expr.attrs), context, shape),
             }
         }
         ast::ExprKind::Match(ref cond, ref arms) => {
@@ -290,7 +299,9 @@ pub fn format_expr(
             Some(context.snippet(expr.span).to_owned())
         }
         ast::ExprKind::Catch(ref block) => {
-            if let rw @ Some(_) = rewrite_single_line_block(context, "do catch ", block, shape) {
+            if let rw @ Some(_) =
+                rewrite_single_line_block(context, "do catch ", block, Some(&expr.attrs), shape)
+            {
                 rw
             } else {
                 // 9 = `do catch `
@@ -298,7 +309,12 @@ pub fn format_expr(
                 Some(format!(
                     "{}{}",
                     "do catch ",
-                    block.rewrite(context, Shape::legacy(budget, shape.indent))?
+                    rewrite_block(
+                        block,
+                        Some(&expr.attrs),
+                        context,
+                        Shape::legacy(budget, shape.indent)
+                    )?
                 ))
             }
         }
@@ -347,7 +363,7 @@ where
     let lhs_result = lhs.rewrite(context, lhs_shape)
         .map(|lhs_str| format!("{}{}", pp.prefix, lhs_str))?;
 
-    // Try to the both lhs and rhs on the same line.
+    // Try to put both lhs and rhs on the same line.
     let rhs_orig_result = shape
         .offset_left(last_line_width(&lhs_result) + pp.infix.len())
         .and_then(|s| s.sub_width(pp.suffix.len()))
@@ -564,11 +580,17 @@ fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String
 fn rewrite_empty_block(
     context: &RewriteContext,
     block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
+    prefix: &str,
     shape: Shape,
 ) -> Option<String> {
+    if attrs.map_or(false, |a| !inner_attributes(a).is_empty()) {
+        return None;
+    }
+
     if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) && shape.width >= 2
     {
-        return Some("{}".to_owned());
+        return Some(format!("{}{{}}", prefix));
     }
 
     // If a block contains only a single-line comment, then leave it on one line.
@@ -579,7 +601,7 @@ fn rewrite_empty_block(
         if block.stmts.is_empty() && !comment_str.contains('\n') && !comment_str.starts_with("//")
             && comment_str.len() + 4 <= shape.width
         {
-            return Some(format!("{{ {} }}", comment_str));
+            return Some(format!("{}{{ {} }}", prefix, comment_str));
         }
     }
 
@@ -618,9 +640,10 @@ fn rewrite_single_line_block(
     context: &RewriteContext,
     prefix: &str,
     block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
     shape: Shape,
 ) -> Option<String> {
-    if is_simple_block(block, context.codemap) {
+    if is_simple_block(block, attrs, context.codemap) {
         let expr_shape = shape.offset_left(last_line_width(prefix))?;
         let expr_str = block.stmts[0].rewrite(context, expr_shape)?;
         let result = format!("{}{{ {} }}", prefix, expr_str);
@@ -635,10 +658,11 @@ pub fn rewrite_block_with_visitor(
     context: &RewriteContext,
     prefix: &str,
     block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
     shape: Shape,
     has_braces: bool,
 ) -> Option<String> {
-    if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
+    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, prefix, shape) {
         return rw;
     }
 
@@ -654,31 +678,41 @@ pub fn rewrite_block_with_visitor(
         ast::BlockCheckMode::Default => visitor.last_pos = block.span.lo(),
     }
 
-    visitor.visit_block(block, None, has_braces);
+    let inner_attrs = attrs.map(inner_attributes);
+    visitor.visit_block(block, inner_attrs.as_ref().map(|a| &**a), has_braces);
     Some(format!("{}{}", prefix, visitor.buffer))
 }
 
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        // shape.width is used only for the single line case: either the empty block `{}`,
-        // or an unsafe expression `unsafe { e }`.
-        if let rw @ Some(_) = rewrite_empty_block(context, self, shape) {
-            return rw;
-        }
+        rewrite_block(self, None, context, shape)
+    }
+}
 
-        let prefix = block_prefix(context, self, shape)?;
+fn rewrite_block(
+    block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
+    let prefix = block_prefix(context, block, shape)?;
 
-        let result = rewrite_block_with_visitor(context, &prefix, self, shape, true);
-        if let Some(ref result_str) = result {
-            if result_str.lines().count() <= 3 {
-                if let rw @ Some(_) = rewrite_single_line_block(context, &prefix, self, shape) {
-                    return rw;
-                }
+    // shape.width is used only for the single line case: either the empty block `{}`,
+    // or an unsafe expression `unsafe { e }`.
+    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, &prefix, shape) {
+        return rw;
+    }
+
+    let result = rewrite_block_with_visitor(context, &prefix, block, attrs, shape, true);
+    if let Some(ref result_str) = result {
+        if result_str.lines().count() <= 3 {
+            if let rw @ Some(_) = rewrite_single_line_block(context, &prefix, block, attrs, shape) {
+                return rw;
             }
         }
-
-        result
     }
+
+    result
 }
 
 impl Rewrite for ast::Stmt {
@@ -889,8 +923,8 @@ impl<'a> ControlFlow<'a> {
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
         if let ast::ExprKind::Block(ref else_node) = else_block.node {
-            if !is_simple_block(self.block, context.codemap)
-                || !is_simple_block(else_node, context.codemap)
+            if !is_simple_block(self.block, None, context.codemap)
+                || !is_simple_block(else_node, None, context.codemap)
                 || pat_expr_str.contains('\n')
             {
                 return None;
@@ -1123,7 +1157,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let mut block_context = context.clone();
         block_context.is_if_else_block = self.else_block.is_some();
         let block_str =
-            rewrite_block_with_visitor(&block_context, "", self.block, block_shape, true)?;
+            rewrite_block_with_visitor(&block_context, "", self.block, None, block_shape, true)?;
 
         let mut result = format!("{}{}", cond_str, block_str);
 
@@ -1234,22 +1268,39 @@ pub fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
     contains_comment(&snippet)
 }
 
-// Checks that a block contains no statements, an expression and no comments.
+// Checks that a block contains no statements, an expression and no comments or
+// attributes.
 // FIXME: incorrectly returns false when comment is contained completely within
 // the expression.
-pub fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
+pub fn is_simple_block(
+    block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
+    codemap: &CodeMap,
+) -> bool {
     (block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0])
-        && !block_contains_comment(block, codemap))
+        && !block_contains_comment(block, codemap) && attrs.map_or(true, |a| a.is_empty()))
 }
 
-/// Checks whether a block contains at most one statement or expression, and no comments.
-pub fn is_simple_block_stmt(block: &ast::Block, codemap: &CodeMap) -> bool {
+/// Checks whether a block contains at most one statement or expression, and no
+/// comments or attributes.
+pub fn is_simple_block_stmt(
+    block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
+    codemap: &CodeMap,
+) -> bool {
     block.stmts.len() <= 1 && !block_contains_comment(block, codemap)
+        && attrs.map_or(true, |a| a.is_empty())
 }
 
-/// Checks whether a block contains no statements, expressions, or comments.
-pub fn is_empty_block(block: &ast::Block, codemap: &CodeMap) -> bool {
+/// Checks whether a block contains no statements, expressions, comments, or
+/// inner attributes.
+pub fn is_empty_block(
+    block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
+    codemap: &CodeMap,
+) -> bool {
     block.stmts.is_empty() && !block_contains_comment(block, codemap)
+        && attrs.map_or(true, |a| inner_attributes(a).is_empty())
 }
 
 pub fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
@@ -1577,7 +1628,8 @@ fn rewrite_match_pattern(
 fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bool, &'a ast::Expr) {
     match body.node {
         ast::ExprKind::Block(ref block)
-            if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
+            if !is_unsafe_block(block)
+                && is_simple_block(block, Some(&body.attrs), context.codemap) =>
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (
@@ -1605,7 +1657,10 @@ fn rewrite_match_body(
 ) -> Option<String> {
     let (extend, body) = flatten_arm_body(context, body);
     let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block) = body.node {
-        (true, is_empty_block(block, context.codemap))
+        (
+            true,
+            is_empty_block(block, Some(&body.attrs), context.codemap),
+        )
     } else {
         (false, false)
     };
