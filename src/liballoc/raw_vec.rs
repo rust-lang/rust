@@ -259,15 +259,21 @@ impl<T, A: Alloc> RawVec<T, A> {
                 // `from_size_align_unchecked`).
                 let new_cap = Self::suitable_capacity(self.cap, capacity_increase);
                 let new_size = new_cap * elem_size;
-                let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, cur.align()) };
+                let new_layout = unsafe {
+                    Layout::from_size_align_unchecked(new_size, cur.align())
+                };
                 let (_, usable_size) = self.a.usable_size(&new_layout);
-                let new_layout = unsafe { Layout::from_size_align_unchecked(usable_size, cur.align()) };
+                let new_layout = unsafe {
+                    Layout::from_size_align_unchecked(usable_size, cur.align())
+                };
                 alloc_guard(usable_size);
                 let ptr_res = unsafe { self.a.realloc(self.ptr.as_ptr() as *mut u8,
                                              cur,
                                                       new_layout) };
                 match ptr_res {
-                    Ok(ptr) => (new_cap, unsafe { Unique::new_unchecked(ptr as *mut T) }),
+                    Ok(ptr) => (new_cap, unsafe {
+                        Unique::new_unchecked(ptr as *mut T)
+                    }),
                     Err(e) => self.a.oom(e),
                 }
             }
@@ -351,7 +357,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///
     /// Panics on overflow if `current_capacity + capacity_increase >
     /// std::usize::MAX`.
-    /// 
+    ///
     ///
     /// # Growth strategy
     ///
@@ -452,9 +458,13 @@ impl<T, A: Alloc> RawVec<T, A> {
         // `from_size_align_unchecked`).
         let new_cap = Self::suitable_capacity(self.cap, capacity_increase);
         let new_size = new_cap * elem_size;
-        let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, old_layout.align()) };
+        let new_layout = unsafe {
+            Layout::from_size_align_unchecked(new_size, old_layout.align())
+        };
         let (_, usable_size) = self.a.usable_size(&new_layout);
-        let new_layout = unsafe { Layout::from_size_align_unchecked(usable_size, old_layout.align()) };
+        let new_layout = unsafe {
+            Layout::from_size_align_unchecked(usable_size, old_layout.align())
+        };
         alloc_guard(usable_size);
         let ptr = self.ptr() as *mut _;
         match unsafe { self.a.grow_in_place(ptr, old_layout, new_layout) } {
