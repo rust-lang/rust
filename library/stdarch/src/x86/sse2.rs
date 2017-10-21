@@ -1726,6 +1726,9 @@ pub unsafe fn _mm_cvtpd_ps(a: f64x2) -> f32x4 {
     cvtpd2ps(a)
 }
 
+
+/// Convert packed single-precision (32-bit) floating-point elements in `a` to packed
+/// double-precision (64-bit) floating-point elements.
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(cvtps2pd))]
@@ -1873,7 +1876,9 @@ pub unsafe fn _mm_movemask_pd(a: f64x2) -> i32 {
 
 
 
-
+/// Load 128-bits (composed of 2 packed double-precision (64-bit) floating-point elements)
+/// from memory into the returned vector. mem_addr must be aligned on a 16-byte boundary or
+/// a general-protection exception may be generated.
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(movaps))]
@@ -1881,11 +1886,43 @@ pub unsafe fn _mm_load_pd(mem_addr: *const f64) -> f64x2 {
     *(mem_addr as *const f64x2)
 }
 
+/// Store 128-bits (composed of 2 packed double-precision (64-bit) floating-point elements) from `a`
+/// into memory. mem_addr must be aligned on a 16-byte boundary or a general-protection exception
+/// may be generated.
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(movaps))]
 pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: f64x2) {
     *(mem_addr as *mut f64x2) = a;
+}
+
+/// Store the lower double-precision (64-bit) floating-point element from `a` into 2 contiguous
+/// elements in memory. `mem_addr` must be aligned on a 16-byte boundary or a general-protection
+/// exception may be generated.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_store1_pd(mem_addr: *mut f64, a: f64x2) {
+    let b: f64x2 = simd_shuffle2(a, a, [0, 0]);
+    *(mem_addr as *mut f64x2) = b;
+}
+
+/// Store the lower double-precision (64-bit) floating-point element from `a` into 2 contiguous
+/// elements in memory. `mem_addr` must be aligned on a 16-byte boundary or a general-protection
+/// exception may be generated.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_store_pd1(mem_addr: *mut f64, a: f64x2) {
+    let b: f64x2 = simd_shuffle2(a, a, [0, 0]);
+    *(mem_addr as *mut f64x2) = b;
+}
+
+/// Store 2 double-precision (64-bit) floating-point elements from `a` into memory in reverse order.
+/// `mem_addr` must be aligned on a 16-byte boundary or a general-protection exception may be generated.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: f64x2) {
+    let b: f64x2 = simd_shuffle2(a, a, [1, 0]);
+    *(mem_addr as *mut f64x2) = b;
 }
 
 /// Load a double-precision (64-bit) floating-point element from memory
@@ -1895,6 +1932,41 @@ pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: f64x2) {
 pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> f64x2 {
     let d = *mem_addr;
     f64x2::new(d, d)
+}
+
+/// Load a double-precision (64-bit) floating-point element from memory
+/// into both elements of returned vector.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_load_pd1(mem_addr: *const f64) -> f64x2 {
+    let d = *mem_addr;
+    f64x2::new(d, d)
+}
+
+/// Load 2 double-precision (64-bit) floating-point elements from memory into the returned vector
+/// in reverse order. mem_addr must be aligned on a 16-byte boundary or a general-protection
+/// exception may be generated.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(movapd))]
+pub unsafe fn _mm_loadr_pd(mem_addr: *const f64) -> f64x2 {
+    let a = _mm_load_pd(mem_addr);
+    simd_shuffle2(a, a, [1, 0])
+}
+
+/// Load 128-bits (composed of 2 packed double-precision (64-bit) floating-point elements)
+/// from memory into the returned vector. mem_addr does not need to be aligned on any particular
+/// oundary.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(movups))]
+pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> f64x2 {
+    let mut dst = f64x2::splat(mem::uninitialized());
+    ptr::copy_nonoverlapping(
+        mem_addr as *const u8,
+        &mut dst as *mut f64x2 as *mut u8,
+        mem::size_of::<f64x2>());
+    dst
 }
 
 /// Return vector of type __m128d with undefined elements.
@@ -2068,6 +2140,7 @@ extern {
 mod tests {
     use std::os::raw::c_void;
     use stdsimd_test::simd_test;
+    use test::black_box;  // Used to inhibit constant-folding.
 
     use v128::*;
     use x86::{__m128i, sse2};
@@ -3588,6 +3661,126 @@ mod tests {
     }
 
     #[simd_test = "sse2"]
+    unsafe fn _mm_load_pd() {
+        let vals = &[1.0f64, 2.0, 3.0, 4.0];
+        let mut d = vals.as_ptr();
+
+        // Align d to 16-byte boundary
+        let mut offset = 0;
+        while (d as usize) & 0xf != 0 {
+            d = d.offset(1 as isize);
+            offset += 1;
+        }
+
+        let r = sse2::_mm_load_pd(d);
+        assert_eq!(r, f64x2::new(1.0, 2.0) + f64x2::splat(offset as f64));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_store_pd() {
+        let mut vals = [0.0f64; 4];
+        let a = f64x2::new(1.0, 2.0);
+        let mut d = vals.as_mut_ptr();
+
+        // Align d to 16-byte boundary
+        let mut offset = 0;
+        while (d as usize) & 0xf != 0 {
+            d = d.offset(1 as isize);
+            offset += 1;
+        }
+
+        sse2::_mm_store_pd(d, *black_box(&a));
+        assert_eq!(vals[offset + 0], 1.0);
+        assert_eq!(vals[offset + 1], 2.0);
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_store1_pd() {
+        let mut vals = [0.0f64; 4];
+        let a = f64x2::new(1.0, 2.0);
+        let mut d = vals.as_mut_ptr();
+
+        // Align d to 16-byte boundary
+        let mut offset = 0;
+        while (d as usize) & 0xf != 0 {
+            d = d.offset(1 as isize);
+            offset += 1;
+        }
+
+        sse2::_mm_store1_pd(d, *black_box(&a));
+        assert_eq!(vals[offset + 0], 1.0);
+        assert_eq!(vals[offset + 1], 1.0);
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_store_pd1() {
+        let mut vals = [0.0f64; 4];
+        let a = f64x2::new(1.0, 2.0);
+        let mut d = vals.as_mut_ptr();
+
+        // Align d to 16-byte boundary
+        let mut offset = 0;
+        while (d as usize) & 0xf != 0 {
+            d = d.offset(1 as isize);
+            offset += 1;
+        }
+
+        sse2::_mm_store_pd1(d, *black_box(&a));
+        assert_eq!(vals[offset + 0], 1.0);
+        assert_eq!(vals[offset + 1], 1.0);
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_storer_pd() {
+        let mut vals = [0.0f64; 4];
+        let a = f64x2::new(1.0, 2.0);
+        let mut d = vals.as_mut_ptr();
+
+        // Align d to 16-byte boundary
+        let mut offset = 0;
+        while (d as usize) & 0xf != 0 {
+            d = d.offset(1 as isize);
+            offset += 1;
+        }
+
+        sse2::_mm_storer_pd(d, *black_box(&a));
+        assert_eq!(vals[offset + 0], 2.0);
+        assert_eq!(vals[offset + 1], 1.0);
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_loadr_pd() {
+        let vals = &[1.0f64, 2.0, 3.0, 4.0];
+        let mut d = vals.as_ptr();
+
+        // Align d to 16-byte boundary
+        let mut offset = 0;
+        while (d as usize) & 0xf != 0 {
+            d = d.offset(1 as isize);
+            offset += 1;
+        }
+
+        let r = sse2::_mm_loadr_pd(d);
+        assert_eq!(r, f64x2::new(2.0, 1.0) + f64x2::splat(offset as f64));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_loadu_pd() {
+        let vals = &[1.0f64, 2.0, 3.0, 4.0];
+        let mut d = vals.as_ptr();
+
+        // make sure d is not aligned to 16-byte boundary
+        let mut offset = 0;
+        if (d as usize) & 0xf == 0 {
+            offset = 1;
+            d = d.offset(offset as isize);
+        }
+
+        let r = sse2::_mm_loadu_pd(d);
+        assert_eq!(r, f64x2::new(1.0, 2.0) + f64x2::splat(offset as f64));
+    }
+
+    #[simd_test = "sse2"]
     unsafe fn _mm_cvtpd_ps() {
         use std::{f64,f32};
 
@@ -3793,6 +3986,13 @@ mod tests {
     unsafe fn _mm_load1_pd() {
         let d = -5.0;
         let r = sse2::_mm_load1_pd(&d);
+        assert_eq!(r, f64x2::new(d, d));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_load_pd1() {
+        let d = -5.0;
+        let r = sse2::_mm_load_pd1(&d);
         assert_eq!(r, f64x2::new(d, d));
     }
 }
