@@ -169,7 +169,7 @@ That is, they take an `&mut Providers` and mutate it in place. Usually
 we use the formulation above just because it looks nice, but you could
 as well do `providers.type_of = type_of`, which would be equivalent.
 (Here, `type_of` would be a top-level function, defined as we saw
-before.) So, if we wanted to have add a provider for some other query,
+before.) So, if we want to add a provider for some other query,
 let's call it `fubar`, into the crate above, we might modify the `provide()`
 function like so:
 
@@ -185,7 +185,7 @@ pub fn provide(providers: &mut Providers) {
 fn fubar<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>, key: DefId) -> Fubar<'tcx> { .. }
 ```
 
-NB. Most of the `rustc_*` crate only provide **local
+NB. Most of the `rustc_*` crates only provide **local
 providers**. Almost all **extern providers** wind up going through the
 `rustc_metadata` crate, which loads the information from the crate
 metadata.  But in some cases there are crates that provide queries for
@@ -201,7 +201,7 @@ Well, defining a query takes place in two steps:
 1. first, you have to specify the query name and arguments; and then,
 2. you have to supply query providers where needed.
 
-The specify the query name and arguments, you simply add an entry
+To specify the query name and arguments, you simply add an entry
 to the big macro invocation in `mod.rs`. This will probably have changed
 by the time you read this README, but at present it looks something
 like:
