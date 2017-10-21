@@ -3986,6 +3986,10 @@ details.
 "##,
 
 E0599: r##"
+This error occurs when a method is used on a type which doesn't implement it:
+
+Erroneous code example:
+
 ```compile_fail,E0599
 struct Mouth;
 
