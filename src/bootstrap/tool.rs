@@ -193,12 +193,12 @@ macro_rules! tool {
             }
 
             pub fn tool_default_stage(&self, tool: Tool) -> u32 {
-                // Compile the error-index in the top stage as it depends on
-                // rustdoc, so we want to avoid recompiling rustdoc twice if we
-                // can. Otherwise compile everything else in stage0 as there's
-                // no need to rebootstrap everything
+                // Compile the error-index in the same stage as rustdoc to avoid
+                // recompiling rustdoc twice if we can. Otherwise compile
+                // everything else in stage0 as there's no need to rebootstrap
+                // everything.
                 match tool {
-                    Tool::ErrorIndex => self.top_stage,
+                    Tool::ErrorIndex if self.top_stage >= 2 => self.top_stage,
                     _ => 0,
                 }
             }
