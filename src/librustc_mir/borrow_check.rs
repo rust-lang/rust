@@ -10,6 +10,7 @@
 
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+use rustc::hir;
 use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
@@ -447,9 +448,12 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
                      flow_state: &InProgress<'b, 'gcx, 'tcx>) {
-        // FIXME: also need to check permissions (e.g. reject mut
-        // borrow of immutable ref, moves through non-`Box`-ref)
+
         let (sd, rw) = kind;
+
+        // Check permissions
+        self.check_access_permissions(lvalue_span, rw);
+
         self.each_borrow_involving_path(
             context, (sd, lvalue_span.0), flow_state, |this, _index, borrow, common_prefix| {
                 match (rw, borrow.kind) {
@@ -857,6 +861,154 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
                     lvalue = base;
                     continue;
+                }
+            }
+        }
+    }
+
+    /// Check the permissions for the given lvalue and read or write kind
+    fn check_access_permissions(&self, (lvalue, span): (&Lvalue<'tcx>, Span), kind: ReadOrWrite) {
+        match kind {
+            Write(WriteKind::MutableBorrow(BorrowKind::Unique)) => {
+                if let Err(_lvalue_err) = self.is_unique(lvalue) {
+                    span_bug!(span, "&unique borrow for `{}` should not fail",
+                        self.describe_lvalue(lvalue));
+                }
+            },
+            Write(WriteKind::MutableBorrow(BorrowKind::Mut)) => {
+                if let Err(lvalue_err) = self.is_mutable(lvalue) {
+                    let mut err = self.tcx.cannot_borrow_path_as_mutable(span,
+                        &format!("immutable item `{}`",
+                                  self.describe_lvalue(lvalue)),
+                        Origin::Mir);
+                    err.span_label(span, "cannot borrow as mutable");
+
+                    if lvalue != lvalue_err {
+                        err.note(&format!("Value not mutable causing this error: `{}`",
+                            self.describe_lvalue(lvalue_err)));
+                    }
+
+                    err.emit();
+                }
+            },
+            _ => {}// Access authorized
+        }
+    }
+
+    /// Can this value be written or borrowed mutably
+    fn is_mutable<'d>(&self, lvalue: &'d Lvalue<'tcx>) -> Result<(), &'d Lvalue<'tcx>> {
+        match *lvalue {
+            Lvalue::Local(local) => {
+                let local = &self.mir.local_decls[local];
+                match local.mutability {
+                    Mutability::Not => Err(lvalue),
+                    Mutability::Mut => Ok(())
+                }
+            },
+            Lvalue::Static(ref static_) => {
+                if !self.tcx.is_static_mut(static_.def_id) {
+                    Err(lvalue)
+                } else {
+                    Ok(())
+                }
+            },
+            Lvalue::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Deref => {
+                        let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+
+                        // `Box<T>` owns its content, so mutable if its location is mutable
+                        if base_ty.is_box() {
+                            return self.is_mutable(&proj.base);
+                        }
+
+                        // Otherwise we check the kind of deref to decide
+                        match base_ty.sty {
+                            ty::TyRef(_, tnm) => {
+                                match tnm.mutbl {
+                                    // Shared borrowed data is never mutable
+                                    hir::MutImmutable => Err(lvalue),
+                                    // Mutably borrowed data is mutable, but only if we have a
+                                    // unique path to the `&mut`
+                                    hir::MutMutable => self.is_unique(&proj.base),
+                                }
+                            },
+                            ty::TyRawPtr(tnm) => {
+                                match tnm.mutbl {
+                                    // `*const` raw pointers are not mutable
+                                    hir::MutImmutable => Err(lvalue),
+                                    // `*mut` raw pointers are always mutable, regardless of context
+                                    // The users have to check by themselve.
+                                    hir::MutMutable => Ok(()),
+                                }
+                            },
+                            // Deref should only be for reference, pointers or boxes
+                            _ => bug!("Deref of unexpected type: {:?}", base_ty)
+                        }
+                    },
+                    // All other projections are owned by their base path, so mutable if
+                    // base path is mutable
+                    ProjectionElem::Field(..) |
+                    ProjectionElem::Index(..) |
+                    ProjectionElem::ConstantIndex{..} |
+                    ProjectionElem::Subslice{..} |
+                    ProjectionElem::Downcast(..) =>
+                        self.is_mutable(&proj.base)
+                }
+            }
+        }
+    }
+
+    /// Does this lvalue have a unique path
+    fn is_unique<'d>(&self, lvalue: &'d Lvalue<'tcx>) -> Result<(), &'d Lvalue<'tcx>> {
+        match *lvalue {
+            Lvalue::Local(..) => {
+                // Local variables are unique
+                Ok(())
+            },
+            Lvalue::Static(..) => {
+                // Static variables are not
+                Err(lvalue)
+            },
+            Lvalue::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Deref => {
+                        let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+
+                        // `Box<T>` referent is unique if box is a unique spot
+                        if base_ty.is_box() {
+                            return self.is_unique(&proj.base);
+                        }
+
+                        // Otherwise we check the kind of deref to decide
+                        match base_ty.sty {
+                            ty::TyRef(_, tnm) => {
+                                match tnm.mutbl {
+                                    // lvalue represent an aliased location
+                                    hir::MutImmutable => Err(lvalue),
+                                    // `&mut T` is as unique as the context in which it is found
+                                    hir::MutMutable => self.is_unique(&proj.base),
+                                }
+                            },
+                            ty::TyRawPtr(tnm) => {
+                                match tnm.mutbl {
+                                    // `*mut` can be aliased, but we leave it to user
+                                    hir::MutMutable => Ok(()),
+                                    // `*const` is treated the same as `*mut`
+                                    hir::MutImmutable => Ok(()),
+                                }
+                            },
+                            // Deref should only be for reference, pointers or boxes
+                            _ => bug!("Deref of unexpected type: {:?}", base_ty)
+                        }
+                    },
+                    // Other projections are unique if the base is unique
+                    ProjectionElem::Field(..) |
+                    ProjectionElem::Index(..) |
+                    ProjectionElem::ConstantIndex{..} |
+                    ProjectionElem::Subslice{..} |
+                    ProjectionElem::Downcast(..) =>
+                        self.is_unique(&proj.base)
                 }
             }
         }
