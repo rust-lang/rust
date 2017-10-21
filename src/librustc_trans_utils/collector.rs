@@ -195,6 +195,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
+use rustc::middle::trans::TransItem;
 use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
@@ -206,7 +207,7 @@ use common::{def_ty, instance_ty, type_is_sized};
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
-use trans_item::{TransItem, TransItemExt, DefPathBasedNames, InstantiationMode};
+use trans_item::{TransItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
 
