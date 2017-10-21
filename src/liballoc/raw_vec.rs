@@ -381,9 +381,11 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// - 2 reallocations for a growth factor of 1.3x
     ///
     /// Which one is better [is application
-    /// dependent](https://stackoverflow.com/questions/1100311/what-is-the-ideal-growth-rate-for-a-dynamically-allocated-array),
+    /// dependent](https://stackoverflow.com/questions/1100311/
+    /// what-is-the-ideal-growth-rate-for-a-dynamically-allocated-array),
     /// also some claim that [the golden ration (1.618) is
-    /// optimal](https://crntaylor.wordpress.com/2011/07/15/optimal-memory-reallocation-and-the-golden-ratio/).
+    /// optimal](https://crntaylor.wordpress.com/2011/07/15/
+    /// optimal-memory-reallocation-and-the-golden-ratio/).
     /// The trade-off is having to wait for many reallocations to be able to
     /// reuse old memory.
     ///
