@@ -623,11 +623,9 @@ impl Step for Rustc {
         compile::rustc_cargo(build, &compiler, target, &mut cargo);
 
         if build.config.compiler_docs {
-            // src/rustc/Cargo.toml contains bin crates called rustc and rustdoc
-            // which would otherwise overwrite the docs for the real rustc and
-            // rustdoc lib crates.
-            cargo.arg("-p").arg("rustc_driver")
-                 .arg("-p").arg("rustdoc");
+            // src/rustc/Cargo.toml contains a bin crate called rustc which
+            // would otherwise overwrite the docs for the real rustc lib crate.
+            cargo.arg("-p").arg("rustc_driver");
         } else {
             // Like with libstd above if compiler docs aren't enabled then we're not
             // documenting internal dependencies, so we have a whitelist.
