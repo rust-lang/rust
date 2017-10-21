@@ -2755,9 +2755,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_coercable_to_type(&self,
                                     expr: &'gcx hir::Expr,
                                     expected: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.check_expr_with_hint(expr, expected);
-        self.demand_coerce(expr, ty, expected);
-        ty
+        self.check_expr_coercable_to_type_with_lvalue_pref(expr, expected, NoPreference)
+    }
+
+    fn check_expr_coercable_to_type_with_lvalue_pref(&self,
+                                                     expr: &'gcx hir::Expr,
+                                                     expected: Ty<'tcx>,
+                                                     lvalue_pref: LvaluePreference)
+                                                     -> Ty<'tcx> {
+        let ty = self.check_expr_with_expectation_and_lvalue_pref(
+            expr,
+            ExpectHasType(expected),
+            lvalue_pref);
+        self.demand_coerce(expr, ty, expected)
     }
 
     fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
