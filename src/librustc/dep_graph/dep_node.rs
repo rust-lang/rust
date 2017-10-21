@@ -632,7 +632,7 @@ define_dep_nodes!( <'tcx>
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [] OutputFilenames,
-    [] NormalizeTy,
+    [anon] NormalizeTy,
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 );
