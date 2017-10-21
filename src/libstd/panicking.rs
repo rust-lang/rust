@@ -369,7 +369,7 @@ fn default_hook(info: &PanicInfo) {
 
     let write = |err: &mut ::io::Write| {
         // Add a cariage return to reset cursor to the beginning of the line with rawmode tty's
-        let _ = write!(err, "\r\nthread '{}' panicked at '{}', {}:{}:{}",
+        let _ = writeln!(err, "\r\nthread '{}' panicked at '{}', {}:{}:{}",
                          name, msg, file, line, col);
 
         #[cfg(feature = "backtrace")]
