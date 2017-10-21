@@ -1561,7 +1561,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                         cx,
                         IMPLICIT_HASHER,
                         target.span(),
-                        &format!("impl for `{}` should be generarized over different hashers", target.type_name()),
+                        &format!("impl for `{}` should be generalized over different hashers", target.type_name()),
                         move |db| {
                             suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
                         },
@@ -1595,7 +1595,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                             IMPLICIT_HASHER,
                             target.span(),
                             &format!(
-                                "parameter of type `{}` should be generarized over different hashers",
+                                "parameter of type `{}` should be generalized over different hashers",
                                 target.type_name()
                             ),
                             move |db| {
