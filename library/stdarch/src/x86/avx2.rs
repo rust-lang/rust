@@ -897,10 +897,20 @@ pub unsafe fn _mm256_packus_epi32(a: i32x8, b: i32x8) -> u16x16 {
     packusdw(a, b)
 }
 
+/// Permutes packed 32-bit integers from `a` according to the content of `b`.
+///
+/// The last 3 bits of each integer of `b` are used as addresses into the 8
+/// integers of `a`.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpermd))]
+pub unsafe fn _mm256_permutevar8x32_epi32(a: u32x8, b: u32x8) -> u32x8 {
+    permd(a, b)
+}
+
 // TODO _mm256_permute2x128_si256 (__m256i a, __m256i b, const int imm8)
 // TODO _mm256_permute4x64_epi64 (__m256i a, const int imm8)
 // TODO _mm256_permute4x64_pd (__m256d a, const int imm8)
-// TODO _mm256_permutevar8x32_epi32 (__m256i a, __m256i idx)
 // TODO _mm256_permutevar8x32_ps (__m256 a, __m256i idx)
 
 /// Compute the absolute differences of packed unsigned 8-bit integers in `a`
@@ -914,8 +924,43 @@ pub unsafe fn _mm256_sad_epu8 (a: u8x32, b: u8x32) -> u64x4 {
     psadbw(a, b)
 }
 
+/// Shuffle bytes from `a` according to the content of `b`.
+///
+/// The last 4 bits of each byte of `b` are used as addresses into the 32 bytes
+/// of `a`.
+///
+/// In addition, if the highest significant bit of a byte of `b` is set, the
+/// respective destination byte is set to 0.
+///
+/// The low and high halves of the vectors are shuffled separately.
+///
+/// Picturing `a` and `b` as `[u8; 32]`, `_mm256_shuffle_epi8` is logically
+/// equivalent to:
+///
+/// ```
+/// fn mm256_shuffle_epi8(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+///     let mut r = [0; 32];
+///     for i in 0..16 {
+///         // if the most significant bit of b is set,
+///         // then the destination byte is set to 0.
+///         if b[i] & 0x80 == 0u8 {
+///             r[i] = a[(b[i] % 16) as usize];
+///         }
+///         if b[i + 16] & 0x80 == 0u8 {
+///             r[i + 16] = a[(b[i + 16] % 16 + 16) as usize];
+///         }
+///     }
+///     r
+/// }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpshufb))]
+pub unsafe fn _mm256_shuffle_epi8(a: u8x32, b: u8x32) -> u8x32 {
+    pshufb(a, b)
+}
+
 // TODO _mm256_shuffle_epi32 (__m256i a, const int imm8)
-// TODO _mm256_shuffle_epi8 (__m256i a, __m256i b)
 // TODO _mm256_shufflehi_epi16 (__m256i a, const int imm8)
 // TODO _mm256_shufflelo_epi16 (__m256i a, const int imm8)
 
@@ -1430,7 +1475,10 @@ extern "C" {
     fn psubusb(a: u8x32, b: u8x32) -> u8x32;
     #[link_name = "llvm.x86.avx2.psubus.w"]
     fn psubusw(a: u16x16, b: u16x16) -> u16x16;
-
+    #[link_name = "llvm.x86.avx2.pshuf.b"]
+    fn pshufb(a: u8x32, b: u8x32) -> u8x32;
+    #[link_name = "llvm.x86.avx2.permd"]
+    fn permd(a: u32x8, b: u32x8) -> u32x8;
 }
 
 #[cfg(test)]
@@ -2565,5 +2613,38 @@ mod tests {
 
         let r = avx2::_mm256_alignr_epi8(a, b, 0);
         assert_eq!(r, b);
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_shuffle_epi8() {
+        let a = u8x32::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32
+        );
+        let b = u8x32::new(
+            4, 128, 4, 3, 24, 12, 6, 19,
+            12, 5, 5, 10, 4, 1, 8, 0,
+            4, 128, 4, 3, 24, 12, 6, 19,
+            12, 5, 5, 10, 4, 1, 8, 0,
+        );
+        let expected = u8x32::new(
+            5, 0, 5, 4, 9, 13, 7, 4,
+            13, 6, 6, 11, 5, 2, 9, 1,
+            21, 0, 21, 20, 25, 29, 23, 20,
+            29, 22, 22, 27, 21, 18, 25, 17,
+        );
+        let r = avx2::_mm256_shuffle_epi8(a, b);
+        assert_eq!(r, expected);
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_permutevar8x32_epi32() {
+        let a = u32x8::new(100, 200, 300, 400, 500, 600, 700, 800);
+        let b = u32x8::new(5, 0, 5, 1, 7, 6, 3, 4);
+        let expected = u32x8::new(600, 100, 600, 200, 800, 700, 400, 500);
+        let r = avx2::_mm256_permutevar8x32_epi32(a, b);
+        assert_eq!(r, expected);
     }
 }
