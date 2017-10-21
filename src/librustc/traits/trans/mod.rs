@@ -130,10 +130,8 @@ impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
         if !ty.has_projections() {
             ty
         } else {
-            self.tcx.trans_trait_caches.project_cache.memoize(ty, || {
-                debug!("AssociatedTypeNormalizer: ty={:?}", ty);
-                self.tcx.normalize_associated_type(&ty)
-            })
+            debug!("AssociatedTypeNormalizer: ty={:?}", ty);
+            self.tcx.normalize_ty(ty)
         }
     }
 }

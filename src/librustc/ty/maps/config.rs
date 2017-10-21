@@ -532,3 +532,9 @@ impl<'tcx> QueryDescription for queries::has_copy_closures<'tcx> {
         format!("seeing if the crate has enabled `Copy` closures")
     }
 }
+
+impl<'tcx> QueryDescription for queries::normalize_ty<'tcx> {
+    fn describe(_tcx: TyCtxt, _: Ty) -> String {
+        format!("normalising types")
+    }
+}

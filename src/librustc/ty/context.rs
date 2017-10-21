@@ -2322,4 +2322,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.sess.features.borrow().clone_closures
     };
+    providers.normalize_ty = |tcx, ty| {
+        tcx.normalize_associated_type_in(&ty)
+    };
 }
