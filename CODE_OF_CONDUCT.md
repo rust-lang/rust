@@ -6,7 +6,7 @@ A version of this document [can be found online](https://www.rust-lang.org/condu
 
 **Contact**: [rust-mods@rust-lang.org](mailto:rust-mods@rust-lang.org)
 
-* We are committed to providing a friendly, safe and welcoming environment for all, regardless of level of experience, gender, gender identity and expression, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, religion, nationality, or other similar characteristic.
+* We are committed to providing a friendly, safe and welcoming environment for all, regardless of level of experience, gender identity and expression, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, religion, nationality, or other similar characteristic.
 * On IRC, please avoid using overtly sexual nicknames or other nicknames that might detract from a friendly, safe and welcoming environment for all.
 * Please be kind and courteous. There's no need to be mean or rude.
 * Respect that people have differences of opinion and that every design or implementation choice carries a trade-off and numerous costs. There is seldom a right answer.
