@@ -475,7 +475,6 @@
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
 //!
-//! [`format!`]: ../../macro.format.html
 //! [`usize`]: ../../std/primitive.usize.html
 //! [`isize`]: ../../std/primitive.isize.html
 //! [`i8`]: ../../std/primitive.i8.html

@@ -168,7 +168,7 @@ impl UdpSocket {
     /// This will return an error when the IP version of the local socket
     /// does not match that returned from [`ToSocketAddrs`].
     ///
-    /// See https://github.com/rust-lang/rust/issues/34202 for more details.
+    /// See <https://github.com/rust-lang/rust/issues/34202> for more details.
     ///
     /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///

@@ -41,7 +41,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// # Creating an `OsString`
 ///
 /// **From a Rust string**: `OsString` implements
-/// [`From`]`<`[`String`]`>`, so you can use `my_string.`[`from`] to
+/// [`From`]`<`[`String`]`>`, so you can use `my_string.from` to
 /// create an `OsString` from a normal Rust string.
 ///
 /// **From slices:** Just like you can start with an empty Rust
@@ -63,7 +63,6 @@ use sys_common::{AsInner, IntoInner, FromInner};
 ///
 /// [`OsStr`]: struct.OsStr.html
 /// [`From`]: ../convert/trait.From.html
-/// [`from`]: ../convert/trait.From.html#tymethod.from
 /// [`String`]: ../string/struct.String.html
 /// [`&str`]: ../primitive.str.html
 /// [`u8`]: ../primitive.u8.html
