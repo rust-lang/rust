@@ -66,7 +66,7 @@ macro_rules! book {
 }
 
 book!(
-    Nomicon, "src/doc/book", "nomicon";
+    Nomicon, "src/doc/nomicon", "nomicon";
     Reference, "src/doc/reference", "reference";
     Rustdoc, "src/doc/rustdoc", "rustdoc";
 );
