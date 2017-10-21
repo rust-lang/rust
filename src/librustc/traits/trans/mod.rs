@@ -129,7 +129,7 @@ impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
             ty
         } else {
             debug!("AssociatedTypeNormalizer: ty={:?}", ty);
-            self.tcx.normalize_ty(ty)
+            self.tcx.fully_normalize_monormophic_ty(ty)
         }
     }
 }

@@ -533,7 +533,7 @@ impl<'tcx> QueryDescription for queries::has_copy_closures<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::normalize_ty<'tcx> {
+impl<'tcx> QueryDescription for queries::fully_normalize_monormophic_ty<'tcx> {
     fn describe(_tcx: TyCtxt, _: Ty) -> String {
         format!("normalizing types")
     }

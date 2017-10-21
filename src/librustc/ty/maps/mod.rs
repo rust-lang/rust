@@ -349,7 +349,7 @@ define_maps! { <'tcx>
     // Normally you would just use `tcx.erase_regions(&value)`,
     // however, which uses this query as a kind of cache.
     [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
-    [] fn normalize_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
+    [] fn fully_normalize_monormophic_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
 }
 
 //////////////////////////////////////////////////////////////////////
