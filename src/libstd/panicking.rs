@@ -369,7 +369,7 @@ fn default_hook(info: &PanicInfo) {
 
     let write = |err: &mut ::io::Write| {
         // Add a cariage return to reset cursor to the beginning of the line with rawmode tty's
-        let _ = write!(err, "thread '{}' panicked at '{}', {}:{}:{}\r\n",
+        let _ = write!(err, "\r\nthread '{}' panicked at '{}', {}:{}:{}",
                          name, msg, file, line, col);
 
         #[cfg(feature = "backtrace")]
@@ -381,7 +381,7 @@ fn default_hook(info: &PanicInfo) {
             if let Some(format) = log_backtrace {
                 let _ = backtrace::print(err, format);
             } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
-                let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` for a backtrace.");
+                let _ = writeln!(err, "\r\nnote: Run with `RUST_BACKTRACE=1` for a backtrace.");
             }
         }
     };
