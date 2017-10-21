@@ -71,3 +71,7 @@ pub fn foo() -> i32 {
     };
     55
 }
+
+pub fn issue_2160() {
+    let x = {};
+}

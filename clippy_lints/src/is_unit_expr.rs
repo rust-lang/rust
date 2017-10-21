@@ -132,6 +132,7 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
 }
 
 fn check_last_stmt_in_block(block: &Block) -> bool {
+    if block.stmts.is_empty() { return false; }
     let final_stmt = &block.stmts[block.stmts.len() - 1];
 
 
