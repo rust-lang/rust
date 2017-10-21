@@ -1,3 +1,4 @@
+use simd_llvm::simd_cast;
 use simd_llvm::{simd_shuffle2, simd_shuffle4, simd_shuffle8};
 use simd_llvm::{simd_shuffle16, simd_shuffle32};
 use v256::*;
@@ -514,12 +515,60 @@ pub unsafe fn _mm256_cmpgt_epi8(a: i8x32, b: i8x32) -> i8x32 {
     a.gt(b)
 }
 
-// TODO _mm256_cvtepi16_epi32
-// TODO _mm256_cvtepi16_epi64
-// TODO _mm256_cvtepi32_epi64
-// TODO _mm256_cvtepi8_epi16
-// TODO _mm256_cvtepi8_epi32
-// TODO _mm256_cvtepi8_epi64
+/// Sign-extend 16-bit integers to 32-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovsxwd))]
+pub unsafe fn _mm256_cvtepi16_epi32(a: i16x8) -> i32x8 {
+    simd_cast(a)
+}
+
+/// Sign-extend 16-bit integers to 64-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovsxwq))]
+pub unsafe fn _mm256_cvtepi16_epi64(a: i16x8) -> i64x4 {
+    simd_cast::<::v64::i16x4, _>(simd_shuffle4(a, a, [0, 1, 2, 3]))
+}
+
+/// Sign-extend 32-bit integers to 64-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovsxdq))]
+pub unsafe fn _mm256_cvtepi32_epi64(a: i32x4) -> i64x4 {
+    simd_cast(a)
+}
+
+/// Sign-extend 8-bit integers to 16-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovsxbw))]
+pub unsafe fn _mm256_cvtepi8_epi16(a: i8x16) -> i16x16 {
+    simd_cast(a)
+}
+
+/// Sign-extend 8-bit integers to 32-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovsxbd))]
+pub unsafe fn _mm256_cvtepi8_epi32(a: i8x16) -> i32x8 {
+    simd_cast::<::v64::i8x8, _>(simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]))
+}
+
+// An i8x4 type is pretty useless, but we need it as an intermediate type in
+// _mm256_cvtepi8_epi64.
+#[repr(simd)]
+#[allow(non_camel_case_types)]
+struct i8x4(i8, i8, i8, i8);
+
+/// Sign-extend 8-bit integers to 64-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovsxbq))]
+pub unsafe fn _mm256_cvtepi8_epi64(a: i8x16) -> i64x4 {
+    simd_cast::<i8x4, _>(simd_shuffle4(a, a, [0, 1, 2, 3]))
+}
+
 // TODO _mm256_cvtepu16_epi32
 // TODO _mm256_cvtepu16_epi64
 // TODO _mm256_cvtepu32_epi64
@@ -1938,6 +1987,48 @@ mod tests {
         let r = avx2::_mm256_cmpgt_epi64(a, b);
         assert_eq!(r, i64x4::splat(0).replace(
             0, 0xFFFFFFFFFFFFFFFFu64 as i64));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepi8_epi16() {
+        let a = i8x16::new(0, 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7);
+        let r = i16x16::new(0, 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7);
+        assert_eq!(r, avx2::_mm256_cvtepi8_epi16(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepi8_epi32() {
+        let a = i8x16::new(0, 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7);
+        let r = i32x8::new(0, 0, -1, 1, -2, 2, -3, 3);
+        assert_eq!(r, avx2::_mm256_cvtepi8_epi32(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepi8_epi64() {
+        let a = i8x16::new(0, 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7);
+        let r = i64x4::new(0, 0, -1, 1);
+        assert_eq!(r, avx2::_mm256_cvtepi8_epi64(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepi16_epi32() {
+        let a = i16x8::new(0, 0, -1, 1, -2, 2, -3, 3);
+        let r = i32x8::new(0, 0, -1, 1, -2, 2, -3, 3);
+        assert_eq!(r, avx2::_mm256_cvtepi16_epi32(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepi16_epi64() {
+        let a = i16x8::new(0, 0, -1, 1, -2, 2, -3, 3);
+        let r = i64x4::new(0, 0, -1, 1);
+        assert_eq!(r, avx2::_mm256_cvtepi16_epi64(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepi32_epi64() {
+        let a = i32x4::new(0, 0, -1, 1);
+        let r = i64x4::new(0, 0, -1, 1);
+        assert_eq!(r, avx2::_mm256_cvtepi32_epi64(a));
     }
 
     #[simd_test = "avx2"]
