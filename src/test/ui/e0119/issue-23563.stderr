@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `a::LolFrom<&[_]>` for type `LocalType<_>`:
+  --> $DIR/issue-23563.rs:23:1
+   |
+23 | / impl<'a, T> LolFrom<&'a [T]> for LocalType<T> {
+24 | |     fn from(_: &'a [T]) -> LocalType<T> { LocalType(None) }
+25 | | }
+   | |_^
+   |
+   = note: conflicting implementation in crate `issue_23563_a`:
+           - impl<T, U> a::LolFrom<T> for U
+             where T: a::LolInto<U>;
+
+error: aborting due to previous error
+
