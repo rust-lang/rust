@@ -736,7 +736,7 @@ impl<T> Vec<T> {
 
         // space for the new element
         if unsafe { intrinsics::unlikely(self.is_full()) } {
-            self.buf.grow_by(1);
+            self.buf.reserve(self.len, 1);
         }
 
         unsafe {
@@ -971,7 +971,7 @@ impl<T> Vec<T> {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
         if unsafe { intrinsics::unlikely(self.is_full()) } {
-            self.buf.grow_by(1);
+            self.buf.reserve(self.len, 1);
         }
         unsafe {
             let end = self.as_mut_ptr().offset(self.len as isize);
@@ -2539,7 +2539,8 @@ impl<'a, T> Placer<T> for PlaceBack<'a, T> {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
         if unsafe { intrinsics::unlikely(self.vec.is_full()) } {
-            self.vec.buf.grow_by(1);
+            let len = self.vec.len();
+            self.vec.buf.reserve(len, 1);
         }
         self
     }

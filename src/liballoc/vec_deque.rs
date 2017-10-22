@@ -1755,7 +1755,7 @@ impl<T> VecDeque<T> {
     fn grow_if_necessary(&mut self) {
         if unsafe { intrinsics::unlikely(self.is_full()) } {
             let old_cap = self.cap();
-            self.buf.grow_by(old_cap);
+            self.buf.double();
             unsafe {
                 self.handle_cap_increase(old_cap);
             }
