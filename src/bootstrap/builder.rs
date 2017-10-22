@@ -471,8 +471,6 @@ impl<'a> Builder<'a> {
              .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.rustc(compiler))
              .env("RUSTC_STAGE", stage.to_string())
-             .env("RUSTC_CODEGEN_UNITS",
-                  self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
                   self.config.rust_debug_assertions.to_string())
              .env("RUSTC_SYSROOT", self.sysroot(compiler))
@@ -485,6 +483,10 @@ impl<'a> Builder<'a> {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
              .env("TEST_MIRI", self.config.test_miri.to_string());
+
+        if let Some(n) = self.config.rust_codegen_units {
+            cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
+        }
 
         if let Some(host_linker) = self.build.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
@@ -618,6 +620,14 @@ impl<'a> Builder<'a> {
         // FIXME: cargo bench does not accept `--release`
         if self.config.rust_optimize && cmd != "bench" {
             cargo.arg("--release");
+
+            if mode != Mode::Libstd &&
+               self.config.rust_codegen_units.is_none() &&
+               self.build.is_rust_llvm(compiler.host)
+
+            {
+                cargo.env("RUSTC_THINLTO", "1");
+            }
         }
         if self.config.locked_deps {
             cargo.arg("--locked");
