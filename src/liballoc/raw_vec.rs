@@ -904,11 +904,12 @@ mod tests {
             let cap = v.cap();
             v.reserve(cap, 4096 * 32);
             assert!(v.cap() >= cap + 4096 * 32
-                    && v.cap() <= cap + 4096 * 34);
+                    && v.cap() <= cap + 4096 * 40);
 
             // large vectors grow with a growth-factor equals 2x:
             let cap = v.cap();
             v.reserve(cap, 1);
+            assert_eq!(v.cap(), cap * 2);
             assert!(v.cap() >= cap * 2 && v.cap() <= cap * 2 + 4096);
         }
     }
