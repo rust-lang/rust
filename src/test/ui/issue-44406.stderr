@@ -13,14 +13,5 @@ error: expected type, found keyword `true`
 18 |     foo!(true);
    |          ^^^^ expecting a type here because of type ascription
 
-error: expected one of `!`, `&&`, `&`, `(`, `*`, `.`, `;`, `<`, `?`, `[`, `_`, `dyn`, `extern`, `fn`, `for`, `impl`, `unsafe`, `}`, an operator, or lifetime, found `true`
-  --> $DIR/issue-44406.rs:18:10
-   |
-13 |         bar(baz: $rest)
-   |                 - expected one of 20 possible tokens here
-...
-18 |     foo!(true);
-   |          ^^^^ unexpected token
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
