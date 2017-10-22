@@ -21,8 +21,7 @@ Libraries
 - [Allow atomic operations up to 32 bits
   on `armv5te_unknown_linux_gnueabi`][44978]
 - [`Box<Error>` now impls `Cow<str>`][44466]
-- [`std::mem::Discriminant` is now guarenteed to be `Send + Sync` if `T`
-  is `Send + Sync`][45095]
+- [`std::mem::Discriminant` is now guarenteed to be `Send + Sync`][45095]
 - [`fs::copy` now returns the length of the main stream on NTFS.][44895]
 - [Properly detect overflow in `Instant += Duration`.][44220]
 - [impl `Hasher` for `{&mut Hasher, Box<Hasher>}`][44015]
