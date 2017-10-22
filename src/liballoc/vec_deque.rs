@@ -140,7 +140,7 @@ impl<T> VecDeque<T> {
     /// Returns `true` if and only if the buffer is at full capacity.
     #[inline]
     fn is_full(&self) -> bool {
-        unsafe { intrinsics::unlikely(self.cap() - self.len() == 1) }
+        self.cap() - self.len() == 1
     }
 
     /// Returns the index in the underlying buffer for a given logical element
@@ -1753,7 +1753,7 @@ impl<T> VecDeque<T> {
     // This may panic or abort
     #[inline]
     fn grow_if_necessary(&mut self) {
-        if self.is_full() {
+        if unsafe { intrinsics::unlikely(self.is_full()) } {
             let old_cap = self.cap();
             self.buf.grow_by(old_cap);
             unsafe {

@@ -710,7 +710,7 @@ impl<T> Vec<T> {
 
     #[inline(always)]
     fn is_full(&self) -> bool {
-        unsafe { intrinsics::unlikely(self.len == self.buf.cap()) }
+        self.len == self.buf.cap()
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
@@ -735,7 +735,7 @@ impl<T> Vec<T> {
         assert!(index <= len);
 
         // space for the new element
-        if self.is_full() {
+        if unsafe { intrinsics::unlikely(self.is_full()) } {
             self.buf.grow_by(1);
         }
 
@@ -970,7 +970,7 @@ impl<T> Vec<T> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.is_full() {
+        if unsafe { intrinsics::unlikely(self.is_full()) } {
             self.buf.grow_by(1);
         }
         unsafe {
@@ -2538,7 +2538,7 @@ impl<'a, T> Placer<T> for PlaceBack<'a, T> {
     fn make_place(self) -> Self {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.vec.is_full() {
+        if unsafe { intrinsics::unlikely(self.vec.is_full()) } {
             self.vec.buf.grow_by(1);
         }
         self
