@@ -54,4 +54,12 @@ define_casts!(
     (u16x4, i16x4, as_i16x4),
     (i16x4, u16x4, as_u16x4),
     (u8x8, i8x8, as_i8x8),
-    (i8x8, u8x8, as_u8x8));
+    (i8x8, u8x8, as_u8x8),
+    (i8x8, i16x8, as_i16x8),
+    (i16x4, i32x4, as_i32x4),
+    (i32x2, i64x2, as_i64x2),
+    (u8x8, u16x8, as_u16x8),
+    (u16x4, u32x4, as_u32x4),
+    (u32x2, u64x2, as_u64x2)
+
+);
