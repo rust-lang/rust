@@ -109,6 +109,13 @@
 #![cfg_attr(not(stage0), feature(const_cell_new))]
 #![cfg_attr(not(stage0), feature(const_nonzero_new))]
 
+// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
+#[allow(unused_extern_crates)]
+extern crate rustc_cratesio_shim;
+
+#[macro_use]
+extern crate bitflags;
+
 #[prelude_import]
 #[allow(unused)]
 use prelude::v1::*;

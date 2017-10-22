@@ -245,7 +245,7 @@ impl<'a, W: Write + ?Sized> Write for &'a mut W {
 #[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {
-    flags: u32,
+    flags: FlagV1,
     fill: char,
     align: rt::v1::Alignment,
     width: Option<usize>,
@@ -320,9 +320,15 @@ impl<'a> ArgumentV1<'a> {
     }
 }
 
-// flags available in the v1 format of format_args
-#[derive(Copy, Clone)]
-enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, }
+bitflags! {
+    // flags available in the v1 format of format_args
+    struct FlagV1: u32 {
+        const SIGN_PLUS           = 1 << 0;
+        const SIGN_MINUS          = 1 << 1;
+        const ALTERNATE           = 1 << 2;
+        const SIGN_AWARE_ZERO_PAD = 1 << 3;
+    }
+}
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
@@ -947,7 +953,7 @@ pub trait UpperExp {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut Write, args: Arguments) -> Result {
     let mut formatter = Formatter {
-        flags: 0,
+        flags: FlagV1::empty(),
         width: None,
         precision: None,
         buf: output,
@@ -993,7 +999,7 @@ impl<'a> Formatter<'a> {
         // Fill in the format parameters into the formatter
         self.fill = arg.format.fill;
         self.align = arg.format.align;
-        self.flags = arg.format.flags;
+        self.flags = FlagV1::from_bits_truncate(arg.format.flags);
         self.width = self.getcount(&arg.format.width);
         self.precision = self.getcount(&arg.format.precision);
 
@@ -1277,7 +1283,7 @@ impl<'a> Formatter<'a> {
 
     /// Flags for formatting
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn flags(&self) -> u32 { self.flags }
+    pub fn flags(&self) -> u32 { self.flags.bits }
 
     /// Character used as 'fill' whenever there is alignment
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1305,20 +1311,20 @@ impl<'a> Formatter<'a> {
 
     /// Determines if the `+` flag was specified.
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn sign_plus(&self) -> bool { self.flags & (1 << FlagV1::SignPlus as u32) != 0 }
+    pub fn sign_plus(&self) -> bool { self.flags.intersects(FlagV1::SIGN_PLUS) }
 
     /// Determines if the `-` flag was specified.
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn sign_minus(&self) -> bool { self.flags & (1 << FlagV1::SignMinus as u32) != 0 }
+    pub fn sign_minus(&self) -> bool { f.flags.intersects(FlagV1::SIGN_MINUS) }
 
     /// Determines if the `#` flag was specified.
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn alternate(&self) -> bool { self.flags & (1 << FlagV1::Alternate as u32) != 0 }
+    pub fn alternate(&self) -> bool { f.flags.intersects(FlagV1::ALTERNATE) }
 
     /// Determines if the `0` flag was specified.
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
-        self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
+        self.flags.intersects(FlagV1::SIGN_AWARE_ZERO_PAD)
     }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
@@ -1584,13 +1590,13 @@ impl<T: ?Sized> Pointer for *const T {
         // or not to zero extend, and then unconditionally set it to get the
         // prefix.
         if f.alternate() {
-            f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+            f.flags.insert(FlagV1::SIGN_AWARE_ZERO_PAD);
 
             if let None = f.width {
                 f.width = Some(((mem::size_of::<usize>() * 8) / 4) + 2);
             }
         }
-        f.flags |= 1 << (FlagV1::Alternate as u32);
+        f.flags.insert(FlagV1::ALTERNATE);
 
         let ret = LowerHex::fmt(&(*self as *const () as usize), f);
 

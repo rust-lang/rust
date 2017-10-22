@@ -9,6 +9,10 @@ path = "lib.rs"
 test = false
 bench = false
 
+[dependencies]
+bitflags = "1.0"
+rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
+
 [dev-dependencies]
 rand = { path = "../librand" }
 
