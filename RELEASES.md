@@ -1,3 +1,69 @@
+Version 1.22.0 (2017-11-23)
+==========================
+
+Language
+--------
+- [`non_snake_case` lint now allows extern no-mangle functions][44966]
+- [Now accepts underscores in unicode escapes][43716]
+- [`#![feature(const_fn)]` is now no longer required for using
+  const functions][43017] Still required for creating constant functions.
+
+Compiler
+--------
+- [rustc now defaults to having 32 codegen units at debug][44853]
+- [rustc will no longer inline in codegen units when compiling for debug][45075]
+  This should decrease compile times for debug builds.
+- [strict memory alignment now enabled on ARMv6][45094]
+- [Remove support for the PNaCl target `le32-unknown-nacl`][45041]
+
+Libraries
+---------
+- [Allow atomic operations up to 32 bits
+  on `armv5te_unknown_linux_gnueabi`][44978]
+- [`Box<Error>` now impls `Cow<str>`][44466]
+- [`std::mem::Discriminant` is now guarenteed to be `Send + Sync` if `T`
+  is `Send + Sync`][45095]
+- [`fs::copy` now returns the length of the main stream on NTFS.][44895]
+- [Properly detect overflow in `Instant += Duration`.][44220]
+- [impl `Hasher` for `{&mut Hasher, Box<Hasher>}`][44015]
+- [impl `fmt::Debug` for `SplitWhitespace`.][44303]
+
+Stabilized APIs
+---------------
+
+Cargo
+-----
+- [Cargo will now build multi file examples in subdirectories of the `examples`
+  folder that have a `main.rs` file.][cargo/4496]
+- [Changed `[root]` to `[package]` in `Cargo.lock`][cargo/4571] Packages with
+  the old format will continue to work and can be updated with `cargo update`.
+
+Misc
+----
+- [`libbacktrace` is now available on Apple platforms.][44251]
+- [Stabilised the `compile_fail` attribute for code fences.][43949] This now
+  lets you specify that a given code example will fail to compile.
+
+[45075]: https://github.com/rust-lang/rust/pull/45075
+[45094]: https://github.com/rust-lang/rust/pull/45094
+[45095]: https://github.com/rust-lang/rust/pull/45095
+[44853]: https://github.com/rust-lang/rust/pull/44853
+[44895]: https://github.com/rust-lang/rust/pull/44895
+[44966]: https://github.com/rust-lang/rust/pull/44966
+[44978]: https://github.com/rust-lang/rust/pull/44978
+[45041]: https://github.com/rust-lang/rust/pull/45041
+[44466]: https://github.com/rust-lang/rust/pull/44466
+[44220]: https://github.com/rust-lang/rust/pull/44220
+[44251]: https://github.com/rust-lang/rust/pull/44251
+[44303]: https://github.com/rust-lang/rust/pull/44303
+[43949]: https://github.com/rust-lang/rust/pull/43949
+[44015]: https://github.com/rust-lang/rust/pull/44015
+[43716]: https://github.com/rust-lang/rust/pull/43716
+[43017]: https://github.com/rust-lang/rust/pull/43017
+[cargo/4496]: https://github.com/rust-lang/cargo/pull/4496
+[cargo/4571]: https://github.com/rust-lang/cargo/pull/4571
+
+
 Version 1.21.0 (2017-10-12)
 ==========================
 
