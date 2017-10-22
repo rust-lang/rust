@@ -22,8 +22,6 @@ pub unsafe fn _rev_u32(x: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
-
     use arm::v6;
 
     #[test]

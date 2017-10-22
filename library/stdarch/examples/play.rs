@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "strict", deny(warnings))]
 #![feature(target_feature)]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

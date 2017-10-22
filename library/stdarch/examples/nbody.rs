@@ -1,12 +1,10 @@
+#![cfg_attr(feature = "strict", deny(warnings))]
 #![feature(cfg_target_feature)]
 #![feature(target_feature)]
 
 extern crate stdsimd;
-
 use self::stdsimd::simd;
-use self::stdsimd::vendor;
-
-use simd::{f64x2, f32x4};
+use simd::f64x2;
 
 const PI: f64 = 3.141592653589793;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -18,31 +16,35 @@ pub trait Frsqrt {
 
 impl Frsqrt for f64x2 {
     fn frsqrt(&self) -> Self {
-        unsafe {
-            #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
-                      target_feature = "sse"))]
-            {
-                let t = self.as_f32x2();
-                let u = vendor::_mm_rsqrt_ps(
-                    f32x4::new(t.extract(0), t.extract(1), 0., 0.)).as_f64x4();
-                f64x2::new(u.extract(0), u.extract(1))
-            }
-            #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-                      target_feature = "neon"))]
-            {
-                vendor::vrsqrte_f32(self.as_f32x2()).as_f64x2()
-            }
+        #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+                  target_feature = "sse"))]
+        {
+            use self::stdsimd::vendor;
+            use simd::f32x4;
 
-            #[cfg(not(any(all(any(target_arch = "x86", target_arch = "x86_64"),
-                              target_feature = "sse"),
-                          all(any(target_arch = "arm", target_arch = "aarch64"),
-                              target_feature = "neon")
-            )))]
-            {
-                self.replace(0, 1. / self.extract(0).sqrt());
-                self.replace(1, 1. / self.extract(1).sqrt());
-                *self
-            }
+            let t = self.as_f32x2();
+
+            let u = unsafe {
+                vendor::_mm_rsqrt_ps(
+                    f32x4::new(t.extract(0), t.extract(1), 0., 0.)).as_f64x4()
+            };
+            f64x2::new(u.extract(0), u.extract(1))
+        }
+        #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
+                  target_feature = "neon"))]
+        {
+            use self::stdsimd::vendor;
+            unsafe { vendor::vrsqrte_f32(self.as_f32x2()).as_f64x2() }
+        }
+        #[cfg(not(any(all(any(target_arch = "x86", target_arch = "x86_64"),
+                          target_feature = "sse"),
+                      all(any(target_arch = "arm", target_arch = "aarch64"),
+                          target_feature = "neon")
+        )))]
+        {
+            self.replace(0, 1. / self.extract(0).sqrt());
+            self.replace(1, 1. / self.extract(1).sqrt());
+            *self
         }
     }
 }

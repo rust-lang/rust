@@ -46,8 +46,6 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
-
     use arm::v7;
 
     #[test]

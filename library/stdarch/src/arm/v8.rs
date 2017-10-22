@@ -56,8 +56,6 @@ pub unsafe fn _cls_u64(x: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
-
     use arm::v8;
 
     #[test]

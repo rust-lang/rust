@@ -109,6 +109,7 @@
 //!
 //! [vendor]: https://github.com/rust-lang-nursery/stdsimd/issues/40
 
+#![cfg_attr(feature = "strict", deny(warnings))]
 #![allow(dead_code)]
 #![allow(unused_features)]
 #![feature(
