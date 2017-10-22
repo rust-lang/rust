@@ -676,6 +676,10 @@ extern "rust-intrinsic" {
     pub fn min_align_of<T>() -> usize;
     pub fn pref_align_of<T>() -> usize;
 
+    /// The size of the referenced value in bytes.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
