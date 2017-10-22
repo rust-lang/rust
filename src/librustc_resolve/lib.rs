@@ -2084,7 +2084,9 @@ impl<'a> Resolver<'a> {
                                                             ValueNS,
                                                             impl_item.span,
                                             |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
-                                        visit::walk_impl_item(this, impl_item);
+                                        this.with_constant_rib(|this|
+                                            visit::walk_impl_item(this, impl_item)
+                                        );
                                     }
                                     ImplItemKind::Method(ref sig, _) => {
                                         // If this is a trait impl, ensure the method
