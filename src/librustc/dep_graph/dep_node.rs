@@ -465,10 +465,10 @@ define_dep_nodes!( <'tcx>
 
     // Represents different phases in the compiler.
     [] RegionScopeTree(DefId),
-    [] Coherence,
-    [] CoherenceInherentImplOverlapCheck,
+    [eval_always] Coherence,
+    [eval_always] CoherenceInherentImplOverlapCheck,
     [] CoherenceCheckTrait(DefId),
-    [] PrivacyAccessLevels(CrateNum),
+    [eval_always] PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
@@ -485,7 +485,7 @@ define_dep_nodes!( <'tcx>
 
     [] Reachability,
     [] MirKeys,
-    [] CrateVariances,
+    [eval_always] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -515,7 +515,7 @@ define_dep_nodes!( <'tcx>
     [] DtorckConstraint(DefId),
     [] AdtDestructor(DefId),
     [] AssociatedItemDefIds(DefId),
-    [] InherentImpls(DefId),
+    [eval_always] InherentImpls(DefId),
     [] TypeckBodiesKrate,
     [] TypeckTables(DefId),
     [] HasTypeckTables(DefId),
@@ -584,7 +584,7 @@ define_dep_nodes!( <'tcx>
     [] IsCompilerBuiltins(CrateNum),
     [] HasGlobalAllocator(CrateNum),
     [] ExternCrate(DefId),
-    [] LintLevels,
+    [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
     [input] InScopeTraits(DefIndex),
     [] ModuleExports(DefId),
@@ -643,7 +643,7 @@ define_dep_nodes!( <'tcx>
     [] StabilityIndex,
     [] AllCrateNums,
     [] ExportedSymbols(CrateNum),
-    [] CollectAndPartitionTranslationItems,
+    [eval_always] CollectAndPartitionTranslationItems,
     [] ExportName(DefId),
     [] ContainsExternIndicator(DefId),
     [] IsTranslatedFunction(DefId),

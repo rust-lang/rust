@@ -1563,9 +1563,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<AccessLevels> {
-    tcx.dep_graph.with_ignore(|| { // FIXME
-        tcx.privacy_access_levels(LOCAL_CRATE)
-    })
+    tcx.privacy_access_levels(LOCAL_CRATE)
 }
 
 fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
