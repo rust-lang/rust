@@ -22,9 +22,9 @@ The behaviour of division and modulo, as implemented by Rust's (truncated) divis
 // Comparison of the behaviour of Rust's truncating division
 // and remainder, vs Euclidean division & modulo.
 (-8 / 3,      -8 % 3)           // (-2, -2)
-((-8).div_e(3), (-8).mod_e(3))  // (-3,  1)
+((-8).div_euc(3), (-8).mod_euc(3))  // (-3,  1)
 ```
-Euclidean division & modulo for integers will be achieved using the `div_e` and `mod_e` methods. The `%` operator has identical behaviour to `mod_e` for unsigned integers. However, when using signed integers, you should be careful to consider the behaviour you want: often Euclidean modulo will be more appropriate.
+Euclidean division & modulo for integers will be achieved using the `div_euc` and `mod_euc` methods. The `%` operator has identical behaviour to `mod_euc` for unsigned integers. However, when using signed integers, you should be careful to consider the behaviour you want: often Euclidean modulo will be more appropriate.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -34,23 +34,23 @@ It is important to have both division and modulo methods, as the two operations 
 A complete implementation of Euclidean modulo would involve adding 8 methods to the integer primitives in `libcore/num/mod.rs`:
 ```rust
 // Implemented for all numeric primitives.
-fn div_e(self, rhs: Self) -> Self;
+fn div_euc(self, rhs: Self) -> Self;
 
-fn mod_e(self, rhs: Self) -> Self;
+fn mod_euc(self, rhs: Self) -> Self;
 
 // Implemented for all integer primitives (signed and unsigned).
-fn checked_div_e(self, other: Self) -> Option<Self>;
-fn overflowing_div_e(self, rhs: Self) -> (Self, bool);
-fn wrapping_div_e(self, rhs: Self) -> Self;
+fn checked_div_euc(self, other: Self) -> Option<Self>;
+fn overflowing_div_euc(self, rhs: Self) -> (Self, bool);
+fn wrapping_div_euc(self, rhs: Self) -> Self;
 
-fn checked_mod_e(self, other: Self) -> Option<Self>;
-fn overflowing_mod_e(self, rhs: Self) -> (Self, bool);
-fn wrapping_mod_e(self, rhs: Self) -> Self;
+fn checked_mod_euc(self, other: Self) -> Option<Self>;
+fn overflowing_mod_euc(self, rhs: Self) -> (Self, bool);
+fn wrapping_mod_euc(self, rhs: Self) -> Self;
 ```
 
-Sample implementations for `div_e` and `mod_e` on signed integers:
+Sample implementations for `div_euc` and `mod_euc` on signed integers:
 ```rust
-fn div_e(self, rhs: Self) -> Self {
+fn div_euc(self, rhs: Self) -> Self {
     let q = self / rhs;
     if self % rhs < 0 {
         return if rhs > 0 { q - 1 } else { q + 1 }
@@ -58,7 +58,7 @@ fn div_e(self, rhs: Self) -> Self {
     q
 }
 
-fn mod_e(self, rhs: Self) -> Self {
+fn mod_euc(self, rhs: Self) -> Self {
     let r = self % rhs;
     if r < 0 {
         return if rhs > 0 { r + rhs } else { r - rhs }
@@ -73,7 +73,7 @@ The `checked_*`, `overflowing_*` and `wrapping_*` methods would operate analogou
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Standard drawbacks of adding methods to primitives apply. However, with the proposed method names, there are unlikely to be conflicts downstream[[9]](https://github.com/search?q=div_e+language%3ARust&type=Code&utf8=%E2%9C%93)[[10]](https://github.com/search?q=mod_e+language%3ARust&type=Code&utf8=%E2%9C%93).
+Standard drawbacks of adding methods to primitives apply. However, with the proposed method names, there are unlikely to be conflicts downstream[[9]](https://github.com/search?q=div_euc+language%3ARust&type=Code&utf8=%E2%9C%93)[[10]](https://github.com/search?q=mod_euc+language%3ARust&type=Code&utf8=%E2%9C%93).
 
 # Rationale and alternatives
 [alternatives]: #alternatives
@@ -91,4 +91,4 @@ This functionality could instead reside in a separate crate, such as `num` (floo
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Is it worth implementing `div_e` and `mod_e` for floating-point numbers? While it makes sense for completeness, it may be too rare a use case to be worth extending the core library to include.
+- Is it worth implementing `div_euc` and `mod_euc` for floating-point numbers? While it makes sense for completeness, it may be too rare a use case to be worth extending the core library to include.
