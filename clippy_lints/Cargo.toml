@@ -28,6 +28,7 @@ toml = "0.4"
 unicode-normalization = "0.1"
 pulldown-cmark = "0.0.15"
 url = "1.5.0"
+if_chain = "0.1"
 
 [features]
 debugging = []
