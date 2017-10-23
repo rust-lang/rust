@@ -581,6 +581,29 @@ declare_lint! {
     "using `.chars().last()` or `.chars().next_back()` to check if a string ends with a char"
 }
 
+/// **What it does:** Checks for usage of `.as_ref()` or `.as_mut()` where the
+/// types before and after the call are the same.
+///
+/// **Why is this bad?** The call is unnecessary.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let x: &[i32] = &[1,2,3,4,5];
+/// do_stuff(x.as_ref());
+/// ```
+/// The correct use would be:
+/// ```rust
+/// let x: &[i32] = &[1,2,3,4,5];
+/// do_stuff(x);
+/// ```
+declare_lint! {
+    pub USELESS_ASREF,
+    Warn,
+    "using `as_ref` where the types before and after the call are the same"
+}
+
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(
@@ -609,8 +632,8 @@ impl LintPass for Pass {
             ITER_SKIP_NEXT,
             GET_UNWRAP,
             STRING_EXTEND_CHARS,
-            ITER_CLONED_COLLECT
-        )
+            ITER_CLONED_COLLECT,
+            USELESS_ASREF)
     }
 }
 
@@ -669,6 +692,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_iter_skip_next(cx, expr);
                 } else if let Some(arglists) = method_chain_args(expr, &["cloned", "collect"]) {
                     lint_iter_cloned_collect(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["as_ref"]) {
+                    lint_asref(cx, expr, "as_ref", arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["as_mut"]) {
+                    lint_asref(cx, expr, "as_mut", arglists[0]);
                 }
 
                 lint_or_fun_call(cx, expr, &method_call.name.as_str(), args);
@@ -1499,6 +1526,30 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hi
                 arg.span,
                 "single-character string constant used as pattern",
                 |db| { db.span_suggestion(expr.span, "try using a char instead", hint); },
+            );
+        }
+    }
+}
+
+/// Checks for the `USELESS_ASREF` lint.
+fn lint_asref(cx: &LateContext, expr: &hir::Expr, call_name: &str, as_ref_args: &[hir::Expr]) {
+    // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
+    // check if the call is to the actual `AsRef` or `AsMut` trait
+    if match_trait_method(cx, expr, &paths::ASREF_TRAIT) || match_trait_method(cx, expr, &paths::ASMUT_TRAIT) {
+        // check if the type after `as_ref` or `as_mut` is the same as before
+        let recvr = &as_ref_args[0];
+        let rcv_ty = cx.tables.expr_ty(recvr);
+        let res_ty = cx.tables.expr_ty(expr);
+        let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
+        let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
+        if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
+            span_lint_and_sugg(
+                cx,
+                USELESS_ASREF,
+                expr.span,
+                &format!("this call to `{}` does nothing", call_name),
+                "try this",
+                snippet(cx, recvr.span, "_").into_owned(),
             );
         }
     }
