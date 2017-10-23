@@ -1,11 +1,10 @@
 stdsimd
 =======
 
-Experimental support for SIMD destined to eventually become part of Rust's
-standard library
+[![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![Latest Version]][crates.io] [![docs]][docs.rs]
 
-[![Build Status](https://travis-ci.org/rust-lang-nursery/stdsimd.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/stdsimd)
-[![Build status](https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master)
+> Experimental support for SIMD destined to eventually become part of Rust's
+> standard library
 
 This is a **work in progress**.
 
@@ -36,3 +35,13 @@ the Apache License (Version 2.0), with portions covered by various BSD-like
 licenses.
 
 See LICENSE-APACHE, and LICENSE-MIT for details.
+
+
+[travis]: https://travis-ci.org/rust-lang-nursery/stdsimd
+[Travis-CI Status]: https://travis-ci.org/rust-lang-nursery/stdsimd.svg?branch=master
+[appveyor]: https://ci.appveyor.com/project/rust-lang-libs/stdsimd/branch/master
+[Appveyor Status]: https://ci.appveyor.com/api/projects/status/ix74qhmilpibn00x/branch/master?svg=true
+[Latest Version]: https://img.shields.io/crates/v/stdsimd.svg
+[crates.io]: https://crates.io/crates/stdsimd
+[docs]: https://docs.rs/stdsimd/badge.svg
+[docs.rs]: https://docs.rs/stdsimd/0.0.2/stdsimd/

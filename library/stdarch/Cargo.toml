@@ -1,14 +1,22 @@
 [package]
 name = "stdsimd"
-version = "0.0.2"  #:version
+version = "0.0.2"
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
 description = "Experiments for adding SIMD support to Rust's standard library."
 documentation = "https://docs.rs/stdsimd"
 homepage = "https://github.com/BurntSushi/stdsimd"
 repository = "https://github.com/BurntSushi/stdsimd"
 readme = "README.md"
-keywords = ["std", "simd", "intrinsics", "sse", "avx"]
+keywords = ["std", "simd", "intrinsics"]
+categories = ["hardware-support", "no-std"]
 license = "MIT/Apache-2.0"
+
+[badges]
+travis-ci = { repository = "BurntSushi/stdsimd" }
+appveyor = { repository = "BurntSushi/stdsimd"  }
+is-it-maintained-issue-resolution = { repository = "BurntSushi/stdsimd" }
+is-it-maintained-open-issues = { repository = "BurntSushi/stdsimd" }
+maintenance = { status = "experimental" }
 
 [profile.release]
 debug = true
@@ -19,7 +27,7 @@ debug = true
 opt-level = 3
 
 [dev-dependencies]
-stdsimd-test = { path = "stdsimd-test" }
+stdsimd-test = { version = "0.*", path = "stdsimd-test" }
 cupid = "0.3"
 
 [features]
