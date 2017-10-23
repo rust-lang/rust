@@ -84,6 +84,7 @@ macro_rules! linker_flavor {
 
 linker_flavor! {
     (Em, "em"),
+    (Binaryen, "binaryen"),
     (Gcc, "gcc"),
     (Ld, "ld"),
     (Msvc, "msvc"),

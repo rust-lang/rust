@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare seems unimportant to test
+
 // Issue #2303
 
 #![feature(intrinsics)]

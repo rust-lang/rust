@@ -31,7 +31,7 @@ fn main() {
     let host = env::var("HOST").expect("HOST was not set");
     if target.contains("rumprun") || target.contains("bitrig") || target.contains("openbsd") ||
        target.contains("msvc") || target.contains("emscripten") || target.contains("fuchsia") ||
-       target.contains("redox") {
+       target.contains("redox") || target.contains("wasm32") {
         println!("cargo:rustc-cfg=dummy_jemalloc");
         return;
     }

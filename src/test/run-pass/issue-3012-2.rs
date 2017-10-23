@@ -12,15 +12,11 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
-#![feature(box_syntax, libc)]
-
 extern crate socketlib;
-extern crate libc;
 
 use socketlib::socket;
 
 pub fn main() {
-    let fd: libc::c_int = 1 as libc::c_int;
-    let _sock: Box<_> = box socket::socket_handle(fd);
+    let fd: u32 = 1 as u32;
+    let _sock: Box<_> = Box::new(socket::socket_handle(fd));
 }

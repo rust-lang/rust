@@ -366,7 +366,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool PositionIndependentExecutable, bool FunctionSections,
-    bool DataSections, bool TrapUnreachable) {
+    bool DataSections,
+    bool TrapUnreachable,
+    bool Singlethread) {
 
   auto CM = fromRust(RustCM);
   auto OptLevel = fromRust(RustOptLevel);
@@ -404,6 +406,10 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     // it prevents control flow from "falling through" into whatever code
     // happens to be laid out next in memory.
     Options.TrapUnreachable = true;
+  }
+
+  if (Singlethread) {
+    Options.ThreadModel = ThreadModel::Single;
   }
 
   TargetMachine *TM = TheTarget->createTargetMachine(

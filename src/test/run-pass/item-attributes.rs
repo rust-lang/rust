@@ -12,8 +12,7 @@
 // for completeness since .rs files linked from .rc files support this
 // notation to specify their module's attributes
 
-
-#![feature(custom_attribute, libc)]
+#![feature(custom_attribute)]
 #![allow(unused_attribute)]
 #![attr1 = "val"]
 #![attr2 = "val"]
@@ -159,13 +158,11 @@ mod test_other_forms {
 
 mod test_foreign_items {
     pub mod rustrt {
-        extern crate libc;
-
         extern {
             #![attr]
 
             #[attr]
-            fn rust_get_test_int() -> libc::intptr_t;
+            fn rust_get_test_int() -> u32;
         }
     }
 }

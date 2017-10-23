@@ -13,6 +13,7 @@
 // triggers this situation by sending signal from atexit handler.
 //
 // ignore-windows
+// ignore-wasm32-bare no libc
 
 #![feature(libc)]
 extern crate libc;

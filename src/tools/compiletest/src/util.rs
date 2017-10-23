@@ -51,10 +51,15 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("wasm32", "wasm32"),
 ];
 
-pub fn get_os(triple: &str) -> &'static str {
+pub fn matches_os(triple: &str, name: &str) -> bool {
+    // For the wasm32 bare target we ignore anything also ignored on emscripten
+    // and then we also recognize `wasm32-bare` as the os for the target
+    if triple == "wasm32-unknown-unknown" {
+        return name == "emscripten" || name == "wasm32-bare"
+    }
     for &(triple_os, os) in OS_TABLE {
         if triple.contains(triple_os) {
-            return os;
+            return os == name;
         }
     }
     panic!("Cannot determine OS from triple");

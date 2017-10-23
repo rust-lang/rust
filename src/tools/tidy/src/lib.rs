@@ -50,6 +50,8 @@ pub mod unstable_book;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
+        "src/binaryen",
+        "src/dlmalloc",
         "src/jemalloc",
         "src/llvm",
         "src/libbacktrace",

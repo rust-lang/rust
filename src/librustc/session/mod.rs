@@ -432,7 +432,7 @@ impl Session {
             self.opts.debugging_opts.borrowck_mir
     }
     pub fn lto(&self) -> bool {
-        self.opts.cg.lto
+        self.opts.cg.lto || self.target.target.options.requires_lto
     }
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.

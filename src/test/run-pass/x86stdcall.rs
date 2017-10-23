@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare no libc to test ffi with
+
 // GetLastError doesn't seem to work with stack switching
 
 #[cfg(windows)]

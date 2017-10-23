@@ -50,6 +50,7 @@ version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
  "core 0.0.0",
+ "dlmalloc 0.0.0",
  "libc 0.0.0",
 ]
 
@@ -372,9 +373,6 @@ version = "0.1.0"
 [[package]]
 name = "core"
 version = "0.0.0"
-dependencies = [
- "rand 0.3.18 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "core-foundation"
@@ -508,6 +506,14 @@ dependencies = [
 name = "diff"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "dlmalloc"
+version = "0.0.0"
+dependencies = [
+ "alloc 0.0.0",
+ "core 0.0.0",
+]
 
 [[package]]
 name = "docopt"
@@ -1609,6 +1615,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_binaryen"
+version = "0.0.0"
+dependencies = [
+ "cc 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cmake 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
@@ -1880,6 +1895,7 @@ dependencies = [
  "rustc_allocator 0.0.0",
  "rustc_apfloat 0.0.0",
  "rustc_back 0.0.0",
+ "rustc_binaryen 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
