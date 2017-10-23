@@ -24,7 +24,7 @@ macro_rules! define_impl {
     ) => {
         impl $name {
             #[inline(always)]
-            pub fn new($($elname: $elemty),*) -> $name {
+            pub const fn new($($elname: $elemty),*) -> $name {
                 $name($($elname),*)
             }
 
