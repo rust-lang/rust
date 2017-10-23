@@ -5,12 +5,13 @@ Language
 --------
 - [`non_snake_case` lint now allows extern no-mangle functions][44966]
 - [Now accepts underscores in unicode escapes][43716]
-- [`#![feature(const_fn)]` is now no longer required for using
-  const functions][43017] Still required for creating constant functions.
+- [`#![feature(const_fn)]` is now no longer required for
+  calling const functions.][43017] It's Still required for creating
+  constant functions.
 
 Compiler
 --------
-- [rustc now defaults to having 32 codegen units at debug][44853]
+- [rustc now defaults to having 16 codegen units at debug on supported platforms.][44853]
 - [rustc will no longer inline in codegen units when compiling for debug][45075]
   This should decrease compile times for debug builds.
 - [strict memory alignment now enabled on ARMv6][45094]
@@ -36,6 +37,7 @@ Cargo
   folder that have a `main.rs` file.][cargo/4496]
 - [Changed `[root]` to `[package]` in `Cargo.lock`][cargo/4571] Packages with
   the old format will continue to work and can be updated with `cargo update`.
+- [Now supports vendoring git repositories][cargo/3992]
 
 Misc
 ----
@@ -46,7 +48,7 @@ Misc
 [45075]: https://github.com/rust-lang/rust/pull/45075
 [45094]: https://github.com/rust-lang/rust/pull/45094
 [45095]: https://github.com/rust-lang/rust/pull/45095
-[44853]: https://github.com/rust-lang/rust/pull/44853
+[45064]: https://github.com/rust-lang/rust/pull/45064
 [44895]: https://github.com/rust-lang/rust/pull/44895
 [44966]: https://github.com/rust-lang/rust/pull/44966
 [44978]: https://github.com/rust-lang/rust/pull/44978
@@ -59,6 +61,7 @@ Misc
 [44015]: https://github.com/rust-lang/rust/pull/44015
 [43716]: https://github.com/rust-lang/rust/pull/43716
 [43017]: https://github.com/rust-lang/rust/pull/43017
+[cargo/3992]: https://github.com/rust-lang/cargo/pull/3992
 [cargo/4496]: https://github.com/rust-lang/cargo/pull/4496
 [cargo/4571]: https://github.com/rust-lang/cargo/pull/4571
 
