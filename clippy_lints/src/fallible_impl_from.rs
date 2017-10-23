@@ -37,13 +37,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         // check for `impl From<???> for ..`
         let impl_def_id = cx.tcx.hir.local_def_id(item.id);
-        if_let_chain!{[
-            let hir::ItemImpl(.., ref impl_items) = item.node,
-            let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id),
-            match_def_path(cx.tcx, impl_trait_ref.def_id, &FROM_TRAIT),
-        ], {
-            lint_impl_body(cx, item.span, impl_items);
-        }}
+        if_chain! {
+            if let hir::ItemImpl(.., ref impl_items) = item.node;
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
+            if match_def_path(cx.tcx, impl_trait_ref.def_id, &FROM_TRAIT);
+            then {
+                lint_impl_body(cx, item.span, impl_items);
+            }
+        }
     }
 }
 
@@ -60,14 +61,15 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     impl<'a, 'tcx: 'a> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
         fn visit_expr(&mut self, expr: &'tcx Expr) {
             // check for `begin_panic`
-            if_let_chain!{[
-                let ExprCall(ref func_expr, _) = expr.node,
-                let ExprPath(QPath::Resolved(_, ref path)) = func_expr.node,
-                match_def_path(self.tcx, path.def.def_id(), &BEGIN_PANIC) ||
-                    match_def_path(self.tcx, path.def.def_id(), &BEGIN_PANIC_FMT),
-            ], {
-                self.result.push(expr.span);
-            }}
+            if_chain! {
+                if let ExprCall(ref func_expr, _) = expr.node;
+                if let ExprPath(QPath::Resolved(_, ref path)) = func_expr.node;
+                if match_def_path(self.tcx, path.def.def_id(), &BEGIN_PANIC) ||
+                    match_def_path(self.tcx, path.def.def_id(), &BEGIN_PANIC_FMT);
+                then {
+                    self.result.push(expr.span);
+                }
+            }
 
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
@@ -89,36 +91,37 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     }
 
     for impl_item in impl_items {
-        if_let_chain!{[
-            impl_item.name == "from",
-            let ImplItemKind::Method(_, body_id) =
-                cx.tcx.hir.impl_item(impl_item.id).node,
-        ], {
-            // check the body for `begin_panic` or `unwrap`
-            let body = cx.tcx.hir.body(body_id);
-            let impl_item_def_id = cx.tcx.hir.local_def_id(impl_item.id.node_id);
-            let mut fpu = FindPanicUnwrap {
-                tcx: cx.tcx,
-                tables: cx.tcx.typeck_tables_of(impl_item_def_id),
-                result: Vec::new(),
-            };
-            fpu.visit_expr(&body.value);
-
-            // if we've found one, lint
-            if !fpu.result.is_empty() {
-                span_lint_and_then(
-                    cx,
-                    FALLIBLE_IMPL_FROM,
-                    impl_span,
-                    "consider implementing `TryFrom` instead",
-                    move |db| {
-                        db.help(
-                            "`From` is intended for infallible conversions only. \
-                             Use `TryFrom` if there's a possibility for the conversion to fail.");
-                        db.span_note(fpu.result, "potential failure(s)");
-                    });
+        if_chain! {
+            if impl_item.name == "from";
+            if let ImplItemKind::Method(_, body_id) =
+                cx.tcx.hir.impl_item(impl_item.id).node;
+            then {
+                // check the body for `begin_panic` or `unwrap`
+                let body = cx.tcx.hir.body(body_id);
+                let impl_item_def_id = cx.tcx.hir.local_def_id(impl_item.id.node_id);
+                let mut fpu = FindPanicUnwrap {
+                    tcx: cx.tcx,
+                    tables: cx.tcx.typeck_tables_of(impl_item_def_id),
+                    result: Vec::new(),
+                };
+                fpu.visit_expr(&body.value);
+    
+                // if we've found one, lint
+                if !fpu.result.is_empty() {
+                    span_lint_and_then(
+                        cx,
+                        FALLIBLE_IMPL_FROM,
+                        impl_span,
+                        "consider implementing `TryFrom` instead",
+                        move |db| {
+                            db.help(
+                                "`From` is intended for infallible conversions only. \
+                                 Use `TryFrom` if there's a possibility for the conversion to fail.");
+                            db.span_note(fpu.result, "potential failure(s)");
+                        });
+                }
             }
-        }}
+        }
     }
 }
 

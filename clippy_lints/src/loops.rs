@@ -611,16 +611,17 @@ fn check_for_loop<'a, 'tcx>(
 }
 
 fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> bool {
-    if_let_chain! {[
-        let ExprPath(ref qpath) = expr.node,
-        let QPath::Resolved(None, ref path) = *qpath,
-        path.segments.len() == 1,
-        let Def::Local(local_id) = cx.tables.qpath_def(qpath, expr.hir_id),
+    if_chain! {
+        if let ExprPath(ref qpath) = expr.node;
+        if let QPath::Resolved(None, ref path) = *qpath;
+        if path.segments.len() == 1;
+        if let Def::Local(local_id) = cx.tables.qpath_def(qpath, expr.hir_id);
         // our variable!
-        local_id == var
-    ], {
-        return true;
-    }}
+        if local_id == var;
+        then {
+            return true;
+        }
+    }
 
     false
 }
@@ -725,14 +726,15 @@ fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
     expr: &Expr,
     var: ast::NodeId,
 ) -> Option<FixedOffsetVar> {
-    if_let_chain! {[
-        let ExprMethodCall(ref method, _, ref args) = expr.node,
-        method.name == "clone",
-        args.len() == 1,
-        let Some(arg) = args.get(0),
-    ], {
-        return get_fixed_offset_var(cx, arg, var);
-    }}
+    if_chain! {
+        if let ExprMethodCall(ref method, _, ref args) = expr.node;
+        if method.name == "clone";
+        if args.len() == 1;
+        if let Some(arg) = args.get(0);
+        then {
+            return get_fixed_offset_var(cx, arg, var);
+        }
+    }
 
     get_fixed_offset_var(cx, expr, var)
 }
@@ -821,19 +823,20 @@ fn detect_manual_memcpy<'a, 'tcx>(
             };
 
             let print_limit = |end: &Option<&Expr>, offset: Offset, var_name: &str| if let Some(end) = *end {
-                if_let_chain! {[
-                    let ExprMethodCall(ref method, _, ref len_args) = end.node,
-                    method.name == "len",
-                    len_args.len() == 1,
-                    let Some(arg) = len_args.get(0),
-                    snippet(cx, arg.span, "??") == var_name,
-                ], {
-                    return if offset.negate {
-                        format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
-                    } else {
-                        "".to_owned()
-                    };
-                }}
+                if_chain! {
+                    if let ExprMethodCall(ref method, _, ref len_args) = end.node;
+                    if method.name == "len";
+                    if len_args.len() == 1;
+                    if let Some(arg) = len_args.get(0);
+                    if snippet(cx, arg.span, "??") == var_name;
+                    then {
+                        return if offset.negate {
+                            format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
+                        } else {
+                            "".to_owned()
+                        };
+                    }
+                }
 
                 let end_str = match limits {
                     ast::RangeLimits::Closed => {
@@ -1003,16 +1006,17 @@ fn check_for_loop_range<'a, 'tcx>(
 }
 
 fn is_len_call(expr: &Expr, var: &Name) -> bool {
-    if_let_chain! {[
-        let ExprMethodCall(ref method, _, ref len_args) = expr.node,
-        len_args.len() == 1,
-        method.name == "len",
-        let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node,
-        path.segments.len() == 1,
-        path.segments[0].name == *var
-    ], {
-        return true;
-    }}
+    if_chain! {
+        if let ExprMethodCall(ref method, _, ref len_args) = expr.node;
+        if len_args.len() == 1;
+        if method.name == "len";
+        if let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node;
+        if path.segments.len() == 1;
+        if path.segments[0].name == *var;
+        then {
+            return true;
+        }
+    }
 
     false
 }
@@ -1374,22 +1378,24 @@ fn mut_warn_with_span(cx: &LateContext, span: Option<Span>) {
 }
 
 fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
-    if_let_chain! {[
-        let ExprPath(ref qpath) = bound.node,
-        let QPath::Resolved(None, _) = *qpath,
-    ], {
-        let def = cx.tables.qpath_def(qpath, bound.hir_id);
-        if let Def::Local(node_id) = def {
-            let node_str = cx.tcx.hir.get(node_id);
-            if_let_chain! {[
-                let map::Node::NodeBinding(pat) = node_str,
-                let PatKind::Binding(bind_ann, _, _, _) = pat.node,
-                let BindingAnnotation::Mutable = bind_ann,
-            ], {
-                return Some(node_id);
-            }}
+    if_chain! {
+        if let ExprPath(ref qpath) = bound.node;
+        if let QPath::Resolved(None, _) = *qpath;
+        then {
+            let def = cx.tables.qpath_def(qpath, bound.hir_id);
+            if let Def::Local(node_id) = def {
+                let node_str = cx.tcx.hir.get(node_id);
+                if_chain! {
+                    if let map::Node::NodeBinding(pat) = node_str;
+                    if let PatKind::Binding(bind_ann, _, _, _) = pat.node;
+                    if let BindingAnnotation::Mutable = bind_ann;
+                    then {
+                        return Some(node_id);
+                    }
+                }
+            }
         }
-    }}
+    }
     None
 }
 
@@ -1476,67 +1482,69 @@ struct VarVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if_let_chain! {[
+        if_chain! {
             // an index op
-            let ExprIndex(ref seqexpr, ref idx) = expr.node,
+            if let ExprIndex(ref seqexpr, ref idx) = expr.node;
             // the indexed container is referenced by a name
-            let ExprPath(ref seqpath) = seqexpr.node,
-            let QPath::Resolved(None, ref seqvar) = *seqpath,
-            seqvar.segments.len() == 1,
-        ], {
-            let index_used_directly = same_var(self.cx, idx, self.var);
-            let index_used = index_used_directly || {
-                let mut used_visitor = LocalUsedVisitor {
-                    cx: self.cx,
-                    local: self.var,
-                    used: false,
+            if let ExprPath(ref seqpath) = seqexpr.node;
+            if let QPath::Resolved(None, ref seqvar) = *seqpath;
+            if seqvar.segments.len() == 1;
+            then {
+                let index_used_directly = same_var(self.cx, idx, self.var);
+                let index_used = index_used_directly || {
+                    let mut used_visitor = LocalUsedVisitor {
+                        cx: self.cx,
+                        local: self.var,
+                        used: false,
+                    };
+                    walk_expr(&mut used_visitor, idx);
+                    used_visitor.used
                 };
-                walk_expr(&mut used_visitor, idx);
-                used_visitor.used
-            };
-
-            if index_used {
-                let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
-                match def {
-                    Def::Local(node_id) | Def::Upvar(node_id, ..) => {
-                        let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
-
-                        let parent_id = self.cx.tcx.hir.get_parent(expr.id);
-                        let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
-                        let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
-                        self.indexed.insert(seqvar.segments[0].name, Some(extent));
-                        if index_used_directly {
-                            self.indexed_directly.insert(seqvar.segments[0].name, Some(extent));
+    
+                if index_used {
+                    let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
+                    match def {
+                        Def::Local(node_id) | Def::Upvar(node_id, ..) => {
+                            let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
+    
+                            let parent_id = self.cx.tcx.hir.get_parent(expr.id);
+                            let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
+                            let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
+                            self.indexed.insert(seqvar.segments[0].name, Some(extent));
+                            if index_used_directly {
+                                self.indexed_directly.insert(seqvar.segments[0].name, Some(extent));
+                            }
+                            return;  // no need to walk further *on the variable*
                         }
-                        return;  // no need to walk further *on the variable*
-                    }
-                    Def::Static(..) | Def::Const(..) => {
-                        self.indexed.insert(seqvar.segments[0].name, None);
-                        if index_used_directly {
-                            self.indexed_directly.insert(seqvar.segments[0].name, None);
+                        Def::Static(..) | Def::Const(..) => {
+                            self.indexed.insert(seqvar.segments[0].name, None);
+                            if index_used_directly {
+                                self.indexed_directly.insert(seqvar.segments[0].name, None);
+                            }
+                            return;  // no need to walk further *on the variable*
                         }
-                        return;  // no need to walk further *on the variable*
+                        _ => (),
                     }
-                    _ => (),
                 }
             }
-        }}
+        }
 
-        if_let_chain! {[
+        if_chain! {
             // directly using a variable
-            let ExprPath(ref qpath) = expr.node,
-            let QPath::Resolved(None, ref path) = *qpath,
-            path.segments.len() == 1,
-            let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id),
-        ], {
-            if local_id == self.var {
-                // we are not indexing anything, record that
-                self.nonindex = true;
-            } else {
-                // not the correct variable, but still a variable
-                self.referenced.insert(path.segments[0].name);
+            if let ExprPath(ref qpath) = expr.node;
+            if let QPath::Resolved(None, ref path) = *qpath;
+            if path.segments.len() == 1;
+            if let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id);
+            then {
+                if local_id == self.var {
+                    // we are not indexing anything, record that
+                    self.nonindex = true;
+                } else {
+                    // not the correct variable, but still a variable
+                    self.referenced.insert(path.segments[0].name);
+                }
             }
-        }}
+        }
 
         walk_expr(self, expr);
     }
@@ -1845,12 +1853,13 @@ fn is_conditional(expr: &Expr) -> bool {
 }
 
 fn is_nested(cx: &LateContext, match_expr: &Expr, iter_expr: &Expr) -> bool {
-    if_let_chain! {[
-        let Some(loop_block) = get_enclosing_block(cx, match_expr.id),
-        let Some(map::Node::NodeExpr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id)),
-    ], {
-        return is_loop_nested(cx, loop_expr, iter_expr)
-    }}
+    if_chain! {
+        if let Some(loop_block) = get_enclosing_block(cx, match_expr.id);
+        if let Some(map::Node::NodeExpr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id));
+        then {
+            return is_loop_nested(cx, loop_expr, iter_expr)
+        }
+    }
     false
 }
 

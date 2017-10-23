@@ -158,21 +158,22 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     let last = last_path_segment(qpath);
-                    if_let_chain! {[
-                        let Some(ref params) = last.parameters,
-                        !params.parenthesized,
-                        let Some(vec) = params.types.get(0),
-                        let TyPath(ref qpath) = vec.node,
-                        let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id))),
-                        match_def_path(cx.tcx, did, &paths::VEC),
-                    ], {
-                        span_help_and_lint(cx,
-                                           BOX_VEC,
-                                           ast_ty.span,
-                                           "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                                           "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
-                        return; // don't recurse into the type
-                    }}
+                    if_chain! {
+                        if let Some(ref params) = last.parameters;
+                        if !params.parenthesized;
+                        if let Some(vec) = params.types.get(0);
+                        if let TyPath(ref qpath) = vec.node;
+                        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id)));
+                        if match_def_path(cx.tcx, did, &paths::VEC);
+                        then {
+                            span_help_and_lint(cx,
+                                               BOX_VEC,
+                                               ast_ty.span,
+                                               "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                               "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                            return; // don't recurse into the type
+                        }
+                    }
                 } else if match_def_path(cx.tcx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(
                         cx,
@@ -227,39 +228,40 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
         TyPath(ref qpath) => {
             let hir_id = cx.tcx.hir.node_to_hir_id(mut_ty.ty.id);
             let def = cx.tables.qpath_def(qpath, hir_id);
-            if_let_chain! {[
-                let Some(def_id) = opt_def_id(def),
-                Some(def_id) == cx.tcx.lang_items().owned_box(),
-                let QPath::Resolved(None, ref path) = *qpath,
-                let [ref bx] = *path.segments,
-                let Some(ref params) = bx.parameters,
-                !params.parenthesized,
-                let [ref inner] = *params.types
-            ], {
-                if is_any_trait(inner) {
-                    // Ignore `Box<Any>` types, see #1884 for details.
-                    return;
+            if_chain! {
+                if let Some(def_id) = opt_def_id(def);
+                if Some(def_id) == cx.tcx.lang_items().owned_box();
+                if let QPath::Resolved(None, ref path) = *qpath;
+                if let [ref bx] = *path.segments;
+                if let Some(ref params) = bx.parameters;
+                if !params.parenthesized;
+                if let [ref inner] = *params.types;
+                then {
+                    if is_any_trait(inner) {
+                        // Ignore `Box<Any>` types, see #1884 for details.
+                        return;
+                    }
+    
+                    let ltopt = if lt.is_elided() {
+                        "".to_owned()
+                    } else {
+                        format!("{} ", lt.name.name().as_str())
+                    };
+                    let mutopt = if mut_ty.mutbl == Mutability::MutMutable {
+                        "mut "
+                    } else {
+                        ""
+                    };
+                    span_lint_and_sugg(cx,
+                        BORROWED_BOX,
+                        ast_ty.span,
+                        "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
+                        "try",
+                        format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, ".."))
+                    );
+                    return; // don't recurse into the type
                 }
-
-                let ltopt = if lt.is_elided() {
-                    "".to_owned()
-                } else {
-                    format!("{} ", lt.name.name().as_str())
-                };
-                let mutopt = if mut_ty.mutbl == Mutability::MutMutable {
-                    "mut "
-                } else {
-                    ""
-                };
-                span_lint_and_sugg(cx,
-                    BORROWED_BOX,
-                    ast_ty.span,
-                    "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
-                    "try",
-                    format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, ".."))
-                );
-                return; // don't recurse into the type
-            }};
+            };
             check_ty(cx, &mut_ty.ty, is_local);
         },
         _ => check_ty(cx, &mut_ty.ty, is_local),
@@ -268,15 +270,16 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
 
 // Returns true if given type is `Any` trait.
 fn is_any_trait(t: &hir::Ty) -> bool {
-    if_let_chain! {[
-        let TyTraitObject(ref traits, _) = t.node,
-        traits.len() >= 1,
+    if_chain! {
+        if let TyTraitObject(ref traits, _) = t.node;
+        if traits.len() >= 1;
         // Only Send/Sync can be used as additional traits, so it is enough to
         // check only the first trait.
-        match_path(&traits[0].trait_ref.path, &paths::ANY_TRAIT)
-    ], {
-        return true;
-    }}
+        if match_path(&traits[0].trait_ref.path, &paths::ANY_TRAIT);
+        then {
+            return true;
+        }
+    }
 
     false
 }
@@ -1719,43 +1722,44 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
     }
 
     fn visit_expr(&mut self, e: &'tcx Expr) {
-        if_let_chain!{[
-            let ExprCall(ref fun, ref args) = e.node,
-            let ExprPath(QPath::TypeRelative(ref ty, ref method)) = fun.node,
-            let TyPath(QPath::Resolved(None, ref ty_path)) = ty.node,
-        ], {
-            if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
-                return;
-            }
-
-            if match_path(ty_path, &paths::HASHMAP) {
-                if method.name == "new" {
-                    self.suggestions
-                        .insert(e.span, "HashMap::default()".to_string());
-                } else if method.name == "with_capacity" {
-                    self.suggestions.insert(
-                        e.span,
-                        format!(
-                            "HashMap::with_capacity_and_hasher({}, Default::default())",
-                            snippet(self.cx, args[0].span, "capacity"),
-                        ),
-                    );
+        if_chain! {
+            if let ExprCall(ref fun, ref args) = e.node;
+            if let ExprPath(QPath::TypeRelative(ref ty, ref method)) = fun.node;
+            if let TyPath(QPath::Resolved(None, ref ty_path)) = ty.node;
+            then {
+                if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
+                    return;
                 }
-            } else if match_path(ty_path, &paths::HASHSET) {
-                if method.name == "new" {
-                    self.suggestions
-                        .insert(e.span, "HashSet::default()".to_string());
-                } else if method.name == "with_capacity" {
-                    self.suggestions.insert(
-                        e.span,
-                        format!(
-                            "HashSet::with_capacity_and_hasher({}, Default::default())",
-                            snippet(self.cx, args[0].span, "capacity"),
-                        ),
-                    );
+    
+                if match_path(ty_path, &paths::HASHMAP) {
+                    if method.name == "new" {
+                        self.suggestions
+                            .insert(e.span, "HashMap::default()".to_string());
+                    } else if method.name == "with_capacity" {
+                        self.suggestions.insert(
+                            e.span,
+                            format!(
+                                "HashMap::with_capacity_and_hasher({}, Default::default())",
+                                snippet(self.cx, args[0].span, "capacity"),
+                            ),
+                        );
+                    }
+                } else if match_path(ty_path, &paths::HASHSET) {
+                    if method.name == "new" {
+                        self.suggestions
+                            .insert(e.span, "HashSet::default()".to_string());
+                    } else if method.name == "with_capacity" {
+                        self.suggestions.insert(
+                            e.span,
+                            format!(
+                                "HashSet::with_capacity_and_hasher({}, Default::default())",
+                                snippet(self.cx, args[0].span, "capacity"),
+                            ),
+                        );
+                    }
                 }
             }
-        }}
+        }
 
         walk_expr(self, e);
     }

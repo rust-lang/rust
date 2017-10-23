@@ -94,13 +94,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                 return;
             }
             for item in items {
-                if_let_chain! {[
-                    let NestedMetaItemKind::MetaItem(ref mi) = item.node,
-                    let MetaItemKind::NameValue(ref lit) = mi.node,
-                    mi.name() == "since",
-                ], {
-                    check_semver(cx, item.span, lit);
-                }}
+                if_chain! {
+                    if let NestedMetaItemKind::MetaItem(ref mi) = item.node;
+                    if let MetaItemKind::NameValue(ref lit) = mi.node;
+                    if mi.name() == "since";
+                    then {
+                        check_semver(cx, item.span, lit);
+                    }
+                }
             }
         }
     }

@@ -42,19 +42,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             match expr.node {
                 // `format!("{}", foo)` expansion
                 ExprCall(ref fun, ref args) => {
-                    if_let_chain!{[
-                        let ExprPath(ref qpath) = fun.node,
-                        args.len() == 2,
-                        let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id)),
-                        match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1),
+                    if_chain! {
+                        if let ExprPath(ref qpath) = fun.node;
+                        if args.len() == 2;
+                        if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
+                        if match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1);
                         // ensure the format string is `"{..}"` with only one argument and no text
-                        check_static_str(&args[0]),
+                        if check_static_str(&args[0]);
                         // ensure the format argument is `{}` ie. Display with no fancy option
                         // and that the argument is a string
-                        check_arg_is_display(cx, &args[1])
-                    ], {
-                        span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
-                    }}
+                        if check_arg_is_display(cx, &args[1]);
+                        then {
+                            span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
+                        }
+                    }
                 },
                 // `format!("foo")` expansion contains `match () { () => [], }`
                 ExprMatch(ref matchee, _, _) => if let ExprTup(ref tup) = matchee.node {
@@ -70,15 +71,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 /// Checks if the expressions matches `&[""]`
 fn check_static_str(expr: &Expr) -> bool {
-    if_let_chain! {[
-        let ExprAddrOf(_, ref expr) = expr.node, // &[""]
-        let ExprArray(ref exprs) = expr.node, // [""]
-        exprs.len() == 1,
-        let ExprLit(ref lit) = exprs[0].node,
-        let LitKind::Str(ref lit, _) = lit.node,
-    ], {
-        return lit.as_str().is_empty();
-    }}
+    if_chain! {
+        if let ExprAddrOf(_, ref expr) = expr.node; // &[""]
+        if let ExprArray(ref exprs) = expr.node; // [""]
+        if exprs.len() == 1;
+        if let ExprLit(ref lit) = exprs[0].node;
+        if let LitKind::Str(ref lit, _) = lit.node;
+        then {
+            return lit.as_str().is_empty();
+        }
+    }
 
     false
 }
@@ -91,25 +93,26 @@ fn check_static_str(expr: &Expr) -> bool {
 /// }
 /// ```
 fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
-    if_let_chain! {[
-        let ExprAddrOf(_, ref expr) = expr.node,
-        let ExprMatch(_, ref arms, _) = expr.node,
-        arms.len() == 1,
-        arms[0].pats.len() == 1,
-        let PatKind::Tuple(ref pat, None) = arms[0].pats[0].node,
-        pat.len() == 1,
-        let ExprArray(ref exprs) = arms[0].body.node,
-        exprs.len() == 1,
-        let ExprCall(_, ref args) = exprs[0].node,
-        args.len() == 2,
-        let ExprPath(ref qpath) = args[1].node,
-        let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, args[1].hir_id)),
-        match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD),
-    ], {
-        let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
-
-        return ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING);
-    }}
+    if_chain! {
+        if let ExprAddrOf(_, ref expr) = expr.node;
+        if let ExprMatch(_, ref arms, _) = expr.node;
+        if arms.len() == 1;
+        if arms[0].pats.len() == 1;
+        if let PatKind::Tuple(ref pat, None) = arms[0].pats[0].node;
+        if pat.len() == 1;
+        if let ExprArray(ref exprs) = arms[0].body.node;
+        if exprs.len() == 1;
+        if let ExprCall(_, ref args) = exprs[0].node;
+        if args.len() == 2;
+        if let ExprPath(ref qpath) = args[1].node;
+        if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, args[1].hir_id));
+        if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
+        then {
+            let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
+    
+            return ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING);
+        }
+    }
 
     false
 }

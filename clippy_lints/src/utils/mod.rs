@@ -1004,13 +1004,14 @@ pub fn is_self(slf: &Arg) -> bool {
 }
 
 pub fn is_self_ty(slf: &hir::Ty) -> bool {
-    if_let_chain! {[
-        let TyPath(ref qp) = slf.node,
-        let QPath::Resolved(None, ref path) = *qp,
-        let Def::SelfTy(..) = path.def,
-    ], {
-        return true
-    }}
+    if_chain! {
+        if let TyPath(ref qp) = slf.node;
+        if let QPath::Resolved(None, ref path) = *qp;
+        if let Def::SelfTy(..) = path.def;
+        then {
+            return true
+        }
+    }
     false
 }
 
@@ -1022,16 +1023,17 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl, body: &'tcx Body) -> impl Iterator<I
 /// expanded from `?` operator or `try` macro.
 pub fn is_try(expr: &Expr) -> Option<&Expr> {
     fn is_ok(arm: &Arm) -> bool {
-        if_let_chain! {[
-            let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node,
-            match_qpath(path, &paths::RESULT_OK[1..]),
-            let PatKind::Binding(_, defid, _, None) = pat[0].node,
-            let ExprPath(QPath::Resolved(None, ref path)) = arm.body.node,
-            let Def::Local(lid) = path.def,
-            lid == defid,
-        ], {
-            return true;
-        }}
+        if_chain! {
+            if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node;
+            if match_qpath(path, &paths::RESULT_OK[1..]);
+            if let PatKind::Binding(_, defid, _, None) = pat[0].node;
+            if let ExprPath(QPath::Resolved(None, ref path)) = arm.body.node;
+            if let Def::Local(lid) = path.def;
+            if lid == defid;
+            then {
+                return true;
+            }
+        }
         false
     }
 
@@ -1049,15 +1051,16 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
             return Some(expr);
         }
 
-        if_let_chain! {[
-            arms.len() == 2,
-            arms[0].pats.len() == 1 && arms[0].guard.is_none(),
-            arms[1].pats.len() == 1 && arms[1].guard.is_none(),
-            (is_ok(&arms[0]) && is_err(&arms[1])) ||
-                (is_ok(&arms[1]) && is_err(&arms[0])),
-        ], {
-            return Some(expr);
-        }}
+        if_chain! {
+            if arms.len() == 2;
+            if arms[0].pats.len() == 1 && arms[0].guard.is_none();
+            if arms[1].pats.len() == 1 && arms[1].guard.is_none();
+            if (is_ok(&arms[0]) && is_err(&arms[1])) ||
+                (is_ok(&arms[1]) && is_err(&arms[0]));
+            then {
+                return Some(expr);
+            }
+        }
     }
 
     None

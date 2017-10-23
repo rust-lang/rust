@@ -37,56 +37,58 @@ impl LintPass for ByteCount {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if_let_chain!([
-            let ExprMethodCall(ref count, _, ref count_args) = expr.node,
-            count.name == "count",
-            count_args.len() == 1,
-            let ExprMethodCall(ref filter, _, ref filter_args) = count_args[0].node,
-            filter.name == "filter",
-            filter_args.len() == 2,
-            let ExprClosure(_, _, body_id, _, _) = filter_args[1].node,
-        ], {
-            let body = cx.tcx.hir.body(body_id);
-            if_let_chain!([
-                body.arguments.len() == 1,
-                let Some(argname) = get_pat_name(&body.arguments[0].pat),
-                let ExprBinary(ref op, ref l, ref r) = body.value.node,
-                op.node == BiEq,
-                match_type(cx,
-                           walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
-                           &paths::SLICE_ITER),
-            ], {
-                let needle = match get_path_name(l) {
-                    Some(name) if check_arg(name, argname, r) => r,
-                    _ => match get_path_name(r) {
-                        Some(name) if check_arg(name, argname, l) => l,
-                        _ => { return; }
+        if_chain! {
+            if let ExprMethodCall(ref count, _, ref count_args) = expr.node;
+            if count.name == "count";
+            if count_args.len() == 1;
+            if let ExprMethodCall(ref filter, _, ref filter_args) = count_args[0].node;
+            if filter.name == "filter";
+            if filter_args.len() == 2;
+            if let ExprClosure(_, _, body_id, _, _) = filter_args[1].node;
+            then {
+                let body = cx.tcx.hir.body(body_id);
+                if_chain! {
+                    if body.arguments.len() == 1;
+                    if let Some(argname) = get_pat_name(&body.arguments[0].pat);
+                    if let ExprBinary(ref op, ref l, ref r) = body.value.node;
+                    if op.node == BiEq;
+                    if match_type(cx,
+                               walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
+                               &paths::SLICE_ITER);
+                    then {
+                        let needle = match get_path_name(l) {
+                            Some(name) if check_arg(name, argname, r) => r,
+                            _ => match get_path_name(r) {
+                                Some(name) if check_arg(name, argname, l) => l,
+                                _ => { return; }
+                            }
+                        };
+                        if ty::TyUint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
+                            return;
+                        }
+                        let haystack = if let ExprMethodCall(ref path, _, ref args) =
+                                filter_args[0].node {
+                            let p = path.name;
+                            if (p == "iter" || p == "iter_mut") && args.len() == 1 {
+                                &args[0]
+                            } else {
+                                &filter_args[0]
+                            }
+                        } else {
+                            &filter_args[0]
+                        };
+                        span_lint_and_sugg(cx,
+                                           NAIVE_BYTECOUNT,
+                                           expr.span,
+                                           "You appear to be counting bytes the naive way",
+                                           "Consider using the bytecount crate",
+                                           format!("bytecount::count({}, {})",
+                                                    snippet(cx, haystack.span, ".."),
+                                                    snippet(cx, needle.span, "..")));
                     }
                 };
-                if ty::TyUint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
-                    return;
-                }
-                let haystack = if let ExprMethodCall(ref path, _, ref args) =
-                        filter_args[0].node {
-                    let p = path.name;
-                    if (p == "iter" || p == "iter_mut") && args.len() == 1 {
-                        &args[0]
-                    } else {
-                        &filter_args[0]
-                    }
-                } else {
-                    &filter_args[0]
-                };
-                span_lint_and_sugg(cx,
-                                   NAIVE_BYTECOUNT,
-                                   expr.span,
-                                   "You appear to be counting bytes the naive way",
-                                   "Consider using the bytecount crate",
-                                   format!("bytecount::count({}, {})",
-                                            snippet(cx, haystack.span, ".."),
-                                            snippet(cx, needle.span, "..")));
-            });
-        });
+            }
+        };
     }
 }
 

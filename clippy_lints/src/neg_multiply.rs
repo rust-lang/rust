@@ -45,16 +45,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
 }
 
 fn check_mul(cx: &LateContext, span: Span, lit: &Expr, exp: &Expr) {
-    if_let_chain!([
-        let ExprLit(ref l) = lit.node,
-        let Constant::Int(ref ci) = consts::lit_to_constant(&l.node, cx.tcx, cx.tables.expr_ty(lit)),
-        let Some(val) = ci.to_u64(),
-        val == 1,
-        cx.tables.expr_ty(exp).is_integral()
-    ], {
-        span_lint(cx,
-                  NEG_MULTIPLY,
-                  span,
-                  "Negation by multiplying with -1");
-    })
+    if_chain! {
+        if let ExprLit(ref l) = lit.node;
+        if let Constant::Int(ref ci) = consts::lit_to_constant(&l.node, cx.tcx, cx.tables.expr_ty(lit));
+        if let Some(val) = ci.to_u64();
+        if val == 1;
+        if cx.tables.expr_ty(exp).is_integral();
+        then {
+            span_lint(cx,
+                      NEG_MULTIPLY,
+                      span,
+                      "Negation by multiplying with -1");
+        }
+    }
 }

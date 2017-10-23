@@ -343,21 +343,22 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pats[0].node {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
-                if_let_chain! {[
-                    path_str == "Err",
-                    inner.iter().any(|pat| pat.node == PatKind::Wild),
-                    let ExprBlock(ref block) = arm.body.node,
-                    is_panic_block(block)
-                ], {
-                    // `Err(_)` arm with `panic!` found
-                    span_note_and_lint(cx,
-                                       MATCH_WILD_ERR_ARM,
-                                       arm.pats[0].span,
-                                       "Err(_) will match all errors, maybe not a good idea",
-                                       arm.pats[0].span,
-                                       "to remove this warning, match each error seperately \
-                                        or use unreachable macro");
-                }}
+                if_chain! {
+                    if path_str == "Err";
+                    if inner.iter().any(|pat| pat.node == PatKind::Wild);
+                    if let ExprBlock(ref block) = arm.body.node;
+                    if is_panic_block(block);
+                    then {
+                        // `Err(_)` arm with `panic!` found
+                        span_note_and_lint(cx,
+                                           MATCH_WILD_ERR_ARM,
+                                           arm.pats[0].span,
+                                           "Err(_) will match all errors, maybe not a good idea",
+                                           arm.pats[0].span,
+                                           "to remove this warning, match each error seperately \
+                                            or use unreachable macro");
+                    }
+                }
             }
         }
     }
@@ -428,24 +429,26 @@ fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm], id: NodeI
             } else {
                 [].iter()
             }.filter_map(|pat| {
-                if_let_chain! {[
-                    let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node,
-                    let Ok(lhs) = constcx.eval(lhs),
-                    let Ok(rhs) = constcx.eval(rhs)
-                ], {
-                    let rhs = match *range_end {
-                        RangeEnd::Included => Bound::Included(rhs),
-                        RangeEnd::Excluded => Bound::Excluded(rhs),
-                    };
-                    return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
-                }}
+                if_chain! {
+                    if let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node;
+                    if let Ok(lhs) = constcx.eval(lhs);
+                    if let Ok(rhs) = constcx.eval(rhs);
+                    then {
+                        let rhs = match *range_end {
+                            RangeEnd::Included => Bound::Included(rhs),
+                            RangeEnd::Excluded => Bound::Excluded(rhs),
+                        };
+                        return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
+                    }
+                }
 
-                if_let_chain! {[
-                    let PatKind::Lit(ref value) = pat.node,
-                    let Ok(value) = constcx.eval(value)
-                ], {
-                    return Some(SpannedRange { span: pat.span, node: (value, Bound::Included(value)) });
-                }}
+                if_chain! {
+                    if let PatKind::Lit(ref value) = pat.node;
+                    if let Ok(value) = constcx.eval(value);
+                    then {
+                        return Some(SpannedRange { span: pat.span, node: (value, Bound::Included(value)) });
+                    }
+                }
 
                 None
             })

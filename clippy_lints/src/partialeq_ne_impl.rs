@@ -37,20 +37,21 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if_let_chain! {[
-            let ItemImpl(_, _, _, _, Some(ref trait_ref), _, ref impl_items) = item.node,
-            !is_automatically_derived(&*item.attrs),
-            let Some(eq_trait) = cx.tcx.lang_items().eq_trait(),
-            trait_ref.path.def.def_id() == eq_trait
-        ], {
-            for impl_item in impl_items {
-                if impl_item.name == "ne" {
-                    span_lint(cx,
-                              PARTIALEQ_NE_IMPL,
-                              impl_item.span,
-                              "re-implementing `PartialEq::ne` is unnecessary")
+        if_chain! {
+            if let ItemImpl(_, _, _, _, Some(ref trait_ref), _, ref impl_items) = item.node;
+            if !is_automatically_derived(&*item.attrs);
+            if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
+            if trait_ref.path.def.def_id() == eq_trait;
+            then {
+                for impl_item in impl_items {
+                    if impl_item.name == "ne" {
+                        span_lint(cx,
+                                  PARTIALEQ_NE_IMPL,
+                                  impl_item.span,
+                                  "re-implementing `PartialEq::ne` is unnecessary")
+                    }
                 }
             }
-        }};
+        };
     }
 }
