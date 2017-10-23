@@ -24,14 +24,14 @@ The behaviour of division and modulo, as implemented by Rust's (truncated) divis
 (-8 / 3,      -8 % 3)           // (-2, -2)
 ((-8).div_euc(3), (-8).mod_euc(3))  // (-3,  1)
 ```
-Euclidean division & modulo for integers will be achieved using the `div_euc` and `mod_euc` methods. The `%` operator has identical behaviour to `mod_euc` for unsigned integers. However, when using signed integers, you should be careful to consider the behaviour you want: often Euclidean modulo will be more appropriate.
+Euclidean division & modulo for integers and floating-point numbers will be achieved using the `div_euc` and `mod_euc` methods. The `%` operator has identical behaviour to `mod_euc` for unsigned integers. However, when using signed integers or floating-point numbers, you should be careful to consider the behaviour you want: often Euclidean modulo will be more appropriate.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
 It is important to have both division and modulo methods, as the two operations are intrinsically linked[[8]](https://en.wikipedia.org/wiki/Modulo_operation), though it is often the modulo operator that is specifically requested.
 
-A complete implementation of Euclidean modulo would involve adding 8 methods to the integer primitives in `libcore/num/mod.rs`:
+A complete implementation of Euclidean modulo would involve adding 8 methods to the integer primitives in `libcore/num/mod.rs` and 2 methods to the floating-point primitives in `libcore/num` and `libstd`:
 ```rust
 // Implemented for all numeric primitives.
 fn div_euc(self, rhs: Self) -> Self;
@@ -66,6 +66,24 @@ fn mod_euc(self, rhs: Self) -> Self {
     r
 }
 ```
+And on `f64` (analagous to the `f32` implementation):
+```rust
+fn div_euc(self, rhs: f64) -> f64 {
+    let q = (self / rhs).trunc();
+    if self % rhs < 0.0 {
+        return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
+    }
+    q
+}
+
+fn mod_euc(self, rhs: f64) -> f64 {
+    let r = self % rhs;
+    if r < 0.0 {
+        return if rhs > 0.0 { r + rhs } else { r - rhs }
+    }
+    r
+}
+```
 
 The unsigned implementations of these methods are trivial.
 The `checked_*`, `overflowing_*` and `wrapping_*` methods would operate analogously to their non-Euclidean `*_div` and `*_rem` counterparts that already exist. The edge cases are identical.
@@ -91,4 +109,4 @@ This functionality could instead reside in a separate crate, such as `num` (floo
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Is it worth implementing `div_euc` and `mod_euc` for floating-point numbers? While it makes sense for completeness, it may be too rare a use case to be worth extending the core library to include.
+None.
