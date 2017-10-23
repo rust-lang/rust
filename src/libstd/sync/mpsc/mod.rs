@@ -1677,6 +1677,15 @@ impl error::Error for TryRecvError {
     }
 }
 
+#[stable(feature = "mpsc_recv_error_from", since = "1.23.0")]
+impl From<RecvError> for TryRecvError {
+    fn from(err: RecvError) -> TryRecvError {
+        match err {
+            RecvError => TryRecvError::Disconnected,
+        }
+    }
+}
+
 #[stable(feature = "mpsc_recv_timeout_error", since = "1.15.0")]
 impl fmt::Display for RecvTimeoutError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1706,6 +1715,15 @@ impl error::Error for RecvTimeoutError {
 
     fn cause(&self) -> Option<&error::Error> {
         None
+    }
+}
+
+#[stable(feature = "mpsc_recv_error_from", since = "1.23.0")]
+impl From<RecvError> for RecvTimeoutError {
+    fn from(err: RecvError) -> RecvTimeoutError {
+        match err {
+            RecvError => RecvTimeoutError::Disconnected,
+        }
     }
 }
 
