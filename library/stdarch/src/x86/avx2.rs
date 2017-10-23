@@ -957,8 +957,56 @@ pub unsafe fn _mm256_permutevar8x32_epi32(a: u32x8, b: u32x8) -> u32x8 {
     permd(a, b)
 }
 
+/// Permutes 64-bit integers from `a` using control mask `imm8`.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpermq, imm8 = 9))]
+pub unsafe fn _mm256_permute4x64_epi64(a: i64x4, imm8: i32) -> i64x4 {
+    let imm8 = (imm8 & 0xFF) as u8;
+    macro_rules! permute4 {
+        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+            simd_shuffle4(a, i64x4::splat(0), [$a, $b, $c, $d]);
+        }
+    }
+    macro_rules! permute3 {
+        ($a:expr, $b:expr, $c:expr) => {
+            match (imm8 >> 6) & 0b11 {
+                0b00 => permute4!($a, $b, $c, 0),
+                0b01 => permute4!($a, $b, $c, 1),
+                0b10 => permute4!($a, $b, $c, 2),
+                _ => permute4!($a, $b, $c, 3),
+            }
+        }
+    }
+    macro_rules! permute2 {
+        ($a:expr, $b:expr) => {
+            match (imm8 >> 4) & 0b11 {
+                0b00 => permute3!($a, $b, 0),
+                0b01 => permute3!($a, $b, 1),
+                0b10 => permute3!($a, $b, 2),
+                _ => permute3!($a, $b, 3),
+            }
+        }
+    }
+    macro_rules! permute1 {
+        ($a:expr) => {
+            match (imm8 >> 2) & 0b11 {
+                0b00 => permute2!($a, 0),
+                0b01 => permute2!($a, 1),
+                0b10 => permute2!($a, 2),
+                _ => permute2!($a, 3),
+            }
+        }
+    }
+    match imm8 & 0b11 {
+        0b00 => permute1!(0),
+        0b01 => permute1!(1),
+        0b10 => permute1!(2),
+        _ => permute1!(3),
+    }
+}
+
 // TODO _mm256_permute2x128_si256 (__m256i a, __m256i b, const int imm8)
-// TODO _mm256_permute4x64_epi64 (__m256i a, const int imm8)
 // TODO _mm256_permute4x64_pd (__m256d a, const int imm8)
 // TODO _mm256_permutevar8x32_ps (__m256 a, __m256i idx)
 
@@ -2736,6 +2784,14 @@ mod tests {
         let b = u32x8::new(5, 0, 5, 1, 7, 6, 3, 4);
         let expected = u32x8::new(600, 100, 600, 200, 800, 700, 400, 500);
         let r = avx2::_mm256_permutevar8x32_epi32(a, b);
+        assert_eq!(r, expected);
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_permute4x64_epi64() {
+        let a = i64x4::new(100, 200, 300, 400);
+        let expected = i64x4::new(400, 100, 200, 100);
+        let r = avx2::_mm256_permute4x64_epi64(a, 0b00010011);
         assert_eq!(r, expected);
     }
 }
