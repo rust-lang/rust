@@ -114,6 +114,7 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
+use rustc::ich::Fingerprint;
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
 use rustc::util::fs as fs_util;
@@ -188,7 +189,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 pub fn prepare_session_directory(sess: &Session,
                                  crate_name: &str,
-                                 crate_disambiguator: &str) {
+                                 crate_disambiguator: &Fingerprint) {
     if sess.opts.incremental.is_none() {
         return
     }
@@ -614,21 +615,15 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
 
 fn crate_path(sess: &Session,
               crate_name: &str,
-              crate_disambiguator: &str)
+              crate_disambiguator: &Fingerprint)
               -> PathBuf {
-    use std::hash::{Hasher, Hash};
-    use std::collections::hash_map::DefaultHasher;
 
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    // The full crate disambiguator is really long. A hash of it should be
-    // sufficient.
-    let mut hasher = DefaultHasher::new();
-    crate_disambiguator.hash(&mut hasher);
-
+    let crate_disambiguator = crate_disambiguator.to_smaller_hash();
     let crate_name = format!("{}-{}",
                              crate_name,
-                             base_n::encode(hasher.finish(), INT_ENCODE_BASE));
+                             base_n::encode(crate_disambiguator, INT_ENCODE_BASE));
     incr_dir.join(crate_name)
 }
 

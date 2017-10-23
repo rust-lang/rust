@@ -20,6 +20,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
                             LoadedMacro, EncodedMetadata,
                             EncodedMetadataHashes, NativeLibraryKind};
 use rustc::middle::stability::DeprecationEntry;
+use rustc::ich::Fingerprint;
 use rustc::hir::def;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
@@ -384,7 +385,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).name
     }
 
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> Symbol
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> Fingerprint
     {
         self.get_crate_data(cnum).disambiguator()
     }

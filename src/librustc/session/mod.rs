@@ -12,6 +12,7 @@ pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
 pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
 use hir::def_id::{CrateNum, DefIndex};
+use ich::Fingerprint;
 
 use lint;
 use middle::allocator::AllocatorKind;
@@ -29,7 +30,6 @@ use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
-use syntax::symbol::Symbol;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{Span, MultiSpan};
@@ -88,7 +88,7 @@ pub struct Session {
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
     /// trans::back::symbol_names module for more information.
-    pub crate_disambiguator: RefCell<Option<Symbol>>,
+    pub crate_disambiguator: RefCell<Option<Fingerprint>>,
     pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -165,7 +165,7 @@ enum DiagnosticBuilderMethod {
 }
 
 impl Session {
-    pub fn local_crate_disambiguator(&self) -> Symbol {
+    pub fn local_crate_disambiguator(&self) -> Fingerprint {
         match *self.crate_disambiguator.borrow() {
             Some(sym) => sym,
             None => bug!("accessing disambiguator before initialization"),
@@ -471,14 +471,17 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate Svh and the function DefIndex.
-    pub fn generate_plugin_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+    pub fn generate_plugin_registrar_symbol(&self, disambiguator: Fingerprint,
+                                            index: DefIndex)
                                             -> String {
-        format!("__rustc_plugin_registrar__{}_{}", disambiguator, index.as_usize())
+        format!("__rustc_plugin_registrar__{}_{}", disambiguator.to_hex(),
+                                                   index.as_usize())
     }
 
-    pub fn generate_derive_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+    pub fn generate_derive_registrar_symbol(&self, disambiguator: Fingerprint, index: DefIndex)
                                             -> String {
-        format!("__rustc_derive_registrar__{}_{}", disambiguator, index.as_usize())
+        format!("__rustc_derive_registrar__{}_{}", disambiguator.to_hex(),
+                                                   index.as_usize())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {

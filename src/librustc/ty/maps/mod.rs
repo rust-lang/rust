@@ -10,6 +10,7 @@
 
 use dep_graph::{DepConstructor, DepNode};
 use errors::DiagnosticBuilder;
+use ich::Fingerprint;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId};
@@ -283,7 +284,7 @@ define_maps! { <'tcx>
     [] fn native_libraries: NativeLibraries(CrateNum) -> Rc<Vec<NativeLibrary>>,
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
-    [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> Symbol,
+    [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> Fingerprint,
     [] fn crate_hash: CrateHash(CrateNum) -> Svh,
     [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
 

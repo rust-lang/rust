@@ -11,6 +11,7 @@
 use super::*;
 
 use dep_graph::{DepGraph, DepKind, DepNodeIndex};
+use ich::Fingerprint;
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID};
@@ -118,7 +119,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     }
 
     pub(super) fn finalize_and_compute_crate_hash(self,
-                                                  crate_disambiguator: &str)
+                                                  crate_disambiguator: &Fingerprint)
                                                   -> Vec<MapEntry<'hir>> {
         let mut node_hashes: Vec<_> = self
             .hir_body_nodes

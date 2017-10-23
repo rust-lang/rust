@@ -15,6 +15,7 @@ use locator::{self, CratePaths};
 use native_libs::relevant_lib;
 use schema::CrateRoot;
 
+use rustc::ich::Fingerprint;
 use rustc::hir::def_id::{CrateNum, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
 use rustc::middle::allocator::AllocatorKind;
@@ -626,7 +627,7 @@ impl<'a> CrateLoader<'a> {
     pub fn find_plugin_registrar(&mut self,
                                  span: Span,
                                  name: &str)
-                                 -> Option<(PathBuf, Symbol, DefIndex)> {
+                                 -> Option<(PathBuf, Fingerprint, DefIndex)> {
         let ekrate = self.read_extension_crate(span, &ExternCrateInfo {
              name: Symbol::intern(name),
              ident: Symbol::intern(name),

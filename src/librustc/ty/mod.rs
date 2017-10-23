@@ -19,7 +19,7 @@ use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
-use ich::StableHashingContext;
+use ich::{Fingerprint, StableHashingContext};
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
@@ -2562,7 +2562,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 crate_num: CrateNum) -> Symbol {
+                                 crate_num: CrateNum) -> Fingerprint {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.sess.local_crate_disambiguator()
 }
