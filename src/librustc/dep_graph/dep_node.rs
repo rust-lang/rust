@@ -90,12 +90,21 @@ macro_rules! is_input_attr {
     ($attr:ident) => (false);
 }
 
+macro_rules! is_eval_always_attr {
+    (eval_always) => (true);
+    ($attr:ident) => (false);
+}
+
 macro_rules! contains_anon_attr {
     ($($attr:ident),*) => ({$(is_anon_attr!($attr) | )* false});
 }
 
 macro_rules! contains_input_attr {
     ($($attr:ident),*) => ({$(is_input_attr!($attr) | )* false});
+}
+
+macro_rules! contains_eval_always_attr {
+    ($($attr:ident),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
 macro_rules! define_dep_nodes {
@@ -156,6 +165,15 @@ macro_rules! define_dep_nodes {
                 match *self {
                     $(
                         DepKind :: $variant => { contains_input_attr!($($attr),*) }
+                    )*
+                }
+            }
+
+            #[inline]
+            pub fn is_eval_always(&self) -> bool {
+                match *self {
+                    $(
+                        DepKind :: $variant => { contains_eval_always_attr!($($attr), *) }
                     )*
                 }
             }
