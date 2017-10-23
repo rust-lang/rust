@@ -755,13 +755,11 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::CrateVariancesMap {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::CrateVariancesMap {
-            ref dependencies,
             ref variances,
             // This is just an irrelevant helper value.
             empty_variance: _,
         } = *self;
 
-        dependencies.hash_stable(hcx, hasher);
         variances.hash_stable(hcx, hasher);
     }
 }
