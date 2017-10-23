@@ -24,6 +24,7 @@
 #![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
+#![feature(iterator_try_fold)]
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
 #![feature(nonzero)]

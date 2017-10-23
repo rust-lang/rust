@@ -275,3 +275,9 @@ bench_sums! {
     bench_skip_while_chain_ref_sum,
     (0i64..1000000).chain(0..1000000).skip_while(|&x| x < 1000)
 }
+
+bench_sums! {
+    bench_take_while_chain_sum,
+    bench_take_while_chain_ref_sum,
+    (0i64..1000000).chain(1000000..).take_while(|&x| x < 1111111)
+}
