@@ -925,6 +925,9 @@ extern "rust-intrinsic" {
     ///
     /// If the actual type neither requires drop glue nor implements
     /// `Copy`, then may return `true` or `false`.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::needs_drop`](../../std/mem/fn.needs_drop.html).
     pub fn needs_drop<T>() -> bool;
 
     /// Calculates the offset from a pointer.
