@@ -142,11 +142,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                                       span,
                                                                       "try this",
                                                                       &format!(
-    "impl Default for {} {{
-        fn default() -> Self {{
-            Self::new()
-        }}
-    }}",
+"impl Default for {} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}",
                                                                                self_ty));
                                             });
                                         }
