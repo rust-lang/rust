@@ -48,17 +48,12 @@ use std::io::{self, Write};
 pub type LocalSet = IdxSetBuf<Local>;
 
 #[derive(Eq, PartialEq, Clone)]
-struct BlockInfo {
+struct DefsUses {
     defs: LocalSet,
     uses: LocalSet,
 }
 
-struct BlockInfoVisitor {
-    defs: LocalSet,
-    uses: LocalSet,
-}
-
-impl BlockInfoVisitor {
+impl DefsUses {
     fn add_def(&mut self, index: Local) {
         // If it was used already in the block, remove that use
         // now that we found a definition.
@@ -89,7 +84,7 @@ impl BlockInfoVisitor {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
+impl<'tcx> Visitor<'tcx> for DefsUses {
     fn visit_local(&mut self,
                    &local: &Local,
                    context: LvalueContext<'tcx>,
@@ -142,8 +137,8 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
     }
 }
 
-fn block<'tcx>(b: &BasicBlockData<'tcx>, locals: usize) -> BlockInfo {
-    let mut visitor = BlockInfoVisitor {
+fn block<'tcx>(b: &BasicBlockData<'tcx>, locals: usize) -> DefsUses {
+    let mut visitor = DefsUses {
         defs: LocalSet::new_empty(locals),
         uses: LocalSet::new_empty(locals),
     };
@@ -157,10 +152,7 @@ fn block<'tcx>(b: &BasicBlockData<'tcx>, locals: usize) -> BlockInfo {
         visitor.visit_statement(BasicBlock::new(0), statement, dummy_location);
     }
 
-    BlockInfo {
-        defs: visitor.defs,
-        uses: visitor.uses,
-    }
+    visitor
 }
 
 // This gives the result of the liveness analysis at the boundary of basic blocks
