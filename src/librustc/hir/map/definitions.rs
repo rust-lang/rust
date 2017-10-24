@@ -22,6 +22,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
+use session::CrateDisambiguator;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
@@ -231,7 +232,9 @@ impl DefKey {
         DefPathHash(hasher.finish())
     }
 
-    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> DefPathHash {
+    fn root_parent_stable_hash(crate_name: &str,
+                               crate_disambiguator: CrateDisambiguator)
+                               -> DefPathHash {
         let mut hasher = StableHasher::new();
         // Disambiguate this from a regular DefPath hash,
         // see compute_stable_hash() above.
@@ -467,7 +470,7 @@ impl Definitions {
     /// Add a definition with a parent definition.
     pub fn create_root_def(&mut self,
                            crate_name: &str,
-                           crate_disambiguator: &str)
+                           crate_disambiguator: CrateDisambiguator)
                            -> DefIndex {
         let key = DefKey {
             parent: None,

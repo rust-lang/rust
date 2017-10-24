@@ -1417,7 +1417,7 @@ impl<'a> Resolver<'a> {
 
         let mut definitions = Definitions::new();
         DefCollector::new(&mut definitions, Mark::root())
-            .collect_root(crate_name, &session.local_crate_disambiguator().to_hex());
+            .collect_root(crate_name, session.local_crate_disambiguator());
 
         let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),

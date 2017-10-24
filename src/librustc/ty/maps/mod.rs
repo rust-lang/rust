@@ -10,7 +10,6 @@
 
 use dep_graph::{DepConstructor, DepNode};
 use errors::DiagnosticBuilder;
-use ich::Fingerprint;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId};
@@ -30,7 +29,7 @@ use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::SymbolExportLevel;
 use middle::trans::{CodegenUnit, Stats};
 use mir;
-use session::CompileResult;
+use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::Vtable;
 use traits::specialization_graph;
@@ -284,7 +283,7 @@ define_maps! { <'tcx>
     [] fn native_libraries: NativeLibraries(CrateNum) -> Rc<Vec<NativeLibrary>>,
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
-    [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> Fingerprint,
+    [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
     [] fn crate_hash: CrateHash(CrateNum) -> Svh,
     [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
 

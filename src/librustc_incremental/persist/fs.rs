@@ -114,9 +114,8 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
-use rustc::ich::Fingerprint;
 use rustc::hir::svh::Svh;
-use rustc::session::Session;
+use rustc::session::{Session, CrateDisambiguator};
 use rustc::util::fs as fs_util;
 use rustc_data_structures::{flock, base_n};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
@@ -189,7 +188,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 pub fn prepare_session_directory(sess: &Session,
                                  crate_name: &str,
-                                 crate_disambiguator: &Fingerprint) {
+                                 crate_disambiguator: CrateDisambiguator) {
     if sess.opts.incremental.is_none() {
         return
     }
@@ -615,15 +614,17 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
 
 fn crate_path(sess: &Session,
               crate_name: &str,
-              crate_disambiguator: &Fingerprint)
+              crate_disambiguator: CrateDisambiguator)
               -> PathBuf {
 
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let crate_disambiguator = crate_disambiguator.to_smaller_hash();
-    let crate_name = format!("{}-{}",
-                             crate_name,
-                             base_n::encode(crate_disambiguator, INT_ENCODE_BASE));
+    // The full crate disambiguator is really long. 64 bits of it should be
+    // sufficient.
+    let crate_disambiguator = crate_disambiguator.to_fingerprint().to_smaller_hash();
+    let crate_disambiguator = base_n::encode(crate_disambiguator, INT_ENCODE_BASE);
+
+    let crate_name = format!("{}-{}", crate_name, crate_disambiguator);
     incr_dir.join(crate_name)
 }
 

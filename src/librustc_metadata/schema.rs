@@ -14,10 +14,11 @@ use index;
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId, CrateNum};
-use rustc::ich::{Fingerprint, StableHashingContext};
+use rustc::ich::StableHashingContext;
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
 use rustc::mir;
+use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_back::PanicStrategy;
 
@@ -191,7 +192,7 @@ pub struct CrateRoot {
     pub name: Symbol,
     pub triple: String,
     pub hash: hir::svh::Svh,
-    pub disambiguator: Fingerprint,
+    pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,
     pub has_global_allocator: bool,
     pub has_default_lib_allocator: bool,

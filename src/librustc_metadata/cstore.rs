@@ -13,11 +13,11 @@
 
 use schema;
 
-use rustc::ich::Fingerprint;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
+use rustc::session::CrateDisambiguator;
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
@@ -172,7 +172,7 @@ impl CrateMetadata {
     pub fn hash(&self) -> Svh {
         self.root.hash
     }
-    pub fn disambiguator(&self) -> Fingerprint {
+    pub fn disambiguator(&self) -> CrateDisambiguator {
         self.root.disambiguator
     }
 

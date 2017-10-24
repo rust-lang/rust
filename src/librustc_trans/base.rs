@@ -1312,7 +1312,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
         let llmod_id = format!("{}-{}.rs",
                                cgu.name(),
-                               tcx.crate_disambiguator(LOCAL_CRATE));
+                               tcx.crate_disambiguator(LOCAL_CRATE)
+                                   .to_fingerprint().to_hex());
 
         // Instantiate translation items without filling out definitions yet...
         let scx = SharedCrateContext::new(tcx);

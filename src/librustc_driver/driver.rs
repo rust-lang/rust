@@ -14,7 +14,7 @@ use rustc::hir::lowering::lower_crate;
 use rustc::ich::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
-use rustc::session::{Session, CompileResult};
+use rustc::session::{Session, CompileResult, CrateDisambiguator};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
@@ -637,7 +637,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     rustc_incremental::prepare_session_directory(
         sess,
         &crate_name,
-        &disambiguator,
+        disambiguator,
     );
 
     let dep_graph = if sess.opts.build_dep_graph() {
@@ -1311,7 +1311,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         .collect()
 }
 
-pub fn compute_crate_disambiguator(session: &Session) -> Fingerprint {
+pub fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguator {
     use std::hash::Hasher;
 
     // The crate_disambiguator is a 128 bit hash. The disambiguator is fed
@@ -1341,7 +1341,7 @@ pub fn compute_crate_disambiguator(session: &Session) -> Fingerprint {
     let is_exe = session.crate_types.borrow().contains(&config::CrateTypeExecutable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
-    hasher.finish()
+    CrateDisambiguator::from(hasher.finish())
 
 }
 
