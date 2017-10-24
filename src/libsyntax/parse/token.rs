@@ -433,6 +433,16 @@ impl Token {
         })
     }
 
+    /// Returns tokens that are likely to be typed accidentally instead of the current token.
+    /// Enables better error recovery when the wrong token is found.
+    pub fn similar_tokens(&self) -> Option<Vec<Token>> {
+        match *self {
+            Comma => Some(vec![Dot, Lt]),
+            Semi => Some(vec![Colon]),
+            _ => None
+        }
+    }
+
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
         self.is_special_ident() || self.is_used_keyword() || self.is_unused_keyword()
