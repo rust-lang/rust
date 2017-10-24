@@ -25,6 +25,11 @@ environment:
     RUST_CHECK_TARGET: check-aux
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
+  # MSVC cargotest
+  - MSYS_BITS: 64
+    SCRIPT: python x.py test src/tools/cargotest
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+
   # 32/64-bit MinGW builds.
   #
   # We are using MinGW with posix threads since LLVM does not compile with

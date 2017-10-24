@@ -169,6 +169,8 @@ matrix:
       if: branch = auto
     - env: IMAGE=x86_64-gnu-aux
       if: branch = auto
+    - env: IMAGE=x86_64-gnu-cargotest
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-debug
       if: branch = auto
     - env: IMAGE=x86_64-gnu-nopt
