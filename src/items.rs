@@ -537,21 +537,9 @@ impl<'a> FmtVisitor<'a> {
                 )?
             }
             ast::VariantData::Unit(..) => if let Some(ref expr) = field.node.disr_expr {
-                let one_line_width =
-                    field.node.name.to_string().len() + self.snippet(expr.span).len() + 3;
-                if one_line_width <= shape.width {
-                    format!("{} = {}", field.node.name, self.snippet(expr.span))
-                } else {
-                    format!(
-                        "{}\n{}{}",
-                        field.node.name,
-                        shape
-                            .indent
-                            .block_indent(self.config)
-                            .to_string(self.config),
-                        self.snippet(expr.span)
-                    )
-                }
+                let lhs = format!("{} =", field.node.name);
+                // 1 = ','
+                rewrite_assign_rhs(&context, lhs, expr, shape.sub_width(1)?)?
             } else {
                 String::from(field.node.name.to_string())
             },
