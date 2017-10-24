@@ -22,35 +22,42 @@ use std::mem;
 use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
 
+/// `OnDiskCache` provides an interface to incr. comp. data cached from the
+/// previous compilation session. This data will eventually include the results
+/// of a few selected queries (like `typeck_tables_of` and `mir_optimized`) and
+/// any diagnostics that have been emitted during a query.
 pub struct OnDiskCache<'sess> {
+    // The diagnostics emitted during the previous compilation session.
     prev_diagnostics: FxHashMap<SerializedDepNodeIndex, Vec<Diagnostic>>,
 
+    // This field collects all Diagnostics emitted during the current
+    // compilation session.
+    current_diagnostics: RefCell<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
+
+    // This will eventually be needed for creating Decoders that can rebase
+    // spans.
     _prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
     codemap: &'sess CodeMap,
-
-    current_diagnostics: RefCell<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 }
 
+// This type is used only for (de-)serialization.
 #[derive(RustcEncodable, RustcDecodable)]
 struct Header {
     prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
 }
 
+// This type is used only for (de-)serialization.
 #[derive(RustcEncodable, RustcDecodable)]
 struct Body {
     diagnostics: Vec<(SerializedDepNodeIndex, Vec<Diagnostic>)>,
 }
 
 impl<'sess> OnDiskCache<'sess> {
-    pub fn new_empty(codemap: &'sess CodeMap) -> OnDiskCache<'sess> {
-        OnDiskCache {
-            prev_diagnostics: FxHashMap(),
-            _prev_filemap_starts: BTreeMap::new(),
-            codemap,
-            current_diagnostics: RefCell::new(FxHashMap()),
-        }
-    }
-
+    /// Create a new OnDiskCache instance from the serialized data in `data`.
+    /// Note that the current implementation (which only deals with diagnostics
+    /// so far) will eagerly deserialize the complete cache. Once we are
+    /// dealing with larger amounts of data (i.e. cached query results),
+    /// deserialization will need to happen lazily.
     pub fn new(sess: &'sess Session, data: &[u8]) -> OnDiskCache<'sess> {
         debug_assert!(sess.opts.incremental.is_some());
 
@@ -71,6 +78,15 @@ impl<'sess> OnDiskCache<'sess> {
             prev_diagnostics,
             _prev_filemap_starts: header.prev_filemap_starts,
             codemap: sess.codemap(),
+            current_diagnostics: RefCell::new(FxHashMap()),
+        }
+    }
+
+    pub fn new_empty(codemap: &'sess CodeMap) -> OnDiskCache<'sess> {
+        OnDiskCache {
+            prev_diagnostics: FxHashMap(),
+            _prev_filemap_starts: BTreeMap::new(),
+            codemap,
             current_diagnostics: RefCell::new(FxHashMap()),
         }
     }
@@ -101,12 +117,16 @@ impl<'sess> OnDiskCache<'sess> {
         Ok(())
     }
 
+    /// Load a diagnostic emitted during the previous compilation session.
     pub fn load_diagnostics(&self,
                             dep_node_index: SerializedDepNodeIndex)
                             -> Vec<Diagnostic> {
         self.prev_diagnostics.get(&dep_node_index).cloned().unwrap_or(vec![])
     }
 
+    /// Store a diagnostic emitted during the current compilation session.
+    /// Anything stored like this will be available via `load_diagnostics` in
+    /// the next compilation session.
     pub fn store_diagnostics(&self,
                              dep_node_index: DepNodeIndex,
                              diagnostics: Vec<Diagnostic>) {
@@ -115,6 +135,10 @@ impl<'sess> OnDiskCache<'sess> {
         debug_assert!(prev.is_none());
     }
 
+    /// Store a diagnostic emitted during computation of an anonymous query.
+    /// Since many anonymous queries can share the same `DepNode`, we aggregate
+    /// them -- as opposed to regular queries where we assume that there is a
+    /// 1:1 relationship between query-key and `DepNode`.
     pub fn store_diagnostics_for_anon_node(&self,
                                            dep_node_index: DepNodeIndex,
                                            mut diagnostics: Vec<Diagnostic>) {
@@ -128,23 +152,9 @@ impl<'sess> OnDiskCache<'sess> {
     }
 }
 
-impl<'a> SpecializedDecoder<Span> for CacheDecoder<'a> {
-    fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
-        let lo = BytePos::decode(self)?;
-        let hi = BytePos::decode(self)?;
-
-        if let Some((prev_filemap_start, filemap_id)) = self.find_filemap_prev_bytepos(lo) {
-            if let Some(current_filemap) = self.codemap.filemap_by_stable_id(filemap_id) {
-                let lo = (lo + current_filemap.start_pos) - prev_filemap_start;
-                let hi = (hi + current_filemap.start_pos) - prev_filemap_start;
-                return Ok(Span::new(lo, hi, NO_EXPANSION));
-            }
-        }
-
-        Ok(DUMMY_SP)
-    }
-}
-
+/// A decoder that can read the incr. comp. cache. It is similar to the one
+/// we use for crate metadata decoding in that it can rebase spans and
+/// eventually will also handle things that contain `Ty` instances.
 struct CacheDecoder<'a> {
     opaque: opaque::Decoder<'a>,
     codemap: &'a CodeMap,
@@ -200,5 +210,22 @@ impl<'sess> Decoder for CacheDecoder<'sess> {
 
     fn error(&mut self, err: &str) -> Self::Error {
         self.opaque.error(err)
+    }
+}
+
+impl<'a> SpecializedDecoder<Span> for CacheDecoder<'a> {
+    fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
+        let lo = BytePos::decode(self)?;
+        let hi = BytePos::decode(self)?;
+
+        if let Some((prev_filemap_start, filemap_id)) = self.find_filemap_prev_bytepos(lo) {
+            if let Some(current_filemap) = self.codemap.filemap_by_stable_id(filemap_id) {
+                let lo = (lo + current_filemap.start_pos) - prev_filemap_start;
+                let hi = (hi + current_filemap.start_pos) - prev_filemap_start;
+                return Ok(Span::new(lo, hi, NO_EXPANSION));
+            }
+        }
+
+        Ok(DUMMY_SP)
     }
 }
