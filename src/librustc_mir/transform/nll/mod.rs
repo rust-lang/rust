@@ -21,6 +21,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
 use std::fmt;
+use util::liveness;
 
 use util as mir_util;
 use self::mir_util::PassWhere;
@@ -151,13 +152,34 @@ impl MirPass for NLL {
         tcx.infer_ctxt().enter(|infcx| {
             // Clone mir so we can mutate it without disturbing the rest of the compiler
             let mut renumbered_mir = mir.clone();
+
             let mut visitor = NLLVisitor::new(&infcx);
             visitor.visit_mir(&mut renumbered_mir);
+
+            let liveness = liveness::liveness_of_locals(&renumbered_mir);
+
             mir_util::dump_mir(tcx, None, "nll", &0, source, mir, |pass_where, out| {
-                if let PassWhere::BeforeCFG = pass_where {
-                    for (index, value) in visitor.regions.iter_enumerated() {
-                        writeln!(out, "// R{:03}: {:?}", index.0, value)?;
+                match pass_where {
+                    // Before the CFG, dump out the values for each region variable.
+                    PassWhere::BeforeCFG => {
+                        for (index, value) in visitor.regions.iter_enumerated() {
+                            writeln!(out, "| R{:03}: {:?}", index.0, value)?;
+                        }
                     }
+
+                    // Before each basic block, dump out the values
+                    // that are live on entry to the basic block.
+                    PassWhere::BeforeBlock(bb) => {
+                        let local_set = &liveness.ins[bb];
+                        writeln!(out, "    | Variables live on entry to the block {:?}:", bb)?;
+                        for local in local_set.iter() {
+                            writeln!(out, "    | - {:?}", local)?;
+                        }
+                    }
+
+                    PassWhere::InCFG(_) => { }
+
+                    PassWhere::AfterCFG => { }
                 }
                 Ok(())
             });
