@@ -10,24 +10,30 @@
 
 use rustc::mir::Mir;
 use rustc::infer::InferCtxt;
-use util::liveness::LivenessResult;
 
+use super::LivenessResults;
 use super::ToRegionIndex;
 use super::region_infer::RegionInferenceContext;
 
-pub fn generate_constraints<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                            regioncx: &mut RegionInferenceContext,
-                                            mir: &Mir<'tcx>,
-                                            liveness: &LivenessResult)
-{
-    ConstraintGeneration { infcx, regioncx, mir, liveness }.add_constraints();
+pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    regioncx: &mut RegionInferenceContext,
+    mir: &Mir<'tcx>,
+    liveness: &LivenessResults,
+) {
+    ConstraintGeneration {
+        infcx,
+        regioncx,
+        mir,
+        liveness,
+    }.add_constraints();
 }
 
 struct ConstraintGeneration<'constrain, 'gcx: 'tcx, 'tcx: 'constrain> {
     infcx: &'constrain InferCtxt<'constrain, 'gcx, 'tcx>,
     regioncx: &'constrain mut RegionInferenceContext,
     mir: &'constrain Mir<'tcx>,
-    liveness: &'constrain LivenessResult,
+    liveness: &'constrain LivenessResults,
 }
 
 impl<'constrain, 'gcx, 'tcx> ConstraintGeneration<'constrain, 'gcx, 'tcx> {
@@ -47,18 +53,23 @@ impl<'constrain, 'gcx, 'tcx> ConstraintGeneration<'constrain, 'gcx, 'tcx> {
         for bb in self.mir.basic_blocks().indices() {
             debug!("add_liveness_constraints: bb={:?}", bb);
 
-            self.liveness.simulate_block(self.mir, bb, |location, live_locals| {
-                debug!("add_liveness_constraints: location={:?} live_locals={:?}",
-                       location, live_locals);
+            self.liveness
+                .regular
+                .simulate_block(self.mir, bb, |location, live_locals| {
+                    debug!(
+                        "add_liveness_constraints: location={:?} live_locals={:?}",
+                        location,
+                        live_locals
+                    );
 
-                for live_local in live_locals.iter() {
-                    let live_local_ty = self.mir.local_decls[live_local].ty;
-                    tcx.for_each_free_region(&live_local_ty, |live_region| {
-                        let vid = live_region.to_region_index();
-                        self.regioncx.add_live_point(vid, location);
-                    })
-                }
-            });
+                    for live_local in live_locals.iter() {
+                        let live_local_ty = self.mir.local_decls[live_local].ty;
+                        tcx.for_each_free_region(&live_local_ty, |live_region| {
+                            let vid = live_region.to_region_index();
+                            self.regioncx.add_live_point(vid, location);
+                        })
+                    }
+                });
         }
     }
 }

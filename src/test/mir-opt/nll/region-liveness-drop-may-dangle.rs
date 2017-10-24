@@ -16,45 +16,33 @@
 //                     ^^^^^^^^^ force compiler to dump more region information
 
 #![allow(warnings)]
+#![feature(dropck_eyepatch)]
+#![feature(generic_param_attrs)]
 
 fn use_x(_: usize) -> bool { true }
 
 fn main() {
     let mut v = [1, 2, 3];
-    let p = &v[0];
+    let p: Wrap<& /* R4 */ usize> = Wrap { value: &v[0] };
     if true {
-        use_x(*p);
+        use_x(*p.value);
     } else {
         use_x(22);
     }
+
+    // `p` will get dropped here. However, because of the
+    // `#[may_dangle]` attribute, we do not need to consider R4 live.
+}
+
+struct Wrap<T> {
+    value: T
+}
+
+unsafe impl<#[may_dangle] T> Drop for Wrap<T> {
+    fn drop(&mut self) { }
 }
 
 // END RUST SOURCE
 // START rustc.node12.nll.0.mir
-// | R1: {bb1[1], bb2[0], bb2[1]}
-// ...
-//             let _2: &'_#1r usize;
-// END rustc.node12.nll.0.mir
-// START rustc.node12.nll.0.mir
-//    bb1: {
-//        | Regular-Live variables here: [_1, _3]
-//        | Drop-Live variables here: []
-//        _2 = &'_#0r _1[_3];
-//        | Regular-Live variables here: [_2]
-//        | Drop-Live variables here: []
-//        switchInt(const true) -> [0u8: bb3, otherwise: bb2];
-//    }
-// END rustc.node12.nll.0.mir
-// START rustc.node12.nll.0.mir
-//    bb2: {
-//        | Regular-Live variables here: [_2]
-//        | Drop-Live variables here: []
-//        StorageLive(_7);
-//        | Regular-Live variables here: [_2]
-//        | Drop-Live variables here: []
-//        _7 = (*_2);
-//        | Regular-Live variables here: [_7]
-//        | Drop-Live variables here: []
-//        _6 = const use_x(_7) -> bb4;
-//    }
+// | R4: {bb1[3], bb1[4], bb1[5], bb2[0], bb2[1]}
 // END rustc.node12.nll.0.mir

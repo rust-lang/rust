@@ -26,21 +26,26 @@ fn main() {
 //
 // END RUST SOURCE
 // START rustc.node12.nll.0.mir
-//    | Variables live on entry to the block bb0:
+//    | Variables regular-live on entry to the block bb0: []
+//    | Variables drop-live on entry to the block bb0: []
 //    bb0: {
-//        | Live variables here: []
+//        | Regular-Live variables here: []
+//        | Drop-Live variables here: []
 //        StorageLive(_1);
-//        | Live variables here: []
+//        | Regular-Live variables here: []
+//        | Drop-Live variables here: []
 //        _1 = const <std::boxed::Box<T>>::new(const 22usize) -> bb1;
 //    }
 // END rustc.node12.nll.0.mir
 // START rustc.node12.nll.0.mir
-//    | Variables live on entry to the block bb1:
-//    | - _1
+//    | Variables regular-live on entry to the block bb1: []
+//    | Variables drop-live on entry to the block bb1: [_1]
 //    bb1: {
-//        | Live variables here: [_1]
+//        | Regular-Live variables here: []
+//        | Drop-Live variables here: [_1]
 //        StorageLive(_2);
-//        | Live variables here: [_1]
+//        | Regular-Live variables here: []
+//        | Drop-Live variables here: [_1]
 //        _2 = const can_panic() -> [return: bb2, unwind: bb4];
 //    }
 // END rustc.node12.nll.0.mir

@@ -16,7 +16,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
 use std::fmt;
-use util::liveness::{self, LivenessResult};
+use util::liveness::{self, LivenessResult, LivenessMode};
 
 use util as mir_util;
 use self::mir_util::PassWhere;
@@ -50,7 +50,17 @@ impl MirPass for NLL {
             let num_region_variables = renumber::renumber_mir(infcx, mir);
 
             // Compute what is live where.
-            let liveness = &liveness::liveness_of_locals(mir);
+            let liveness = &LivenessResults {
+                regular: liveness::liveness_of_locals(mir, LivenessMode {
+                    include_regular_use: true,
+                    include_drops: false,
+                }),
+
+                drop: liveness::liveness_of_locals(mir, LivenessMode {
+                    include_regular_use: false,
+                    include_drops: true,
+                })
+            };
 
             // Create the region inference context, generate the constraints,
             // and then solve them.
@@ -64,9 +74,14 @@ impl MirPass for NLL {
     }
 }
 
+struct LivenessResults {
+    regular: LivenessResult,
+    drop: LivenessResult,
+}
+
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    liveness: &LivenessResult,
+    liveness: &LivenessResults,
     source: MirSource,
     regioncx: &RegionInferenceContext,
     mir: &Mir<'tcx>,
@@ -75,11 +90,22 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         return;
     }
 
-    let liveness_per_location: FxHashMap<_, _> = mir.basic_blocks()
+    let regular_liveness_per_location: FxHashMap<_, _> = mir.basic_blocks()
         .indices()
         .flat_map(|bb| {
             let mut results = vec![];
-            liveness.simulate_block(&mir, bb, |location, local_set| {
+            liveness.regular.simulate_block(&mir, bb, |location, local_set| {
+                results.push((location, local_set.clone()));
+            });
+            results
+        })
+        .collect();
+
+    let drop_liveness_per_location: FxHashMap<_, _> = mir.basic_blocks()
+        .indices()
+        .flat_map(|bb| {
+            let mut results = vec![];
+            liveness.drop.simulate_block(&mir, bb, |location, local_set| {
                 results.push((location, local_set.clone()));
             });
             results
@@ -96,16 +122,17 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             // Before each basic block, dump out the values
             // that are live on entry to the basic block.
             PassWhere::BeforeBlock(bb) => {
-                let local_set = &liveness.ins[bb];
-                writeln!(out, "    | Variables live on entry to the block {:?}:", bb)?;
-                for local in local_set.iter() {
-                    writeln!(out, "    | - {:?}", local)?;
-                }
+                writeln!(out, "    | Variables regular-live on entry to the block {:?}: {:?}",
+                         bb, liveness.regular.ins[bb])?;
+                writeln!(out, "    | Variables drop-live on entry to the block {:?}: {:?}",
+                         bb, liveness.drop.ins[bb])?;
             }
 
             PassWhere::InCFG(location) => {
-                let local_set = &liveness_per_location[&location];
-                writeln!(out, "        | Live variables here: {:?}", local_set)?;
+                let local_set = &regular_liveness_per_location[&location];
+                writeln!(out, "        | Regular-Live variables here: {:?}", local_set)?;
+                let local_set = &drop_liveness_per_location[&location];
+                writeln!(out, "        | Drop-Live variables here: {:?}", local_set)?;
             }
 
             PassWhere::AfterCFG => {}
