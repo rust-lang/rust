@@ -59,3 +59,6 @@ mod foo {
         foo();
     }
 }
+
+// #2082
+pub(crate) fn init() {}
