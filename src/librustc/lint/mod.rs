@@ -463,6 +463,8 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
         }
     }
 
+    err.code(name);
+
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
     if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {

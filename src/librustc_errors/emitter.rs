@@ -906,7 +906,8 @@ impl EmitterWriter {
         } else {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             match code {
-                &Some(ref code) => {
+                // only render error codes, not lint codes
+                &Some(ref code) if code.starts_with("E") && code.len() == 5 => {
                     buffer.append(0, "[", Style::Level(level.clone()));
                     buffer.append(0, &code, Style::Level(level.clone()));
                     buffer.append(0, "]", Style::Level(level.clone()));
