@@ -1199,8 +1199,10 @@ macro_rules! iterator {
             fn position<F>(&mut self, mut predicate: F) -> Option<usize>
                 where F: FnMut(Self::Item) -> bool,
             {
+                let len = self.len();
                 let mut index = 0;
                 self.search_while(None, move |elt| {
+                    unsafe { assume(index < len); }
                     if predicate(elt) {
                         SearchWhile::Done(Some(index))
                     } else {
@@ -1213,9 +1215,11 @@ macro_rules! iterator {
             fn rposition<F>(&mut self, mut predicate: F) -> Option<usize>
                 where F: FnMut(Self::Item) -> bool,
             {
+                let len = self.len();
                 let mut index = self.len();
                 self.rsearch_while(None, move |elt| {
                     index -= 1;
+                    unsafe { assume(index < len); }
                     if predicate(elt) {
                         SearchWhile::Done(Some(index))
                     } else {
