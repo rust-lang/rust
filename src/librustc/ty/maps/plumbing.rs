@@ -754,6 +754,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::InherentImpls => { force!(inherent_impls, def_id!()); }
         DepKind::TypeckBodiesKrate => { force!(typeck_item_bodies, LOCAL_CRATE); }
         DepKind::TypeckTables => { force!(typeck_tables_of, def_id!()); }
+        DepKind::UsedTraitImports => { force!(used_trait_imports, def_id!()); }
         DepKind::HasTypeckTables => { force!(has_typeck_tables, def_id!()); }
         DepKind::SymbolName => { force!(def_symbol_name, def_id!()); }
         DepKind::SpecializationGraph => { force!(specialization_graph_of, def_id!()); }

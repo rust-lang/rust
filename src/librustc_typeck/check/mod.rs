@@ -106,9 +106,10 @@ use session::{CompileIncomplete, Session};
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
+use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
+use std::rc::Rc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
@@ -742,6 +743,7 @@ pub fn provide(providers: &mut Providers) {
         closure_kind,
         generator_sig,
         adt_destructor,
+        used_trait_imports,
         ..*providers
     };
 }
@@ -843,6 +845,12 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     primary_body_of(tcx, id).is_some()
+}
+
+fn used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              def_id: DefId)
+                              -> Rc<DefIdSet> {
+    tcx.typeck_tables_of(def_id).used_trait_imports.clone()
 }
 
 fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

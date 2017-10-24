@@ -500,6 +500,7 @@ define_dep_nodes!( <'tcx>
     [] InherentImpls(DefId),
     [] TypeckBodiesKrate,
     [] TypeckTables(DefId),
+    [] UsedTraitImports(DefId),
     [] HasTypeckTables(DefId),
     [] ConstEval { param_env: ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)> },
     [] SymbolName(DefId),
