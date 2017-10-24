@@ -36,7 +36,7 @@ use ast::SelfKind;
 use ast::{TraitItem, TraitRef, TraitObjectSyntax};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
-use ast::{Visibility, WhereClause};
+use ast::{Visibility, WhereClause, CrateSugar};
 use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
@@ -5327,6 +5327,10 @@ impl<'a> Parser<'a> {
     pub fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
+        if self.eat_keyword(keywords::Crate) {
+            return Ok(Visibility::Crate(self.prev_span, CrateSugar::JustCrate));
+        }
+
         if !self.eat_keyword(keywords::Pub) {
             return Ok(Visibility::Inherited)
         }
@@ -5340,7 +5344,7 @@ impl<'a> Parser<'a> {
                 // `pub(crate)`
                 self.bump(); // `(`
                 self.bump(); // `crate`
-                let vis = Visibility::Crate(self.prev_span);
+                let vis = Visibility::Crate(self.prev_span, CrateSugar::PubCrate);
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 return Ok(vis)
             } else if self.look_ahead(1, |t| t.is_keyword(keywords::In)) {

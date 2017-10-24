@@ -2667,7 +2667,7 @@ impl<'a> LoweringContext<'a> {
                         -> hir::Visibility {
         match *v {
             Visibility::Public => hir::Public,
-            Visibility::Crate(_) => hir::Visibility::Crate,
+            Visibility::Crate(..) => hir::Visibility::Crate,
             Visibility::Restricted { ref path, id } => {
                 hir::Visibility::Restricted {
                     path: P(self.lower_path(id, path, ParamMode::Explicit, true)),

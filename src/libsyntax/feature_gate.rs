@@ -401,6 +401,9 @@ declare_features! (
 
     // Trait object syntax with `dyn` prefix
     (active, dyn_trait, "1.22.0", Some(44662)),
+
+    // `crate` as visibility modifier, synonymous to `pub(crate)`
+    (active, crate_visibility_modifier, "1.23.0", Some(45388)),
 );
 
 declare_features! (
@@ -1580,6 +1583,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
+    }
+
+    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
+        if let ast::Visibility::Crate(span, ast::CrateSugar::JustCrate) = *vis {
+            gate_feature_post!(&self, crate_visibility_modifier, span,
+                               "`crate` visibility modifier is experimental");
+        }
+        visit::walk_vis(self, vis);
     }
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {

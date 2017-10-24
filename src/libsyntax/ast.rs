@@ -1788,10 +1788,19 @@ impl PolyTraitRef {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum CrateSugar {
+    /// Source is `pub(crate)`
+    PubCrate,
+
+    /// Source is (just) `crate`
+    JustCrate,
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Visibility {
     Public,
-    Crate(Span),
+    Crate(Span, CrateSugar),
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }

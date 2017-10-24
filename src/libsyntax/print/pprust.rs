@@ -1440,7 +1440,10 @@ impl<'a> State<'a> {
     pub fn print_visibility(&mut self, vis: &ast::Visibility) -> io::Result<()> {
         match *vis {
             ast::Visibility::Public => self.word_nbsp("pub"),
-            ast::Visibility::Crate(_) => self.word_nbsp("pub(crate)"),
+            ast::Visibility::Crate(_, sugar) => match sugar {
+                ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),
+                ast::CrateSugar::JustCrate => self.word_nbsp("crate")
+            }
             ast::Visibility::Restricted { ref path, .. } => {
                 let path = to_string(|s| s.print_path(path, false, 0, true));
                 if path == "self" || path == "super" {
