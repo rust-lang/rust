@@ -82,7 +82,7 @@ rm -rf musl-$MUSL
 tar xf musl-$MUSL.tar.gz
 cd musl-$MUSL
 CC=powerpc-linux-gnu-gcc \
-CFLAGS="" \
+CFLAGS="-mlong-double-64" \
     hide_output ./configure \
         --prefix=/usr/local/ppc-linux-musl \
         --enable-wrapper=gcc
@@ -163,8 +163,8 @@ cmake ../libunwind-release_39 \
           -DLIBUNWIND_ENABLE_SHARED=0 \
           -DCMAKE_C_COMPILER=powerpc-linux-gnu-gcc \
           -DCMAKE_CXX_COMPILER=powerpc-linux-gnu-g++ \
-          -DCMAKE_C_FLAGS="" \
-          -DCMAKE_CXX_FLAGS=""
+          -DCMAKE_C_FLAGS="-mlong-double-64" \
+          -DCMAKE_CXX_FLAGS="-mlong-double-64"
 make -j$(nproc)
 cp lib/libunwind.a /usr/local/ppc-linux-musl/lib
 cd ..
