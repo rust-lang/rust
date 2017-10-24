@@ -851,9 +851,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
 
-
-    pub trans_trait_caches: traits::trans::TransTraitCaches<'tcx>,
-
     pub dep_graph: DepGraph,
 
     /// Common types, pre-interned for your convenience.
@@ -1137,7 +1134,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         tls::enter_global(GlobalCtxt {
             sess: s,
             cstore,
-            trans_trait_caches: traits::trans::TransTraitCaches::new(dep_graph.clone()),
             global_arenas: arenas,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
@@ -2321,5 +2317,8 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.has_clone_closures = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.sess.features.borrow().clone_closures
+    };
+    providers.fully_normalize_monormophic_ty = |tcx, ty| {
+        tcx.fully_normalize_associated_types_in(&ty)
     };
 }

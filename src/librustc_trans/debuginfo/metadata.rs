@@ -582,7 +582,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ty::TyGenerator(def_id, substs, _) => {
             let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx()).map(|t| {
-                cx.tcx().normalize_associated_type(&t)
+                cx.tcx().fully_normalize_associated_types_in(&t)
             }).collect();
             prepare_tuple_metadata(cx,
                                    t,

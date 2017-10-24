@@ -642,7 +642,7 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
     }
 
     fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx().normalize_associated_type(&ty)
+        self.tcx().fully_normalize_associated_types_in(&ty)
     }
 }
 

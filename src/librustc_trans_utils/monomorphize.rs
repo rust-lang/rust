@@ -131,6 +131,6 @@ pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           f: &'tcx ty::FieldDef)
                           -> Ty<'tcx>
 {
-    tcx.normalize_associated_type(&f.ty(tcx, param_substs))
+    tcx.fully_normalize_associated_types_in(&f.ty(tcx, param_substs))
 }
 
