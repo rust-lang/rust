@@ -153,17 +153,15 @@ impl Diagnostic {
     fn from_diagnostic_builder(db: &DiagnosticBuilder,
                                je: &JsonEmitter)
                                -> Diagnostic {
-        let sugg = db.suggestions.iter().flat_map(|sugg| {
-            je.render(sugg).into_iter().map(move |rendered| {
-                Diagnostic {
-                    message: sugg.msg.clone(),
-                    code: None,
-                    level: "help",
-                    spans: DiagnosticSpan::from_suggestion(sugg, je),
-                    children: vec![],
-                    rendered: Some(rendered),
-                }
-            })
+        let sugg = db.suggestions.iter().map(|sugg| {
+            Diagnostic {
+                message: sugg.msg.clone(),
+                code: None,
+                level: "help",
+                spans: DiagnosticSpan::from_suggestion(sugg, je),
+                children: vec![],
+                rendered: None,
+            }
         });
         Diagnostic {
             message: db.message(),
@@ -354,11 +352,5 @@ impl DiagnosticCode {
                 explanation,
             }
         })
-    }
-}
-
-impl JsonEmitter {
-    fn render(&self, suggestion: &CodeSuggestion) -> Vec<String> {
-        suggestion.splice_lines(&*self.cm).iter().map(|line| line.0.to_owned()).collect()
     }
 }
