@@ -30,29 +30,38 @@ pub fn write_mir_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for def_id in dump_mir_def_ids(tcx, single) {
         let nodeid = tcx.hir.as_local_node_id(def_id).unwrap();
         let mir = &tcx.optimized_mir(def_id);
-
-        writeln!(w, "digraph Mir_{} {{", nodeid)?;
-
-        // Global graph properties
-        writeln!(w, r#"    graph [fontname="monospace"];"#)?;
-        writeln!(w, r#"    node [fontname="monospace"];"#)?;
-        writeln!(w, r#"    edge [fontname="monospace"];"#)?;
-
-        // Graph label
-        write_graph_label(tcx, nodeid, mir, w)?;
-
-        // Nodes
-        for (block, _) in mir.basic_blocks().iter_enumerated() {
-            write_node(block, mir, w)?;
-        }
-
-        // Edges
-        for (source, _) in mir.basic_blocks().iter_enumerated() {
-            write_edges(source, mir, w)?;
-        }
-        writeln!(w, "}}")?
+        write_mir_fn_graphviz(tcx, nodeid, mir, w)?;
     }
     Ok(())
+}
+
+/// Write a graphviz DOT graph of the MIR.
+pub fn write_mir_fn_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        nodeid: NodeId,
+                                        mir: &Mir,
+                                        w: &mut W) -> io::Result<()>
+    where W: Write
+{
+    writeln!(w, "digraph Mir_{} {{", nodeid)?;
+
+    // Global graph properties
+    writeln!(w, r#"    graph [fontname="monospace"];"#)?;
+    writeln!(w, r#"    node [fontname="monospace"];"#)?;
+    writeln!(w, r#"    edge [fontname="monospace"];"#)?;
+
+    // Graph label
+    write_graph_label(tcx, nodeid, mir, w)?;
+
+    // Nodes
+    for (block, _) in mir.basic_blocks().iter_enumerated() {
+        write_node(block, mir, w)?;
+    }
+
+    // Edges
+    for (source, _) in mir.basic_blocks().iter_enumerated() {
+        write_edges(source, mir, w)?;
+    }
+    writeln!(w, "}}")
 }
 
 /// Write a graphviz HTML-styled label for the given basic block, with
