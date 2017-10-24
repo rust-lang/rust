@@ -26,10 +26,10 @@
 miri = "Broken"
 
 # ping @Manishearth @llogiq @mcarton @oli-obk
-clippy = "Compiling"
+clippy = "Broken"
 
 # ping @nrc
-rls = "Testing"
+rls = "Broken"
 
 # ping @nrc
-rustfmt = "Testing"
+rustfmt = "Broken"

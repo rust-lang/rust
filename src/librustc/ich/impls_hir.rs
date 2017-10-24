@@ -232,8 +232,7 @@ impl_stable_hash_for!(struct hir::MethodSig {
     unsafety,
     constness,
     abi,
-    decl,
-    generics
+    decl
 });
 
 impl_stable_hash_for!(struct hir::TypeBinding {
@@ -709,6 +708,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
             hir_id: _,
             name,
             ref attrs,
+            ref generics,
             ref node,
             span
         } = *self;
@@ -716,6 +716,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
         hcx.hash_hir_item_like(attrs, |hcx| {
             name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
+            generics.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });
@@ -744,6 +745,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
             ref vis,
             defaultness,
             ref attrs,
+            ref generics,
             ref node,
             span
         } = *self;
@@ -753,6 +755,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
+            generics.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });

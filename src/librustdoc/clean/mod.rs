@@ -1141,13 +1141,13 @@ pub struct Method {
     pub abi: Abi,
 }
 
-impl<'a> Clean<Method> for (&'a hir::MethodSig, hir::BodyId) {
+impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Method {
         Method {
-            generics: self.0.generics.clean(cx),
+            generics: self.1.clean(cx),
             unsafety: self.0.unsafety,
             constness: self.0.constness,
-            decl: (&*self.0.decl, self.1).clean(cx),
+            decl: (&*self.0.decl, self.2).clean(cx),
             abi: self.0.abi
         }
     }
@@ -1380,13 +1380,13 @@ impl Clean<Item> for hir::TraitItem {
                                     default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
-                MethodItem((sig, body).clean(cx))
+                MethodItem((sig, &self.generics, body).clean(cx))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
                 TyMethodItem(TyMethod {
                     unsafety: sig.unsafety.clone(),
                     decl: (&*sig.decl, &names[..]).clean(cx),
-                    generics: sig.generics.clean(cx),
+                    generics: self.generics.clean(cx),
                     abi: sig.abi
                 })
             }
@@ -1415,7 +1415,7 @@ impl Clean<Item> for hir::ImplItem {
                                     Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Method(ref sig, body) => {
-                MethodItem((sig, body).clean(cx))
+                MethodItem((sig, &self.generics, body).clean(cx))
             }
             hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),

@@ -1539,6 +1539,7 @@ impl<'a> LoweringContext<'a> {
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
+                generics: this.lower_generics(&i.generics),
                 node: match i.node {
                     TraitItemKind::Const(ref ty, ref default) => {
                         hir::TraitItemKind::Const(this.lower_ty(ty),
@@ -1603,6 +1604,7 @@ impl<'a> LoweringContext<'a> {
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
+                generics: this.lower_generics(&i.generics),
                 vis: this.lower_visibility(&i.vis, None),
                 defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
                 node: match i.node {
@@ -1729,7 +1731,6 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
         hir::MethodSig {
-            generics: self.lower_generics(&sig.generics),
             abi: sig.abi,
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),

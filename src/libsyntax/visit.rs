@@ -31,7 +31,7 @@ use codemap::Spanned;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Ident, &'a Generics, Unsafety, Spanned<Constness>, Abi, &'a Visibility, &'a Block),
+    ItemFn(Ident, Unsafety, Spanned<Constness>, Abi, &'a Visibility, &'a Block),
 
     /// fn foo(&self)
     Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
@@ -247,7 +247,8 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_expr(expr);
         }
         ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
-            visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
+            visitor.visit_generics(generics);
+            visitor.visit_fn(FnKind::ItemFn(item.ident, unsafety,
                                             constness, abi, &item.vis, body),
                              declaration,
                              item.span,
@@ -538,13 +539,11 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
     where V: Visitor<'a>,
 {
     match kind {
-        FnKind::ItemFn(_, generics, _, _, _, _, body) => {
-            visitor.visit_generics(generics);
+        FnKind::ItemFn(_, _, _, _, _, body) => {
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
-        FnKind::Method(_, sig, _, body) => {
-            visitor.visit_generics(&sig.generics);
+        FnKind::Method(_, _, _, body) => {
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
@@ -558,13 +557,13 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
 pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a TraitItem) {
     visitor.visit_ident(trait_item.span, trait_item.ident);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
+    visitor.visit_generics(&trait_item.generics);
     match trait_item.node {
         TraitItemKind::Const(ref ty, ref default) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, default);
         }
         TraitItemKind::Method(ref sig, None) => {
-            visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }
         TraitItemKind::Method(ref sig, Some(ref body)) => {
@@ -585,6 +584,7 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
     visitor.visit_vis(&impl_item.vis);
     visitor.visit_ident(impl_item.span, impl_item.ident);
     walk_list!(visitor, visit_attribute, &impl_item.attrs);
+    visitor.visit_generics(&impl_item.generics);
     match impl_item.node {
         ImplItemKind::Const(ref ty, ref expr) => {
             visitor.visit_ty(ty);

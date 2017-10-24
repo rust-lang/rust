@@ -354,23 +354,24 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                       body: Option<&'l ast::Block>,
                       id: ast::NodeId,
                       name: ast::Ident,
+                      generics: &'l ast::Generics,
                       vis: ast::Visibility,
                       span: Span) {
         debug!("process_method: {}:{}", id, name);
 
         if let Some(mut method_data) = self.save_ctxt.get_method_data(id, name.name, span) {
 
-            let sig_str = ::make_signature(&sig.decl, &sig.generics);
+            let sig_str = ::make_signature(&sig.decl, &generics);
             if body.is_some() {
                 self.nest_tables(id, |v| {
                     v.process_formals(&sig.decl.inputs, &method_data.qualname)
                 });
             }
 
-            self.process_generic_params(&sig.generics, span, &method_data.qualname, id);
+            self.process_generic_params(&generics, span, &method_data.qualname, id);
 
             method_data.value = sig_str;
-            method_data.sig = sig::method_signature(id, name, sig, &self.save_ctxt);
+            method_data.sig = sig::method_signature(id, name, generics, sig, &self.save_ctxt);
             self.dumper.dump_def(vis == ast::Visibility::Public, method_data);
         }
 
@@ -1007,6 +1008,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                                     body.as_ref().map(|x| &**x),
                                     trait_item.id,
                                     trait_item.ident,
+                                    &trait_item.generics,
                                     ast::Visibility::Public,
                                     trait_item.span);
             }
@@ -1066,6 +1068,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                                     Some(body),
                                     impl_item.id,
                                     impl_item.ident,
+                                    &impl_item.generics,
                                     impl_item.vis.clone(),
                                     impl_item.span);
             }
