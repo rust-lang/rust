@@ -1637,6 +1637,14 @@ impl fmt::Debug for Location {
 }
 
 impl Location {
+    /// Returns the location immediately after this one within the enclosing block.
+    ///
+    /// Note that if this location represents a terminator, then the
+    /// resulting location would be out of bounds and invalid.
+    pub fn successor_within_block(&self) -> Location {
+        Location { block: self.block, statement_index: self.statement_index + 1 }
+    }
+
     pub fn dominates(&self, other: &Location, dominators: &Dominators<BasicBlock>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index

@@ -31,6 +31,7 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.node12.nll.0.mir
+// | R0: {bb1[1], bb2[0], bb2[1]}
 // | R1: {bb1[1], bb2[0], bb2[1]}
 // ...
 //             let _2: &'_#1r usize;

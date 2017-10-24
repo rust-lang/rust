@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::{Location, Mir};
+use rustc::mir::{BasicBlock, BorrowKind, Location, Lvalue, Mir, Rvalue, Statement, StatementKind};
 use rustc::mir::transform::MirSource;
+use rustc::mir::visit::Visitor;
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty};
@@ -38,18 +39,18 @@ pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
     }.add_constraints();
 }
 
-struct ConstraintGeneration<'constrain, 'gcx: 'tcx, 'tcx: 'constrain> {
-    infcx: &'constrain InferCtxt<'constrain, 'gcx, 'tcx>,
-    regioncx: &'constrain mut RegionInferenceContext,
-    mir: &'constrain Mir<'tcx>,
-    liveness: &'constrain LivenessResults,
+struct ConstraintGeneration<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+    regioncx: &'cx mut RegionInferenceContext,
+    mir: &'cx Mir<'tcx>,
+    liveness: &'cx LivenessResults,
     mir_source: MirSource,
 }
 
-impl<'constrain, 'gcx, 'tcx> ConstraintGeneration<'constrain, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
     fn add_constraints(&mut self) {
-        // To start, add the liveness constraints.
         self.add_liveness_constraints();
+        self.add_borrow_constraints();
     }
 
     /// Liveness constraints:
@@ -171,5 +172,51 @@ impl<'constrain, 'gcx, 'tcx> ConstraintGeneration<'constrain, 'gcx, 'tcx> {
                 }
             }
         }
+    }
+
+    fn add_borrow_constraints(&mut self) {
+        self.visit_mir(self.mir);
+    }
+
+    fn add_borrow_constraint(
+        &mut self,
+        location: Location,
+        destination_lv: &Lvalue<'tcx>,
+        borrow_region: ty::Region<'tcx>,
+        _borrow_kind: BorrowKind,
+        _borrowed_lv: &Lvalue<'tcx>,
+    ) {
+        let tcx = self.infcx.tcx;
+        let destination_ty = destination_lv.ty(self.mir, tcx).to_ty(tcx);
+
+        let destination_region = match destination_ty.sty {
+            ty::TyRef(r, _) => r,
+            _ => bug!()
+        };
+
+        self.regioncx.add_outlives(borrow_region.to_region_index(),
+                                   destination_region.to_region_index(),
+                                   location.successor_within_block());
+    }
+}
+
+impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
+    fn visit_statement(&mut self,
+                       block: BasicBlock,
+                       statement: &Statement<'tcx>,
+                       location: Location) {
+        // Look for a statement like:
+        //
+        //     D = & L
+        //
+        // where D is the path to which we are assigning, and
+        // L is the path that is borrowed.
+        if let StatementKind::Assign(ref destination_lv, ref rv) = statement.kind {
+            if let Rvalue::Ref(region, bk, ref borrowed_lv) = *rv {
+                self.add_borrow_constraint(location, destination_lv, region, bk, borrowed_lv);
+            }
+        }
+
+        self.super_statement(block, statement, location);
     }
 }
