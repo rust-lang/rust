@@ -163,8 +163,8 @@ cmake ../libunwind-release_39 \
           -DLIBUNWIND_ENABLE_SHARED=0 \
           -DCMAKE_C_COMPILER=powerpc-linux-gnu-gcc \
           -DCMAKE_CXX_COMPILER=powerpc-linux-gnu-g++ \
-          -DCMAKE_C_FLAGS="-mlong-double-64" \
-          -DCMAKE_CXX_FLAGS="-mlong-double-64"
+          -DCMAKE_C_FLAGS="-D__ppc__ -mlong-double-64" \
+          -DCMAKE_CXX_FLAGS="-D__ppc__ -mlong-double-64"
 make -j$(nproc)
 cp lib/libunwind.a /usr/local/ppc-linux-musl/lib
 cd ..
