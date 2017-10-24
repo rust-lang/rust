@@ -218,9 +218,11 @@ fn amortized_new_capacity(elem_size: usize, current_capacity: usize,
         // Empty vector => at least 64 bytes
         //
         // [OLD]:
-        0 => if elem_size > (!0) / 8 { 1 } else { 4 },
+        // 0 => if elem_size > (!0) / 8 { 1 } else { 4 },
         // [NEW]:
         // 0 => (64 / elem_size).max(1),
+        // [NEW 2]:
+        0 => (32 / elem_size).max(4),
         //
         // Small and large vectors (<= 4096 bytes, and >= 4096 * 32 bytes):
         //
