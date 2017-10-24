@@ -738,7 +738,6 @@ impl Step for Src {
             "src/liballoc_jemalloc",
             "src/liballoc_system",
             "src/libbacktrace",
-            "src/libcollections",
             "src/libcompiler_builtins",
             "src/libcore",
             "src/liblibc",
