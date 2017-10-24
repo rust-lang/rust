@@ -53,11 +53,19 @@ pub struct IdxSet<T: Idx> {
 }
 
 impl<T: Idx> fmt::Debug for IdxSetBuf<T> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result { self.bits.fmt(w) }
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        w.debug_list()
+         .entries(self.iter())
+         .finish()
+    }
 }
 
 impl<T: Idx> fmt::Debug for IdxSet<T> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result { self.bits.fmt(w) }
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        w.debug_list()
+         .entries(self.iter())
+         .finish()
+    }
 }
 
 impl<T: Idx> IdxSetBuf<T> {

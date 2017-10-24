@@ -15,7 +15,7 @@ use rustc::mir::{Location, Mir};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
 
-pub struct InferenceContext {
+pub struct RegionInferenceContext {
     definitions: IndexVec<RegionIndex, VarDefinition>,
     constraints: IndexVec<ConstraintIndex, Constraint>,
     errors: IndexVec<InferenceErrorIndex, InferenceError>,
@@ -28,20 +28,11 @@ pub struct InferenceError {
 
 newtype_index!(InferenceErrorIndex);
 
+#[derive(Default)]
 struct VarDefinition {
     name: (), // FIXME(nashenas88) RegionName
     value: Region,
     capped: bool,
-}
-
-impl VarDefinition {
-    pub fn new(value: Region) -> Self {
-        Self {
-            name: (),
-            value,
-            capped: false,
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -53,10 +44,12 @@ pub struct Constraint {
 
 newtype_index!(ConstraintIndex);
 
-impl InferenceContext {
-    pub fn new(values: IndexVec<RegionIndex, Region>) -> Self {
+impl RegionInferenceContext {
+    pub fn new(num_region_variables: usize) -> Self {
         Self {
-            definitions: values.into_iter().map(VarDefinition::new).collect(),
+            definitions: (0..num_region_variables)
+                .map(|_| VarDefinition::default())
+                .collect(),
             constraints: IndexVec::new(),
             errors: IndexVec::new(),
         }
@@ -87,8 +80,14 @@ impl InferenceContext {
         self.constraints.push(Constraint { sup, sub, point });
     }
 
-    #[allow(dead_code)]
-    pub fn region(&self, v: RegionIndex) -> &Region {
+    /// Returns an iterator over all the region indices.
+    pub fn regions(&self) -> impl Iterator<Item = RegionIndex> {
+        self.definitions.indices()
+    }
+
+    /// Returns the current value for the region `v`. This is only
+    /// really meaningful after `solve` has executed.
+    pub fn region_value(&self, v: RegionIndex) -> &Region {
         &self.definitions[v].value
     }
 
@@ -144,8 +143,7 @@ impl InferenceContext {
 }
 
 struct Dfs<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
-    #[allow(dead_code)]
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    #[allow(dead_code)] infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
 }
 
@@ -183,17 +181,22 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
 
             let block_data = &self.mir[p.block];
             let successor_points = if p.statement_index < block_data.statements.len() {
-                vec![Location {
-                    statement_index: p.statement_index + 1,
-                    ..p
-                }]
+                vec![
+                    Location {
+                        statement_index: p.statement_index + 1,
+                        ..p
+                    },
+                ]
             } else {
-                block_data.terminator()
+                block_data
+                    .terminator()
                     .successors()
                     .iter()
-                    .map(|&basic_block| Location {
-                        statement_index: 0,
-                        block: basic_block,
+                    .map(|&basic_block| {
+                        Location {
+                            statement_index: 0,
+                            block: basic_block,
+                        }
                     })
                     .collect::<Vec<_>>()
             };
