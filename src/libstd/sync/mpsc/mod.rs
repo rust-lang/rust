@@ -297,6 +297,8 @@ mod sync;
 mod mpsc_queue;
 mod spsc_queue;
 
+mod cache_aligned;
+
 /// The receiving half of Rust's [`channel`][] (or [`sync_channel`]) type.
 /// This half can only be owned by one thread.
 ///
@@ -919,7 +921,7 @@ impl<T> Drop for Sender<T> {
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Sender {{ .. }}")
+        f.debug_struct("Sender").finish()
     }
 }
 
@@ -1049,7 +1051,7 @@ impl<T> Drop for SyncSender<T> {
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for SyncSender<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SyncSender {{ .. }}")
+        f.debug_struct("SyncSender").finish()
     }
 }
 
@@ -1551,7 +1553,7 @@ impl<T> Drop for Receiver<T> {
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Receiver<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Receiver {{ .. }}")
+        f.debug_struct("Receiver").finish()
     }
 }
 
@@ -3008,23 +3010,5 @@ mod sync_tests {
         for _ in 0..100 {
             repro()
         }
-    }
-
-    #[test]
-    fn fmt_debug_sender() {
-        let (tx, _) = channel::<i32>();
-        assert_eq!(format!("{:?}", tx), "Sender { .. }");
-    }
-
-    #[test]
-    fn fmt_debug_recv() {
-        let (_, rx) = channel::<i32>();
-        assert_eq!(format!("{:?}", rx), "Receiver { .. }");
-    }
-
-    #[test]
-    fn fmt_debug_sync_sender() {
-        let (tx, _) = sync_channel::<i32>(1);
-        assert_eq!(format!("{:?}", tx), "SyncSender { .. }");
     }
 }

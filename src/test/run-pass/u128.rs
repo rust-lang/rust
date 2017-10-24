@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten
+// ignore-emscripten u128 not supported
 
 #![feature(i128_type, test)]
 

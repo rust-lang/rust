@@ -43,7 +43,7 @@ parameter if so.
 "##,
 
 E0154: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 Imports (`use` statements) are not allowed after non-item statements, such as
 variable declarations and expression statements.
@@ -79,7 +79,7 @@ https://doc.rust-lang.org/reference.html#statements
 "##,
 
 E0251: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 Two items of the same name cannot be imported without rebinding one of the
 items under a new local name.
@@ -268,7 +268,7 @@ fn main() {
 "##,
 
 E0256: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 You can't import a type or module when the name of the item being imported is
 the same as another type or submodule defined in the module.

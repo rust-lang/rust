@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-29485.rs
-// ignore-emscripten
+// ignore-emscripten no threads
 
 #[feature(recover)]
 

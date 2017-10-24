@@ -31,8 +31,6 @@ extern crate bootstrap;
 
 use std::env;
 use std::ffi::OsString;
-use std::io;
-use std::io::prelude::*;
 use std::str::FromStr;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
@@ -122,19 +120,14 @@ fn main() {
             cmd.arg("-L").arg(&root);
         }
 
-        // Pass down extra flags, commonly used to configure `-Clinker` when
-        // cross compiling.
-        if let Ok(s) = env::var("RUSTC_FLAGS") {
-            cmd.args(&s.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>());
+        // Override linker if necessary.
+        if let Ok(target_linker) = env::var("RUSTC_TARGET_LINKER") {
+            cmd.arg(format!("-Clinker={}", target_linker));
         }
 
         // Pass down incremental directory, if any.
         if let Ok(dir) = env::var("RUSTC_INCREMENTAL") {
             cmd.arg(format!("-Zincremental={}", dir));
-
-            if verbose > 0 {
-                cmd.arg("-Zincremental-info");
-            }
         }
 
         let crate_name = args.windows(2)
@@ -181,6 +174,9 @@ fn main() {
 
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
+        }
+        if stage != "0" && env::var("RUSTC_THINLTO").is_ok() {
+            cmd.arg("-Ccodegen-units=16").arg("-Zthinlto");
         }
 
         // Emit save-analysis info.
@@ -258,6 +254,11 @@ fn main() {
         if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
             cmd.arg("-Z").arg("force-unstable-if-unmarked");
         }
+    } else {
+        // Override linker if necessary.
+        if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
+            cmd.arg(format!("-Clinker={}", host_linker));
+        }
     }
 
     let color = match env::var("RUSTC_COLOR") {
@@ -270,7 +271,7 @@ fn main() {
     }
 
     if verbose > 1 {
-        writeln!(&mut io::stderr(), "rustc command: {:?}", cmd).unwrap();
+        eprintln!("rustc command: {:?}", cmd);
     }
 
     // Actually run the compiler!

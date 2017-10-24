@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use io;
-use libc;
+use libc::{self, size_t};
 use mem;
 use ptr;
 
@@ -148,8 +148,8 @@ impl Process {
         use sys::process::zircon::*;
 
         let mut proc_info: zx_info_process_t = Default::default();
-        let mut actual: zx_size_t = 0;
-        let mut avail: zx_size_t = 0;
+        let mut actual: size_t = 0;
+        let mut avail: size_t = 0;
 
         unsafe {
             zx_cvt(zx_object_wait_one(self.handle.raw(), ZX_TASK_TERMINATED,
@@ -171,8 +171,8 @@ impl Process {
         use sys::process::zircon::*;
 
         let mut proc_info: zx_info_process_t = Default::default();
-        let mut actual: zx_size_t = 0;
-        let mut avail: zx_size_t = 0;
+        let mut actual: size_t = 0;
+        let mut avail: size_t = 0;
 
         unsafe {
             let status = zx_object_wait_one(self.handle.raw(), ZX_TASK_TERMINATED,

@@ -485,15 +485,17 @@ impl Builder {
 /// let (tx, rx) = channel();
 ///
 /// let sender = thread::spawn(move || {
-///     let _ = tx.send("Hello, thread".to_owned());
+///     tx.send("Hello, thread".to_owned())
+///         .expect("Unable to send on channel");
 /// });
 ///
 /// let receiver = thread::spawn(move || {
-///     println!("{}", rx.recv().unwrap());
+///     let value = rx.recv().expect("Unable to receive from channel");
+///     println!("{}", value);
 /// });
 ///
-/// let _ = sender.join();
-/// let _ = receiver.join();
+/// sender.join().expect("The sender thread has panicked");
+/// receiver.join().expect("The receiver thread has panicked");
 /// ```
 ///
 /// A thread can also return a value through its [`JoinHandle`], you can use
@@ -1192,7 +1194,7 @@ impl<T> JoinInner<T> {
 ///     });
 /// });
 ///
-/// let _ = original_thread.join();
+/// original_thread.join().expect("The thread being joined has panicked");
 /// println!("Original thread is joined.");
 ///
 /// // We make sure that the new thread has time to run, before the main

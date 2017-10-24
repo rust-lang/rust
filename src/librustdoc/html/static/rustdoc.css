@@ -203,6 +203,15 @@ nav.sub {
 	word-wrap: break-word;
 }
 
+.sidebar .version {
+	font-size: 15px;
+	text-align: center;
+	border-bottom: #DDDDDD 1px solid;
+	overflow-wrap: break-word;
+	word-wrap: break-word; /* deprecated */
+	word-break: break-word; /* Chrome, non-standard */
+}
+
 .location:empty {
 	border: none;
 }
@@ -385,7 +394,7 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li { margin-bottom: 3px; }
+.content .item-list li { margin-bottom: 1em; }
 
 .content .multi-column {
 	-moz-column-count: 5;
@@ -543,7 +552,7 @@ body.blur > :not(#help) {
 	flex: 0 0 auto;
 	box-shadow: 0 0 6px rgba(0,0,0,.2);
 	width: 550px;
-	height: 330px;
+	height: 354px;
 	border: 1px solid;
 }
 #help dt {
@@ -764,17 +773,19 @@ span.since {
 	}
 
 	.sidebar {
-		height: 40px;
+		height: 45px;
 		min-height: 40px;
-		width: 100%;
-		margin: 0px;
-		padding: 0px;
+		width: calc(100% + 30px);
+		margin: 0;
+		margin-left: -15px;
+		padding: 0 15px;
 		position: static;
 	}
 
 	.sidebar .location {
 		float: right;
 		margin: 0px;
+		margin-top: 2px;
 		padding: 3px 10px 1px 10px;
 		min-height: 39px;
 		background: inherit;
@@ -789,7 +800,7 @@ span.since {
 	.sidebar img {
 		width: 35px;
 		margin-top: 5px;
-		margin-bottom: 0px;
+		margin-bottom: 5px;
 		float: left;
 	}
 
@@ -819,6 +830,10 @@ span.since {
 
 	.toggle-wrapper {
 		height: 1.5em;
+	}
+
+	#search {
+		margin-left: 0;
 	}
 }
 
@@ -872,4 +887,30 @@ span.since {
 
 pre.rust {
 	position: relative;
+}
+
+.search-failed {
+	text-align: center;
+	margin-top: 20px;
+}
+
+#titles {
+	height: 35px;
+}
+
+#titles > div {
+	float: left;
+	width: 33.3%;
+	text-align: center;
+	border-bottom: 1px solid #ccc;
+	font-size: 18px;
+	cursor: pointer;
+}
+
+#titles > div.selected {
+	border-bottom: 3px solid #0078ee;
+}
+
+#titles > div:hover {
+	border-bottom: 3px solid #0089ff;
 }

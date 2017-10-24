@@ -116,11 +116,18 @@ impl<T> Drop for ReentrantMutex<T> {
 impl<T: fmt::Debug + 'static> fmt::Debug for ReentrantMutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_lock() {
-            Ok(guard) => write!(f, "ReentrantMutex {{ data: {:?} }}", &*guard),
+            Ok(guard) => f.debug_struct("ReentrantMutex").field("data", &*guard).finish(),
             Err(TryLockError::Poisoned(err)) => {
-                write!(f, "ReentrantMutex {{ data: Poisoned({:?}) }}", &**err.get_ref())
+                f.debug_struct("ReentrantMutex").field("data", &**err.get_ref()).finish()
             },
-            Err(TryLockError::WouldBlock) => write!(f, "ReentrantMutex {{ <locked> }}")
+            Err(TryLockError::WouldBlock) => {
+                struct LockedPlaceholder;
+                impl fmt::Debug for LockedPlaceholder {
+                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str("<locked>") }
+                }
+
+                f.debug_struct("ReentrantMutex").field("data", &LockedPlaceholder).finish()
+            }
         }
     }
 }

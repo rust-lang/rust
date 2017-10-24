@@ -18,6 +18,7 @@ pub use self::fold::TypeFoldable;
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::map::DefPathData;
 use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -89,6 +90,7 @@ pub mod adjustment;
 pub mod binding;
 pub mod cast;
 pub mod error;
+mod erase_regions;
 pub mod fast_reject;
 pub mod fold;
 pub mod inhabitedness;
@@ -2232,6 +2234,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Given a `VariantDef`, returns the def-id of the `AdtDef` of which it is a part.
+    pub fn adt_def_id_of_variant(self, variant_def: &'tcx VariantDef) -> DefId {
+        let def_key = self.def_key(variant_def.did);
+        match def_key.disambiguated_data.data {
+            // for enum variants and tuple structs, the def-id of the ADT itself
+            // is the *parent* of the variant
+            DefPathData::EnumVariant(..) | DefPathData::StructCtor =>
+                DefId { krate: variant_def.did.krate, index: def_key.parent.unwrap() },
+
+            // otherwise, for structs and unions, they share a def-id
+            _ => variant_def.did,
+        }
+    }
+
     pub fn item_name(self, id: DefId) -> InternedString {
         if let Some(id) = self.hir.as_local_node_id(id) {
             self.hir.name(id).as_str()
@@ -2560,6 +2576,7 @@ fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn provide(providers: &mut ty::maps::Providers) {
     util::provide(providers);
     context::provide(providers);
+    erase_regions::provide(providers);
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,

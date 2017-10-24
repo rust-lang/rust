@@ -248,6 +248,185 @@ pub trait BorrowckErrors {
     {
         self.cannot_assign(span, &format!("immutable static item `{}`", desc), o)
     }
+
+    fn cannot_move_out_of(&self, move_from_span: Span, move_from_desc: &str, o: Origin)
+                          -> DiagnosticBuilder
+    {
+        let mut err = struct_span_err!(self, move_from_span, E0507,
+                                       "cannot move out of {}{OGN}",
+                                       move_from_desc, OGN=o);
+        err.span_label(
+            move_from_span,
+            format!("cannot move out of {}", move_from_desc));
+        err
+    }
+
+    fn cannot_move_out_of_interior_noncopy(&self,
+                                           move_from_span: Span,
+                                           ty: ty::Ty,
+                                           is_index: bool,
+                                           o: Origin)
+                                           -> DiagnosticBuilder
+    {
+        let type_name = match (&ty.sty, is_index) {
+            (&ty::TyArray(_, _), true) => "array",
+            (&ty::TySlice(_),    _) => "slice",
+            _ => span_bug!(move_from_span, "this path should not cause illegal move"),
+        };
+        let mut err = struct_span_err!(self, move_from_span, E0508,
+                                       "cannot move out of type `{}`, \
+                                        a non-copy {}{OGN}",
+                                       ty, type_name, OGN=o);
+        err.span_label(move_from_span, "cannot move out of here");
+        err
+    }
+
+    fn cannot_move_out_of_interior_of_drop(&self,
+                                           move_from_span: Span,
+                                           container_ty: ty::Ty,
+                                           o: Origin)
+                                           -> DiagnosticBuilder
+    {
+        let mut err = struct_span_err!(self, move_from_span, E0509,
+                                       "cannot move out of type `{}`, \
+                                        which implements the `Drop` trait{OGN}",
+                                       container_ty, OGN=o);
+        err.span_label(move_from_span, "cannot move out of here");
+        err
+    }
+
+    fn cannot_act_on_moved_value(&self,
+                                 use_span: Span,
+                                 verb: &str,
+                                 optional_adverb_for_moved: &str,
+                                 moved_path: &str,
+                                 o: Origin)
+                                 -> DiagnosticBuilder
+    {
+        let err = struct_span_err!(self, use_span, E0382,
+                                   "{} of {}moved value: `{}`{OGN}",
+                                   verb, optional_adverb_for_moved, moved_path, OGN=o);
+        err
+    }
+
+    fn cannot_partially_reinit_an_uninit_struct(&self,
+                                                span: Span,
+                                                uninit_path: &str,
+                                                o: Origin)
+                                                -> DiagnosticBuilder
+    {
+        let err = struct_span_err!(self,
+                                   span,
+                                   E0383,
+                                   "partial reinitialization of uninitialized structure `{}`{OGN}",
+                                   uninit_path, OGN=o);
+        err
+    }
+
+    fn closure_cannot_assign_to_borrowed(&self,
+                                         span: Span,
+                                         descr: &str,
+                                         o: Origin)
+                                         -> DiagnosticBuilder
+    {
+        let err = struct_span_err!(self, span, E0595, "closure cannot assign to {}{OGN}",
+                                   descr, OGN=o);
+        err
+    }
+
+    fn cannot_borrow_path_as_mutable(&self,
+                                     span: Span,
+                                     path: &str,
+                                     o: Origin)
+                                     -> DiagnosticBuilder
+    {
+        let err = struct_span_err!(self, span, E0596, "cannot borrow {} as mutable{OGN}",
+                                   path, OGN=o);
+        err
+    }
+
+    fn cannot_borrow_across_generator_yield(&self,
+                                            span: Span,
+                                            yield_span: Span,
+                                            o: Origin)
+                                            -> DiagnosticBuilder
+    {
+        let mut err = struct_span_err!(self,
+                                       span,
+                                       E0626,
+                                       "borrow may still be in use when generator yields{OGN}",
+                                       OGN=o);
+        err.span_label(yield_span, "possible yield occurs here");
+        err
+    }
+
+    fn path_does_not_live_long_enough(&self,
+                                      span: Span,
+                                      path: &str,
+                                      o: Origin)
+                                      -> DiagnosticBuilder
+    {
+        let err = struct_span_err!(self, span, E0597, "{} does not live long enough{OGN}",
+                                   path, OGN=o);
+        err
+    }
+
+    fn lifetime_too_short_for_reborrow(&self,
+                                       span: Span,
+                                       path: &str,
+                                       o: Origin)
+                                       -> DiagnosticBuilder
+    {
+        let err = struct_span_err!(self, span, E0598,
+                                   "lifetime of {} is too short to guarantee \
+                                    its contents can be safely reborrowed{OGN}",
+                                   path, OGN=o);
+        err
+    }
+
+    fn cannot_act_on_capture_in_sharable_fn(&self,
+                                            span: Span,
+                                            bad_thing: &str,
+                                            help: (Span, &str),
+                                            o: Origin)
+                                            -> DiagnosticBuilder
+    {
+        let (help_span, help_msg) = help;
+        let mut err = struct_span_err!(self, span, E0387,
+                                       "{} in a captured outer variable in an `Fn` closure{OGN}",
+                                       bad_thing, OGN=o);
+        err.span_help(help_span, help_msg);
+        err
+    }
+
+    fn cannot_assign_into_immutable_reference(&self,
+                                              span: Span,
+                                              bad_thing: &str,
+                                              o: Origin)
+                                              -> DiagnosticBuilder
+    {
+        let mut err = struct_span_err!(self, span, E0389, "{} in a `&` reference{OGN}",
+                                       bad_thing, OGN=o);
+        err.span_label(span, "assignment into an immutable reference");
+        err
+    }
+
+    fn cannot_capture_in_long_lived_closure(&self,
+                                            closure_span: Span,
+                                            borrowed_path: &str,
+                                            capture_span: Span,
+                                            o: Origin)
+                                            -> DiagnosticBuilder
+    {
+        let mut err = struct_span_err!(self, closure_span, E0373,
+                                       "closure may outlive the current function, \
+                                        but it borrows {}, \
+                                        which is owned by the current function{OGN}",
+                                       borrowed_path, OGN=o);
+        err.span_label(capture_span, format!("{} is borrowed here", borrowed_path))
+            .span_label(closure_span, format!("may outlive borrowed value {}", borrowed_path));
+        err
+    }
 }
 
 impl<'b, 'tcx, 'gcx> BorrowckErrors for TyCtxt<'b, 'tcx, 'gcx> {

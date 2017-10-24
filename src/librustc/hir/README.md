@@ -57,7 +57,7 @@ carry around references into the HIR, but rather to carry around
 *identifier numbers* (or just "ids"). Right now, you will find four
 sorts of identifiers in active use:
 
-- `DefId`, which primarily name "definitions" or top-level items.
+- `DefId`, which primarily names "definitions" or top-level items.
   - You can think of a `DefId` as being shorthand for a very explicit
     and complete path, like `std::collections::HashMap`. However,
     these paths are able to name things that are not nameable in
@@ -114,6 +114,6 @@ A **body** represents some kind of executable code, such as the body
 of a function/closure or the definition of a constant. Bodies are
 associated with an **owner**, which is typically some kind of item
 (e.g., a `fn()` or `const`), but could also be a closure expression
-(e.g., `|x, y| x + y`). You can use the HIR map to find find the body
+(e.g., `|x, y| x + y`). You can use the HIR map to find the body
 associated with a given def-id (`maybe_body_owned_by()`) or to find
 the owner of a body (`body_owner_def_id()`).

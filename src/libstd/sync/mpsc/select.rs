@@ -354,13 +354,13 @@ impl Iterator for Packets {
 
 impl fmt::Debug for Select {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Select {{ .. }}")
+        f.debug_struct("Select").finish()
     }
 }
 
 impl<'rx, T:Send+'rx> fmt::Debug for Handle<'rx, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Handle {{ .. }}")
+        f.debug_struct("Handle").finish()
     }
 }
 
@@ -773,19 +773,5 @@ mod tests {
                 assert_eq!(rx1.recv().unwrap(), 1);
             }
         }
-    }
-
-    #[test]
-    fn fmt_debug_select() {
-        let sel = Select::new();
-        assert_eq!(format!("{:?}", sel), "Select { .. }");
-    }
-
-    #[test]
-    fn fmt_debug_handle() {
-        let (_, rx) = channel::<i32>();
-        let sel = Select::new();
-        let handle = sel.handle(&rx);
-        assert_eq!(format!("{:?}", handle), "Handle { .. }");
     }
 }

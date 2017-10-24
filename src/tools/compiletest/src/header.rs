@@ -567,6 +567,19 @@ impl Config {
             None
         }
     }
+
+    pub fn find_rust_src_root(&self) -> Option<PathBuf> {
+        let mut path = self.src_base.clone();
+        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
+
+        while path.pop() {
+            if path.join(&path_postfix).is_file() {
+                return Some(path);
+            }
+        }
+
+        None
+    }
 }
 
 pub fn lldb_version_to_int(version_string: &str) -> isize {

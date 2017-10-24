@@ -66,7 +66,7 @@ macro_rules! book {
 }
 
 book!(
-    Nomicon, "src/doc/book", "nomicon";
+    Nomicon, "src/doc/nomicon", "nomicon";
     Reference, "src/doc/reference", "reference";
     Rustdoc, "src/doc/rustdoc", "rustdoc";
 );
@@ -490,7 +490,7 @@ impl Step for Std {
         // for which docs must be built.
         if !build.config.compiler_docs {
             cargo.arg("--no-deps");
-            for krate in &["alloc", "collections", "core", "std", "std_unicode"] {
+            for krate in &["alloc", "core", "std", "std_unicode"] {
                 cargo.arg("-p").arg(krate);
                 // Create all crate output directories first to make sure rustdoc uses
                 // relative links.
@@ -623,11 +623,9 @@ impl Step for Rustc {
         compile::rustc_cargo(build, &compiler, target, &mut cargo);
 
         if build.config.compiler_docs {
-            // src/rustc/Cargo.toml contains bin crates called rustc and rustdoc
-            // which would otherwise overwrite the docs for the real rustc and
-            // rustdoc lib crates.
-            cargo.arg("-p").arg("rustc_driver")
-                 .arg("-p").arg("rustdoc");
+            // src/rustc/Cargo.toml contains a bin crate called rustc which
+            // would otherwise overwrite the docs for the real rustc lib crate.
+            cargo.arg("-p").arg("rustc_driver");
         } else {
             // Like with libstd above if compiler docs aren't enabled then we're not
             // documenting internal dependencies, so we have a whitelist.

@@ -781,8 +781,9 @@ the base path, it will still be considered freezable.
 
 
 
-**FIXME #10520: Restrictions against mutating the base pointer.** When
-an `&mut` pointer is frozen or claimed, we currently pass along the
+**FIXME [RFC 1751](https://github.com/rust-lang/rfcs/issues/1751)
+Restrictions against mutating the base pointer.**
+When an `&mut` pointer is frozen or claimed, we currently pass along the
 restriction against MUTATE to the base pointer. I do not believe this
 restriction is needed. It dates from the days when we had a way to
 mutate that preserved the value being mutated (i.e., swap). Nowadays

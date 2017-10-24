@@ -156,26 +156,11 @@ pub struct BlockRemainder {
     pub first_statement_index: FirstStatementIndex,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-         RustcDecodable, Copy)]
-pub struct FirstStatementIndex { pub idx: u32 }
-
-impl Idx for FirstStatementIndex {
-    fn new(idx: usize) -> Self {
-        assert!(idx <= SCOPE_DATA_REMAINDER_MAX as usize);
-        FirstStatementIndex { idx: idx as u32 }
-    }
-
-    fn index(self) -> usize {
-        self.idx as usize
-    }
-}
-
-impl fmt::Debug for FirstStatementIndex {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.index(), formatter)
-    }
-}
+newtype_index!(FirstStatementIndex
+    {
+        DEBUG_NAME = "",
+        MAX = SCOPE_DATA_REMAINDER_MAX,
+    });
 
 impl From<ScopeData> for Scope {
     #[inline]
@@ -208,7 +193,7 @@ impl Scope {
             SCOPE_DATA_DESTRUCTION => ScopeData::Destruction(self.id),
             idx => ScopeData::Remainder(BlockRemainder {
                 block: self.id,
-                first_statement_index: FirstStatementIndex { idx }
+                first_statement_index: FirstStatementIndex::new(idx as usize)
             })
         }
     }
@@ -960,7 +945,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 
             hir::ExprAssignOp(..) | hir::ExprIndex(..) |
             hir::ExprUnary(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) => {
-                // FIXME(#6268) Nested method calls
+                // FIXME(https://github.com/rust-lang/rfcs/issues/811) Nested method calls
                 //
                 // The lifetimes for a call or method call look as follows:
                 //
@@ -1081,8 +1066,6 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     // Here, the expression `[...]` has an extended lifetime due to rule
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
-    //
-    // FIXME(#6308) -- Note that `[]` patterns work more smoothly post-DST.
 
     if let Some(expr) = init {
         record_rvalue_scope_if_borrow_expr(visitor, &expr, blk_scope);

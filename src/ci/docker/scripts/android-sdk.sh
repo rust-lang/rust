@@ -31,7 +31,7 @@ download_sysimage() {
     # Keep printing yes to accept the licenses
     while true; do echo yes; sleep 10; done | \
         /android/sdk/tools/android update sdk -a --no-ui \
-            --filter "$filter"
+            --filter "$filter" --no-https
 }
 
 create_avd() {

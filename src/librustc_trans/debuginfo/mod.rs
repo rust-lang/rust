@@ -376,7 +376,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            let actual_type = cx.tcx().normalize_associated_type(&actual_type);
+            let actual_type = cx.tcx().fully_normalize_associated_types_in(&actual_type);
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
                                                                actual_type,
@@ -389,7 +389,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             let names = get_type_parameter_names(cx, generics);
             substs.types().zip(names).map(|(ty, name)| {
-                let actual_type = cx.tcx().normalize_associated_type(&ty);
+                let actual_type = cx.tcx().fully_normalize_associated_types_in(&ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(name.as_str().as_bytes()).unwrap();
                 unsafe {

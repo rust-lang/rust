@@ -815,7 +815,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 // the type of the node expr.id here *before applying
                 // adjustments*.
                 //
-                // FIXME(#6268) nested method calls requires that this rule change
+                // FIXME(https://github.com/rust-lang/rfcs/issues/811)
+                // nested method calls requires that this rule change
                 let ty0 = self.resolve_node_type(expr.hir_id);
                 self.type_must_outlive(infer::AddrOf(expr.span), ty0, expr_region);
                 intravisit::walk_expr(self, expr);

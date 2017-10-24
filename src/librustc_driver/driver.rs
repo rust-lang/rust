@@ -38,7 +38,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
+use rustc_passes::{self, ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
 use ::DefaultTransCrate;
@@ -973,6 +973,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     traits::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_const_eval::provide(&mut local_providers);
+    rustc_passes::provide(&mut local_providers);
     middle::region::provide(&mut local_providers);
     cstore::provide_local(&mut local_providers);
     lint::provide(&mut local_providers);

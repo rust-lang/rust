@@ -14,7 +14,6 @@
 
 // ignore-arm
 // ignore-aarch64
-// min-llvm-version 3.8
 
 // compile-flags: -C no-prepopulate-passes
 

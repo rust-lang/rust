@@ -29,7 +29,12 @@ pub(super) trait QueryDescription: QueryConfig {
 
 impl<M: QueryConfig<Key=DefId>> QueryDescription for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
-        format!("processing `{}`", tcx.item_path_str(def_id))
+        if !tcx.sess.verbose() {
+            format!("processing `{}`", tcx.item_path_str(def_id))
+        } else {
+            let name = unsafe { ::std::intrinsics::type_name::<M>() };
+            format!("processing `{}` applied to `{:?}`", name, def_id)
+        }
     }
 }
 
@@ -67,6 +72,12 @@ impl<'tcx> QueryDescription for queries::super_predicates_of<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("computing the supertraits of `{}`",
                 tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::erase_regions_ty<'tcx> {
+    fn describe(_tcx: TyCtxt, ty: Ty<'tcx>) -> String {
+        format!("erasing regions from `{:?}`", ty)
     }
 }
 
@@ -214,10 +225,23 @@ impl<'tcx> QueryDescription for queries::const_is_rvalue_promotable_to_static<'t
     }
 }
 
+impl<'tcx> QueryDescription for queries::rvalue_promotable_map<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("checking which parts of `{}` are promotable to static",
+                tcx.item_path_str(def_id))
+    }
+}
+
 impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("checking if item is mir available: `{}`",
             tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::trans_fulfill_obligation<'tcx> {
+    fn describe(tcx: TyCtxt, key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> String {
+        format!("checking if `{}` fulfills its obligations", tcx.item_path_str(key.1.def_id()))
     }
 }
 
@@ -497,8 +521,20 @@ impl<'tcx> QueryDescription for queries::has_clone_closures<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::vtable_methods<'tcx> {
+    fn describe(tcx: TyCtxt, key: ty::PolyTraitRef<'tcx> ) -> String {
+        format!("finding all methods for trait {}", tcx.item_path_str(key.def_id()))
+    }
+}
+
 impl<'tcx> QueryDescription for queries::has_copy_closures<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("seeing if the crate has enabled `Copy` closures")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::fully_normalize_monormophic_ty<'tcx> {
+    fn describe(_tcx: TyCtxt, _: Ty) -> String {
+        format!("normalizing types")
     }
 }

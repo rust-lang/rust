@@ -14,7 +14,7 @@ use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue};
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue, Local};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::transform::{MirSource};
@@ -30,6 +30,7 @@ use dataflow::{MoveDataParamEnv};
 use dataflow::{BitDenotation, BlockSets, DataflowResults, DataflowResultsConsumer};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{Borrows, BorrowData, BorrowIndex};
+use dataflow::move_paths::{MoveError, IllegalMoveOriginKind};
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -59,7 +60,33 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let param_env = tcx.param_env(def_id);
     tcx.infer_ctxt().enter(|_infcx| {
 
-        let move_data = MoveData::gather_moves(mir, tcx, param_env);
+        let move_data = match MoveData::gather_moves(mir, tcx, param_env) {
+            Ok(move_data) => move_data,
+            Err((move_data, move_errors)) => {
+                for move_error in move_errors {
+                    let (span, kind): (Span, IllegalMoveOriginKind) = match move_error {
+                        MoveError::UnionMove { .. } =>
+                            unimplemented!("dont know how to report union move errors yet."),
+                        MoveError::IllegalMove { cannot_move_out_of: o } => (o.span, o.kind),
+                    };
+                    let origin = Origin::Mir;
+                    let mut err = match kind {
+                        IllegalMoveOriginKind::Static =>
+                            tcx.cannot_move_out_of(span, "static item", origin),
+                        IllegalMoveOriginKind::BorrowedContent =>
+                            tcx.cannot_move_out_of(span, "borrowed_content", origin),
+                        IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } =>
+                            tcx.cannot_move_out_of_interior_of_drop(span, ty, origin),
+                        IllegalMoveOriginKind::InteriorOfSlice { elem_ty: ty, is_index } =>
+                            tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
+                        IllegalMoveOriginKind::InteriorOfArray { elem_ty: ty, is_index } =>
+                            tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
+                    };
+                    err.emit();
+                }
+                move_data
+            }
+        };
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
         let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
         let flow_borrows = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
@@ -559,7 +586,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                                 context: Context,
                                                 (lvalue, span): (&Lvalue<'gcx>, Span),
                                                 flow_state: &InProgress<'b, 'gcx>) {
-        let move_data = flow_state.inits.base_results.operator().move_data();
+        let move_data = self.move_data;
 
         // determine if this path has a non-mut owner (and thus needs checking).
         let mut l = lvalue;
@@ -584,7 +611,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
         }
 
-        if let Some(mpi) = self.move_path_for_lvalue(context, move_data, lvalue) {
+        if let Some(mpi) = self.move_path_for_lvalue(lvalue) {
             if flow_state.inits.curr_state.contains(&mpi) {
                 // may already be assigned before reaching this statement;
                 // report error.
@@ -615,21 +642,107 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         let lvalue = self.base_path(lvalue_span.0);
 
         let maybe_uninits = &flow_state.uninits;
-        let move_data = maybe_uninits.base_results.operator().move_data();
-        if let Some(mpi) = self.move_path_for_lvalue(context, move_data, lvalue) {
-            if maybe_uninits.curr_state.contains(&mpi) {
-                // find and report move(s) that could cause this to be uninitialized
+
+        // Bad scenarios:
+        //
+        // 1. Move of `a.b.c`, use of `a.b.c`
+        // 2. Move of `a.b.c`, use of `a.b.c.d` (without first reinitializing `a.b.c.d`)
+        // 3. Move of `a.b.c`, use of `a` or `a.b`
+        // 4. Uninitialized `(a.b.c: &_)`, use of `*a.b.c`; note that with
+        //    partial initialization support, one might have `a.x`
+        //    initialized but not `a.b`.
+        //
+        // OK scenarios:
+        //
+        // 5. Move of `a.b.c`, use of `a.b.d`
+        // 6. Uninitialized `a.x`, initialized `a.b`, use of `a.b`
+        // 7. Copied `(a.b: &_)`, use of `*(a.b).c`; note that `a.b`
+        //    must have been initialized for the use to be sound.
+        // 8. Move of `a.b.c` then reinit of `a.b.c.d`, use of `a.b.c.d`
+
+        // The dataflow tracks shallow prefixes distinctly (that is,
+        // field-accesses on P distinctly from P itself), in order to
+        // track substructure initialization separately from the whole
+        // structure.
+        //
+        // E.g., when looking at (*a.b.c).d, if the closest prefix for
+        // which we have a MovePath is `a.b`, then that means that the
+        // initialization state of `a.b` is all we need to inspect to
+        // know if `a.b.c` is valid (and from that we infer that the
+        // dereference and `.d` access is also valid, since we assume
+        // `a.b.c` is assigned a reference to a initialized and
+        // well-formed record structure.)
+
+        // Therefore, if we seek out the *closest* prefix for which we
+        // have a MovePath, that should capture the initialization
+        // state for the lvalue scenario.
+        //
+        // This code covers scenarios 1, 2, and 4.
+
+        debug!("check_if_path_is_moved part1 lvalue: {:?}", lvalue);
+        match self.move_path_closest_to(lvalue) {
+            Ok(mpi) => {
+                if maybe_uninits.curr_state.contains(&mpi) {
+                    self.report_use_of_moved(context, desired_action, lvalue_span);
+                    return; // don't bother finding other problems.
+                }
+            }
+            Err(NoMovePathFound::ReachedStatic) => {
+                // Okay: we do not build MoveData for static variables
+            }
+
+            // Only query longest prefix with a MovePath, not further
+            // ancestors; dataflow recurs on children when parents
+            // move (to support partial (re)inits).
+            //
+            // (I.e. querying parents breaks scenario 8; but may want
+            // to do such a query based on partial-init feature-gate.)
+        }
+
+        // A move of any shallow suffix of `lvalue` also interferes
+        // with an attempt to use `lvalue`. This is scenario 3 above.
+        //
+        // (Distinct from handling of scenarios 1+2+4 above because
+        // `lvalue` does not interfere with suffixes of its prefixes,
+        // e.g. `a.b.c` does not interfere with `a.b.d`)
+
+        debug!("check_if_path_is_moved part2 lvalue: {:?}", lvalue);
+        if let Some(mpi) = self.move_path_for_lvalue(lvalue) {
+            if let Some(_) = maybe_uninits.has_any_child_of(mpi) {
                 self.report_use_of_moved(context, desired_action, lvalue_span);
-            } else {
-                // sanity check: initialized on *some* path, right?
-                assert!(flow_state.inits.curr_state.contains(&mpi));
+                return; // don't bother finding other problems.
             }
         }
     }
 
+    /// Currently MoveData does not store entries for all lvalues in
+    /// the input MIR. For example it will currently filter out
+    /// lvalues that are Copy; thus we do not track lvalues of shared
+    /// reference type. This routine will walk up an lvalue along its
+    /// prefixes, searching for a foundational lvalue that *is*
+    /// tracked in the MoveData.
+    ///
+    /// An Err result includes a tag indicated why the search failed.
+    /// Currenly this can only occur if the lvalue is built off of a
+    /// static variable, as we do not track those in the MoveData.
+    fn move_path_closest_to(&mut self, lvalue: &Lvalue<'gcx>)
+                            -> Result<MovePathIndex, NoMovePathFound>
+    {
+        let mut last_prefix = lvalue;
+        for prefix in self.prefixes(lvalue, PrefixSet::All) {
+            if let Some(mpi) = self.move_path_for_lvalue(prefix) {
+                return Ok(mpi);
+            }
+            last_prefix = prefix;
+        }
+        match *last_prefix {
+            Lvalue::Local(_) => panic!("should have move path for every Local"),
+            Lvalue::Projection(_) => panic!("PrefixSet::All meant dont stop for Projection"),
+            Lvalue::Static(_) => return Err(NoMovePathFound::ReachedStatic),
+        }
+    }
+
     fn move_path_for_lvalue(&mut self,
-                            _context: Context,
-                            move_data: &MoveData<'gcx>,
                             lvalue: &Lvalue<'gcx>)
                             -> Option<MovePathIndex>
     {
@@ -637,7 +750,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         // to a direct owner of `lvalue` (which means there is nothing
         // that borrowck tracks for its analysis).
 
-        match move_data.rev_lookup.find(lvalue) {
+        match self.move_data.rev_lookup.find(lvalue) {
             LookupResult::Parent(_) => None,
             LookupResult::Exact(mpi) => Some(mpi),
         }
@@ -704,6 +817,11 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
         }
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum NoMovePathFound {
+    ReachedStatic,
 }
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
@@ -819,12 +937,19 @@ mod prefixes {
 
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     pub(super) enum PrefixSet {
+        /// Doesn't stop until it returns the base case (a Local or
+        /// Static prefix).
         All,
+        /// Stops at any dereference.
         Shallow,
+        /// Stops at the deref of a shared reference.
         Supporting,
     }
 
     impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+        /// Returns an iterator over the prefixes of `lvalue`
+        /// (inclusive) from longest to smallest, potentially
+        /// terminating the iteration early based on `kind`.
         pub(super) fn prefixes<'d>(&self,
                                    lvalue: &'d Lvalue<'gcx>,
                                    kind: PrefixSet)
@@ -1053,49 +1178,52 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     // End-user visible description of `lvalue`
     fn describe_lvalue(&self, lvalue: &Lvalue) -> String {
         let mut buf = String::new();
-        self.append_lvalue_to_string(lvalue, &mut buf);
+        self.append_lvalue_to_string(lvalue, &mut buf, None);
         buf
     }
 
     // Appends end-user visible description of `lvalue` to `buf`.
-    fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String) {
+    fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String, autoderef: Option<bool>) {
         match *lvalue {
             Lvalue::Local(local) => {
-                let local = &self.mir.local_decls[local];
-                match local.name {
-                    Some(name) => buf.push_str(&format!("{}", name)),
-                    None => buf.push_str("_"),
-                }
+                self.append_local_to_string(local, buf, "_");
             }
             Lvalue::Static(ref static_) => {
                 buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
             }
             Lvalue::Projection(ref proj) => {
+                let mut autoderef = autoderef.unwrap_or(false);
                 let (prefix, suffix, index_operand) = match proj.elem {
-                    ProjectionElem::Deref =>
-                        ("(*", format!(")"), None),
+                    ProjectionElem::Deref => {
+                        if autoderef {
+                            ("", format!(""), None)
+                        } else {
+                            ("(*", format!(")"), None)
+                        }
+                    },
                     ProjectionElem::Downcast(..) =>
                         ("",   format!(""), None), // (dont emit downcast info)
-                    ProjectionElem::Field(field, _ty) =>
-                        ("",   format!(".{}", field.index()), None), // FIXME: report name of field
-                    ProjectionElem::Index(index) =>
-                        ("",   format!(""), Some(index)),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
-                        ("",   format!("[{} of {}]", offset, min_length), None),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
-                        ("",   format!("[-{} of {}]", offset, min_length), None),
-                    ProjectionElem::Subslice { from, to: 0 } =>
-                        ("",   format!("[{}:]", from), None),
-                    ProjectionElem::Subslice { from: 0, to } =>
-                        ("",   format!("[:-{}]", to), None),
-                    ProjectionElem::Subslice { from, to } =>
-                        ("",   format!("[{}:-{}]", from, to), None),
+                    ProjectionElem::Field(field, _ty) => {
+                        autoderef = true;
+                        ("", format!(".{}", self.describe_field(&proj.base, field.index())), None)
+                    },
+                    ProjectionElem::Index(index) => {
+                        autoderef = true;
+                        ("",   format!(""), Some(index))
+                    },
+                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                        autoderef = true;
+                        // Since it isn't possible to borrow an element on a particular index and
+                        // then use another while the borrow is held, don't output indices details
+                        // to avoid confusing the end-user
+                        ("",   format!("[..]"), None)
+                    },
                 };
                 buf.push_str(prefix);
-                self.append_lvalue_to_string(&proj.base, buf);
+                self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
                 if let Some(index) = index_operand {
                     buf.push_str("[");
-                    self.append_lvalue_to_string(&Lvalue::Local(index), buf);
+                    self.append_local_to_string(index, buf, "..");
                     buf.push_str("]");
                 } else {
                     buf.push_str(&suffix);
@@ -1104,11 +1232,80 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         }
     }
 
+    // Appends end-user visible description of the `local` lvalue to `buf`. If `local` doesn't have
+    // a name, then `none_string` is appended instead
+    fn append_local_to_string(&self, local_index: Local, buf: &mut String, none_string: &str) {
+        let local = &self.mir.local_decls[local_index];
+        match local.name {
+            Some(name) => buf.push_str(&format!("{}", name)),
+            None => buf.push_str(none_string)
+        }
+    }
+
+    // End-user visible description of the `field_index`nth field of `base`
+    fn describe_field(&self, base: &Lvalue, field_index: usize) -> String {
+        match *base {
+            Lvalue::Local(local) => {
+                let local = &self.mir.local_decls[local];
+                self.describe_field_from_ty(&local.ty, field_index)
+            },
+            Lvalue::Static(ref static_) => {
+                self.describe_field_from_ty(&static_.ty, field_index)
+            },
+            Lvalue::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Deref =>
+                        self.describe_field(&proj.base, field_index),
+                    ProjectionElem::Downcast(def, variant_index) =>
+                        format!("{}", def.variants[variant_index].fields[field_index].name),
+                    ProjectionElem::Field(_, field_type) =>
+                        self.describe_field_from_ty(&field_type, field_index),
+                    ProjectionElem::Index(..)
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. } =>
+                        format!("{}", self.describe_field(&proj.base, field_index)),
+                }
+            }
+        }
+    }
+
+    // End-user visible description of the `field_index`nth field of `ty`
+    fn describe_field_from_ty(&self, ty: &ty::Ty, field_index: usize) -> String {
+        if ty.is_box() {
+            // If the type is a box, the field is described from the boxed type
+            self.describe_field_from_ty(&ty.boxed_ty(), field_index)
+        }
+        else {
+            match ty.sty {
+                ty::TyAdt(def, _) => {
+                    if def.is_enum() {
+                        format!("{}", field_index)
+                    }
+                    else {
+                        format!("{}", def.struct_variant().fields[field_index].name)
+                    }
+                },
+                ty::TyTuple(_, _) => {
+                    format!("{}", field_index)
+                },
+                ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
+                    self.describe_field_from_ty(&tnm.ty, field_index)
+                },
+                ty::TyArray(ty, _) | ty::TySlice(ty) => {
+                    self.describe_field_from_ty(&ty, field_index)
+                }
+                _ => {
+                    // Might need a revision when the fields in trait RFC is implemented
+                    // (https://github.com/rust-lang/rfcs/pull/1546)
+                    bug!("End-user description not implemented for field access on `{:?}`", ty.sty);
+                }
+            }
+        }
+    }
+
     // Retrieve span of given borrow from the current MIR representation
     fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
-        self.mir.basic_blocks()[borrow.location.block]
-            .statements[borrow.location.statement_index]
-            .source_info.span
+        self.mir.source_info(borrow.location).span
     }
 }
 
@@ -1238,6 +1435,35 @@ impl<'b, 'tcx: 'b> InProgress<'b, 'tcx> {
         s.push_str("]");
 
         return s;
+    }
+}
+
+impl<'b, 'tcx> FlowInProgress<MaybeUninitializedLvals<'b, 'tcx>> {
+    fn has_any_child_of(&self, mpi: MovePathIndex) -> Option<MovePathIndex> {
+        let move_data = self.base_results.operator().move_data();
+
+        let mut todo = vec![mpi];
+        let mut push_siblings = false; // don't look at siblings of original `mpi`.
+        while let Some(mpi) = todo.pop() {
+            if self.curr_state.contains(&mpi) {
+                return Some(mpi);
+            }
+            let move_path = &move_data.move_paths[mpi];
+            if let Some(child) = move_path.first_child {
+                todo.push(child);
+            }
+            if push_siblings {
+                if let Some(sibling) = move_path.next_sibling {
+                    todo.push(sibling);
+                }
+            } else {
+                // after we've processed the original `mpi`, we should
+                // always traverse the siblings of any of its
+                // children.
+                push_siblings = true;
+            }
+        }
+        return None;
     }
 }
 

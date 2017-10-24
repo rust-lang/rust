@@ -28,6 +28,7 @@
 #![feature(fn_traits)]
 #![feature(unsize)]
 #![feature(i128_type)]
+#![feature(i128)]
 #![feature(conservative_impl_trait)]
 #![feature(specialization)]
 
@@ -54,6 +55,7 @@ pub mod graph;
 pub mod indexed_set;
 pub mod indexed_vec;
 pub mod obligation_forest;
+pub mod sip128;
 pub mod snapshot_map;
 pub mod snapshot_vec;
 pub mod stable_hasher;

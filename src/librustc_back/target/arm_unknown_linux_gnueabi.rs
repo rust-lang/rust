@@ -27,7 +27,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
-            features: "+v6".to_string(),
+            features: "+strict-align,+v6".to_string(),
             abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
         },

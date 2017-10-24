@@ -23,7 +23,7 @@ use builder::Builder;
 use common::{self, CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
-use abi::FnType;
+use abi::{ArgAttribute, FnType};
 use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
@@ -378,6 +378,10 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         None
     };
 
+    let deref_op = unsafe {
+        [llvm::LLVMRustDIBuilderCreateOpDeref()]
+    };
+
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
         let arg_ty = mircx.monomorphize(&arg_decl.ty);
@@ -432,10 +436,9 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         let arg = &mircx.fn_ty.args[idx];
         idx += 1;
-        let llval = if arg.is_indirect() && bcx.sess().opts.debuginfo != FullDebugInfo {
+        let llval = if arg.is_indirect() {
             // Don't copy an indirect argument to an alloca, the caller
-            // already put it in a temporary alloca and gave it up, unless
-            // we emit extra-debug-info, which requires local allocas :(.
+            // already put it in a temporary alloca and gave it up
             // FIXME: lifetimes
             if arg.pad.is_some() {
                 llarg_idx += 1;
@@ -444,8 +447,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             llarg_idx += 1;
             llarg
         } else if !lvalue_locals.contains(local.index()) &&
-                  !arg.is_indirect() && arg.cast.is_none() &&
-                  arg_scope.is_none() {
+                  arg.cast.is_none() && arg_scope.is_none() {
             if arg.is_ignore() {
                 return LocalRef::new_operand(bcx.ccx, arg_ty);
             }
@@ -510,13 +512,26 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         arg_scope.map(|scope| {
             // Is this a regular argument?
             if arg_index > 0 || mir.upvar_decls.is_empty() {
+                // The Rust ABI passes indirect variables using a pointer and a manual copy, so we
+                // need to insert a deref here, but the C ABI uses a pointer and a copy using the
+                // byval attribute, for which LLVM does the deref itself, so we must not add it.
+                let variable_access = if arg.is_indirect() &&
+                    !arg.attrs.contains(ArgAttribute::ByVal) {
+                    VariableAccess::IndirectVariable {
+                        alloca: llval,
+                        address_operations: &deref_op,
+                    }
+                } else {
+                    VariableAccess::DirectVariable { alloca: llval }
+                };
+
                 declare_local(
                     bcx,
                     &mircx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
                     arg_ty,
                     scope,
-                    VariableAccess::DirectVariable { alloca: llval },
+                    variable_access,
                     VariableKind::ArgumentVariable(arg_index + 1),
                     DUMMY_SP
                 );

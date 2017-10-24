@@ -8,27 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use self::infer::InferenceContext;
 use rustc::ty::TypeFoldable;
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::{Ty, TyCtxt, ClosureSubsts, RegionVid, RegionKind};
 use rustc::mir::{Mir, Location, Rvalue, BasicBlock, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::mir::transform::{MirPass, MirSource};
-use rustc::infer::{self, InferCtxt};
+use rustc::infer::{self as rustc_infer, InferCtxt};
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
+use std::fmt;
+
+use util as mir_util;
+use self::mir_util::PassWhere;
+
+mod infer;
 
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     lookup_map: HashMap<RegionVid, Lookup>,
     regions: IndexVec<RegionIndex, Region>,
-    infcx: InferCtxt<'a, 'gcx, 'tcx>,
+    #[allow(dead_code)]
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
         NLLVisitor {
             infcx,
             lookup_map: HashMap::new(),
@@ -36,14 +44,14 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn into_results(self) -> HashMap<RegionVid, Lookup> {
-        self.lookup_map
+    pub fn into_results(self) -> (HashMap<RegionVid, Lookup>, IndexVec<RegionIndex, Region>) {
+        (self.lookup_map, self.regions)
     }
 
     fn renumber_regions<T>(&mut self, value: &T) -> T where T: TypeFoldable<'tcx> {
         self.infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
             self.regions.push(Region::default());
-            self.infcx.next_region_var(infer::MiscVariable(DUMMY_SP))
+            self.infcx.next_region_var(rustc_infer::MiscVariable(DUMMY_SP))
         })
     }
 
@@ -134,7 +142,7 @@ pub struct NLL;
 impl MirPass for NLL {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
+                          source: MirSource,
                           mir: &mut Mir<'tcx>) {
         if !tcx.sess.opts.debugging_opts.nll {
             return;
@@ -143,16 +151,42 @@ impl MirPass for NLL {
         tcx.infer_ctxt().enter(|infcx| {
             // Clone mir so we can mutate it without disturbing the rest of the compiler
             let mut renumbered_mir = mir.clone();
-            let mut visitor = NLLVisitor::new(infcx);
+            let mut visitor = NLLVisitor::new(&infcx);
             visitor.visit_mir(&mut renumbered_mir);
-            let _results = visitor.into_results();
+            mir_util::dump_mir(tcx, None, "nll", &0, source, mir, |pass_where, out| {
+                if let PassWhere::BeforeCFG = pass_where {
+                    for (index, value) in visitor.regions.iter_enumerated() {
+                        writeln!(out, "// R{:03}: {:?}", index.0, value)?;
+                    }
+                }
+                Ok(())
+            });
+            let (_lookup_map, regions) = visitor.into_results();
+            let mut inference_context = InferenceContext::new(regions);
+            inference_context.solve(&infcx, &renumbered_mir);
         })
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct Region {
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct Region {
     points: FxHashSet<Location>,
+}
+
+impl fmt::Debug for Region {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(formatter, "{:?}", self.points)
+    }
+}
+
+impl Region {
+    pub fn add_point(&mut self, point: Location) -> bool {
+        self.points.insert(point)
+    }
+
+    pub fn may_contain(&self, point: Location) -> bool {
+        self.points.contains(&point)
+    }
 }
 
 newtype_index!(RegionIndex);

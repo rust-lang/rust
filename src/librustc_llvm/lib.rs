@@ -346,10 +346,6 @@ pub fn initialize_available_targets() {
                  LLVMInitializePowerPCTargetMC,
                  LLVMInitializePowerPCAsmPrinter,
                  LLVMInitializePowerPCAsmParser);
-    init_target!(llvm_component = "pnacl",
-                 LLVMInitializePNaClTargetInfo,
-                 LLVMInitializePNaClTarget,
-                 LLVMInitializePNaClTargetMC);
     init_target!(llvm_component = "systemz",
                  LLVMInitializeSystemZTargetInfo,
                  LLVMInitializeSystemZTarget,

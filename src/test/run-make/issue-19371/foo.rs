@@ -18,7 +18,6 @@ extern crate rustc_errors;
 extern crate rustc_trans;
 extern crate syntax;
 
-use rustc::dep_graph::DepGraph;
 use rustc::session::{build_session, Session};
 use rustc::session::config::{basic_options, build_configuration, Input,
                              OutputType, OutputTypes};
@@ -56,6 +55,9 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
     let mut opts = basic_options();
     opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
     opts.maybe_sysroot = Some(sysroot);
+    if let Ok(linker) = std::env::var("RUSTC_LINKER") {
+        opts.cg.linker = Some(linker);
+    }
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
     let cstore = Rc::new(CStore::new(Box::new(rustc_trans::LlvmMetadataLoader)));
@@ -67,8 +69,7 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let (sess, cstore) = basic_sess(sysroot);
-    let cfg = build_configuration(&sess, HashSet::new());
     let control = CompileController::basic();
     let input = Input::Str { name: anon_src(), input: code };
-    compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);
+    let _ = compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);
 }

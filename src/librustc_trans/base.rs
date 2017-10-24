@@ -70,7 +70,7 @@ use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
-use trans_item::{TransItem, TransItemExt, DefPathBasedNames};
+use trans_item::{TransItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of;
 use value::Value;
@@ -78,7 +78,7 @@ use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use std::any::Any;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
@@ -93,6 +93,7 @@ use syntax::ast;
 use mir::lvalue::Alignment;
 
 pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
+pub use rustc_trans_utils::trans_item::linkage_by_name;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
@@ -618,33 +619,6 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
-pub fn linkage_by_name(name: &str) -> Option<Linkage> {
-    use rustc::middle::trans::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but whitelist them anyway and trust that
-    // the user knows what s/he's doing. Who knows, unanticipated use cases
-    // may pop up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "appending" => Some(Appending),
-        "available_externally" => Some(AvailableExternally),
-        "common" => Some(Common),
-        "extern_weak" => Some(ExternalWeak),
-        "external" => Some(External),
-        "internal" => Some(Internal),
-        "linkonce" => Some(LinkOnceAny),
-        "linkonce_odr" => Some(LinkOnceODR),
-        "private" => Some(Private),
-        "weak" => Some(WeakAny),
-        "weak_odr" => Some(WeakODR),
-        _ => None,
-    }
-}
-
 pub fn set_link_section(ccx: &CrateContext,
                         llval: ValueRef,
                         attrs: &[ast::Attribute]) {
@@ -812,47 +786,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     return (metadata_llcx, metadata_llmod, metadata, hashes);
 }
 
-// Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
-// This is required to satisfy `dllimport` references to static data in .rlibs
-// when using MSVC linker.  We do this only for data, as linker can fix up
-// code references on its own.
-// See #26591, #27438
-fn create_imps(sess: &Session,
-               llvm_module: &ModuleLlvm) {
-    // The x86 ABI seems to require that leading underscores are added to symbol
-    // names, so we need an extra underscore on 32-bit. There's also a leading
-    // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
-    // underscores added in front).
-    let prefix = if sess.target.target.target_pointer_width == "32" {
-        "\x01__imp__"
-    } else {
-        "\x01__imp_"
-    };
-    unsafe {
-        let exported: Vec<_> = iter_globals(llvm_module.llmod)
-                                   .filter(|&val| {
-                                       llvm::LLVMRustGetLinkage(val) ==
-                                       llvm::Linkage::ExternalLinkage &&
-                                       llvm::LLVMIsDeclaration(val) == 0
-                                   })
-                                   .collect();
-
-        let i8p_ty = Type::i8p_llcx(llvm_module.llcx);
-        for val in exported {
-            let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-            let mut imp_name = prefix.as_bytes().to_vec();
-            imp_name.extend(name.to_bytes());
-            let imp_name = CString::new(imp_name).unwrap();
-            let imp = llvm::LLVMAddGlobal(llvm_module.llmod,
-                                          i8p_ty.to_ref(),
-                                          imp_name.as_ptr() as *const _);
-            llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
-            llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
-        }
-    }
-}
-
-struct ValueIter {
+pub struct ValueIter {
     cur: ValueRef,
     step: unsafe extern "C" fn(ValueRef) -> ValueRef,
 }
@@ -871,7 +805,7 @@ impl Iterator for ValueIter {
     }
 }
 
-fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
+pub fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
     unsafe {
         ValueIter {
             cur: llvm::LLVMGetFirstGlobal(llmod),
@@ -886,6 +820,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     check_for_rustc_errors_attr(tcx);
 
+    if tcx.sess.opts.debugging_opts.thinlto {
+        if unsafe { !llvm::LLVMRustThinLTOAvailable() } {
+            tcx.sess.fatal("this compiler's LLVM does not support ThinLTO");
+        }
+    }
 
     let crate_hash = tcx.dep_graph
                         .fingerprint_of(&DepNode::new_no_params(DepKind::Krate));
@@ -925,7 +864,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             time_graph.clone(),
             link_meta,
             metadata,
-            rx);
+            rx,
+            1);
 
         ongoing_translation.submit_pre_translated_module_to_llvm(tcx, metadata_module);
         ongoing_translation.translation_finished(tcx);
@@ -961,7 +901,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         time_graph.clone(),
         link_meta,
         metadata,
-        rx);
+        rx,
+        codegen_units.len());
 
     // Translate an allocator shim, if any
     let allocator_module = if let Some(kind) = tcx.sess.allocator_kind.get() {
@@ -1211,7 +1152,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     let strategy = if tcx.sess.opts.debugging_opts.incremental.is_some() {
         PartitioningStrategy::PerModule
     } else {
-        PartitioningStrategy::FixedUnitCount(tcx.sess.opts.codegen_units)
+        PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
     };
 
     let codegen_units = time(time_passes, "codegen unit partitioning", || {
@@ -1223,9 +1164,6 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
             .map(Arc::new)
             .collect::<Vec<_>>()
     });
-
-    assert!(tcx.sess.opts.codegen_units == codegen_units.len() ||
-            tcx.sess.opts.debugging_opts.incremental.is_some());
 
     let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
         match *trans_item {
@@ -1372,7 +1310,9 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // crashes if the module identifier is same as other symbols
         // such as a function name in the module.
         // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-        let llmod_id = format!("{}.rs", cgu.name());
+        let llmod_id = format!("{}-{}.rs",
+                               cgu.name(),
+                               tcx.crate_disambiguator(LOCAL_CRATE));
 
         // Instantiate translation items without filling out definitions yet...
         let scx = SharedCrateContext::new(tcx);
@@ -1430,12 +1370,6 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 llmod: ccx.llmod(),
                 tm: create_target_machine(ccx.sess()),
             };
-
-            // Adjust exported symbols for MSVC dllimport
-            if ccx.sess().target.target.options.is_like_msvc &&
-               ccx.sess().crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-                create_imps(ccx.sess(), &llvm_module);
-            }
 
             ModuleTranslation {
                 name: cgu_name,

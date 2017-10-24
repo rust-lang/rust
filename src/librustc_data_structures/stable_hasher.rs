@@ -11,16 +11,7 @@
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
-use blake2b::Blake2bHasher;
-use rustc_serialize::leb128;
-
-fn write_unsigned_leb128_to_buf(buf: &mut [u8; 16], value: u64) -> usize {
-    leb128::write_unsigned_leb128_to(value as u128, |i, v| buf[i] = v)
-}
-
-fn write_signed_leb128_to_buf(buf: &mut [u8; 16], value: i64) -> usize {
-    leb128::write_signed_leb128_to(value as i128, |i, v| buf[i] = v)
-}
+use sip128::SipHasher128;
 
 /// When hashing something that ends up affecting properties like symbol names. We
 /// want these symbol names to be calculated independent of other factors like
@@ -41,7 +32,7 @@ fn write_signed_leb128_to_buf(buf: &mut [u8; 16], value: i64) -> usize {
 /// and allows for variable output lengths through its type
 /// parameter.
 pub struct StableHasher<W> {
-    state: Blake2bHasher,
+    state: SipHasher128,
     bytes_hashed: u64,
     width: PhantomData<W>,
 }
@@ -59,7 +50,7 @@ pub trait StableHasherResult: Sized {
 impl<W: StableHasherResult> StableHasher<W> {
     pub fn new() -> Self {
         StableHasher {
-            state: Blake2bHasher::new(mem::size_of::<W>(), &[]),
+            state: SipHasher128::new_with_keys(0, 0),
             bytes_hashed: 0,
             width: PhantomData,
         }
@@ -70,57 +61,28 @@ impl<W: StableHasherResult> StableHasher<W> {
     }
 }
 
-impl StableHasherResult for [u8; 20] {
-    fn finish(mut hasher: StableHasher<Self>) -> Self {
-        let mut result: [u8; 20] = [0; 20];
-        result.copy_from_slice(hasher.state.finalize());
-        result
-    }
-}
-
 impl StableHasherResult for u128 {
-    fn finish(mut hasher: StableHasher<Self>) -> Self {
-        let hash_bytes: &[u8] = hasher.finalize();
-        assert!(hash_bytes.len() >= mem::size_of::<u128>());
-
-        unsafe {
-            ::std::ptr::read_unaligned(hash_bytes.as_ptr() as *const u128)
-        }
+    fn finish(hasher: StableHasher<Self>) -> Self {
+        let (_0, _1) = hasher.finalize();
+        (_0 as u128) | ((_1 as u128) << 64)
     }
 }
 
 impl StableHasherResult for u64 {
-    fn finish(mut hasher: StableHasher<Self>) -> Self {
-        hasher.state.finalize();
-        hasher.state.finish()
+    fn finish(hasher: StableHasher<Self>) -> Self {
+        hasher.finalize().0
     }
 }
 
 impl<W> StableHasher<W> {
     #[inline]
-    pub fn finalize(&mut self) -> &[u8] {
-        self.state.finalize()
+    pub fn finalize(self) -> (u64, u64) {
+        self.state.finish128()
     }
 
     #[inline]
     pub fn bytes_hashed(&self) -> u64 {
         self.bytes_hashed
-    }
-
-    #[inline]
-    fn write_uleb128(&mut self, value: u64) {
-        let mut buf = [0; 16];
-        let len = write_unsigned_leb128_to_buf(&mut buf, value);
-        self.state.write(&buf[..len]);
-        self.bytes_hashed += len as u64;
-    }
-
-    #[inline]
-    fn write_ileb128(&mut self, value: i64) {
-        let mut buf = [0; 16];
-        let len = write_signed_leb128_to_buf(&mut buf, value);
-        self.state.write(&buf[..len]);
-        self.bytes_hashed += len as u64;
     }
 }
 
@@ -129,7 +91,7 @@ impl<W> StableHasher<W> {
 // bytes hashed, which is good because blake2b is expensive.
 impl<W> Hasher for StableHasher<W> {
     fn finish(&self) -> u64 {
-        panic!("use StableHasher::finish instead");
+        panic!("use StableHasher::finalize instead");
     }
 
     #[inline]
@@ -146,22 +108,32 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.write_uleb128(i as u64);
+        self.state.write_u16(i.to_le());
+        self.bytes_hashed += 2;
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.write_uleb128(i as u64);
+        self.state.write_u32(i.to_le());
+        self.bytes_hashed += 4;
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.write_uleb128(i);
+        self.state.write_u64(i.to_le());
+        self.bytes_hashed += 8;
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.state.write_u128(i.to_le());
+        self.bytes_hashed += 16;
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.write_uleb128(i as u64);
+        self.state.write_usize(i.to_le());
+        self.bytes_hashed += ::std::mem::size_of::<usize>() as u64;
     }
 
     #[inline]
@@ -172,22 +144,32 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.write_ileb128(i as i64);
+        self.state.write_i16(i.to_le());
+        self.bytes_hashed += 2;
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.write_ileb128(i as i64);
+        self.state.write_i32(i.to_le());
+        self.bytes_hashed += 4;
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.write_ileb128(i);
+        self.state.write_i64(i.to_le());
+        self.bytes_hashed += 8;
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.state.write_i128(i.to_le());
+        self.bytes_hashed += 16;
     }
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        self.write_ileb128(i as i64);
+        self.state.write_isize(i.to_le());
+        self.bytes_hashed += ::std::mem::size_of::<isize>() as u64;
     }
 }
 

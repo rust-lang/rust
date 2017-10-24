@@ -232,7 +232,7 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             writeln!(w, "{} {{{}}}", prefix, live.join(", "))
         };
         print(w, "   ", &result.ins)?;
-        write_basic_block(tcx, block, mir, w)?;
+        write_basic_block(tcx, block, mir, &mut |_, _| Ok(()), w)?;
         print(w, "   ", &result.outs)?;
         if block.index() + 1 != mir.basic_blocks().len() {
             writeln!(w, "")?;

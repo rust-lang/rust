@@ -18,6 +18,7 @@ use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
+use namespace::Namespace;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
@@ -827,8 +828,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let trait_did = bound.0.def_id;
         let (assoc_ident, def_scope) = tcx.adjust(assoc_name, trait_did, ref_id);
-        let item = tcx.associated_items(trait_did).find(|i| i.name.to_ident() == assoc_ident)
-                                                  .expect("missing associated type");
+        let item = tcx.associated_items(trait_did).find(|i| {
+            Namespace::from(i.kind) == Namespace::Type &&
+            i.name.to_ident() == assoc_ident
+        })
+        .expect("missing associated type");
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, bound);
         let ty = self.normalize_ty(span, ty);
@@ -1464,7 +1468,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// declaration like `self: SomeType` into either `self`,
     /// `&self`, `&mut self`, or `Box<self>`. We do this here
     /// by some simple pattern matching. A more precise check
-    /// is done later in `check_method_self_type()`.
+    /// is done later in `check_method_receiver()`.
     ///
     /// Examples:
     ///
@@ -1475,7 +1479,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     ///     fn method2(self: &T); // ExplicitSelf::ByValue
     ///     fn method3(self: Box<&T>); // ExplicitSelf::ByBox
     ///
-    ///     // Invalid cases will be caught later by `check_method_self_type`:
+    ///     // Invalid cases will be caught later by `check_method_receiver`:
     ///     fn method_err1(self: &mut T); // ExplicitSelf::ByReference
     /// }
     /// ```

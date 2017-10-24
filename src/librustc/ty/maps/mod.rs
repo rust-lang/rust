@@ -15,6 +15,7 @@ use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId};
 use hir::svh::Svh;
 use lint;
+use middle::borrowck::BorrowCheckResult;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
                      ExternBodyNestedBodies};
@@ -30,12 +31,13 @@ use middle::trans::{CodegenUnit, Stats};
 use mir;
 use session::CompileResult;
 use session::config::OutputFilenames;
+use traits::Vtable;
 use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::layout::{Layout, LayoutError};
 use ty::steal::Steal;
 use ty::subst::Substs;
-use util::nodemap::{DefIdSet, DefIdMap};
+use util::nodemap::{DefIdSet, DefIdMap, ItemLocalMap};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -119,6 +121,9 @@ define_maps! { <'tcx>
     /// (inferred) variance.
     [] fn variances_of: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
 
+    /// Maps from def-id of a type to its (inferred) outlives.
+    [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Vec<ty::Predicate<'tcx>>,
+
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
     [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
 
@@ -178,11 +183,13 @@ define_maps! { <'tcx>
 
     [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
+    [] fn used_trait_imports: UsedTraitImports(DefId) -> Rc<DefIdSet>,
+
     [] fn has_typeck_tables: HasTypeckTables(DefId) -> bool,
 
     [] fn coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
-    [] fn borrowck: BorrowCheck(DefId) -> (),
+    [] fn borrowck: BorrowCheck(DefId) -> Rc<BorrowCheckResult>,
     // FIXME: shouldn't this return a `Result<(), BorrowckErrors>` instead?
     [] fn mir_borrowck: MirBorrowCheck(DefId) -> (),
 
@@ -226,8 +233,13 @@ define_maps! { <'tcx>
     [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
     [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
+    [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Rc<ItemLocalMap<bool>>,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
+    [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
+                          -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,
 
+    [] fn trans_fulfill_obligation: fulfill_obligation_dep_node(
+        (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> Vtable<'tcx, ()>,
     [] fn trait_impls_of: TraitImpls(DefId) -> Rc<ty::trait_def::TraitImpls>,
     [] fn specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] fn is_object_safe: ObjectSafety(DefId) -> bool,
@@ -334,16 +346,34 @@ define_maps! { <'tcx>
 
     [] fn has_copy_closures: HasCopyClosures(CrateNum) -> bool,
     [] fn has_clone_closures: HasCloneClosures(CrateNum) -> bool,
+
+    // Erases regions from `ty` to yield a new type.
+    // Normally you would just use `tcx.erase_regions(&value)`,
+    // however, which uses this query as a kind of cache.
+    [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
+    [] fn fully_normalize_monormophic_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
 }
 
 //////////////////////////////////////////////////////////////////////
 // These functions are little shims used to find the dep-node for a
 // given query when there is not a *direct* mapping:
 
+fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::EraseRegionsTy { ty }
+}
+
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::TypeParamPredicates {
         item_id,
         param_id
+    }
+}
+
+fn fulfill_obligation_dep_node<'tcx>((param_env, trait_ref):
+    (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> DepConstructor<'tcx> {
+    DepConstructor::FulfillObligation {
+        param_env,
+        trait_ref
     }
 }
 
@@ -458,4 +488,11 @@ fn collect_and_partition_translation_items_node<'tcx>(_: CrateNum) -> DepConstru
 
 fn output_filenames_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::OutputFilenames
+}
+
+fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::VtableMethods{ trait_ref }
+}
+fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::NormalizeTy
 }

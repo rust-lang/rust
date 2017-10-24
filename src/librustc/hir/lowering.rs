@@ -673,6 +673,7 @@ impl<'a> LoweringContext<'a> {
                     unsafety: self.lower_unsafety(f.unsafety),
                     abi: f.abi,
                     decl: self.lower_fn_decl(&f.decl),
+                    arg_names: self.lower_fn_args_to_names(&f.decl),
                 }))
             }
             TyKind::Never => hir::TyNever,
@@ -704,7 +705,7 @@ impl<'a> LoweringContext<'a> {
                 let expr = self.lower_body(None, |this| this.lower_expr(expr));
                 hir::TyTypeof(expr)
             }
-            TyKind::TraitObject(ref bounds) => {
+            TyKind::TraitObject(ref bounds, ..) => {
                 let mut lifetime_bound = None;
                 let bounds = bounds.iter().filter_map(|bound| {
                     match *bound {
@@ -1538,6 +1539,7 @@ impl<'a> LoweringContext<'a> {
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
+                generics: this.lower_generics(&i.generics),
                 node: match i.node {
                     TraitItemKind::Const(ref ty, ref default) => {
                         hir::TraitItemKind::Const(this.lower_ty(ty),
@@ -1602,6 +1604,7 @@ impl<'a> LoweringContext<'a> {
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
+                generics: this.lower_generics(&i.generics),
                 vis: this.lower_visibility(&i.vis, None),
                 defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
                 node: match i.node {
@@ -1728,7 +1731,6 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_method_sig(&mut self, sig: &MethodSig) -> hir::MethodSig {
         hir::MethodSig {
-            generics: self.lower_generics(&sig.generics),
             abi: sig.abi,
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
@@ -2546,7 +2548,7 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // Err(err) => #[allow(unreachable_code)]
-                //             return Carrier::from_error(From::from(err)),
+                //             return Try::from_error(From::from(err)),
                 let err_arm = {
                     let err_ident = self.str_to_ident("err");
                     let err_local = self.pat_ident(e.span, err_ident);
@@ -2665,7 +2667,7 @@ impl<'a> LoweringContext<'a> {
                         -> hir::Visibility {
         match *v {
             Visibility::Public => hir::Public,
-            Visibility::Crate(_) => hir::Visibility::Crate,
+            Visibility::Crate(..) => hir::Visibility::Crate,
             Visibility::Restricted { ref path, id } => {
                 hir::Visibility::Restricted {
                     path: P(self.lower_path(id, path, ParamMode::Explicit, true)),

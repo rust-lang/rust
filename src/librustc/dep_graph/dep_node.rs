@@ -65,7 +65,7 @@ use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
 
 use ich::Fingerprint;
-use ty::{TyCtxt, Instance, InstanceDef, ParamEnvAnd, Ty};
+use ty::{TyCtxt, Instance, InstanceDef, ParamEnv, ParamEnvAnd, PolyTraitRef, Ty};
 use ty::subst::Substs;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
@@ -339,6 +339,25 @@ macro_rules! define_dep_nodes {
                     Ok(DepNode::new_no_params(kind))
                 }
             }
+
+            /// Used in testing
+            pub fn has_label_string(label: &str) -> bool {
+                match label {
+                    $(
+                        stringify!($variant) => true,
+                    )*
+                    _ => false,
+                }
+            }
+        }
+
+        /// Contains variant => str representations for constructing
+        /// DepNode groups for tests.
+        #[allow(dead_code, non_upper_case_globals)]
+        pub mod label_strs {
+           $(
+                pub const $variant: &'static str = stringify!($variant);
+            )*
         }
     );
 }
@@ -356,7 +375,7 @@ impl fmt::Debug for DepNode {
         ::ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.def_path(def_id).to_string(tcx))?;
+                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
                     write!(f, "{}", s)?;
                 } else {
@@ -457,6 +476,7 @@ define_dep_nodes!( <'tcx>
     [] TypeOfItem(DefId),
     [] GenericsOfItem(DefId),
     [] PredicatesOfItem(DefId),
+    [] InferredOutlivesOf(DefId),
     [] SuperPredicatesOfItem(DefId),
     [] TraitDefOfItem(DefId),
     [] AdtDefOfItem(DefId),
@@ -480,12 +500,15 @@ define_dep_nodes!( <'tcx>
     [] InherentImpls(DefId),
     [] TypeckBodiesKrate,
     [] TypeckTables(DefId),
+    [] UsedTraitImports(DefId),
     [] HasTypeckTables(DefId),
     [] ConstEval { param_env: ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)> },
     [] SymbolName(DefId),
     [] InstanceSymbolName { instance: Instance<'tcx> },
     [] SpecializationGraph(DefId),
     [] ObjectSafety(DefId),
+    [] FulfillObligation { param_env: ParamEnv<'tcx>, trait_ref: PolyTraitRef<'tcx> },
+    [] VtableMethods { trait_ref: PolyTraitRef<'tcx> },
 
     [] IsCopy { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
@@ -532,6 +555,7 @@ define_dep_nodes!( <'tcx>
     [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),
     [] ConstIsRvaluePromotableToStatic(DefId),
+    [] RvaluePromotableMap(DefId),
     [] ImplParent(DefId),
     [] TraitOfItem(DefId),
     [] IsExportedSymbol(DefId),
@@ -588,6 +612,14 @@ define_dep_nodes!( <'tcx>
     [] HasCloneClosures(CrateNum),
     [] HasCopyClosures(CrateNum),
 
+    // This query is not expected to have inputs -- as a result, it's
+    // not a good candidate for "replay" because it's essentially a
+    // pure function of its input (and hence the expectation is that
+    // no caller would be green **apart** from just this
+    // query). Making it anonymous avoids hashing the result, which
+    // may save a bit of time.
+    [anon] EraseRegionsTy { ty: Ty<'tcx> },
+
     [] Freevars(DefId),
     [] MaybeUnusedTraitImport(DefId),
     [] MaybeUnusedExternCrates,
@@ -601,7 +633,7 @@ define_dep_nodes!( <'tcx>
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [] OutputFilenames,
-
+    [anon] NormalizeTy,
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 );
@@ -700,8 +732,8 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, De
         let (def_id_0, def_id_1) = *self;
 
         format!("({}, {})",
-                tcx.def_path(def_id_0).to_string(tcx),
-                tcx.def_path(def_id_1).to_string(tcx))
+                tcx.def_path_debug_str(def_id_0),
+                tcx.def_path_debug_str(def_id_1))
     }
 }
 

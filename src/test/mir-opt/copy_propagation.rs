@@ -18,17 +18,23 @@ fn main() { }
 // END RUST SOURCE
 // START rustc.node4.CopyPropagation.before.mir
 //  bb0: {
+//      ...
 //      _2 = _1;
+//      ...
 //      _4 = _2;
 //      _3 = _4;
+//      ...
 //      _5 = _3;
 //      _0 = _5;
+//      ...
 //      return;
 //  }
 // END rustc.node4.CopyPropagation.before.mir
 // START rustc.node4.CopyPropagation.after.mir
 //  bb0: {
+//      ...
 //      _0 = _1;
+//      ...
 //      return;
 //  }
 // END rustc.node4.CopyPropagation.after.mir

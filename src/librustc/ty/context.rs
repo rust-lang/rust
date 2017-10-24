@@ -43,7 +43,6 @@ use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
-use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
@@ -387,8 +386,10 @@ pub struct TypeckTables<'tcx> {
     cast_kinds: ItemLocalMap<ty::cast::CastKind>,
 
     /// Set of trait imports actually used in the method resolution.
-    /// This is used for warning unused imports.
-    pub used_trait_imports: DefIdSet,
+    /// This is used for warning unused imports. During type
+    /// checking, this `Rc` should not be cloned: it must have a ref-count
+    /// of 1 so that we can insert things into the set mutably.
+    pub used_trait_imports: Rc<DefIdSet>,
 
     /// If any errors occurred while type-checking this body,
     /// this field will be set to `true`.
@@ -418,7 +419,7 @@ impl<'tcx> TypeckTables<'tcx> {
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
             cast_kinds: ItemLocalMap(),
-            used_trait_imports: DefIdSet(),
+            used_trait_imports: Rc::new(DefIdSet()),
             tainted_by_errors: false,
             free_region_map: FreeRegionMap::new(),
         }
@@ -852,9 +853,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
 
-
-    pub trans_trait_caches: traits::trans::TransTraitCaches<'tcx>,
-
     pub dep_graph: DepGraph,
 
     /// Common types, pre-interned for your convenience.
@@ -893,16 +891,6 @@ pub struct GlobalCtxt<'tcx> {
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
-    // FIXME dep tracking -- should be harmless enough
-    pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
-
-    pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, DefIdForest>>,
-
-    /// Set of nodes which mark locals as mutable which end up getting used at
-    /// some point. Local variable definitions not in this set can be warned
-    /// about.
-    pub used_mut_nodes: RefCell<NodeSet>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
@@ -911,9 +899,6 @@ pub struct GlobalCtxt<'tcx> {
     /// for things that do not have to do with the parameters in scope.
     /// Merge this with `selection_cache`?
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
-
-    /// Maps Expr NodeId's to `true` iff `&expr` can have 'static lifetime.
-    pub rvalue_promotable_to_static: RefCell<NodeMap<bool>>,
 
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
@@ -1151,7 +1136,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         tls::enter_global(GlobalCtxt {
             sess: s,
             cstore,
-            trans_trait_caches: traits::trans::TransTraitCaches::new(dep_graph.clone()),
             global_arenas: arenas,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
@@ -1183,12 +1167,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             maps: maps::Maps::new(providers),
             mir_passes,
             rcache: RefCell::new(FxHashMap()),
-            normalized_cache: RefCell::new(FxHashMap()),
-            inhabitedness_cache: RefCell::new(FxHashMap()),
-            used_mut_nodes: RefCell::new(NodeSet()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            rvalue_promotable_to_static: RefCell::new(NodeMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout,
             layout_interner: RefCell::new(FxHashSet()),
@@ -1250,6 +1230,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             self.cstore.def_path_hash(def_id)
         }
+    }
+
+    pub fn def_path_debug_str(self, def_id: DefId) -> String {
+        // We are explicitly not going through queries here in order to get
+        // crate name and disambiguator since this code is called from debug!()
+        // statements within the query system and we'd run into endless
+        // recursion otherwise.
+        let (crate_name, crate_disambiguator) = if def_id.is_local() {
+            (self.crate_name.clone(),
+             self.sess.local_crate_disambiguator())
+        } else {
+            (self.cstore.crate_name_untracked(def_id.krate),
+             self.cstore.crate_disambiguator_untracked(def_id.krate))
+        };
+
+        format!("{}[{}]{}",
+                crate_name,
+                // Don't print the whole crate disambiguator. That's just
+                // annoying in debug output.
+                &(crate_disambiguator.as_str())[..4],
+                self.def_path(def_id).to_string_no_crate())
     }
 
     pub fn metadata_encoding_version(self) -> Vec<u8> {
@@ -2318,5 +2319,8 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.has_clone_closures = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.sess.features.borrow().clone_closures
+    };
+    providers.fully_normalize_monormophic_ty = |tcx, ty| {
+        tcx.fully_normalize_associated_types_in(&ty)
     };
 }

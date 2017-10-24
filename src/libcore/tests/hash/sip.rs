@@ -243,23 +243,21 @@ fn test_siphash_2_4() {
         t += 1;
     }
 }
-#[test] #[cfg(target_arch = "arm")]
+
+#[test]
+#[cfg(target_pointer_width = "32")]
 fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
     assert!(hash(&(val as u64)) != hash(&(val as usize)));
     assert_eq!(hash(&(val as u32)), hash(&(val as usize)));
 }
-#[test] #[cfg(target_arch = "x86_64")]
+
+#[test]
+#[cfg(target_pointer_width = "64")]
 fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
     assert_eq!(hash(&(val as u64)), hash(&(val as usize)));
     assert!(hash(&(val as u32)) != hash(&(val as usize)));
-}
-#[test] #[cfg(target_arch = "x86")]
-fn test_hash_usize() {
-    let val = 0xdeadbeef_deadbeef_u64;
-    assert!(hash(&(val as u64)) != hash(&(val as usize)));
-    assert_eq!(hash(&(val as u32)), hash(&(val as usize)));
 }
 
 #[test]
