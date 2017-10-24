@@ -16,7 +16,7 @@ use rustc::mir::{Mir, Location, Rvalue, BasicBlock, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::infer::{self as rustc_infer, InferCtxt};
-use rustc::util::nodemap::FxHashSet;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
@@ -144,21 +144,34 @@ impl MirPass for NLL {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+                          input_mir: &mut Mir<'tcx>) {
         if !tcx.sess.opts.debugging_opts.nll {
             return;
         }
 
         tcx.infer_ctxt().enter(|infcx| {
             // Clone mir so we can mutate it without disturbing the rest of the compiler
-            let mut renumbered_mir = mir.clone();
+            let mir = &mut input_mir.clone();
 
             let mut visitor = NLLVisitor::new(&infcx);
-            visitor.visit_mir(&mut renumbered_mir);
+            visitor.visit_mir(mir);
 
-            let liveness = liveness::liveness_of_locals(&renumbered_mir);
+            let liveness = liveness::liveness_of_locals(mir);
 
-            mir_util::dump_mir(tcx, None, "nll", &0, source, mir, |pass_where, out| {
+            let liveness_per_location: FxHashMap<_, _> =
+                mir
+                .basic_blocks()
+                .indices()
+                .flat_map(|bb| {
+                    let mut results = vec![];
+                    liveness.simulate_block(&mir, bb, |location, local_set| {
+                        results.push((location, local_set.clone()));
+                    });
+                    results
+                })
+                .collect();
+
+            mir_util::dump_mir(infcx.tcx, None, "nll", &0, source, mir, |pass_where, out| {
                 match pass_where {
                     // Before the CFG, dump out the values for each region variable.
                     PassWhere::BeforeCFG => {
@@ -177,7 +190,18 @@ impl MirPass for NLL {
                         }
                     }
 
-                    PassWhere::InCFG(_) => { }
+                    PassWhere::InCFG(location) => {
+                        let local_set = &liveness_per_location[&location];
+                        let mut string = String::new();
+                        for local in local_set.iter() {
+                            string.push_str(&format!(", {:?}", local));
+                        }
+                        if !string.is_empty() {
+                            writeln!(out, "        | Live variables here: [{}]", &string[2..])?;
+                        } else {
+                            writeln!(out, "        | Live variables here: []")?;
+                        }
+                    }
 
                     PassWhere::AfterCFG => { }
                 }
@@ -185,7 +209,7 @@ impl MirPass for NLL {
             });
             let (_lookup_map, regions) = visitor.into_results();
             let mut inference_context = InferenceContext::new(regions);
-            inference_context.solve(&infcx, &renumbered_mir);
+            inference_context.solve(&infcx, mir);
         })
     }
 }

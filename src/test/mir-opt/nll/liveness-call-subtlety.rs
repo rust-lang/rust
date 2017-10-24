@@ -28,15 +28,19 @@ fn main() {
 // START rustc.node12.nll.0.mir
 //    | Variables live on entry to the block bb0:
 //    bb0: {
-//        StorageLive(_1);                 // scope 1 at /Users/nmatsakis/versioned/rust-3/src/test/mir-opt/nll/liveness-call-subtlety.rs:18:9: 18:14
-//        _1 = const <std::boxed::Box<T>>::new(const 22usize) -> bb1; // scope 1 at /Users/nmatsakis/versioned/rust-3/src/test/mir-opt/nll/liveness-call-subtlety.rs:18:17: 18:29
+//        | Live variables here: []
+//        StorageLive(_1);
+//        | Live variables here: []
+//        _1 = const <std::boxed::Box<T>>::new(const 22usize) -> bb1;
 //    }
 // END rustc.node12.nll.0.mir
 // START rustc.node12.nll.0.mir
 //    | Variables live on entry to the block bb1:
 //    | - _1
 //    bb1: {
-//        StorageLive(_2);                 // scope 1 at /Users/nmatsakis/versioned/rust-3/src/test/mir-opt/nll/liveness-call-subtlety.rs:19:9: 19:20
-//        _2 = const can_panic() -> [return: bb2, unwind: bb4]; // scope 1 at /Users/nmatsakis/versioned/rust-3/src/test/mir-opt/nll/liveness-call-subtlety.rs:19:9: 19:20
+//        | Live variables here: [_1]
+//        StorageLive(_2);
+//        | Live variables here: [_1]
+//        _2 = const can_panic() -> [return: bb2, unwind: bb4];
 //    }
 // END rustc.node12.nll.0.mir

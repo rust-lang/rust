@@ -214,6 +214,90 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>) -> LivenessResult {
     }
 }
 
+impl LivenessResult {
+    /// Walks backwards through the statements/terminator in the given
+    /// basic block `block`.  At each point within `block`, invokes
+    /// the callback `op` with the current location and the set of
+    /// variables that are live on entry to that location.
+    pub fn simulate_block<'tcx, OP>(&self,
+                                    mir: &Mir<'tcx>,
+                                    block: BasicBlock,
+                                    mut callback: OP)
+        where OP: FnMut(Location, &LocalSet)
+    {
+        let data = &mir[block];
+
+        // Get a copy of the bits on exit from the block.
+        let mut bits = self.outs[block].clone();
+
+        // Start with the maximal statement index -- i.e., right before
+        // the terminator executes.
+        let mut statement_index = data.statements.len();
+
+        // Compute liveness right before terminator and invoke callback.
+        let terminator_location = Location { block, statement_index };
+        let terminator_defs_uses = self.defs_uses(mir, terminator_location, &data.terminator);
+        terminator_defs_uses.apply(&mut bits);
+        callback(terminator_location, &bits);
+
+        // Compute liveness before each statement (in rev order) and invoke callback.
+        for statement in data.statements.iter().rev() {
+            statement_index -= 1;
+            let statement_location = Location { block, statement_index };
+            let statement_defs_uses = self.defs_uses(mir, statement_location, statement);
+            statement_defs_uses.apply(&mut bits);
+            callback(statement_location, &bits);
+        }
+
+        assert_eq!(bits, self.ins[block]);
+    }
+
+    fn defs_uses<'tcx, V>(&self,
+                          mir: &Mir<'tcx>,
+                          location: Location,
+                          thing: &V)
+                          -> DefsUses
+        where V: MirVisitable<'tcx>,
+    {
+        let locals = mir.local_decls.len();
+        let mut visitor = DefsUses {
+            defs: LocalSet::new_empty(locals),
+            uses: LocalSet::new_empty(locals),
+        };
+
+        // Visit the various parts of the basic block in reverse. If we go
+        // forward, the logic in `add_def` and `add_use` would be wrong.
+        thing.apply(location, &mut visitor);
+
+        visitor
+    }
+}
+
+trait MirVisitable<'tcx> {
+    fn apply<V>(&self, location: Location, visitor: &mut V)
+        where V: Visitor<'tcx>;
+}
+
+impl<'tcx> MirVisitable<'tcx> for Statement<'tcx> {
+    fn apply<V>(&self, location: Location, visitor: &mut V)
+        where V: Visitor<'tcx>
+    {
+        visitor.visit_statement(location.block,
+                                self,
+                                location)
+    }
+}
+
+impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
+    fn apply<V>(&self, location: Location, visitor: &mut V)
+        where V: Visitor<'tcx>
+    {
+        visitor.visit_terminator(location.block,
+                                 self.as_ref().unwrap(),
+                                 location)
+    }
+}
+
 pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           pass_name: &str,
                           source: MirSource,

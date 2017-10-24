@@ -12,7 +12,7 @@
 
 fn cond() -> bool { false }
 
-fn make_live(x: usize) { }
+fn make_live(_: usize) { }
 
 fn make_dead() { }
 
@@ -32,14 +32,18 @@ fn main() {
 //     | Variables live on entry to the block bb2:
 //     | - _1
 //     bb2: {
+//         | Live variables here: [_1]
 //         StorageLive(_4);
+//         | Live variables here: [_1]
 //         _4 = _1;
+//         | Live variables here: [_4]
 //         _3 = const make_live(_4) -> bb4;
 //     }
 // END rustc.node18.nll.0.mir
 // START rustc.node18.nll.0.mir
 //     | Variables live on entry to the block bb3:
 //     bb3: {
+//         | Live variables here: []
 //         _5 = const make_dead() -> bb5;
 //     }
 // END rustc.node18.nll.0.mir
