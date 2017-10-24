@@ -624,7 +624,7 @@ create_config! {
          Replace, Overwrite, Display, Plain, Diff, Coverage";
     condense_wildcard_suffixes: bool, false, "Replace strings of _ wildcards by a single .. in \
                                               tuple patterns";
-    combine_control_expr: bool, true, "Combine control expressions with funciton calls.";
+    combine_control_expr: bool, true, "Combine control expressions with function calls.";
     struct_field_align_threshold: usize, 0, "Align struct fields if their diffs fits within \
                                              threshold.";
     remove_blank_lines_at_start_or_end_of_block: bool, true,
