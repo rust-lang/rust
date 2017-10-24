@@ -218,6 +218,43 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         value.fold_with(&mut RegionFolder::new(self, skipped_regions, &mut f))
     }
+
+    pub fn for_each_free_region<T,F>(self,
+                                     value: &T,
+                                     callback: F)
+        where F: FnMut(ty::Region<'tcx>),
+              T: TypeFoldable<'tcx>,
+    {
+        value.visit_with(&mut RegionVisitor { current_depth: 0, callback });
+
+        struct RegionVisitor<F> {
+            current_depth: u32,
+            callback: F,
+        }
+
+        impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<F>
+            where F : FnMut(ty::Region<'tcx>)
+        {
+            fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
+                self.current_depth += 1;
+                t.skip_binder().visit_with(self);
+                self.current_depth -= 1;
+
+                false // keep visiting
+            }
+
+            fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+                match *r {
+                    ty::ReLateBound(debruijn, _) if debruijn.depth < self.current_depth => {
+                        /* ignore bound regions */
+                    }
+                    _ => (self.callback)(r),
+                }
+
+                false // keep visiting
+            }
+        }
+    }
 }
 
 /// Folds over the substructure of a type, visiting its component
