@@ -54,6 +54,10 @@ struct DefsUses {
 }
 
 impl DefsUses {
+    fn apply(&self, bits: &mut LocalSet) -> bool {
+        bits.subtract(&self.defs) | bits.union(&self.uses)
+    }
+
     fn add_def(&mut self, index: Local) {
         // If it was used already in the block, remove that use
         // now that we found a definition.
@@ -194,8 +198,9 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>) -> LivenessResult {
 
             // in = use ∪ (out - def)
             ins[b].clone_from(&outs[b]);
-            ins[b].subtract(&def_use[b].defs);
-            ins[b].union(&def_use[b].uses);
+
+            // FIXME use the return value to detect if we have changed things
+            def_use[b].apply(&mut ins[b]);
         }
 
         if ins_ == ins && outs_ == outs {
