@@ -776,7 +776,9 @@ pub fn build_session_(sopts: config::Options,
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = Cell::new(0);
 
-    let working_dir = env::current_dir().unwrap().to_string_lossy().into_owned();
+    let working_dir = env::current_dir()
+        .expect("Could not find current working directory")
+        .to_string_lossy().into_owned();
     let working_dir = file_path_mapping.map_prefix(working_dir);
 
     let sess = Session {
