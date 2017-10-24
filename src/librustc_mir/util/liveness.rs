@@ -54,9 +54,39 @@ struct BlockInfo {
 }
 
 struct BlockInfoVisitor {
-    pre_defs: LocalSet,
     defs: LocalSet,
     uses: LocalSet,
+}
+
+impl BlockInfoVisitor {
+    fn add_def(&mut self, index: Local) {
+        // If it was used already in the block, remove that use
+        // now that we found a definition.
+        //
+        // Example:
+        //
+        //     // Defs = {X}, Uses = {}
+        //     X = 5
+        //     // Defs = {}, Uses = {X}
+        //     use(X)
+        self.uses.remove(&index);
+        self.defs.add(&index);
+    }
+
+    fn add_use(&mut self, index: Local) {
+        // Inverse of above.
+        //
+        // Example:
+        //
+        //     // Defs = {}, Uses = {X}
+        //     use(X)
+        //     // Defs = {X}, Uses = {}
+        //     X = 5
+        //     // Defs = {}, Uses = {X}
+        //     use(X)
+        self.defs.remove(&index);
+        self.uses.add(&index);
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
@@ -65,18 +95,31 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
                    context: LvalueContext<'tcx>,
                    _: Location) {
         match context {
+            ///////////////////////////////////////////////////////////////////////////
+            // DEFS
+
             LvalueContext::Store |
 
-            // We let Call defined the result in both the success and unwind cases.
-            // This may not be right.
+            // We let Call defined the result in both the success and
+            // unwind cases. This is not really correct, however it
+            // does not seem to be observable due to the way that we
+            // generate MIR. See the test case
+            // `mir-opt/nll/liveness-call-subtlety.rs`. To do things
+            // properly, we would apply the def in call only to the
+            // input from the success path and not the unwind
+            // path. -nmatsakis
             LvalueContext::Call |
 
             // Storage live and storage dead aren't proper defines, but we can ignore
             // values that come before them.
             LvalueContext::StorageLive |
             LvalueContext::StorageDead => {
-                self.defs.add(&local);
+                self.add_def(local);
             }
+
+            ///////////////////////////////////////////////////////////////////////////
+            // USES
+
             LvalueContext::Projection(..) |
 
             // Borrows only consider their local used at the point of the borrow.
@@ -93,10 +136,7 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
             // Drop eloboration should be run before this analysis otherwise
             // the results might be too pessimistic.
             LvalueContext::Drop => {
-                // Ignore uses which are already defined in this block
-                if !self.pre_defs.contains(&local) {
-                    self.uses.add(&local);
-                }
+                self.add_use(local);
             }
         }
     }
@@ -104,18 +144,18 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
 
 fn block<'tcx>(b: &BasicBlockData<'tcx>, locals: usize) -> BlockInfo {
     let mut visitor = BlockInfoVisitor {
-        pre_defs: LocalSet::new_empty(locals),
         defs: LocalSet::new_empty(locals),
         uses: LocalSet::new_empty(locals),
     };
 
     let dummy_location = Location { block: BasicBlock::new(0), statement_index: 0 };
 
-    for statement in &b.statements {
-        visitor.visit_statement(BasicBlock::new(0), statement, dummy_location);
-        visitor.pre_defs.union(&visitor.defs);
-    }
+    // Visit the various parts of the basic block in reverse. If we go
+    // forward, the logic in `add_def` and `add_use` would be wrong.
     visitor.visit_terminator(BasicBlock::new(0), b.terminator(), dummy_location);
+    for statement in b.statements.iter().rev() {
+        visitor.visit_statement(BasicBlock::new(0), statement, dummy_location);
+    }
 
     BlockInfo {
         defs: visitor.defs,
