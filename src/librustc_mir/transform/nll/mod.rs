@@ -65,7 +65,7 @@ impl MirPass for NLL {
             // Create the region inference context, generate the constraints,
             // and then solve them.
             let regioncx = &mut RegionInferenceContext::new(num_region_variables);
-            constraint_generation::generate_constraints(infcx, regioncx, mir, liveness);
+            constraint_generation::generate_constraints(infcx, regioncx, mir, source, liveness);
             regioncx.solve(infcx, mir);
 
             // Dump MIR results into a file, if that is enabled.
