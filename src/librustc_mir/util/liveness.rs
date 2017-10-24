@@ -171,40 +171,33 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>) -> LivenessResult {
         block(b, locals)
     }).collect();
 
-    let copy = |from: &IndexVec<BasicBlock, LocalSet>, to: &mut IndexVec<BasicBlock, LocalSet>| {
-        for (i, set) in to.iter_enumerated_mut() {
-            set.clone_from(&from[i]);
-        }
-    };
-
     let mut ins: IndexVec<_, _> = mir.basic_blocks()
         .indices()
-        .map(|_| LocalSet::new_empty(locals)).collect();
+        .map(|_| LocalSet::new_empty(locals))
+        .collect();
     let mut outs = ins.clone();
 
-    let mut ins_ = ins.clone();
-    let mut outs_ = outs.clone();
-
-    loop {
-        copy(&ins, &mut ins_);
-        copy(&outs, &mut outs_);
+    let mut changed = true;
+    let mut bits = LocalSet::new_empty(locals);
+    while changed {
+        changed = false;
 
         for b in mir.basic_blocks().indices().rev() {
-            // out = ∪ {ins of successors}
-            outs[b].clear();
+            // outs[b] = ∪ {ins of successors}
+            bits.clear();
             for &successor in mir.basic_blocks()[b].terminator().successors().into_iter() {
-                outs[b].union(&ins[successor]);
+                bits.union(&ins[successor]);
             }
+            outs[b].clone_from(&bits);
 
-            // in = use ∪ (out - def)
-            ins[b].clone_from(&outs[b]);
+            // bits = use ∪ (bits - def)
+            def_use[b].apply(&mut bits);
 
-            // FIXME use the return value to detect if we have changed things
-            def_use[b].apply(&mut ins[b]);
-        }
-
-        if ins_ == ins && outs_ == outs {
-            break;
+            // update bits on entry and flag if they have changed
+            if ins[b] != bits {
+                ins[b].clone_from(&bits);
+                changed = true;
+            }
         }
     }
 
