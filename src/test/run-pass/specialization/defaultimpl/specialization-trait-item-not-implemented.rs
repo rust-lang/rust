@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,10 +12,10 @@
 
 trait Foo {
     fn foo_one(&self) -> &'static str;
-    fn foo_two(&self) -> &'static str {
-        "generic Trait"
-    }
+    fn foo_two(&self) -> &'static str;
 }
+
+struct MyStruct;
 
 default impl<T> Foo for T {
     fn foo_one(&self) -> &'static str {
@@ -23,16 +23,12 @@ default impl<T> Foo for T {
     }
 }
 
-default impl<T: Clone> Foo for T {
+impl Foo for MyStruct {
     fn foo_two(&self) -> &'static str {
-        "generic Clone"
+        self.foo_one()
     }
 }
 
-struct MyStruct;
-
-fn  main() {
-    assert!(MyStruct.foo_one() == "generic");
-    assert!(0u8.foo_two() == "generic Clone");
-    assert!(MyStruct.foo_two() == "generic Trait");
+fn main() {
+    assert!(MyStruct.foo_two() == "generic");
 }

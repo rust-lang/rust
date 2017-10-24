@@ -278,8 +278,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
                              -> Option<ty::TraitPredicate<'tcx>> {
         tcx.lift(&self.trait_ref).map(|trait_ref| ty::TraitPredicate {
-            trait_ref: trait_ref,
-            default_impl_check: self.default_impl_check
+            trait_ref,
         })
     }
 }
@@ -1128,8 +1127,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::SubtypePredicate<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitPredicate<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TraitPredicate {
-            trait_ref: self.trait_ref.fold_with(folder),
-            default_impl_check: self.default_impl_check
+            trait_ref: self.trait_ref.fold_with(folder)
         }
     }
 

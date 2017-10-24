@@ -189,13 +189,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     let generic_assumptions = tcx.predicates_of(self_type_did);
 
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
-    let assumptions_in_impl_context: Vec<ty::Predicate> =
-        assumptions_in_impl_context.predicates
-                                   .iter()
-                                   .map(|predicate| {
-                                       predicate.change_default_impl_check(ty::DefaultImplCheck::No)
-                                                .unwrap_or(predicate.clone())
-                                   }).collect();
+    let assumptions_in_impl_context = assumptions_in_impl_context.predicates;
 
     // An earlier version of this code attempted to do this checking
     // via the traits::fulfill machinery. However, it ran into trouble
@@ -217,9 +211,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
         // the analysis together via the fulfill , rather than the
         // repeated `contains` calls.
 
-        if !assumptions_in_impl_context.contains(
-                &predicate.change_default_impl_check(ty::DefaultImplCheck::No)
-                          .unwrap_or(predicate.clone())) {
+        if !assumptions_in_impl_context.contains(&predicate) {
             let item_span = tcx.hir.span(self_type_node_id);
             struct_span_err!(tcx.sess, drop_impl_span, E0367,
                              "The requirement `{}` is added only by the Drop impl.", predicate)

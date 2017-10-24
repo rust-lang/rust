@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: the trait bound `MyStruct: Foo` is not satisfied
-
 #![feature(specialization)]
 
 trait Foo {
@@ -17,18 +15,17 @@ trait Foo {
     fn foo_two(&self) -> &'static str;
 }
 
+struct MyStruct;
+
 default impl<T> Foo for T {
     fn foo_one(&self) -> &'static str {
         "generic"
     }
 }
 
-fn foo<T: Foo>(x: T) -> &'static str {
-    x.foo_one()
-}
-
-struct MyStruct;
+impl Foo for MyStruct {}
+//~^ ERROR not all trait items implemented, missing: `foo_two` [E0046]
 
 fn main() {
-    println!("{:?}", foo(MyStruct));
+    println!("{}", MyStruct.foo_one());
 }

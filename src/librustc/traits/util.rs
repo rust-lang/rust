@@ -22,11 +22,8 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        pred: &ty::Predicate<'tcx>)
                                        -> ty::Predicate<'tcx> {
     match *pred {
-        ty::Predicate::Trait(ref data) => {
-            let anonymized_pred = ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data));
-            anonymized_pred.change_default_impl_check(ty::DefaultImplCheck::No)
-                           .unwrap_or(anonymized_pred)
-        }
+        ty::Predicate::Trait(ref data) =>
+            ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data)),
 
         ty::Predicate::Equate(ref data) =>
             ty::Predicate::Equate(tcx.anonymize_late_bound_regions(data)),
@@ -556,24 +553,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn impl_item_is_final(self, node_item: &NodeItem<hir::Defaultness>) -> bool {
         node_item.item.is_final() && !self.impl_is_default(node_item.node.def_id())
-    }
-
-    pub fn default_impl_implement_all_methods(self, node_item_def_id: DefId) -> bool {
-        if let Some(impl_trait_ref) = self.impl_trait_ref(node_item_def_id) {
-            let trait_def = self.trait_def(impl_trait_ref.def_id);
-            for trait_item in self.associated_items(impl_trait_ref.def_id) {
-                let is_implemented = trait_def.ancestors(self, node_item_def_id)
-                    .defs(self, trait_item.name, trait_item.kind, impl_trait_ref.def_id)
-                    .next()
-                    .map(|node_item| !node_item.node.is_from_trait())
-                    .unwrap_or(false);
-
-                if !is_implemented {
-                    return false;
-                }
-            }
-        }
-        true
     }
 }
 

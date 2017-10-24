@@ -618,18 +618,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                        self.output);
                 } else {
                     visit_fn_use(self.tcx, callee_ty, true, &mut self.output);
-
-                    if tcx.sess.has_errors() {
-                        match func {
-                            &mir::Operand::Consume(_) => {}
-                            &mir::Operand::Constant(ref cst) => {
-                                tcx.sess
-                                   .span_note_without_error(cst.span,
-                                                            "the function call is here");
-                            }
-                        }
-                        tcx.sess.abort_if_errors();
-                    }
                 }
             }
             mir::TerminatorKind::Drop { ref location, .. } |
@@ -690,10 +678,7 @@ fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              ty::ParamEnv::empty(traits::Reveal::All),
                                              def_id,
                                              substs).unwrap();
-        if !tcx.sess.has_errors() {
-            // continue only if no errors are encountered during monomorphization
-            visit_instance_use(tcx, instance, is_direct_call, output);
-        }
+        visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
 

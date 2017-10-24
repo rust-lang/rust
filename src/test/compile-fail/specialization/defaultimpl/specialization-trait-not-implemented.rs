@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,23 +10,21 @@
 
 #![feature(specialization)]
 
-// Regression test for ICE when combining specialized associated types and type
-// aliases
-
-trait Id_ {
-    type Out;
+trait Foo {
+    fn foo_one(&self) -> &'static str;
+    fn foo_two(&self) -> &'static str;
 }
 
-type Id<T> = <T as Id_>::Out;
+struct MyStruct;
 
-default impl<T> Id_ for T {
-    type Out = T;
+default impl<T> Foo for T {
+    fn foo_one(&self) -> &'static str {
+        "generic"
+    }
 }
 
-fn test_proection() {
-    let x: Id<bool> = panic!();
-}
 
 fn main() {
-
+    println!("{}", MyStruct.foo_one());
+    //~^ ERROR no method named `foo_one` found for type `MyStruct` in the current scope
 }
