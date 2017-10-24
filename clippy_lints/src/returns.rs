@@ -103,28 +103,29 @@ impl ReturnPass {
         let mut it = block.stmts.iter();
 
         // we need both a let-binding stmt and an expr
-        if_let_chain! {[
-            let Some(retexpr) = it.next_back(),
-            let ast::StmtKind::Expr(ref retexpr) = retexpr.node,
-            let Some(stmt) = it.next_back(),
-            let ast::StmtKind::Local(ref local) = stmt.node,
+        if_chain! {
+            if let Some(retexpr) = it.next_back();
+            if let ast::StmtKind::Expr(ref retexpr) = retexpr.node;
+            if let Some(stmt) = it.next_back();
+            if let ast::StmtKind::Local(ref local) = stmt.node;
             // don't lint in the presence of type inference
-            local.ty.is_none(),
-            !local.attrs.iter().any(attr_is_cfg),
-            let Some(ref initexpr) = local.init,
-            let ast::PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node,
-            let ast::ExprKind::Path(_, ref path) = retexpr.node,
-            match_path_ast(path, &[&id.name.as_str()]),
-            !in_external_macro(cx, initexpr.span),
-        ], {
-                span_note_and_lint(cx,
-                                   LET_AND_RETURN,
-                                   retexpr.span,
-                                   "returning the result of a let binding from a block. \
-                                   Consider returning the expression directly.",
-                                   initexpr.span,
-                                   "this expression can be directly returned");
-        }}
+            if local.ty.is_none();
+            if !local.attrs.iter().any(attr_is_cfg);
+            if let Some(ref initexpr) = local.init;
+            if let ast::PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node;
+            if let ast::ExprKind::Path(_, ref path) = retexpr.node;
+            if match_path_ast(path, &[&id.name.as_str()]);
+            if !in_external_macro(cx, initexpr.span);
+            then {
+                    span_note_and_lint(cx,
+                                       LET_AND_RETURN,
+                                       retexpr.span,
+                                       "returning the result of a let binding from a block. \
+                                       Consider returning the expression directly.",
+                                       initexpr.span,
+                                       "this expression can be directly returned");
+            }
+        }
     }
 }
 

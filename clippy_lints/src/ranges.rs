@@ -113,69 +113,72 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             } else if name == "zip" && args.len() == 2 {
                 let iter = &args[0].node;
                 let zip_arg = &args[1];
-                if_let_chain! {[
+                if_chain! {
                     // .iter() call
-                    let ExprMethodCall(ref iter_path, _, ref iter_args ) = *iter,
-                    iter_path.name == "iter",
+                    if let ExprMethodCall(ref iter_path, _, ref iter_args ) = *iter;
+                    if iter_path.name == "iter";
                     // range expression in .zip() call: 0..x.len()
-                    let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg),
-                    is_integer_literal(start, 0),
+                    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
+                    if is_integer_literal(start, 0);
                     // .len() call
-                    let ExprMethodCall(ref len_path, _, ref len_args) = end.node,
-                    len_path.name == "len" && len_args.len() == 1,
+                    if let ExprMethodCall(ref len_path, _, ref len_args) = end.node;
+                    if len_path.name == "len" && len_args.len() == 1;
                     // .iter() and .len() called on same Path
-                    let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node,
-                    let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node,
-                    iter_path.segments == len_path.segments
-                 ], {
-                     span_lint(cx,
-                               RANGE_ZIP_WITH_LEN,
-                               expr.span,
-                               &format!("It is more idiomatic to use {}.iter().enumerate()",
-                                        snippet(cx, iter_args[0].span, "_")));
-                }}
+                    if let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
+                    if let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node;
+                    if iter_path.segments == len_path.segments;
+                     then {
+                         span_lint(cx,
+                                   RANGE_ZIP_WITH_LEN,
+                                   expr.span,
+                                   &format!("It is more idiomatic to use {}.iter().enumerate()",
+                                            snippet(cx, iter_args[0].span, "_")));
+                    }
+                }
             }
         }
 
         // exclusive range plus one: x..(y+1)
-        if_let_chain! {[
-            let Some(higher::Range { start, end: Some(end), limits: RangeLimits::HalfOpen }) = higher::range(expr),
-            let Some(y) = y_plus_one(end),
-        ], {
-            span_lint_and_then(
-                cx,
-                RANGE_PLUS_ONE,
-                expr.span,
-                "an inclusive range would be more readable",
-                |db| {
-                    let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
-                    let end = Sugg::hir(cx, y, "y");
-                    db.span_suggestion(expr.span,
-                                       "use",
-                                       format!("{}..={}", start, end));
-                },
-            );
-        }}
+        if_chain! {
+            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::HalfOpen }) = higher::range(expr);
+            if let Some(y) = y_plus_one(end);
+            then {
+                span_lint_and_then(
+                    cx,
+                    RANGE_PLUS_ONE,
+                    expr.span,
+                    "an inclusive range would be more readable",
+                    |db| {
+                        let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
+                        let end = Sugg::hir(cx, y, "y");
+                        db.span_suggestion(expr.span,
+                                           "use",
+                                           format!("{}..={}", start, end));
+                    },
+                );
+            }
+        }
 
         // inclusive range minus one: x..=(y-1)
-        if_let_chain! {[
-            let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(expr),
-            let Some(y) = y_minus_one(end),
-        ], {
-            span_lint_and_then(
-                cx,
-                RANGE_MINUS_ONE,
-                expr.span,
-                "an exclusive range would be more readable",
-                |db| {
-                    let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
-                    let end = Sugg::hir(cx, y, "y");
-                    db.span_suggestion(expr.span,
-                                       "use",
-                                       format!("{}..{}", start, end));
-                },
-            );
-        }}
+        if_chain! {
+            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(expr);
+            if let Some(y) = y_minus_one(end);
+            then {
+                span_lint_and_then(
+                    cx,
+                    RANGE_MINUS_ONE,
+                    expr.span,
+                    "an exclusive range would be more readable",
+                    |db| {
+                        let start = start.map_or("".to_owned(), |x| Sugg::hir(cx, x, "x").to_string());
+                        let end = Sugg::hir(cx, y, "y");
+                        db.span_suggestion(expr.span,
+                                           "use",
+                                           format!("{}..{}", start, end));
+                    },
+                );
+            }
+        }
     }
 }
 

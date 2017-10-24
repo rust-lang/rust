@@ -91,43 +91,44 @@ fn check_hash_peq<'a, 'tcx>(
     ty: Ty<'tcx>,
     hash_is_automatically_derived: bool,
 ) {
-    if_let_chain! {[
-        match_path(&trait_ref.path, &paths::HASH),
-        let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait()
-    ], {
-        // Look for the PartialEq implementations for `ty`
-        cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
-            let peq_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
-
-            if peq_is_automatically_derived == hash_is_automatically_derived {
-                return;
-            }
-
-            let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
-
-            // Only care about `impl PartialEq<Foo> for Foo`
-            // For `impl PartialEq<B> for A, input_types is [A, B]
-            if trait_ref.substs.type_at(1) == ty {
-                let mess = if peq_is_automatically_derived {
-                    "you are implementing `Hash` explicitly but have derived `PartialEq`"
-                } else {
-                    "you are deriving `Hash` but have implemented `PartialEq` explicitly"
-                };
-
-                span_lint_and_then(
-                    cx, DERIVE_HASH_XOR_EQ, span,
-                    mess,
-                    |db| {
-                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(impl_id) {
-                        db.span_note(
-                            cx.tcx.hir.span(node_id),
-                            "`PartialEq` implemented here"
-                        );
-                    }
-                });
-            }
-        });
-    }}
+    if_chain! {
+        if match_path(&trait_ref.path, &paths::HASH);
+        if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
+        then {
+            // Look for the PartialEq implementations for `ty`
+            cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
+                let peq_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+    
+                if peq_is_automatically_derived == hash_is_automatically_derived {
+                    return;
+                }
+    
+                let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
+    
+                // Only care about `impl PartialEq<Foo> for Foo`
+                // For `impl PartialEq<B> for A, input_types is [A, B]
+                if trait_ref.substs.type_at(1) == ty {
+                    let mess = if peq_is_automatically_derived {
+                        "you are implementing `Hash` explicitly but have derived `PartialEq`"
+                    } else {
+                        "you are deriving `Hash` but have implemented `PartialEq` explicitly"
+                    };
+    
+                    span_lint_and_then(
+                        cx, DERIVE_HASH_XOR_EQ, span,
+                        mess,
+                        |db| {
+                        if let Some(node_id) = cx.tcx.hir.as_local_node_id(impl_id) {
+                            db.span_note(
+                                cx.tcx.hir.span(node_id),
+                                "`PartialEq` implemented here"
+                            );
+                        }
+                    });
+                }
+            });
+        }
+    }
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.

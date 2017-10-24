@@ -54,26 +54,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
         if in_macro(item.span) {
             return;
         }
-        if_let_chain!([
-            let ItemImpl(.., ref item_type, ref refs) = item.node,
-            let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node,
-        ], {
-            let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).parameters;
-            let should_check = if let Some(ref params) = *parameters {
-                !params.parenthesized && params.lifetimes.len() == 0 
-            } else {
-                true
-            };
-            if should_check {
-                let visitor = &mut UseSelfVisitor {
-                    item_path: item_path,
-                    cx: cx,
+        if_chain! {
+            if let ItemImpl(.., ref item_type, ref refs) = item.node;
+            if let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node;
+            then {
+                let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).parameters;
+                let should_check = if let Some(ref params) = *parameters {
+                    !params.parenthesized && params.lifetimes.len() == 0 
+                } else {
+                    true
                 };
-                for impl_item_ref in refs {
-                    visitor.visit_impl_item(cx.tcx.hir.impl_item(impl_item_ref.id));
+                if should_check {
+                    let visitor = &mut UseSelfVisitor {
+                        item_path: item_path,
+                        cx: cx,
+                    };
+                    for impl_item_ref in refs {
+                        visitor.visit_impl_item(cx.tcx.hir.impl_item(impl_item_ref.id));
+                    }
                 }
             }
-        })
+        }
     }
 }
 

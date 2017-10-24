@@ -115,50 +115,51 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if_let_chain!{[
-            let ExprCall(ref path, ref args) = expr.node,
-            let ExprPath(ref qpath) = path.node,
-            args.len() == 1,
-            let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id)),
-        ], {
-            let lint;
-            let msg;
-            let arg = &args[0];
-            let arg_ty = cx.tables.expr_ty(arg);
-
-            if let ty::TyRef(..) = arg_ty.sty {
-                if match_def_path(cx.tcx, def_id, &paths::DROP) {
-                    lint = DROP_REF;
-                    msg = DROP_REF_SUMMARY.to_string();
-                } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
-                    lint = FORGET_REF;
-                    msg = FORGET_REF_SUMMARY.to_string();
-                } else {
-                    return;
+        if_chain! {
+            if let ExprCall(ref path, ref args) = expr.node;
+            if let ExprPath(ref qpath) = path.node;
+            if args.len() == 1;
+            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));
+            then {
+                let lint;
+                let msg;
+                let arg = &args[0];
+                let arg_ty = cx.tables.expr_ty(arg);
+    
+                if let ty::TyRef(..) = arg_ty.sty {
+                    if match_def_path(cx.tcx, def_id, &paths::DROP) {
+                        lint = DROP_REF;
+                        msg = DROP_REF_SUMMARY.to_string();
+                    } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
+                        lint = FORGET_REF;
+                        msg = FORGET_REF_SUMMARY.to_string();
+                    } else {
+                        return;
+                    }
+                    span_note_and_lint(cx,
+                                       lint,
+                                       expr.span,
+                                       &msg,
+                                       arg.span,
+                                       &format!("argument has type {}", arg_ty));
+                } else if is_copy(cx, arg_ty) {
+                    if match_def_path(cx.tcx, def_id, &paths::DROP) {
+                        lint = DROP_COPY;
+                        msg = DROP_COPY_SUMMARY.to_string();
+                    } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
+                        lint = FORGET_COPY;
+                        msg = FORGET_COPY_SUMMARY.to_string();
+                    } else {
+                        return;
+                    }
+                    span_note_and_lint(cx,
+                                       lint,
+                                       expr.span,
+                                       &msg,
+                                       arg.span,
+                                       &format!("argument has type {}", arg_ty));
                 }
-                span_note_and_lint(cx,
-                                   lint,
-                                   expr.span,
-                                   &msg,
-                                   arg.span,
-                                   &format!("argument has type {}", arg_ty));
-            } else if is_copy(cx, arg_ty) {
-                if match_def_path(cx.tcx, def_id, &paths::DROP) {
-                    lint = DROP_COPY;
-                    msg = DROP_COPY_SUMMARY.to_string();
-                } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
-                    lint = FORGET_COPY;
-                    msg = FORGET_COPY_SUMMARY.to_string();
-                } else {
-                    return;
-                }
-                span_note_and_lint(cx,
-                                   lint,
-                                   expr.span,
-                                   &msg,
-                                   arg.span,
-                                   &format!("argument has type {}", arg_ty));
             }
-        }}
+        }
     }
 }

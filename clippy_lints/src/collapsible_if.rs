@@ -100,43 +100,45 @@ fn check_if(cx: &EarlyContext, expr: &ast::Expr) {
 }
 
 fn check_collapsible_maybe_if_let(cx: &EarlyContext, else_: &ast::Expr) {
-    if_let_chain! {[
-        let ast::ExprKind::Block(ref block) = else_.node,
-        let Some(else_) = expr_block(block),
-        !in_macro(else_.span),
-    ], {
-        match else_.node {
-            ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => {
-                span_lint_and_sugg(cx,
-                                   COLLAPSIBLE_IF,
-                                   block.span,
-                                   "this `else { if .. }` block can be collapsed",
-                                   "try",
-                                   snippet_block(cx, else_.span, "..").into_owned());
+    if_chain! {
+        if let ast::ExprKind::Block(ref block) = else_.node;
+        if let Some(else_) = expr_block(block);
+        if !in_macro(else_.span);
+        then {
+            match else_.node {
+                ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => {
+                    span_lint_and_sugg(cx,
+                                       COLLAPSIBLE_IF,
+                                       block.span,
+                                       "this `else { if .. }` block can be collapsed",
+                                       "try",
+                                       snippet_block(cx, else_.span, "..").into_owned());
+                }
+                _ => (),
             }
-            _ => (),
         }
-    }}
+    }
 }
 
 fn check_collapsible_no_if_let(cx: &EarlyContext, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
-    if_let_chain! {[
-        let Some(inner) = expr_block(then),
-        let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node,
-    ], {
-        if expr.span.ctxt() != inner.span.ctxt() {
-            return;
+    if_chain! {
+        if let Some(inner) = expr_block(then);
+        if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node;
+        then {
+            if expr.span.ctxt() != inner.span.ctxt() {
+                return;
+            }
+            span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this if statement can be collapsed", |db| {
+                let lhs = Sugg::ast(cx, check, "..");
+                let rhs = Sugg::ast(cx, check_inner, "..");
+                db.span_suggestion(expr.span,
+                                   "try",
+                                   format!("if {} {}",
+                                           lhs.and(rhs),
+                                           snippet_block(cx, content.span, "..")));
+            });
         }
-        span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this if statement can be collapsed", |db| {
-            let lhs = Sugg::ast(cx, check, "..");
-            let rhs = Sugg::ast(cx, check_inner, "..");
-            db.span_suggestion(expr.span,
-                               "try",
-                               format!("if {} {}",
-                                       lhs.and(rhs),
-                                       snippet_block(cx, content.span, "..")));
-        });
-    }}
+    }
 }
 
 /// If the block contains only one expression, return it.

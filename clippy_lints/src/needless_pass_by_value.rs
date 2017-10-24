@@ -64,13 +64,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         match kind {
             FnKind::ItemFn(.., attrs) => for a in attrs {
-                if_let_chain!{[
-                    a.meta_item_list().is_some(),
-                    let Some(name) = a.name(),
-                    name == "proc_macro_derive",
-                ], {
-                    return;
-                }}
+                if_chain! {
+                    if a.meta_item_list().is_some();
+                    if let Some(name) = a.name();
+                    if name == "proc_macro_derive";
+                    then {
+                        return;
+                    }
+                }
             },
             _ => return,
         }
@@ -148,101 +149,103 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 )
             };
 
-            if_let_chain! {[
-                !is_self(arg),
-                !ty.is_mutable_pointer(),
-                !is_copy(cx, ty),
-                !fn_traits.iter().any(|&t| implements_trait(cx, ty, t, &[])),
-                !implements_borrow_trait,
-                !all_borrowable_trait,
+            if_chain! {
+                if !is_self(arg);
+                if !ty.is_mutable_pointer();
+                if !is_copy(cx, ty);
+                if !fn_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
+                if !implements_borrow_trait;
+                if !all_borrowable_trait;
 
-                let PatKind::Binding(mode, canonical_id, ..) = arg.pat.node,
-                !moved_vars.contains(&canonical_id),
-            ], {
-                if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
-                    continue;
-                }
-
-                // Dereference suggestion
-                let sugg = |db: &mut DiagnosticBuilder| {
-                    let deref_span = spans_need_deref.get(&canonical_id);
-                    if_let_chain! {[
-                        match_type(cx, ty, &paths::VEC),
-                        let Some(clone_spans) =
-                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]),
-                        let TyPath(QPath::Resolved(_, ref path)) = input.node,
-                        let Some(elem_ty) = path.segments.iter()
-                            .find(|seg| seg.name == "Vec")
-                            .and_then(|ps| ps.parameters.as_ref())
-                            .map(|params| &params.types[0]),
-                    ], {
-                        let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
-                        db.span_suggestion(input.span,
-                                        "consider changing the type to",
-                                        slice_ty);
-
-                        for (span, suggestion) in clone_spans {
-                            db.span_suggestion(
-                                span,
-                                &snippet_opt(cx, span)
-                                    .map_or(
-                                        "change the call to".into(),
-                                        |x| Cow::from(format!("change `{}` to", x)),
-                                    ),
-                                suggestion.into()
-                            );
-                        }
-
-                        // cannot be destructured, no need for `*` suggestion
-                        assert!(deref_span.is_none());
-                        return;
-                    }}
-
-                    if match_type(cx, ty, &paths::STRING) {
-                        if let Some(clone_spans) =
-                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
-                            db.span_suggestion(input.span, "consider changing the type to", "&str".to_string());
-
-                            for (span, suggestion) in clone_spans {
-                                db.span_suggestion(
-                                    span,
-                                    &snippet_opt(cx, span)
-                                        .map_or(
-                                            "change the call to".into(),
-                                            |x| Cow::from(format!("change `{}` to", x))
-                                        ),
-                                    suggestion.into(),
-                                );
+                if let PatKind::Binding(mode, canonical_id, ..) = arg.pat.node;
+                if !moved_vars.contains(&canonical_id);
+                then {
+                    if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
+                        continue;
+                    }
+    
+                    // Dereference suggestion
+                    let sugg = |db: &mut DiagnosticBuilder| {
+                        let deref_span = spans_need_deref.get(&canonical_id);
+                        if_chain! {
+                            if match_type(cx, ty, &paths::VEC);
+                            if let Some(clone_spans) =
+                                get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
+                            if let TyPath(QPath::Resolved(_, ref path)) = input.node;
+                            if let Some(elem_ty) = path.segments.iter()
+                                .find(|seg| seg.name == "Vec")
+                                .and_then(|ps| ps.parameters.as_ref())
+                                .map(|params| &params.types[0]);
+                            then {
+                                let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
+                                db.span_suggestion(input.span,
+                                                "consider changing the type to",
+                                                slice_ty);
+        
+                                for (span, suggestion) in clone_spans {
+                                    db.span_suggestion(
+                                        span,
+                                        &snippet_opt(cx, span)
+                                            .map_or(
+                                                "change the call to".into(),
+                                                |x| Cow::from(format!("change `{}` to", x)),
+                                            ),
+                                        suggestion.into()
+                                    );
+                                }
+        
+                                // cannot be destructured, no need for `*` suggestion
+                                assert!(deref_span.is_none());
+                                return;
                             }
-
-                            assert!(deref_span.is_none());
-                            return;
                         }
-                    }
-
-                    let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
-
-                    // Suggests adding `*` to dereference the added reference.
-                    if let Some(deref_span) = deref_span {
-                        spans.extend(
-                            deref_span
-                                .iter()
-                                .cloned()
-                                .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))),
-                        );
-                        spans.sort_by_key(|&(span, _)| span);
-                    }
-                    multispan_sugg(db, "consider taking a reference instead".to_string(), spans);
-                };
-
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_PASS_BY_VALUE,
-                    input.span,
-                    "this argument is passed by value, but not consumed in the function body",
-                    sugg,
-                );
-            }}
+    
+                        if match_type(cx, ty, &paths::STRING) {
+                            if let Some(clone_spans) =
+                                get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
+                                db.span_suggestion(input.span, "consider changing the type to", "&str".to_string());
+    
+                                for (span, suggestion) in clone_spans {
+                                    db.span_suggestion(
+                                        span,
+                                        &snippet_opt(cx, span)
+                                            .map_or(
+                                                "change the call to".into(),
+                                                |x| Cow::from(format!("change `{}` to", x))
+                                            ),
+                                        suggestion.into(),
+                                    );
+                                }
+    
+                                assert!(deref_span.is_none());
+                                return;
+                            }
+                        }
+    
+                        let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
+    
+                        // Suggests adding `*` to dereference the added reference.
+                        if let Some(deref_span) = deref_span {
+                            spans.extend(
+                                deref_span
+                                    .iter()
+                                    .cloned()
+                                    .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))),
+                            );
+                            spans.sort_by_key(|&(span, _)| span);
+                        }
+                        multispan_sugg(db, "consider taking a reference instead".to_string(), spans);
+                    };
+    
+                    span_lint_and_then(
+                        cx,
+                        NEEDLESS_PASS_BY_VALUE,
+                        input.span,
+                        "this argument is passed by value, but not consumed in the function body",
+                        sugg,
+                    );
+                }
+            }
         }
     }
 }
@@ -299,18 +302,19 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
 
                         map::Node::NodeStmt(s) => {
                             // `let <pat> = x;`
-                            if_let_chain! {[
-                                let StmtDecl(ref decl, _) = s.node,
-                                let DeclLocal(ref local) = decl.node,
-                            ], {
-                                self.spans_need_deref
-                                    .entry(vid)
-                                    .or_insert_with(HashSet::new)
-                                    .insert(local.init
-                                        .as_ref()
-                                        .map(|e| e.span)
-                                        .expect("`let` stmt without init aren't caught by match_pat"));
-                            }}
+                            if_chain! {
+                                if let StmtDecl(ref decl, _) = s.node;
+                                if let DeclLocal(ref local) = decl.node;
+                                then {
+                                    self.spans_need_deref
+                                        .entry(vid)
+                                        .or_insert_with(HashSet::new)
+                                        .insert(local.init
+                                            .as_ref()
+                                            .map(|e| e.span)
+                                            .expect("`let` stmt without init aren't caught by match_pat"));
+                                }
+                            }
                         },
 
                         _ => {},

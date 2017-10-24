@@ -11,6 +11,8 @@
 #![feature(inclusive_range_syntax, range_contains)]
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 
+#![recursion_limit="256"]
+
 #[macro_use]
 extern crate rustc;
 extern crate rustc_typeck;
@@ -53,6 +55,9 @@ extern crate lazy_static;
 extern crate itertools;
 extern crate pulldown_cmark;
 extern crate url;
+
+#[macro_use]
+extern crate if_chain;
 
 macro_rules! declare_restriction_lint {
     { pub $name:tt, $description:tt } => {

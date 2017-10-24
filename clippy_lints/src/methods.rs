@@ -735,60 +735,62 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let name = implitem.name;
         let parent = cx.tcx.hir.get_parent(implitem.id);
         let item = cx.tcx.hir.expect_item(parent);
-        if_let_chain! {[
-            let hir::ImplItemKind::Method(ref sig, id) = implitem.node,
-            let Some(first_arg_ty) = sig.decl.inputs.get(0),
-            let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next(),
-            let hir::ItemImpl(_, _, _, _, None, ref self_ty, _) = item.node,
-        ], {
-            // check missing trait implementations
-            for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                if name == method_name &&
-                   sig.decl.inputs.len() == n_args &&
-                   out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(first_arg_ty, first_arg, self_ty, false, &sig.generics) {
-                    span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
-                        "defining a method called `{}` on this type; consider implementing \
-                         the `{}` trait or choosing a less ambiguous name", name, trait_name));
+        if_chain! {
+            if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
+            if let Some(first_arg_ty) = sig.decl.inputs.get(0);
+            if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next();
+            if let hir::ItemImpl(_, _, _, _, None, ref self_ty, _) = item.node;
+            then {
+                // check missing trait implementations
+                for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                    if name == method_name &&
+                       sig.decl.inputs.len() == n_args &&
+                       out_type.matches(&sig.decl.output) &&
+                       self_kind.matches(first_arg_ty, first_arg, self_ty, false, &sig.generics) {
+                        span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
+                            "defining a method called `{}` on this type; consider implementing \
+                             the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                    }
+                }
+    
+                // check conventions w.r.t. conversion method names and predicates
+                let def_id = cx.tcx.hir.local_def_id(item.id);
+                let ty = cx.tcx.type_of(def_id);
+                let is_copy = is_copy(cx, ty);
+                for &(ref conv, self_kinds) in &CONVENTIONS {
+                    if_chain! {
+                        if conv.check(&name.as_str());
+                        if !self_kinds.iter().any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy, &sig.generics));
+                        then {
+                            let lint = if item.vis == hir::Visibility::Public {
+                                WRONG_PUB_SELF_CONVENTION
+                            } else {
+                                WRONG_SELF_CONVENTION
+                            };
+                            span_lint(cx,
+                                      lint,
+                                      first_arg.pat.span,
+                                      &format!("methods called `{}` usually take {}; consider choosing a less \
+                                                ambiguous name",
+                                               conv,
+                                               &self_kinds.iter()
+                                                          .map(|k| k.description())
+                                                          .collect::<Vec<_>>()
+                                                          .join(" or ")));
+                        }
+                    }
+                }
+    
+                let ret_ty = return_ty(cx, implitem.id);
+                if name == "new" &&
+                   !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
+                    span_lint(cx,
+                              NEW_RET_NO_SELF,
+                              implitem.span,
+                              "methods called `new` usually return `Self`");
                 }
             }
-
-            // check conventions w.r.t. conversion method names and predicates
-            let def_id = cx.tcx.hir.local_def_id(item.id);
-            let ty = cx.tcx.type_of(def_id);
-            let is_copy = is_copy(cx, ty);
-            for &(ref conv, self_kinds) in &CONVENTIONS {
-                if_let_chain! {[
-                    conv.check(&name.as_str()),
-                    !self_kinds.iter().any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy, &sig.generics)),
-                ], {
-                    let lint = if item.vis == hir::Visibility::Public {
-                        WRONG_PUB_SELF_CONVENTION
-                    } else {
-                        WRONG_SELF_CONVENTION
-                    };
-                    span_lint(cx,
-                              lint,
-                              first_arg.pat.span,
-                              &format!("methods called `{}` usually take {}; consider choosing a less \
-                                        ambiguous name",
-                                       conv,
-                                       &self_kinds.iter()
-                                                  .map(|k| k.description())
-                                                  .collect::<Vec<_>>()
-                                                  .join(" or ")));
-                }}
-            }
-
-            let ret_ty = return_ty(cx, implitem.id);
-            if name == "new" &&
-               !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
-                span_lint(cx,
-                          NEW_RET_NO_SELF,
-                          implitem.span,
-                          "methods called `new` usually return `Self`");
-            }
-        }}
+        }
     }
 }
 
@@ -1014,20 +1016,21 @@ fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
 }
 
 fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwrap: &hir::Expr) {
-    if_let_chain!{[
-        let hir::ExprCall(ref fun, ref args) = new.node,
-        args.len() == 1,
-        let hir::ExprPath(ref path) = fun.node,
-        let Def::Method(did) = cx.tables.qpath_def(path, fun.hir_id),
-        match_def_path(cx.tcx, did, &paths::CSTRING_NEW)
-    ], {
-        span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
-                           "you are getting the inner pointer of a temporary `CString`",
-                           |db| {
-                               db.note("that pointer will be invalid outside this expression");
-                               db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
-                           });
-    }}
+    if_chain! {
+        if let hir::ExprCall(ref fun, ref args) = new.node;
+        if args.len() == 1;
+        if let hir::ExprPath(ref path) = fun.node;
+        if let Def::Method(did) = cx.tables.qpath_def(path, fun.hir_id);
+        if match_def_path(cx.tcx, did, &paths::CSTRING_NEW);
+        then {
+            span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
+                               "you are getting the inner pointer of a temporary `CString`",
+                               |db| {
+                                   db.note("that pointer will be invalid outside this expression");
+                                   db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
+                               });
+        }
+    }
 }
 
 fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr]) {
@@ -1427,33 +1430,34 @@ fn lint_binary_expr_with_method_call<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, i
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_NEXT_CMP` lints.
 fn lint_chars_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo, chain_methods: &[&str], lint: &'static Lint, suggest: &str) -> bool {
-    if_let_chain! {[
-        let Some(args) = method_chain_args(info.chain, chain_methods),
-        let hir::ExprCall(ref fun, ref arg_char) = info.other.node,
-        arg_char.len() == 1,
-        let hir::ExprPath(ref qpath) = fun.node,
-        let Some(segment) = single_segment_path(qpath),
-        segment.name == "Some"
-    ], {
-        let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
-
-        if self_ty.sty != ty::TyStr {
-            return false;
+    if_chain! {
+        if let Some(args) = method_chain_args(info.chain, chain_methods);
+        if let hir::ExprCall(ref fun, ref arg_char) = info.other.node;
+        if arg_char.len() == 1;
+        if let hir::ExprPath(ref qpath) = fun.node;
+        if let Some(segment) = single_segment_path(qpath);
+        if segment.name == "Some";
+        then {
+            let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
+    
+            if self_ty.sty != ty::TyStr {
+                return false;
+            }
+    
+            span_lint_and_sugg(cx,
+                               lint,
+                               info.expr.span,
+                               &format!("you should use the `{}` method", suggest),
+                               "like this",
+                               format!("{}{}.{}({})",
+                                       if info.eq { "" } else { "!" },
+                                       snippet(cx, args[0][0].span, "_"),
+                                       suggest,
+                                       snippet(cx, arg_char[0].span, "_")));
+    
+            return true;
         }
-
-        span_lint_and_sugg(cx,
-                           lint,
-                           info.expr.span,
-                           &format!("you should use the `{}` method", suggest),
-                           "like this",
-                           format!("{}{}.{}({})",
-                                   if info.eq { "" } else { "!" },
-                                   snippet(cx, args[0][0].span, "_"),
-                                   suggest,
-                                   snippet(cx, arg_char[0].span, "_")));
-
-        return true;
-    }}
+    }
 
     false
 }
@@ -1474,26 +1478,27 @@ fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprIn
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
 fn lint_chars_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo, chain_methods: &[&str], lint: &'static Lint, suggest: &str) -> bool {
-    if_let_chain! {[
-        let Some(args) = method_chain_args(info.chain, chain_methods),
-        let hir::ExprLit(ref lit) = info.other.node,
-        let ast::LitKind::Char(c) = lit.node,
-    ], {
-        span_lint_and_sugg(
-            cx,
-            lint,
-            info.expr.span,
-            &format!("you should use the `{}` method", suggest),
-            "like this",
-            format!("{}{}.{}('{}')",
-                    if info.eq { "" } else { "!" },
-                    snippet(cx, args[0][0].span, "_"),
-                    suggest,
-                    c)
-        );
-
-        return true;
-    }}
+    if_chain! {
+        if let Some(args) = method_chain_args(info.chain, chain_methods);
+        if let hir::ExprLit(ref lit) = info.other.node;
+        if let ast::LitKind::Char(c) = lit.node;
+        then {
+            span_lint_and_sugg(
+                cx,
+                lint,
+                info.expr.span,
+                &format!("you should use the `{}` method", suggest),
+                "like this",
+                format!("{}{}.{}('{}')",
+                        if info.eq { "" } else { "!" },
+                        snippet(cx, args[0][0].span, "_"),
+                        suggest,
+                        c)
+            );
+    
+            return true;
+        }
+    }
 
     false
 }

@@ -301,14 +301,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 /// lifetime, but it should be rare.
 fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: Ty) -> String {
     let seg = last_path_segment(path);
-    if_let_chain!{[
-        let Some(ref params) = seg.parameters,
-        !params.parenthesized,
-        let Some(to_ty) = params.types.get(1),
-        let TyRptr(_, ref to_ty) = to_ty.node,
-    ], {
-        return snippet(cx, to_ty.ty.span, &to_rty.to_string()).to_string();
-    }}
+    if_chain! {
+        if let Some(ref params) = seg.parameters;
+        if !params.parenthesized;
+        if let Some(to_ty) = params.types.get(1);
+        if let TyRptr(_, ref to_ty) = to_ty.node;
+        then {
+            return snippet(cx, to_ty.ty.span, &to_rty.to_string()).to_string();
+        }
+    }
 
     to_rty.to_string()
 }
