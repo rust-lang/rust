@@ -36,8 +36,8 @@ use std::fmt;
 
 pub use rustc::middle::trans::TransItem;
 
-pub use rustc_trans_utils::trans_item::*;
-pub use rustc_trans_utils::trans_item::TransItemExt as BaseTransItemExt;
+pub use rustc_mir::monomorphize::mono_item::*;
+pub use rustc_mir::monomorphize::mono_item::TransItemExt as BaseTransItemExt;
 
 pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
     fn define(&self, ccx: &CrateContext<'a, 'tcx>) {

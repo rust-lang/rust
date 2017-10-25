@@ -14,7 +14,7 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use common;
+use rustc_trans_utils::common;
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;

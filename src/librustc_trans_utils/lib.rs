@@ -46,8 +46,6 @@ use rustc::util::nodemap::NodeSet;
 
 pub mod common;
 pub mod link;
-pub mod trans_item;
-pub mod monomorphize;
 pub mod trans_crate;
 
 /// check for the #[rustc_error] annotation, which forces an

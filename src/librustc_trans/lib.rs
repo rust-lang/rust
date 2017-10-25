@@ -85,7 +85,7 @@ use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
-use rustc_trans_utils::monomorphize;
+use rustc_mir::monomorphize;
 
 mod diagnostics;
 
