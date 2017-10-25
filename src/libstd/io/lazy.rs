@@ -37,7 +37,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
             let ptr = self.ptr.get();
             let ret = if ptr.is_null() {
                 Some(self.init())
-            } else if ptr as usize == 1 {
+            } else if ptr == ptr::dangling_mut() {
                 None
             } else {
                 Some((*ptr).clone())
@@ -55,7 +55,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
         let registered = sys_common::at_exit(move || {
             self.lock.lock();
             let ptr = self.ptr.get();
-            self.ptr.set(1 as *mut _);
+            self.ptr.set(ptr::dangling_mut());
             self.lock.unlock();
             drop(Box::from_raw(ptr))
         });

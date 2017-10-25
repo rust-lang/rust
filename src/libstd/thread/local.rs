@@ -492,7 +492,7 @@ pub mod os {
         pub unsafe fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
             let ptr = self.os.get() as *mut Value<T>;
             if !ptr.is_null() {
-                if ptr as usize == 1 {
+                if ptr == ptr::dangling_mut() {
                     return None
                 }
                 return Some(&(*ptr).value);
@@ -520,7 +520,7 @@ pub mod os {
         // before we return from the destructor ourselves.
         let ptr = Box::from_raw(ptr as *mut Value<T>);
         let key = ptr.key;
-        key.os.set(1 as *mut u8);
+        key.os.set(ptr::dangling_mut());
         drop(ptr);
         key.os.set(ptr::null_mut());
     }

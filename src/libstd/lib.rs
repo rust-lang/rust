@@ -301,6 +301,7 @@
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
 #![feature(prelude_import)]
+#![feature(ptr_dangling)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_align)]
