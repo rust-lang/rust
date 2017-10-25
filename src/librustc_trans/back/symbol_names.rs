@@ -220,7 +220,7 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         if avoid_cross_crate_conflicts {
             hasher.hash(tcx.crate_name.as_str());
-            hasher.hash(tcx.sess.local_crate_disambiguator().as_str());
+            hasher.hash(tcx.sess.local_crate_disambiguator());
         }
     });
 

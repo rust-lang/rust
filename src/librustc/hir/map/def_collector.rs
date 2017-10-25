@@ -10,6 +10,7 @@
 
 use hir::map::definitions::*;
 use hir::def_id::{CRATE_DEF_INDEX, DefIndex, DefIndexAddressSpace};
+use session::CrateDisambiguator;
 
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
@@ -43,7 +44,9 @@ impl<'a> DefCollector<'a> {
         }
     }
 
-    pub fn collect_root(&mut self, crate_name: &str, crate_disambiguator: &str) {
+    pub fn collect_root(&mut self,
+                        crate_name: &str,
+                        crate_disambiguator: CrateDisambiguator) {
         let root = self.definitions.create_root_def(crate_name,
                                                     crate_disambiguator);
         assert_eq!(root, CRATE_DEF_INDEX);

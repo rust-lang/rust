@@ -1249,7 +1249,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 crate_name,
                 // Don't print the whole crate disambiguator. That's just
                 // annoying in debug output.
-                &(crate_disambiguator.as_str())[..4],
+                &(crate_disambiguator.to_fingerprint().to_hex())[..4],
                 self.def_path(def_id).to_string_no_crate())
     }
 

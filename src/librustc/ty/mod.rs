@@ -26,6 +26,7 @@ use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use mir::GeneratorLayout;
+use session::CrateDisambiguator;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
@@ -2556,7 +2557,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 crate_num: CrateNum) -> Symbol {
+                                 crate_num: CrateNum) -> CrateDisambiguator {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.sess.local_crate_disambiguator()
 }
