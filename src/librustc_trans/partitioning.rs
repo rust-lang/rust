@@ -102,7 +102,7 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
-use collector::InliningMap;
+use rustc_mir::monomorphize::collector::InliningMap;
 use common;
 use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;

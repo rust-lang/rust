@@ -54,6 +54,7 @@ extern crate core; // for NonZero
 extern crate log_settings;
 extern crate rustc_apfloat;
 extern crate byteorder;
+extern crate rustc_trans_utils;
 
 mod diagnostics;
 
@@ -65,6 +66,7 @@ mod shim;
 pub mod transform;
 pub mod util;
 pub mod interpret;
+pub mod monomorphize;
 
 use rustc::ty::maps::Providers;
 

@@ -55,7 +55,7 @@ use attributes;
 use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
-use collector::{self, TransItemCollectionMode};
+use rustc_mir::monomorphize::collector::{self, TransItemCollectionMode};
 use common::{self, C_struct_in_context, C_array, CrateContext, val_ty};
 use consts;
 use context::{self, LocalCrateContext, SharedCrateContext};
