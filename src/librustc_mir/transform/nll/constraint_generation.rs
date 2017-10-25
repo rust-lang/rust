@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
 use rustc::mir::{BasicBlock, BorrowKind, Location, Lvalue, Mir, Rvalue, Statement, StatementKind};
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::Visitor;
+use rustc::mir::Lvalue::Projection;
+use rustc::mir::{LvalueProjection, ProjectionElem};
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty};
@@ -198,6 +201,37 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
                                    destination_region.to_region_index(),
                                    location.successor_within_block());
     }
+
+    fn add_reborrow_constraint(
+        &mut self,
+        location: Location,
+        borrow_region: ty::Region<'tcx>,
+        borrowed_lv: &Lvalue<'tcx>,
+    ) {
+        if let Projection(ref proj) = *borrowed_lv {
+            let LvalueProjection { ref base, ref elem } = **proj;
+
+            if let ProjectionElem::Deref = *elem {
+                let tcx = self.infcx.tcx;
+                let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                let base_sty = &base_ty.sty;
+
+                if let ty::TyRef(base_region, ty::TypeAndMut{ ty: _, mutbl }) = *base_sty {
+                    match mutbl {
+                        hir::Mutability::MutImmutable => { },
+
+                        hir::Mutability::MutMutable => {
+                            self.add_reborrow_constraint(location, borrow_region, base);
+                        },
+                    }
+
+                    self.regioncx.add_outlives(base_region.to_region_index(),
+                                               borrow_region.to_region_index(),
+                                               location.successor_within_block());
+                }
+            }
+        }
+    }
 }
 
 impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
@@ -214,6 +248,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
         if let StatementKind::Assign(ref destination_lv, ref rv) = statement.kind {
             if let Rvalue::Ref(region, bk, ref borrowed_lv) = *rv {
                 self.add_borrow_constraint(location, destination_lv, region, bk, borrowed_lv);
+                self.add_reborrow_constraint(location, region, borrowed_lv);
             }
         }
 
