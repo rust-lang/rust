@@ -1896,6 +1896,19 @@ pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: f64x2) {
     *(mem_addr as *mut f64x2) = a;
 }
 
+/// Store 128-bits (composed of 2 packed double-precision (64-bit)
+/// floating-point elements) from `a` into memory.
+/// `mem_addr` does not need to be aligned on any particular boundary.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(movups))] // FIXME movupd expected
+pub unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: f64x2) {
+    ptr::copy_nonoverlapping(
+        &a as *const f64x2 as *const u8,
+        mem_addr as *mut u8,
+        mem::size_of::<f64x2>());
+}
+
 /// Store the lower double-precision (64-bit) floating-point element from `a` into 2 contiguous
 /// elements in memory. `mem_addr` must be aligned on a 16-byte boundary or a general-protection
 /// exception may be generated.
@@ -1974,6 +1987,13 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> f64x2 {
 #[target_feature = "+sse2"]
 pub unsafe fn _mm_undefined_pd() -> f64x2 {
     f64x2::splat(mem::uninitialized())
+}
+
+/// Return vector of type __m128i with undefined elements.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub unsafe fn _mm_undefined_si128() -> __m128i {
+    mem::transmute(i32x4::splat(mem::uninitialized()))
 }
 
 #[allow(improper_ctypes)]
@@ -3692,6 +3712,29 @@ mod tests {
         sse2::_mm_store_pd(d, *black_box(&a));
         assert_eq!(vals[offset + 0], 1.0);
         assert_eq!(vals[offset + 1], 2.0);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_storeu_pd() {
+        let mut vals = [0.0f64; 4];
+        let a = f64x2::new(1.0, 2.0);
+
+        let mut ofs = 0;
+        let mut p = vals.as_mut_ptr();
+
+        // Make sure p is *not* aligned to 16-byte boundary
+        if (p as usize) & 0xf == 0 {
+            ofs = 1;
+            p = p.offset(1);
+        }
+
+        sse2::_mm_storeu_pd(p, *black_box(&a));
+
+        if ofs > 0 {
+            assert_eq!(vals[ofs - 1], 0.0);
+        }
+        assert_eq!(vals[ofs + 0], 1.0);
+        assert_eq!(vals[ofs + 1], 2.0);
     }
 
     #[simd_test = "sse2"]
