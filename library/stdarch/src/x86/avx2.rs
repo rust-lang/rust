@@ -1402,14 +1402,317 @@ pub unsafe fn _mm256_subs_epu8(a: u8x32, b: u8x32) -> u8x32 {
     psubusb(a, b)
 }
 
-// TODO __mm256_unpackhi_epi16 (__m256i a, __m256i b)
-// TODO __m256i _mm256_unpackhi_epi32 (__m256i a, __m256i b)
-// TODO __m256i _mm256_unpackhi_epi64 (__m256i a, __m256i b)
-// TODO __m256i _mm256_unpackhi_epi8 (__m256i a, __m256i b)
-// TODO __m256i _mm256_unpacklo_epi16 (__m256i a, __m256i b)
-// TODO __m256i _mm256_unpacklo_epi32 (__m256i a, __m256i b)
-// TODO __m256i _mm256_unpacklo_epi64 (__m256i a, __m256i b)
-// TODO __m256i _mm256_unpacklo_epi8 (__m256i a, __m256i b)
+/// Unpack and interleave 8-bit integers from the high half of each
+/// 128-bit lane in `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i8x32;
+/// use stdsimd::vendor::_mm256_unpackhi_epi8;
+///
+/// let a = i8x32::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
+/// let b = i8x32::new(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,-25,-26,-27,-28,-29,-30,-31);
+///
+/// let c: i8x32;
+/// unsafe {
+///     c = _mm256_unpackhi_epi8(a, b);
+/// }
+///
+/// let expected = i8x32::new(8,-8, 9,-9, 10,-10, 11,-11, 12,-12, 13,-13, 14,-14, 15,-15, 24,-24, 25,-25, 26,-26, 27,-27, 28,-28, 29,-29, 30,-30, 31,-31);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpckhbw))]
+pub unsafe fn _mm256_unpackhi_epi8(a: i8x32, b: i8x32) -> i8x32 {
+    simd_shuffle32(a, b, [8, 40, 9, 41, 10, 42, 11, 43, 12, 44, 13, 45, 14, 46, 15, 47, 24, 56, 25, 57, 26, 58, 27, 59, 28, 60, 29, 61, 30, 62, 31, 63])
+}
+
+/// Unpack and interleave 8-bit integers from the low half of each
+/// 128-bit lane of `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i8x32;
+/// use stdsimd::vendor::_mm256_unpacklo_epi8;
+///
+/// let a = i8x32::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
+/// let b = i8x32::new(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,-25,-26,-27,-28,-29,-30,-31);
+///
+/// let c: i8x32;
+/// unsafe {
+///     c = _mm256_unpacklo_epi8(a, b);
+/// }
+///
+/// let expected = i8x32::new(0, 0, 1,-1, 2,-2, 3,-3, 4,-4, 5,-5, 6,-6, 7,-7, 16,-16, 17,-17, 18,-18, 19,-19, 20,-20, 21,-21, 22,-22, 23,-23);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpcklbw))]
+pub unsafe fn _mm256_unpacklo_epi8(a: i8x32, b: i8x32) -> i8x32 {
+    simd_shuffle32(a, b, [0, 32, 1, 33, 2, 34, 3, 35, 4, 36, 5, 37, 6, 38, 7, 39, 16, 48, 17, 49, 18, 50, 19, 51, 20, 52, 21, 53, 22, 54, 23, 55])
+}
+
+/// Unpack and interleave 16-bit integers from the high half of each
+/// 128-bit lane of `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i16x16;
+/// use stdsimd::vendor::_mm256_unpackhi_epi16;
+///
+/// let a = i16x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+/// let b = i16x16::new(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15);
+///
+/// let c: i16x16;
+/// unsafe {
+///     c = _mm256_unpackhi_epi16(a, b);
+/// }
+///
+/// let expected = i16x16::new(4,-4, 5,-5, 6,-6, 7,-7, 12,-12, 13,-13, 14,-14, 15,-15);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpckhwd))]
+pub unsafe fn _mm256_unpackhi_epi16(a: i16x16, b: i16x16) -> i16x16 {
+    simd_shuffle16(a, b, [4, 20, 5, 21, 6, 22, 7, 23, 12, 28, 13, 29, 14, 30, 15, 31])
+}
+
+/// Unpack and interleave 16-bit integers from the low half of each
+/// 128-bit lane of `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i16x16;
+/// use stdsimd::vendor::_mm256_unpacklo_epi16;
+///
+/// let a = i16x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+/// let b = i16x16::new(0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12,-13,-14,-15);
+///
+/// let c: i16x16;
+/// unsafe {
+///     c = _mm256_unpacklo_epi16(a, b);
+/// }
+///
+/// let expected = i16x16::new(0, 0, 1,-1, 2,-2, 3,-3, 8,-8, 9,-9, 10,-10, 11,-11);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpcklwd))]
+pub unsafe fn _mm256_unpacklo_epi16(a: i16x16, b: i16x16) -> i16x16 {
+    simd_shuffle16(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 8, 24, 9, 25, 10, 26, 11, 27])
+}
+
+/// Unpack and interleave 32-bit integers from the high half of each
+/// 128-bit lane of `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i32x8;
+/// use stdsimd::vendor::_mm256_unpackhi_epi32;
+///
+/// let a = i32x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+/// let b = i32x8::new(0,-1,-2,-3,-4,-5,-6,-7);
+///
+/// let c: i32x8;
+/// unsafe {
+///     c = _mm256_unpackhi_epi32(a, b);
+/// }
+///
+/// let expected = i32x8::new(2,-2, 3,-3, 6,-6, 7,-7);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpckhdq))]
+pub unsafe fn _mm256_unpackhi_epi32(a: i32x8, b: i32x8) -> i32x8 {
+    simd_shuffle8(a, b, [2, 10, 3, 11, 6, 14, 7, 15])
+}
+
+/// Unpack and interleave 32-bit integers from the low half of each
+/// 128-bit lane of `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i32x8;
+/// use stdsimd::vendor::_mm256_unpacklo_epi32;
+///
+/// let a = i32x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+/// let b = i32x8::new(0,-1,-2,-3,-4,-5,-6,-7);
+///
+/// let c: i32x8;
+/// unsafe {
+///     c = _mm256_unpacklo_epi32(a, b);
+/// }
+///
+/// let expected = i32x8::new(0, 0, 1,-1, 4,-4, 5,-5);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpckldq))]
+pub unsafe fn _mm256_unpacklo_epi32(a: i32x8, b: i32x8) -> i32x8 {
+    simd_shuffle8(a, b, [0, 8, 1, 9, 4, 12, 5, 13])
+}
+
+/// Unpack and interleave 64-bit integers from the high half of each
+/// 128-bit lane of `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i64x4;
+/// use stdsimd::vendor::_mm256_unpackhi_epi64;
+///
+/// let a = i64x4::new(0, 1, 2, 3);
+/// let b = i64x4::new(0,-1,-2,-3);
+///
+/// let c: i64x4;
+/// unsafe {
+///     c = _mm256_unpackhi_epi64(a, b);
+/// }
+///
+/// let expected = i64x4::new(1,-1, 3,-3);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpckhqdq))]
+pub unsafe fn _mm256_unpackhi_epi64(a: i64x4, b: i64x4) -> i64x4 {
+    simd_shuffle4(a, b, [1, 5, 3, 7])
+}
+
+/// Unpack and interleave 64-bit integers from the low half of each
+/// 128-bit lane of `a` and `b`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i64x4;
+/// use stdsimd::vendor::_mm256_unpacklo_epi64;
+///
+/// let a = i64x4::new(0, 1, 2, 3);
+/// let b = i64x4::new(0,-1,-2,-3);
+///
+/// let c: i64x4;
+/// unsafe {
+///     c = _mm256_unpacklo_epi64(a, b);
+/// }
+///
+/// let expected = i64x4::new(0, 0, 2,-2);
+/// assert_eq!(c, expected);
+///
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpunpcklqdq))]
+pub unsafe fn _mm256_unpacklo_epi64(a: i64x4, b: i64x4) -> i64x4 {
+    simd_shuffle4(a, b, [0, 4, 2, 6])
+}
 
 /// Compute the bitwise XOR of 256 bits (representing integer data)
 /// in `a` and `b`
