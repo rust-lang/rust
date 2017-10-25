@@ -860,10 +860,18 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
             // have a hash in the name, but there's a version of this file in
             // the `deps` folder which *does* have a hash in the name. That's
             // the one we'll want to we'll probe for it later.
-            toplevel.push((filename.file_stem().unwrap()
-                                    .to_str().unwrap().to_string(),
-                            filename.extension().unwrap().to_owned()
-                                    .to_str().unwrap().to_string()));
+            //
+            // We do not use `Path::file_stem` or `Path::extension` here,
+            // because some generated files may have multiple extensions e.g.
+            // `std-<hash>.dll.lib` on Windows. The aforementioned methods only
+            // split the file name by the last extension (`.lib`) while we need
+            // to split by all extensions (`.dll.lib`).
+            let filename = filename.file_name().unwrap().to_str().unwrap();
+            let mut parts = filename.splitn(2, '.');
+            let file_stem = parts.next().unwrap().to_owned();
+            let extension = parts.next().unwrap().to_owned();
+
+            toplevel.push((file_stem, extension));
         }
     }
 

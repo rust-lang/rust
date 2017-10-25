@@ -31,4 +31,4 @@ ENV TARGETS=asmjs-unknown-emscripten
 
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS
 
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS src/test/run-pass
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS

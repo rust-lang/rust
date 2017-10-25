@@ -511,3 +511,7 @@ pub fn home_dir() -> Option<PathBuf> {
 pub fn exit(code: i32) -> ! {
     unsafe { libc::exit(code as c_int) }
 }
+
+pub fn getpid() -> u32 {
+    unsafe { libc::getpid() as u32 }
+}

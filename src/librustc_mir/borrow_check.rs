@@ -1161,7 +1161,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         self.tcx.cannot_reassign_immutable(span,
                                            &self.describe_lvalue(lvalue),
                                            Origin::Mir)
-                .span_label(span, "re-assignment of immutable variable")
+                .span_label(span, "cannot assign twice to immutable variable")
                 .span_label(assigned_span, format!("first assignment to `{}`",
                                                    self.describe_lvalue(lvalue)))
                 .emit();
