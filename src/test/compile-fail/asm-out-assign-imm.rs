@@ -27,8 +27,8 @@ pub fn main() {
     foo(x);
     unsafe {
         asm!("mov $1, $0" : "=r"(x) : "r"(5));
-        //~^ ERROR re-assignment of immutable variable `x`
-        //~| NOTE re-assignment of immutable
+        //~^ ERROR cannot assign twice to immutable variable `x`
+        //~| NOTE cannot assign twice to immutable
     }
     foo(x);
 }
