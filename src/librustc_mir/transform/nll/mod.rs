@@ -22,6 +22,7 @@ use util as mir_util;
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+mod subtype;
 
 mod region_infer;
 use self::region_infer::RegionInferenceContext;

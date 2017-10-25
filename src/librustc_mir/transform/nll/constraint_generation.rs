@@ -22,6 +22,7 @@ use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::DUMMY_SP;
 
+use super::subtype;
 use super::LivenessResults;
 use super::ToRegionIndex;
 use super::region_infer::RegionInferenceContext;
@@ -239,6 +240,9 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
                        block: BasicBlock,
                        statement: &Statement<'tcx>,
                        location: Location) {
+
+        debug!("visit_statement(statement={:?}, location={:?})", statement, location);
+
         // Look for a statement like:
         //
         //     D = & L
@@ -249,6 +253,14 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
             if let Rvalue::Ref(region, bk, ref borrowed_lv) = *rv {
                 self.add_borrow_constraint(location, destination_lv, region, bk, borrowed_lv);
                 self.add_reborrow_constraint(location, region, borrowed_lv);
+            }
+
+            let tcx = self.infcx.tcx;
+            let destination_ty = destination_lv.ty(self.mir, tcx).to_ty(tcx);
+            let rv_ty = rv.ty(self.mir, tcx);
+
+            for (a, b) in subtype::outlives_pairs(tcx, rv_ty, destination_ty) {
+                self.regioncx.add_outlives(a, b, location.successor_within_block());
             }
         }
 
