@@ -12,6 +12,12 @@ fn main() {
         return;
     }
 
+    // Forcibly enable memory intrinsics on wasm32 as we don't have a libc to
+    // provide them.
+    if target.contains("wasm32") {
+        println!("cargo:rustc-cfg=feature=\"mem\"");
+    }
+
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
     // target triple. This is usually correct for our built-in targets but can break in presence of
     // custom targets, which can have arbitrary names.
@@ -25,9 +31,13 @@ fn main() {
     // mangling names though we assume that we're also in test mode so we don't
     // build anything and we rely on the upstream implementation of compiler-rt
     // functions
-    if !cfg!(feature = "mangled-names") {
-        #[cfg(feature = "c")]
-        c::compile(&llvm_target);
+    if !cfg!(feature = "mangled-names") && cfg!(feature = "c") {
+        // no C compiler for wasm
+        if !target.contains("wasm32") {
+            #[cfg(feature = "c")]
+            c::compile(&llvm_target);
+            println!("cargo:rustc-cfg=use_c");
+        }
     }
 
     // To compile intrinsics.rs for thumb targets, where there is no libc
