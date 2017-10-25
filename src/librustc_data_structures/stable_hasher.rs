@@ -132,8 +132,11 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.state.write_usize(i.to_le());
-        self.bytes_hashed += ::std::mem::size_of::<usize>() as u64;
+        // Always treat usize as u64 so we get the same results on 32 and 64 bit
+        // platforms. This is important for symbol hashes when cross compiling,
+        // for example.
+        self.state.write_u64((i as u64).to_le());
+        self.bytes_hashed += 8;
     }
 
     #[inline]
@@ -168,8 +171,11 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        self.state.write_isize(i.to_le());
-        self.bytes_hashed += ::std::mem::size_of::<isize>() as u64;
+        // Always treat isize as i64 so we get the same results on 32 and 64 bit
+        // platforms. This is important for symbol hashes when cross compiling,
+        // for example.
+        self.state.write_i64((i as i64).to_le());
+        self.bytes_hashed += 8;
     }
 }
 
