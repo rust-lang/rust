@@ -425,8 +425,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                     context, lvalue_span, borrow),
                             ReadKind::Borrow(bk) => {
                                 let end_issued_loan_span =
-                                    flow_state.borrows.base_results.operator().region_span(
-                                        &borrow.region).end_point();
+                                    flow_state.borrows.base_results.operator().opt_region_end_span(
+                                        &borrow.region);
                                 this.report_conflicting_borrow(
                                     context, common_prefix, lvalue_span, bk,
                                     &borrow, end_issued_loan_span)
@@ -438,8 +438,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         match kind {
                             WriteKind::MutableBorrow(bk) => {
                                 let end_issued_loan_span =
-                                    flow_state.borrows.base_results.operator().region_span(
-                                        &borrow.region).end_point();
+                                    flow_state.borrows.base_results.operator().opt_region_end_span(
+                                        &borrow.region);
                                 this.report_conflicting_borrow(
                                     context, common_prefix, lvalue_span, bk,
                                     &borrow, end_issued_loan_span)
@@ -1101,7 +1101,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                  (lvalue, span): (&Lvalue, Span),
                                  gen_borrow_kind: BorrowKind,
                                  issued_borrow: &BorrowData,
-                                 end_issued_loan_span: Span) {
+                                 end_issued_loan_span: Option<Span>) {
         use self::prefixes::IsPrefixOf;
 
         assert!(common_prefix.is_prefix_of(lvalue));

@@ -116,10 +116,13 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         &self.borrows[idx].location
     }
 
-    pub fn region_span(&self, region: &Region) -> Span {
+    /// Returns the span for the "end point" given region. This will
+    /// return `None` if NLL is enabled, since that concept has no
+    /// meaning there.  Otherwise, it should return some.
+    pub fn opt_region_end_span(&self, region: &Region) -> Option<Span> {
         let opt_span = self.region_span_map.get(region);
         assert!(opt_span.is_some(), "end region not found for {:?}", region);
-        *opt_span.unwrap()
+        opt_span.map(|s| s.end_point())
     }
 }
 
