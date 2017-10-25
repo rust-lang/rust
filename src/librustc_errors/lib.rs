@@ -18,10 +18,12 @@
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(conservative_impl_trait)]
+#![feature(i128_type)]
 
 extern crate term;
 #[cfg(unix)]
 extern crate libc;
+extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
 
@@ -30,6 +32,9 @@ pub use emitter::ColorConfig;
 use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
+
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_hasher::StableHasher;
 
 use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
@@ -47,7 +52,7 @@ mod lock;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
@@ -61,7 +66,7 @@ pub enum RenderSpan {
     Suggestion(CodeSuggestion),
 }
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
     /// applicable suggestions
@@ -86,7 +91,7 @@ pub struct CodeSuggestion {
     pub show_code_when_inline: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 /// See the docs on `CodeSuggestion::substitutions`
 pub struct Substitution {
     pub span: Span,
@@ -271,6 +276,11 @@ pub struct Handler {
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
     tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
+
+    // This set contains a hash of every diagnostic that has been emitted by
+    // this handler. These hashes is used to avoid emitting the same error
+    // twice.
+    emitted_diagnostics: RefCell<FxHashSet<u128>>,
 }
 
 impl Handler {
@@ -295,6 +305,7 @@ impl Handler {
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
             tracked_diagnostics: RefCell::new(None),
+            emitted_diagnostics: RefCell::new(FxHashSet()),
         }
     }
 
@@ -559,15 +570,29 @@ impl Handler {
     }
 
     fn emit_db(&self, db: &DiagnosticBuilder) {
+        let diagnostic = &**db;
+
         if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
-            list.push((**db).clone());
+            list.push(diagnostic.clone());
         }
-        self.emitter.borrow_mut().emit(db);
+
+        let diagnostic_hash = {
+            use std::hash::Hash;
+            let mut hasher = StableHasher::new();
+            diagnostic.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        // Only emit the diagnostic if we haven't already emitted an equivalent
+        // one:
+        if self.emitted_diagnostics.borrow_mut().insert(diagnostic_hash) {
+            self.emitter.borrow_mut().emit(db);
+        }
     }
 }
 
 
-#[derive(Copy, PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, PartialEq, Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum Level {
     Bug,
     Fatal,
