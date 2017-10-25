@@ -20,7 +20,7 @@
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use ty::subst::{Subst, Substs};
@@ -335,7 +335,12 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                                             |ty| format!(" for `{}`", ty))));
                     }
                     Err(cname) => {
-                        err.note(&format!("conflicting implementation in crate `{}`", cname));
+                        let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
+                            Some(s) => format!(
+                                "conflicting implementation in crate `{}`:\n- {}", cname, s),
+                            None => format!("conflicting implementation in crate `{}`", cname),
+                        };
+                        err.note(&msg);
                     }
                 }
 
@@ -352,4 +357,57 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
     }
 
     Rc::new(sg)
+}
+
+/// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
+/// string.
+fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
+    use std::fmt::Write;
+
+    let trait_ref = if let Some(tr) = tcx.impl_trait_ref(impl_def_id) {
+        tr
+    } else {
+        return None;
+    };
+
+    let mut w = "impl".to_owned();
+
+    let substs = Substs::identity_for_item(tcx, impl_def_id);
+
+    // FIXME: Currently only handles ?Sized.
+    //        Needs to support ?Move and ?DynSized when they are implemented.
+    let mut types_without_default_bounds = FxHashSet::default();
+    let sized_trait = tcx.lang_items().sized_trait();
+
+    if !substs.is_noop() {
+        types_without_default_bounds.extend(substs.types());
+        w.push('<');
+        w.push_str(&substs.iter().map(|k| k.to_string()).collect::<Vec<_>>().join(", "));
+        w.push('>');
+    }
+
+    write!(w, " {} for {}", trait_ref, tcx.type_of(impl_def_id)).unwrap();
+
+    // The predicates will contain default bounds like `T: Sized`. We need to
+    // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
+    let predicates = tcx.predicates_of(impl_def_id).predicates;
+    let mut pretty_predicates = Vec::with_capacity(predicates.len());
+    for p in predicates {
+        if let Some(poly_trait_ref) = p.to_opt_poly_trait_ref() {
+            if Some(poly_trait_ref.def_id()) == sized_trait {
+                types_without_default_bounds.remove(poly_trait_ref.self_ty());
+                continue;
+            }
+        }
+        pretty_predicates.push(p.to_string());
+    }
+    for ty in types_without_default_bounds {
+        pretty_predicates.push(format!("{}: ?Sized", ty));
+    }
+    if !pretty_predicates.is_empty() {
+        write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
+    }
+
+    w.push(';');
+    Some(w)
 }

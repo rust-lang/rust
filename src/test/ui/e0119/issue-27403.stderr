@@ -1,0 +1,16 @@
+error[E0119]: conflicting implementations of trait `std::convert::Into<_>` for type `GenX<_>`:
+  --> $DIR/issue-27403.rs:15:1
+   |
+15 | / impl<S> Into<S> for GenX<S> {
+16 | |     fn into(self) -> S {
+17 | |         self.inner
+18 | |     }
+19 | | }
+   | |_^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T, U> std::convert::Into<U> for T
+             where U: std::convert::From<T>;
+
+error: aborting due to previous error
+
