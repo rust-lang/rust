@@ -229,13 +229,14 @@ mod contents {
 
         let flags = align_to_flags(new_align);
         let ptr = rallocx(ptr as *mut c_void, new_size, flags) as *mut u8;
-        let alloc_size = sallocx(ptr as *mut c_void, flags);
         if ptr.is_null() {
             let layout = Layout::from_size_align_unchecked(new_size, new_align);
             ptr::write(err as *mut AllocErr,
                        AllocErr::Exhausted { request: layout });
+        } else {
+            let alloc_size = sallocx(ptr as *mut c_void, flags);
+            *excess = alloc_size;
         }
-        *excess = alloc_size;
         ptr
     }
 
