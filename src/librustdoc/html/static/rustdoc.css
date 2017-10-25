@@ -820,8 +820,8 @@ span.since {
 		width: 100%;
 	}
 
-	.content .out-of-band {
-		display: none;
+	.content h4 > .out-of-band {
+		position: inherit;
 	}
 
 	.toggle-wrapper > .collapse-toggle {
@@ -834,6 +834,10 @@ span.since {
 
 	#search {
 		margin-left: 0;
+	}
+
+	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+		display: flex;
 	}
 }
 

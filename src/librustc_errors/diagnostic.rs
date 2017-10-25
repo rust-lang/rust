@@ -229,6 +229,7 @@ impl Diagnostic {
     /// "try adding parentheses: `(tup.0).1`"
     ///
     /// The message
+    ///
     /// * should not end in any punctuation (a `:` is added automatically)
     /// * should not be a question
     /// * should not contain any parts like "the following", "as shown"
@@ -248,6 +249,7 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message with multiple suggested edits of the code.
     pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
