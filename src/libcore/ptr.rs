@@ -2083,6 +2083,24 @@ impl<T: ?Sized> PartialEq for *mut T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Eq for *mut T {}
 
+#[unstable(feature = "ptr_dangling", issue = "45557")]
+#[rustc_const_unstable(feature = "const_ptr_dangling")]
+/// Returns a const raw pointer that is dangling, but well-aligned and not null.
+///
+/// This is used where a non-null pointer is required.
+pub const fn dangling<T>() -> *const T {
+    mem::align_of::<T>() as *const T
+}
+
+#[unstable(feature = "ptr_dangling", issue = "45557")]
+#[rustc_const_unstable(feature = "const_ptr_dangling_mut")]
+/// Returns a mut raw pointer that is dangling, but well-aligned and not null.
+///
+/// This is used where a non-null pointer is required.
+pub const fn dangling_mut<T>() -> *mut T {
+    mem::align_of::<T>() as *mut T
+}
+
 /// Compare raw pointers for equality.
 ///
 /// This is the same as using the `==` operator, but less generic:
@@ -2325,8 +2343,7 @@ impl<T: Sized> Unique<T> {
     /// `Vec::new` does.
     pub fn empty() -> Self {
         unsafe {
-            let ptr = mem::align_of::<T>() as *mut T;
-            Unique::new_unchecked(ptr)
+            Unique::new_unchecked(dangling_mut())
         }
     }
 }
@@ -2460,8 +2477,7 @@ impl<T: Sized> Shared<T> {
     /// `Vec::new` does.
     pub fn empty() -> Self {
         unsafe {
-            let ptr = mem::align_of::<T>() as *mut T;
-            Shared::new_unchecked(ptr)
+            Shared::new_unchecked(dangling_mut())
         }
     }
 }

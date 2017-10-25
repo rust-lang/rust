@@ -2344,7 +2344,7 @@ impl<T> Iterator for IntoIter<T> {
 
                     // Use a non-null pointer value
                     // (self.ptr might be null because of wrapping)
-                    Some(ptr::read(1 as *mut T))
+                    Some(ptr::read(ptr::dangling()))
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -2384,7 +2384,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 
                     // Use a non-null pointer value
                     // (self.end might be null because of wrapping)
-                    Some(ptr::read(1 as *mut T))
+                    Some(ptr::read(ptr::dangling()))
                 } else {
                     self.end = self.end.offset(-1);
 
