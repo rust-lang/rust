@@ -232,7 +232,7 @@ pub trait BorrowckErrors {
                                  -> DiagnosticBuilder
     {
         struct_span_err!(self, span, E0384,
-                         "re-assignment of immutable variable `{}`{OGN}",
+                         "cannot assign twice to immutable variable `{}`{OGN}",
                          desc, OGN=o)
     }
 
