@@ -217,13 +217,14 @@ fn amortized_new_capacity(elem_size: usize, current_capacity: usize,
     let growth_capacity = match current_capacity {
         // Empty vector => at least 64 bytes
         //
-        // [OLD]:
-        // 0 => if elem_size > (!0) / 8 { 1 } else { 4 },
+        // [Original]:
+        0 => if elem_size > (!0) / 8 { 1 } else { 4 },
         // [NEW]:
         // 0 => (64 / elem_size).max(1),
         // [NEW 2]:
-        0 => (32 / elem_size).max(4),
+        // 0 => (32 / elem_size).max(4),
         //
+
         // Small and large vectors (<= 4096 bytes, and >= 4096 * 32 bytes):
         //
         // FIXME: jemalloc specific behavior, allocators should provide a
@@ -231,10 +232,14 @@ fn amortized_new_capacity(elem_size: usize, current_capacity: usize,
         //
         // jemalloc can never grow in place small blocks but blocks larger
         // than or equal to 4096 bytes can be expanded in place:
-        c if c <  4096 / elem_size => 2 * c,
-        c if c > 4096 * 32 / elem_size => 2 * c,
+        // c if c <  4096 / elem_size => 2 * c,
+        // c if c > 4096 * 32 / elem_size => 2 * c,
+
         // Medium sized vectors in the [4096, 4096 * 32) bytes range:
-        c => c / 2 * 3
+        // c => c / 2 * 3,
+
+        // [Original]
+        c => 2 * c,
     };
     cmp::max(growth_capacity,
              current_capacity.checked_add(capacity_increase).unwrap())
