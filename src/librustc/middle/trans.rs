@@ -17,24 +17,24 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasherResult,
 use ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
-pub enum TransItem<'tcx> {
+pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(NodeId),
     GlobalAsm(NodeId),
 }
 
-impl<'tcx> HashStable<StableHashingContext<'tcx>> for TransItem<'tcx> {
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for MonoItem<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                            hcx: &mut StableHashingContext<'tcx>,
                                            hasher: &mut StableHasher<W>) {
         ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            TransItem::Fn(ref instance) => {
+            MonoItem::Fn(ref instance) => {
                 instance.hash_stable(hcx, hasher);
             }
-            TransItem::Static(node_id)    |
-            TransItem::GlobalAsm(node_id) => {
+            MonoItem::Static(node_id)    |
+            MonoItem::GlobalAsm(node_id) => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                     node_id.hash_stable(hcx, hasher);
                 })
@@ -49,7 +49,7 @@ pub struct CodegenUnit<'tcx> {
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: InternedString,
-    items: FxHashMap<TransItem<'tcx>, (Linkage, Visibility)>,
+    items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -110,12 +110,12 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.name = name;
     }
 
-    pub fn items(&self) -> &FxHashMap<TransItem<'tcx>, (Linkage, Visibility)> {
+    pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &self.items
     }
 
     pub fn items_mut(&mut self)
-        -> &mut FxHashMap<TransItem<'tcx>, (Linkage, Visibility)>
+        -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>
     {
         &mut self.items
     }

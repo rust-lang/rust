@@ -28,7 +28,7 @@ use syntax::attr::{self, InlineAttr};
 use std::fmt::{self, Write};
 use std::iter;
 
-pub use rustc::middle::trans::TransItem;
+pub use rustc::middle::trans::MonoItem;
 
 pub fn linkage_by_name(name: &str) -> Option<Linkage> {
     use rustc::middle::trans::Linkage::*;
@@ -83,7 +83,7 @@ pub enum InstantiationMode {
 }
 
 pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
-    fn as_trans_item(&self) -> &TransItem<'tcx>;
+    fn as_trans_item(&self) -> &MonoItem<'tcx>;
 
     fn instantiation_mode(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -94,7 +94,7 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
             });
 
         match *self.as_trans_item() {
-            TransItem::Fn(ref instance) => {
+            MonoItem::Fn(ref instance) => {
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||
@@ -123,10 +123,10 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
                     }
                 }
             }
-            TransItem::Static(..) => {
+            MonoItem::Static(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
             }
-            TransItem::GlobalAsm(..) => {
+            MonoItem::GlobalAsm(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
             }
         }
@@ -134,9 +134,9 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
 
     fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Linkage> {
         let def_id = match *self.as_trans_item() {
-            TransItem::Fn(ref instance) => instance.def_id(),
-            TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
-            TransItem::GlobalAsm(..) => return None,
+            MonoItem::Fn(ref instance) => instance.def_id(),
+            MonoItem::Static(node_id) => tcx.hir.local_def_id(node_id),
+            MonoItem::GlobalAsm(..) => return None,
         };
 
         let attributes = tcx.get_attrs(def_id);
@@ -184,10 +184,10 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
     fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self.as_trans_item() {
-            TransItem::Fn(ref instance) => (instance.def_id(), instance.substs),
-            TransItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
+            MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
+            MonoItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
             // global asm never has predicates
-            TransItem::GlobalAsm(..) => return true
+            MonoItem::GlobalAsm(..) => return true
         };
 
         let predicates = tcx.predicates_of(def_id).predicates.subst(tcx, substs);
@@ -198,15 +198,15 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
         let hir_map = &tcx.hir;
 
         return match *self.as_trans_item() {
-            TransItem::Fn(instance) => {
+            MonoItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance)
             },
-            TransItem::Static(node_id) => {
+            MonoItem::Static(node_id) => {
                 let def_id = hir_map.local_def_id(node_id);
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance)
             },
-            TransItem::GlobalAsm(..) => {
+            MonoItem::GlobalAsm(..) => {
                 "global_asm".to_string()
             }
         };
@@ -224,8 +224,8 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
     }
 }
 
-impl<'a, 'tcx> TransItemExt<'a, 'tcx> for TransItem<'tcx> {
-    fn as_trans_item(&self) -> &TransItem<'tcx> {
+impl<'a, 'tcx> TransItemExt<'a, 'tcx> for MonoItem<'tcx> {
+    fn as_trans_item(&self) -> &MonoItem<'tcx> {
         self
     }
 }

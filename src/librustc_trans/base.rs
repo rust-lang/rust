@@ -67,7 +67,7 @@ use monomorphize::Instance;
 use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
-use trans_item::{TransItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
+use trans_item::{MonoItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
@@ -530,7 +530,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
     let instance = Instance::mono(ccx.tcx(), main_def_id);
 
-    if !ccx.codegen_unit().contains_item(&TransItem::Fn(instance)) {
+    if !ccx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
         return;
@@ -943,7 +943,7 @@ fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 #[inline(never)] // give this a place in the profiler
 fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_items: I)
-    where I: Iterator<Item=&'a TransItem<'tcx>>
+    where I: Iterator<Item=&'a MonoItem<'tcx>>
 {
     let mut symbols: Vec<_> = trans_items.map(|trans_item| {
         (trans_item, trans_item.symbol_name(tcx))
@@ -1042,7 +1042,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 
     let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
         match *trans_item {
-            TransItem::Fn(ref instance) => Some(instance.def_id()),
+            MonoItem::Fn(ref instance) => Some(instance.def_id()),
             _ => None,
         }
     }).collect();

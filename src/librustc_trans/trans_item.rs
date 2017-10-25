@@ -34,7 +34,7 @@ use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 use std::fmt;
 
-pub use rustc::middle::trans::TransItem;
+pub use rustc::middle::trans::MonoItem;
 
 pub use rustc_mir::monomorphize::mono_item::*;
 pub use rustc_mir::monomorphize::mono_item::TransItemExt as BaseTransItemExt;
@@ -47,7 +47,7 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
                ccx.codegen_unit().name());
 
         match *self.as_trans_item() {
-            TransItem::Static(node_id) => {
+            MonoItem::Static(node_id) => {
                 let tcx = ccx.tcx();
                 let item = tcx.hir.expect_item(node_id);
                 if let hir::ItemStatic(_, m, _) = item.node {
@@ -61,7 +61,7 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
                     span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
                 }
             }
-            TransItem::GlobalAsm(node_id) => {
+            MonoItem::GlobalAsm(node_id) => {
                 let item = ccx.tcx().hir.expect_item(node_id);
                 if let hir::ItemGlobalAsm(ref ga) = item.node {
                     asm::trans_global_asm(ccx, ga);
@@ -69,7 +69,7 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
                     span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
                 }
             }
-            TransItem::Fn(instance) => {
+            MonoItem::Fn(instance) => {
                 base::trans_instance(&ccx, instance);
             }
         }
@@ -94,13 +94,13 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
         debug!("symbol {}", &symbol_name);
 
         match *self.as_trans_item() {
-            TransItem::Static(node_id) => {
+            MonoItem::Static(node_id) => {
                 predefine_static(ccx, node_id, linkage, visibility, &symbol_name);
             }
-            TransItem::Fn(instance) => {
+            MonoItem::Fn(instance) => {
                 predefine_fn(ccx, instance, linkage, visibility, &symbol_name);
             }
-            TransItem::GlobalAsm(..) => {}
+            MonoItem::GlobalAsm(..) => {}
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
@@ -111,12 +111,12 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
 
     fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
         match *self.as_trans_item() {
-            TransItem::Fn(instance) => tcx.symbol_name(instance),
-            TransItem::Static(node_id) => {
+            MonoItem::Fn(instance) => tcx.symbol_name(instance),
+            MonoItem::Static(node_id) => {
                 let def_id = tcx.hir.local_def_id(node_id);
                 tcx.symbol_name(Instance::mono(tcx, def_id))
             }
-            TransItem::GlobalAsm(node_id) => {
+            MonoItem::GlobalAsm(node_id) => {
                 let def_id = tcx.hir.local_def_id(node_id);
                 ty::SymbolName {
                     name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
@@ -127,11 +127,11 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
 
     fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
         match *self.as_trans_item() {
-            TransItem::Fn(Instance { def, .. }) => {
+            MonoItem::Fn(Instance { def, .. }) => {
                 tcx.hir.as_local_node_id(def.def_id())
             }
-            TransItem::Static(node_id) |
-            TransItem::GlobalAsm(node_id) => {
+            MonoItem::Static(node_id) |
+            MonoItem::GlobalAsm(node_id) => {
                 Some(node_id)
             }
         }.map(|node_id| tcx.hir.span(node_id))
@@ -139,32 +139,32 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
 
     fn is_generic_fn(&self) -> bool {
         match *self.as_trans_item() {
-            TransItem::Fn(ref instance) => {
+            MonoItem::Fn(ref instance) => {
                 instance.substs.types().next().is_some()
             }
-            TransItem::Static(..) |
-            TransItem::GlobalAsm(..) => false,
+            MonoItem::Static(..) |
+            MonoItem::GlobalAsm(..) => false,
         }
     }
 
     fn to_raw_string(&self) -> String {
         match *self.as_trans_item() {
-            TransItem::Fn(instance) => {
+            MonoItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                          instance.def,
                          instance.substs.as_ptr() as usize)
             }
-            TransItem::Static(id) => {
+            MonoItem::Static(id) => {
                 format!("Static({:?})", id)
             }
-            TransItem::GlobalAsm(id) => {
+            MonoItem::GlobalAsm(id) => {
                 format!("GlobalAsm({:?})", id)
             }
         }
     }
 }
 
-impl<'a, 'tcx> TransItemExt<'a, 'tcx> for TransItem<'tcx> {}
+impl<'a, 'tcx> TransItemExt<'a, 'tcx> for MonoItem<'tcx> {}
 
 fn predefine_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               node_id: ast::NodeId,

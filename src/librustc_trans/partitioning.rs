@@ -114,7 +114,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
-use trans_item::{TransItem, BaseTransItemExt, TransItemExt, InstantiationMode};
+use trans_item::{MonoItem, BaseTransItemExt, TransItemExt, InstantiationMode};
 
 pub use rustc::middle::trans::CodegenUnit;
 
@@ -129,7 +129,7 @@ pub enum PartitioningStrategy {
 pub trait CodegenUnitExt<'tcx> {
     fn as_codegen_unit(&self) -> &CodegenUnit<'tcx>;
 
-    fn contains_item(&self, item: &TransItem<'tcx>) -> bool {
+    fn contains_item(&self, item: &MonoItem<'tcx>) -> bool {
         self.items().contains_key(item)
     }
 
@@ -139,7 +139,7 @@ pub trait CodegenUnitExt<'tcx> {
         &self.as_codegen_unit().name()
     }
 
-    fn items(&self) -> &FxHashMap<TransItem<'tcx>, (Linkage, Visibility)> {
+    fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &self.as_codegen_unit().items()
     }
 
@@ -149,17 +149,17 @@ pub trait CodegenUnitExt<'tcx> {
 
     fn items_in_deterministic_order<'a>(&self,
                                         tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                        -> Vec<(TransItem<'tcx>,
-                                               (Linkage, Visibility))> {
+                                        -> Vec<(MonoItem<'tcx>,
+                                                (Linkage, Visibility))> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
         pub struct ItemSortKey(Option<NodeId>, ty::SymbolName);
 
         fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   item: TransItem<'tcx>) -> ItemSortKey {
+                                   item: MonoItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
-                TransItem::Fn(ref instance) => {
+                MonoItem::Fn(ref instance) => {
                     match instance.def {
                         // We only want to take NodeIds of user-defined
                         // instances into account. The others don't matter for
@@ -178,8 +178,8 @@ pub trait CodegenUnitExt<'tcx> {
                         }
                     }
                 }
-                TransItem::Static(node_id) |
-                TransItem::GlobalAsm(node_id) => {
+                MonoItem::Static(node_id) |
+                MonoItem::GlobalAsm(node_id) => {
                     Some(node_id)
                 }
             }, item.symbol_name(tcx))
@@ -207,7 +207,7 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               strategy: PartitioningStrategy,
                               inlining_map: &InliningMap<'tcx>)
                               -> Vec<CodegenUnit<'tcx>>
-    where I: Iterator<Item = TransItem<'tcx>>
+    where I: Iterator<Item = MonoItem<'tcx>>
 {
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
@@ -254,8 +254,8 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 struct PreInliningPartitioning<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
-    roots: FxHashSet<TransItem<'tcx>>,
-    internalization_candidates: FxHashSet<TransItem<'tcx>>,
+    roots: FxHashSet<MonoItem<'tcx>>,
+    internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
 /// For symbol internalization, we need to know whether a symbol/trans-item is
@@ -269,14 +269,14 @@ enum TransItemPlacement {
 
 struct PostInliningPartitioning<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
-    trans_item_placements: FxHashMap<TransItem<'tcx>, TransItemPlacement>,
-    internalization_candidates: FxHashSet<TransItem<'tcx>>,
+    trans_item_placements: FxHashMap<MonoItem<'tcx>, TransItemPlacement>,
+    internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
 fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              trans_items: I)
                                              -> PreInliningPartitioning<'tcx>
-    where I: Iterator<Item = TransItem<'tcx>>
+    where I: Iterator<Item = MonoItem<'tcx>>
 {
     let mut roots = FxHashSet();
     let mut codegen_units = FxHashMap();
@@ -309,7 +309,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
             None => {
                 match trans_item {
-                    TransItem::Fn(ref instance) => {
+                    MonoItem::Fn(ref instance) => {
                         let visibility = match instance.def {
                             InstanceDef::Item(def_id) => {
                                 if def_id.is_local() {
@@ -333,8 +333,8 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         };
                         (Linkage::External, visibility)
                     }
-                    TransItem::Static(node_id) |
-                    TransItem::GlobalAsm(node_id) => {
+                    MonoItem::Static(node_id) |
+                    MonoItem::GlobalAsm(node_id) => {
                         let def_id = tcx.hir.local_def_id(node_id);
                         let visibility = if tcx.is_exported_symbol(def_id) {
                             Visibility::Default
@@ -469,9 +469,9 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
         internalization_candidates,
     };
 
-    fn follow_inlining<'tcx>(trans_item: TransItem<'tcx>,
+    fn follow_inlining<'tcx>(trans_item: MonoItem<'tcx>,
                              inlining_map: &InliningMap<'tcx>,
-                             visited: &mut FxHashSet<TransItem<'tcx>>) {
+                             visited: &mut FxHashSet<MonoItem<'tcx>>) {
         if !visited.insert(trans_item) {
             return;
         }
@@ -501,7 +501,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Build a map from every translation item to all the translation items that
     // reference it.
-    let mut accessor_map: FxHashMap<TransItem<'tcx>, Vec<TransItem<'tcx>>> = FxHashMap();
+    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = FxHashMap();
     inlining_map.iter_accesses(|accessor, accessees| {
         for accessee in accessees {
             accessor_map.entry(*accessee)
@@ -548,10 +548,10 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 trans_item: TransItem<'tcx>)
+                                                 trans_item: MonoItem<'tcx>)
                                                  -> Option<DefId> {
     match trans_item {
-        TransItem::Fn(instance) => {
+        MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceDef::Item(def_id) => def_id,
                 ty::InstanceDef::FnPtrShim(..) |
@@ -583,8 +583,8 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             Some(def_id)
         }
-        TransItem::Static(node_id) |
-        TransItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
+        MonoItem::Static(node_id) |
+        MonoItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }
 

@@ -16,7 +16,7 @@ use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
 use debuginfo;
 use base;
-use trans_item::{TransItem, TransItemExt};
+use trans_item::{MonoItem, TransItemExt};
 use common::{self, CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
@@ -118,11 +118,11 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
             }) => {
-                let sym = TransItem::Static(id).symbol_name(ccx.tcx());
+                let sym = MonoItem::Static(id).symbol_name(ccx.tcx());
 
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
                                                          .items()
-                                                         .contains_key(&TransItem::Static(id));
+                                                         .contains_key(&MonoItem::Static(id));
                 assert!(!defined_in_current_codegen_unit);
 
                 if declare::get_declared_value(ccx, &sym[..]).is_some() {
