@@ -55,7 +55,7 @@ use attributes;
 use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
-use rustc_mir::monomorphize::collector::{self, TransItemCollectionMode};
+use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use common::{self, C_struct_in_context, C_array, CrateContext, val_ty};
 use consts;
 use context::{self, LocalCrateContext, SharedCrateContext};
@@ -1002,7 +1002,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
             let mode_string = s.to_lowercase();
             let mode_string = mode_string.trim();
             if mode_string == "eager" {
-                TransItemCollectionMode::Eager
+                MonoItemCollectionMode::Eager
             } else {
                 if mode_string != "lazy" {
                     let message = format!("Unknown codegen-item collection mode '{}'. \
@@ -1011,10 +1011,10 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
                     tcx.sess.warn(&message);
                 }
 
-                TransItemCollectionMode::Lazy
+                MonoItemCollectionMode::Lazy
             }
         }
-        None => TransItemCollectionMode::Lazy
+        None => MonoItemCollectionMode::Lazy
     };
 
     let (items, inlining_map) =

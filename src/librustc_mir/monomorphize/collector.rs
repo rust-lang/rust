@@ -214,7 +214,7 @@ use rustc_data_structures::bitvec::BitVector;
 use syntax::attr;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub enum TransItemCollectionMode {
+pub enum MonoItemCollectionMode {
     Eager,
     Lazy
 }
@@ -296,7 +296,7 @@ impl<'tcx> InliningMap<'tcx> {
 }
 
 pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 mode: TransItemCollectionMode)
+                                                 mode: MonoItemCollectionMode)
                                                  -> (FxHashSet<MonoItem<'tcx>>,
                                                      InliningMap<'tcx>) {
     let roots = collect_roots(tcx, mode);
@@ -320,7 +320,7 @@ pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           mode: TransItemCollectionMode)
+                           mode: MonoItemCollectionMode)
                            -> Vec<MonoItem<'tcx>> {
     debug!("Collecting roots");
     let mut roots = Vec::new();
@@ -880,7 +880,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mode: TransItemCollectionMode,
+    mode: MonoItemCollectionMode,
     output: &'b mut Vec<MonoItem<'tcx>>,
     entry_fn: Option<DefId>,
 }
@@ -900,7 +900,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             }
 
             hir::ItemImpl(..) => {
-                if self.mode == TransItemCollectionMode::Eager {
+                if self.mode == MonoItemCollectionMode::Eager {
                     create_trans_items_for_default_impls(self.tcx,
                                                          item,
                                                          self.output);
@@ -911,7 +911,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) => {
                 if !generics.is_parameterized() {
-                    if self.mode == TransItemCollectionMode::Eager {
+                    if self.mode == MonoItemCollectionMode::Eager {
                         let def_id = self.tcx.hir.local_def_id(item.id);
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.tcx, def_id));
@@ -979,10 +979,10 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
 impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
     fn is_root(&self, def_id: DefId) -> bool {
         !item_has_type_parameters(self.tcx, def_id) && match self.mode {
-            TransItemCollectionMode::Eager => {
+            MonoItemCollectionMode::Eager => {
                 true
             }
-            TransItemCollectionMode::Lazy => {
+            MonoItemCollectionMode::Lazy => {
                 self.entry_fn == Some(def_id) ||
                 self.tcx.is_exported_symbol(def_id) ||
                 attr::contains_name(&self.tcx.get_attrs(def_id),
