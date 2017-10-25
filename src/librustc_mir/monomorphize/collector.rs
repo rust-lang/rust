@@ -206,7 +206,7 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
-use monomorphize::mono_item::{TransItemExt, DefPathBasedNames, InstantiationMode};
+use monomorphize::mono_item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
 

@@ -67,7 +67,7 @@ use monomorphize::Instance;
 use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
-use trans_item::{MonoItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
+use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};

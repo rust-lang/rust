@@ -81,7 +81,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
+pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn as_trans_item(&self) -> &MonoItem<'tcx>;
 
     fn instantiation_mode(&self,
@@ -223,7 +223,7 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
     }
 }
 
-impl<'a, 'tcx> TransItemExt<'a, 'tcx> for MonoItem<'tcx> {
+impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn as_trans_item(&self) -> &MonoItem<'tcx> {
         self
     }

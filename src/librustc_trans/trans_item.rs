@@ -37,9 +37,9 @@ use std::fmt;
 pub use rustc::middle::trans::MonoItem;
 
 pub use rustc_mir::monomorphize::mono_item::*;
-pub use rustc_mir::monomorphize::mono_item::TransItemExt as BaseTransItemExt;
+pub use rustc_mir::monomorphize::mono_item::MonoItemExt as BaseMonoItemExt;
 
-pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
+pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
@@ -164,7 +164,7 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug + BaseTransItemExt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TransItemExt<'a, 'tcx> for MonoItem<'tcx> {}
+impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}
 
 fn predefine_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               node_id: ast::NodeId,

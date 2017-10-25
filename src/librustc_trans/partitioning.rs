@@ -114,7 +114,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
-use trans_item::{MonoItem, BaseTransItemExt, TransItemExt, InstantiationMode};
+use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, InstantiationMode};
 
 pub use rustc::middle::trans::CodegenUnit;
 

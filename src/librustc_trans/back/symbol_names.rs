@@ -98,7 +98,7 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use monomorphize::Instance;
-use trans_item::{BaseTransItemExt, InstantiationMode};
+use trans_item::{BaseMonoItemExt, InstantiationMode};
 
 use rustc::middle::weak_lang_items;
 use rustc::middle::trans::MonoItem;
