@@ -1804,7 +1804,10 @@ mod tests {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_rcp_ps(a);
         let e = f32x4::new(0.24993896, 0.0769043, 0.06248474, 0.0099983215);
-        assert_eq!(r, e);
+        let rel_err = 0.00048828125;
+        for i in 0..4 {
+            assert_approx_eq!(r.extract(i), e.extract(i), 2. * rel_err);
+        }
     }
 
     #[simd_test = "sse"]
@@ -1812,7 +1815,10 @@ mod tests {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_rsqrt_ss(a);
         let e = f32x4::new(0.49987793, 13.0, 16.0, 100.0);
-        assert_eq!(r, e);
+        let rel_err = 0.00048828125;
+        for i in 0..4 {
+            assert_approx_eq!(r.extract(i), e.extract(i), 2. * rel_err);
+        }
     }
 
     #[simd_test = "sse"]
@@ -1820,7 +1826,10 @@ mod tests {
         let a = f32x4::new(4.0, 13.0, 16.0, 100.0);
         let r = sse::_mm_rsqrt_ps(a);
         let e = f32x4::new(0.49987793, 0.2772827, 0.24993896, 0.099990845);
-        assert_eq!(r, e);
+        let rel_err = 0.00048828125;
+        for i in 0..4 {
+            assert_approx_eq!(r.extract(i), e.extract(i), 2. * rel_err);
+        }
     }
 
     #[simd_test = "sse"]

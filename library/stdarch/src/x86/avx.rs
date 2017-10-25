@@ -3224,7 +3224,10 @@ mod tests {
         let r = avx::_mm256_rcp_ps(a);
         let e = f32x8::new(0.99975586, 0.49987793, 0.33325195, 0.24993896,
                            0.19995117, 0.16662598, 0.14282227, 0.12496948);
-        assert_eq!(r, e);
+        let rel_err = 0.00048828125;
+        for i in 0..8 {
+            assert_approx_eq!(r.extract(i), e.extract(i), 2. * rel_err);
+        }
     }
 
     #[simd_test = "avx"]
@@ -3233,7 +3236,10 @@ mod tests {
         let r = avx::_mm256_rsqrt_ps(a);
         let e = f32x8::new(0.99975586, 0.7069092, 0.5772705, 0.49987793,
                            0.44714355, 0.40820313, 0.3779297, 0.3534546);
-        assert_eq!(r, e);
+        let rel_err = 0.00048828125;
+        for i in 0..8 {
+            assert_approx_eq!(r.extract(i), e.extract(i), 2. * rel_err);
+        }
     }
 
     #[simd_test = "avx"]
