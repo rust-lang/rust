@@ -2471,11 +2471,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
-    pub fn is_sized(self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
-    }
-}
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,

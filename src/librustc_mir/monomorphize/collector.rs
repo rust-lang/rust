@@ -203,7 +203,6 @@ use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::{self, Location};
 use rustc::mir::visit::Visitor as MirVisitor;
 
-use common::{def_ty, instance_ty, type_has_metadata};
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
@@ -371,7 +370,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(should_trans_locally(tcx, &instance));
 
-            let ty = instance_ty(tcx, &instance);
+            let ty = instance.ty(tcx);
             visit_drop_use(tcx, ty, true, &mut neighbors);
 
             recursion_depth_reset = None;
@@ -916,7 +915,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.tcx, def_id));
 
-                        let ty = def_ty(self.tcx, def_id, Substs::empty());
+                        let ty = Instance::new(def_id, Substs::empty()).ty(self.tcx);
                         visit_drop_use(self.tcx, ty, true, self.output);
                     }
                 }

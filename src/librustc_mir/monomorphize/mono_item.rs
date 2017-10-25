@@ -14,7 +14,6 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use rustc_trans_utils::common;
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -98,7 +97,7 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||
-                    !common::requests_inline(tcx, instance)
+                    !tcx.requires_local_instance(instance)
                 {
                     return InstantiationMode::GloballyShared  { may_conflict: false }
                 }

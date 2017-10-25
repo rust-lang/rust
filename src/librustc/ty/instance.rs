@@ -45,6 +45,15 @@ pub enum InstanceDef<'tcx> {
     CloneShim(DefId, Ty<'tcx>),
 }
 
+impl<'a, 'tcx> Instance<'tcx> {
+    pub fn ty(&self,
+              tcx: TyCtxt<'a, 'tcx, 'tcx>)
+              -> Ty<'tcx>
+    {
+        self.def.def_ty(tcx).subst(tcx, self.substs)
+    }
+}
+
 impl<'tcx> InstanceDef<'tcx> {
     #[inline]
     pub fn def_id(&self) -> DefId {

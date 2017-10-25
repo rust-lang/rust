@@ -44,7 +44,8 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::map as hir_map;
 use rustc::util::nodemap::NodeSet;
 
-pub mod common;
+use syntax::attr;
+
 pub mod link;
 pub mod trans_crate;
 
