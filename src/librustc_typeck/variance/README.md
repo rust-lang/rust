@@ -104,22 +104,16 @@ into two queries:
 - `crate_variances` computes the variance for all items in the current crate.
 - `variances_of` accesses the variance for an individual reading; it
   works by requesting `crate_variances` and extracting the relevant data.
-  
+
 If you limit yourself to reading `variances_of`, your code will only
 depend then on the inference inferred for that particular item.
 
-Eventually, the goal is to rely on the red-green dependency management
-algorithm. At the moment, however, we rely instead on a hack, where
-`variances_of` ignores the dependencies of accessing
-`crate_variances` and instead computes the *correct* dependencies
-itself. To this end, when we build up the constraints in the system,
-we also built up a transitive `dependencies` relation as part of the
-crate map. A `(X, Y)` pair is added to the map each time we have a
-constraint that the variance of some inferred for the item `X` depends
-on the variance of some element of `Y`. This is to some extent a
-mirroring of the inference graph in the dependency graph. This means
-we can just completely ignore the fixed-point iteration, since it is
-just shuffling values along this graph.
+Ultimately, this setup relies on the red-green algorithm.
+In particular, every variance query ultimately depends on -- effectively --
+all type definitions in the entire crate (through `crate_variances`),
+but since most changes will not result in a change
+to the actual results from variance inference,
+the `variances_of` query will wind up being considered green after it is re-evaluated.
 
 ### Addendum: Variance on traits
 
