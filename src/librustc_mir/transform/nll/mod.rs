@@ -42,42 +42,68 @@ impl MirPass for NLL {
             return;
         }
 
-        tcx.infer_ctxt().enter(|ref infcx| {
-            // Clone mir so we can mutate it without disturbing the rest of the compiler
-            let mir = &mut input_mir.clone();
-
-            // Replace all regions with fresh inference variables.
-            let num_region_variables = renumber::renumber_mir(infcx, mir);
-
-            // Compute what is live where.
-            let liveness = &LivenessResults {
-                regular: liveness::liveness_of_locals(
-                    mir,
-                    LivenessMode {
-                        include_regular_use: true,
-                        include_drops: false,
-                    },
-                ),
-
-                drop: liveness::liveness_of_locals(
-                    mir,
-                    LivenessMode {
-                        include_regular_use: false,
-                        include_drops: true,
-                    },
-                ),
-            };
-
-            // Create the region inference context, generate the constraints,
-            // and then solve them.
-            let regioncx = &mut RegionInferenceContext::new(num_region_variables);
-            constraint_generation::generate_constraints(infcx, regioncx, mir, source, liveness);
-            regioncx.solve(infcx, mir);
-
-            // Dump MIR results into a file, if that is enabled.
-            dump_mir_results(infcx, liveness, source, regioncx, mir);
-        })
+        tcx.infer_ctxt()
+            .enter(|ref infcx| drop(compute_regions(infcx, source, input_mir)));
     }
+}
+
+pub struct RegionComputation<'tcx> {
+    /// A rewritten version of the input MIR where all the regions are
+    /// rewritten to refer to inference variables.
+    pub mir: Mir<'tcx>,
+
+    /// The definitions (along with their final values) for all regions.
+    pub regioncx: RegionInferenceContext,
+}
+
+/// Computes the (non-lexical) regions from the input MIR.
+///
+/// This may result in errors being reported.
+pub fn compute_regions<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    source: MirSource,
+    input_mir: &Mir<'tcx>,
+) -> RegionComputation<'tcx> {
+    // Clone mir so we can mutate it without disturbing the rest of the compiler
+    let mut mir = input_mir.clone();
+
+    // Replace all regions with fresh inference variables.
+    let num_region_variables = renumber::renumber_mir(infcx, &mut mir);
+
+    // Compute what is live where.
+    let liveness = &LivenessResults {
+        regular: liveness::liveness_of_locals(
+            &mir,
+            LivenessMode {
+                include_regular_use: true,
+                include_drops: false,
+            },
+        ),
+
+        drop: liveness::liveness_of_locals(
+            &mir,
+            LivenessMode {
+                include_regular_use: false,
+                include_drops: true,
+            },
+        ),
+    };
+
+    // Create the region inference context, generate the constraints,
+    // and then solve them.
+    let mut regioncx = RegionInferenceContext::new(num_region_variables);
+    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
+    let errors = regioncx.solve(infcx, &mir);
+
+    assert!(errors.is_empty(), "FIXME: report region inference failures");
+
+    let computation = RegionComputation { mir, regioncx };
+
+    // Dump MIR results into a file, if that is enabled. This let us
+    // write unit-tests.
+    dump_mir_results(infcx, liveness, source, &computation);
+
+    computation
 }
 
 struct LivenessResults {
@@ -89,12 +115,16 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     liveness: &LivenessResults,
     source: MirSource,
-    regioncx: &RegionInferenceContext,
-    mir: &Mir<'tcx>,
+    computation: &RegionComputation<'tcx>,
 ) {
     if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
         return;
     }
+
+    let RegionComputation {
+        ref mir,
+        ref regioncx,
+    } = *computation;
 
     let regular_liveness_per_location: FxHashMap<_, _> = mir.basic_blocks()
         .indices()
@@ -126,7 +156,12 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => for region in regioncx.regions() {
-                writeln!(out, "| {:?}: {:?}", region, regioncx.region_value(region))?;
+                writeln!(
+                    out,
+                    "| {:?}: {:?}",
+                    region,
+                    regioncx.region_value(region)
+                )?;
             },
 
             // Before each basic block, dump out the values
@@ -141,12 +176,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                     &regular_liveness_per_location[&location],
                     &drop_liveness_per_location[&location],
                 );
-                writeln!(
-                    out,
-                    "            | Live variables at {:?}: {}",
-                    location,
-                    s
-                )?;
+                writeln!(out, "            | Live variables at {:?}: {}", location, s)?;
             }
 
             PassWhere::AfterCFG => {}
@@ -217,7 +247,11 @@ fn live_variable_set(regular: &LocalSet, drops: &LocalSet) -> String {
         string.push_str(", ");
     }
 
-    let len = if string.is_empty() { 0 } else { string.len() - 2  };
+    let len = if string.is_empty() {
+        0
+    } else {
+        string.len() - 2
+    };
 
     format!("[{}]", &string[..len])
 }

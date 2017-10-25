@@ -12,13 +12,22 @@ use super::{Region, RegionIndex};
 use std::mem;
 use rustc::infer::InferCtxt;
 use rustc::mir::{Location, Mir};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 
 pub struct RegionInferenceContext {
-    definitions: IndexVec<RegionIndex, VarDefinition>,
-    constraints: IndexVec<ConstraintIndex, Constraint>,
-    errors: IndexVec<InferenceErrorIndex, InferenceError>,
+    /// Contains the definition for every region variable.  Region
+    /// variables are identified by their index (`RegionIndex`). The
+    /// definition contains information about where the region came
+    /// from as well as its final inferred value.
+    definitions: IndexVec<RegionIndex, RegionDefinition>,
+
+    /// The constraints we have accumulated and used during solving.
+    constraints: Vec<Constraint>,
+
+    /// List of errors we have accumulated as we add constraints.
+    /// After solving is done, this is replaced with an empty vector.
+    errors: Vec<InferenceError>,
 }
 
 pub struct InferenceError {
@@ -26,10 +35,8 @@ pub struct InferenceError {
     pub name: (), // FIXME(nashenas88) RegionName
 }
 
-newtype_index!(InferenceErrorIndex);
-
 #[derive(Default)]
-struct VarDefinition {
+struct RegionDefinition {
     name: (), // FIXME(nashenas88) RegionName
     value: Region,
     capped: bool,
@@ -42,26 +49,43 @@ pub struct Constraint {
     point: Location,
 }
 
-newtype_index!(ConstraintIndex);
-
 impl RegionInferenceContext {
     pub fn new(num_region_variables: usize) -> Self {
         Self {
             definitions: (0..num_region_variables)
-                .map(|_| VarDefinition::default())
+                .map(|_| RegionDefinition::default())
                 .collect(),
-            constraints: IndexVec::new(),
-            errors: IndexVec::new(),
+            constraints: Vec::new(),
+            errors: Vec::new(),
         }
     }
 
+
+    /// Returns an iterator over all the region indices.
+    pub fn regions(&self) -> impl Iterator<Item = RegionIndex> {
+        self.definitions.indices()
+    }
+
+    /// Returns the inferred value for the region `r`.
+    ///
+    /// Until `solve()` executes, this value is not particularly meaningful.
+    pub fn region_value(&self, r: RegionIndex) -> &Region {
+        &self.definitions[r].value
+    }
+
+    /// Flags a region as being "capped" -- this means that if its
+    /// value is required to grow as a result of some constraint
+    /// (e.g., `add_live_point` or `add_outlives`), that indicates an
+    /// error. This is used for the regions representing named
+    /// lifetime parameters on a function: they get initialized to
+    /// their complete value, and then "capped" so that they can no
+    /// longer grow.
     #[allow(dead_code)]
-    pub fn cap_var(&mut self, v: RegionIndex) {
+    pub(super) fn cap_var(&mut self, v: RegionIndex) {
         self.definitions[v].capped = true;
     }
 
-    #[allow(dead_code)]
-    pub fn add_live_point(&mut self, v: RegionIndex, point: Location) {
+    pub(super) fn add_live_point(&mut self, v: RegionIndex, point: Location) {
         debug!("add_live_point({:?}, {:?})", v, point);
         let definition = &mut self.definitions[v];
         if definition.value.add_point(point) {
@@ -74,28 +98,17 @@ impl RegionInferenceContext {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn add_outlives(&mut self, sup: RegionIndex, sub: RegionIndex, point: Location) {
+    pub(super) fn add_outlives(&mut self, sup: RegionIndex, sub: RegionIndex, point: Location) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
         self.constraints.push(Constraint { sup, sub, point });
     }
 
-    /// Returns an iterator over all the region indices.
-    pub fn regions(&self) -> impl Iterator<Item = RegionIndex> {
-        self.definitions.indices()
-    }
-
-    /// Returns the current value for the region `v`. This is only
-    /// really meaningful after `solve` has executed.
-    pub fn region_value(&self, v: RegionIndex) -> &Region {
-        &self.definitions[v].value
-    }
-
-    pub fn solve<'a, 'gcx, 'tcx>(
+    /// Perform region inference.
+    pub(super) fn solve<'a, 'gcx, 'tcx>(
         &mut self,
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         mir: &'a Mir<'tcx>,
-    ) -> IndexVec<InferenceErrorIndex, InferenceError>
+    ) -> Vec<InferenceError>
     where
         'gcx: 'tcx + 'a,
         'tcx: 'a,
@@ -138,7 +151,7 @@ impl RegionInferenceContext {
             debug!("\n");
         }
 
-        mem::replace(&mut self.errors, IndexVec::new())
+        mem::replace(&mut self.errors, Vec::new())
     }
 }
 
