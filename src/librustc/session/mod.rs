@@ -78,7 +78,7 @@ pub struct Session {
     /// Set of (LintId, Option<Span>, message) tuples tracking lint
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690).
-    pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Option<Span>, String)>>,
+    pub one_time_diagnostics: RefCell<FxHashSet<(Option<lint::LintId>, Option<Span>, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
@@ -361,7 +361,7 @@ impl Session {
             },
             _ => {
                 let lint_id = lint::LintId::of(lint);
-                let id_span_message = (lint_id, span, message.to_owned());
+                let id_span_message = (Some(lint_id), span, message.to_owned());
                 let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
                 if fresh {
                     do_method()

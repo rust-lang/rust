@@ -19,7 +19,7 @@ use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
@@ -597,8 +597,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            feature.as_str(), &r),
                     None => format!("use of unstable library feature '{}'", &feature)
                 };
-                emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
-                                 GateIssue::Library(Some(issue)), &msg);
+
+                let msp: MultiSpan = span.into();
+                let cm = &self.sess.parse_sess.codemap();
+                let real_file_location =
+                    msp.primary_span().and_then(|sp:Span|
+                        if sp != DUMMY_SP {
+                            let fname = cm.lookup_char_pos(sp.lo()).file.as_ref().name.clone();
+                            if fname.starts_with("<") && fname.ends_with(" macros>") {
+                                None
+                            } else {
+                                Some(fname)
+                            }
+                        } else {
+                            None
+                        }
+                    );
+
+                if let Some(_) = real_file_location {
+                    let tuple = (None, Some(span), msg.clone());
+                    let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(tuple);
+                    if fresh {
+                        emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
+                                         GateIssue::Library(Some(issue)), &msg);
+                    }
+                }
+
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
