@@ -16,7 +16,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
 use std::fmt;
-use util::liveness::{self, LivenessResult, LivenessMode};
+use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
 use util as mir_util;
 use self::mir_util::PassWhere;
@@ -51,15 +51,21 @@ impl MirPass for NLL {
 
             // Compute what is live where.
             let liveness = &LivenessResults {
-                regular: liveness::liveness_of_locals(mir, LivenessMode {
-                    include_regular_use: true,
-                    include_drops: false,
-                }),
+                regular: liveness::liveness_of_locals(
+                    mir,
+                    LivenessMode {
+                        include_regular_use: true,
+                        include_drops: false,
+                    },
+                ),
 
-                drop: liveness::liveness_of_locals(mir, LivenessMode {
-                    include_regular_use: false,
-                    include_drops: true,
-                })
+                drop: liveness::liveness_of_locals(
+                    mir,
+                    LivenessMode {
+                        include_regular_use: false,
+                        include_drops: true,
+                    },
+                ),
             };
 
             // Create the region inference context, generate the constraints,
@@ -94,9 +100,11 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         .indices()
         .flat_map(|bb| {
             let mut results = vec![];
-            liveness.regular.simulate_block(&mir, bb, |location, local_set| {
-                results.push((location, local_set.clone()));
-            });
+            liveness
+                .regular
+                .simulate_block(&mir, bb, |location, local_set| {
+                    results.push((location, local_set.clone()));
+                });
             results
         })
         .collect();
@@ -105,9 +113,11 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         .indices()
         .flat_map(|bb| {
             let mut results = vec![];
-            liveness.drop.simulate_block(&mir, bb, |location, local_set| {
-                results.push((location, local_set.clone()));
-            });
+            liveness
+                .drop
+                .simulate_block(&mir, bb, |location, local_set| {
+                    results.push((location, local_set.clone()));
+                });
             results
         })
         .collect();
@@ -122,17 +132,21 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             // Before each basic block, dump out the values
             // that are live on entry to the basic block.
             PassWhere::BeforeBlock(bb) => {
-                writeln!(out, "    | Variables regular-live on entry to the block {:?}: {:?}",
-                         bb, liveness.regular.ins[bb])?;
-                writeln!(out, "    | Variables drop-live on entry to the block {:?}: {:?}",
-                         bb, liveness.drop.ins[bb])?;
+                let s = live_variable_set(&liveness.regular.ins[bb], &liveness.drop.ins[bb]);
+                writeln!(out, "    | Live variables on entry to {:?}: {}", bb, s)?;
             }
 
             PassWhere::InCFG(location) => {
-                let local_set = &regular_liveness_per_location[&location];
-                writeln!(out, "        | Regular-Live variables here: {:?}", local_set)?;
-                let local_set = &drop_liveness_per_location[&location];
-                writeln!(out, "        | Drop-Live variables here: {:?}", local_set)?;
+                let s = live_variable_set(
+                    &regular_liveness_per_location[&location],
+                    &drop_liveness_per_location[&location],
+                );
+                writeln!(
+                    out,
+                    "            | Live variables at {:?}: {}",
+                    location,
+                    s
+                )?;
             }
 
             PassWhere::AfterCFG => {}
@@ -183,4 +197,27 @@ impl ToRegionIndex for RegionKind {
             bug!("region is not an ReVar: {:?}", self)
         }
     }
+}
+
+fn live_variable_set(regular: &LocalSet, drops: &LocalSet) -> String {
+    // sort and deduplicate:
+    let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();
+
+    // construct a string with each local, including `(drop)` if it is
+    // only dropped, versus a regular use.
+    let mut string = String::new();
+    for local in all_locals {
+        string.push_str(&format!("{:?}", local));
+
+        if !regular.contains(&local) {
+            assert!(drops.contains(&local));
+            string.push_str(" (drop)");
+        }
+
+        string.push_str(", ");
+    }
+
+    let len = if string.is_empty() { 0 } else { string.len() - 2  };
+
+    format!("[{}]", &string[..len])
 }

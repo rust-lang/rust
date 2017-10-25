@@ -25,23 +25,17 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.node12.nll.0.mir
-//    | Variables regular-live on entry to the block bb1: []
-//    | Variables drop-live on entry to the block bb1: []
+//    | Live variables on entry to bb1: []
 //    bb1: {
-//        | Regular-Live variables here: []
-//        | Drop-Live variables here: []
+//            | Live variables at bb1[0]: []
 //        _1 = const 55usize;
-//        | Regular-Live variables here: [_1]
-//        | Drop-Live variables here: []
+//            | Live variables at bb1[1]: [_1]
 //        StorageLive(_3);
-//        | Regular-Live variables here: [_1]
-//        | Drop-Live variables here: []
+//            | Live variables at bb1[2]: [_1]
 //        StorageLive(_4);
-//        | Regular-Live variables here: [_1]
-//        | Drop-Live variables here: []
+//            | Live variables at bb1[3]: [_1]
 //        _4 = _1;
-//        | Regular-Live variables here: [_4]
-//        | Drop-Live variables here: []
+//            | Live variables at bb1[4]: [_4]
 //        _3 = const use_x(_4) -> bb2;
 //    }
 // END rustc.node12.nll.0.mir

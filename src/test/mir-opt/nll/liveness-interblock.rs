@@ -29,26 +29,20 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.node18.nll.0.mir
-//    | Variables regular-live on entry to the block bb2: [_1]
-//    | Variables drop-live on entry to the block bb2: []
+//     | Live variables on entry to bb2: [_1]
 //     bb2: {
-//         | Regular-Live variables here: [_1]
-//         | Drop-Live variables here: []
+//             | Live variables at bb2[0]: [_1]
 //         StorageLive(_4);
-//         | Regular-Live variables here: [_1]
-//         | Drop-Live variables here: []
+//             | Live variables at bb2[1]: [_1]
 //         _4 = _1;
-//         | Regular-Live variables here: [_4]
-//         | Drop-Live variables here: []
+//             | Live variables at bb2[2]: [_4]
 //         _3 = const make_live(_4) -> bb4;
 //     }
 // END rustc.node18.nll.0.mir
 // START rustc.node18.nll.0.mir
-//     | Variables regular-live on entry to the block bb3: []
-//     | Variables drop-live on entry to the block bb3: []
+//     | Live variables on entry to bb3: []
 //     bb3: {
-//         | Regular-Live variables here: []
-//         | Drop-Live variables here: []
+//             | Live variables at bb3[0]: []
 //         _5 = const make_dead() -> bb5;
 //     }
 // END rustc.node18.nll.0.mir

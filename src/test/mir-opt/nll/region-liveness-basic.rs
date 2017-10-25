@@ -38,24 +38,19 @@ fn main() {
 // END rustc.node12.nll.0.mir
 // START rustc.node12.nll.0.mir
 //    bb1: {
-//        | Regular-Live variables here: [_1, _3]
-//        | Drop-Live variables here: []
+//            | Live variables at bb1[0]: [_1, _3]
 //        _2 = &'_#0r _1[_3];
-//        | Regular-Live variables here: [_2]
-//        | Drop-Live variables here: []
+//            | Live variables at bb1[1]: [_2]
 //        switchInt(const true) -> [0u8: bb3, otherwise: bb2];
 //    }
 // END rustc.node12.nll.0.mir
 // START rustc.node12.nll.0.mir
 //    bb2: {
-//        | Regular-Live variables here: [_2]
-//        | Drop-Live variables here: []
+//            | Live variables at bb2[0]: [_2]
 //        StorageLive(_7);
-//        | Regular-Live variables here: [_2]
-//        | Drop-Live variables here: []
+//            | Live variables at bb2[1]: [_2]
 //        _7 = (*_2);
-//        | Regular-Live variables here: [_7]
-//        | Drop-Live variables here: []
+//            | Live variables at bb2[2]: [_7]
 //        _6 = const use_x(_7) -> bb4;
 //    }
 // END rustc.node12.nll.0.mir
