@@ -236,10 +236,10 @@ fn amortized_new_capacity(elem_size: usize, current_capacity: usize,
         // c if c > 4096 * 32 / elem_size => 2 * c,
 
         // Medium sized vectors in the [4096, 4096 * 32) bytes range:
-        // c => c / 2 * 3,
+        c => c / 2 * 3 + 1,
 
         // [Original]
-        c => 2 * c,
+        // c => 2 * c,
     };
     cmp::max(growth_capacity,
              current_capacity.checked_add(capacity_increase).unwrap())
