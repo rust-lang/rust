@@ -6,12 +6,12 @@ Language
 - [`non_snake_case` lint now allows extern no-mangle functions][44966]
 - [Now accepts underscores in unicode escapes][43716]
 - [`#![feature(const_fn)]` is now no longer required for
-  calling const functions.][43017] It's Still required for creating
+  calling const functions.][43017] It's still required for creating
   constant functions.
 
 Compiler
 --------
-- [rustc now defaults to having 16 codegen units at debug on supported platforms.][44853]
+- [rustc now defaults to having 16 codegen units at debug on supported platforms.][45064]
 - [rustc will no longer inline in codegen units when compiling for debug][45075]
   This should decrease compile times for debug builds.
 - [strict memory alignment now enabled on ARMv6][45094]
@@ -21,8 +21,8 @@ Libraries
 ---------
 - [Allow atomic operations up to 32 bits
   on `armv5te_unknown_linux_gnueabi`][44978]
-- [`Box<Error>` now impls `Cow<str>`][44466]
-- [`std::mem::Discriminant` is now guarenteed to be `Send + Sync`][45095]
+- [`Box<Error>` now impls `From<Cow<str>>`][44466]
+- [`std::mem::Discriminant` is now guaranteed to be `Send + Sync`][45095]
 - [`fs::copy` now returns the length of the main stream on NTFS.][44895]
 - [Properly detect overflow in `Instant += Duration`.][44220]
 - [impl `Hasher` for `{&mut Hasher, Box<Hasher>}`][44015]
