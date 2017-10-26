@@ -546,7 +546,7 @@ impl<'a> FmtVisitor<'a> {
                 // 1 = ','
                 rewrite_assign_rhs(&context, lhs, expr, shape.sub_width(1)?)?
             } else {
-                String::from(field.node.name.to_string())
+                field.node.name.to_string()
             },
         };
 
