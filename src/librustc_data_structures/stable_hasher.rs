@@ -13,24 +13,13 @@ use std::marker::PhantomData;
 use std::mem;
 use sip128::SipHasher128;
 
-/// When hashing something that ends up affecting properties like symbol names. We
-/// want these symbol names to be calculated independent of other factors like
-/// what architecture you're compiling *from*.
+/// When hashing something that ends up affecting properties like symbol names,
+/// we want these symbol names to be calculated independently of other factors
+/// like what architecture you're compiling *from*.
 ///
-/// The hashing just uses the standard `Hash` trait, but the implementations of
-/// `Hash` for the `usize` and `isize` types are *not* architecture independent
-/// (e.g. they has 4 or 8 bytes). As a result we want to avoid `usize` and
-/// `isize` completely when hashing.
-///
-/// To do that, we encode all integers to be hashed with some
-/// arch-independent encoding.
-///
-/// At the moment, we pass i8/u8 straight through and encode
-/// all other integers using leb128.
-///
-/// This hasher currently always uses the stable Blake2b algorithm
-/// and allows for variable output lengths through its type
-/// parameter.
+/// To that end we always convert integers to little-endian format before
+/// hashing and the architecture dependent `isize` and `usize` types are
+/// extended to 64 bits if needed.
 pub struct StableHasher<W> {
     state: SipHasher128,
     bytes_hashed: u64,
@@ -86,9 +75,6 @@ impl<W> StableHasher<W> {
     }
 }
 
-// For the non-u8 integer cases we leb128 encode them first. Because small
-// integers dominate, this significantly and cheaply reduces the number of
-// bytes hashed, which is good because blake2b is expensive.
 impl<W> Hasher for StableHasher<W> {
     fn finish(&self) -> u64 {
         panic!("use StableHasher::finalize instead");
@@ -132,8 +118,11 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.state.write_usize(i.to_le());
-        self.bytes_hashed += ::std::mem::size_of::<usize>() as u64;
+        // Always treat usize as u64 so we get the same results on 32 and 64 bit
+        // platforms. This is important for symbol hashes when cross compiling,
+        // for example.
+        self.state.write_u64((i as u64).to_le());
+        self.bytes_hashed += 8;
     }
 
     #[inline]
@@ -168,8 +157,11 @@ impl<W> Hasher for StableHasher<W> {
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        self.state.write_isize(i.to_le());
-        self.bytes_hashed += ::std::mem::size_of::<isize>() as u64;
+        // Always treat isize as i64 so we get the same results on 32 and 64 bit
+        // platforms. This is important for symbol hashes when cross compiling,
+        // for example.
+        self.state.write_i64((i as i64).to_le());
+        self.bytes_hashed += 8;
     }
 }
 
