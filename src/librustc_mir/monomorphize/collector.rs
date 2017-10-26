@@ -294,9 +294,9 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
-pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 mode: MonoItemCollectionMode)
-                                                 -> (FxHashSet<MonoItem<'tcx>>,
+pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                          mode: MonoItemCollectionMode)
+                                          -> (FxHashSet<MonoItem<'tcx>>,
                                                      InliningMap<'tcx>) {
     let roots = collect_roots(tcx, mode);
 
@@ -521,10 +521,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
                 if target_ty.is_trait() && !source_ty.is_trait() {
-                    create_trans_items_for_vtable_methods(self.tcx,
-                                                          target_ty,
-                                                          source_ty,
-                                                          self.output);
+                    create_mono_items_for_vtable_methods(self.tcx,
+                                                         target_ty,
+                                                         source_ty,
+                                                         self.output);
                 }
             }
             mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
@@ -844,10 +844,10 @@ fn create_fn_trans_item<'a, 'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
 
 /// Creates a `TransItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
-fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                   trait_ty: Ty<'tcx>,
-                                                   impl_ty: Ty<'tcx>,
-                                                   output: &mut Vec<MonoItem<'tcx>>) {
+fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                  trait_ty: Ty<'tcx>,
+                                                  impl_ty: Ty<'tcx>,
+                                                  output: &mut Vec<MonoItem<'tcx>>) {
     assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
             !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());
 
@@ -900,9 +900,9 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
 
             hir::ItemImpl(..) => {
                 if self.mode == MonoItemCollectionMode::Eager {
-                    create_trans_items_for_default_impls(self.tcx,
-                                                         item,
-                                                         self.output);
+                    create_mono_items_for_default_impls(self.tcx,
+                                                        item,
+                                                        self.output);
                 }
             }
 
@@ -996,9 +996,9 @@ fn item_has_type_parameters<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     generics.parent_types as usize + generics.types.len() > 0
 }
 
-fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                  item: &'tcx hir::Item,
-                                                  output: &mut Vec<MonoItem<'tcx>>) {
+fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                 item: &'tcx hir::Item,
+                                                 output: &mut Vec<MonoItem<'tcx>>) {
     match item.node {
         hir::ItemImpl(_,
                       _,

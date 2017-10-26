@@ -1019,7 +1019,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 
     let (items, inlining_map) =
         time(time_passes, "translation item collection", || {
-            collector::collect_crate_translation_items(tcx, collection_mode)
+            collector::collect_crate_mono_items(tcx, collection_mode)
     });
 
     assert_symbols_are_distinct(tcx, items.iter());
