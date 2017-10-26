@@ -55,14 +55,14 @@ fn execute() -> i32 {
         .take_while(|a| a != "--")
         .find(|a| !a.starts_with('-'))
     {
-        print_usage(&opts, &format!("Invalid argument: `{}`.", arg));
+        print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
         return failure;
     }
 
     let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
         Ok(m) => m,
         Err(e) => {
-            print_usage(&opts, &e.to_string());
+            print_usage_to_stderr(&opts, &e.to_string());
             return failure;
         }
     };
@@ -72,13 +72,13 @@ fn execute() -> i32 {
         (false, true) => Verbosity::Quiet,
         (true, false) => Verbosity::Verbose,
         (true, true) => {
-            print_usage(&opts, "quiet mode and verbose mode are not compatible");
+            print_usage_to_stderr(&opts, "quiet mode and verbose mode are not compatible");
             return failure;
         }
     };
 
     if matches.opt_present("h") {
-        print_usage(&opts, "");
+        print_usage_to_stdout(&opts, "");
         return success;
     }
 
@@ -86,7 +86,7 @@ fn execute() -> i32 {
 
     match format_crate(verbosity, &workspace_hitlist) {
         Err(e) => {
-            print_usage(&opts, &e.to_string());
+            print_usage_to_stderr(&opts, &e.to_string());
             failure
         }
         Ok(status) => if status.success() {
@@ -97,13 +97,23 @@ fn execute() -> i32 {
     }
 }
 
-fn print_usage(opts: &Options, reason: &str) {
-    let msg = format!("{}\nusage: cargo fmt [options]", reason);
-    println!(
-        "{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
-         Arguments after `--` are passed to rustfmt.",
-        opts.usage(&msg)
-    );
+macro_rules! print_usage {
+    ($print:ident, $opts:ident, $reason:expr) => ({
+        let msg = format!("{}\nusage: cargo fmt [options]", $reason);
+        $print!(
+            "{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
+             Arguments after `--` are passed to rustfmt.",
+            $opts.usage(&msg)
+        );
+    })
+}
+
+fn print_usage_to_stdout(opts: &Options, reason: &str) {
+    print_usage!(println, opts, reason);
+}
+
+fn print_usage_to_stderr(opts: &Options, reason: &str) {
+    print_usage!(eprintln, opts, reason);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

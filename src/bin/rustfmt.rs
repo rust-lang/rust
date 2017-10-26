@@ -161,7 +161,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
     match determine_operation(&matches)? {
         Operation::Help => {
-            print_usage(opts, "");
+            print_usage_to_stdout(opts, "");
             Summary::print_exit_codes();
             Ok(Summary::default())
         }
@@ -196,7 +196,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 config.set().file_lines(file_lines.parse()?);
                 for f in config.file_lines().files() {
                     if f != "stdin" {
-                        println!("Warning: Extra file listed in file_lines option '{}'", f);
+                        eprintln!("Warning: Extra file listed in file_lines option '{}'", f);
                     }
                 }
             }
@@ -217,7 +217,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
             for f in options.file_lines.files() {
                 if !files.contains(&PathBuf::from(f)) {
-                    println!("Warning: Extra file listed in file_lines option '{}'", f);
+                    eprintln!("Warning: Extra file listed in file_lines option '{}'", f);
                 }
             }
 
@@ -236,10 +236,10 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             let mut error_summary = Summary::default();
             for file in files {
                 if !file.exists() {
-                    println!("Error: file `{}` does not exist", file.to_str().unwrap());
+                    eprintln!("Error: file `{}` does not exist", file.to_str().unwrap());
                     error_summary.add_operational_error();
                 } else if file.is_dir() {
-                    println!("Error: `{}` is a directory", file.to_str().unwrap());
+                    eprintln!("Error: `{}` is a directory", file.to_str().unwrap());
                     error_summary.add_operational_error();
                 } else {
                     // Check the file directory if the config-path could not be read or not provided
@@ -302,7 +302,7 @@ fn main() {
             }
         }
         Err(e) => {
-            print_usage(&opts, &e.to_string());
+            print_usage_to_stderr(&opts, &e.to_string());
             1
         }
     };
@@ -316,13 +316,23 @@ fn main() {
     std::process::exit(exit_code);
 }
 
-fn print_usage(opts: &Options, reason: &str) {
-    let reason = format!(
-        "{}\n\nusage: {} [options] <file>...",
-        reason,
-        env::args_os().next().unwrap().to_string_lossy()
-    );
-    println!("{}", opts.usage(&reason));
+macro_rules! print_usage {
+    ($print:ident, $opts:ident, $reason:expr) => ({
+        let msg = format!(
+            "{}\n\nusage: {} [options] <file>...",
+            $reason,
+            env::args_os().next().unwrap().to_string_lossy()
+        );
+        $print!("{}", $opts.usage(&msg));
+    })
+}
+
+fn print_usage_to_stdout(opts: &Options, reason: &str) {
+    print_usage!(println, opts, reason);
+}
+
+fn print_usage_to_stderr(opts: &Options, reason: &str) {
+    print_usage!(eprintln, opts, reason);
 }
 
 fn print_version() {

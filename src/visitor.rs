@@ -610,7 +610,7 @@ impl<'a> FmtVisitor<'a> {
         match self.codemap.span_to_snippet(span) {
             Ok(s) => s,
             Err(_) => {
-                println!(
+                eprintln!(
                     "Couldn't make snippet for span {:?}->{:?}",
                     self.codemap.lookup_char_pos(span.lo()),
                     self.codemap.lookup_char_pos(span.hi())
