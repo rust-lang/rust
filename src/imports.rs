@@ -75,11 +75,11 @@ fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Orde
 }
 
 fn compare_path_list_item_lists(
-    a_items: &Vec<ast::PathListItem>,
-    b_items: &Vec<ast::PathListItem>,
+    a_items: &[ast::PathListItem],
+    b_items: &[ast::PathListItem],
 ) -> Ordering {
-    let mut a = a_items.clone();
-    let mut b = b_items.clone();
+    let mut a = a_items.to_owned();
+    let mut b = b_items.to_owned();
     a.sort_by(|a, b| compare_path_list_items(a, b));
     b.sort_by(|a, b| compare_path_list_items(a, b));
     for comparison_pair in a.iter().zip(b.iter()) {
