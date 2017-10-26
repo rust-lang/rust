@@ -2,7 +2,7 @@ use itertools::Itertools;
 use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
-use rustc::hir::def_id; 
+use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
@@ -363,7 +363,7 @@ impl LintPass for Pass {
             EMPTY_LOOP,
             WHILE_LET_ON_ITERATOR,
             FOR_KV_MAP,
-            NEVER_LOOP, 
+            NEVER_LOOP,
             MUT_RANGE_BOUND
         )
     }
@@ -1128,7 +1128,12 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                 let fn_arg_tys = method_type.fn_sig(cx.tcx).inputs();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
-                    lint_iter_method(cx, args, arg, method_name);
+                    match cx.tables.expr_ty(&args[0]).sty {
+                        // If the length is greater than 32 no traits are implemented for array and
+                        // therefore we cannot use `&`.
+                        ty::TypeVariants::TyArray(_, size) if const_to_u64(size) > 32 => (),
+                        _ => lint_iter_method(cx, args, arg, method_name)
+                    };
                 } else {
                     let object = snippet(cx, args[0].span, "_");
                     span_lint_and_sugg(
@@ -1319,7 +1324,7 @@ struct MutateDelegate {
 impl<'tcx> Delegate<'tcx> for MutateDelegate {
     fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {
     }
-  
+
     fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {
     }
 
@@ -1500,13 +1505,13 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     walk_expr(&mut used_visitor, idx);
                     used_visitor.used
                 };
-    
+
                 if index_used {
                     let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
                     match def {
                         Def::Local(node_id) | Def::Upvar(node_id, ..) => {
                             let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
-    
+
                             let parent_id = self.cx.tcx.hir.get_parent(expr.id);
                             let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
