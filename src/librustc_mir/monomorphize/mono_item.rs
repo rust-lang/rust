@@ -82,7 +82,7 @@ pub enum InstantiationMode {
 }
 
 pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
-    fn as_trans_item(&self) -> &MonoItem<'tcx>;
+    fn as_mono_item(&self) -> &MonoItem<'tcx>;
 
     fn instantiation_mode(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -92,7 +92,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 tcx.sess.opts.optimize != OptLevel::No
             });
 
-        match *self.as_trans_item() {
+        match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
@@ -132,7 +132,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     }
 
     fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Linkage> {
-        let def_id = match *self.as_trans_item() {
+        let def_id = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => instance.def_id(),
             MonoItem::Static(node_id) => tcx.hir.local_def_id(node_id),
             MonoItem::GlobalAsm(..) => return None,
@@ -182,7 +182,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     /// which will never be accessed) in its place.
     fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
-        let (def_id, substs) = match *self.as_trans_item() {
+        let (def_id, substs) = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
             MonoItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
             // global asm never has predicates
@@ -196,7 +196,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         let hir_map = &tcx.hir;
 
-        return match *self.as_trans_item() {
+        return match *self.as_mono_item() {
             MonoItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance)
             },
@@ -224,7 +224,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
 }
 
 impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
-    fn as_trans_item(&self) -> &MonoItem<'tcx> {
+    fn as_mono_item(&self) -> &MonoItem<'tcx> {
         self
     }
 }
