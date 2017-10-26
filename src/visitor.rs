@@ -197,12 +197,11 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
-        if unindent_comment {
+        let unindent_comment = (self.is_if_else_block && !b.stmts.is_empty()) && {
             let end_pos = source!(self, b.span).hi() - brace_compensation - remove_len;
             let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
-            unindent_comment = snippet.contains("//") || snippet.contains("/*");
-        }
+            snippet.contains("//") || snippet.contains("/*")
+        };
         // FIXME: we should compress any newlines here to just one
         if unindent_comment {
             self.block_indent = self.block_indent.block_unindent(self.config);
