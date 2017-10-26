@@ -100,7 +100,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
 impl<'a, 'b, 'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>)
                -> Instance<'tcx> {
-        assert!(substs.is_normalized_for_trans() && !substs.has_escaping_regions(),
+        assert!(!substs.has_escaping_regions(),
                 "substs of instance {:?} not normalized for trans: {:?}",
                 def_id, substs);
         Instance { def: InstanceDef::Item(def_id), substs: substs }
@@ -139,7 +139,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
                    substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
-            debug!(" => associated item, attempting to find impl");
+            debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
             let item = tcx.associated_item(def_id);
             resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
         } else {
