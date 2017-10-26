@@ -23,6 +23,7 @@ use std::rc::Rc;
 use term;
 use std::collections::HashMap;
 use std::cmp::min;
+use std::env;
 
 /// Emitter trait for emitting errors.
 pub trait Emitter {
@@ -786,18 +787,20 @@ impl EmitterWriter {
     fn fix_multispans_in_std_macros(&mut self,
                                     span: &mut MultiSpan,
                                     children: &mut Vec<SubDiagnostic>) {
-        let mut spans_updated = self.fix_multispan_in_std_macros(span);
-        for child in children.iter_mut() {
-            spans_updated |= self.fix_multispan_in_std_macros(&mut child.span);
-        }
-        if spans_updated {
-            children.push(SubDiagnostic {
-                level: Level::Note,
-                message: vec![("this error originates in a macro outside of the current crate"
-                    .to_string(), Style::NoStyle)],
-                span: MultiSpan::new(),
-                render_span: None,
-            });
+        if env::var_os("RUST_MACRO_BACKTRACE").is_none() {
+            let mut spans_updated = self.fix_multispan_in_std_macros(span);
+            for child in children.iter_mut() {
+                spans_updated |= self.fix_multispan_in_std_macros(&mut child.span);
+            }
+            if spans_updated {
+                children.push(SubDiagnostic {
+                    level: Level::Note,
+                    message: vec![("this error originates in a macro outside of the current crate (run with RUST_MACRO_BACKTRACE=1 for more info)"
+                        .to_string(), Style::NoStyle)],
+                    span: MultiSpan::new(),
+                    render_span: None,
+                });
+            }
         }
     }
 
@@ -1079,6 +1082,12 @@ impl EmitterWriter {
             }
         }
 
+        if env::var_os("RUST_MACRO_BACKTRACE").is_some() {
+            if let Some(ref primary_span) = msp.primary_span().as_ref() {
+                self.render_macro_backtrace_old_school(primary_span, &mut buffer)?;
+            }
+        }
+
         // final step: take our styled buffer, render it, then output it
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
 
@@ -1225,6 +1234,30 @@ impl EmitterWriter {
                 }
             }
         }
+    }
+
+    fn render_macro_backtrace_old_school(&self,
+                                         sp: &Span,
+                                         buffer: &mut StyledBuffer) -> io::Result<()> {
+        if let Some(ref cm) = self.cm {
+            for trace in sp.macro_backtrace().iter().rev() {
+                let line_offset = buffer.num_lines();
+ 
+                let mut diag_string =
+                    format!("in this expansion of {}", trace.macro_decl_name);
+                if let Some(def_site_span) = trace.def_site_span {
+                    diag_string.push_str(
+                        &format!(" (defined in {})",
+                            cm.span_to_filename(def_site_span)));
+                }
+                let snippet = cm.span_to_string(trace.call_site);
+                buffer.append(line_offset, &format!("{} ", snippet), Style::NoStyle);
+                buffer.append(line_offset, "note", Style::Level(Level::Note));
+                buffer.append(line_offset, ": ", Style::NoStyle);
+                buffer.append(line_offset, &diag_string, Style::OldSchoolNoteText);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -1415,7 +1448,7 @@ impl Destination {
                 }
             }
             Style::Quotation => {}
-            Style::HeaderMsg => {
+            Style::OldSchoolNoteText | Style::HeaderMsg => {
                 self.start_attr(term::Attr::Bold)?;
                 if cfg!(windows) {
                     self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_WHITE))?;
