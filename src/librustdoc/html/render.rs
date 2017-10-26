@@ -3568,7 +3568,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             let ret = v.iter()
                        .filter_map(|i| if let Some(ref i) = i.inner_impl().trait_ {
                            let out = format!("{:#}", i).replace("<", "&lt;").replace(">", "&gt;");
-                           Some(format!("<a href=\"#impl-{:#}\">{name}</a>", i, out))
+                           Some(format!("<a href=\"#impl-{:#}\">{}</a>", i, out))
                        } else {
                            None
                        })
@@ -3625,8 +3625,6 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
         sidebar.push_str("<li><a href=\"#provided-methods\">Provided Methods</a></li>");
     }
 
-    sidebar.push_str(&sidebar_assoc_items(it));
-
     let c = cache();
 
     if let Some(implementors) = c.implementors.get(&it.def_id) {
@@ -3639,6 +3637,8 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
     }
 
     sidebar.push_str("<li><a href=\"#implementors\">Implementors</a></li>");
+
+    sidebar.push_str(&sidebar_assoc_items(it));
 
     write!(fmt, "<div class=\"block items\">{}</div>", sidebar)
 }
