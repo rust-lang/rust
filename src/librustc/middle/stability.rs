@@ -598,29 +598,28 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     None => format!("use of unstable library feature '{}'", &feature)
                 };
 
+
                 let msp: MultiSpan = span.into();
                 let cm = &self.sess.parse_sess.codemap();
-                let real_file_location =
+                let span_key =
                     msp.primary_span().and_then(|sp:Span|
                         if sp != DUMMY_SP {
                             let fname = cm.lookup_char_pos(sp.lo()).file.as_ref().name.clone();
                             if fname.starts_with("<") && fname.ends_with(" macros>") {
                                 None
                             } else {
-                                Some(fname)
+                                Some(span)
                             }
                         } else {
                             None
                         }
                     );
 
-                if let Some(_) = real_file_location {
-                    let tuple = (None, Some(span), msg.clone());
-                    let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(tuple);
-                    if fresh {
-                        emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
-                                         GateIssue::Library(Some(issue)), &msg);
-                    }
+                let tuple = (None, span_key, msg.clone());
+                let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(tuple);
+                if fresh {
+                    emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
+                                     GateIssue::Library(Some(issue)), &msg);
                 }
 
             }
