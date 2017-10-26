@@ -18,7 +18,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 pub use rustc::ty::Instance;
 
 pub mod collector;
-pub mod mono_item;
+pub mod item;
 
 fn fn_once_adapter_instance<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,

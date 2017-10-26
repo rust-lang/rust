@@ -36,8 +36,8 @@ use std::fmt;
 
 pub use rustc::middle::trans::MonoItem;
 
-pub use rustc_mir::monomorphize::mono_item::*;
-pub use rustc_mir::monomorphize::mono_item::MonoItemExt as BaseMonoItemExt;
+pub use rustc_mir::monomorphize::item::*;
+pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
 pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     fn define(&self, ccx: &CrateContext<'a, 'tcx>) {

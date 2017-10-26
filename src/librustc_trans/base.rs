@@ -89,7 +89,7 @@ use syntax::ast;
 use mir::operand::OperandValue;
 
 pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
-pub use rustc_mir::monomorphize::mono_item::linkage_by_name;
+pub use rustc_mir::monomorphize::item::linkage_by_name;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
