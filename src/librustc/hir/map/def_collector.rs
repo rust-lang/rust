@@ -17,6 +17,7 @@ use syntax::ext::hygiene::Mark;
 use syntax::visit;
 use syntax::symbol::keywords;
 use syntax::symbol::Symbol;
+use syntax::parse::token::{self, Token};
 
 use hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
 
@@ -284,6 +285,19 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         match stmt.node {
             StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id, false),
             _ => visit::walk_stmt(self, stmt),
+        }
+    }
+
+    fn visit_token(&mut self, t: Token) {
+        if let Token::Interpolated(nt) = t {
+            match nt.0 {
+                token::NtExpr(ref expr) => {
+                    if let ExprKind::Mac(..) = expr.node {
+                        self.visit_macro_invoc(expr.id, false);
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }

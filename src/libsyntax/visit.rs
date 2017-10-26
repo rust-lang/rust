@@ -27,6 +27,8 @@ use abi::Abi;
 use ast::*;
 use syntax_pos::Span;
 use codemap::Spanned;
+use parse::token::Token;
+use tokenstream::{TokenTree, TokenStream};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -130,7 +132,17 @@ pub trait Visitor<'ast>: Sized {
     fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
         walk_assoc_type_binding(self, type_binding)
     }
-    fn visit_attribute(&mut self, _attr: &'ast Attribute) {}
+    fn visit_attribute(&mut self, attr: &'ast Attribute) {
+        walk_attribute(self, attr)
+    }
+    fn visit_tt(&mut self, tt: TokenTree) {
+        walk_tt(self, tt)
+    }
+    fn visit_tts(&mut self, tts: TokenStream) {
+        walk_tts(self, tts)
+    }
+    fn visit_token(&mut self, _t: Token) {}
+    // FIXME: add `visit_interpolated` and `walk_interpolated`
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
@@ -808,5 +820,22 @@ pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
 pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
     if let Visibility::Restricted { ref path, id } = *vis {
         visitor.visit_path(path, id);
+    }
+}
+
+pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
+    visitor.visit_tts(attr.tokens.clone());
+}
+
+pub fn walk_tt<'a, V: Visitor<'a>>(visitor: &mut V, tt: TokenTree) {
+    match tt {
+        TokenTree::Token(_, tok) => visitor.visit_token(tok),
+        TokenTree::Delimited(_, delimed) => visitor.visit_tts(delimed.stream()),
+    }
+}
+
+pub fn walk_tts<'a, V: Visitor<'a>>(visitor: &mut V, tts: TokenStream) {
+    for tt in tts.trees() {
+        visitor.visit_tt(tt);
     }
 }
