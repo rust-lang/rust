@@ -215,7 +215,7 @@ impl<'a> FnSig<'a> {
                 unsafety: unsafety,
                 visibility: visibility.clone(),
             },
-            visit::FnKind::Method(_, ref method_sig, vis, _) => {
+            visit::FnKind::Method(_, method_sig, vis, _) => {
                 let mut fn_sig = FnSig::from_method_sig(method_sig, generics);
                 fn_sig.defaultness = defualtness;
                 if let Some(vis) = vis {
@@ -2318,16 +2318,16 @@ fn rewrite_generics_inner(
     impl<'a> Rewrite for GenericsArg<'a> {
         fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
             match *self {
-                GenericsArg::Lifetime(ref lifetime) => lifetime.rewrite(context, shape),
-                GenericsArg::TyParam(ref ty) => ty.rewrite(context, shape),
+                GenericsArg::Lifetime(lifetime) => lifetime.rewrite(context, shape),
+                GenericsArg::TyParam(ty) => ty.rewrite(context, shape),
             }
         }
     }
     impl<'a> Spanned for GenericsArg<'a> {
         fn span(&self) -> Span {
             match *self {
-                GenericsArg::Lifetime(ref lifetime) => lifetime.span(),
-                GenericsArg::TyParam(ref ty) => ty.span(),
+                GenericsArg::Lifetime(lifetime) => lifetime.span(),
+                GenericsArg::TyParam(ty) => ty.span(),
             }
         }
     }

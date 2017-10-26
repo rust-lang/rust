@@ -75,7 +75,7 @@ pub fn format_expr(
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
             let callee_str = callee.rewrite(context, shape)?;
-            rewrite_call(context, &callee_str, &args, inner_span, shape)
+            rewrite_call(context, &callee_str, args, inner_span, shape)
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape),
         ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
@@ -101,7 +101,7 @@ pub fn format_expr(
             shape,
         ),
         ast::ExprKind::Tup(ref items) => {
-            rewrite_tuple(context, &ptr_vec_to_ref_vec(&items), expr.span, shape)
+            rewrite_tuple(context, &ptr_vec_to_ref_vec(items), expr.span, shape)
         }
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
@@ -355,7 +355,7 @@ where
             .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
             let one_line_width = last_line_width(&lhs_result) + infix.len()
-                + first_line_width(&rhs_result) + suffix.len();
+                + first_line_width(rhs_result) + suffix.len();
             if one_line_width <= shape.width {
                 return Some(format!("{}{}{}{}", lhs_result, infix, rhs_result, suffix));
             }
@@ -2004,7 +2004,7 @@ pub fn rewrite_call(
     rewrite_call_inner(
         context,
         callee,
-        &ptr_vec_to_ref_vec(&args),
+        &ptr_vec_to_ref_vec(args),
         span,
         shape,
         context.config.fn_call_width(),

@@ -70,10 +70,10 @@ pub enum MacroArg {
 
 impl Rewrite for MacroArg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        match self {
-            &MacroArg::Expr(ref expr) => expr.rewrite(context, shape),
-            &MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
-            &MacroArg::Pat(ref pat) => pat.rewrite(context, shape),
+        match *self {
+            MacroArg::Expr(ref expr) => expr.rewrite(context, shape),
+            MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
+            MacroArg::Pat(ref pat) => pat.rewrite(context, shape),
         }
     }
 }
