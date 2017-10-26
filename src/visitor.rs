@@ -250,17 +250,7 @@ impl<'a> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, _, _, _, _, b) => {
-                block = b;
-                self.rewrite_fn(
-                    indent,
-                    ident,
-                    &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
-                    mk_sp(s.lo(), b.span.lo()),
-                    b,
-                )
-            }
-            visit::FnKind::Method(ident, _, _, b) => {
+            visit::FnKind::ItemFn(ident, _, _, _, _, b) | visit::FnKind::Method(ident, _, _, b) => {
                 block = b;
                 self.rewrite_fn(
                     indent,

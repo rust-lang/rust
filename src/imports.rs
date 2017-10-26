@@ -94,15 +94,14 @@ fn compare_path_list_item_lists(
 fn compare_view_path_types(a: &ast::ViewPath_, b: &ast::ViewPath_) -> Ordering {
     use syntax::ast::ViewPath_::*;
     match (a, b) {
-        (&ViewPathSimple(..), &ViewPathSimple(..)) => Ordering::Equal,
-        (&ViewPathSimple(..), _) => Ordering::Less,
-        (&ViewPathGlob(_), &ViewPathSimple(..)) => Ordering::Greater,
-        (&ViewPathGlob(_), &ViewPathGlob(_)) => Ordering::Equal,
-        (&ViewPathGlob(_), &ViewPathList(..)) => Ordering::Less,
+        (&ViewPathSimple(..), &ViewPathSimple(..)) | (&ViewPathGlob(_), &ViewPathGlob(_)) => {
+            Ordering::Equal
+        }
+        (&ViewPathSimple(..), _) | (&ViewPathGlob(_), &ViewPathList(..)) => Ordering::Less,
         (&ViewPathList(_, ref a_items), &ViewPathList(_, ref b_items)) => {
             compare_path_list_item_lists(a_items, b_items)
         }
-        (&ViewPathList(..), _) => Ordering::Greater,
+        (&ViewPathGlob(_), &ViewPathSimple(..)) | (&ViewPathList(..), _) => Ordering::Greater,
     }
 }
 
