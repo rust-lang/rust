@@ -863,7 +863,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     let verbose_help = if verbose {
         ""
     } else {
-        "\n    --help -v           Print the full set of options rustc accepts"
+        "\n    --help -h           Print the full set of options rustc accepts"
     };
     println!("{}\nAdditional help:
     -C help             Print codegen options
