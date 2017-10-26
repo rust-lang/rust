@@ -40,7 +40,7 @@ pub enum MirSource {
 }
 
 impl<'a, 'gcx, 'tcx> MirSource {
-    pub fn from_local_def_id(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> MirSource {
+    pub fn from_local_def_id(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> MirSource {
         let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
         Self::from_node(tcx, id)
     }
