@@ -24,7 +24,7 @@ use self::mir_util::PassWhere;
 mod constraint_generation;
 mod subtype;
 
-mod region_infer;
+pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
 
 mod renumber;
@@ -43,18 +43,11 @@ impl MirPass for NLL {
             return;
         }
 
-        tcx.infer_ctxt()
-            .enter(|ref infcx| drop(compute_regions(infcx, source, input_mir)));
+        tcx.infer_ctxt().enter(|ref infcx| {
+            let mut mir = input_mir.clone();
+            let _ = compute_regions(infcx, source, &mut mir);
+        });
     }
-}
-
-pub struct RegionComputation<'tcx> {
-    /// A rewritten version of the input MIR where all the regions are
-    /// rewritten to refer to inference variables.
-    pub mir: Mir<'tcx>,
-
-    /// The definitions (along with their final values) for all regions.
-    pub regioncx: RegionInferenceContext,
 }
 
 /// Computes the (non-lexical) regions from the input MIR.
@@ -63,13 +56,10 @@ pub struct RegionComputation<'tcx> {
 pub fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource,
-    input_mir: &Mir<'tcx>,
-) -> RegionComputation<'tcx> {
-    // Clone mir so we can mutate it without disturbing the rest of the compiler
-    let mut mir = input_mir.clone();
-
+    mir: &mut Mir<'tcx>,
+) -> RegionInferenceContext {
     // Replace all regions with fresh inference variables.
-    let num_region_variables = renumber::renumber_mir(infcx, &mut mir);
+    let num_region_variables = renumber::renumber_mir(infcx, mir);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -98,13 +88,11 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
 
     assert!(errors.is_empty(), "FIXME: report region inference failures");
 
-    let computation = RegionComputation { mir, regioncx };
-
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests.
-    dump_mir_results(infcx, liveness, source, &computation);
+    dump_mir_results(infcx, liveness, source, &mir, &regioncx);
 
-    computation
+    regioncx
 }
 
 struct LivenessResults {
@@ -116,16 +104,12 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     liveness: &LivenessResults,
     source: MirSource,
-    computation: &RegionComputation<'tcx>,
+    mir: &Mir<'tcx>,
+    regioncx: &RegionInferenceContext,
 ) {
     if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
         return;
     }
-
-    let RegionComputation {
-        ref mir,
-        ref regioncx,
-    } = *computation;
 
     let regular_liveness_per_location: FxHashMap<_, _> = mir.basic_blocks()
         .indices()
@@ -216,7 +200,7 @@ newtype_index!(RegionIndex {
 /// assert that the region is a `ReVar` and convert the internal index
 /// into a `RegionIndex`. This is reasonable because in our MIR we
 /// replace all free regions with inference variables.
-trait ToRegionIndex {
+pub trait ToRegionIndex {
     fn to_region_index(&self) -> RegionIndex;
 }
 
