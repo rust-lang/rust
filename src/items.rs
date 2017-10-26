@@ -1771,12 +1771,18 @@ fn rewrite_fn_base(
         result.push(' ')
     }
 
+    // Skip `pub(crate)`.
+    let lo_after_visibility = if let ast::Visibility::Crate(s) = fn_sig.visibility {
+        context.codemap.span_after(mk_sp(s.hi(), span.hi()), ")")
+    } else {
+        span.lo()
+    };
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = fn_sig
         .generics
         .ty_params
         .last()
-        .map_or(span.lo(), |tp| end_typaram(tp));
+        .map_or(lo_after_visibility, |tp| end_typaram(tp));
     let args_end = if fd.inputs.is_empty() {
         context
             .codemap
