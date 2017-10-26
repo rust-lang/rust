@@ -173,3 +173,9 @@ pub enum Entry<'a, K: 'a, V: 'a> {
     Vacant(#[stable(feature = "rust1", since = "1.0.0")] VacantEntry<'a, K, V>),
     Occupied(#[stable(feature = "rust1", since = "1.0.0")] OccupiedEntry<'a, K, V>),
 }
+
+// #2081
+pub enum ForegroundColor {
+    CYAN =
+        (winapi::FOREGROUND_INTENSITY | winapi::FOREGROUND_GREEN | winapi::FOREGROUND_BLUE) as u16,
+}

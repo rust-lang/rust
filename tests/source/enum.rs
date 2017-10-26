@@ -136,3 +136,8 @@ pub enum Entry<'a, K: 'a, V: 'a> {
          OccupiedEntry<'a, K, V>,
     ),
 }
+
+// #2081
+pub enum ForegroundColor {
+    CYAN = (winapi::FOREGROUND_INTENSITY | winapi::FOREGROUND_GREEN | winapi::FOREGROUND_BLUE) as u16,
+}
