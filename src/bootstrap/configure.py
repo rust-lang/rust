@@ -225,7 +225,7 @@ while i < len(sys.argv):
         unknown_args.append(arg)
 p("")
 
-if 'option-checking' not in known_args or known_args['option-checking'][1]:
+if 'option-checking' not in known_args or known_args['option-checking'][0][1]:
     if len(unknown_args) > 0:
         err("Option '" + unknown_args[0] + "' is not recognized")
     if len(need_value_args) > 0:
