@@ -207,6 +207,11 @@ struct Install {
     bindir: Option<String>,
     libdir: Option<String>,
     mandir: Option<String>,
+
+    // standard paths, currently unused
+    datadir: Option<String>,
+    infodir: Option<String>,
+    localstatedir: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
