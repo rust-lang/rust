@@ -225,7 +225,12 @@ while i < len(sys.argv):
         unknown_args.append(arg)
 p("")
 
-if 'option-checking' not in known_args or known_args['option-checking'][1]:
+# Note: here and a few other places, we use [-1] to apply the *last* value
+# passed.  But if option-checking is enabled, then the known_args loop will
+# also assert that options are only passed once.
+option_checking = ('option-checking' not in known_args
+                   or known_args['option-checking'][-1][1])
+if option_checking:
     if len(unknown_args) > 0:
         err("Option '" + unknown_args[0] + "' is not recognized")
     if len(need_value_args) > 0:
@@ -238,7 +243,7 @@ config = {}
 
 def build():
     if 'build' in known_args:
-        return known_args['build'][0][1]
+        return known_args['build'][-1][1]
     return bootstrap.default_build_triple()
 
 
@@ -276,9 +281,9 @@ for key in known_args:
 
     # Ensure each option is only passed once
     arr = known_args[key]
-    if len(arr) > 1:
+    if option_checking and len(arr) > 1:
         err("Option '{}' provided more than once".format(key))
-    option, value = arr[0]
+    option, value = arr[-1]
 
     # If we have a clear avenue to set our value in rustbuild, do so
     if option.rustbuild is not None:
