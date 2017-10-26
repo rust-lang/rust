@@ -159,7 +159,28 @@ pub mod vendor {
     pub use aarch64::*;
 
     pub use nvptx::*;
+
+    #[cfg(any(
+        // x86/x86_64:
+        any(target_arch = "x86", target_arch = "x86_64"),
+        // linux + std + (arm|aarch64):
+        all(target_os = "linux",
+            feature = "std",
+            any(target_arch = "arm", target_arch = "aarch64"))
+    ))]
+    pub use runtime::{__unstable_detect_feature, __Feature};
 }
+
+#[cfg(any(
+    // x86/x86_64:
+    any(target_arch = "x86", target_arch = "x86_64"),
+    // linux + std + (arm|aarch64):
+    all(target_os = "linux",
+        feature = "std",
+        any(target_arch = "arm", target_arch = "aarch64"))
+))]
+#[macro_use]
+mod runtime;
 
 #[macro_use]
 mod macros;
@@ -204,7 +225,6 @@ mod v16 {
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[macro_use]
 mod x86;
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]

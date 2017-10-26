@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-user \
   make \
   file
+
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu" \
     OBJDUMP=aarch64-linux-gnu-objdump

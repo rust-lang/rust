@@ -15,7 +15,8 @@
 //! this functions queries the CPU for the available features and stores them
 //! in a global `AtomicUsize` variable. The query is performed by just checking
 //! whether the feature bit in this global variable is set or cleared.
-use std::sync::atomic::{AtomicUsize, Ordering};
+
+use super::bit;
 
 /// This macro maps the string-literal feature names to values of the
 /// `__Feature` enum at compile-time. The feature names used are the same as
@@ -228,18 +229,6 @@ pub enum __Feature {
     #[doc(hidden)] __NonExhaustive,
 }
 
-/// Sets the `bit`-th bit of `x`.
-fn set_bit(x: usize, bit: u32) -> usize {
-    debug_assert!(32 > bit);
-    x | 1 << bit
-}
-
-/// Tests the `bit`-th bit of `x`.
-fn test_bit(x: usize, bit: u32) -> bool {
-    debug_assert!(32 > bit);
-    x & (1 << bit) != 0
-}
-
 /// Run-time feature detection on x86 works by using the CPUID instruction.
 ///
 /// The [CPUID Wikipedia page][wiki_cpuid] contains
@@ -255,9 +244,9 @@ fn test_bit(x: usize, bit: u32) -> bool {
 /// [wiki_cpuid]: https://en.wikipedia.org/wiki/CPUID
 /// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
-fn detect_features() -> usize {
-    use super::cpuid::{__cpuid, __cpuid_count, has_cpuid, CpuidResult};
-    use super::xsave::_xgetbv;
+pub fn detect_features() -> usize {
+    use vendor::{__cpuid, __cpuid_count, has_cpuid, CpuidResult};
+    use vendor::_xgetbv;
     let mut value: usize = 0;
 
     // If the x86 CPU does not support the CPUID instruction then it is too
@@ -331,8 +320,8 @@ fn detect_features() -> usize {
 
     {
         // borrows value till the end of this scope:
-        let mut enable = |r, rb, f| if test_bit(r as usize, rb) {
-            value = set_bit(value, f as u32);
+        let mut enable = |r, rb, f| if bit::test(r as usize, rb) {
+            value = bit::set(value, f as u32);
         };
 
         enable(proc_info_ecx, 0, __Feature::sse3);
@@ -348,7 +337,7 @@ fn detect_features() -> usize {
         enable(extended_features_ebx, 8, __Feature::bmi2);
 
         // `XSAVE` and `AVX` support:
-        if test_bit(proc_info_ecx as usize, 26) {
+        if bit::test(proc_info_ecx as usize, 26) {
             // 0. Here the CPU supports `XSAVE`.
 
             // 1. Detect `OSXSAVE`, that is, whether the OS is AVX enabled and
@@ -359,7 +348,7 @@ fn detect_features() -> usize {
             // com/en-us/blogs/2011/04/14/is-avx-enabled
             // - https://hg.mozilla.
             // org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
-            let cpu_osxsave = test_bit(proc_info_ecx as usize, 27);
+            let cpu_osxsave = bit::test(proc_info_ecx as usize, 27);
 
             // 2. The OS must have signaled the CPU that it supports saving and
             // restoring the SSE and AVX registers by setting `XCR0.SSE[1]` and
@@ -429,27 +418,6 @@ fn detect_features() -> usize {
     }
 
     value
-}
-
-/// This global variable is a bitset used to cache the features supported by
-/// the CPU.
-static FEATURES: AtomicUsize = AtomicUsize::new(::std::usize::MAX);
-
-/// Performs run-time feature detection.
-///
-/// On its first invocation, it detects the CPU features and caches them
-/// in the `FEATURES` global variable as an `AtomicUsize`.
-///
-/// It uses the `__Feature` variant to index into this variable as a bitset. If
-/// the bit is set, the feature is enabled, and otherwise it is disabled.
-///
-/// PLEASE: do not use this, it is an implementation detail subject to change.
-#[doc(hidden)]
-pub fn __unstable_detect_feature(x: __Feature) -> bool {
-    if FEATURES.load(Ordering::Relaxed) == ::std::usize::MAX {
-        FEATURES.store(detect_features(), Ordering::Relaxed);
-    }
-    test_bit(FEATURES.load(Ordering::Relaxed), x as u32)
 }
 
 #[cfg(test)]

@@ -27,9 +27,12 @@ fn works() {
     // assert_eq!(cfg_feature_enabled!("avx512bw"), information.avx512bw());
     // assert_eq!(cfg_feature_enabled!("avx512dq"), information.avx512dq());
     // assert_eq!(cfg_feature_enabled!("avx512vl"), information.avx512vl());
-    // assert_eq!(cfg_feature_enabled!("avx512ifma"), information.avx512ifma());
-    // assert_eq!(cfg_feature_enabled!("avx512vbmi"), information.avx512vbmi());
-    // assert_eq!(cfg_feature_enabled!("avx512vpopcntdq"), information.avx512vpopcntdq());
+    // assert_eq!(cfg_feature_enabled!("avx512ifma"),
+    // information.avx512_ifma());
+    // assert_eq!(cfg_feature_enabled!("avx512vbmi"),
+    // information.avx512_vbmi());
+    // assert_eq!(cfg_feature_enabled!("avx512vpopcntdq"),
+    // information.avx512_vpopcntdq());
     assert_eq!(cfg_feature_enabled!("fma"), information.fma());
     assert_eq!(cfg_feature_enabled!("bmi"), information.bmi1());
     assert_eq!(cfg_feature_enabled!("bmi2"), information.bmi2());
@@ -40,6 +43,12 @@ fn works() {
     assert_eq!(cfg_feature_enabled!("lzcnt"), information.lzcnt());
     assert_eq!(cfg_feature_enabled!("xsave"), information.xsave());
     assert_eq!(cfg_feature_enabled!("xsaveopt"), information.xsaveopt());
-    assert_eq!(cfg_feature_enabled!("xsavec"), information.xsavec_and_xrstor());
-    assert_eq!(cfg_feature_enabled!("xsavec"), information.xsaves_xrstors_and_ia32_xss());
+    assert_eq!(
+        cfg_feature_enabled!("xsavec"),
+        information.xsavec_and_xrstor()
+    );
+    assert_eq!(
+        cfg_feature_enabled!("xsavec"),
+        information.xsaves_xrstors_and_ia32_xss()
+    );
 }

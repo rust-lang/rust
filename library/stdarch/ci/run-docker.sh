@@ -4,10 +4,11 @@
 set -ex
 
 run() {
-    echo $1
+    echo "Building docker container for TARGET=${1}"
     docker build -t stdsimd ci/docker/$1
     mkdir -p target
     target=$(echo $1 | sed 's/-emulated//')
+    echo "Running docker"
     docker run \
       --user `id -u`:`id -g` \
       --rm \
