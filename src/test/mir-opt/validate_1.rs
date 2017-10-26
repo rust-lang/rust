@@ -64,17 +64,14 @@ fn main() {
 //     bb0: {
 //         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[317d]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(50)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[317d]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
 //         StorageLive(_3);
-//         _3 = _2;
+//         Validate(Suspend(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 }))), [(*_2): i32]);
+//         _3 = &ReErased (*_2);
+//         Validate(Acquire, [(*_3): i32/ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })) (imm)]);
 //         StorageLive(_4);
-//         Validate(Suspend(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 }))), [(*_3): i32]);
-//         _4 = &ReErased (*_3);
-//         Validate(Acquire, [(*_4): i32/ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })) (imm)]);
-//         StorageLive(_5);
-//         _5 = (*_4);
-//         _0 = _5;
-//         StorageDead(_5);
-//         EndRegion(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })));
+//         _4 = (*_3);
+//         _0 = _4;
 //         StorageDead(_4);
+//         EndRegion(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })));
 //         StorageDead(_3);
 //         return;
 //     }

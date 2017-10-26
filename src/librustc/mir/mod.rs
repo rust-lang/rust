@@ -650,7 +650,9 @@ pub enum TerminatorKind<'tcx> {
     Call {
         /// The function that’s being called
         func: Operand<'tcx>,
-        /// Arguments the function is called with
+        /// Arguments the function is called with. These are owned by the callee, which is free to
+        /// modify them. This is important as "by-value" arguments might be passed by-reference at
+        /// the ABI level.
         args: Vec<Operand<'tcx>>,
         /// Destination for the return value. If some, the call is converging.
         destination: Option<(Lvalue<'tcx>, BasicBlock)>,
