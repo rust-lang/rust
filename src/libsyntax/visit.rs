@@ -142,6 +142,7 @@ pub trait Visitor<'ast>: Sized {
         walk_tts(self, tts)
     }
     fn visit_token(&mut self, _t: Token) {}
+    // FIXME: add `visit_interpolated` and `walk_interpolated`
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
