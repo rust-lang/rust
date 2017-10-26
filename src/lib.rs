@@ -137,7 +137,7 @@ impl FormattingError {
                     .count();
                 (self.line_buffer.len() - trailing_ws_len, trailing_ws_len)
             }
-            _ => (0, 0), // unreachable
+            _ => unreachable!(),
         }
     }
 }
@@ -319,11 +319,15 @@ where
         let filemap = visitor.codemap.lookup_char_pos(module.inner.lo()).file;
         // Format inner attributes if available.
         if !krate.attrs.is_empty() && path == main_file {
-            visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner);
+            if visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner) {
+                visitor.push_rewrite(module.inner, None);
+            } else {
+                visitor.format_separate_mod(module, &*filemap);
+            }
         } else {
             visitor.last_pos = filemap.start_pos;
-        }
-        visitor.format_separate_mod(module, &*filemap);
+            visitor.format_separate_mod(module, &*filemap);
+        };
 
         has_diff |= after_file(path_str, &mut visitor.buffer)?;
 
