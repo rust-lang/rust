@@ -12,7 +12,7 @@ use rustc::ty::TypeFoldable;
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::{Ty, ClosureSubsts, RegionVid, RegionKind};
 use rustc::mir::{Mir, Location, Rvalue, BasicBlock, Statement, StatementKind};
-use rustc::mir::visit::{MutVisitor, Lookup};
+use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{self as rustc_infer, InferCtxt};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
@@ -29,7 +29,7 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    lookup_map: HashMap<RegionVid, Lookup>,
+    lookup_map: HashMap<RegionVid, TyContext>,
     num_region_variables: usize,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
@@ -50,39 +50,39 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn store_region(&mut self, region: &RegionKind, lookup: Lookup) {
+    fn store_region(&mut self, region: &RegionKind, lookup: TyContext) {
         if let RegionKind::ReVar(rid) = *region {
             self.lookup_map.entry(rid).or_insert(lookup);
         }
     }
 
-    fn store_ty_regions(&mut self, ty: &Ty<'tcx>, lookup: Lookup) {
+    fn store_ty_regions(&mut self, ty: &Ty<'tcx>, ty_context: TyContext) {
         for region in ty.regions() {
-            self.store_region(region, lookup);
+            self.store_region(region, ty_context);
         }
     }
 
-    fn store_kind_regions(&mut self, kind: &'tcx Kind, lookup: Lookup) {
+    fn store_kind_regions(&mut self, kind: &'tcx Kind, ty_context: TyContext) {
         if let Some(ty) = kind.as_type() {
-            self.store_ty_regions(&ty, lookup);
+            self.store_ty_regions(&ty, ty_context);
         } else if let Some(region) = kind.as_region() {
-            self.store_region(region, lookup);
+            self.store_region(region, ty_context);
         }
     }
 }
 
 impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, lookup: Lookup) {
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         let old_ty = *ty;
         *ty = self.renumber_regions(&old_ty);
-        self.store_ty_regions(ty, lookup);
+        self.store_ty_regions(ty, ty_context);
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
         *substs = self.renumber_regions(&{*substs});
-        let lookup = Lookup::Loc(location);
+        let ty_context = TyContext::Location(location);
         for kind in *substs {
-            self.store_kind_regions(kind, lookup);
+            self.store_kind_regions(kind, ty_context);
         }
     }
 
@@ -91,8 +91,8 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
             Rvalue::Ref(ref mut r, _, _) => {
                 let old_r = *r;
                 *r = self.renumber_regions(&old_r);
-                let lookup = Lookup::Loc(location);
-                self.store_region(r, lookup);
+                let ty_context = TyContext::Location(location);
+                self.store_region(r, ty_context);
             }
             Rvalue::Use(..) |
             Rvalue::Repeat(..) |
@@ -114,9 +114,9 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
                             substs: &mut ClosureSubsts<'tcx>,
                             location: Location) {
         *substs = self.renumber_regions(substs);
-        let lookup = Lookup::Loc(location);
+        let ty_context = TyContext::Location(location);
         for kind in substs.substs {
-            self.store_kind_regions(kind, lookup);
+            self.store_kind_regions(kind, ty_context);
         }
     }
 

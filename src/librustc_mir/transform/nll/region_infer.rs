@@ -60,7 +60,6 @@ impl RegionInferenceContext {
         }
     }
 
-
     /// Returns an iterator over all the region indices.
     pub fn regions(&self) -> impl Iterator<Item = RegionIndex> {
         self.definitions.indices()
