@@ -670,7 +670,7 @@ pub fn format_impl(
             result.push_str(&outer_indent_str);
         }
 
-        if result.chars().last().unwrap() == '{' {
+        if result.ends_with('{') {
             result.push_str(&sep);
         }
         result.push('}');
