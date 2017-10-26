@@ -206,9 +206,10 @@ impl<'gcx> StableHashingContext<'gcx> {
 
     pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self,
                                                     item_attrs: &[ast::Attribute],
+                                                    is_const: bool,
                                                     f: F) {
         let prev_overflow_checks = self.overflow_checks_enabled;
-        if attr::contains_name(item_attrs, "rustc_inherit_overflow_checks") {
+        if is_const || attr::contains_name(item_attrs, "rustc_inherit_overflow_checks") {
             self.overflow_checks_enabled = true;
         }
         let prev_hash_node_ids = self.node_id_hashing_mode;

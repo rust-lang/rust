@@ -713,7 +713,15 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
             span
         } = *self;
 
-        hcx.hash_hir_item_like(attrs, |hcx| {
+        let is_const = match *node {
+            hir::TraitItemKind::Const(..) |
+            hir::TraitItemKind::Type(..) => true,
+            hir::TraitItemKind::Method(hir::MethodSig { constness, .. }, _) => {
+                constness == hir::Constness::Const
+            }
+        };
+
+        hcx.hash_hir_item_like(attrs, is_const, |hcx| {
             name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
@@ -750,7 +758,15 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
             span
         } = *self;
 
-        hcx.hash_hir_item_like(attrs, |hcx| {
+        let is_const = match *node {
+            hir::ImplItemKind::Const(..) |
+            hir::ImplItemKind::Type(..) => true,
+            hir::ImplItemKind::Method(hir::MethodSig { constness, .. }, _) => {
+                constness == hir::Constness::Const
+            }
+        };
+
+        hcx.hash_hir_item_like(attrs, is_const, |hcx| {
             name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
@@ -869,11 +885,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        let hash_spans = match self.node {
+        let (is_const, hash_spans) = match self.node {
             hir::ItemStatic(..)      |
-            hir::ItemConst(..)       |
-            hir::ItemFn(..)          => {
-                hcx.hash_spans()
+            hir::ItemConst(..)       => {
+                (true, hcx.hash_spans())
+            }
+            hir::ItemFn(_, _, constness, ..) => {
+                (constness == hir::Constness::Const, hcx.hash_spans())
             }
             hir::ItemUse(..)         |
             hir::ItemExternCrate(..) |
@@ -887,7 +905,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
             hir::ItemEnum(..)        |
             hir::ItemStruct(..)      |
             hir::ItemUnion(..)       => {
-                false
+                (false, false)
             }
         };
 
@@ -901,7 +919,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
             span
         } = *self;
 
-        hcx.hash_hir_item_like(attrs, |hcx| {
+        hcx.hash_hir_item_like(attrs, is_const, |hcx| {
             hcx.while_hashing_spans(hash_spans, |hcx| {
                 name.hash_stable(hcx, hasher);
                 attrs.hash_stable(hcx, hasher);
