@@ -37,7 +37,7 @@ pub use self::ExternalLocation::*;
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
@@ -3206,12 +3206,37 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
     }
 }
 
+fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
+    let self_type_opt = match item.inner {
+        clean::MethodItem(ref method) => method.decl.self_type(),
+        clean::TyMethodItem(ref method) => method.decl.self_type(),
+        _ => None
+    };
+
+    if let Some(self_ty) = self_type_opt {
+        let (by_mut_ref, by_box) = match self_ty {
+            SelfTy::SelfBorrowed(_, mutability) |
+            SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
+                (mutability == Mutability::Mutable, false)
+            },
+            SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
+                (false, Some(did) == cache().owned_box_did)
+            },
+            _ => (false, false),
+        };
+
+        (deref_mut_ || !by_mut_ref) && !by_box
+    } else {
+        false
+    }
+}
+
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
                render_mode: RenderMode, outer_version: Option<&str>,
                show_def_docs: bool) -> fmt::Result {
     if render_mode == RenderMode::Normal {
         let id = derive_id(match i.inner_impl().trait_ {
-            Some(ref t) => format!("impl-{}", Escape(&format!("{:#}", t))),
+            Some(ref t) => format!("impl-{}", small_url_encode(&format!("{:#}", t))),
             None => "impl".to_string(),
         });
         write!(w, "<h3 id='{}' class='impl'><span class='in-band'><code>{}</code>",
@@ -3243,30 +3268,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
         let render_method_item: bool = match render_mode {
             RenderMode::Normal => true,
-            RenderMode::ForDeref { mut_: deref_mut_ } => {
-                let self_type_opt = match item.inner {
-                    clean::MethodItem(ref method) => method.decl.self_type(),
-                    clean::TyMethodItem(ref method) => method.decl.self_type(),
-                    _ => None
-                };
-
-                if let Some(self_ty) = self_type_opt {
-                    let (by_mut_ref, by_box) = match self_ty {
-                        SelfTy::SelfBorrowed(_, mutability) |
-                        SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
-                            (mutability == Mutability::Mutable, false)
-                        },
-                        SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
-                            (false, Some(did) == cache().owned_box_did)
-                        },
-                        _ => (false, false),
-                    };
-
-                    (deref_mut_ || !by_mut_ref) && !by_box
-                } else {
-                    false
-                }
-            },
+            RenderMode::ForDeref { mut_: deref_mut_ } => should_render_item(&item, deref_mut_),
         };
 
         match item.inner {
@@ -3513,12 +3515,16 @@ impl<'a> fmt::Display for Sidebar<'a> {
     }
 }
 
-fn get_methods(i: &clean::Impl) -> Vec<String> {
+fn get_methods(i: &clean::Impl, for_deref: bool) -> Vec<String> {
     i.items.iter().filter_map(|item| {
         match item.name {
             // Maybe check with clean::Visibility::Public as well?
             Some(ref name) if !name.is_empty() && item.visibility.is_some() && item.is_method() => {
-                Some(format!("<a href=\"#method.{name}\">{name}</a>", name = name))
+                if !for_deref || should_render_item(item, false) {
+                    Some(format!("<a href=\"#method.{name}\">{name}</a>", name = name))
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -3546,7 +3552,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
     if let Some(v) = c.impls.get(&it.def_id) {
         let ret = v.iter()
                    .filter(|i| i.inner_impl().trait_.is_none())
-                   .flat_map(|i| get_methods(i.inner_impl()))
+                   .flat_map(|i| get_methods(i.inner_impl(), false))
                    .collect::<String>();
         if !ret.is_empty() {
             out.push_str(&format!("<a class=\"sidebar-title\" href=\"#methods\">Methods\
@@ -3574,17 +3580,23 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         out.push_str("</a>");
                         let ret = impls.iter()
                                        .filter(|i| i.inner_impl().trait_.is_none())
-                                       .flat_map(|i| get_methods(i.inner_impl()))
+                                       .flat_map(|i| get_methods(i.inner_impl(), true))
                                        .collect::<String>();
                         out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret));
                     }
                 }
             }
+            let mut links = HashSet::new();
             let ret = v.iter()
                        .filter_map(|i| if let Some(ref i) = i.inner_impl().trait_ {
                            let out = format!("{:#}", i).replace("<", "&lt;").replace(">", "&gt;");
                            let encoded = small_url_encode(&format!("{:#}", i));
-                           Some(format!("<a href=\"#impl-{:#}\">{}</a>", encoded, out))
+                           let generated = format!("<a href=\"#impl-{}\">{}</a>", encoded, out);
+                           if !links.contains(&generated) && links.insert(generated.clone()) {
+                               Some(generated)
+                           } else {
+                               None
+                           }
                        } else {
                            None
                        })
