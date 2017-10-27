@@ -107,11 +107,11 @@ pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.hir.local_def_id(id);
                 let generics = tcx.generics_of(def_id);
-                let attributes = tcx.get_attrs(def_id);
                 (generics.parent_types == 0 && generics.types.is_empty()) &&
                 // Functions marked with #[inline] are only ever translated
                 // with "internal" linkage and are never exported.
-                !attr::requests_inline(&attributes)
+                !attr::requests_inline(&tcx.get_attrs(def_id)) &&
+                !tcx.is_const_fn(def_id)
             }
 
             _ => false
