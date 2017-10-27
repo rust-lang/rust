@@ -1012,6 +1012,7 @@ define_print! {
                         Ok(())
                     }
                 }
+                TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
                 TyProjection(ref data) => data.print(f, cx),
                 TyAnon(def_id, substs) => {
                     ty::tls::with(|tcx| {
