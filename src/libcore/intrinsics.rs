@@ -1383,17 +1383,5 @@ extern "rust-intrinsic" {
     /// }
     /// # } }
     /// ```
-    #[cfg(not(stage0))]
     pub fn align_offset(ptr: *const (), align: usize) -> usize;
-}
-
-#[cfg(stage0)]
-/// remove me after the next release
-pub unsafe fn align_offset(ptr: *const (), align: usize) -> usize {
-    let offset = ptr as usize % align;
-    if offset == 0 {
-        0
-    } else {
-        align - offset
-    }
 }

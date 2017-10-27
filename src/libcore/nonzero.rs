@@ -71,7 +71,7 @@ impl<T: Zeroable> NonZero<T> {
     #[unstable(feature = "nonzero",
                reason = "needs an RFC to flesh out the design",
                issue = "27730")]
-    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_nonzero_new"))]
+    #[rustc_const_unstable(feature = "const_nonzero_new")]
     #[inline]
     pub const unsafe fn new_unchecked(inner: T) -> Self {
         NonZero(inner)

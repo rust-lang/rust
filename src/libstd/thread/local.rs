@@ -190,11 +190,6 @@ macro_rules! __thread_local_inner {
         }
     };
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
-        #[cfg(stage0)]
-        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
-
-        #[cfg(not(stage0))]
         $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
     }

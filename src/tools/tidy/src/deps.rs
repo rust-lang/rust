@@ -35,11 +35,8 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "thread-id", // Apache-2.0, mdbook
     "cssparser", // MPL-2.0, rustdoc
     "smallvec", // MPL-2.0, rustdoc
-    // FIXME: remove magenta references when "everything" has moved over to using the zircon name.
-    "magenta-sys", // BSD-3-Clause, rustdoc
-    "magenta", // BSD-3-Clause, rustdoc
-    "zircon-sys", // BSD-3-Clause, rustdoc
-    "zircon", // BSD-3-Clause, rustdoc
+    "fuchsia-zircon-sys", // BSD-3-Clause, rustdoc, rustc, cargo
+    "fuchsia-zircon", // BSD-3-Clause, rustdoc, rustc, cargo (jobserver & tempdir)
     "cssparser-macros", // MPL-2.0, rustdoc
     "selectors", // MPL-2.0, rustdoc
 ];

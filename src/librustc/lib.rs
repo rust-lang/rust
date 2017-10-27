@@ -56,9 +56,7 @@
 #![feature(unboxed_closures)]
 #![feature(trace_macros)]
 #![feature(test)]
-
-#![cfg_attr(stage0, feature(const_fn))]
-#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
+#![feature(const_atomic_bool_new)]
 
 #![recursion_limit="512"]
 

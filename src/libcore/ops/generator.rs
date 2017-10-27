@@ -14,7 +14,7 @@
 /// possible return values of a generator. Currently this corresponds to either
 /// a suspension point (`Yielded`) or a termination point (`Complete`).
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-#[cfg_attr(not(stage0), lang = "generator_state")]
+#[lang = "generator_state"]
 #[unstable(feature = "generator_trait", issue = "43122")]
 pub enum GeneratorState<Y, R> {
     /// The generator suspended with a value.
@@ -70,7 +70,7 @@ pub enum GeneratorState<Y, R> {
 /// More documentation of generators can be found in the unstable book.
 ///
 /// [RFC 2033]: https://github.com/rust-lang/rfcs/pull/2033
-#[cfg_attr(not(stage0), lang = "generator")]
+#[lang = "generator"]
 #[unstable(feature = "generator_trait", issue = "43122")]
 #[fundamental]
 pub trait Generator {
