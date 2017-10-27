@@ -17,7 +17,7 @@ extern crate getopts;
 extern crate serde_json as json;
 
 use std::env;
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use std::str;
@@ -126,7 +126,7 @@ pub enum Verbosity {
 fn format_crate(
     verbosity: Verbosity,
     workspace_hitlist: &WorkspaceHitlist,
-) -> Result<ExitStatus, std::io::Error> {
+) -> Result<ExitStatus, io::Error> {
     let targets = get_targets(workspace_hitlist)?;
 
     // Currently only bin and lib files get formatted
@@ -180,6 +180,29 @@ pub struct Target {
     kind: TargetKind,
 }
 
+impl Target {
+    pub fn from_json(json_val: &Value) -> Option<Self> {
+        let jtarget = json_val.as_object()?;
+        let path = PathBuf::from(jtarget.get("src_path")?.as_str()?);
+        let kinds = jtarget.get("kind")?.as_array()?;
+        let kind = match kinds[0].as_str()? {
+            "bin" => TargetKind::Bin,
+            "lib" | "dylib" | "staticlib" | "cdylib" | "rlib" => TargetKind::Lib,
+            "test" => TargetKind::Test,
+            "example" => TargetKind::Example,
+            "bench" => TargetKind::Bench,
+            "custom-build" => TargetKind::CustomBuild,
+            "proc-macro" => TargetKind::ProcMacro,
+            _ => TargetKind::Other,
+        };
+
+        Some(Target {
+            path: path,
+            kind: kind,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum WorkspaceHitlist {
     All,
@@ -205,102 +228,135 @@ impl WorkspaceHitlist {
     }
 }
 
-// Returns a vector of all compile targets of a crate
-fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, std::io::Error> {
-    let mut targets: Vec<Target> = vec![];
-    if *workspace_hitlist == WorkspaceHitlist::None {
-        let output = Command::new("cargo").arg("read-manifest").output()?;
-        if output.status.success() {
-            // None of the unwraps should fail if output of `cargo read-manifest` is correct
-            let data = &String::from_utf8(output.stdout).unwrap();
-            let json: Value = json::from_str(data).unwrap();
-            let json_obj = json.as_object().unwrap();
-            let jtargets = json_obj.get("targets").unwrap().as_array().unwrap();
-            for jtarget in jtargets {
-                targets.push(target_from_json(jtarget));
-            }
-
-            return Ok(targets);
-        }
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            str::from_utf8(&output.stderr).unwrap(),
-        ));
-    }
-    // This happens when cargo-fmt is not used inside a crate or
-    // is used inside a workspace.
-    // To ensure backward compatability, we only use `cargo metadata` for workspaces.
-    // TODO: Is it possible only use metadata or read-manifest
-    let output = Command::new("cargo")
-        .arg("metadata")
-        .arg("--no-deps")
-        .output()?;
-    if output.status.success() {
-        let data = &String::from_utf8(output.stdout).unwrap();
-        let json: Value = json::from_str(data).unwrap();
-        let json_obj = json.as_object().unwrap();
-        let mut hitlist: HashSet<&String> = if *workspace_hitlist != WorkspaceHitlist::All {
-            HashSet::from_iter(workspace_hitlist.get_some().unwrap())
-        } else {
-            HashSet::new() // Unused
-        };
-        let members: Vec<&Value> = json_obj
-            .get("packages")
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .into_iter()
-            .filter(|member| if *workspace_hitlist == WorkspaceHitlist::All {
-                true
-            } else {
-                let member_obj = member.as_object().unwrap();
-                let member_name = member_obj.get("name").unwrap().as_str().unwrap();
-                hitlist.take(&member_name.to_string()).is_some()
-            })
-            .collect();
-        if !hitlist.is_empty() {
-            // Mimick cargo of only outputting one <package> spec.
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!(
-                    "package `{}` is not a member of the workspace",
-                    hitlist.iter().next().unwrap()
-                ),
-            ));
-        }
-        for member in members {
-            let member_obj = member.as_object().unwrap();
-            let jtargets = member_obj.get("targets").unwrap().as_array().unwrap();
-            for jtarget in jtargets {
-                targets.push(target_from_json(jtarget));
-            }
-        }
-        return Ok(targets);
-    }
-    Err(std::io::Error::new(
-        std::io::ErrorKind::NotFound,
-        str::from_utf8(&output.stderr).unwrap(),
-    ))
+fn get_cargo_metadata_from_utf8(v: &[u8]) -> Option<Value> {
+    json::from_str(str::from_utf8(v).ok()?).ok()
 }
 
-fn target_from_json(jtarget: &Value) -> Target {
-    let jtarget = jtarget.as_object().unwrap();
-    let path = PathBuf::from(jtarget.get("src_path").unwrap().as_str().unwrap());
-    let kinds = jtarget.get("kind").unwrap().as_array().unwrap();
-    let kind = match kinds[0].as_str().unwrap() {
-        "bin" => TargetKind::Bin,
-        "lib" | "dylib" | "staticlib" | "cdylib" | "rlib" => TargetKind::Lib,
-        "test" => TargetKind::Test,
-        "example" => TargetKind::Example,
-        "bench" => TargetKind::Bench,
-        "custom-build" => TargetKind::CustomBuild,
-        "proc-macro" => TargetKind::ProcMacro,
-        _ => TargetKind::Other,
-    };
+fn get_json_array_with<'a>(v: &'a Value, key: &str) -> Option<&'a Vec<Value>> {
+    v.as_object()?.get(key)?.as_array()
+}
 
-    Target {
-        path: path,
-        kind: kind,
+// `cargo metadata --no-deps | jq '.["packages"]'`
+fn get_packages(v: &[u8]) -> Result<Vec<Value>, io::Error> {
+    let e = io::Error::new(
+        io::ErrorKind::NotFound,
+        String::from("`cargo metadata` returned json without a 'packages' key"),
+    );
+    match get_cargo_metadata_from_utf8(v) {
+        Some(ref json_obj) => get_json_array_with(json_obj, "packages").cloned().ok_or(e),
+        None => Err(e),
+    }
+}
+
+fn extract_target_from_package(package: &Value) -> Option<Vec<Target>> {
+    let jtargets = get_json_array_with(package, "targets")?;
+    let mut targets: Vec<Target> = vec![];
+    for jtarget in jtargets {
+        targets.push(Target::from_json(&jtarget)?);
+    }
+    Some(targets)
+}
+
+fn filter_packages_with_hitlist<'a>(
+    packages: Vec<Value>,
+    workspace_hitlist: &'a WorkspaceHitlist,
+) -> Result<Vec<Value>, &'a String> {
+    if *workspace_hitlist == WorkspaceHitlist::All {
+        return Ok(packages);
+    }
+    let mut hitlist: HashSet<&String> = workspace_hitlist
+        .get_some()
+        .map_or(HashSet::new(), HashSet::from_iter);
+    let members: Vec<Value> = packages
+        .into_iter()
+        .filter(|member| {
+            member
+                .as_object()
+                .and_then(|member_obj| {
+                    member_obj
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .map(|member_name| {
+                            hitlist.take(&member_name.to_string()).is_some()
+                        })
+                })
+                .unwrap_or(false)
+        })
+        .collect();
+    if hitlist.is_empty() {
+        Ok(members)
+    } else {
+        Err(hitlist.into_iter().next().unwrap())
+    }
+}
+
+fn get_dependencies_from_package(package: &Value) -> Option<Vec<PathBuf>> {
+    let jdependencies = get_json_array_with(package, "dependencies")?;
+    let root_path = env::current_dir().ok()?;
+    let mut dependencies: Vec<PathBuf> = vec![];
+    for jdep in jdependencies {
+        let jdependency = jdep.as_object()?;
+        if !jdependency.get("source")?.is_null() {
+            continue;
+        }
+        let name = jdependency.get("name")?.as_str()?;
+        let mut path = root_path.clone();
+        path.push(&name);
+        dependencies.push(path);
+    }
+    Some(dependencies)
+}
+
+// Returns a vector of local dependencies under this crate
+fn get_path_to_local_dependencies(packages: &[Value]) -> Vec<PathBuf> {
+    let mut local_dependencies: Vec<PathBuf> = vec![];
+    for package in packages {
+        if let Some(mut d) = get_dependencies_from_package(package) {
+            local_dependencies.append(&mut d);
+        }
+    }
+    local_dependencies
+}
+
+// Returns a vector of all compile targets of a crate
+fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, io::Error> {
+    let output = Command::new("cargo")
+        .args(&["metadata", "--no-deps", "--format-version=1"])
+        .output()?;
+    if output.status.success() {
+        let cur_dir = env::current_dir()?;
+        let mut targets: Vec<Target> = vec![];
+        let packages = get_packages(&output.stdout)?;
+
+        // If we can find any local dependencies, we will try to get targets from those as well.
+        for path in get_path_to_local_dependencies(&packages) {
+            env::set_current_dir(path)?;
+            targets.append(&mut get_targets(workspace_hitlist)?);
+        }
+
+        env::set_current_dir(cur_dir)?;
+        match filter_packages_with_hitlist(packages, workspace_hitlist) {
+            Ok(packages) => {
+                for package in packages {
+                    if let Some(mut target) = extract_target_from_package(&package) {
+                        targets.append(&mut target);
+                    }
+                }
+                Ok(targets)
+            }
+            Err(package) => {
+                // Mimick cargo of only outputting one <package> spec.
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("package `{}` is not a member of the workspace", package),
+                ))
+            }
+        }
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            str::from_utf8(&output.stderr).unwrap(),
+        ))
     }
 }
 
@@ -308,7 +364,7 @@ fn format_files(
     files: &[PathBuf],
     fmt_args: &[String],
     verbosity: Verbosity,
-) -> Result<ExitStatus, std::io::Error> {
+) -> Result<ExitStatus, io::Error> {
     let stdout = if verbosity == Verbosity::Quiet {
         std::process::Stdio::null()
     } else {
@@ -316,10 +372,10 @@ fn format_files(
     };
     if verbosity == Verbosity::Verbose {
         print!("rustfmt");
-        for a in fmt_args.iter() {
+        for a in fmt_args {
             print!(" {}", a);
         }
-        for f in files.iter() {
+        for f in files {
             print!(" {}", f.display());
         }
         println!("");
@@ -330,8 +386,8 @@ fn format_files(
         .args(fmt_args)
         .spawn()
         .map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => std::io::Error::new(
-                std::io::ErrorKind::Other,
+            io::ErrorKind::NotFound => io::Error::new(
+                io::ErrorKind::Other,
                 "Could not run rustfmt, please make sure it is in your PATH.",
             ),
             _ => e,
