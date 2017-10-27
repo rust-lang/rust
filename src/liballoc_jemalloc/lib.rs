@@ -219,9 +219,10 @@ mod contents {
                                               err: *mut u8) -> *mut u8 {
         let p = __rde_realloc(ptr, old_size, old_align, new_size, new_align, err);
         if !p.is_null() {
-            *excess = new_size;
+            let flags = align_to_flags(new_align);
+            *excess = nallocx(new_size, flags) as usize;
         }
-        return p
+        p
     }
 
     #[no_mangle]
