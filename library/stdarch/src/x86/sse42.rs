@@ -15,7 +15,8 @@ pub const _SIDD_SWORD_OPS: i8 = 0b00000011;
 
 /// For each character in `a`, find if it is in `b` *(Default)*
 pub const _SIDD_CMP_EQUAL_ANY: i8 = 0b00000000;
-/// For each character in `a`, determine if `b[0] <= c <= b[1] or b[1] <= c <= b[2]...`
+/// For each character in `a`, determine if `b[0] <= c <= b[1] or b[1] <= c <=
+/// b[2]...`
 pub const _SIDD_CMP_RANGES: i8 = 0b00000100;
 /// The strings defined by `a` and `b` are equal
 pub const _SIDD_CMP_EQUAL_EACH: i8 = 0b00001000;
@@ -46,11 +47,7 @@ pub const _SIDD_UNIT_MASK: i8 = 0b01000000;
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistrm, imm8 = 0))]
-pub unsafe fn _mm_cmpistrm(
-    a: __m128i,
-    b: __m128i,
-    imm8: i8,
-) -> u8x16 {
+pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
     macro_rules! call {
         ($imm8:expr) => { pcmpistrm128(a, b, $imm8) }
     }
@@ -58,9 +55,9 @@ pub unsafe fn _mm_cmpistrm(
 }
 
 /// Compare packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and return the generated index. Similar to [`_mm_cmpestri`]
-/// with the excception that [`_mm_cmpestri`] requires the lengths of `a` and
-/// `b` to be explicitly specified.
+/// control in `imm8`, and return the generated index. Similar to
+/// [`_mm_cmpestri`] with the excception that [`_mm_cmpestri`] requires the
+/// lengths of `a` and `b` to be explicitly specified.
 ///
 /// # Control modes
 ///
@@ -105,7 +102,8 @@ pub unsafe fn _mm_cmpistrm(
 /// use stdsimd::simd::u8x16;
 /// use stdsimd::vendor::{__m128i, _mm_cmpistri, _SIDD_CMP_EQUAL_ORDERED};
 ///
-/// let haystack = b"This is a long string of text data\r\n\tthat extends multiple lines";
+/// let haystack = b"This is a long string of text data\r\n\tthat extends
+/// multiple lines";
 /// let needle = b"\r\n\t\0\0\0\0\0\0\0\0\0\0\0\0\0";
 ///
 /// let a = __m128i::from(u8x16::load(needle, 0));
@@ -171,8 +169,8 @@ pub unsafe fn _mm_cmpistrm(
 /// # }
 /// ```
 ///
-/// Find the index of the first character in the haystack that is within a range
-/// of characters.
+/// Find the index of the first character in the haystack that is within a
+/// range of characters.
 ///
 /// ```
 /// # #![feature(cfg_target_feature)]
@@ -269,11 +267,7 @@ pub unsafe fn _mm_cmpistrm(
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-pub unsafe fn _mm_cmpistri(
-    a: __m128i,
-    b: __m128i,
-    imm8: i8,
-) -> i32 {
+pub unsafe fn _mm_cmpistri(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpistri128(a, b, $imm8) }
     }
@@ -286,11 +280,7 @@ pub unsafe fn _mm_cmpistri(
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-pub unsafe fn _mm_cmpistrz(
-    a: __m128i,
-    b: __m128i,
-    imm8: i8,
-) -> i32 {
+pub unsafe fn _mm_cmpistrz(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpistriz128(a, b, $imm8) }
     }
@@ -303,11 +293,7 @@ pub unsafe fn _mm_cmpistrz(
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-pub unsafe fn _mm_cmpistrc(
-    a: __m128i,
-    b: __m128i,
-    imm8: i8,
-) -> i32 {
+pub unsafe fn _mm_cmpistrc(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpistric128(a, b, $imm8) }
     }
@@ -320,11 +306,7 @@ pub unsafe fn _mm_cmpistrc(
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-pub unsafe fn _mm_cmpistrs(
-    a: __m128i,
-    b: __m128i,
-    imm8: i8,
-) -> i32 {
+pub unsafe fn _mm_cmpistrs(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpistris128(a, b, $imm8) }
     }
@@ -336,11 +318,7 @@ pub unsafe fn _mm_cmpistrs(
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-pub unsafe fn _mm_cmpistro(
-    a: __m128i,
-    b: __m128i,
-    imm8: i8,
-) -> i32 {
+pub unsafe fn _mm_cmpistro(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpistrio128(a, b, $imm8) }
     }
@@ -353,11 +331,7 @@ pub unsafe fn _mm_cmpistro(
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-pub unsafe fn _mm_cmpistra(
-    a: __m128i,
-    b: __m128i,
-    imm8: i8,
-) -> i32 {
+pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpistria128(a, b, $imm8) }
     }
@@ -370,11 +344,7 @@ pub unsafe fn _mm_cmpistra(
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpestrm, imm8 = 0))]
 pub unsafe fn _mm_cmpestrm(
-    a: __m128i,
-    la: i32,
-    b: __m128i,
-    lb: i32,
-    imm8: i8,
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> u8x16 {
     macro_rules! call {
         ($imm8:expr) => { pcmpestrm128(a, la, b, lb, $imm8) }
@@ -383,9 +353,9 @@ pub unsafe fn _mm_cmpestrm(
 }
 
 /// Compare packed strings `a` and `b` with lengths `la` and `lb` using the
-/// control in `imm8`, and return the generated index. Similar to [`_mm_cmpistri`]
-/// with the excception that [`_mm_cmpistri`] implicityly determines the length of
-/// `a` and `b`.
+/// control in `imm8`, and return the generated index. Similar to
+/// [`_mm_cmpistri`] with the excception that [`_mm_cmpistri`] implicityly
+/// determines the length of `a` and `b`.
 ///
 /// # Control modes
 ///
@@ -468,11 +438,7 @@ pub unsafe fn _mm_cmpestrm(
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
 pub unsafe fn _mm_cmpestri(
-    a: __m128i,
-    la: i32,
-    b: __m128i,
-    lb: i32,
-    imm8: i8,
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpestri128(a, la, b, lb, $imm8) }
@@ -487,11 +453,7 @@ pub unsafe fn _mm_cmpestri(
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
 pub unsafe fn _mm_cmpestrz(
-    a: __m128i,
-    la: i32,
-    b: __m128i,
-    lb: i32,
-    imm8: i8,
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpestriz128(a, la, b, lb, $imm8) }
@@ -506,11 +468,7 @@ pub unsafe fn _mm_cmpestrz(
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
 pub unsafe fn _mm_cmpestrc(
-    a: __m128i,
-    la: i32,
-    b: __m128i,
-    lb: i32,
-    imm8: i8,
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpestric128(a, la, b, lb, $imm8) }
@@ -525,11 +483,7 @@ pub unsafe fn _mm_cmpestrc(
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
 pub unsafe fn _mm_cmpestrs(
-    a: __m128i,
-    la: i32,
-    b: __m128i,
-    lb: i32,
-    imm8: i8,
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpestris128(a, la, b, lb, $imm8) }
@@ -544,11 +498,7 @@ pub unsafe fn _mm_cmpestrs(
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
 pub unsafe fn _mm_cmpestro(
-    a: __m128i,
-    la: i32,
-    b: __m128i,
-    lb: i32,
-    imm8: i8,
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpestrio128(a, la, b, lb, $imm8) }
@@ -564,11 +514,7 @@ pub unsafe fn _mm_cmpestro(
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
 pub unsafe fn _mm_cmpestra(
-    a: __m128i,
-    la: i32,
-    b: __m128i,
-    lb: i32,
-    imm8: i8,
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
         ($imm8:expr) => { pcmpestria128(a, la, b, lb, $imm8) }
@@ -624,22 +570,35 @@ pub unsafe fn _mm_cmpgt_epi64(a: i64x2, b: i64x2) -> i64x2 {
 }
 
 #[allow(improper_ctypes)]
-extern {
+extern "C" {
     // SSE 4.2 string and text comparison ops
     #[link_name = "llvm.x86.sse42.pcmpestrm128"]
-    fn pcmpestrm128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> u8x16;
+    fn pcmpestrm128(
+        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
+    ) -> u8x16;
     #[link_name = "llvm.x86.sse42.pcmpestri128"]
-    fn pcmpestri128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
+    fn pcmpestri128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8)
+        -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestriz128"]
-    fn pcmpestriz128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
+    fn pcmpestriz128(
+        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
+    ) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestric128"]
-    fn pcmpestric128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
+    fn pcmpestric128(
+        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
+    ) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestris128"]
-    fn pcmpestris128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
+    fn pcmpestris128(
+        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
+    ) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestrio128"]
-    fn pcmpestrio128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
+    fn pcmpestrio128(
+        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
+    ) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestria128"]
-    fn pcmpestria128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
+    fn pcmpestria128(
+        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
+    ) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistrm128"]
     fn pcmpistrm128(a: __m128i, b: __m128i, imm8: i8) -> u8x16;
     #[link_name = "llvm.x86.sse42.pcmpistri128"]
@@ -685,7 +644,8 @@ mod tests {
         ptr::copy_nonoverlapping(
             s.get_unchecked(0) as *const u8 as *const u8,
             slice.get_unchecked_mut(0) as *mut u8 as *mut u8,
-            s.len());
+            s.len(),
+        );
         __m128i::from(u8x16::load(slice, 0))
     }
 
@@ -694,8 +654,11 @@ mod tests {
         let a = str_to_m128i(b"Hello! Good-Bye!");
         let b = str_to_m128i(b"hello! good-bye!");
         let i = sse42::_mm_cmpistrm(a, b, sse42::_SIDD_UNIT_MASK);
-        let res = u8x16::new(0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
-                             0xff, 0xff, 0xff, 0xff, 0x00, 0xff, 0xff, 0xff);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let res = u8x16::new(
+            0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0x00, 0xff, 0xff, 0xff,
+        );
         assert_eq!(i, res);
     }
 
@@ -733,14 +696,23 @@ mod tests {
 
     #[simd_test = "sse4.2"]
     unsafe fn _mm_cmpistro() {
-        let a_bytes = u8x16::new(0x00, 0x47, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
-                                 0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-        let b_bytes = u8x16::new(0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
-                                 0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a_bytes = u8x16::new(
+            0x00, 0x47, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
+            0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let b_bytes = u8x16::new(
+            0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
+            0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        );
         let a = __m128i::from(a_bytes);
         let b = __m128i::from(b_bytes);
         let i = sse42::_mm_cmpistro(
-                a, b, sse42::_SIDD_UWORD_OPS | sse42::_SIDD_UNIT_MASK);
+            a,
+            b,
+            sse42::_SIDD_UWORD_OPS | sse42::_SIDD_UNIT_MASK,
+        );
         assert_eq!(0, i);
     }
 
@@ -757,15 +729,20 @@ mod tests {
         let a = str_to_m128i(b"Hello!");
         let b = str_to_m128i(b"Hello.");
         let i = sse42::_mm_cmpestrm(a, 5, b, 5, sse42::_SIDD_UNIT_MASK);
-        assert_eq!(i, u8x16::new(0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00,
-                                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let r = u8x16::new(
+            0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        );
+        assert_eq!(i, r);
     }
 
     #[simd_test = "sse4.2"]
     unsafe fn _mm_cmpestri() {
         let a = str_to_m128i(b"bar - garbage");
         let b = str_to_m128i(b"foobar");
-        let i = sse42::_mm_cmpestri(a, 3, b, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
+        let i =
+            sse42::_mm_cmpestri(a, 3, b, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(3, i);
     }
 
@@ -773,8 +750,8 @@ mod tests {
     unsafe fn _mm_cmpestrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
-        let i = sse42::_mm_cmpestrz(
-                a, 16, b, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
+        let i =
+            sse42::_mm_cmpestrz(a, 16, b, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(1, i);
     }
 
@@ -782,19 +759,20 @@ mod tests {
     unsafe fn _mm_cmpestrc() {
         let va = str_to_m128i(b"!!!!!!!!");
         let vb = str_to_m128i(b"        ");
-        let i = sse42::_mm_cmpestrc(
-                va, 7, vb, 7, sse42::_SIDD_UNIT_MASK);
+        let i = sse42::_mm_cmpestrc(va, 7, vb, 7, sse42::_SIDD_UNIT_MASK);
         assert_eq!(0, i);
     }
 
     #[simd_test = "sse4.2"]
     unsafe fn _mm_cmpestrs() {
-        let a_bytes = u8x16::new(0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
-                                 0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a_bytes = u8x16::new(
+            0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
+            0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        );
         let a = __m128i::from(a_bytes);
         let b = __m128i::from(u8x16::splat(0x00));
-        let i = sse42::_mm_cmpestrs(
-                a, 8, b, 0, sse42::_SIDD_UWORD_OPS);
+        let i = sse42::_mm_cmpestrs(a, 8, b, 0, sse42::_SIDD_UWORD_OPS);
         assert_eq!(0, i);
     }
 
@@ -802,8 +780,7 @@ mod tests {
     unsafe fn _mm_cmpestro() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"World");
-        let i = sse42::_mm_cmpestro(
-                a, 5, b, 5, sse42::_SIDD_UBYTE_OPS);
+        let i = sse42::_mm_cmpestro(a, 5, b, 5, sse42::_SIDD_UBYTE_OPS);
         assert_eq!(0, i);
     }
 
@@ -812,7 +789,12 @@ mod tests {
         let a = str_to_m128i(b"Cannot match a");
         let b = str_to_m128i(b"Null after 14");
         let i = sse42::_mm_cmpestra(
-                a, 14, b, 16, sse42::_SIDD_CMP_EQUAL_EACH | sse42::_SIDD_UNIT_MASK);
+            a,
+            14,
+            b,
+            16,
+            sse42::_SIDD_CMP_EQUAL_EACH | sse42::_SIDD_UNIT_MASK,
+        );
         assert_eq!(1, i);
     }
 

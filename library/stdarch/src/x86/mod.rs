@@ -12,7 +12,7 @@ pub use self::bmi::*;
 pub use self::bmi2::*;
 pub use self::tbm::*;
 
-pub use self::runtime::{__Feature, __unstable_detect_feature};
+pub use self::runtime::{__unstable_detect_feature, __Feature};
 
 #[allow(non_camel_case_types)]
 pub type __m128i = ::v128::i8x16;

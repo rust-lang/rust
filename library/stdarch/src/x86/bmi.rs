@@ -1,11 +1,16 @@
 //! Bit Manipulation Instruction (BMI) Set 1.0.
 //!
 //! The reference is [Intel 64 and IA-32 Architectures Software Developer's
-//! Manual Volume 2: Instruction Set Reference,
-//! A-Z](http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf).
+//! Manual Volume 2: Instruction Set Reference, A-Z][intel64_ref].
 //!
-//! [Wikipedia](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#BMI1_.28Bit_Manipulation_Instruction_Set_1.29)
-//! provides a quick overview of the available instructions.
+//! [Wikipedia][wikipedia_bmi] provides a quick overview of the instructions
+//! available.
+//!
+//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [wikipedia_bmi]:
+//! https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.
+//! 28Advanced_Bit_Manipulation.29
+
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -32,8 +37,8 @@ pub unsafe fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
 /// Extracts bits of `a` specified by `control` into
 /// the least significant bits of the result.
 ///
-/// Bits [7,0] of `control` specify the index to the first bit in the range to be
-/// extracted, and bits [15,8] specify the length of the range.
+/// Bits [7,0] of `control` specify the index to the first bit in the range to
+/// be extracted, and bits [15,8] specify the length of the range.
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
@@ -44,8 +49,8 @@ pub unsafe fn _bextr2_u32(a: u32, control: u32) -> u32 {
 /// Extracts bits of `a` specified by `control` into
 /// the least significant bits of the result.
 ///
-/// Bits [7,0] of `control` specify the index to the first bit in the range to be
-/// extracted, and bits [15,8] specify the length of the range.
+/// Bits [7,0] of `control` specify the index to the first bit in the range to
+/// be extracted, and bits [15,8] specify the length of the range.
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
@@ -177,9 +182,9 @@ pub unsafe fn _mm_tzcnt_u64(x: u64) -> u64 {
 
 #[allow(dead_code)]
 extern "C" {
-    #[link_name="llvm.x86.bmi.bextr.32"]
+    #[link_name = "llvm.x86.bmi.bextr.32"]
     fn x86_bmi_bextr_32(x: u32, y: u32) -> u32;
-    #[link_name="llvm.x86.bmi.bextr.64"]
+    #[link_name = "llvm.x86.bmi.bextr.64"]
     fn x86_bmi_bextr_64(x: u64, y: u64) -> u64;
 }
 

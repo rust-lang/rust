@@ -1,16 +1,16 @@
 //! Implementation of the `#[simd_test]` macro
 //!
-//! This macro expands to a `#[test]` function which tests the local machine for
-//! the appropriate cfg before calling the inner test function.
+//! This macro expands to a `#[test]` function which tests the local machine
+//! for the appropriate cfg before calling the inner test function.
 
 #![feature(proc_macro)]
 
+extern crate proc_macro2;
+extern crate proc_macro;
 #[macro_use]
 extern crate quote;
-extern crate proc_macro;
-extern crate proc_macro2;
 
-use proc_macro2::{TokenStream, Term, TokenNode, TokenTree};
+use proc_macro2::{Term, TokenNode, TokenStream, TokenTree};
 use proc_macro2::Literal;
 
 fn string(s: &str) -> TokenTree {
@@ -22,8 +22,9 @@ fn string(s: &str) -> TokenTree {
 }
 
 #[proc_macro_attribute]
-pub fn simd_test(attr: proc_macro::TokenStream,
-                 item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn simd_test(
+    attr: proc_macro::TokenStream, item: proc_macro::TokenStream
+) -> proc_macro::TokenStream {
     let tokens = TokenStream::from(attr).into_iter().collect::<Vec<_>>();
     if tokens.len() != 2 {
         panic!("expected #[simd_test = \"feature\"]");
@@ -37,8 +38,9 @@ pub fn simd_test(attr: proc_macro::TokenStream,
         TokenNode::Literal(ref l) => l.to_string(),
         _ => panic!("expected #[simd_test = \"feature\"]"),
     };
-    let enable_feature = enable_feature.trim_left_matches('"')
-                                       .trim_right_matches('"');
+    let enable_feature = enable_feature
+        .trim_left_matches('"')
+        .trim_right_matches('"');
     let enable_feature = string(&format!("+{}", enable_feature));
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
@@ -67,7 +69,7 @@ fn find_name(item: TokenStream) -> Term {
     while let Some(tok) = tokens.next() {
         if let TokenNode::Term(word) = tok.kind {
             if word.as_str() == "fn" {
-                break
+                break;
             }
         }
     }

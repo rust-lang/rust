@@ -50,7 +50,17 @@ define_from!(u8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, i8x16);
 define_from!(i8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16);
 
 define_common_ops!(
-    f64x2, f32x4, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16, i8x16);
+    f64x2,
+    f32x4,
+    u64x2,
+    i64x2,
+    u32x4,
+    i32x4,
+    u16x8,
+    i16x8,
+    u8x16,
+    i8x16
+);
 define_float_ops!(f64x2, f32x4);
 define_integer_ops!(
     (u64x2, u64),
@@ -60,7 +70,8 @@ define_integer_ops!(
     (u16x8, u16),
     (i16x8, i16),
     (u8x16, u8),
-    (i8x16, i8));
+    (i8x16, i8)
+);
 define_casts!(
     (f64x2, f32x2, as_f32x2),
     (f64x2, u64x2, as_u64x2),
@@ -79,4 +90,5 @@ define_casts!(
     (u16x8, i16x8, as_i16x8),
     (i16x8, u16x8, as_u16x8),
     (u8x16, i8x16, as_i8x16),
-    (i8x16, u8x16, as_u8x16));
+    (i8x16, u8x16, as_u8x16)
+);

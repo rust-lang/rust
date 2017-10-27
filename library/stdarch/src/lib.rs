@@ -44,9 +44,9 @@
 //! have no runtime support for whether you CPU actually supports the
 //! instruction.
 //!
-//! CPU target feature detection is done via the `cfg_feature_enabled!` macro at
-//! runtime. This macro will detect at runtime whether the specified feature is
-//! available or not, returning true or false depending on the current CPU.
+//! CPU target feature detection is done via the `cfg_feature_enabled!` macro
+//! at runtime. This macro will detect at runtime whether the specified feature
+//! is available or not, returning true or false depending on the current CPU.
 //!
 //! ```
 //! #![feature(cfg_target_feature)]
@@ -58,7 +58,8 @@
 //!     if cfg_feature_enabled!("avx2") {
 //!         println!("avx2 intrinsics will work");
 //!     } else {
-//!         println!("avx2 intrinsics will not work, they may generate SIGILL");
+//!         println!("avx2 intrinsics will not work");
+//!         // undefined behavior: may generate a `SIGILL`.
 //!     }
 //! }
 //! ```
@@ -93,29 +94,33 @@
 //!
 //! # Status
 //!
-//! This crate is intended for eventual inclusion into the standard library, but
-//! some work and experimentation is needed to get there! First and foremost you
-//! can help out by kicking the tires on this crate and seeing if it works for
-//! your use case! Next up you can help us fill out the [vendor
-//! intrinsics][vendor] to ensure that we've got all the SIMD support necessary.
+//! This crate is intended for eventual inclusion into the standard library,
+//! but some work and experimentation is needed to get there! First and
+//! foremost you can help out by kicking the tires on this crate and seeing if
+//! it works for your use case! Next up you can help us fill out the [vendor
+//! intrinsics][vendor] to ensure that we've got all the SIMD support
+//! necessary.
 //!
-//! The language support and status of SIMD is also still a little up in the air
-//! right now, you may be interested in a few issues along these lines:
+//! The language support and status of SIMD is also still a little up in the
+//! air right now, you may be interested in a few issues along these lines:
 //!
-//! * [Overal tracking issue for SIMD support](https://github.com/rust-lang/rust/issues/27731)
-//! * [`cfg_target_feature` tracking issue](https://github.com/rust-lang/rust/issues/29717)
-//! * [SIMD types currently not sound](https://github.com/rust-lang/rust/issues/44367)
-//! * [`#[target_feature]` improvements](https://github.com/rust-lang/rust/issues/44839)
+//! * [Overal tracking issue for SIMD support]
+//!   (https://github.com/rust-lang/rust/issues/27731)
+//! * [`cfg_target_feature` tracking issue]
+//!   (https://github.com/rust-lang/rust/issues/29717)
+//! * [SIMD types currently not sound]
+//!   (https://github.com/rust-lang/rust/issues/44367)
+//! * [`#[target_feature]` improvements]
+//!   (https://github.com/rust-lang/rust/issues/44839)
 //!
 //! [vendor]: https://github.com/rust-lang-nursery/stdsimd/issues/40
 
 #![cfg_attr(feature = "strict", deny(warnings))]
 #![allow(dead_code)]
 #![allow(unused_features)]
-#![feature(
-    const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd, simd_ffi,
-    target_feature, cfg_target_feature, i128_type, asm, const_atomic_usize_new
-)]
+#![feature(const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd,
+           simd_ffi, target_feature, cfg_target_feature, i128_type, asm,
+           const_atomic_usize_new, stmt_expr_attributes)]
 #![cfg_attr(test, feature(proc_macro, test))]
 
 #[cfg(test)]

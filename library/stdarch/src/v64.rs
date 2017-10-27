@@ -42,7 +42,8 @@ define_integer_ops!(
     (u16x4, u16),
     (i16x4, i16),
     (u8x8, u8),
-    (i8x8, i8));
+    (i8x8, i8)
+);
 define_casts!(
     (f32x2, f64x2, as_f64x2),
     (f32x2, u32x2, as_u32x2),
@@ -61,5 +62,4 @@ define_casts!(
     (u8x8, u16x8, as_u16x8),
     (u16x4, u32x4, as_u32x4),
     (u32x2, u64x2, as_u64x2)
-
 );

@@ -21,13 +21,13 @@ extern crate synom;
 use proc_macro2::TokenStream;
 
 #[proc_macro_attribute]
-pub fn assert_instr(attr: proc_macro::TokenStream,
-                    item: proc_macro::TokenStream)
-    -> proc_macro::TokenStream
-{
+pub fn assert_instr(
+    attr: proc_macro::TokenStream, item: proc_macro::TokenStream
+) -> proc_macro::TokenStream {
     let invoc = syn::parse::<Invoc>(attr)
         .expect("expected #[assert_instr(instr, a = b, ...)]");
-    let item = syn::parse::<syn::Item>(item).expect("must be attached to an item");
+    let item =
+        syn::parse::<syn::Item>(item).expect("must be attached to an item");
     let func = match item.node {
         syn::ItemKind::Fn(ref f) => f,
         _ => panic!("must be attached to a function"),
@@ -40,10 +40,11 @@ pub fn assert_instr(attr: proc_macro::TokenStream,
         (quote! { #[ignore] }).into()
     };
     let name = &func.ident;
-    let assert_name = syn::Ident::from(&format!("assert_{}_{}",
-                                                name.sym.as_str(),
-                                                instr.sym.as_str())[..]);
-    let shim_name = syn::Ident::from(&format!("{}_shim", name.sym.as_str())[..]);
+    let assert_name = syn::Ident::from(
+        &format!("assert_{}_{}", name.sym.as_str(), instr.sym.as_str())[..],
+    );
+    let shim_name =
+        syn::Ident::from(&format!("{}_shim", name.sym.as_str())[..]);
     let (to_test, test_name) = if invoc.args.len() == 0 {
         (TokenStream::empty(), &func.ident)
     } else {
@@ -69,16 +70,29 @@ pub fn assert_instr(attr: proc_macro::TokenStream,
                 }
             };
         }
-        let attrs = item.attrs.iter().filter(|attr| {
-            attr.path.segments.get(0).item().ident.sym.as_str().starts_with("target")
-        }).collect::<Vec<_>>();
+        let attrs = item.attrs
+            .iter()
+            .filter(|attr| {
+                attr.path
+                    .segments
+                    .get(0)
+                    .item()
+                    .ident
+                    .sym
+                    .as_str()
+                    .starts_with("target")
+            })
+            .collect::<Vec<_>>();
         let attrs = Append(&attrs);
-        (quote! {
-            #attrs
-            unsafe fn #shim_name(#(#inputs),*) #ret {
-                #name(#(#input_vals),*)
-            }
-        }.into(), &shim_name)
+        (
+            quote! {
+                #attrs
+                unsafe fn #shim_name(#(#inputs),*) #ret {
+                    #name(#(#input_vals),*)
+                }
+            }.into(),
+            &shim_name,
+        )
     };
 
     let tts: TokenStream = quote! {
@@ -128,8 +142,9 @@ impl synom::Synom for Invoc {
 struct Append<T>(T);
 
 impl<T> quote::ToTokens for Append<T>
-    where T: Clone + IntoIterator,
-          T::Item: quote::ToTokens
+where
+    T: Clone + IntoIterator,
+    T::Item: quote::ToTokens,
 {
     fn to_tokens(&self, tokens: &mut quote::Tokens) {
         for item in self.0.clone() {

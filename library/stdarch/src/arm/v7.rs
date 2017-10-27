@@ -1,7 +1,11 @@
 //! ARMv7 intrinsics.
 //!
 //! The reference is [ARMv7-M Architecture Reference Manual (Issue
-//! E.b)](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0403e.b/index.html).
+//! E.b)][armv7m].
+//!
+//! [armv7m]:
+//! http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0403e.
+//! b/index.html
 
 pub use super::v6::*;
 
@@ -39,7 +43,7 @@ pub unsafe fn _rbit_u32(x: u32) -> u32 {
 
 #[allow(dead_code)]
 extern "C" {
-    #[link_name="llvm.bitreverse.i32"]
+    #[link_name = "llvm.bitreverse.i32"]
     fn rbit_u32(i: i32) -> i32;
 }
 
@@ -72,8 +76,10 @@ mod tests {
     #[test]
     fn _rbit_u32() {
         unsafe {
-            assert_eq!(v7::_rbit_u32(0b0000_1010u32),
-                       0b0101_0000_0000_0000_0000_0000_0000_0000u32);
+            assert_eq!(
+                v7::_rbit_u32(0b0000_1010u32),
+                0b0101_0000_0000_0000_0000_0000_0000_0000u32
+            );
         }
     }
 }

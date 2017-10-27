@@ -240,9 +240,11 @@ macro_rules! define_integer_ops {
                 i8, i16, i32, i64, isize);
 
             impl ::std::fmt::LowerHex for $ty {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter)
+                       -> ::std::fmt::Result {
                     write!(f, "{}(", stringify!($ty))?;
-                    let n = ::std::mem::size_of_val(self) / ::std::mem::size_of::<$elem>();
+                    let n = ::std::mem::size_of_val(self)
+                        / ::std::mem::size_of::<$elem>();
                     for i in 0..n {
                         if i > 0 {
                             write!(f, ", ")?;
@@ -292,8 +294,7 @@ macro_rules! cfg_feature_enabled {
 /// On ARM features are only detected at compile-time using
 /// cfg(target_feature), so if this macro is executed the
 /// feature is not supported.
-#[cfg(any(target_arch = "arm",
-          target_arch = "aarch64"))]
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __unstable_detect_feature {
@@ -302,10 +303,8 @@ macro_rules! __unstable_detect_feature {
 }
 
 /// In all unsupported architectures using the macro is an error
-#[cfg(not(any(target_arch = "x86",
-              target_arch = "x86_64",
-              target_arch = "arm",
-              target_arch = "aarch64")))]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64",
+              target_arch = "arm", target_arch = "aarch64")))]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __unstable_detect_feature {

@@ -106,7 +106,7 @@ pub unsafe fn _mm_moveldup_ps(a: f32x4) -> f32x4 {
 }
 
 #[allow(improper_ctypes)]
-extern {
+extern "C" {
     #[link_name = "llvm.x86.sse3.addsub.ps"]
     fn addsubps(a: f32x4, b: f32x4) -> f32x4;
     #[link_name = "llvm.x86.sse3.addsub.pd"]
@@ -129,7 +129,7 @@ mod tests {
     use stdsimd_test::simd_test;
 
     use v128::*;
-    use x86::sse3 as sse3;
+    use x86::sse3;
 
     #[simd_test = "sse3"]
     unsafe fn _mm_addsub_ps() {
@@ -181,7 +181,8 @@ mod tests {
 
     #[simd_test = "sse3"]
     unsafe fn _mm_lddqu_si128() {
-        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let a =
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let r = sse3::_mm_lddqu_si128(&a);
         assert_eq!(a, r);
     }

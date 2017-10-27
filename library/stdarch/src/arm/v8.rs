@@ -1,6 +1,9 @@
 //! ARMv8 intrinsics.
 //!
-//! The reference is [ARMv8-A Reference Manual](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0487a.k_10775/index.html).
+//! The reference is [ARMv8-A Reference Manual][armv8].
+//!
+//! [armv8]: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.
+//! ddi0487a.k_10775/index.html
 
 pub use super::v7::*;
 
@@ -23,7 +26,7 @@ pub unsafe fn _clz_u64(x: u64) -> u64 {
 
 #[allow(dead_code)]
 extern "C" {
-    #[link_name="llvm.bitreverse.i64"]
+    #[link_name = "llvm.bitreverse.i64"]
     fn rbit_u64(i: i64) -> i64;
 }
 
@@ -61,9 +64,10 @@ mod tests {
     #[test]
     fn _rev_u64() {
         unsafe {
-            assert_eq!(v8::_rev_u64(
-                0b0000_0000_1111_1111_0000_0000_1111_1111_u64
-            ), 0b1111_1111_0000_0000_1111_1111_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_u64);
+            assert_eq!(
+                v8::_rev_u64(0b0000_0000_1111_1111_0000_0000_1111_1111_u64),
+                0b1111_1111_0000_0000_1111_1111_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_u64
+            );
         }
     }
 
@@ -77,27 +81,32 @@ mod tests {
     #[test]
     fn _rbit_u64() {
         unsafe {
-            assert_eq!(v8::_rbit_u64(
-                0b0000_0000_1111_1101_0000_0000_1111_1111_u64
-            ), 0b1111_1111_0000_0000_1011_1111_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_u64);
+            assert_eq!(
+                v8::_rbit_u64(0b0000_0000_1111_1101_0000_0000_1111_1111_u64),
+                0b1111_1111_0000_0000_1011_1111_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_u64
+            );
         }
     }
 
     #[test]
     fn _cls_u32() {
         unsafe {
-            assert_eq!(v8::_cls_u32(
-                0b1111_1111_1111_1111_0000_0000_1111_1111_u32
-            ), 15_u32);
+            assert_eq!(
+                v8::_cls_u32(0b1111_1111_1111_1111_0000_0000_1111_1111_u32),
+                15_u32
+            );
         }
     }
 
     #[test]
     fn _cls_u64() {
         unsafe {
-            assert_eq!(v8::_cls_u64(
-                0b1111_1111_1111_1111_0000_0000_1111_1111_0000_0000_0000_0000_0000_0000_0000_0000_u64
-            ), 15_u64);
+            assert_eq!(
+                v8::_cls_u64(
+                    0b1111_1111_1111_1111_0000_0000_1111_1111_0000_0000_0000_0000_0000_0000_0000_0000_u64
+                ),
+                15_u64
+            );
         }
     }
 }

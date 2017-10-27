@@ -13,7 +13,8 @@ pub unsafe fn _mm_abs_epi8(a: i8x16) -> u8x16 {
     pabsb128(a)
 }
 
-/// Compute the absolute value of each of the packed 16-bit signed integers in `a` and
+/// Compute the absolute value of each of the packed 16-bit signed integers in
+/// `a` and
 /// return the 16-bit unsigned integer
 #[inline(always)]
 #[target_feature = "+ssse3"]
@@ -22,7 +23,8 @@ pub unsafe fn _mm_abs_epi16(a: i16x8) -> u16x8 {
     pabsw128(a)
 }
 
-/// Compute the absolute value of each of the packed 32-bit signed integers in `a` and
+/// Compute the absolute value of each of the packed 32-bit signed integers in
+/// `a` and
 /// return the 32-bit unsigned integer
 #[inline(always)]
 #[target_feature = "+ssse3"]
@@ -82,7 +84,9 @@ pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
         (a, b, n)
     };
 
-    const fn add(a: u32, b: u32) -> u32 { a + b }
+    const fn add(a: u32, b: u32) -> u32 {
+        a + b
+    }
     macro_rules! shuffle {
         ($shift:expr) => {
             simd_shuffle16(b, a, [
@@ -98,14 +102,22 @@ pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
         }
     }
     match n {
-        0 => shuffle!(0), 1 => shuffle!(1),
-        2 => shuffle!(2), 3 => shuffle!(3),
-        4 => shuffle!(4), 5 => shuffle!(5),
-        6 => shuffle!(6), 7 => shuffle!(7),
-        8 => shuffle!(8), 9 => shuffle!(9),
-        10 => shuffle!(10), 11 => shuffle!(11),
-        12 => shuffle!(12), 13 => shuffle!(13),
-        14 => shuffle!(14), 15 => shuffle!(15),
+        0 => shuffle!(0),
+        1 => shuffle!(1),
+        2 => shuffle!(2),
+        3 => shuffle!(3),
+        4 => shuffle!(4),
+        5 => shuffle!(5),
+        6 => shuffle!(6),
+        7 => shuffle!(7),
+        8 => shuffle!(8),
+        9 => shuffle!(9),
+        10 => shuffle!(10),
+        11 => shuffle!(11),
+        12 => shuffle!(12),
+        13 => shuffle!(13),
+        14 => shuffle!(14),
+        15 => shuffle!(15),
         _ => shuffle!(16),
     }
 }
@@ -223,7 +235,7 @@ pub unsafe fn _mm_sign_epi32(a: i32x4, b: i32x4) -> i32x4 {
 }
 
 #[allow(improper_ctypes)]
-extern {
+extern "C" {
     #[link_name = "llvm.x86.ssse3.pabs.b.128"]
     fn pabsb128(a: i8x16) -> u8x16;
 
@@ -275,7 +287,7 @@ mod tests {
     use stdsimd_test::simd_test;
 
     use v128::*;
-    use x86::ssse3 as ssse3;
+    use x86::ssse3;
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_abs_epi8() {
@@ -297,44 +309,36 @@ mod tests {
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_shuffle_epi8() {
-        let a = u8x16::new(
-            1, 2, 3, 4,
-            5, 6, 7, 8,
-            9, 10, 11, 12,
-            13, 14, 15, 16,
-        );
-        let b = u8x16::new(
-            4, 128, 4, 3,
-            24, 12, 6, 19,
-            12, 5, 5, 10,
-            4, 1, 8, 0,
-        );
-        let expected = u8x16::new(
-            5, 0, 5, 4,
-            9, 13, 7, 4,
-            13, 6, 6, 11,
-            5, 2, 9, 1,
-        );
+        let a =
+            u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b =
+            u8x16::new(4, 128, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        let expected =
+            u8x16::new(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
         let r = ssse3::_mm_shuffle_epi8(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_alignr_epi8() {
-        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let b = i8x16::new(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        let a =
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b =
+            i8x16::new(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
         let r = ssse3::_mm_alignr_epi8(a, b, 33);
         assert_eq!(r, i8x16::splat(0));
 
         let r = ssse3::_mm_alignr_epi8(a, b, 17);
-        let expected = i8x16::new(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
+        let expected =
+            i8x16::new(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
         assert_eq!(r, expected);
 
         let r = ssse3::_mm_alignr_epi8(a, b, 16);
         assert_eq!(r, a);
 
         let r = ssse3::_mm_alignr_epi8(a, b, 15);
-        let expected = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let expected =
+            i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         assert_eq!(r, expected);
 
         let r = ssse3::_mm_alignr_epi8(a, b, 0);
@@ -397,8 +401,10 @@ mod tests {
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_maddubs_epi16() {
-        let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let b = i8x16::new(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        let a =
+            u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b =
+            i8x16::new(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
         let expected = i16x8::new(130, 24, 192, 194, 158, 175, 66, 120);
         let r = ssse3::_mm_maddubs_epi16(a, b);
         assert_eq!(r, expected);
@@ -415,9 +421,21 @@ mod tests {
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_sign_epi8() {
-        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, -14, -15, 16);
-        let b = i8x16::new(4, 63, -4, 3, 24, 12, -6, -19, 12, 5, -5, 10, 4, 1, -8, 0);
-        let expected = i8x16::new(1, 2, -3, 4, 5, 6, -7, -8, 9, 10, -11, 12, 13, -14, 15, 0);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = i8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, -14, -15, 16,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let b = i8x16::new(
+            4, 63, -4, 3, 24, 12, -6, -19,
+            12, 5, -5, 10, 4, 1, -8, 0,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let expected = i8x16::new(
+            1, 2, -3, 4, 5, 6, -7, -8,
+            9, 10, -11, 12, 13, -14, 15, 0,
+        );
         let r = ssse3::_mm_sign_epi8(a, b);
         assert_eq!(r, expected);
     }

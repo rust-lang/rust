@@ -1,10 +1,10 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 #![feature(cfg_target_feature)]
 
+extern crate cupid;
 #[macro_use]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 extern crate stdsimd;
-extern crate cupid;
 
 #[test]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

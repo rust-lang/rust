@@ -7,12 +7,12 @@
 #![feature(proc_macro)]
 
 extern crate assert_instr_macro;
-extern crate simd_test_macro;
 extern crate backtrace;
 extern crate cc;
-extern crate rustc_demangle;
 #[macro_use]
 extern crate lazy_static;
+extern crate rustc_demangle;
+extern crate simd_test_macro;
 
 use std::collections::HashMap;
 use std::env;
@@ -23,7 +23,8 @@ pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
 
 lazy_static! {
-    static ref DISASSEMBLY: HashMap<String, Vec<Function>> = disassemble_myself();
+    static ref DISASSEMBLY: HashMap<String, Vec<Function>>
+        = disassemble_myself();
 }
 
 struct Function {
@@ -37,14 +38,22 @@ struct Instruction {
 fn disassemble_myself() -> HashMap<String, Vec<Function>> {
     let me = env::current_exe().expect("failed to get current exe");
 
-    if cfg!(target_arch = "x86_64") &&
-        cfg!(target_os = "windows") &&
-        cfg!(target_env = "msvc") {
-        let mut cmd = cc::windows_registry::find("x86_64-pc-windows-msvc", "dumpbin.exe")
-            .expect("failed to find `dumpbin` tool");
-        let output = cmd.arg("/DISASM").arg(&me).output()
+    if cfg!(target_arch = "x86_64") && cfg!(target_os = "windows")
+        && cfg!(target_env = "msvc")
+    {
+        let mut cmd = cc::windows_registry::find(
+            "x86_64-pc-windows-msvc",
+            "dumpbin.exe",
+        ).expect("failed to find `dumpbin` tool");
+        let output = cmd.arg("/DISASM")
+            .arg(&me)
+            .output()
             .expect("failed to execute dumpbin");
-        println!("{}\n{}", output.status, String::from_utf8_lossy(&output.stderr));
+        println!(
+            "{}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert!(output.status.success());
         parse_dumpbin(&String::from_utf8_lossy(&output.stdout))
     } else if cfg!(target_os = "windows") {
@@ -55,7 +64,11 @@ fn disassemble_myself() -> HashMap<String, Vec<Function>> {
             .arg(&me)
             .output()
             .expect("failed to execute otool");
-        println!("{}\n{}", output.status, String::from_utf8_lossy(&output.stderr));
+        println!(
+            "{}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert!(output.status.success());
 
         parse_otool(&str::from_utf8(&output.stdout).expect("stdout not utf8"))
@@ -66,10 +79,16 @@ fn disassemble_myself() -> HashMap<String, Vec<Function>> {
             .arg(&me)
             .output()
             .expect("failed to execute objdump");
-        println!("{}\n{}", output.status, String::from_utf8_lossy(&output.stderr));
+        println!(
+            "{}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert!(output.status.success());
 
-        parse_objdump(&str::from_utf8(&output.stdout).expect("stdout not utf8"))
+        parse_objdump(
+            &str::from_utf8(&output.stdout).expect("stdout not utf8"),
+        )
     }
 }
 
@@ -91,7 +110,7 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
     while let Some(header) = lines.next() {
         // symbols should start with `$hex_addr <$name>:`
         if !header.ends_with(">:") {
-            continue
+            continue;
         }
         let start = header.find("<").unwrap();
         let symbol = &header[start + 1..header.len() - 2];
@@ -99,15 +118,17 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
         let mut instructions = Vec::new();
         while let Some(instruction) = lines.next() {
             if instruction.is_empty() {
-                break
+                break;
             }
             // Each line of instructions should look like:
             //
             //      $rel_offset: ab cd ef 00    $instruction...
-            let parts = instruction.split_whitespace()
+            let parts = instruction
+                .split_whitespace()
                 .skip(1)
                 .skip_while(|s| {
-                    s.len() == expected_len && usize::from_str_radix(s, 16).is_ok()
+                    s.len() == expected_len
+                        && usize::from_str_radix(s, 16).is_ok()
                 })
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
@@ -116,10 +137,12 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
 
         ret.entry(normalize(symbol))
             .or_insert(Vec::new())
-            .push(Function { instrs: instructions });
+            .push(Function {
+                instrs: instructions,
+            });
     }
 
-    return ret
+    return ret;
 }
 
 fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
@@ -138,7 +161,7 @@ fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
         };
         // symbols should start with `$symbol:`
         if !header.ends_with(":") {
-            continue
+            continue;
         }
         // strip the leading underscore and the trailing colon
         let symbol = &header[1..header.len() - 1];
@@ -147,12 +170,13 @@ fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
         while let Some(instruction) = lines.next() {
             if instruction.ends_with(":") {
                 cached_header = Some(instruction);
-                break
+                break;
             }
             // Each line of instructions should look like:
             //
             //      $addr    $instruction...
-            let parts = instruction.split_whitespace()
+            let parts = instruction
+                .split_whitespace()
                 .skip(1)
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
@@ -161,10 +185,12 @@ fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
 
         ret.entry(normalize(symbol))
             .or_insert(Vec::new())
-            .push(Function { instrs: instructions });
+            .push(Function {
+                instrs: instructions,
+            });
     }
 
-    return ret
+    return ret;
 }
 
 fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
@@ -183,7 +209,7 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
         };
         // symbols should start with `$symbol:`
         if !header.ends_with(":") {
-            continue
+            continue;
         }
         // strip the trailing colon
         let symbol = &header[..header.len() - 1];
@@ -192,20 +218,21 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
         while let Some(instruction) = lines.next() {
             if !instruction.starts_with("  ") {
                 cached_header = Some(instruction);
-                break
+                break;
             }
             // Each line looks like:
             //
             // >  $addr: ab cd ef     $instr..
             // >         00 12          # this line os optional
             if instruction.starts_with("       ") {
-                continue
+                continue;
             }
-            let parts = instruction.split_whitespace()
+            let parts = instruction
+                .split_whitespace()
                 .skip(1)
-                .skip_while(|s| {
-                    s.len() == 2 && usize::from_str_radix(s, 16).is_ok()
-                })
+                .skip_while(
+                    |s| s.len() == 2 && usize::from_str_radix(s, 16).is_ok(),
+                )
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
             instructions.push(Instruction { parts });
@@ -213,10 +240,12 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
 
         ret.entry(normalize(symbol))
             .or_insert(Vec::new())
-            .push(Function { instrs: instructions });
+            .push(Function {
+                instrs: instructions,
+            });
     }
 
-    return ret
+    return ret;
 }
 
 fn normalize(symbol: &str) -> String {
@@ -266,7 +295,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
             // instruction: tzcntl => tzcnt and compares that.
             if part.starts_with(expected) {
                 found = true;
-                break
+                break;
             }
         }
     }
@@ -274,7 +303,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     let probably_only_one_instruction = function.instrs.len() < 30;
 
     if found && probably_only_one_instruction {
-        return
+        return;
     }
 
     // Help debug by printing out the found disassembly, and then panic as we

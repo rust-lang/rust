@@ -348,5 +348,3 @@ macro_rules! assert_approx_eq {
                  *a, *b, $eps, (*a - *b).abs());
     })
 }
-
-

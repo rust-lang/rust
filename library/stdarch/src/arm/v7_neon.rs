@@ -5,10 +5,8 @@ use stdsimd_test::assert_instr;
 
 use simd_llvm::simd_add;
 
-use v64::{i8x8, i16x4, i32x2,
-          u8x8, u16x4, u32x2, f32x2};
-use v128::{i8x16, i16x8, i32x4, i64x2,
-           u8x16, u16x8, u32x4, u64x2, f32x4};
+use v64::{f32x2, i16x4, i32x2, i8x8, u16x4, u32x2, u8x8};
+use v128::{f32x4, i16x8, i32x4, i64x2, i8x16, u16x8, u32x4, u64x2, u8x16};
 
 /// Vector add.
 #[inline(always)]
@@ -230,18 +228,9 @@ mod tests {
 
     #[test]
     fn vaddq_s8_() {
-        let a = i8x16::new(
-            1, 2, 3, 4, 5, 6, 7, 8,
-            1, 2, 3, 4, 5, 6, 7, 8,
-        );
-        let b = i8x16::new(
-            8, 7, 6, 5, 4, 3, 2, 1,
-            8, 7, 6, 5, 4, 3, 2, 1,
-        );
-        let e = i8x16::new(
-            9, 9, 9, 9, 9, 9, 9, 9,
-            9, 9, 9, 9, 9, 9, 9, 9,
-        );
+        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let b = i8x16::new(8, 7, 6, 5, 4, 3, 2, 1, 8, 7, 6, 5, 4, 3, 2, 1);
+        let e = i8x16::new(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9);
         let r = unsafe { vaddq_s8(a, b) };
         assert_eq!(r, e);
     }
@@ -293,18 +282,9 @@ mod tests {
 
     #[test]
     fn vaddq_u8_() {
-        let a = u8x16::new(
-            1, 2, 3, 4, 5, 6, 7, 8,
-            1, 2, 3, 4, 5, 6, 7, 8,
-        );
-        let b = u8x16::new(
-            8, 7, 6, 5, 4, 3, 2, 1,
-            8, 7, 6, 5, 4, 3, 2, 1,
-        );
-        let e = u8x16::new(
-            9, 9, 9, 9, 9, 9, 9, 9,
-            9, 9, 9, 9, 9, 9, 9, 9,
-        );
+        let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+        let b = u8x16::new(8, 7, 6, 5, 4, 3, 2, 1, 8, 7, 6, 5, 4, 3, 2, 1);
+        let e = u8x16::new(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9);
         let r = unsafe { vaddq_u8(a, b) };
         assert_eq!(r, e);
     }
@@ -366,15 +346,9 @@ mod tests {
     #[test]
     fn vaddl_s8_() {
         let v = ::std::i8::MAX;
-        let a = i8x8::new(
-            v, v, v, v,
-            v, v, v, v,
-        );
+        let a = i8x8::new(v, v, v, v, v, v, v, v);
         let v = 2 * (v as i16);
-        let e = i16x8::new(
-            v, v, v, v,
-            v, v, v, v,
-        );
+        let e = i16x8::new(v, v, v, v, v, v, v, v);
         let r = unsafe { vaddl_s8(a, a) };
         assert_eq!(r, e);
     }
@@ -382,13 +356,9 @@ mod tests {
     #[test]
     fn vaddl_s16_() {
         let v = ::std::i16::MAX;
-        let a = i16x4::new(
-            v, v, v, v,
-        );
+        let a = i16x4::new(v, v, v, v);
         let v = 2 * (v as i32);
-        let e = i32x4::new(
-            v, v, v, v,
-        );
+        let e = i32x4::new(v, v, v, v);
         let r = unsafe { vaddl_s16(a, a) };
         assert_eq!(r, e);
     }
@@ -396,13 +366,9 @@ mod tests {
     #[test]
     fn vaddl_s32_() {
         let v = ::std::i32::MAX;
-        let a = i32x2::new(
-            v, v,
-        );
+        let a = i32x2::new(v, v);
         let v = 2 * (v as i64);
-        let e = i64x2::new(
-            v, v,
-        );
+        let e = i64x2::new(v, v);
         let r = unsafe { vaddl_s32(a, a) };
         assert_eq!(r, e);
     }
@@ -410,15 +376,9 @@ mod tests {
     #[test]
     fn vaddl_u8_() {
         let v = ::std::u8::MAX;
-        let a = u8x8::new(
-            v, v, v, v,
-            v, v, v, v,
-        );
+        let a = u8x8::new(v, v, v, v, v, v, v, v);
         let v = 2 * (v as u16);
-        let e = u16x8::new(
-            v, v, v, v,
-            v, v, v, v,
-        );
+        let e = u16x8::new(v, v, v, v, v, v, v, v);
         let r = unsafe { vaddl_u8(a, a) };
         assert_eq!(r, e);
     }
@@ -426,13 +386,9 @@ mod tests {
     #[test]
     fn vaddl_u16_() {
         let v = ::std::u16::MAX;
-        let a = u16x4::new(
-            v, v, v, v,
-        );
+        let a = u16x4::new(v, v, v, v);
         let v = 2 * (v as u32);
-        let e = u32x4::new(
-            v, v, v, v,
-        );
+        let e = u32x4::new(v, v, v, v);
         let r = unsafe { vaddl_u16(a, a) };
         assert_eq!(r, e);
     }
@@ -440,13 +396,9 @@ mod tests {
     #[test]
     fn vaddl_u32_() {
         let v = ::std::u32::MAX;
-        let a = u32x2::new(
-            v, v,
-        );
+        let a = u32x2::new(v, v);
         let v = 2 * (v as u64);
-        let e = u64x2::new(
-            v, v,
-        );
+        let e = u64x2::new(v, v);
         let r = unsafe { vaddl_u32(a, a) };
         assert_eq!(r, e);
     }

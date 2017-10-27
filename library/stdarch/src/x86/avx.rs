@@ -18,7 +18,8 @@ pub unsafe fn _mm256_add_pd(a: f64x4, b: f64x4) -> f64x4 {
     a + b
 }
 
-/// Add packed single-precision (32-bit) floating-point elements in `a` and `b`.
+/// Add packed single-precision (32-bit) floating-point elements in `a` and
+/// `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vaddps))]
@@ -26,7 +27,8 @@ pub unsafe fn _mm256_add_ps(a: f32x8, b: f32x8) -> f32x8 {
     a + b
 }
 
-/// Compute the bitwise AND of a packed double-precision (64-bit) floating-point elements
+/// Compute the bitwise AND of a packed double-precision (64-bit)
+/// floating-point elements
 /// in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -39,7 +41,8 @@ pub unsafe fn _mm256_and_pd(a: f64x4, b: f64x4) -> f64x4 {
     mem::transmute(a & b)
 }
 
-/// Compute the bitwise AND of packed single-precision (32-bit) floating-point elements in `a` and `b`.
+/// Compute the bitwise AND of packed single-precision (32-bit) floating-point
+/// elements in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vandps))]
@@ -49,7 +52,8 @@ pub unsafe fn _mm256_and_ps(a: f32x8, b: f32x8) -> f32x8 {
     mem::transmute(a & b)
 }
 
-/// Compute the bitwise OR packed double-precision (64-bit) floating-point elements
+/// Compute the bitwise OR packed double-precision (64-bit) floating-point
+/// elements
 /// in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -62,7 +66,8 @@ pub unsafe fn _mm256_or_pd(a: f64x4, b: f64x4) -> f64x4 {
     mem::transmute(a | b)
 }
 
-/// Compute the bitwise OR packed single-precision (32-bit) floating-point elements in `a` and `b`.
+/// Compute the bitwise OR packed single-precision (32-bit) floating-point
+/// elements in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vorps))]
@@ -114,7 +119,8 @@ pub unsafe fn _mm256_shuffle_pd(a: f64x4, b: f64x4, imm8: i32) -> f64x4 {
     }
 }
 
-/// Compute the bitwise NOT of packed double-precision (64-bit) floating-point elements in `a`
+/// Compute the bitwise NOT of packed double-precision (64-bit) floating-point
+/// elements in `a`
 /// and then AND with `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -126,7 +132,8 @@ pub unsafe fn _mm256_andnot_pd(a: f64x4, b: f64x4) -> f64x4 {
     mem::transmute((!a) & b)
 }
 
-/// Compute the bitwise NOT of packed single-precision (32-bit) floating-point elements in `a`
+/// Compute the bitwise NOT of packed single-precision (32-bit) floating-point
+/// elements in `a`
 /// and then AND with `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
@@ -146,8 +153,8 @@ pub unsafe fn _mm256_max_pd(a: f64x4, b: f64x4) -> f64x4 {
     maxpd256(a, b)
 }
 
-/// Compare packed single-precision (32-bit) floating-point elements in `a` and `b`,
-/// and return packed maximum values
+/// Compare packed single-precision (32-bit) floating-point elements in `a`
+/// and `b`, and return packed maximum values
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmaxps))]
@@ -164,8 +171,8 @@ pub unsafe fn _mm256_min_pd(a: f64x4, b: f64x4) -> f64x4 {
     minpd256(a, b)
 }
 
-/// Compare packed single-precision (32-bit) floating-point elements in `a` and `b`,
-/// and return packed minimum values
+/// Compare packed single-precision (32-bit) floating-point elements in `a`
+/// and `b`, and return packed minimum values
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vminps))]
@@ -182,7 +189,8 @@ pub unsafe fn _mm256_mul_pd(a: f64x4, b: f64x4) -> f64x4 {
     a * b
 }
 
-/// Add packed single-precision (32-bit) floating-point elements in `a` and `b`.
+/// Add packed single-precision (32-bit) floating-point elements in `a` and
+/// `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmulps))]
@@ -266,8 +274,8 @@ pub unsafe fn _mm256_round_pd(a: f64x4, b: i32) -> f64x4 {
     constify_imm8!(b, call)
 }
 
-/// Round packed double-precision (64-bit) floating point elements in `a` toward
-/// positive infinity.
+/// Round packed double-precision (64-bit) floating point elements in `a`
+/// toward positive infinity.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vroundpd))]
@@ -275,8 +283,8 @@ pub unsafe fn _mm256_ceil_pd(a: f64x4) -> f64x4 {
     roundpd256(a, 0x02)
 }
 
-/// Round packed double-precision (64-bit) floating point elements in `a` toward
-/// negative infinity.
+/// Round packed double-precision (64-bit) floating point elements in `a`
+/// toward negative infinity.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vroundpd))]
@@ -292,9 +300,9 @@ pub unsafe fn _mm256_floor_pd(a: f64x4) -> f64x4 {
 /// - `0x02`: Round up, toward positive infinity.
 /// - `0x03`: Truncate the values.
 ///
-/// For a complete list of options, check the LLVM docs:
+/// For a complete list of options, check [the LLVM docs][llvm_docs].
 ///
-/// https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
+/// [llvm_docs]: https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vroundps, b = 0x00))]
@@ -307,8 +315,8 @@ pub unsafe fn _mm256_round_ps(a: f32x8, b: i32) -> f32x8 {
     constify_imm8!(b, call)
 }
 
-/// Round packed single-precision (32-bit) floating point elements in `a` toward
-/// positive infinity.
+/// Round packed single-precision (32-bit) floating point elements in `a`
+/// toward positive infinity.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vroundps))]
@@ -316,8 +324,8 @@ pub unsafe fn _mm256_ceil_ps(a: f32x8) -> f32x8 {
     roundps256(a, 0x02)
 }
 
-/// Round packed single-precision (32-bit) floating point elements in `a` toward
-/// negative infinity.
+/// Round packed single-precision (32-bit) floating point elements in `a`
+/// toward negative infinity.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vroundps))]
@@ -606,7 +614,8 @@ pub unsafe fn _mm256_cmp_ps(a: f32x8, b: f32x8, imm8: u8) -> f32x8 {
 /// Compare the lower double-precision (64-bit) floating-point element in
 /// `a` and `b` based on the comparison operand specified by `imm8`,
 /// store the result in the lower element of returned vector,
-/// and copy the upper element from `a` to the upper element of returned vector.
+/// and copy the upper element from `a` to the upper element of returned
+/// vector.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
 #[cfg_attr(test, assert_instr(vcmpeqsd, imm8 = 0))] // TODO Validate vcmpsd
@@ -811,7 +820,9 @@ pub unsafe fn _mm_permutevar_ps(a: f32x4, b: i32x4) -> f32x4 {
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
 pub unsafe fn _mm256_permute_ps(a: f32x8, imm8: i32) -> f32x8 {
     let imm8 = (imm8 & 0xFF) as u8;
-    const fn add4(x: u32) -> u32 { x + 4 }
+    const fn add4(x: u32) -> u32 {
+        x + 4
+    }
     macro_rules! shuffle4 {
         ($a:expr, $b:expr, $c:expr, $d:expr) => {
             simd_shuffle8(a, _mm256_undefined_ps(), [
@@ -857,7 +868,7 @@ pub unsafe fn _mm256_permute_ps(a: f32x8, imm8: i32) -> f32x8 {
     }
 }
 
-/// Shuffle single-precision (32-bit) floating-point elements in `a` 
+/// Shuffle single-precision (32-bit) floating-point elements in `a`
 /// using the control in `imm8`.
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
@@ -1026,7 +1037,9 @@ pub unsafe fn _mm256_permute2f128_pd(a: f64x4, b: f64x4, imm8: i8) -> f64x4 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
-pub unsafe fn _mm256_permute2f128_si256(a: i32x8, b: i32x8, imm8: i8) -> i32x8 {
+pub unsafe fn _mm256_permute2f128_si256(
+    a: i32x8, b: i32x8, imm8: i8
+) -> i32x8 {
     macro_rules! call {
         ($imm8:expr) => { vperm2f128si256(a, b, $imm8) }
     }
@@ -1110,7 +1123,9 @@ pub unsafe fn _mm256_insertf128_pd(a: f64x4, b: f64x2, imm8: i32) -> f64x4 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
-pub unsafe fn _mm256_insertf128_si256(a: __m256i, b: __m128i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_insertf128_si256(
+    a: __m256i, b: __m128i, imm8: i32
+) -> __m256i {
     let b = i64x4::from(_mm256_castsi128_si256(b));
     let dst: i64x4 = match imm8 & 1 {
         0 => simd_shuffle4(i64x4::from(a), b, [4, 5, 2, 3]),
@@ -1166,7 +1181,8 @@ pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> f64x4 {
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut f64x4 as *mut u8,
-        mem::size_of::<f64x4>());
+        mem::size_of::<f64x4>(),
+    );
     dst
 }
 
@@ -1191,7 +1207,8 @@ pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> f32x8 {
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut f32x8 as *mut u8,
-        mem::size_of::<f32x8>());
+        mem::size_of::<f32x8>(),
+    );
     dst
 }
 
@@ -1215,12 +1232,13 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut __m256i as *mut u8,
-        mem::size_of::<__m256i>());
+        mem::size_of::<__m256i>(),
+    );
     dst
 }
 
 /// Store 256-bits of integer data from `a` into memory.
-///	`mem_addr` does not need to be aligned on any particular boundary.
+/// 	`mem_addr` does not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
@@ -1234,7 +1252,7 @@ pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
-pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: i64x4) -> f64x4  {
+pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: i64x4) -> f64x4 {
     maskloadpd256(mem_addr as *const i8, mask)
 }
 
@@ -1272,7 +1290,7 @@ pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: i64x2, a: f64x2) {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmaskmovps))]
-pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: i32x8) -> f32x8  {
+pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: i32x8) -> f32x8 {
     maskloadps256(mem_addr as *const i8, mask)
 }
 
@@ -1592,7 +1610,8 @@ pub unsafe fn _mm_testnzc_ps(a: f32x4, b: f32x4) -> i32 {
 }
 
 /// Set each bit of the returned mask based on the most significant bit of the
-/// corresponding packed double-precision (64-bit) floating-point element in `a`.
+/// corresponding packed double-precision (64-bit) floating-point element in
+/// `a`.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovmskpd))]
@@ -1601,7 +1620,8 @@ pub unsafe fn _mm256_movemask_pd(a: f64x4) -> i32 {
 }
 
 /// Set each bit of the returned mask based on the most significant bit of the
-/// corresponding packed single-precision (32-bit) floating-point element in `a`.
+/// corresponding packed single-precision (32-bit) floating-point element in
+/// `a`.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovmskps))]
@@ -1646,8 +1666,9 @@ pub unsafe fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> f64x4 {
 /// vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_set_ps(a: f32, b: f32, c: f32, d: f32,
-                            e: f32, f: f32, g: f32, h: f32) -> f32x8 {
+pub unsafe fn _mm256_set_ps(
+    a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h: f32
+) -> f32x8 {
     f32x8::new(h, g, f, e, d, c, b, a)
 }
 
@@ -1655,44 +1676,45 @@ pub unsafe fn _mm256_set_ps(a: f32, b: f32, c: f32, d: f32,
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_set_epi8(e00: i8, e01: i8, e02: i8, e03: i8,
-                              e04: i8, e05: i8, e06: i8, e07: i8,
-                              e08: i8, e09: i8, e10: i8, e11: i8,
-                              e12: i8, e13: i8, e14: i8, e15: i8,
-                              e16: i8, e17: i8, e18: i8, e19: i8,
-                              e20: i8, e21: i8, e22: i8, e23: i8,
-                              e24: i8, e25: i8, e26: i8, e27: i8,
-                              e28: i8, e29: i8, e30: i8, e31: i8) -> i8x32 {
-    i8x32::new(e31, e30, e29, e28,
-               e27, e26, e25, e24,
-               e23, e22, e21, e20,
-               e19, e18, e17, e16,
-               e15, e14, e13, e12,
-               e11, e10, e09, e08,
-               e07, e06, e05, e04,
-               e03, e02, e01, e00)
+pub unsafe fn _mm256_set_epi8(
+    e00: i8, e01: i8, e02: i8, e03: i8, e04: i8, e05: i8, e06: i8, e07: i8,
+    e08: i8, e09: i8, e10: i8, e11: i8, e12: i8, e13: i8, e14: i8, e15: i8,
+    e16: i8, e17: i8, e18: i8, e19: i8, e20: i8, e21: i8, e22: i8, e23: i8,
+    e24: i8, e25: i8, e26: i8, e27: i8, e28: i8, e29: i8, e30: i8, e31: i8,
+) -> i8x32 {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    i8x32::new(
+        e31, e30, e29, e28, e27, e26, e25, e24,
+        e23, e22, e21, e20, e19, e18, e17, e16,
+        e15, e14, e13, e12, e11, e10, e09, e08,
+        e07, e06, e05, e04, e03, e02, e01, e00,
+    )
 }
 
 /// Set packed 16-bit integers in returned vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_set_epi16(e00: i16, e01: i16, e02: i16, e03: i16,
-                               e04: i16, e05: i16, e06: i16, e07: i16,
-                               e08: i16, e09: i16, e10: i16, e11: i16,
-                               e12: i16, e13: i16, e14: i16, e15: i16) -> i16x16 {
-    i16x16::new(e15, e14, e13, e12,
-                e11, e10, e09, e08,
-                e07, e06, e05, e04,
-                e03, e02, e01, e00)
+pub unsafe fn _mm256_set_epi16(
+    e00: i16, e01: i16, e02: i16, e03: i16, e04: i16, e05: i16, e06: i16,
+    e07: i16, e08: i16, e09: i16, e10: i16, e11: i16, e12: i16, e13: i16,
+    e14: i16, e15: i16,
+) -> i16x16 {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    i16x16::new(
+        e15, e14, e13, e12,
+        e11, e10, e09, e08,
+        e07, e06, e05, e04,
+        e03, e02, e01, e00,
+    )
 }
 
 /// Set packed 32-bit integers in returned vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_set_epi32(e0: i32, e1: i32, e2: i32, e3: i32,
-                               e4: i32, e5: i32, e6: i32, e7: i32) -> i32x8 {
-    i32x8::new(e7, e6, e5, e4,
-               e3, e2, e1, e0)
+pub unsafe fn _mm256_set_epi32(
+    e0: i32, e1: i32, e2: i32, e3: i32, e4: i32, e5: i32, e6: i32, e7: i32
+) -> i32x8 {
+    i32x8::new(e7, e6, e5, e4, e3, e2, e1, e0)
 }
 
 /// Set packed 64-bit integers in returned vector with the supplied values.
@@ -1715,8 +1737,9 @@ pub unsafe fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> f64x4 {
 /// vector with the supplied values in reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_setr_ps(a: f32, b: f32, c: f32, d: f32,
-                             e: f32, f: f32, g: f32, h: f32) -> f32x8 {
+pub unsafe fn _mm256_setr_ps(
+    a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h: f32
+) -> f32x8 {
     f32x8::new(a, b, c, d, e, f, g, h)
 }
 
@@ -1724,46 +1747,47 @@ pub unsafe fn _mm256_setr_ps(a: f32, b: f32, c: f32, d: f32,
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_setr_epi8(e00: i8, e01: i8, e02: i8, e03: i8,
-                               e04: i8, e05: i8, e06: i8, e07: i8,
-                               e08: i8, e09: i8, e10: i8, e11: i8,
-                               e12: i8, e13: i8, e14: i8, e15: i8,
-                               e16: i8, e17: i8, e18: i8, e19: i8,
-                               e20: i8, e21: i8, e22: i8, e23: i8,
-                               e24: i8, e25: i8, e26: i8, e27: i8,
-                               e28: i8, e29: i8, e30: i8, e31: i8) -> i8x32 {
-    i8x32::new(e00, e01, e02, e03,
-               e04, e05, e06, e07,
-               e08, e09, e10, e11,
-               e12, e13, e14, e15,
-               e16, e17, e18, e19,
-               e20, e21, e22, e23,
-               e24, e25, e26, e27,
-               e28, e29, e30, e31)
+pub unsafe fn _mm256_setr_epi8(
+    e00: i8, e01: i8, e02: i8, e03: i8, e04: i8, e05: i8, e06: i8, e07: i8,
+    e08: i8, e09: i8, e10: i8, e11: i8, e12: i8, e13: i8, e14: i8, e15: i8,
+    e16: i8, e17: i8, e18: i8, e19: i8, e20: i8, e21: i8, e22: i8, e23: i8,
+    e24: i8, e25: i8, e26: i8, e27: i8, e28: i8, e29: i8, e30: i8, e31: i8,
+) -> i8x32 {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    i8x32::new(
+        e00, e01, e02, e03, e04, e05, e06, e07,
+        e08, e09, e10, e11, e12, e13, e14, e15,
+        e16, e17, e18, e19, e20, e21, e22, e23,
+        e24, e25, e26, e27, e28, e29, e30, e31,
+    )
 }
 
 /// Set packed 16-bit integers in returned vector with the supplied values in
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_setr_epi16(e00: i16, e01: i16, e02: i16, e03: i16,
-                                e04: i16, e05: i16, e06: i16, e07: i16,
-                                e08: i16, e09: i16, e10: i16, e11: i16,
-                                e12: i16, e13: i16, e14: i16, e15: i16) -> i16x16 {
-    i16x16::new(e00, e01, e02, e03,
-                e04, e05, e06, e07,
-                e08, e09, e10, e11,
-                e12, e13, e14, e15)
+pub unsafe fn _mm256_setr_epi16(
+    e00: i16, e01: i16, e02: i16, e03: i16, e04: i16, e05: i16, e06: i16,
+    e07: i16, e08: i16, e09: i16, e10: i16, e11: i16, e12: i16, e13: i16,
+    e14: i16, e15: i16,
+) -> i16x16 {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    i16x16::new(
+        e00, e01, e02, e03,
+        e04, e05, e06, e07,
+        e08, e09, e10, e11,
+        e12, e13, e14, e15,
+    )
 }
 
 /// Set packed 32-bit integers in returned vector with the supplied values in
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
-pub unsafe fn _mm256_setr_epi32(e0: i32, e1: i32, e2: i32, e3: i32,
-                               e4: i32, e5: i32, e6: i32, e7: i32) -> i32x8 {
-    i32x8::new(e0, e1, e2, e3,
-               e4, e5, e6, e7)
+pub unsafe fn _mm256_setr_epi32(
+    e0: i32, e1: i32, e2: i32, e3: i32, e4: i32, e5: i32, e6: i32, e7: i32
+) -> i32x8 {
+    i32x8::new(e0, e1, e2, e3, e4, e5, e6, e7)
 }
 
 /// Set packed 64-bit integers in returned vector with the supplied values in
@@ -1798,10 +1822,13 @@ pub unsafe fn _mm256_set1_ps(a: f32) -> f32x8 {
 #[cfg_attr(test, assert_instr(vpshufb))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set1_epi8(a: i8) -> i8x32 {
-    i8x32::new(a, a, a, a, a, a, a, a,
-               a, a, a, a, a, a, a, a,
-               a, a, a, a, a, a, a, a,
-               a, a, a, a, a, a, a, a)
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    i8x32::new(
+        a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a,
+    )
 }
 
 /// Broadcast 16-bit integer `a` to all all elements of returned vector.
@@ -1811,8 +1838,7 @@ pub unsafe fn _mm256_set1_epi8(a: i8) -> i8x32 {
 //#[cfg_attr(test, assert_instr(vpshufb))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set1_epi16(a: i16) -> i16x16 {
-    i16x16::new(a, a, a, a, a, a, a, a,
-               a, a, a, a, a, a, a, a)
+    i16x16::new(a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a)
 }
 
 /// Broadcast 32-bit integer `a` to all elements of returned vector.
@@ -1954,7 +1980,7 @@ pub unsafe fn _mm256_zextps128_ps256(a: f32x4) -> f32x8 {
 #[target_feature = "+avx,+sse2"]
 pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
     use x86::sse2::_mm_setzero_si128;
-    let b =  mem::transmute(_mm_setzero_si128());
+    let b = mem::transmute(_mm_setzero_si128());
     let dst: i64x4 = simd_shuffle4(i64x2::from(a), b, [0, 1, 2, 3]);
     __m256i::from(dst)
 }
@@ -2044,22 +2070,28 @@ pub unsafe fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
 }
 
 /// Load two 128-bit values (composed of 4 packed single-precision (32-bit)
-/// floating-point elements) from memory, and combine them into a 256-bit value.
+/// floating-point elements) from memory, and combine them into a 256-bit
+/// value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
-pub unsafe fn _mm256_loadu2_m128(hiaddr: *const f32, loaddr: *const f32) -> f32x8 {
+pub unsafe fn _mm256_loadu2_m128(
+    hiaddr: *const f32, loaddr: *const f32
+) -> f32x8 {
     use x86::sse::_mm_loadu_ps;
     let a = _mm256_castps128_ps256(_mm_loadu_ps(loaddr));
     _mm256_insertf128_ps(a, _mm_loadu_ps(hiaddr), 1)
 }
 
 /// Load two 128-bit values (composed of 2 packed double-precision (64-bit)
-/// floating-point elements) from memory, and combine them into a 256-bit value.
+/// floating-point elements) from memory, and combine them into a 256-bit
+/// value.
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
-pub unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> f64x4 {
+pub unsafe fn _mm256_loadu2_m128d(
+    hiaddr: *const f64, loaddr: *const f64
+) -> f64x4 {
     use x86::sse2::_mm_loadu_pd;
     let a = _mm256_castpd128_pd256(_mm_loadu_pd(loaddr));
     _mm256_insertf128_pd(a, _mm_loadu_pd(hiaddr), 1)
@@ -2070,7 +2102,9 @@ pub unsafe fn _mm256_loadu2_m128d(hiaddr: *const f64, loaddr: *const f64) -> f64
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
-pub unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i) -> __m256i {
+pub unsafe fn _mm256_loadu2_m128i(
+    hiaddr: *const __m128i, loaddr: *const __m128i
+) -> __m256i {
     use x86::sse2::_mm_loadu_si128;
     let a = _mm256_castsi128_si256(_mm_loadu_si128(loaddr));
     _mm256_insertf128_si256(a, _mm_loadu_si128(hiaddr), 1)
@@ -2082,7 +2116,9 @@ pub unsafe fn _mm256_loadu2_m128i(hiaddr: *const __m128i, loaddr: *const __m128i
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
-pub unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: f32x8) {
+pub unsafe fn _mm256_storeu2_m128(
+    hiaddr: *mut f32, loaddr: *mut f32, a: f32x8
+) {
     use x86::sse::_mm_storeu_ps;
     let lo = _mm256_castps256_ps128(a);
     _mm_storeu_ps(loaddr, lo);
@@ -2096,7 +2132,9 @@ pub unsafe fn _mm256_storeu2_m128(hiaddr: *mut f32, loaddr: *mut f32, a: f32x8) 
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
-pub unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: f64x4) {
+pub unsafe fn _mm256_storeu2_m128d(
+    hiaddr: *mut f64, loaddr: *mut f64, a: f64x4
+) {
     use x86::sse2::_mm_storeu_pd;
     let lo = _mm256_castpd256_pd128(a);
     _mm_storeu_pd(loaddr, lo);
@@ -2109,7 +2147,9 @@ pub unsafe fn _mm256_storeu2_m128d(hiaddr: *mut f64, loaddr: *mut f64, a: f64x4)
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
-pub unsafe fn _mm256_storeu2_m128i(hiaddr: *mut __m128i, loaddr: *mut __m128i, a: __m256i) {
+pub unsafe fn _mm256_storeu2_m128i(
+    hiaddr: *mut __m128i, loaddr: *mut __m128i, a: __m256i
+) {
     use x86::sse2::_mm_storeu_si128;
     let lo = _mm256_castsi256_si128(a);
     _mm_storeu_si128(loaddr, lo);
@@ -2265,9 +2305,9 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
-    use test::black_box;  // Used to inhibit constant-folding.
+    use test::black_box; // Used to inhibit constant-folding.
 
-    use v128::{f32x4, f64x2, i8x16, i32x4, i64x2};
+    use v128::{f32x4, f64x2, i32x4, i64x2, i8x16};
     use v256::*;
     use x86::avx;
     use x86::{__m128i, __m256i};
@@ -2428,7 +2468,7 @@ mod tests {
         let a = f64x4::new(1., 2., 3., 4.);
         let b = f64x4::new(5., 6., 7., 8.);
         let r = avx::_mm256_sub_pd(a, b);
-        let e = f64x4::new(-4.,-4.,-4.,-4.);
+        let e = f64x4::new(-4., -4., -4., -4.);
         assert_eq!(r, e);
     }
 
@@ -2504,7 +2544,7 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn _mm256_sqrt_pd() {
         let a = f64x4::new(4., 9., 16., 25.);
-        let r = avx::_mm256_sqrt_pd(a, );
+        let r = avx::_mm256_sqrt_pd(a);
         let e = f64x4::new(2., 3., 4., 5.);
         assert_eq!(r, e);
     }
@@ -2561,7 +2601,10 @@ mod tests {
     unsafe fn _mm256_blendv_ps() {
         let a = f32x8::new(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = f32x8::new(4., 3., 2., 5., 8., 9., 64., 50.0);
-        let c = f32x8::new(0., 0., 0., 0., !0 as f32, !0 as f32, !0 as f32, !0 as f32);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let c = f32x8::new(
+            0., 0., 0., 0., !0 as f32, !0 as f32, !0 as f32, !0 as f32,
+        );
         let r = avx::_mm256_blendv_ps(a, b, c);
         let e = f32x8::new(4., 9., 16., 25., 8., 9., 64., 50.0);
         assert_eq!(r, e);
@@ -2572,7 +2615,8 @@ mod tests {
         let a = f32x8::new(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = f32x8::new(4., 3., 2., 5., 8., 9., 64., 50.0);
         let r = avx::_mm256_dp_ps(a, b, 0xFF);
-        let e = f32x8::new(200.0, 200.0, 200.0, 200.0, 2387., 2387., 2387., 2387.);
+        let e =
+            f32x8::new(200.0, 200.0, 200.0, 200.0, 2387., 2387., 2387., 2387.);
         assert_eq!(r, e);
     }
 
@@ -2801,20 +2845,21 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_extract_epi8() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         let r = avx::_mm256_extract_epi8(a, 0);
         assert_eq!(r, 1);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_extract_epi16() {
-        let a = i16x16::new(
-            0, 1, 2, 3, 4, 5, 6, 7,
-            8, 9, 10, 11, 12, 13, 14, 15);
+        let a =
+            i16x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let r = avx::_mm256_extract_epi16(a, 0);
         assert_eq!(r, 0);
     }
@@ -3004,29 +3049,31 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_insert_epi8() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         let r = avx::_mm256_insert_epi8(a, 0, 31);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 0);
+            25, 26, 27, 28, 29, 30, 31, 0,
+        );
         assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_insert_epi16() {
-        let a = i16x16::new(
-            0, 1, 2, 3, 4, 5, 6, 7,
-            8, 9, 10, 11, 12, 13, 14, 15);
+        let a =
+            i16x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let r = avx::_mm256_insert_epi16(a, 0, 15);
-        let e = i16x16::new(
-            0, 1, 2, 3, 4, 5, 6, 7,
-            8, 9, 10, 11, 12, 13, 14, 0);
+        let e =
+            i16x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0);
         assert_eq!(r, e);
     }
 
@@ -3203,18 +3250,22 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_lddqu_si256() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         let p = &a as *const _;
         let r = avx::_mm256_lddqu_si256(black_box(p));
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         assert_eq!(r, e);
     }
 
@@ -3222,8 +3273,11 @@ mod tests {
     unsafe fn _mm256_rcp_ps() {
         let a = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = avx::_mm256_rcp_ps(a);
-        let e = f32x8::new(0.99975586, 0.49987793, 0.33325195, 0.24993896,
-                           0.19995117, 0.16662598, 0.14282227, 0.12496948);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = f32x8::new(
+            0.99975586, 0.49987793, 0.33325195, 0.24993896,
+            0.19995117, 0.16662598, 0.14282227, 0.12496948,
+        );
         let rel_err = 0.00048828125;
         for i in 0..8 {
             assert_approx_eq!(r.extract(i), e.extract(i), 2. * rel_err);
@@ -3234,8 +3288,11 @@ mod tests {
     unsafe fn _mm256_rsqrt_ps() {
         let a = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = avx::_mm256_rsqrt_ps(a);
-        let e = f32x8::new(0.99975586, 0.7069092, 0.5772705, 0.49987793,
-                           0.44714355, 0.40820313, 0.3779297, 0.3534546);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = f32x8::new(
+            0.99975586, 0.7069092, 0.5772705, 0.49987793,
+            0.44714355, 0.40820313, 0.3779297, 0.3534546,
+        );
         let rel_err = 0.00048828125;
         for i in 0..8 {
             assert_approx_eq!(r.extract(i), e.extract(i), 2. * rel_err);
@@ -3478,30 +3535,39 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_set_epi8() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = avx::_mm256_set_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
-        assert_eq!(r, i8x32::new(32, 31, 30, 29, 28, 27, 26, 25,
-                                 24, 23, 22, 21, 20, 19, 18, 17,
-                                 16, 15, 14, 13, 12, 11, 10, 9,
-                                 8, 7, 6, 5, 4, 3, 2, 1));
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = i8x32::new(
+            32, 31, 30, 29, 28, 27, 26, 25,
+            24, 23, 22, 21, 20, 19, 18, 17,
+            16, 15, 14, 13, 12, 11, 10, 9,
+            8, 7, 6, 5, 4, 3, 2, 1
+        );
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_set_epi16() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = avx::_mm256_set_epi16(
             1, 2, 3, 4, 5, 6, 7, 8,
-            9, 10, 11, 12, 13, 14, 15, 16);
-        assert_eq!(r, i16x16::new(16, 15, 14, 13, 12, 11, 10, 9,
-                                  8, 7, 6, 5, 4, 3, 2, 1));
+            9, 10, 11, 12, 13, 14, 15, 16,
+        );
+        assert_eq!(
+            r,
+            i16x16::new(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+        );
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_set_epi32() {
-        let r = avx::_mm256_set_epi32(
-            1, 2, 3, 4, 5, 6, 7, 8);
+        let r = avx::_mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         assert_eq!(r, i32x8::new(8, 7, 6, 5, 4, 3, 2, 1));
     }
 
@@ -3525,30 +3591,40 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_setr_epi8() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = avx::_mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
-        assert_eq!(r, i8x32::new(1, 2, 3, 4, 5, 6, 7, 8,
-                                 9, 10, 11, 12, 13, 14, 15, 16,
-                                 17, 18, 19, 20, 21, 22, 23, 24,
-                                 25, 26, 27, 28, 29, 30, 31, 32));
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = i8x32::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32
+        );
+
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_setr_epi16() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = avx::_mm256_setr_epi16(
             1, 2, 3, 4, 5, 6, 7, 8,
-            9, 10, 11, 12, 13, 14, 15, 16);
-        assert_eq!(r, i16x16::new(1, 2, 3, 4, 5, 6, 7, 8,
-                                  9, 10, 11, 12, 13, 14, 15, 16));
+            9, 10, 11, 12, 13, 14, 15, 16,
+        );
+        assert_eq!(
+            r,
+            i16x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
+        );
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_setr_epi32() {
-        let r = avx::_mm256_setr_epi32(
-            1, 2, 3, 4, 5, 6, 7, 8);
+        let r = avx::_mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         assert_eq!(r, i32x8::new(1, 2, 3, 4, 5, 6, 7, 8));
     }
 
@@ -3614,19 +3690,25 @@ mod tests {
     unsafe fn _mm256_castps_si256() {
         let a = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = avx::_mm256_castps_si256(a);
-        let e = i8x32::new(0, 0, -128, 63, 0, 0, 0, 64,
-                      0, 0, 64, 64, 0, 0, -128, 64,
-                      0, 0, -96, 64, 0, 0, -64, 64,
-                      0, 0, -32, 64, 0, 0, 0, 65);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = i8x32::new(
+            0, 0, -128, 63, 0, 0, 0, 64,
+            0, 0, 64, 64, 0, 0, -128, 64,
+            0, 0, -96, 64, 0, 0, -64, 64,
+            0, 0, -32, 64, 0, 0, 0, 65,
+        );
         assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_castsi256_ps() {
-        let a = i8x32::new(0, 0, -128, 63, 0, 0, 0, 64,
-                      0, 0, 64, 64, 0, 0, -128, 64,
-                      0, 0, -96, 64, 0, 0, -64, 64,
-                      0, 0, -32, 64, 0, 0, 0, 65);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = i8x32::new(
+            0, 0, -128, 63, 0, 0, 0, 64,
+            0, 0, 64, 64, 0, 0, -128, 64,
+            0, 0, -96, 64, 0, 0, -64, 64,
+            0, 0, -32, 64, 0, 0, 0, 65,
+        );
         let r = avx::_mm256_castsi256_ps(a);
         let e = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
         assert_eq!(r, e);
@@ -3711,16 +3793,23 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_set_m128i() {
-        let hi = i8x16::new(17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
-        let lo = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8,
-            9, 10, 11, 12, 13, 14, 15, 16);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let hi = i8x16::new(
+            17, 18, 19, 20,
+            21, 22, 23, 24,
+            25, 26, 27, 28,
+            29, 30, 31, 32,
+        );
+        let lo =
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let r = avx::_mm256_set_m128i(hi, lo);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         assert_eq!(r, e);
     }
 
@@ -3744,16 +3833,21 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_setr_m128i() {
-        let lo = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8,
-            9, 10, 11, 12, 13, 14, 15, 16);
-        let hi = i8x16::new(17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+        let lo =
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let hi = i8x16::new(
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         let r = avx::_mm256_setr_m128i(lo, hi);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         assert_eq!(r, e);
     }
 
@@ -3781,17 +3875,24 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_loadu2_m128i() {
-        let hi = i8x16::new(17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
-        let lo = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8,
-            9, 10, 11, 12, 13, 14, 15, 16);
-        let r = avx::_mm256_loadu2_m128i(&hi as *const _ as *const _,
-                                         &lo as *const _ as *const _);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let hi = i8x16::new(
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
+        let lo =
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r = avx::_mm256_loadu2_m128i(
+            &hi as *const _ as *const _,
+            &lo as *const _ as *const _,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         assert_eq!(r, e);
     }
 
@@ -3801,9 +3902,11 @@ mod tests {
         let a = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
         let mut hi = _mm_undefined_ps();
         let mut lo = _mm_undefined_ps();
-        avx::_mm256_storeu2_m128(&mut hi as *mut _ as *mut f32,
-                              &mut lo as *mut _ as *mut f32,
-                              a);
+        avx::_mm256_storeu2_m128(
+            &mut hi as *mut _ as *mut f32,
+            &mut lo as *mut _ as *mut f32,
+            a,
+        );
         assert_eq!(hi, f32x4::new(5., 6., 7., 8.));
         assert_eq!(lo, f32x4::new(1., 2., 3., 4.));
     }
@@ -3814,9 +3917,11 @@ mod tests {
         let a = f64x4::new(1., 2., 3., 4.);
         let mut hi = _mm_undefined_pd();
         let mut lo = _mm_undefined_pd();
-        avx::_mm256_storeu2_m128d(&mut hi as *mut _ as *mut f64,
-                              &mut lo as *mut _ as *mut f64,
-                              a);
+        avx::_mm256_storeu2_m128d(
+            &mut hi as *mut _ as *mut f64,
+            &mut lo as *mut _ as *mut f64,
+            a,
+        );
         assert_eq!(hi, f64x2::new(3., 4.));
         assert_eq!(lo, f64x2::new(1., 2.));
     }
@@ -3824,17 +3929,26 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn _mm256_storeu2_m128i() {
         use x86::sse2::_mm_undefined_si128;
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32);
+            25, 26, 27, 28, 29, 30, 31, 32,
+        );
         let mut hi = _mm_undefined_si128();
         let mut lo = _mm_undefined_si128();
         avx::_mm256_storeu2_m128i(&mut hi as *mut _, &mut lo as *mut _, a);
-        assert_eq!(hi, i8x16::new(17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32));
-        assert_eq!(lo, i8x16::new(1, 2, 3, 4, 5, 6, 7, 8,
-            9, 10, 11, 12, 13, 14, 15, 16));
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = i8x16::new(
+            17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32
+        );
+
+        assert_eq!(hi, e);
+        assert_eq!(
+            lo,
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
+        );
     }
 }

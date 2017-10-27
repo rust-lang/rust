@@ -27,8 +27,12 @@ mod example {
 
         unsafe {
             vendor::_mm_cmpestri(
-                vneedle, needle_len as i32, vhaystack, hay_len as i32,
-                vendor::_SIDD_CMP_EQUAL_ORDERED) as usize
+                vneedle,
+                needle_len as i32,
+                vhaystack,
+                hay_len as i32,
+                vendor::_SIDD_CMP_EQUAL_ORDERED,
+            ) as usize
         }
     }
 
