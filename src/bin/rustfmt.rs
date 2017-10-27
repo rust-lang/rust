@@ -60,6 +60,7 @@ struct CliOptions {
     verbose: bool,
     write_mode: Option<WriteMode>,
     file_lines: FileLines, // Default is all lines in all files.
+    unstable_features: bool,
 }
 
 impl CliOptions {
@@ -67,6 +68,17 @@ impl CliOptions {
         let mut options = CliOptions::default();
         options.skip_children = matches.opt_present("skip-children");
         options.verbose = matches.opt_present("verbose");
+        let unstable_features = matches.opt_present("unstable_features");
+        let rust_nightly = option_env!("CFG_RELEASE_CHANNEL")
+            .map(|c| c == "nightly")
+            .unwrap_or(false);
+        if unstable_features && !rust_nightly {
+            return Err(FmtError::from(format!(
+                "Unstable features are only available on Nightly channel"
+            )));
+        } else {
+            options.unstable_features = unstable_features;
+        }
 
         if let Some(ref write_mode) = matches.opt_str("write-mode") {
             if let Ok(write_mode) = WriteMode::from_str(write_mode) {
@@ -89,6 +101,7 @@ impl CliOptions {
         config.set().skip_children(self.skip_children);
         config.set().verbose(self.verbose);
         config.set().file_lines(self.file_lines);
+        config.set().unstable_features(self.unstable_features);
         if let Some(write_mode) = self.write_mode {
             config.set().write_mode(write_mode);
         }
@@ -119,6 +132,12 @@ fn make_opts() -> Options {
         "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
     );
     opts.optflag("", "skip-children", "don't reformat child modules");
+
+    opts.optflag(
+        "",
+        "unstable-features",
+        "Enables unstable features. Only available on nightly channel",
+    );
 
     opts.optflag(
         "",
