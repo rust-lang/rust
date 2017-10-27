@@ -1057,7 +1057,98 @@ pub unsafe fn _mm256_shuffle_epi8(a: u8x32, b: u8x32) -> u8x32 {
     pshufb(a, b)
 }
 
-// TODO _mm256_shuffle_epi32 (__m256i a, const int imm8)
+/// Shuffle 32-bit integers in 128-bit lanes of `a` using the control in `imm8`.
+///
+/// ```rust
+/// # #![feature(cfg_target_feature)]
+/// # #![feature(target_feature)]
+/// #
+/// # #[macro_use] extern crate stdsimd;
+/// #
+/// # fn main() {
+/// #     if cfg_feature_enabled!("avx2") {
+/// #         #[target_feature = "+avx2"]
+/// #         fn worker() {
+/// use stdsimd::simd::i32x8;
+/// use stdsimd::vendor::_mm256_shuffle_epi32;
+///
+/// let a = i32x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+///
+/// let shuffle1 = 0b00_11_10_01;
+/// let shuffle2 = 0b01_00_10_11;
+///
+/// let c1: i32x8; let c2: i32x8;
+/// unsafe {
+///     c1 = _mm256_shuffle_epi32(a, shuffle1);
+///     c2 = _mm256_shuffle_epi32(a, shuffle2);
+/// }
+///
+/// let expected1 = i32x8::new(1, 2, 3, 0, 5, 6, 7, 4);
+/// let expected2 = i32x8::new(3, 2, 0, 1, 7, 6, 4, 5);
+///
+/// assert_eq!(c1, expected1);
+/// assert_eq!(c2, expected2);
+/// #         }
+/// #         worker();
+/// #     }
+/// # }
+/// ```
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpshufd, imm8 = 9))]
+pub unsafe fn _mm256_shuffle_epi32(a: i32x8, imm8: i32) -> i32x8 {
+    // simd_shuffleX requires that its selector parameter be made up of
+    // constant values, but we can't enforce that here. In spirit, we need
+    // to write a `match` on all possible values of a byte, and for each value,
+    // hard-code the correct `simd_shuffleX` call using only constants. We
+    // then hope for LLVM to do the rest.
+    //
+    // Of course, that's... awful. So we try to use macros to do it for us.
+    let imm8 = (imm8 & 0xFF) as u8;
+
+    macro_rules! shuffle_done {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
+            simd_shuffle8(a, a, [$x01, $x23, $x45, $x67, 4+$x01, 4+$x23, 4+$x45, 4+$x67])
+        }
+    }
+    macro_rules! shuffle_x67 {
+        ($x01:expr, $x23:expr, $x45:expr) => {
+            match (imm8 >> 6) & 0b11 {
+                0b00 => shuffle_done!($x01, $x23, $x45, 0),
+                0b01 => shuffle_done!($x01, $x23, $x45, 1),
+                0b10 => shuffle_done!($x01, $x23, $x45, 2),
+                _ => shuffle_done!($x01, $x23, $x45, 3),
+            }
+        }
+    }
+    macro_rules! shuffle_x45 {
+        ($x01:expr, $x23:expr) => {
+            match (imm8 >> 4) & 0b11 {
+                0b00 => shuffle_x67!($x01, $x23, 0),
+                0b01 => shuffle_x67!($x01, $x23, 1),
+                0b10 => shuffle_x67!($x01, $x23, 2),
+                _ => shuffle_x67!($x01, $x23, 3),
+            }
+        }
+    }
+    macro_rules! shuffle_x23 {
+        ($x01:expr) => {
+            match (imm8 >> 2) & 0b11 {
+                0b00 => shuffle_x45!($x01, 0),
+                0b01 => shuffle_x45!($x01, 1),
+                0b10 => shuffle_x45!($x01, 2),
+                _ => shuffle_x45!($x01, 3),
+            }
+        }
+    }
+    match imm8 & 0b11 {
+        0b00 => shuffle_x23!(0),
+        0b01 => shuffle_x23!(1),
+        0b10 => shuffle_x23!(2),
+        _ => shuffle_x23!(3),
+    }
+}
+
 // TODO _mm256_shufflehi_epi16 (__m256i a, const int imm8)
 // TODO _mm256_shufflelo_epi16 (__m256i a, const int imm8)
 
