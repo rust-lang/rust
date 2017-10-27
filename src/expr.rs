@@ -2359,11 +2359,24 @@ pub fn wrap_args_with_parens(
     }
 }
 
+/// Return true if a function call or a method call represented by the given span ends with a
+/// trailing comma. This function is used when rewriting macro, as adding or removing a trailing
+/// comma from macro can potentially break the code.
 fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
-    let snippet = context.snippet(span);
-    snippet
-        .trim_right_matches(|c: char| c == ')' || c.is_whitespace())
-        .ends_with(',')
+    let mut encountered_closing_paren = false;
+    for c in context.snippet(span).chars().rev() {
+        match c {
+            ',' => return true,
+            ')' => if encountered_closing_paren {
+                return false;
+            } else {
+                encountered_closing_paren = true;
+            },
+            _ if c.is_whitespace() => continue,
+            _ => return false,
+        }
+    }
+    false
 }
 
 fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) -> Option<String> {
