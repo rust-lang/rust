@@ -795,8 +795,11 @@ impl EmitterWriter {
             if spans_updated {
                 children.push(SubDiagnostic {
                     level: Level::Note,
-                    message: vec![("this error originates in a macro outside of the current crate (run with RUST_MACRO_BACKTRACE=1 for more info)"
-                        .to_string(), Style::NoStyle)],
+                    message: vec![
+                        (["this error originates in a macro outside of the current crate",
+                          "(run with RUST_MACRO_BACKTRACE=1 for more info)"].join(" "),
+                         Style::NoStyle),
+                    ],
                     span: MultiSpan::new(),
                     render_span: None,
                 });
@@ -1242,7 +1245,7 @@ impl EmitterWriter {
         if let Some(ref cm) = self.cm {
             for trace in sp.macro_backtrace().iter().rev() {
                 let line_offset = buffer.num_lines();
- 
+
                 let mut diag_string =
                     format!("in this expansion of {}", trace.macro_decl_name);
                 if let Some(def_site_span) = trace.def_site_span {
