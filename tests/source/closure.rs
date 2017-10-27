@@ -41,7 +41,16 @@ fn main() {
     let closure_with_return_type = |aaaaaaaaaaaaaaaaaaaaaaarg1, aaaaaaaaaaaaaaaaaaaaaaarg2| -> Strong { "sup".to_owned() };
 
     |arg1, arg2, _, _, arg3, arg4| { let temp = arg4 + arg3;
-                                     arg2 * arg1 - temp }
+                                     arg2 * arg1 - temp };
+
+    let block_body_with_comment = args.iter()
+        .map(|a| {
+            // Emitting only dep-info is possible only for final crate type, as
+            // as others may emit required metadata for dependent crate types
+            if a.starts_with("--emit") && is_final_crate_type && !self.workspace_mode {
+                "--emit=dep-info"
+            } else { a }
+        });
 }
 
 fn issue311() {
