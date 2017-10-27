@@ -24,6 +24,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
 use rustc::traits;
 use rustc::ty::subst::Substs;
+use rustc_back::PanicStrategy;
 use type_of;
 
 /// Translates a reference to a fn/method item, monomorphizing and
@@ -105,8 +106,10 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // *in Rust code* may unwind. Foreign items like `extern "C" {
         // fn foo(); }` are assumed not to unwind **unless** they have
         // a `#[unwind]` attribute.
-        if !tcx.is_foreign_item(instance_def_id) {
-            attributes::unwind(llfn, true);
+        if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
+            if !tcx.is_foreign_item(instance_def_id) {
+                attributes::unwind(llfn, true);
+            }
         }
 
         // Apply an appropriate linkage/visibility value to our item that we

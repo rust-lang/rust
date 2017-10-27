@@ -192,7 +192,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
-                    pat_ty.is_uninhabited_from(module, self.tcx)
+                    self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
                     self.conservative_is_uninhabited(pat_ty)
                 };
@@ -526,7 +526,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
     let mut checker = MutationChecker {
         cx,
     };
-    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_scope_tree, cx.tables)
+    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_scope_tree, cx.tables, None)
         .walk_expr(guard);
 }
 

@@ -28,8 +28,11 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // END RUST SOURCE
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 // fn main() -> () {
+//     ...
 //     let mut _0: ();
+//     ...
 //     let _1: D;
+//     ...
 //     let mut _2: ();
 //     let mut _3: [closure@NodeId(18) d:&'14s D];
 //     let mut _4: &'14s D;

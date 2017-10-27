@@ -27,10 +27,11 @@ use middle::region;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
-
+use std::rc::Rc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
+use util::nodemap::ItemLocalMap;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -262,15 +263,30 @@ macro_rules! return_if_err {
 }
 
 impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
+    /// Creates the ExprUseVisitor, configuring it with the various options provided:
+    ///
+    /// - `delegate` -- who receives the callbacks
+    /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
+    /// - `region_scope_tree` --- region scope tree for the code being analyzed
+    /// - `tables` --- typeck results for the code being analyzed
+    /// - `rvalue_promotable_map` --- if you care about rvalue promotion, then provide
+    ///   the map here (it can be computed with `tcx.rvalue_promotable_map(def_id)`).
+    ///   `None` means that rvalues will be given more conservative lifetimes.
+    ///
+    /// See also `with_infer`, which is used *during* typeck.
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
-               tables: &'a ty::TypeckTables<'tcx>)
+               tables: &'a ty::TypeckTables<'tcx>,
+               rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>)
                -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::new(tcx, region_scope_tree, tables),
+            mc: mc::MemCategorizationContext::new(tcx,
+                                                  region_scope_tree,
+                                                  tables,
+                                                  rvalue_promotable_map),
             delegate,
             param_env,
         }

@@ -112,6 +112,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn set_value_name(&self, value: ValueRef, name: &str) {
+        let cname = CString::new(name.as_bytes()).unwrap();
+        unsafe {
+            llvm::LLVMSetValueName(value, cname.as_ptr());
+        }
+    }
+
     pub fn position_before(&self, insn: ValueRef) {
         unsafe {
             llvm::LLVMPositionBuilderBefore(self.llbuilder, insn);

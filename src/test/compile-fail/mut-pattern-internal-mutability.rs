@@ -15,9 +15,9 @@ fn main() {
     let foo = &mut 1;
 
     let &mut x = foo;
-    x += 1; //[ast]~ ERROR re-assignment of immutable variable
-            //[mir]~^ ERROR re-assignment of immutable variable `x` (Ast)
-            //[mir]~| ERROR re-assignment of immutable variable `x` (Mir)
+    x += 1; //[ast]~ ERROR cannot assign twice to immutable variable
+            //[mir]~^ ERROR cannot assign twice to immutable variable `x` (Ast)
+            //[mir]~| ERROR cannot assign twice to immutable variable `x` (Mir)
 
     // explicitly mut-ify internals
     let &mut mut x = foo;

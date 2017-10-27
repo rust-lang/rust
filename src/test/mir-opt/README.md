@@ -7,13 +7,13 @@ The test format is:
 // END RUST SOURCE
 // START $file_name_of_some_mir_dump_0
 //  $expected_line_0
-// ...
+// (lines or elision)
 // $expected_line_N
 // END $file_name_of_some_mir_dump_0
-// ...
+// (lines or elision)
 // START $file_name_of_some_mir_dump_N
 //  $expected_line_0
-// ...
+// (lines or elision)
 // $expected_line_N
 // END $file_name_of_some_mir_dump_N
 ```
@@ -22,10 +22,15 @@ All the test information is in comments so the test is runnable.
 
 For each $file_name, compiletest expects [$expected_line_0, ...,
 $expected_line_N] to appear in the dumped MIR in order.  Currently it allows
-other non-matched lines before, after and in-between. Note that this includes
-lines that end basic blocks or begin new ones; it is good practice
-in your tests to include the terminator for each of your basic blocks as an
-internal sanity check guarding against a test like:
+other non-matched lines before and after, but not between $expected_lines,
+should you want to skip lines, you must include an elision comment, of the form
+(as a regex) `//\s*...\s*`. The lines will be skipped lazily, that is, if there
+are two identical lines in the output that match the line after the elision
+comment, the first one wil be matched.
+
+Examples:
+
+The following blocks will not match the one after it.
 
 ```
 bb0: {
@@ -34,8 +39,6 @@ bb0: {
     StorageDead(_1);
 }
 ```
-
-that will inadvertantly pattern-matching against:
 
 ```
 bb0: {
@@ -46,6 +49,18 @@ bb0: {
 bb1: {
     StorageDead(_1);
     return;
+}
+```
+
+But this will match the one above,
+
+```
+bb0: {
+    StorageLive(_1);
+    _1 = const true;
+    ...
+    StorageDead(_1);
+    ...
 }
 ```
 

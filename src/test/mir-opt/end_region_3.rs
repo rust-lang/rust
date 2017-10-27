@@ -27,13 +27,17 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
+//     ...
 //     let mut _1: bool;
+//     ...
 //     let _3: &'26_1rs bool;
+//     ...
 //     let _7: &'26_3rs bool;
+//     ...
 //     let mut _2: ();
 //     let mut _4: ();
 //     let mut _5: bool;
-//
+//     let mut _6: !;
 //     bb0: {
 //         StorageLive(_1);
 //         goto -> bb1;

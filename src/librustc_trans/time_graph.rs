@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
 use std::marker::PhantomData;
+use std::mem;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use std::io::prelude::*;
-use std::fs::File;
 
 const OUTPUT_WIDTH_IN_PX: u64 = 1000;
 const TIME_LINE_HEIGHT_IN_PX: u64 = 20;
@@ -25,6 +26,7 @@ struct Timing {
     end: Instant,
     work_package_kind: WorkPackageKind,
     name: String,
+    events: Vec<(String, Instant)>,
 }
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq, Debug)]
@@ -44,9 +46,14 @@ pub struct TimeGraph {
 #[derive(Clone, Copy)]
 pub struct WorkPackageKind(pub &'static [&'static str]);
 
-pub struct RaiiToken {
+pub struct Timeline {
+    token: Option<RaiiToken>,
+}
+
+struct RaiiToken {
     graph: TimeGraph,
     timeline: TimelineId,
+    events: Vec<(String, Instant)>,
     // The token must not be Send:
     _marker: PhantomData<*const ()>
 }
@@ -54,7 +61,7 @@ pub struct RaiiToken {
 
 impl Drop for RaiiToken {
     fn drop(&mut self) {
-        self.graph.end(self.timeline);
+        self.graph.end(self.timeline, mem::replace(&mut self.events, Vec::new()));
     }
 }
 
@@ -68,7 +75,7 @@ impl TimeGraph {
     pub fn start(&self,
                  timeline: TimelineId,
                  work_package_kind: WorkPackageKind,
-                 name: &str) -> RaiiToken {
+                 name: &str) -> Timeline {
         {
             let mut table = self.data.lock().unwrap();
 
@@ -81,14 +88,17 @@ impl TimeGraph {
             data.open_work_package = Some((Instant::now(), work_package_kind, name.to_string()));
         }
 
-        RaiiToken {
-            graph: self.clone(),
-            timeline,
-            _marker: PhantomData,
+        Timeline {
+            token: Some(RaiiToken {
+                graph: self.clone(),
+                timeline,
+                events: Vec::new(),
+                _marker: PhantomData,
+            }),
         }
     }
 
-    fn end(&self, timeline: TimelineId) {
+    fn end(&self, timeline: TimelineId, events: Vec<(String, Instant)>) {
         let end = Instant::now();
 
         let mut table = self.data.lock().unwrap();
@@ -100,6 +110,7 @@ impl TimeGraph {
                 end,
                 work_package_kind,
                 name,
+                events,
             });
         } else {
             bug!("end timing without start?")
@@ -113,13 +124,13 @@ impl TimeGraph {
             assert!(data.open_work_package.is_none());
         }
 
-        let mut timelines: Vec<PerThread> =
+        let mut threads: Vec<PerThread> =
             table.values().map(|data| data.clone()).collect();
 
-        timelines.sort_by_key(|timeline| timeline.timings[0].start);
+        threads.sort_by_key(|timeline| timeline.timings[0].start);
 
-        let earliest_instant = timelines[0].timings[0].start;
-        let latest_instant = timelines.iter()
+        let earliest_instant = threads[0].timings[0].start;
+        let latest_instant = threads.iter()
                                        .map(|timeline| timeline.timings
                                                                .last()
                                                                .unwrap()
@@ -130,16 +141,46 @@ impl TimeGraph {
 
         let mut file = File::create(format!("{}.html", output_filename)).unwrap();
 
-        writeln!(file, "<html>").unwrap();
-        writeln!(file, "<head></head>").unwrap();
-        writeln!(file, "<body>").unwrap();
+        writeln!(file, "
+            <html>
+            <head>
+                <style>
+                    #threads a {{
+                        position: absolute;
+                        overflow: hidden;
+                    }}
+                    #threads {{
+                        height: {total_height}px;
+                        width: {width}px;
+                    }}
+
+                    .timeline {{
+                        display: none;
+                        width: {width}px;
+                        position: relative;
+                    }}
+
+                    .timeline:target {{
+                        display: block;
+                    }}
+
+                    .event {{
+                        position: absolute;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div id='threads'>
+        ",
+            total_height = threads.len() * TIME_LINE_HEIGHT_STRIDE_IN_PX,
+            width = OUTPUT_WIDTH_IN_PX,
+        ).unwrap();
 
         let mut color = 0;
-
-        for (line_index, timeline) in timelines.iter().enumerate() {
+        for (line_index, thread) in threads.iter().enumerate() {
             let line_top = line_index * TIME_LINE_HEIGHT_STRIDE_IN_PX;
 
-            for span in &timeline.timings {
+            for span in &thread.timings {
                 let start = distance(earliest_instant, span.start);
                 let end = distance(earliest_instant, span.end);
 
@@ -148,13 +189,13 @@ impl TimeGraph {
 
                 let colors = span.work_package_kind.0;
 
-                writeln!(file, "<div style='position:absolute; \
-                                            overflow:hidden; \
-                                            top:{}px; \
-                                            left:{}px; \
-                                            width:{}px; \
-                                            height:{}px; \
-                                            background:{};'>{}</div>",
+                writeln!(file, "<a href='#timing{}'
+                                   style='top:{}px; \
+                                          left:{}px; \
+                                          width:{}px; \
+                                          height:{}px; \
+                                          background:{};'>{}</a>",
+                    color,
                     line_top,
                     start,
                     end - start,
@@ -167,8 +208,61 @@ impl TimeGraph {
             }
         }
 
-        writeln!(file, "</body>").unwrap();
-        writeln!(file, "</html>").unwrap();
+        writeln!(file, "
+            </div>
+        ").unwrap();
+
+        let mut idx = 0;
+        for thread in threads.iter() {
+            for timing in &thread.timings {
+                let colors = timing.work_package_kind.0;
+                let height = TIME_LINE_HEIGHT_STRIDE_IN_PX * timing.events.len();
+                writeln!(file, "<div class='timeline'
+                                     id='timing{}'
+                                     style='background:{};height:{}px;'>",
+                         idx,
+                         colors[idx % colors.len()],
+                         height).unwrap();
+                idx += 1;
+                let max = distance(timing.start, timing.end);
+                for (i, &(ref event, time)) in timing.events.iter().enumerate() {
+                    let i = i as u64;
+                    let time = distance(timing.start, time);
+                    let at = normalize(time, max, OUTPUT_WIDTH_IN_PX);
+                    writeln!(file, "<span class='event'
+                                          style='left:{}px;\
+                                                 top:{}px;'>{}</span>",
+                             at,
+                             TIME_LINE_HEIGHT_IN_PX * i,
+                             event).unwrap();
+                }
+                writeln!(file, "</div>").unwrap();
+            }
+        }
+
+        writeln!(file, "
+            </body>
+            </html>
+        ").unwrap();
+    }
+}
+
+impl Timeline {
+    pub fn noop() -> Timeline {
+        Timeline { token: None }
+    }
+
+    /// Record an event which happened at this moment on this timeline.
+    ///
+    /// Events are displayed in the eventual HTML output where you can click on
+    /// a particular timeline and it'll expand to all of the events that
+    /// happened on that timeline. This can then be used to drill into a
+    /// particular timeline and see what events are happening and taking the
+    /// most time.
+    pub fn record(&mut self, name: &str) {
+        if let Some(ref mut token) = self.token {
+            token.events.push((name.to_string(), Instant::now()));
+        }
     }
 }
 

@@ -73,7 +73,7 @@ pub fn get_env(triple: &str) -> Option<&str> {
 }
 
 pub fn get_pointer_width(triple: &str) -> &'static str {
-    if triple.contains("64") || triple.starts_with("s390x") {
+    if (triple.contains("64") && !triple.ends_with("gnux32")) || triple.starts_with("s390x") {
         "64bit"
     } else {
         "32bit"

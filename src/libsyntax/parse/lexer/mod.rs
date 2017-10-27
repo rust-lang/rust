@@ -1721,7 +1721,9 @@ mod tests {
     use std::rc::Rc;
 
     fn mk_sess(cm: Rc<CodeMap>) -> ParseSess {
-        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()), Some(cm.clone()));
+        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
+                                                          Some(cm.clone()),
+                                                          false);
         ParseSess {
             span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),

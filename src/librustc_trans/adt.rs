@@ -80,7 +80,7 @@ pub fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
         ty::TyGenerator(def_id, substs, _) => {
             if variant_index > 0 { bug!("{} is a generator, which only has one variant", t);}
             substs.field_tys(def_id, cx.tcx()).map(|t| {
-                cx.tcx().normalize_associated_type(&t)
+                cx.tcx().fully_normalize_associated_types_in(&t)
             }).collect()
         },
         _ => bug!("{} is not a type that can have fields.", t)

@@ -12338,7 +12338,7 @@ else
 
 _ACEOF
 if ac_fn_c_try_cpp "$LINENO"; then :
-  ALLOC_FILE=mmap.lo
+  ALLOC_FILE=alloc.lo
 else
   ALLOC_FILE=alloc.lo
 fi

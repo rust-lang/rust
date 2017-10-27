@@ -36,7 +36,6 @@ use libc::{c_uint, c_char};
 use std::iter;
 
 use syntax::abi::Abi;
-use syntax::attr;
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -550,22 +549,6 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
-}
-
-pub fn requests_inline<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: &ty::Instance<'tcx>
-) -> bool {
-    if is_inline_instance(tcx, instance) {
-        return true
-    }
-    if let ty::InstanceDef::DropGlue(..) = instance.def {
-        // Drop glue wants to be instantiated at every translation
-        // unit, but without an #[inline] hint. We should make this
-        // available to normal end-users.
-        return true
-    }
-    attr::requests_inline(&instance.def.attrs(tcx)[..])
 }
 
 pub fn is_inline_instance<'a, 'tcx>(

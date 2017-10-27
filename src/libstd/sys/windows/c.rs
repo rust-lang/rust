@@ -37,7 +37,6 @@ pub type BOOL = c_int;
 pub type BYTE = u8;
 pub type BOOLEAN = BYTE;
 pub type GROUP = c_uint;
-pub type LONG_PTR = isize;
 pub type LARGE_INTEGER = c_longlong;
 pub type LONG = c_long;
 pub type UINT = c_uint;
@@ -46,7 +45,6 @@ pub type USHORT = c_ushort;
 pub type SIZE_T = usize;
 pub type WORD = u16;
 pub type CHAR = c_char;
-pub type HCRYPTPROV = LONG_PTR;
 pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
 #[cfg(target_arch = "x86_64")]
@@ -287,10 +285,6 @@ pub const IMAGE_FILE_MACHINE_I386: DWORD = 0x014c;
 #[cfg(target_arch = "x86_64")]
 #[cfg(feature = "backtrace")]
 pub const IMAGE_FILE_MACHINE_AMD64: DWORD = 0x8664;
-
-pub const PROV_RSA_FULL: DWORD = 1;
-pub const CRYPT_SILENT: DWORD = 64;
-pub const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
 
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
@@ -1136,15 +1130,6 @@ extern "system" {
     pub fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
-    pub fn CryptAcquireContextA(phProv: *mut HCRYPTPROV,
-                                pszContainer: LPCSTR,
-                                pszProvider: LPCSTR,
-                                dwProvType: DWORD,
-                                dwFlags: DWORD) -> BOOL;
-    pub fn CryptGenRandom(hProv: HCRYPTPROV,
-                          dwLen: DWORD,
-                          pbBuffer: *mut BYTE) -> BOOL;
-    pub fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
 
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
 
@@ -1175,6 +1160,9 @@ extern "system" {
                   writefds: *mut fd_set,
                   exceptfds: *mut fd_set,
                   timeout: *const timeval) -> c_int;
+
+    #[link_name = "SystemFunction036"]
+    pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
 }
 
 // Functions that aren't available on every version of Windows that we support,

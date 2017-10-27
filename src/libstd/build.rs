@@ -11,7 +11,6 @@
 #![deny(warnings)]
 
 extern crate build_helper;
-extern crate cc;
 
 use std::env;
 use std::process::Command;
@@ -77,12 +76,6 @@ fn main() {
 fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
     let native = native_lib_boilerplate("libbacktrace", "libbacktrace", "backtrace", ".libs")?;
 
-    let compiler = cc::Build::new().get_compiler();
-    // only msvc returns None for ar so unwrap is okay
-    let ar = build_helper::cc2ar(compiler.path(), target).unwrap();
-    let mut cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
-                             .collect::<Vec<_>>().join(" ");
-    cflags.push_str(" -fvisibility=hidden");
     run(Command::new("sh")
                 .current_dir(&native.out_dir)
                 .arg(native.src_dir.join("configure").to_str().unwrap()
@@ -94,10 +87,7 @@ fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
                 .arg("--disable-host-shared")
                 .arg(format!("--host={}", build_helper::gnu_target(target)))
                 .arg(format!("--build={}", build_helper::gnu_target(host)))
-                .env("CC", compiler.path())
-                .env("AR", &ar)
-                .env("RANLIB", format!("{} s", ar.display()))
-                .env("CFLAGS", cflags),
+                .env("CFLAGS", env::var("CFLAGS").unwrap_or_default() + " -fvisibility=hidden"),
         BuildExpectation::None);
 
     run(Command::new(build_helper::make(host))

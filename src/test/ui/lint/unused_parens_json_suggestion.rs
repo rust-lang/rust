@@ -10,8 +10,6 @@
 
 // compile-flags: --error-format json
 
-// ignore-windows (see Issue #44968)
-
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
 // replacement only removes one set of parentheses, rather than naïvely

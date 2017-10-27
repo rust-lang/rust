@@ -119,7 +119,9 @@ pub fn hint_core_should_pause()
 
 /// A boolean type which can be safely shared between threads.
 ///
-/// This type has the same in-memory representation as a `bool`.
+/// This type has the same in-memory representation as a [`bool`].
+///
+/// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct AtomicBool {
@@ -246,10 +248,12 @@ impl AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
 
-    /// Returns a mutable reference to the underlying `bool`.
+    /// Returns a mutable reference to the underlying [`bool`].
     ///
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
+    ///
+    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -369,7 +373,7 @@ impl AtomicBool {
         unsafe { atomic_swap(self.v.get(), val as u8, order) != 0 }
     }
 
-    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
     /// The return value is always the previous value. If it is equal to `current`, then the value
     /// was updated.
@@ -378,6 +382,7 @@ impl AtomicBool {
     /// ordering of this operation.
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -401,7 +406,7 @@ impl AtomicBool {
         }
     }
 
-    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
     /// The return value is a result indicating whether the new value was written and containing
     /// the previous value. On success this value is guaranteed to be equal to `current`.
@@ -412,6 +417,7 @@ impl AtomicBool {
     /// operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and must
     /// be equivalent or weaker than the success ordering.
     ///
+    /// [`bool`]: ../../../std/primitive.bool.html
     /// [`Ordering`]: enum.Ordering.html
     /// [`Release`]: enum.Ordering.html#variant.Release
     /// [`AcqRel`]: enum.Ordering.html#variant.Release
@@ -452,7 +458,7 @@ impl AtomicBool {
         }
     }
 
-    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
     /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even when the
     /// comparison succeeds, which can result in more efficient code on some platforms. The
@@ -465,6 +471,7 @@ impl AtomicBool {
     /// failure ordering can't be [`Release`] or [`AcqRel`] and must be equivalent or
     /// weaker than the success ordering.
     ///
+    /// [`bool`]: ../../../std/primitive.bool.html
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
     /// [`Release`]: enum.Ordering.html#variant.Release

@@ -6,7 +6,7 @@ register and define new MIR transformations and analyses.
 
 Most of the code that operates on MIR can be found in the
 `librustc_mir` crate or other crates. The code found here in
-`librustc` is just the datatype definitions, alonging the functions
+`librustc` is just the datatype definitions, along with the functions
 which operate on MIR to be placed everywhere else.
 
 ## MIR Data Types and visitor
@@ -27,7 +27,7 @@ As a MIR *consumer*, you are expected to use one of the queries that
 returns a "final MIR". As of the time of this writing, there is only
 one: `optimized_mir(def_id)`, but more are expected to come in the
 future. For foreign def-ids, we simply read the MIR from the other
-crate's metadata. But for local query, this query will construct the
+crate's metadata. But for local def-ids, the query will construct the
 MIR and then iteratively optimize it by putting it through various
 pipeline stages. This section describes those pipeline stages and how
 you can extend them.
@@ -51,7 +51,7 @@ a `&'tcx Steal<Mir<'tcx>>`, allocated using
 **stolen** by the next suite of optimizations -- this is an
 optimization to avoid cloning the MIR. Attempting to use a stolen
 result will cause a panic in the compiler. Therefore, it is important
-that you not read directly from these intermediate queries except as
+that you do not read directly from these intermediate queries except as
 part of the MIR processing pipeline.
 
 Because of this stealing mechanism, some care must also be taken to

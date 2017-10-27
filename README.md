@@ -16,6 +16,7 @@ Read ["Installation"] from [The Book].
 ## Building from Source
 [building-from-source]: #building-from-source
 
+### Building on *nix
 1. Make sure you have installed the dependencies:
 
    * `g++` 4.7 or later or `clang++` 3.x or later
@@ -193,7 +194,7 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
-Rust currently needs between 600MiB and 1.5GiB to build, depending on platform.
+Rust currently needs between 600MiB and 1.5GiB of RAM to build, depending on platform.
 If it hits swap, it will take a very long time to build.
 
 There is more advice about hacking on Rust in [CONTRIBUTING.md].

@@ -34,7 +34,7 @@ pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
 pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
     format!("rust_metadata_{}_{}",
             tcx.crate_name(LOCAL_CRATE),
-            tcx.crate_disambiguator(LOCAL_CRATE))
+            tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
 }
 
 fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {

@@ -206,7 +206,13 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans,
         param_env,
     };
-    euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_scope_tree, bccx.tables)
+    let rvalue_promotable_map = bccx.tcx.rvalue_promotable_map(def_id);
+    euv::ExprUseVisitor::new(&mut clcx,
+                             bccx.tcx,
+                             param_env,
+                             &bccx.region_scope_tree,
+                             bccx.tables,
+                             Some(rvalue_promotable_map))
         .consume_body(body);
 }
 
@@ -659,7 +665,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={:?})",
                id, use_kind, lp);
 
-        // FIXME (22079): if you find yourself tempted to cut and paste
+        // FIXME: if you find yourself tempted to cut and paste
         // the body below and then specializing the error reporting,
         // consider refactoring this instead!
 
@@ -720,7 +726,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         // the path must be initialized to prevent a case of
                         // partial reinitialization
                         //
-                        // FIXME (22079): could refactor via hypothetical
+                        // FIXME: could refactor via hypothetical
                         // generalized check_if_path_is_moved
                         let loan_path = owned_ptr_base_path_rc(lp_base);
                         self.move_data.each_move_of(id, &loan_path, |_, _| {
@@ -770,7 +776,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let lp = opt_loan_path(&assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
-                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);
+                    self.bccx.used_mut_nodes.borrow_mut().insert(hir_id);
                 } else {
                     self.bccx.report_reassigned_immutable_variable(
                         assignment_span,

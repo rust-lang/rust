@@ -337,7 +337,6 @@ impl<'a> fmt::Display for Html<'a> {
                         "l4re" => "L4Re",
                         "linux" => "Linux",
                         "macos" => "macOS",
-                        "nacl" => "NaCl",
                         "netbsd" => "NetBSD",
                         "openbsd" => "OpenBSD",
                         "redox" => "Redox",

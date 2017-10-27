@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME (#20004)
 // ignore-musl
-// ignore-emscripten
+// ignore-emscripten no processes
 
 #![feature(asm)]
 #![feature(libc)]

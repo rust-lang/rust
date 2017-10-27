@@ -399,7 +399,8 @@ impl<'a> State<'a> {
                     },
                     span: syntax_pos::DUMMY_SP,
                 };
-                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics)?;
+                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics,
+                                 &f.arg_names[..])?;
             }
             hir::TyPath(ref qpath) => {
                 self.print_qpath(qpath, false)?
@@ -879,6 +880,7 @@ impl<'a> State<'a> {
     pub fn print_method_sig(&mut self,
                             name: ast::Name,
                             m: &hir::MethodSig,
+                            generics: &hir::Generics,
                             vis: &hir::Visibility,
                             arg_names: &[Spanned<ast::Name>],
                             body_id: Option<hir::BodyId>)
@@ -888,7 +890,7 @@ impl<'a> State<'a> {
                       m.constness,
                       m.abi,
                       Some(name),
-                      &m.generics,
+                      generics,
                       vis,
                       arg_names,
                       body_id)
@@ -904,12 +906,14 @@ impl<'a> State<'a> {
                 self.print_associated_const(ti.name, &ty, default, &hir::Inherited)?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
-                self.print_method_sig(ti.name, sig, &hir::Inherited, arg_names, None)?;
+                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, arg_names,
+                    None)?;
                 self.s.word(";")?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
                 self.head("")?;
-                self.print_method_sig(ti.name, sig, &hir::Inherited, &[], Some(body))?;
+                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, &[],
+                    Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
@@ -937,7 +941,7 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::Method(ref sig, body) => {
                 self.head("")?;
-                self.print_method_sig(ii.name, sig, &ii.vis, &[], Some(body))?;
+                self.print_method_sig(ii.name, sig, &ii.generics, &ii.vis, &[], Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
@@ -2140,7 +2144,8 @@ impl<'a> State<'a> {
                        unsafety: hir::Unsafety,
                        decl: &hir::FnDecl,
                        name: Option<ast::Name>,
-                       generics: &hir::Generics)
+                       generics: &hir::Generics,
+                       arg_names: &[Spanned<ast::Name>])
                        -> io::Result<()> {
         self.ibox(indent_unit)?;
         if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
@@ -2163,7 +2168,7 @@ impl<'a> State<'a> {
                       name,
                       &generics,
                       &hir::Inherited,
-                      &[],
+                      arg_names,
                       None)?;
         self.end()
     }

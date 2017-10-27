@@ -339,8 +339,11 @@ impl serialize::UseSpecializedDecodable for Span {
 }
 
 fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "Span {{ lo: {:?}, hi: {:?}, ctxt: {:?} }}",
-           span.lo(), span.hi(), span.ctxt())
+    f.debug_struct("Span")
+        .field("lo", &span.lo())
+        .field("hi", &span.hi())
+        .field("ctxt", &span.ctxt())
+        .finish()
 }
 
 impl fmt::Debug for Span {

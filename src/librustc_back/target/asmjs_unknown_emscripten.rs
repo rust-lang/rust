@@ -20,7 +20,6 @@ pub fn target() -> Result<Target, String> {
 
     let opts = TargetOptions {
         linker: cmd("emcc"),
-        ar: cmd("emar"),
 
         dynamic_linking: false,
         executables: true,

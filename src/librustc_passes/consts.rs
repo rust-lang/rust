@@ -39,19 +39,78 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::maps::{queries, Providers};
 use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::NodeSet;
+use rustc::util::nodemap::{ItemLocalMap, NodeSet};
 use rustc::lint::builtin::CONST_ERR;
-
 use rustc::hir::{self, PatKind, RangeEnd};
+use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
-use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        rvalue_promotable_map,
+        const_is_rvalue_promotable_to_static,
+        ..*providers
+    };
+}
+
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    for &body_id in &tcx.hir.krate().body_ids {
+        let def_id = tcx.hir.body_owner_def_id(body_id);
+        tcx.const_is_rvalue_promotable_to_static(def_id);
+    }
+    tcx.sess.abort_if_errors();
+}
+
+fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                  def_id: DefId)
+                                                  -> bool
+{
+    assert!(def_id.is_local());
+
+    let node_id = tcx.hir.as_local_node_id(def_id)
+                     .expect("rvalue_promotable_map invoked with non-local def-id");
+    let body_id = tcx.hir.body_owned_by(node_id);
+    let body_hir_id = tcx.hir.node_to_hir_id(body_id.node_id);
+    tcx.rvalue_promotable_map(def_id).contains_key(&body_hir_id.local_id)
+}
+
+fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   def_id: DefId)
+                                   -> Rc<ItemLocalMap<bool>>
+{
+    let outer_def_id = tcx.closure_base_def_id(def_id);
+    if outer_def_id != def_id {
+        return tcx.rvalue_promotable_map(outer_def_id);
+    }
+
+    let mut visitor = CheckCrateVisitor {
+        tcx,
+        tables: &ty::TypeckTables::empty(None),
+        in_fn: false,
+        in_static: false,
+        promotable: false,
+        mut_rvalue_borrows: NodeSet(),
+        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+        identity_substs: Substs::empty(),
+        result_map: ItemLocalMap(),
+    };
+
+    // `def_id` should be a `Body` owner
+    let node_id = tcx.hir.as_local_node_id(def_id)
+                     .expect("rvalue_promotable_map invoked with non-local def-id");
+    let body_id = tcx.hir.body_owned_by(node_id);
+    visitor.visit_nested_body(body_id);
+
+    Rc::new(visitor.result_map)
+}
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -62,6 +121,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: &'tcx Substs<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
+    result_map: ItemLocalMap<bool>,
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
@@ -109,18 +169,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        // note that we *do* visit nested bodies, because we override `visit_nested_body` below
         NestedVisitorMap::None
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        match self.tcx.rvalue_promotable_to_static.borrow_mut().entry(body_id.node_id) {
-            Entry::Occupied(_) => return,
-            Entry::Vacant(entry) => {
-                // Prevent infinite recursion on re-entry.
-                entry.insert(false);
-            }
-        }
-
         let item_id = self.tcx.hir.body_owner(body_id);
         let item_def_id = self.tcx.hir.local_def_id(item_id);
 
@@ -151,7 +204,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let tcx = self.tcx;
         let param_env = self.param_env;
         let region_scope_tree = self.tcx.region_scope_tree(item_def_id);
-        euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, self.tables)
+        euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, self.tables, None)
             .consume_body(body);
 
         self.visit_body(body);
@@ -270,7 +323,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             }
         }
 
-        self.tcx.rvalue_promotable_to_static.borrow_mut().insert(ex.id, self.promotable);
+        self.result_map.insert(ex.hir_id.local_id, self.promotable);
         self.promotable &= outer;
     }
 }
@@ -371,16 +424,17 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                     let promotable = if v.tcx.trait_of_item(did).is_some() {
                         // Don't peek inside trait associated constants.
                         false
-                    } else if let Some(node_id) = v.tcx.hir.as_local_node_id(did) {
-                        match v.tcx.hir.maybe_body_owned_by(node_id) {
-                            Some(body) => {
-                                v.visit_nested_body(body);
-                                v.tcx.rvalue_promotable_to_static.borrow()[&body.node_id]
-                            }
-                            None => false
-                        }
                     } else {
-                        v.tcx.const_is_rvalue_promotable_to_static(did)
+                        queries::const_is_rvalue_promotable_to_static::try_get(v.tcx, e.span, did)
+                            .unwrap_or_else(|mut err| {
+                                // A cycle between constants ought to be reported elsewhere.
+                                err.cancel();
+                                v.tcx.sess.delay_span_bug(
+                                    e.span,
+                                    &format!("cycle encountered during const qualification: {:?}",
+                                             did));
+                                false
+                            })
                     };
 
                     // Just in case the type is more specific than the definition,
@@ -511,20 +565,6 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
             }
         }
     }
-}
-
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut CheckCrateVisitor {
-        tcx,
-        tables: &ty::TypeckTables::empty(None),
-        in_fn: false,
-        in_static: false,
-        promotable: false,
-        mut_rvalue_borrows: NodeSet(),
-        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
-        identity_substs: Substs::empty(),
-    }.as_deep_visitor());
-    tcx.sess.abort_if_errors();
 }
 
 impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {

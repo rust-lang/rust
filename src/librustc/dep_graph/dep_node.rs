@@ -65,7 +65,7 @@ use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
 
 use ich::Fingerprint;
-use ty::{TyCtxt, Instance, InstanceDef, ParamEnvAnd, Ty};
+use ty::{TyCtxt, Instance, InstanceDef, ParamEnv, ParamEnvAnd, PolyTraitRef, Ty};
 use ty::subst::Substs;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
@@ -90,12 +90,21 @@ macro_rules! is_input_attr {
     ($attr:ident) => (false);
 }
 
+macro_rules! is_eval_always_attr {
+    (eval_always) => (true);
+    ($attr:ident) => (false);
+}
+
 macro_rules! contains_anon_attr {
     ($($attr:ident),*) => ({$(is_anon_attr!($attr) | )* false});
 }
 
 macro_rules! contains_input_attr {
     ($($attr:ident),*) => ({$(is_input_attr!($attr) | )* false});
+}
+
+macro_rules! contains_eval_always_attr {
+    ($($attr:ident),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
 macro_rules! define_dep_nodes {
@@ -156,6 +165,15 @@ macro_rules! define_dep_nodes {
                 match *self {
                     $(
                         DepKind :: $variant => { contains_input_attr!($($attr),*) }
+                    )*
+                }
+            }
+
+            #[inline]
+            pub fn is_eval_always(&self) -> bool {
+                match *self {
+                    $(
+                        DepKind :: $variant => { contains_eval_always_attr!($($attr), *) }
                     )*
                 }
             }
@@ -339,6 +357,25 @@ macro_rules! define_dep_nodes {
                     Ok(DepNode::new_no_params(kind))
                 }
             }
+
+            /// Used in testing
+            pub fn has_label_string(label: &str) -> bool {
+                match label {
+                    $(
+                        stringify!($variant) => true,
+                    )*
+                    _ => false,
+                }
+            }
+        }
+
+        /// Contains variant => str representations for constructing
+        /// DepNode groups for tests.
+        #[allow(dead_code, non_upper_case_globals)]
+        pub mod label_strs {
+           $(
+                pub const $variant: &'static str = stringify!($variant);
+            )*
         }
     );
 }
@@ -356,7 +393,7 @@ impl fmt::Debug for DepNode {
         ::ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.def_path(def_id).to_string(tcx))?;
+                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
                     write!(f, "{}", s)?;
                 } else {
@@ -428,10 +465,10 @@ define_dep_nodes!( <'tcx>
 
     // Represents different phases in the compiler.
     [] RegionScopeTree(DefId),
-    [] Coherence,
-    [] CoherenceInherentImplOverlapCheck,
+    [eval_always] Coherence,
+    [eval_always] CoherenceInherentImplOverlapCheck,
     [] CoherenceCheckTrait(DefId),
-    [] PrivacyAccessLevels(CrateNum),
+    [eval_always] PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
@@ -448,7 +485,7 @@ define_dep_nodes!( <'tcx>
 
     [] Reachability,
     [] MirKeys,
-    [] CrateVariances,
+    [eval_always] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -457,6 +494,7 @@ define_dep_nodes!( <'tcx>
     [] TypeOfItem(DefId),
     [] GenericsOfItem(DefId),
     [] PredicatesOfItem(DefId),
+    [] InferredOutlivesOf(DefId),
     [] SuperPredicatesOfItem(DefId),
     [] TraitDefOfItem(DefId),
     [] AdtDefOfItem(DefId),
@@ -477,15 +515,18 @@ define_dep_nodes!( <'tcx>
     [] DtorckConstraint(DefId),
     [] AdtDestructor(DefId),
     [] AssociatedItemDefIds(DefId),
-    [] InherentImpls(DefId),
+    [eval_always] InherentImpls(DefId),
     [] TypeckBodiesKrate,
     [] TypeckTables(DefId),
+    [] UsedTraitImports(DefId),
     [] HasTypeckTables(DefId),
     [] ConstEval { param_env: ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)> },
     [] SymbolName(DefId),
     [] InstanceSymbolName { instance: Instance<'tcx> },
     [] SpecializationGraph(DefId),
     [] ObjectSafety(DefId),
+    [] FulfillObligation { param_env: ParamEnv<'tcx>, trait_ref: PolyTraitRef<'tcx> },
+    [] VtableMethods { trait_ref: PolyTraitRef<'tcx> },
 
     [] IsCopy { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
@@ -532,6 +573,7 @@ define_dep_nodes!( <'tcx>
     [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),
     [] ConstIsRvaluePromotableToStatic(DefId),
+    [] RvaluePromotableMap(DefId),
     [] ImplParent(DefId),
     [] TraitOfItem(DefId),
     [] IsExportedSymbol(DefId),
@@ -543,7 +585,7 @@ define_dep_nodes!( <'tcx>
     [] IsCompilerBuiltins(CrateNum),
     [] HasGlobalAllocator(CrateNum),
     [] ExternCrate(DefId),
-    [] LintLevels,
+    [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
     [input] InScopeTraits(DefIndex),
     [] ModuleExports(DefId),
@@ -588,20 +630,28 @@ define_dep_nodes!( <'tcx>
     [] HasCloneClosures(CrateNum),
     [] HasCopyClosures(CrateNum),
 
+    // This query is not expected to have inputs -- as a result, it's
+    // not a good candidate for "replay" because it's essentially a
+    // pure function of its input (and hence the expectation is that
+    // no caller would be green **apart** from just this
+    // query). Making it anonymous avoids hashing the result, which
+    // may save a bit of time.
+    [anon] EraseRegionsTy { ty: Ty<'tcx> },
+
     [] Freevars(DefId),
     [] MaybeUnusedTraitImport(DefId),
     [] MaybeUnusedExternCrates,
     [] StabilityIndex,
     [] AllCrateNums,
     [] ExportedSymbols(CrateNum),
-    [] CollectAndPartitionTranslationItems,
+    [eval_always] CollectAndPartitionTranslationItems,
     [] ExportName(DefId),
     [] ContainsExternIndicator(DefId),
     [] IsTranslatedFunction(DefId),
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [] OutputFilenames,
-
+    [anon] NormalizeTy,
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 );
@@ -700,8 +750,8 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, De
         let (def_id_0, def_id_1) = *self;
 
         format!("({}, {})",
-                tcx.def_path(def_id_0).to_string(tcx),
-                tcx.def_path(def_id_1).to_string(tcx))
+                tcx.def_path_debug_str(def_id_0),
+                tcx.def_path_debug_str(def_id_1))
     }
 }
 

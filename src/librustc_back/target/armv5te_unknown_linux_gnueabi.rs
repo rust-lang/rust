@@ -27,8 +27,12 @@ pub fn target() -> TargetResult {
 
         options: TargetOptions {
             features: "+soft-float,+strict-align".to_string(),
-            // No atomic instructions on ARMv5
-            max_atomic_width: Some(0),
+
+            // Atomic operations provided when linked with libgcc.
+            // FIXME: If the following PR is merged, the atomic operations would be
+            // provided by compiler-builtins instead with no change of behavior:
+            // https://github.com/rust-lang-nursery/compiler-builtins/pull/115/files
+            max_atomic_width: Some(32),
             abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
         }

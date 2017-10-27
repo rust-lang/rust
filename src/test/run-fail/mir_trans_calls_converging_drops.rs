@@ -12,17 +12,15 @@
 // error-pattern:0 dropped
 // error-pattern:exit
 
-use std::io::{self, Write};
-
 struct Droppable(u8);
 impl Drop for Droppable {
     fn drop(&mut self) {
-        write!(io::stderr(), "{} dropped\n", self.0);
+        eprintln!("{} dropped", self.0);
     }
 }
 
 fn converging_fn() {
-    write!(io::stderr(), "converging_fn called\n");
+    eprintln!("converging_fn called");
 }
 
 fn mir(d: Droppable) {

@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(dyn_trait)]
 
 struct Foo;
 
 fn foo(_x: Box<Foo + Send>) { } //~ ERROR expected trait, found struct `Foo`
+
+type A<T> = Box<dyn Vec<T>>; //~ ERROR expected trait, found struct `Vec`
 
 fn main() { }

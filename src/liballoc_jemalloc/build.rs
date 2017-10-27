@@ -63,15 +63,6 @@ fn main() {
         _ => return,
     };
 
-    let compiler = cc::Build::new().get_compiler();
-    // only msvc returns None for ar so unwrap is okay
-    let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
-    let cflags = compiler.args()
-        .iter()
-        .map(|s| s.to_str().unwrap())
-        .collect::<Vec<_>>()
-        .join(" ");
-
     let mut cmd = Command::new("sh");
     cmd.arg(native.src_dir.join("configure")
                           .to_str()
@@ -79,8 +70,6 @@ fn main() {
                           .replace("C:\\", "/c/")
                           .replace("\\", "/"))
        .current_dir(&native.out_dir)
-       .env("CC", compiler.path())
-       .env("EXTRA_CFLAGS", cflags.clone())
        // jemalloc generates Makefile deps using GCC's "-MM" flag. This means
        // that GCC will run the preprocessor, and only the preprocessor, over
        // jemalloc's source files. If we don't specify CPPFLAGS, then at least
@@ -89,9 +78,7 @@ fn main() {
        // passed to GCC, and then GCC won't define the
        // "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4" macro that jemalloc needs to
        // select an atomic operation implementation.
-       .env("CPPFLAGS", cflags.clone())
-       .env("AR", &ar)
-       .env("RANLIB", format!("{} s", ar.display()));
+       .env("CPPFLAGS", env::var_os("CFLAGS").unwrap_or_default());
 
     if target.contains("ios") {
         cmd.arg("--disable-tls");

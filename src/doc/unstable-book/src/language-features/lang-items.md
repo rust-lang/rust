@@ -227,3 +227,95 @@ A third function, `rust_eh_unwind_resume`, is also needed if the `custom_unwind_
 flag is set in the options of the compilation target. It allows customizing the
 process of resuming unwind at the end of the landing pads. The language item's name
 is `eh_unwind_resume`.
+
+## List of all language items
+
+This is a list of all language items in Rust along with where they are located in
+the source code.
+
+- Primitives
+  - `i8`: `libcore/num/mod.rs`
+  - `i16`: `libcore/num/mod.rs`
+  - `i32`: `libcore/num/mod.rs`
+  - `i64`: `libcore/num/mod.rs`
+  - `i128`: `libcore/num/mod.rs`
+  - `isize`: `libcore/num/mod.rs`
+  - `u8`: `libcore/num/mod.rs`
+  - `u16`: `libcore/num/mod.rs`
+  - `u32`: `libcore/num/mod.rs`
+  - `u64`: `libcore/num/mod.rs`
+  - `u128`: `libcore/num/mod.rs`
+  - `usize`: `libcore/num/mod.rs`
+  - `f32`: `libstd/f32.rs`
+  - `f64`: `libstd/f64.rs`
+  - `char`: `libstd_unicode/char.rs`
+  - `slice`: `liballoc/slice.rs`
+  - `str`: `liballoc/str.rs`
+  - `const_ptr`: `libcore/ptr.rs`
+  - `mut_ptr`: `libcore/ptr.rs`
+  - `unsafe_cell`: `libcore/cell.rs`
+- Runtime
+  - `start`: `libstd/rt.rs`
+  - `eh_personality`: `libpanic_unwind/emcc.rs` (EMCC)
+  - `eh_personality`: `libpanic_unwind/seh64_gnu.rs` (SEH64 GNU)
+  - `eh_personality`: `libpanic_unwind/seh.rs` (SEH)
+  - `eh_unwind_resume`: `libpanic_unwind/seh64_gnu.rs` (SEH64 GNU)
+  - `eh_unwind_resume`: `libpanic_unwind/gcc.rs` (GCC)
+  - `msvc_try_filter`: `libpanic_unwind/seh.rs` (SEH)
+  - `panic`: `libcore/panicking.rs`
+  - `panic_bounds_check`: `libcore/panicking.rs`
+  - `panic_fmt`: `libcore/panicking.rs`
+  - `panic_fmt`: `libstd/panicking.rs`
+- Allocations
+  - `owned_box`: `liballoc/boxed.rs`
+  - `exchange_malloc`: `liballoc/heap.rs`
+  - `box_free`: `liballoc/heap.rs`
+- Operands
+  - `not`: `libcore/ops/bit.rs`
+  - `bitand`: `libcore/ops/bit.rs`
+  - `bitor`: `libcore/ops/bit.rs`
+  - `bitxor`: `libcore/ops/bit.rs`
+  - `shl`: `libcore/ops/bit.rs`
+  - `shr`: `libcore/ops/bit.rs`
+  - `bitand_assign`: `libcore/ops/bit.rs`
+  - `bitor_assign`: `libcore/ops/bit.rs`
+  - `bitxor_assign`: `libcore/ops/bit.rs`
+  - `shl_assign`: `libcore/ops/bit.rs`
+  - `shr_assign`: `libcore/ops/bit.rs`
+  - `deref`: `libcore/ops/deref.rs`
+  - `deref_mut`: `libcore/ops/deref.rs`
+  - `index`: `libcore/ops/index.rs`
+  - `index_mut`: `libcore/ops/index.rs`
+  - `add`: `libcore/ops/arith.rs`
+  - `sub`: `libcore/ops/arith.rs`
+  - `mul`: `libcore/ops/arith.rs`
+  - `div`: `libcore/ops/arith.rs`
+  - `rem`: `libcore/ops/arith.rs`
+  - `neg`: `libcore/ops/arith.rs`
+  - `add_assign`: `libcore/ops/arith.rs`
+  - `sub_assign`: `libcore/ops/arith.rs`
+  - `mul_assign`: `libcore/ops/arith.rs`
+  - `div_assign`: `libcore/ops/arith.rs`
+  - `rem_assign`: `libcore/ops/arith.rs`
+  - `eq`: `libcore/cmp.rs`
+  - `ord`: `libcore/cmp.rs`
+- Functions
+  - `fn`: `libcore/ops/function.rs`
+  - `fn_mut`: `libcore/ops/function.rs`
+  - `fn_once`: `libcore/ops/function.rs`
+  - `generator_state`: `libcore/ops/generator.rs`
+  - `generator`: `libcore/ops/generator.rs`
+- Other
+  - `coerce_unsized`: `libcore/ops/unsize.rs`
+  - `drop`: `libcore/ops/drop.rs`
+  - `drop_in_place`: `libcore/ptr.rs`
+  - `clone`: `libcore/clone.rs`
+  - `copy`: `libcore/marker.rs`
+  - `send`: `libcore/marker.rs`
+  - `sized`: `libcore/marker.rs`
+  - `unsize`: `libcore/marker.rs`
+  - `sync`: `libcore/marker.rs`
+  - `phantom_data`: `libcore/marker.rs`
+  - `freeze`: `libcore/marker.rs`
+  - `debug_trait`: `libcore/fmt/mod.rs`
+  - `non_zero`: `libcore/nonzero.rs`

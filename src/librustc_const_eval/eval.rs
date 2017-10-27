@@ -13,9 +13,7 @@ use rustc::middle::const_val::ConstAggregate::*;
 use rustc::middle::const_val::ErrKind::*;
 use rustc::middle::const_val::{ByteArray, ConstVal, ConstEvalErr, EvalResult, ErrKind};
 
-use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::traits;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -54,33 +52,12 @@ macro_rules! math {
 pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                                     -> Option<(DefId, &'tcx Substs<'tcx>)> {
-    let (def_id, _) = key.value;
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-        match tcx.hir.find(node_id) {
-            Some(hir_map::NodeTraitItem(_)) => {
-                // If we have a trait item and the substitutions for it,
-                // `resolve_trait_associated_const` will select an impl
-                // or the default.
-                resolve_trait_associated_const(tcx, key)
-            }
-            _ => Some(key.value)
-        }
-    } else {
-        match tcx.describe_def(def_id) {
-            Some(Def::AssociatedConst(_)) => {
-                // As mentioned in the comments above for in-crate
-                // constants, we only try to find the expression for a
-                // trait-associated const if the caller gives us the
-                // substitutions for the reference to it.
-                if tcx.trait_of_item(def_id).is_some() {
-                    resolve_trait_associated_const(tcx, key)
-                } else {
-                    Some(key.value)
-                }
-            }
-            _ => Some(key.value)
-        }
-    }
+    ty::Instance::resolve(
+        tcx,
+        key.param_env,
+        key.value.0,
+        key.value.1,
+    ).map(|instance| (instance.def_id(), instance.substs))
 }
 
 pub struct ConstContext<'a, 'tcx: 'a> {
@@ -119,6 +96,7 @@ type CastResult<'tcx> = Result<ConstVal<'tcx>, ErrKind<'tcx>>;
 
 fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                                      e: &'tcx Expr) -> EvalResult<'tcx> {
+    trace!("eval_const_expr_partial: {:?}", e);
     let tcx = cx.tcx;
     let ty = cx.tables.expr_ty(e).subst(tcx, cx.substs);
     let mk_const = |val| tcx.mk_const(ty::Const { val, ty });
@@ -289,6 +267,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           match cx.tables.qpath_def(qpath, e.hir_id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
+                    let substs = tcx.normalize_associated_type_in_env(&substs, cx.param_env);
                     match tcx.at(e.span).const_eval(cx.param_env.and((def_id, substs))) {
                         Ok(val) => val,
                         Err(ConstEvalErr { kind: TypeckError, .. }) => {
@@ -484,67 +463,6 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
     };
 
     Ok(result)
-}
-
-fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                            key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
-                                            -> Option<(DefId, &'tcx Substs<'tcx>)> {
-    let param_env = key.param_env;
-    let (def_id, substs) = key.value;
-    let trait_item = tcx.associated_item(def_id);
-    let trait_id = trait_item.container.id();
-    let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, substs));
-    debug!("resolve_trait_associated_const: trait_ref={:?}",
-           trait_ref);
-
-    tcx.infer_ctxt().enter(|infcx| {
-        let mut selcx = traits::SelectionContext::new(&infcx);
-        let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
-                                                 param_env,
-                                                 trait_ref.to_poly_trait_predicate());
-        let selection = match selcx.select(&obligation) {
-            Ok(Some(vtable)) => vtable,
-            // Still ambiguous, so give up and let the caller decide whether this
-            // expression is really needed yet. Some associated constant values
-            // can't be evaluated until monomorphization is done in trans.
-            Ok(None) => {
-                return None
-            }
-            Err(_) => {
-                return None
-            }
-        };
-
-        // NOTE: this code does not currently account for specialization, but when
-        // it does so, it should hook into the param_env.reveal to determine when the
-        // constant should resolve.
-        match selection {
-            traits::VtableImpl(ref impl_data) => {
-                let name = trait_item.name;
-                let ac = tcx.associated_items(impl_data.impl_def_id)
-                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == name);
-                match ac {
-                    // FIXME(eddyb) Use proper Instance resolution to
-                    // get the correct Substs returned from here.
-                    Some(ic) => {
-                        let substs = Substs::identity_for_item(tcx, ic.def_id);
-                        Some((ic.def_id, substs))
-                    }
-                    None => {
-                        if trait_item.defaultness.has_value() {
-                            Some(key.value)
-                        } else {
-                            None
-                        }
-                    }
-                }
-            }
-            traits::VtableParam(_) => None,
-            _ => {
-                bug!("resolve_trait_associated_const: unexpected vtable type {:?}", selection)
-            }
-        }
-    })
 }
 
 fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

@@ -74,7 +74,7 @@ struct Struct(
 
 ENUM_TUPLE, ENUM_STRUCT, STRUCT_FIELDS, STRUCT_TUPLE = range(4)
 
-def create_test_case(type, trait, super_traits, number_of_errors):
+def create_test_case(type, trait, super_traits, error_count):
     string = [ENUM_STRING, ENUM_STRUCT_VARIANT_STRING, STRUCT_STRING, STRUCT_TUPLE_STRING][type]
     all_traits = ','.join([trait] + super_traits)
     super_traits = ','.join(super_traits)
@@ -113,7 +113,7 @@ traits = {
 
 for (trait, supers, errs) in [('Clone', [], 1),
                               ('PartialEq', [], 2),
-                              ('PartialOrd', ['PartialEq'], 9),
+                              ('PartialOrd', ['PartialEq'], 3),
                               ('Eq', ['PartialEq'], 1),
                               ('Ord', ['Eq', 'PartialOrd', 'PartialEq'], 1),
                               ('Debug', [], 1),

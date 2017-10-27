@@ -16,7 +16,6 @@ pub fn target() -> TargetResult {
     base.cpu = "x86-64".to_string();
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
     base.linker = "x86_64-rumprun-netbsd-gcc".to_string();
-    base.ar = "x86_64-rumprun-netbsd-ar".to_string();
     base.max_atomic_width = Some(64);
 
     base.dynamic_linking = false;
