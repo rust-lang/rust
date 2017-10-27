@@ -208,29 +208,9 @@ impl WorkspaceHitlist {
 // Returns a vector of all compile targets of a crate
 fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, std::io::Error> {
     let mut targets: Vec<Target> = vec![];
-    if *workspace_hitlist == WorkspaceHitlist::None {
-        let output = Command::new("cargo").arg("read-manifest").output()?;
-        if output.status.success() {
-            // None of the unwraps should fail if output of `cargo read-manifest` is correct
-            let data = &String::from_utf8(output.stdout).unwrap();
-            let json: Value = json::from_str(data).unwrap();
-            let json_obj = json.as_object().unwrap();
-            let jtargets = json_obj.get("targets").unwrap().as_array().unwrap();
-            for jtarget in jtargets {
-                targets.push(target_from_json(jtarget));
-            }
 
-            return Ok(targets);
         }
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            str::from_utf8(&output.stderr).unwrap(),
-        ));
     }
-    // This happens when cargo-fmt is not used inside a crate or
-    // is used inside a workspace.
-    // To ensure backward compatability, we only use `cargo metadata` for workspaces.
-    // TODO: Is it possible only use metadata or read-manifest
     let output = Command::new("cargo")
         .arg("metadata")
         .arg("--no-deps")
@@ -275,12 +255,6 @@ fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, std:
                 targets.push(target_from_json(jtarget));
             }
         }
-        return Ok(targets);
-    }
-    Err(std::io::Error::new(
-        std::io::ErrorKind::NotFound,
-        str::from_utf8(&output.stderr).unwrap(),
-    ))
 }
 
 fn target_from_json(jtarget: &Value) -> Target {
