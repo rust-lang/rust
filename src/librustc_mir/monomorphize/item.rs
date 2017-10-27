@@ -17,7 +17,6 @@
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::trans::Linkage;
 use rustc::session::config::OptLevel;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -26,11 +25,11 @@ use syntax::ast;
 use syntax::attr::{self, InlineAttr};
 use std::fmt::{self, Write};
 use std::iter;
-
-pub use rustc::middle::trans::MonoItem;
+use rustc::mir::mono::Linkage;
+pub use rustc::mir::mono::MonoItem;
 
 pub fn linkage_by_name(name: &str) -> Option<Linkage> {
-    use rustc::middle::trans::Linkage::*;
+    use rustc::mir::mono::Linkage::*;
 
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for

@@ -101,7 +101,7 @@ use monomorphize::Instance;
 use trans_item::{BaseMonoItemExt, InstantiationMode};
 
 use rustc::middle::weak_lang_items;
-use rustc::middle::trans::MonoItem;
+use rustc::mir::mono::MonoItem;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};

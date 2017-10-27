@@ -25,7 +25,7 @@ use llvm;
 use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use rustc::hir;
-use rustc::middle::trans::{Linkage, Visibility};
+use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::layout::LayoutOf;
 use syntax::ast;
@@ -34,7 +34,7 @@ use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 use std::fmt;
 
-pub use rustc::middle::trans::MonoItem;
+pub use rustc::mir::mono::MonoItem;
 
 pub use rustc_mir::monomorphize::item::*;
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;

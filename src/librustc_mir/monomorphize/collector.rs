@@ -195,13 +195,13 @@ use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
-use rustc::middle::trans::MonoItem;
 use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::{self, Location};
 use rustc::mir::visit::Visitor as MirVisitor;
+use rustc::mir::mono::MonoItem;
 
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};

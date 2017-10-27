@@ -107,7 +107,7 @@ use common;
 use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use rustc::middle::trans::{Linkage, Visibility};
+use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -116,7 +116,7 @@ use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, InstantiationMode};
 
-pub use rustc::middle::trans::CodegenUnit;
+pub use rustc::mir::mono::CodegenUnit;
 
 pub enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.
