@@ -77,6 +77,42 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn attrs<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
+
+    pub fn is_inline<'a>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>
+    ) -> bool {
+        use hir::map::DefPathData;
+        let def_id = match *self {
+            ty::InstanceDef::Item(def_id) => def_id,
+            ty::InstanceDef::DropGlue(_, Some(_)) => return false,
+            _ => return true
+        };
+        match tcx.def_key(def_id).disambiguated_data.data {
+            DefPathData::StructCtor |
+            DefPathData::EnumVariant(..) |
+            DefPathData::ClosureExpr => true,
+            _ => false
+        }
+    }
+
+    pub fn requires_local<'a>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>
+    ) -> bool {
+        use syntax::attr::requests_inline;
+        if self.is_inline(tcx) {
+            return true
+        }
+        if let ty::InstanceDef::DropGlue(..) = *self {
+            // Drop glue wants to be instantiated at every translation
+            // unit, but without an #[inline] hint. We should make this
+            // available to normal end-users.
+            return true
+        }
+        requests_inline(&self.attrs(tcx)[..]) ||
+            tcx.is_const_fn(self.def_id())
+    }
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
