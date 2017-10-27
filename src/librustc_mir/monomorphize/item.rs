@@ -58,7 +58,7 @@ pub fn linkage_by_name(name: &str) -> Option<Linkage> {
 /// Describes how a translation item will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum InstantiationMode {
-    /// There will be exactly one instance of the given TransItem. It will have
+    /// There will be exactly one instance of the given MonoItem. It will have
     /// external linkage so that it can be linked to from other codegen units.
     GloballyShared {
         /// In some compilation scenarios we may decide to take functions that
@@ -75,7 +75,7 @@ pub enum InstantiationMode {
         may_conflict: bool,
     },
 
-    /// Each codegen unit containing a reference to the given TransItem will
+    /// Each codegen unit containing a reference to the given MonoItem will
     /// have its own private copy of the function (with internal linkage).
     LocalCopy,
 }
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 }
 
 //=-----------------------------------------------------------------------------
-// TransItem String Keys
+// MonoItem String Keys
 //=-----------------------------------------------------------------------------
 
 // The code below allows for producing a unique string key for a trans item.

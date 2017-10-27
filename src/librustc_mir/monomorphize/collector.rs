@@ -842,7 +842,7 @@ fn create_fn_trans_item<'a, 'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
     MonoItem::Fn(instance)
 }
 
-/// Creates a `TransItem` for each method that is referenced by the vtable for
+/// Creates a `MonoItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
 fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   trait_ty: Ty<'tcx>,
