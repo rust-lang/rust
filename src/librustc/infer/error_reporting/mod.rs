@@ -262,6 +262,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
+        if self.tcx.sess.opts.debugging_opts.nll {
+            for error in errors {
+                match *error {
+                    RegionResolutionError::ConcreteFailure(origin, ..) |
+                    RegionResolutionError::GenericBoundFailure(origin, ..) => {
+                        self.tcx.sess.delay_span_bug(origin.span(),
+                                                     &format!("unreported region error {:?}",
+                                                              error));
+                    }
+
+                    RegionResolutionError::SubSupConflict(rvo, ..) => {
+                        self.tcx.sess.delay_span_bug(rvo.span(),
+                                                     &format!("unreported region error {:?}",
+                                                              error));
+                    }
+                }
+            }
+
+            return;
+        }
+
         // try to pre-process the errors, which will group some of them
         // together into a `ProcessedErrors` group:
         let errors = self.process_errors(errors);
