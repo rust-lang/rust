@@ -899,9 +899,6 @@ fn rewrite_cond(context: &RewriteContext, expr: &ast::Expr, shape: Shape) -> Opt
             };
             cond.rewrite(context, cond_shape)
         }
-        ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
-            stmt_expr(&block.stmts[0]).and_then(|e| rewrite_cond(context, e, shape))
-        }
         _ => to_control_flow(expr, ExprType::SubExpression).and_then(|control_flow| {
             let alt_block_sep =
                 String::from("\n") + &shape.indent.block_only().to_string(context.config);
@@ -2219,7 +2216,7 @@ fn rewrite_last_closure(
 ) -> Option<String> {
     if let ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) = expr.node {
         let body = match body.node {
-            ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
+            ast::ExprKind::Block(ref block) if is_simple_block(block, context.codemap) => {
                 stmt_expr(&block.stmts[0]).unwrap_or(body)
             }
             _ => body,
