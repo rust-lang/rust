@@ -107,7 +107,6 @@ mod cross_crate {
         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
         //~^ WARN use of deprecated item
-        //~| WARN use of deprecated item
 
         let _ = DeprecatedStruct { //~ WARN use of deprecated item
             i: 0 //~ WARN use of deprecated item

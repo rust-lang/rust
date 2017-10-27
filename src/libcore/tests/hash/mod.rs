@@ -79,6 +79,14 @@ fn test_writer_hasher() {
 
     let ptr = 5_usize as *mut i32;
     assert_eq!(hash(&ptr), 5);
+
+    let cs: &mut [u8] = &mut [1, 2, 3];
+    let ptr = cs.as_ptr();
+    let slice_ptr = cs as *const [u8];
+    assert_eq!(hash(&slice_ptr), hash(&ptr) + cs.len() as u64);
+
+    let slice_ptr = cs as *mut [u8];
+    assert_eq!(hash(&slice_ptr), hash(&ptr) + cs.len() as u64);
 }
 
 struct Custom { hash: u64 }

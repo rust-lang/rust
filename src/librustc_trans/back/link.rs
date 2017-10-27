@@ -9,13 +9,14 @@
 // except according to those terms.
 
 use super::archive::{ArchiveBuilder, ArchiveConfig};
-use super::bytecode::{self, RLIB_BYTECODE_EXTENSION};
+use super::bytecode::RLIB_BYTECODE_EXTENSION;
 use super::linker::Linker;
 use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
+use rustc::session::config::RUST_CGU_EXT;
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
@@ -36,7 +37,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, Read, Write, BufWriter};
+use std::io::{self, Write, BufWriter};
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::str;
@@ -45,13 +46,9 @@ use syntax::attr;
 /// The LLVM module name containing crate-metadata. This includes a `.` on
 /// purpose, so it cannot clash with the name of a user-defined module.
 pub const METADATA_MODULE_NAME: &'static str = "crate.metadata";
-/// The name of the crate-metadata object file the compiler generates. Must
-/// match up with `METADATA_MODULE_NAME`.
-pub const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
 
 // same as for metadata above, but for allocator shim
 pub const ALLOCATOR_MODULE_NAME: &'static str = "crate.allocator";
-pub const ALLOCATOR_OBJ_NAME: &'static str = "crate.allocator.o";
 
 pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
                                   invalid_output_for_target, build_link_meta, out_filename,
@@ -170,13 +167,23 @@ pub fn link_binary(sess: &Session,
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
         if sess.opts.output_types.should_trans() {
-            for obj in trans.modules.iter() {
-                remove(sess, &obj.object);
+            for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
+                remove(sess, obj);
             }
         }
-        remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
-        if trans.allocator_module.is_some() {
-            remove(sess, &outputs.with_extension(ALLOCATOR_OBJ_NAME));
+        for obj in trans.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref()) {
+            remove(sess, obj);
+        }
+        if let Some(ref obj) = trans.metadata_module.object {
+            remove(sess, obj);
+        }
+        if let Some(ref allocator) = trans.allocator_module {
+            if let Some(ref obj) = allocator.object {
+                remove(sess, obj);
+            }
+            if let Some(ref bc) = allocator.bytecode_compressed {
+                remove(sess, bc);
+            }
         }
     }
 
@@ -251,8 +258,8 @@ fn link_binary_output(sess: &Session,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> Vec<PathBuf> {
-    for module in trans.modules.iter() {
-        check_file_is_writeable(&module.object, sess);
+    for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
+        check_file_is_writeable(obj, sess);
     }
 
     let tmpdir = match TempDir::new("rustc") {
@@ -275,20 +282,14 @@ fn link_binary_output(sess: &Session,
                 link_rlib(sess,
                           trans,
                           RlibFlavor::Normal,
-                          outputs,
                           &out_filename,
                           tmpdir.path()).build();
             }
             config::CrateTypeStaticlib => {
-                link_staticlib(sess,
-                               trans,
-                               outputs,
-                               &out_filename,
-                               tmpdir.path());
+                link_staticlib(sess, trans, &out_filename, tmpdir.path());
             }
             _ => {
-                link_natively(sess, crate_type, &out_filename,
-                              trans, outputs, tmpdir.path());
+                link_natively(sess, crate_type, &out_filename, trans, tmpdir.path());
             }
         }
         out_filenames.push(out_filename);
@@ -344,14 +345,13 @@ enum RlibFlavor {
 fn link_rlib<'a>(sess: &'a Session,
                  trans: &CrateTranslation,
                  flavor: RlibFlavor,
-                 outputs: &OutputFilenames,
                  out_filename: &Path,
                  tmpdir: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib to {:?}", out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
 
-    for module in trans.modules.iter() {
-        ab.add_file(&module.object);
+    for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
+        ab.add_file(obj);
     }
 
     // Note that in this loop we are ignoring the value of `lib.cfg`. That is,
@@ -416,56 +416,9 @@ fn link_rlib<'a>(sess: &'a Session,
             ab.add_file(&metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
-            // into the archive.  If codegen_units > 1, we insert each of the
-            // bitcode files.
-            for module in trans.modules.iter() {
-                // Note that we make sure that the bytecode filename in the
-                // archive is never exactly 16 bytes long by adding a 16 byte
-                // extension to it. This is to work around a bug in LLDB that
-                // would cause it to crash if the name of a file in an archive
-                // was exactly 16 bytes.
-                let bc_filename = module.object.with_extension("bc");
-                let bc_encoded_filename = tmpdir.join({
-                    module.object.with_extension(RLIB_BYTECODE_EXTENSION).file_name().unwrap()
-                });
-
-                let mut bc_data = Vec::new();
-                match fs::File::open(&bc_filename).and_then(|mut f| {
-                    f.read_to_end(&mut bc_data)
-                }) {
-                    Ok(..) => {}
-                    Err(e) => sess.fatal(&format!("failed to read bytecode: {}",
-                                                 e))
-                }
-
-                let encoded = bytecode::encode(&module.llmod_id, &bc_data);
-
-                let mut bc_file_deflated = match fs::File::create(&bc_encoded_filename) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        sess.fatal(&format!("failed to create compressed \
-                                             bytecode file: {}", e))
-                    }
-                };
-
-                match bc_file_deflated.write_all(&encoded) {
-                    Ok(()) => {}
-                    Err(e) => {
-                        sess.fatal(&format!("failed to write compressed \
-                                             bytecode: {}", e));
-                    }
-                };
-
-                ab.add_file(&bc_encoded_filename);
-
-                // See the bottom of back::write::run_passes for an explanation
-                // of when we do and don't keep .#module-name#.bc files around.
-                let user_wants_numbered_bitcode =
-                        sess.opts.output_types.contains_key(&OutputType::Bitcode) &&
-                        sess.opts.codegen_units > 1;
-                if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
-                    remove(sess, &bc_filename);
-                }
+            // into the archive.
+            for bytecode in trans.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref()) {
+                ab.add_file(bytecode);
             }
 
             // After adding all files to the archive, we need to update the
@@ -477,8 +430,11 @@ fn link_rlib<'a>(sess: &'a Session,
         }
 
         RlibFlavor::StaticlibBase => {
-            if trans.allocator_module.is_some() {
-                ab.add_file(&outputs.with_extension(ALLOCATOR_OBJ_NAME));
+            let obj = trans.allocator_module
+                .as_ref()
+                .and_then(|m| m.object.as_ref());
+            if let Some(obj) = obj {
+                ab.add_file(obj);
             }
         }
     }
@@ -500,13 +456,11 @@ fn link_rlib<'a>(sess: &'a Session,
 // metadata file).
 fn link_staticlib(sess: &Session,
                   trans: &CrateTranslation,
-                  outputs: &OutputFilenames,
                   out_filename: &Path,
                   tempdir: &Path) {
     let mut ab = link_rlib(sess,
                            trans,
                            RlibFlavor::StaticlibBase,
-                           outputs,
                            out_filename,
                            tempdir);
     let mut all_native_libs = vec![];
@@ -611,7 +565,6 @@ fn link_natively(sess: &Session,
                  crate_type: config::CrateType,
                  out_filename: &Path,
                  trans: &CrateTranslation,
-                 outputs: &OutputFilenames,
                  tmpdir: &Path) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let flavor = sess.linker_flavor();
@@ -651,7 +604,7 @@ fn link_natively(sess: &Session,
     {
         let mut linker = trans.linker_info.to_linker(cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
-                  out_filename, outputs, trans);
+                  out_filename, trans);
         cmd = linker.finalize();
     }
     if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
@@ -873,7 +826,6 @@ fn link_args(cmd: &mut Linker,
              crate_type: config::CrateType,
              tmpdir: &Path,
              out_filename: &Path,
-             outputs: &OutputFilenames,
              trans: &CrateTranslation) {
 
     // The default library location, we need this to find the runtime.
@@ -884,8 +836,8 @@ fn link_args(cmd: &mut Linker,
     let t = &sess.target.target;
 
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-    for module in trans.modules.iter() {
-        cmd.add_object(&module.object);
+    for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
+        cmd.add_object(obj);
     }
     cmd.output_filename(out_filename);
 
@@ -908,11 +860,16 @@ fn link_args(cmd: &mut Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
        crate_type == config::CrateTypeProcMacro {
-        cmd.add_object(&outputs.with_extension(METADATA_OBJ_NAME));
+        if let Some(obj) = trans.metadata_module.object.as_ref() {
+            cmd.add_object(obj);
+        }
     }
 
-    if trans.allocator_module.is_some() {
-        cmd.add_object(&outputs.with_extension(ALLOCATOR_OBJ_NAME));
+    let obj = trans.allocator_module
+        .as_ref()
+        .and_then(|m| m.object.as_ref());
+    if let Some(obj) = obj {
+        cmd.add_object(obj);
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -1180,9 +1137,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 
         for f in archive.src_files() {
             if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
-                    archive.remove_file(&f);
-                    continue
-                }
+                archive.remove_file(&f);
+                continue
+            }
         }
 
         archive.build();
@@ -1265,11 +1222,23 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 let canonical = f.replace("-", "_");
                 let canonical_name = name.replace("-", "_");
 
+                // Look for `.rust-cgu.o` at the end of the filename to conclude
+                // that this is a Rust-related object file.
+                fn looks_like_rust(s: &str) -> bool {
+                    let path = Path::new(s);
+                    let ext = path.extension().and_then(|s| s.to_str());
+                    if ext != Some(OutputType::Object.extension()) {
+                        return false
+                    }
+                    let ext2 = path.file_stem()
+                        .and_then(|s| Path::new(s).extension())
+                        .and_then(|s| s.to_str());
+                    ext2 == Some(RUST_CGU_EXT)
+                }
+
                 let is_rust_object =
-                    canonical.starts_with(&canonical_name) && {
-                        let num = &f[name.len()..f.len() - 2];
-                        num.len() > 0 && num[1..].parse::<u32>().is_ok()
-                    };
+                    canonical.starts_with(&canonical_name) &&
+                    looks_like_rust(&f);
 
                 // If we've been requested to skip all native object files
                 // (those not generated by the rust compiler) then we can skip

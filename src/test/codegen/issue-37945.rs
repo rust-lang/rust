@@ -13,6 +13,7 @@
 // ignore-x86
 // ignore-arm
 // ignore-emscripten
+// ignore-gnux32
 // ignore 32-bit platforms (LLVM has a bug with them)
 
 // See issue #37945.

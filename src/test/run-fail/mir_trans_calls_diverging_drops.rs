@@ -11,12 +11,10 @@
 // error-pattern:diverging_fn called
 // error-pattern:0 dropped
 
-use std::io::{self, Write};
-
 struct Droppable(u8);
 impl Drop for Droppable {
     fn drop(&mut self) {
-        write!(io::stderr(), "{} dropped", self.0);
+        eprintln!("{} dropped", self.0);
     }
 }
 

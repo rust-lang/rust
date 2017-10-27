@@ -17,7 +17,7 @@ use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
 
 #[must_use]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Diagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
@@ -28,7 +28,7 @@ pub struct Diagnostic {
 }
 
 /// For example a note attached to an error.
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct SubDiagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
@@ -229,6 +229,7 @@ impl Diagnostic {
     /// "try adding parentheses: `(tup.0).1`"
     ///
     /// The message
+    ///
     /// * should not end in any punctuation (a `:` is added automatically)
     /// * should not be a question
     /// * should not contain any parts like "the following", "as shown"
@@ -248,6 +249,7 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message with multiple suggested edits of the code.
     pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {

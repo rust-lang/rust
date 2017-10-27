@@ -25,7 +25,7 @@ use pattern::{PatternFoldable, PatternFolder};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
-use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rustc::mir::Field;
 use rustc::util::common::ErrorReported;
@@ -202,7 +202,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.sess.features.borrow().never_type {
-            ty.is_uninhabited_from(self.module, self.tcx)
+            self.tcx.is_ty_uninhabited_from(self.module, ty)
         } else {
             false
         }
@@ -210,13 +210,11 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_variant_uninhabited(&self,
                               variant: &'tcx ty::VariantDef,
-                              substs: &'tcx ty::subst::Substs<'tcx>) -> bool
+                              substs: &'tcx ty::subst::Substs<'tcx>)
+                              -> bool
     {
         if self.tcx.sess.features.borrow().never_type {
-            let forest = variant.uninhabited_from(
-                &mut FxHashMap::default(), self.tcx, substs, AdtKind::Enum
-            );
-            forest.contains(self.tcx, self.module)
+            self.tcx.is_enum_variant_uninhabited_from(self.module, variant, substs)
         } else {
             false
         }

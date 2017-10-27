@@ -27,11 +27,13 @@ use abi::Abi;
 use ast::*;
 use syntax_pos::Span;
 use codemap::Spanned;
+use parse::token::Token;
+use tokenstream::{TokenTree, TokenStream};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Ident, &'a Generics, Unsafety, Spanned<Constness>, Abi, &'a Visibility, &'a Block),
+    ItemFn(Ident, Unsafety, Spanned<Constness>, Abi, &'a Visibility, &'a Block),
 
     /// fn foo(&self)
     Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
@@ -130,7 +132,17 @@ pub trait Visitor<'ast>: Sized {
     fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
         walk_assoc_type_binding(self, type_binding)
     }
-    fn visit_attribute(&mut self, _attr: &'ast Attribute) {}
+    fn visit_attribute(&mut self, attr: &'ast Attribute) {
+        walk_attribute(self, attr)
+    }
+    fn visit_tt(&mut self, tt: TokenTree) {
+        walk_tt(self, tt)
+    }
+    fn visit_tts(&mut self, tts: TokenStream) {
+        walk_tts(self, tts)
+    }
+    fn visit_token(&mut self, _t: Token) {}
+    // FIXME: add `visit_interpolated` and `walk_interpolated`
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
@@ -247,7 +259,8 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_expr(expr);
         }
         ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
-            visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
+            visitor.visit_generics(generics);
+            visitor.visit_fn(FnKind::ItemFn(item.ident, unsafety,
                                             constness, abi, &item.vis, body),
                              declaration,
                              item.span,
@@ -348,7 +361,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyKind::TraitObject(ref bounds) |
+        TyKind::TraitObject(ref bounds, ..) |
         TyKind::ImplTrait(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
@@ -538,13 +551,11 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
     where V: Visitor<'a>,
 {
     match kind {
-        FnKind::ItemFn(_, generics, _, _, _, _, body) => {
-            visitor.visit_generics(generics);
+        FnKind::ItemFn(_, _, _, _, _, body) => {
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
-        FnKind::Method(_, sig, _, body) => {
-            visitor.visit_generics(&sig.generics);
+        FnKind::Method(_, _, _, body) => {
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
@@ -558,13 +569,13 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
 pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a TraitItem) {
     visitor.visit_ident(trait_item.span, trait_item.ident);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
+    visitor.visit_generics(&trait_item.generics);
     match trait_item.node {
         TraitItemKind::Const(ref ty, ref default) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, default);
         }
         TraitItemKind::Method(ref sig, None) => {
-            visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }
         TraitItemKind::Method(ref sig, Some(ref body)) => {
@@ -585,6 +596,7 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
     visitor.visit_vis(&impl_item.vis);
     visitor.visit_ident(impl_item.span, impl_item.ident);
     walk_list!(visitor, visit_attribute, &impl_item.attrs);
+    visitor.visit_generics(&impl_item.generics);
     match impl_item.node {
         ImplItemKind::Const(ref ty, ref expr) => {
             visitor.visit_ty(ty);
@@ -808,5 +820,22 @@ pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
 pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
     if let Visibility::Restricted { ref path, id } = *vis {
         visitor.visit_path(path, id);
+    }
+}
+
+pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
+    visitor.visit_tts(attr.tokens.clone());
+}
+
+pub fn walk_tt<'a, V: Visitor<'a>>(visitor: &mut V, tt: TokenTree) {
+    match tt {
+        TokenTree::Token(_, tok) => visitor.visit_token(tok),
+        TokenTree::Delimited(_, delimed) => visitor.visit_tts(delimed.stream()),
+    }
+}
+
+pub fn walk_tts<'a, V: Visitor<'a>>(visitor: &mut V, tts: TokenStream) {
+    for tt in tts.trees() {
+        visitor.visit_tt(tt);
     }
 }

@@ -260,6 +260,19 @@ impl<'tcx> Mir<'tcx> {
         debug_assert!(location.statement_index < block.statements.len());
         block.statements[location.statement_index].make_nop()
     }
+
+    /// Returns the source info associated with `location`.
+    pub fn source_info(&self, location: Location) -> &SourceInfo {
+        let block = &self[location.block];
+        let stmts = &block.statements;
+        let idx = location.statement_index;
+        if location.statement_index < stmts.len() {
+            &stmts[idx].source_info
+        } else {
+            assert!(location.statement_index == stmts.len());
+            &block.terminator().source_info
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -402,9 +415,11 @@ pub enum BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-newtype_index!(Local, "_");
-
-pub const RETURN_POINTER: Local = Local(0);
+newtype_index!(Local
+    {
+        DEBUG_NAME = "_",
+        const RETURN_POINTER = 0,
+    });
 
 /// Classifies locals into categories. See `Mir::local_kind`.
 #[derive(PartialEq, Eq, Debug)]
@@ -538,7 +553,7 @@ pub struct UpvarDecl {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-newtype_index!(BasicBlock, "bb");
+newtype_index!(BasicBlock { DEBUG_NAME = "bb" });
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
@@ -635,7 +650,9 @@ pub enum TerminatorKind<'tcx> {
     Call {
         /// The function that’s being called
         func: Operand<'tcx>,
-        /// Arguments the function is called with
+        /// Arguments the function is called with. These are owned by the callee, which is free to
+        /// modify them. This is important as "by-value" arguments might be passed by-reference at
+        /// the ABI level.
         args: Vec<Operand<'tcx>>,
         /// Destination for the return value. If some, the call is converging.
         destination: Option<(Lvalue<'tcx>, BasicBlock)>,
@@ -1118,7 +1135,7 @@ pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>
 /// and the index is a local.
 pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
-newtype_index!(Field, "field");
+newtype_index!(Field { DEBUG_NAME = "field" });
 
 impl<'tcx> Lvalue<'tcx> {
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Lvalue<'tcx> {
@@ -1183,8 +1200,11 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-newtype_index!(VisibilityScope, "scope");
-pub const ARGUMENT_VISIBILITY_SCOPE : VisibilityScope = VisibilityScope(0);
+newtype_index!(VisibilityScope
+    {
+        DEBUG_NAME = "scope",
+        const ARGUMENT_VISIBILITY_SCOPE = 0,
+    });
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VisibilityScopeData {
@@ -1509,7 +1529,7 @@ pub struct Constant<'tcx> {
     pub literal: Literal<'tcx>,
 }
 
-newtype_index!(Promoted, "promoted");
+newtype_index!(Promoted { DEBUG_NAME = "promoted" });
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {

@@ -11,7 +11,7 @@
 
 set -ex
 
-MUSL=1.1.16
+MUSL=1.1.17
 
 hide_output() {
   set +x

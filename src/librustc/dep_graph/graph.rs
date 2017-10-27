@@ -12,7 +12,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHashingContextProvider};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::env;
 use std::hash::Hash;
@@ -577,7 +576,7 @@ impl DepGraph {
                       "DepGraph::try_mark_green() - Duplicate DepNodeColor \
                       insertion for {:?}", dep_node);
 
-        debug!("try_mark_green({:?}) - END - successfully marked as green", dep_node.kind);
+        debug!("try_mark_green({:?}) - END - successfully marked as green", dep_node);
         Some(dep_node_index)
     }
 
@@ -647,7 +646,14 @@ impl DepGraph {
 pub struct WorkProduct {
     pub cgu_name: String,
     /// Saved files associated with this CGU
-    pub saved_files: Vec<(OutputType, String)>,
+    pub saved_files: Vec<(WorkProductFileKind, String)>,
+}
+
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
+pub enum WorkProductFileKind {
+    Object,
+    Bytecode,
+    BytecodeCompressed,
 }
 
 pub(super) struct CurrentDepGraph {

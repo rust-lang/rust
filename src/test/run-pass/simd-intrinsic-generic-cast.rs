@@ -7,7 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// ignore-emscripten linking with emcc failed
+
+// ignore-emscripten FIXME(#45351) hits an LLVM assert
 
 #![feature(repr_simd, platform_intrinsics, concat_idents, test)]
 #![allow(non_camel_case_types)]

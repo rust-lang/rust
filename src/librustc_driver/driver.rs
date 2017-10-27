@@ -14,7 +14,7 @@ use rustc::hir::lowering::lower_crate;
 use rustc::ich::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
-use rustc::session::{Session, CompileResult};
+use rustc::session::{Session, CompileResult, CrateDisambiguator};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
@@ -38,7 +38,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
+use rustc_passes::{self, ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
 use ::DefaultTransCrate;
@@ -58,7 +58,6 @@ use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
 use syntax::parse::{self, PResult};
-use syntax::symbol::Symbol;
 use syntax::util::node_count::NodeCounter;
 use syntax;
 use syntax_ext;
@@ -633,12 +632,12 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
 
-    let disambiguator = Symbol::intern(&compute_crate_disambiguator(sess));
+    let disambiguator = compute_crate_disambiguator(sess);
     *sess.crate_disambiguator.borrow_mut() = Some(disambiguator);
     rustc_incremental::prepare_session_directory(
         sess,
         &crate_name,
-        &disambiguator.as_str(),
+        disambiguator,
     );
 
     let dep_graph = if sess.opts.build_dep_graph() {
@@ -973,6 +972,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     traits::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_const_eval::provide(&mut local_providers);
+    rustc_passes::provide(&mut local_providers);
     middle::region::provide(&mut local_providers);
     cstore::provide_local(&mut local_providers);
     lint::provide(&mut local_providers);
@@ -1311,16 +1311,13 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         .collect()
 }
 
-pub fn compute_crate_disambiguator(session: &Session) -> String {
+pub fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguator {
     use std::hash::Hasher;
 
     // The crate_disambiguator is a 128 bit hash. The disambiguator is fed
     // into various other hashes quite a bit (symbol hashes, incr. comp. hashes,
     // debuginfo type IDs, etc), so we don't want it to be too wide. 128 bits
     // should still be safe enough to avoid collisions in practice.
-    // FIXME(mw): It seems that the crate_disambiguator is used everywhere as
-    //            a hex-string instead of raw bytes. We should really use the
-    //            smaller representation.
     let mut hasher = StableHasher::<Fingerprint>::new();
 
     let mut metadata = session.opts.cg.metadata.clone();
@@ -1339,11 +1336,13 @@ pub fn compute_crate_disambiguator(session: &Session) -> String {
         hasher.write(s.as_bytes());
     }
 
-    // If this is an executable, add a special suffix, so that we don't get
-    // symbol conflicts when linking against a library of the same name.
+    // Also incorporate crate type, so that we don't get symbol conflicts when
+    // linking against a library of the same name, if this is an executable.
     let is_exe = session.crate_types.borrow().contains(&config::CrateTypeExecutable);
+    hasher.write(if is_exe { b"exe" } else { b"lib" });
 
-    format!("{}{}", hasher.finish().to_hex(), if is_exe { "-exe" } else {""})
+    CrateDisambiguator::from(hasher.finish())
+
 }
 
 pub fn build_output_filenames(input: &Input,

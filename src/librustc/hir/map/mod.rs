@@ -1014,8 +1014,8 @@ pub fn map_crate<'hir>(sess: &::session::Session,
                                                 hcx);
         intravisit::walk_crate(&mut collector, &forest.krate);
 
-        let crate_disambiguator = sess.local_crate_disambiguator().as_str();
-        collector.finalize_and_compute_crate_hash(&crate_disambiguator)
+        let crate_disambiguator = sess.local_crate_disambiguator();
+        collector.finalize_and_compute_crate_hash(crate_disambiguator)
     };
 
     if log_enabled!(::log::LogLevel::Debug) {

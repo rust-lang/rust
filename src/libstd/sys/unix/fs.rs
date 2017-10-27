@@ -132,14 +132,14 @@ impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_mtime as libc::time_t,
-            tv_nsec: self.stat.st_mtime_nsec as libc::c_long,
+            tv_nsec: self.stat.st_mtime_nsec as _,
         }))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_atime as libc::time_t,
-            tv_nsec: self.stat.st_atime_nsec as libc::c_long,
+            tv_nsec: self.stat.st_atime_nsec as _,
         }))
     }
 

@@ -197,12 +197,12 @@ pub struct DefId {
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "DefId {{ krate: {:?}, node: {:?}",
+        write!(f, "DefId {{ krate: {:?}, index: {:?}",
                self.krate, self.index)?;
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                write!(f, " => {}", tcx.def_path(*self).to_string(tcx))?;
+                write!(f, " => {}", tcx.def_path_debug_str(*self))?;
             }
             Ok(())
         })?;

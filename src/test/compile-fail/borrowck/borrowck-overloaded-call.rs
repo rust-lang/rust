@@ -67,7 +67,6 @@ fn f() {
     };
     let sp = &mut s;
     s(3);   //~ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
-    //~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
 }
 
 fn g() {

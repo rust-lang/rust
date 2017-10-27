@@ -429,7 +429,7 @@ impl<'a, 'tcx> Index<'tcx> {
             // while maintaining the invariant that all sysroot crates are unstable
             // by default and are unable to be used.
             if tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
-                let reason = "this crate is being loaded from the sysroot, and \
+                let reason = "this crate is being loaded from the sysroot, an \
                               unstable location; did you mean to load this crate \
                               from crates.io via `Cargo.toml` instead?";
                 let stability = tcx.intern_stability(Stability {

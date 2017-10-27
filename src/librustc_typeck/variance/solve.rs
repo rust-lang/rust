@@ -34,7 +34,7 @@ struct SolveContext<'a, 'tcx: 'a> {
 }
 
 pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariancesMap {
-    let ConstraintContext { terms_cx, dependencies, constraints, .. } = constraints_cx;
+    let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
 
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
     for &(id, ref variances) in &terms_cx.lang_items {
@@ -53,7 +53,7 @@ pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariance
     let variances = solutions_cx.create_map();
     let empty_variance = Rc::new(Vec::new());
 
-    ty::CrateVariancesMap { dependencies, variances, empty_variance }
+    ty::CrateVariancesMap { variances, empty_variance }
 }
 
 impl<'a, 'tcx> SolveContext<'a, 'tcx> {

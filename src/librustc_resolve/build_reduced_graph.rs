@@ -40,7 +40,7 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::parse::token;
+use syntax::parse::token::{self, Token};
 use syntax::symbol::keywords;
 use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
@@ -829,5 +829,18 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         self.resolver.current_module = parent.parent.unwrap(); // nearest normal ancestor
         visit::walk_trait_item(self, item);
         self.resolver.current_module = parent;
+    }
+
+    fn visit_token(&mut self, t: Token) {
+        if let Token::Interpolated(nt) = t {
+            match nt.0 {
+                token::NtExpr(ref expr) => {
+                    if let ast::ExprKind::Mac(..) = expr.node {
+                        self.visit_invoc(expr.id);
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 }

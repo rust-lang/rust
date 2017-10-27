@@ -34,8 +34,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -51,8 +51,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -70,8 +70,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -89,8 +89,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -108,8 +108,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -127,8 +127,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -146,8 +146,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -165,8 +165,8 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern "rust-call" {
@@ -184,8 +184,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -203,8 +203,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 extern {
@@ -222,8 +222,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 #[link_args = "-foo -bar -baz"]
@@ -241,8 +241,8 @@ extern {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 #[link(name = "bar")]
@@ -260,8 +260,8 @@ mod indirectly_change_parameter_type {
     #[cfg(not(cfail1))]
     use super::c_i64 as c_int;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_dirty(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     extern {
@@ -280,8 +280,8 @@ mod indirectly_change_return_type {
     #[cfg(not(cfail1))]
     use super::c_i64 as c_int;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_dirty(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     extern {

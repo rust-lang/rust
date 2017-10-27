@@ -429,9 +429,11 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 
 /// Returns whether dropping values of type `T` matters.
 ///
-/// This is purely an optimization hint, and may be implemented conservatively.
-/// For instance, always returning `true` would be a valid implementation of
-/// this function.
+/// This is purely an optimization hint, and may be implemented conservatively:
+/// it may return `true` for types that don't actually need to be dropped.
+/// As such always returning `true` would be a valid implementation of
+/// this function. However if this function actually returns `false`, then you
+/// can be certain dropping `T` has no side effect.
 ///
 /// Low level implementations of things like collections, which need to manually
 /// drop their data, should use this function to avoid unnecessarily
@@ -836,7 +838,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 ///
 /// See the `discriminant` function in this module for more information.
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub struct Discriminant<T>(u64, PhantomData<*const T>);
+pub struct Discriminant<T>(u64, PhantomData<fn() -> T>);
 
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 

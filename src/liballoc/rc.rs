@@ -19,7 +19,7 @@
 //! given value is destroyed, the pointed-to value is also destroyed.
 //!
 //! Shared references in Rust disallow mutation by default, and [`Rc`]
-//! is no exception: you cannot obtain a mutable reference to
+//! is no exception: you cannot generally obtain a mutable reference to
 //! something inside an [`Rc`]. If you need mutability, put a [`Cell`]
 //! or [`RefCell`] inside the [`Rc`]; see [an example of mutability
 //! inside an Rc][mutability].

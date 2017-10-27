@@ -11,8 +11,8 @@
 fn test() {
     let v: isize;
     loop {
-        v = 1; //~ ERROR re-assignment of immutable variable
-        //~^ NOTE re-assignment of immutable variable
+        v = 1; //~ ERROR cannot assign twice to immutable variable
+        //~^ NOTE cannot assign twice to immutable variable
         v.clone(); // just to prevent liveness warnings
     }
 }

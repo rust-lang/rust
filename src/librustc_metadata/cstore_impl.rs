@@ -21,7 +21,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
                             EncodedMetadataHashes, NativeLibraryKind};
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
-use rustc::session::Session;
+use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
@@ -384,7 +384,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).name
     }
 
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> Symbol
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
     {
         self.get_crate_data(cnum).disambiguator()
     }

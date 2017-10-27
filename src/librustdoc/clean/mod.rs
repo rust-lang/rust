@@ -112,6 +112,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
 #[derive(Clone, Debug)]
 pub struct Crate {
     pub name: String,
+    pub version: Option<String>,
     pub src: PathBuf,
     pub module: Option<Item>,
     pub externs: Vec<(CrateNum, ExternalCrate)>,
@@ -183,6 +184,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         Crate {
             name,
+            version: None,
             src,
             module: Some(module),
             externs,
@@ -236,6 +238,7 @@ impl Clean<ExternalCrate> for CrateNum {
                             if prim.is_some() {
                                 break;
                             }
+                            // FIXME: should warn on unknown primitives?
                         }
                     }
                 }
@@ -1138,13 +1141,13 @@ pub struct Method {
     pub abi: Abi,
 }
 
-impl<'a> Clean<Method> for (&'a hir::MethodSig, hir::BodyId) {
+impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Method {
         Method {
-            generics: self.0.generics.clean(cx),
+            generics: self.1.clean(cx),
             unsafety: self.0.unsafety,
             constness: self.0.constness,
-            decl: (&*self.0.decl, self.1).clean(cx),
+            decl: (&*self.0.decl, self.2).clean(cx),
             abi: self.0.abi
         }
     }
@@ -1377,13 +1380,13 @@ impl Clean<Item> for hir::TraitItem {
                                     default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
-                MethodItem((sig, body).clean(cx))
+                MethodItem((sig, &self.generics, body).clean(cx))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
                 TyMethodItem(TyMethod {
                     unsafety: sig.unsafety.clone(),
                     decl: (&*sig.decl, &names[..]).clean(cx),
-                    generics: sig.generics.clean(cx),
+                    generics: self.generics.clean(cx),
                     abi: sig.abi
                 })
             }
@@ -1412,7 +1415,7 @@ impl Clean<Item> for hir::ImplItem {
                                     Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Method(ref sig, body) => {
-                MethodItem((sig, body).clean(cx))
+                MethodItem((sig, &self.generics, body).clean(cx))
             }
             hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
@@ -1625,6 +1628,7 @@ pub enum PrimitiveType {
     Slice,
     Array,
     Tuple,
+    Unit,
     RawPointer,
     Reference,
     Fn,
@@ -1660,7 +1664,11 @@ impl Type {
             Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
             Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
             Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
-            Tuple(..) => Some(PrimitiveType::Tuple),
+            Tuple(ref tys) => if tys.is_empty() {
+                Some(PrimitiveType::Unit)
+            } else {
+                Some(PrimitiveType::Tuple)
+            },
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
             BareFunction(..) => Some(PrimitiveType::Fn),
@@ -1681,6 +1689,21 @@ impl Type {
             _ => false
         }
     }
+
+    pub fn generics(&self) -> Option<&[Type]> {
+        match *self {
+            ResolvedPath { ref path, .. } => {
+                path.segments.last().and_then(|seg| {
+                    if let PathParameters::AngleBracketed { ref types, .. } = seg.params {
+                        Some(&**types)
+                    } else {
+                        None
+                    }
+                })
+            }
+            _ => None,
+        }
+    }
 }
 
 impl GetDefId for Type {
@@ -1691,7 +1714,11 @@ impl GetDefId for Type {
             BorrowedRef { type_: box Generic(..), .. } =>
                 Primitive(PrimitiveType::Reference).def_id(),
             BorrowedRef { ref type_, .. } => type_.def_id(),
-            Tuple(..) => Primitive(PrimitiveType::Tuple).def_id(),
+            Tuple(ref tys) => if tys.is_empty() {
+                Primitive(PrimitiveType::Unit).def_id()
+            } else {
+                Primitive(PrimitiveType::Tuple).def_id()
+            },
             BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
             Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
             Array(..) => Primitive(PrimitiveType::Array).def_id(),
@@ -1725,6 +1752,7 @@ impl PrimitiveType {
             "array" => Some(PrimitiveType::Array),
             "slice" => Some(PrimitiveType::Slice),
             "tuple" => Some(PrimitiveType::Tuple),
+            "unit" => Some(PrimitiveType::Unit),
             "pointer" => Some(PrimitiveType::RawPointer),
             "reference" => Some(PrimitiveType::Reference),
             "fn" => Some(PrimitiveType::Fn),
@@ -1755,6 +1783,7 @@ impl PrimitiveType {
             Array => "array",
             Slice => "slice",
             Tuple => "tuple",
+            Unit => "unit",
             RawPointer => "pointer",
             Reference => "reference",
             Fn => "fn",
@@ -2491,7 +2520,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
                 type_params: Vec::new(),
                 where_predicates: Vec::new()
             },
-            decl: (&*self.decl, &[][..]).clean(cx),
+            decl: (&*self.decl, &self.arg_names[..]).clean(cx),
             abi: self.abi,
         }
     }
@@ -2676,6 +2705,7 @@ fn build_deref_target_impls(cx: &DocContext,
             Slice => tcx.lang_items().slice_impl(),
             Array => tcx.lang_items().slice_impl(),
             Tuple => None,
+            Unit => None,
             RawPointer => tcx.lang_items().const_ptr_impl(),
             Reference => None,
             Fn => None,

@@ -12,6 +12,7 @@ pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
 pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
 use hir::def_id::{CrateNum, DefIndex};
+use ich::Fingerprint;
 
 use lint;
 use middle::allocator::AllocatorKind;
@@ -29,7 +30,6 @@ use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
-use syntax::symbol::Symbol;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{Span, MultiSpan};
@@ -54,24 +54,24 @@ pub mod config;
 pub mod filesearch;
 pub mod search_paths;
 
-// Represents the data associated with a compilation
-// session for a single crate.
+/// Represents the data associated with a compilation
+/// session for a single crate.
 pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
     pub parse_sess: ParseSess,
-    // For a library crate, this is always none
+    /// For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
-    // The name of the root source file of the crate, in the local file system.
-    // `None` means that there is no source file.
+    /// The name of the root source file of the crate, in the local file system.
+    /// `None` means that there is no source file.
     pub local_crate_source_file: Option<String>,
-    // The directory the compiler has been executed in plus a flag indicating
-    // if the value stored here has been affected by path remapping.
+    /// The directory the compiler has been executed in plus a flag indicating
+    /// if the value stored here has been affected by path remapping.
     pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
@@ -83,12 +83,12 @@ pub struct Session {
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
-    // The crate_disambiguator is constructed out of all the `-C metadata`
-    // arguments passed to the compiler. Its value together with the crate-name
-    // forms a unique global identifier for the crate. It is used to allow
-    // multiple crates with the same name to coexist. See the
-    // trans::back::symbol_names module for more information.
-    pub crate_disambiguator: RefCell<Option<Symbol>>,
+        /// The crate_disambiguator is constructed out of all the `-C metadata`
+    /// arguments passed to the compiler. Its value together with the crate-name
+    /// forms a unique global identifier for the crate. It is used to allow
+    /// multiple crates with the same name to coexist. See the
+    /// trans::back::symbol_names module for more information.
+    pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
     pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -143,17 +143,17 @@ pub struct Session {
 }
 
 pub struct PerfStats {
-    // The accumulated time needed for computing the SVH of the crate
+    /// The accumulated time needed for computing the SVH of the crate
     pub svh_time: Cell<Duration>,
-    // The accumulated time spent on computing incr. comp. hashes
+    /// The accumulated time spent on computing incr. comp. hashes
     pub incr_comp_hashes_time: Cell<Duration>,
-    // The number of incr. comp. hash computations performed
+    /// The number of incr. comp. hash computations performed
     pub incr_comp_hashes_count: Cell<u64>,
-    // The number of bytes hashed when computing ICH values
+    /// The number of bytes hashed when computing ICH values
     pub incr_comp_bytes_hashed: Cell<u64>,
-    // The accumulated time spent on computing symbol hashes
+    /// The accumulated time spent on computing symbol hashes
     pub symbol_hash_time: Cell<Duration>,
-    // The accumulated time spent decoding def path tables from metadata
+    /// The accumulated time spent decoding def path tables from metadata
     pub decode_def_path_tables_time: Cell<Duration>,
 }
 
@@ -165,9 +165,9 @@ enum DiagnosticBuilderMethod {
 }
 
 impl Session {
-    pub fn local_crate_disambiguator(&self) -> Symbol {
+    pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
         match *self.crate_disambiguator.borrow() {
-            Some(sym) => sym,
+            Some(value) => value,
             None => bug!("accessing disambiguator before initialization"),
         }
     }
@@ -471,14 +471,18 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate Svh and the function DefIndex.
-    pub fn generate_plugin_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+    pub fn generate_plugin_registrar_symbol(&self, disambiguator: CrateDisambiguator,
+                                            index: DefIndex)
                                             -> String {
-        format!("__rustc_plugin_registrar__{}_{}", disambiguator, index.as_usize())
+        format!("__rustc_plugin_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
+                                                   index.as_usize())
     }
 
-    pub fn generate_derive_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+    pub fn generate_derive_registrar_symbol(&self, disambiguator: CrateDisambiguator,
+                                            index: DefIndex)
                                             -> String {
-        format!("__rustc_derive_registrar__{}_{}", disambiguator, index.as_usize())
+        format!("__rustc_derive_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
+                                                   index.as_usize())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {
@@ -636,6 +640,43 @@ impl Session {
         }
         ret
     }
+
+    /// Returns the number of codegen units that should be used for this
+    /// compilation
+    pub fn codegen_units(&self) -> usize {
+        if let Some(n) = self.opts.cli_forced_codegen_units {
+            return n
+        }
+        if let Some(n) = self.target.target.options.default_codegen_units {
+            return n as usize
+        }
+
+        match self.opts.optimize {
+            // If we're compiling at `-O0` then default to 16 codegen units.
+            // The number here shouldn't matter too too much as debug mode
+            // builds don't rely on performance at all, meaning that lost
+            // opportunities for inlining through multiple codegen units is
+            // a non-issue.
+            //
+            // Note that the high number here doesn't mean that we'll be
+            // spawning a large number of threads in parallel. The backend
+            // of rustc contains global rate limiting through the
+            // `jobserver` crate so we'll never overload the system with too
+            // much work, but rather we'll only be optimizing when we're
+            // otherwise cooperating with other instances of rustc.
+            //
+            // Rather the high number here means that we should be able to
+            // keep a lot of idle cpus busy. By ensuring that no codegen
+            // unit takes *too* long to build we'll be guaranteed that all
+            // cpus will finish pretty closely to one another and we should
+            // make relatively optimal use of system resources
+            config::OptLevel::No => 16,
+
+            // All other optimization levels default use one codegen unit,
+            // the historical default in Rust for a Long Time.
+            _ => 1,
+        }
+    }
 }
 
 pub fn build_session(sopts: config::Options,
@@ -674,18 +715,22 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config,
-                                           Some(codemap.clone())))
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), false))
         }
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst,
-                                        Some(codemap.clone())))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false))
         }
         (config::ErrorOutputType::Json, None) => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
         }
         (config::ErrorOutputType::Json, Some(dst)) => {
             Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone()))
+        }
+        (config::ErrorOutputType::Short(color_config), None) => {
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true))
+        }
+        (config::ErrorOutputType::Short(_), Some(dst)) => {
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true))
         }
     };
 
@@ -801,27 +846,47 @@ pub fn build_session_(sopts: config::Options,
     sess
 }
 
+/// Hash value constructed out of all the `-C metadata` arguments passed to the
+/// compiler. Together with the crate-name forms a unique global identifier for
+/// the crate.
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
+pub struct CrateDisambiguator(Fingerprint);
+
+impl CrateDisambiguator {
+    pub fn to_fingerprint(self) -> Fingerprint {
+        self.0
+    }
+}
+
+impl From<Fingerprint> for CrateDisambiguator {
+    fn from(fingerprint: Fingerprint) -> CrateDisambiguator {
+        CrateDisambiguator(fingerprint)
+    }
+}
+
+impl_stable_hash_for!(tuple_struct CrateDisambiguator { fingerprint });
+
 /// Holds data on the current incremental compilation session, if there is one.
 #[derive(Debug)]
 pub enum IncrCompSession {
-    // This is the state the session will be in until the incr. comp. dir is
-    // needed.
+    /// This is the state the session will be in until the incr. comp. dir is
+    /// needed.
     NotInitialized,
-    // This is the state during which the session directory is private and can
-    // be modified.
+    /// This is the state during which the session directory is private and can
+    /// be modified.
     Active {
         session_directory: PathBuf,
         lock_file: flock::Lock,
         load_dep_graph: bool,
     },
-    // This is the state after the session directory has been finalized. In this
-    // state, the contents of the directory must not be modified any more.
+    /// This is the state after the session directory has been finalized. In this
+    /// state, the contents of the directory must not be modified any more.
     Finalized {
         session_directory: PathBuf,
     },
-    // This is an error state that is reached when some compilation error has
-    // occurred. It indicates that the contents of the session directory must
-    // not be used, since they might be invalid.
+    /// This is an error state that is reached when some compilation error has
+    /// occurred. It indicates that the contents of the session directory must
+    /// not be used, since they might be invalid.
     InvalidBecauseOfErrors {
         session_directory: PathBuf,
     }
@@ -830,10 +895,12 @@ pub enum IncrCompSession {
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config,
-                                           None))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+        config::ErrorOutputType::Short(color_config) => {
+            Box::new(EmitterWriter::stderr(color_config, None, true))
+        }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
@@ -843,10 +910,12 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config,
-                                           None))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+        config::ErrorOutputType::Short(color_config) => {
+            Box::new(EmitterWriter::stderr(color_config, None, true))
+        }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);

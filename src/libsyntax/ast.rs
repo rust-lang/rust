@@ -1178,7 +1178,6 @@ pub struct MethodSig {
     pub constness: Spanned<Constness>,
     pub abi: Abi,
     pub decl: P<FnDecl>,
-    pub generics: Generics,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1190,6 +1189,7 @@ pub struct TraitItem {
     pub id: NodeId,
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
+    pub generics: Generics,
     pub node: TraitItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is
@@ -1211,6 +1211,7 @@ pub struct ImplItem {
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: Vec<Attribute>,
+    pub generics: Generics,
     pub node: ImplItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is
@@ -1419,7 +1420,7 @@ pub enum TyKind {
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(TyParamBounds),
+    TraitObject(TyParamBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
     ImplTrait(TyParamBounds),
@@ -1436,6 +1437,13 @@ pub enum TyKind {
     Mac(Mac),
     /// Placeholder for a kind that has failed to be defined.
     Err,
+}
+
+/// Syntax used to declare a trait object.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum TraitObjectSyntax {
+    Dyn,
+    None,
 }
 
 /// Inline assembly dialect.
@@ -1780,10 +1788,19 @@ impl PolyTraitRef {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum CrateSugar {
+    /// Source is `pub(crate)`
+    PubCrate,
+
+    /// Source is (just) `crate`
+    JustCrate,
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Visibility {
     Public,
-    Crate(Span),
+    Crate(Span, CrateSugar),
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }

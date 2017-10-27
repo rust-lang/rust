@@ -25,6 +25,22 @@ const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
 const ALIGN: usize = 40;
 
+/// An indication of where we are in the control flow graph. Used for printing
+/// extra information in `dump_mir`
+pub enum PassWhere {
+    /// We have not started dumping the control flow graph, but we are about to.
+    BeforeCFG,
+
+    /// We just finished dumping the control flow graph. This is right before EOF
+    AfterCFG,
+
+    /// We are about to start dumping the given basic block.
+    BeforeBlock(BasicBlock),
+
+    /// We are just about to dumpt the given statement or terminator.
+    InCFG(Location),
+}
+
 /// If the session is properly configured, dumps a human-readable
 /// representation of the mir into:
 ///
@@ -39,12 +55,16 @@ const ALIGN: usize = 40;
 /// - `substring1&substring2,...` -- `&`-separated list of substrings
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
-pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          pass_num: Option<(MirSuite, MirPassIndex)>,
-                          pass_name: &str,
-                          disambiguator: &Display,
-                          source: MirSource,
-                          mir: &Mir<'tcx>) {
+pub fn dump_mir<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             pass_num: Option<(MirSuite, MirPassIndex)>,
+                             pass_name: &str,
+                             disambiguator: &Display,
+                             source: MirSource,
+                             mir: &Mir<'tcx>,
+                             extra_data: F)
+where
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+{
     if !dump_enabled(tcx, pass_name, source) {
         return;
     }
@@ -53,12 +73,7 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.item_path_str(tcx.hir.local_def_id(source.item_id()))
     });
     dump_matched_mir_node(tcx, pass_num, pass_name, &node_path,
-                          disambiguator, source, mir);
-    for (index, promoted_mir) in mir.promoted.iter_enumerated() {
-        let promoted_source = MirSource::Promoted(source.item_id(), index);
-        dump_matched_mir_node(tcx, pass_num, pass_name, &node_path, disambiguator,
-                              promoted_source, promoted_mir);
-    }
+                          disambiguator, source, mir, extra_data);
 }
 
 pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -85,13 +100,17 @@ pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 // `item_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
-fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   pass_num: Option<(MirSuite, MirPassIndex)>,
-                                   pass_name: &str,
-                                   node_path: &str,
-                                   disambiguator: &Display,
-                                   source: MirSource,
-                                   mir: &Mir<'tcx>) {
+fn dump_matched_mir_node<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      pass_num: Option<(MirSuite, MirPassIndex)>,
+                                      pass_name: &str,
+                                      node_path: &str,
+                                      disambiguator: &Display,
+                                      source: MirSource,
+                                      mir: &Mir<'tcx>,
+                                      mut extra_data: F)
+where
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+{
     let promotion_id = match source {
         MirSource::Promoted(_, id) => format!("-{:?}", id),
         MirSource::GeneratorDrop(_) => format!("-drop"),
@@ -125,7 +144,9 @@ fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             writeln!(file, "// generator_layout = {:?}", layout)?;
         }
         writeln!(file, "")?;
-        write_mir_fn(tcx, source, mir, &mut file)?;
+        extra_data(PassWhere::BeforeCFG, &mut file)?;
+        write_mir_fn(tcx, source, mir, &mut extra_data, &mut file)?;
+        extra_data(PassWhere::AfterCFG, &mut file)?;
         Ok(())
     });
 }
@@ -152,24 +173,29 @@ pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         let src = MirSource::from_node(tcx, id);
-        write_mir_fn(tcx, src, mir, w)?;
+        write_mir_fn(tcx, src, mir, &mut |_, _| Ok(()), w)?;
 
         for (i, mir) in mir.promoted.iter_enumerated() {
             writeln!(w, "")?;
-            write_mir_fn(tcx, MirSource::Promoted(id, i), mir, w)?;
+            write_mir_fn(tcx, MirSource::Promoted(id, i), mir, &mut |_, _| Ok(()), w)?;
         }
     }
     Ok(())
 }
 
-pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              src: MirSource,
-                              mir: &Mir<'tcx>,
-                              w: &mut Write)
-                              -> io::Result<()> {
+pub fn write_mir_fn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 src: MirSource,
+                                 mir: &Mir<'tcx>,
+                                 extra_data: &mut F,
+                                 w: &mut Write)
+                                 -> io::Result<()>
+where
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+{
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
-        write_basic_block(tcx, block, mir, w)?;
+        extra_data(PassWhere::BeforeBlock(block), w)?;
+        write_basic_block(tcx, block, mir, extra_data, w)?;
         if block.index() + 1 != mir.basic_blocks().len() {
             writeln!(w, "")?;
         }
@@ -180,11 +206,15 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-pub fn write_basic_block(tcx: TyCtxt,
-                     block: BasicBlock,
-                     mir: &Mir,
-                     w: &mut Write)
-                     -> io::Result<()> {
+pub fn write_basic_block<F>(tcx: TyCtxt,
+                            block: BasicBlock,
+                            mir: &Mir,
+                            extra_data: &mut F,
+                            w: &mut Write)
+                            -> io::Result<()>
+where
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+{
     let data = &mir[block];
 
     // Basic block label at the top.
@@ -195,6 +225,7 @@ pub fn write_basic_block(tcx: TyCtxt,
     // List of statements in the middle.
     let mut current_location = Location { block: block, statement_index: 0 };
     for statement in &data.statements {
+        extra_data(PassWhere::InCFG(current_location), w)?;
         let indented_mir = format!("{0}{0}{1:?};", INDENT, statement);
         writeln!(w, "{0:1$} // {2}",
                  indented_mir,
@@ -205,6 +236,7 @@ pub fn write_basic_block(tcx: TyCtxt,
     }
 
     // Terminator at the bottom.
+    extra_data(PassWhere::InCFG(current_location), w)?;
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
     writeln!(w, "{0:1$} // {2}",
              indented_terminator,

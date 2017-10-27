@@ -22,12 +22,12 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
+use session::CrateDisambiguator;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::{Symbol, InternedString};
-use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
 /// The DefPathTable maps DefIndexes to DefKeys and vice versa.
@@ -232,7 +232,9 @@ impl DefKey {
         DefPathHash(hasher.finish())
     }
 
-    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> DefPathHash {
+    fn root_parent_stable_hash(crate_name: &str,
+                               crate_disambiguator: CrateDisambiguator)
+                               -> DefPathHash {
         let mut hasher = StableHasher::new();
         // Disambiguate this from a regular DefPath hash,
         // see compute_stable_hash() above.
@@ -294,26 +296,6 @@ impl DefPath {
         }
         data.reverse();
         DefPath { data: data, krate: krate }
-    }
-
-    pub fn to_string(&self, tcx: TyCtxt) -> String {
-        let mut s = String::with_capacity(self.data.len() * 16);
-
-        s.push_str(&tcx.original_crate_name(self.krate).as_str());
-        s.push_str("/");
-        // Don't print the whole crate disambiguator. That's just annoying in
-        // debug output.
-        s.push_str(&tcx.crate_disambiguator(self.krate).as_str()[..7]);
-
-        for component in &self.data {
-            write!(s,
-                   "::{}[{}]",
-                   component.data.as_interned_str(),
-                   component.disambiguator)
-                .unwrap();
-        }
-
-        s
     }
 
     /// Returns a string representation of the DefPath without
@@ -488,7 +470,7 @@ impl Definitions {
     /// Add a definition with a parent definition.
     pub fn create_root_def(&mut self,
                            crate_name: &str,
-                           crate_disambiguator: &str)
+                           crate_disambiguator: CrateDisambiguator)
                            -> DefIndex {
         let key = DefKey {
             parent: None,

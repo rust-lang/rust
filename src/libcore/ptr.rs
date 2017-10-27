@@ -551,7 +551,7 @@ impl<T: ?Sized> *const T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -684,7 +684,7 @@ impl<T: ?Sized> *const T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -743,7 +743,7 @@ impl<T: ?Sized> *const T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -1182,7 +1182,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -1382,7 +1382,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -1441,7 +1441,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory

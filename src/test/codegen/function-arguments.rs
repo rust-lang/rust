@@ -21,62 +21,62 @@ pub struct UnsafeInner {
   _field: std::cell::UnsafeCell<i16>,
 }
 
-// CHECK: zeroext i1 @boolean(i1 zeroext)
+// CHECK: zeroext i1 @boolean(i1 zeroext %x)
 #[no_mangle]
 pub fn boolean(x: bool) -> bool {
   x
 }
 
-// CHECK: @readonly_borrow(i32* noalias readonly dereferenceable(4))
+// CHECK: @readonly_borrow(i32* noalias readonly dereferenceable(4) %arg0)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {
 }
 
-// CHECK: @static_borrow(i32* noalias readonly dereferenceable(4))
+// CHECK: @static_borrow(i32* noalias readonly dereferenceable(4) %arg0)
 // static borrow may be captured
 #[no_mangle]
 pub fn static_borrow(_: &'static i32) {
 }
 
-// CHECK: @named_borrow(i32* noalias readonly dereferenceable(4))
+// CHECK: @named_borrow(i32* noalias readonly dereferenceable(4) %arg0)
 // borrow with named lifetime may be captured
 #[no_mangle]
 pub fn named_borrow<'r>(_: &'r i32) {
 }
 
-// CHECK: @unsafe_borrow(%UnsafeInner* dereferenceable(2))
+// CHECK: @unsafe_borrow(%UnsafeInner* dereferenceable(2) %arg0)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(%UnsafeInner* dereferenceable(2))
+// CHECK: @mutable_unsafe_borrow(%UnsafeInner* dereferenceable(2) %arg0)
 // ... unless this is a mutable borrow, those never alias
 // ... except that there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* dereferenceable(4))
+// CHECK: @mutable_borrow(i32* dereferenceable(4) %arg0)
 // FIXME #25759 This should also have `nocapture`
 // ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
 }
 
-// CHECK: @indirect_struct(%S* noalias nocapture dereferenceable(32))
+// CHECK: @indirect_struct(%S* noalias nocapture dereferenceable(32) %arg0)
 #[no_mangle]
 pub fn indirect_struct(_: S) {
 }
 
-// CHECK: @borrowed_struct(%S* noalias readonly dereferenceable(32))
+// CHECK: @borrowed_struct(%S* noalias readonly dereferenceable(32) %arg0)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn borrowed_struct(_: &S) {
 }
 
-// CHECK: noalias dereferenceable(4) i32* @_box(i32* noalias dereferenceable(4))
+// CHECK: noalias dereferenceable(4) i32* @_box(i32* noalias dereferenceable(4) %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
   x
@@ -91,31 +91,31 @@ pub fn struct_return() -> S {
 }
 
 // Hack to get the correct size for the length part in slices
-// CHECK: @helper([[USIZE:i[0-9]+]])
+// CHECK: @helper([[USIZE:i[0-9]+]] %arg0)
 #[no_mangle]
 fn helper(_: usize) {
 }
 
-// CHECK: @slice(i8* noalias nonnull readonly, [[USIZE]])
+// CHECK: @slice(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice(i8* nonnull, [[USIZE]])
+// CHECK: @mutable_slice(i8* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
 // FIXME #25759 This should also have `nocapture`
 // ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 fn mutable_slice(_: &mut [u8]) {
 }
 
-// CHECK: @unsafe_slice(%UnsafeInner* nonnull, [[USIZE]])
+// CHECK: @unsafe_slice(%UnsafeInner* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {
 }
 
-// CHECK: @str(i8* noalias nonnull readonly, [[USIZE]])
+// CHECK: @str(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 fn str(_: &[u8]) {
@@ -132,7 +132,7 @@ fn trait_borrow(_: &Drop) {
 fn trait_box(_: Box<Drop>) {
 }
 
-// CHECK: { i16*, [[USIZE]] } @return_slice(i16* noalias nonnull readonly, [[USIZE]])
+// CHECK: { i16*, [[USIZE]] } @return_slice(i16* noalias nonnull readonly %x.ptr, [[USIZE]] %x.meta)
 #[no_mangle]
 fn return_slice(x: &[u16]) -> &[u16] {
   x

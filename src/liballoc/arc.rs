@@ -52,8 +52,10 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// also destroyed.
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
-/// exception. If you need to mutate through an `Arc`, use [`Mutex`][mutex],
-/// [`RwLock`][rwlock], or one of the [`Atomic`][atomic] types.
+/// exception: you cannot generally obtain a mutable reference to something
+/// inside an `Arc`. If you need to mutate through an `Arc`, use
+/// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
+/// types.
 ///
 /// ## Thread Safety
 ///

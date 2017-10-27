@@ -88,7 +88,7 @@ fn main() {
     let is_crossed = target != host;
 
     let mut optional_components =
-        vec!["x86", "arm", "aarch64", "mips", "powerpc", "pnacl",
+        vec!["x86", "arm", "aarch64", "mips", "powerpc",
              "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
 
     let mut version_cmd = Command::new(&llvm_config);
@@ -115,6 +115,7 @@ fn main() {
                                 "linker",
                                 "asmparser",
                                 "mcjit",
+                                "lto",
                                 "interpreter",
                                 "instrumentation"];
 

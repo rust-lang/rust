@@ -66,10 +66,9 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut used_trait_imports = DefIdSet();
     for &body_id in tcx.hir.krate().bodies.keys() {
         let item_def_id = tcx.hir.body_owner_def_id(body_id);
-        let tables = tcx.typeck_tables_of(item_def_id);
-        let imports = &tables.used_trait_imports;
+        let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
-        used_trait_imports.extend(imports);
+        used_trait_imports.extend(imports.iter());
     }
 
     let mut visitor = CheckVisitor { tcx, used_trait_imports };

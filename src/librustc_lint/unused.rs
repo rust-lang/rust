@@ -11,105 +11,18 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::adjustment;
-use util::nodemap::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
-
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
-use syntax::symbol::keywords;
-use syntax::ptr::P;
 use syntax::print::pprust;
+use syntax::symbol::keywords;
 use syntax::util::parser;
 use syntax_pos::Span;
 
-use rustc_back::slice;
 use rustc::hir;
-use rustc::hir::intravisit::FnKind;
-
-declare_lint! {
-    pub UNUSED_MUT,
-    Warn,
-    "detect mut variables which don't need to be mutable"
-}
-
-#[derive(Copy, Clone)]
-pub struct UnusedMut;
-
-impl UnusedMut {
-    fn check_unused_mut_pat(&self, cx: &LateContext, pats: &[P<hir::Pat>]) {
-        // collect all mutable pattern and group their NodeIDs by their Identifier to
-        // avoid false warnings in match arms with multiple patterns
-
-        let mut mutables = FxHashMap();
-        for p in pats {
-            p.each_binding(|_, id, span, path1| {
-                let hir_id = cx.tcx.hir.node_to_hir_id(id);
-                let bm = match cx.tables.pat_binding_modes().get(hir_id) {
-                    Some(&bm) => bm,
-                    None => span_bug!(span, "missing binding mode"),
-                };
-                let name = path1.node;
-                if let ty::BindByValue(hir::MutMutable) = bm {
-                    if !name.as_str().starts_with("_") {
-                        match mutables.entry(name) {
-                            Vacant(entry) => {
-                                entry.insert(vec![id]);
-                            }
-                            Occupied(mut entry) => {
-                                entry.get_mut().push(id);
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        let used_mutables = cx.tcx.used_mut_nodes.borrow();
-        for (_, v) in &mutables {
-            if !v.iter().any(|e| used_mutables.contains(e)) {
-                let binding_span = cx.tcx.hir.span(v[0]);
-                let mut_span = cx.tcx.sess.codemap().span_until_char(binding_span, ' ');
-                let mut err = cx.struct_span_lint(UNUSED_MUT,
-                                                  binding_span,
-                                                  "variable does not need to be mutable");
-                err.span_suggestion_short(mut_span, "remove this `mut`", "".to_owned());
-                err.emit();
-            }
-        }
-    }
-}
-
-impl LintPass for UnusedMut {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_MUT)
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
-    fn check_arm(&mut self, cx: &LateContext, a: &hir::Arm) {
-        self.check_unused_mut_pat(cx, &a.pats)
-    }
-
-    fn check_local(&mut self, cx: &LateContext, l: &hir::Local) {
-        self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
-    }
-
-    fn check_fn(&mut self,
-                cx: &LateContext,
-                _: FnKind,
-                _: &hir::FnDecl,
-                body: &hir::Body,
-                _: Span,
-                _: ast::NodeId) {
-        for a in &body.arguments {
-            self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
-        }
-    }
-}
 
 declare_lint! {
     pub UNUSED_MUST_USE,
