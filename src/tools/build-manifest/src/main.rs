@@ -11,7 +11,6 @@
 extern crate toml;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
 
 use std::collections::BTreeMap;
 use std::env;
@@ -175,9 +174,9 @@ struct Builder {
     digests: BTreeMap<String, String>,
     s3_address: String,
     date: String,
-    rust_version: String,
-    cargo_version: String,
-    rls_version: String,
+    rust_version: Option<String>,
+    cargo_version: Option<String>,
+    rls_version: Option<String>,
     rust_git_commit_hash: Option<String>,
     cargo_git_commit_hash: Option<String>,
     rls_git_commit_hash: Option<String>,
@@ -205,9 +204,9 @@ fn main() {
         digests: BTreeMap::new(),
         s3_address,
         date,
-        rust_version: String::new(),
-        cargo_version: String::new(),
-        rls_version: String::new(),
+        rust_version: None,
+        cargo_version: None,
+        rls_version: None,
         rust_git_commit_hash: None,
         cargo_git_commit_hash: None,
         rls_git_commit_hash: None,
@@ -258,10 +257,17 @@ impl Builder {
         self.package("rls-preview", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
 
-        manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
+        let rls_present = manifest.pkg.contains_key("rls-preview");
+
+        if rls_present {
+            manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
+        }
 
         let mut pkg = Package {
-            version: self.cached_version("rust").to_string(),
+            version: self.cached_version("rust")
+                         .as_ref()
+                         .expect("Couldn't find Rust version")
+                         .clone(),
             git_commit_hash: self.cached_git_commit_hash("rust").clone(),
             target: BTreeMap::new(),
         };
@@ -294,10 +300,12 @@ impl Builder {
                 });
             }
 
-            extensions.push(Component {
-                pkg: "rls-preview".to_string(),
-                target: host.to_string(),
-            });
+            if rls_present {
+                extensions.push(Component {
+                    pkg: "rls-preview".to_string(),
+                    target: host.to_string(),
+                });
+            }
             extensions.push(Component {
                 pkg: "rust-analysis".to_string(),
                 target: host.to_string(),
@@ -334,6 +342,14 @@ impl Builder {
                pkgname: &str,
                dst: &mut BTreeMap<String, Package>,
                targets: &[&str]) {
+        let version = match *self.cached_version(pkgname) {
+            Some(ref version) => version.clone(),
+            None => {
+                println!("Skipping package {}", pkgname);
+                return;
+            }
+        };
+
         let targets = targets.iter().map(|name| {
             let filename = self.filename(pkgname, name);
             let digest = match self.digests.remove(&filename) {
@@ -355,7 +371,7 @@ impl Builder {
         }).collect();
 
         dst.insert(pkgname.to_string(), Package {
-            version: self.cached_version(pkgname).to_string(),
+            version,
             git_commit_hash: self.cached_git_commit_hash(pkgname).clone(),
             target: targets,
         });
@@ -380,7 +396,7 @@ impl Builder {
         }
     }
 
-    fn cached_version(&self, component: &str) -> &str {
+    fn cached_version(&self, component: &str) -> &Option<String> {
         if component == "cargo" {
             &self.cargo_version
         } else if component == "rls" || component == "rls-preview" {
@@ -400,7 +416,7 @@ impl Builder {
         }
     }
 
-    fn version(&self, component: &str, target: &str) -> String {
+    fn version(&self, component: &str, target: &str) -> Option<String> {
         let mut cmd = Command::new("tar");
         let filename = self.filename(component, target);
         cmd.arg("xf")
@@ -408,13 +424,12 @@ impl Builder {
            .arg(format!("{}/version", filename.replace(".tar.gz", "")))
            .arg("-O");
         let output = t!(cmd.output());
-        if !output.status.success() {
-            panic!("failed to learn version:\n\n{:?}\n\n{}\n\n{}",
-                   cmd,
-                   String::from_utf8_lossy(&output.stdout),
-                   String::from_utf8_lossy(&output.stderr));
+        if output.status.success() {
+            Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            // Perhaps we didn't build this package.
+            None
         }
-        String::from_utf8_lossy(&output.stdout).trim().to_string()
     }
 
     fn git_commit_hash(&self, component: &str, target: &str) -> Option<String> {
@@ -428,10 +443,6 @@ impl Builder {
         if output.status.success() {
             Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
         } else {
-            // This is always called after `.version()`.
-            // So if that didn’t fail but this does,
-            // that’s very probably because the tarball is valid
-            // but does not contain a `git-commit-hash` file.
             None
         }
     }
