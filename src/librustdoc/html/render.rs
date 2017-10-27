@@ -3525,6 +3525,21 @@ fn get_methods(i: &clean::Impl) -> Vec<String> {
     }).collect::<Vec<_>>()
 }
 
+// The point is to url encode any potential character from a type with genericity.
+fn small_url_encode(s: &str) -> String {
+    s.replace("<", "%3C")
+     .replace(">", "%3E")
+     .replace(" ", "%20")
+     .replace("?", "%3F")
+     .replace("'", "%27")
+     .replace("&", "%26")
+     .replace(",", "%2C")
+     .replace(":", "%3A")
+     .replace(";", "%3B")
+     .replace("[", "%5B")
+     .replace("]", "%5D")
+}
+
 fn sidebar_assoc_items(it: &clean::Item) -> String {
     let mut out = String::new();
     let c = cache();
@@ -3568,7 +3583,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             let ret = v.iter()
                        .filter_map(|i| if let Some(ref i) = i.inner_impl().trait_ {
                            let out = format!("{:#}", i).replace("<", "&lt;").replace(">", "&gt;");
-                           Some(format!("<a href=\"#impl-{:#}\">{}</a>", i, out))
+                           let encoded = small_url_encode(&format!("{:#}", i));
+                           Some(format!("<a href=\"#impl-{:#}\">{}</a>", encoded, out))
                        } else {
                            None
                        })
