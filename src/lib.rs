@@ -333,7 +333,7 @@ where
             Ok(result) => result,
             Err(e) => {
                 // Create a new error with path_str to help users see which files failed
-                let mut err_msg = path_str.to_string() + &": ".to_string() + &e.to_string();
+                let err_msg = path_str.to_string() + &": ".to_string() + &e.to_string();
                 return Err(io::Error::new(e.kind(), err_msg));
             }
         };
