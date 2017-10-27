@@ -74,6 +74,9 @@ const WHITELIST: &[&[&str]] = &[
     &["lhs", "rhs"],
     &["tx", "rx"],
     &["set", "get"],
+    &["args", "arms"],
+    &["qpath", "path"],
+    &["lit", "lint"],
 ];
 
 struct SimilarNamesNameVisitor<'a: 'b, 'tcx: 'a, 'b>(&'b mut SimilarNamesLocalVisitor<'a, 'tcx>);
