@@ -372,10 +372,10 @@ fn format_files(
     };
     if verbosity == Verbosity::Verbose {
         print!("rustfmt");
-        for a in fmt_args.iter() {
+        for a in fmt_args {
             print!(" {}", a);
         }
-        for f in files.iter() {
+        for f in files {
             print!(" {}", f.display());
         }
         println!("");
