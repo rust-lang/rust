@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::{self, TyCtxt};
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use syntax_pos::{MultiSpan, Span};
 
 use std::fmt;
@@ -41,7 +41,7 @@ pub trait BorrowckErrors {
     fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                          sp: S,
                                                          msg: &str,
-                                                         code: &str)
+                                                         code: DiagnosticId)
                                                          -> DiagnosticBuilder<'a>;
 
     fn struct_span_err<'a, S: Into<MultiSpan>>(&'a self,
@@ -445,7 +445,7 @@ impl<'b, 'gcx, 'tcx> BorrowckErrors for TyCtxt<'b, 'gcx, 'tcx> {
     fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                          sp: S,
                                                          msg: &str,
-                                                         code: &str)
+                                                         code: DiagnosticId)
                                                          -> DiagnosticBuilder<'a>
     {
         self.sess.struct_span_err_with_code(sp, msg, code)

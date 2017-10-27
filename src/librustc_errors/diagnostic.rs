@@ -21,10 +21,16 @@ use snippet::Style;
 pub struct Diagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
-    pub code: Option<String>,
+    pub code: Option<DiagnosticId>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Vec<CodeSuggestion>,
+}
+
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum DiagnosticId {
+    Error(String),
+    Lint(String),
 }
 
 /// For example a note attached to an error.
@@ -81,7 +87,7 @@ impl Diagnostic {
         Diagnostic::new_with_code(level, None, message)
     }
 
-    pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
+    pub fn new_with_code(level: Level, code: Option<DiagnosticId>, message: &str) -> Self {
         Diagnostic {
             level,
             message: vec![(message.to_owned(), Style::NoStyle)],
@@ -267,7 +273,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn code(&mut self, s: String) -> &mut Self {
+    pub fn code(&mut self, s: DiagnosticId) -> &mut Self {
         self.code = Some(s);
         self
     }

@@ -24,7 +24,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 
 use syntax::ast::NodeId;
-use errors::{self, DiagnosticBuilder};
+use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
@@ -187,7 +187,7 @@ impl Session {
     pub fn struct_span_warn_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                               sp: S,
                                                               msg: &str,
-                                                              code: &str)
+                                                              code: DiagnosticId)
                                                               -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
@@ -203,7 +203,7 @@ impl Session {
     pub fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                              sp: S,
                                                              msg: &str,
-                                                             code: &str)
+                                                             code: DiagnosticId)
                                                              -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
@@ -211,7 +211,11 @@ impl Session {
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_err(msg)
     }
-    pub fn struct_err_with_code<'a>(&'a self, msg: &str, code: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_err_with_code<'a>(
+        &'a self,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
     pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(&'a self,
@@ -223,7 +227,7 @@ impl Session {
     pub fn struct_span_fatal_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                                sp: S,
                                                                msg: &str,
-                                                               code: &str)
+                                                               code: DiagnosticId)
                                                                -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
@@ -234,7 +238,12 @@ impl Session {
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         panic!(self.diagnostic().span_fatal(sp, msg))
     }
-    pub fn span_fatal_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) -> ! {
+    pub fn span_fatal_with_code<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> ! {
         panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
     }
     pub fn fatal(&self, msg: &str) -> ! {
@@ -250,7 +259,7 @@ impl Session {
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_err(sp, msg)
     }
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
+    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_err_with_code(sp, &msg, code)
     }
     pub fn err(&self, msg: &str) {
@@ -283,7 +292,7 @@ impl Session {
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
     }
-    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
+    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_warn_with_code(sp, msg, code)
     }
     pub fn warn(&self, msg: &str) {

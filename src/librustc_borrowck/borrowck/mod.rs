@@ -47,7 +47,7 @@ use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
@@ -256,7 +256,7 @@ impl<'b, 'tcx: 'b> BorrowckErrors for BorrowckCtxt<'b, 'tcx> {
     fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                          sp: S,
                                                          msg: &str,
-                                                         code: &str)
+                                                         code: DiagnosticId)
                                                          -> DiagnosticBuilder<'a>
     {
         self.tcx.sess.struct_span_err_with_code(sp, msg, code)
@@ -755,12 +755,17 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(&self,
                                                          s: S,
                                                          msg: &str,
-                                                         code: &str)
+                                                         code: DiagnosticId)
                                                          -> DiagnosticBuilder<'a> {
         self.tcx.sess.struct_span_err_with_code(s, msg, code)
     }
 
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, s: S, msg: &str, code: &str) {
+    pub fn span_err_with_code<S: Into<MultiSpan>>(
+        &self,
+        s: S,
+        msg: &str,
+        code: DiagnosticId,
+    ) {
         self.tcx.sess.span_err_with_code(s, msg, code);
     }
 

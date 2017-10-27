@@ -23,6 +23,7 @@ use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::DiagnosticId;
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
@@ -340,9 +341,12 @@ impl DiagnosticSpanLine {
 }
 
 impl DiagnosticCode {
-    fn map_opt_string(s: Option<String>, je: &JsonEmitter) -> Option<DiagnosticCode> {
+    fn map_opt_string(s: Option<DiagnosticId>, je: &JsonEmitter) -> Option<DiagnosticCode> {
         s.map(|s| {
-
+            let s = match s {
+                DiagnosticId::Error(s) => s,
+                DiagnosticId::Lint(s) => s,
+            };
             let explanation = je.registry
                                 .as_ref()
                                 .and_then(|registry| registry.find_description(&s));
