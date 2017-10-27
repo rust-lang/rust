@@ -33,6 +33,10 @@ fn main() {
     );
 
     trailingcomma!(a, b, c,);
+    // Preserve trailing comma only when necessary.
+    ok!(file.seek(SeekFrom::Start(
+        table.map(|table| fixture.offset(table)).unwrap_or(0),
+    )));
 
     noexpr!( i am not an expression, OK? );
 
