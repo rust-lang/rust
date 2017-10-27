@@ -6,7 +6,7 @@ error[E0282]: type annotations needed
    |         |
    |         consider giving `x` a type
    |
-   = note: this error originates in a macro outside of the current crate
+   = note: this error originates in a macro outside of the current crate (run with RUST_MACRO_BACKTRACE=1 for more info)
 
 error: aborting due to previous error
 
