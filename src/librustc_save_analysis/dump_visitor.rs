@@ -133,7 +133,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let data = CratePreludeData {
             crate_id: GlobalCrateId {
                 name: name.into(),
-                disambiguator: self.tcx.sess.local_crate_disambiguator().to_string(),
+                disambiguator: self.tcx.sess.local_crate_disambiguator()
+                                   .to_fingerprint().as_value(),
             },
             crate_root: crate_root.unwrap_or("<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),

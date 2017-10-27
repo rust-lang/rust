@@ -119,7 +119,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 num: n.as_u32(),
                 id: GlobalCrateId {
                     name: self.tcx.crate_name(n).to_string(),
-                    disambiguator: self.tcx.crate_disambiguator(n).to_string(),
+                    disambiguator: self.tcx.crate_disambiguator(n)
+                                       .to_fingerprint().as_value(),
                 },
             });
         }
