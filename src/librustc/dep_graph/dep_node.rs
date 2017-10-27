@@ -90,12 +90,21 @@ macro_rules! is_input_attr {
     ($attr:ident) => (false);
 }
 
+macro_rules! is_eval_always_attr {
+    (eval_always) => (true);
+    ($attr:ident) => (false);
+}
+
 macro_rules! contains_anon_attr {
     ($($attr:ident),*) => ({$(is_anon_attr!($attr) | )* false});
 }
 
 macro_rules! contains_input_attr {
     ($($attr:ident),*) => ({$(is_input_attr!($attr) | )* false});
+}
+
+macro_rules! contains_eval_always_attr {
+    ($($attr:ident),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
 macro_rules! define_dep_nodes {
@@ -156,6 +165,15 @@ macro_rules! define_dep_nodes {
                 match *self {
                     $(
                         DepKind :: $variant => { contains_input_attr!($($attr),*) }
+                    )*
+                }
+            }
+
+            #[inline]
+            pub fn is_eval_always(&self) -> bool {
+                match *self {
+                    $(
+                        DepKind :: $variant => { contains_eval_always_attr!($($attr), *) }
                     )*
                 }
             }
@@ -447,10 +465,10 @@ define_dep_nodes!( <'tcx>
 
     // Represents different phases in the compiler.
     [] RegionScopeTree(DefId),
-    [] Coherence,
-    [] CoherenceInherentImplOverlapCheck,
+    [eval_always] Coherence,
+    [eval_always] CoherenceInherentImplOverlapCheck,
     [] CoherenceCheckTrait(DefId),
-    [] PrivacyAccessLevels(CrateNum),
+    [eval_always] PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
@@ -467,7 +485,7 @@ define_dep_nodes!( <'tcx>
 
     [] Reachability,
     [] MirKeys,
-    [] CrateVariances,
+    [eval_always] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -497,7 +515,7 @@ define_dep_nodes!( <'tcx>
     [] DtorckConstraint(DefId),
     [] AdtDestructor(DefId),
     [] AssociatedItemDefIds(DefId),
-    [] InherentImpls(DefId),
+    [eval_always] InherentImpls(DefId),
     [] TypeckBodiesKrate,
     [] TypeckTables(DefId),
     [] UsedTraitImports(DefId),
@@ -567,7 +585,7 @@ define_dep_nodes!( <'tcx>
     [] IsCompilerBuiltins(CrateNum),
     [] HasGlobalAllocator(CrateNum),
     [] ExternCrate(DefId),
-    [] LintLevels,
+    [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
     [input] InScopeTraits(DefIndex),
     [] ModuleExports(DefId),
@@ -626,7 +644,7 @@ define_dep_nodes!( <'tcx>
     [] StabilityIndex,
     [] AllCrateNums,
     [] ExportedSymbols(CrateNum),
-    [] CollectAndPartitionTranslationItems,
+    [eval_always] CollectAndPartitionTranslationItems,
     [] ExportName(DefId),
     [] ContainsExternIndicator(DefId),
     [] IsTranslatedFunction(DefId),
