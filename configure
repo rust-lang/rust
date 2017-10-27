@@ -1,4 +1,5 @@
 #!/bin/sh
+//commenting//
 
 script="$(dirname $0)"/src/bootstrap/configure.py
 
