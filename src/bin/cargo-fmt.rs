@@ -17,7 +17,7 @@ extern crate getopts;
 extern crate serde_json as json;
 
 use std::env;
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use std::str;
@@ -126,7 +126,7 @@ pub enum Verbosity {
 fn format_crate(
     verbosity: Verbosity,
     workspace_hitlist: &WorkspaceHitlist,
-) -> Result<ExitStatus, std::io::Error> {
+) -> Result<ExitStatus, io::Error> {
     let targets = get_targets(workspace_hitlist)?;
 
     // Currently only bin and lib files get formatted
@@ -364,7 +364,7 @@ fn format_files(
     files: &[PathBuf],
     fmt_args: &[String],
     verbosity: Verbosity,
-) -> Result<ExitStatus, std::io::Error> {
+) -> Result<ExitStatus, io::Error> {
     let stdout = if verbosity == Verbosity::Quiet {
         std::process::Stdio::null()
     } else {
@@ -386,8 +386,8 @@ fn format_files(
         .args(fmt_args)
         .spawn()
         .map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => std::io::Error::new(
-                std::io::ErrorKind::Other,
+            io::ErrorKind::NotFound => io::Error::new(
+                io::ErrorKind::Other,
                 "Could not run rustfmt, please make sure it is in your PATH.",
             ),
             _ => e,
