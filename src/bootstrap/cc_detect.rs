@@ -53,7 +53,7 @@ pub fn find(build: &mut Build) {
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
             cfg.compiler(cc);
         } else {
-            set_compiler(&mut cfg, "gcc", target, config, build);
+            set_compiler(&mut cfg, Language::C, target, config, build);
         }
 
         let compiler = cfg.get_compiler();
@@ -74,7 +74,7 @@ pub fn find(build: &mut Build) {
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
         } else {
-            set_compiler(&mut cfg, "g++", host, config, build);
+            set_compiler(&mut cfg, Language::CPlusPlus, host, config, build);
         }
         let compiler = cfg.get_compiler();
         build.verbose(&format!("CXX_{} = {:?}", host, compiler.path()));
@@ -83,7 +83,7 @@ pub fn find(build: &mut Build) {
 }
 
 fn set_compiler(cfg: &mut cc::Build,
-                gnu_compiler: &str,
+                compiler: Language,
                 target: Interned<String>,
                 config: Option<&Target>,
                 build: &Build) {
@@ -94,7 +94,7 @@ fn set_compiler(cfg: &mut cc::Build,
         t if t.contains("android") => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
                 let target = target.replace("armv7", "arm");
-                let compiler = format!("{}-{}", target, gnu_compiler);
+                let compiler = format!("{}-{}", target, compiler.clang());
                 cfg.compiler(ndk.join("bin").join(compiler));
             }
         }
@@ -103,6 +103,7 @@ fn set_compiler(cfg: &mut cc::Build,
         // which is a gcc version from ports, if this is the case.
         t if t.contains("openbsd") => {
             let c = cfg.get_compiler();
+            let gnu_compiler = compiler.gcc();
             if !c.path().ends_with(gnu_compiler) {
                 return
             }
@@ -143,5 +144,31 @@ fn set_compiler(cfg: &mut cc::Build,
         }
 
         _ => {}
+    }
+}
+
+/// The target programming language for a native compiler.
+enum Language {
+    /// The compiler is targeting C.
+    C,
+    /// The compiler is targeting C++.
+    CPlusPlus,
+}
+
+impl Language {
+    /// Obtains the name of a compiler in the GCC collection.
+    fn gcc(self) -> &'static str {
+        match self {
+            Language::C => "gcc",
+            Language::CPlusPlus => "g++",
+        }
+    }
+
+    /// Obtains the name of a compiler in the clang suite.
+    fn clang(self) -> &'static str {
+        match self {
+            Language::C => "clang",
+            Language::CPlusPlus => "clang++",
+        }
     }
 }
