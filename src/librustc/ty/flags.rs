@@ -63,7 +63,8 @@ impl FlagComputation {
             &ty::TyFloat(_) |
             &ty::TyUint(_) |
             &ty::TyNever |
-            &ty::TyStr => {
+            &ty::TyStr |
+            &ty::TyForeign(..) => {
             }
 
             // You might think that we could just return TyError for

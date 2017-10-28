@@ -977,7 +977,8 @@ impl_stable_hash_for!(struct hir::ForeignItem {
 
 impl_stable_hash_for!(enum hir::ForeignItem_ {
     ForeignItemFn(fn_decl, arg_names, generics),
-    ForeignItemStatic(ty, is_mutbl)
+    ForeignItemStatic(ty, is_mutbl),
+    ForeignItemType
 });
 
 impl_stable_hash_for!(enum hir::Stmt_ {
@@ -1086,6 +1087,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     PrimTy(prim_ty),
     TyParam(def_id),
     SelfTy(trait_def_id, impl_def_id),
+    TyForeign(def_id),
     Fn(def_id),
     Const(def_id),
     Static(def_id, is_mutbl),

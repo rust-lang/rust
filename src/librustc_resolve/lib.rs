@@ -468,7 +468,8 @@ impl<'a> PathSource<'a> {
             PathSource::Type => match def {
                 Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
                 Def::Trait(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
-                Def::PrimTy(..) | Def::TyParam(..) | Def::SelfTy(..) => true,
+                Def::PrimTy(..) | Def::TyParam(..) | Def::SelfTy(..) |
+                Def::TyForeign(..) => true,
                 _ => false,
             },
             PathSource::Trait => match def {
@@ -707,6 +708,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 HasTypeParameters(generics, ItemRibKind)
             }
             ForeignItemKind::Static(..) => NoTypeParameters,
+            ForeignItemKind::Ty => NoTypeParameters,
         };
         self.with_type_parameter_rib(type_parameters, |this| {
             visit::walk_foreign_item(this, foreign_item);

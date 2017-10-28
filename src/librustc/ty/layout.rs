@@ -1141,14 +1141,15 @@ impl<'a, 'tcx> Layout {
                 Ok(Scalar { value: Pointer, non_zero: non_zero })
             } else {
                 let unsized_part = tcx.struct_tail(pointee);
-                let meta = match unsized_part.sty {
-                    ty::TySlice(_) | ty::TyStr => {
-                        Int(dl.ptr_sized_integer())
-                    }
-                    ty::TyDynamic(..) => Pointer,
-                    _ => return Err(LayoutError::Unknown(unsized_part))
-                };
-                Ok(FatPointer { metadata: meta, non_zero: non_zero })
+                match unsized_part.sty {
+                    ty::TySlice(_) | ty::TyStr => Ok(FatPointer {
+                        metadata: Int(dl.ptr_sized_integer()),
+                        non_zero: non_zero
+                    }),
+                    ty::TyDynamic(..) => Ok(FatPointer { metadata: Pointer, non_zero: non_zero }),
+                    ty::TyForeign(..) => Ok(Scalar { value: Pointer, non_zero: non_zero }),
+                    _ => Err(LayoutError::Unknown(unsized_part)),
+                }
             }
         };
 
@@ -1239,7 +1240,7 @@ impl<'a, 'tcx> Layout {
                     non_zero: false
                 }
             }
-            ty::TyDynamic(..) => {
+            ty::TyDynamic(..) | ty::TyForeign(..) => {
                 let mut unit = Struct::new(dl, &vec![], &ReprOptions::default(),
                   StructKind::AlwaysSizedUnivariant, ty)?;
                 unit.sized = false;
@@ -2252,7 +2253,8 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyFnPtr(_) |
             ty::TyNever |
             ty::TyFnDef(..) |
-            ty::TyDynamic(..) => {
+            ty::TyDynamic(..) |
+            ty::TyForeign(..) => {
                 bug!("TyLayout::field_type({:?}): not applicable", self)
             }
 

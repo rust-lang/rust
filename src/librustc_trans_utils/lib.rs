@@ -48,7 +48,7 @@ use rustc::util::nodemap::NodeSet;
 
 use syntax::attr;
 
-mod common;
+pub mod common;
 pub mod link;
 pub mod collector;
 pub mod trans_item;

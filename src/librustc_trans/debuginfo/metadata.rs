@@ -543,6 +543,11 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
+        ty::TyForeign(..) => {
+            MetadataCreationResult::new(
+                        foreign_type_metadata(cx, t, unique_type_id),
+            false)
+        }
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
             match ptr_metadata(ty) {
@@ -750,6 +755,17 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     return ty_metadata;
+}
+
+fn foreign_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                   t: Ty<'tcx>,
+                                   unique_type_id: UniqueTypeId) -> DIType {
+    debug!("foreign_type_metadata: {:?}", t);
+
+    let llvm_type = type_of::type_of(cx, t);
+
+    let name = compute_debuginfo_type_name(cx, t, false);
+    create_struct_stub(cx, llvm_type, &name, unique_type_id, NO_SCOPE_METADATA)
 }
 
 fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,

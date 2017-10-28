@@ -1112,6 +1112,13 @@ impl<'a> State<'a> {
                 self.end()?; // end the head-ibox
                 self.end() // end the outer cbox
             }
+            ast::ForeignItemKind::Ty => {
+                self.head(&visibility_qualified(&item.vis, "type"))?;
+                self.print_ident(item.ident)?;
+                self.s.word(";")?;
+                self.end()?; // end the head-ibox
+                self.end() // end the outer cbox
+            }
         }
     }
 

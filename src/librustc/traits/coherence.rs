@@ -304,6 +304,10 @@ fn ty_is_local_constructor(ty: Ty, infer_is_local: InferIsLocal)-> bool {
             def.did.is_local()
         }
 
+        ty::TyForeign(did) => {
+            did.is_local()
+        }
+
         ty::TyDynamic(ref tt, ..) => {
             tt.principal().map_or(false, |p| p.def_id().is_local())
         }

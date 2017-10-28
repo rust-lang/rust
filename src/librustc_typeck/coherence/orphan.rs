@@ -68,10 +68,10 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                 }
 
                 // In addition to the above rules, we restrict impls of defaulted traits
-                // so that they can only be implemented on structs/enums. To see why this
-                // restriction exists, consider the following example (#22978). Imagine
-                // that crate A defines a defaulted trait `Foo` and a fn that operates
-                // on pairs of types:
+                // so that they can only be implemented on nominal types, such as structs,
+                // enums or foreign types. To see why this restriction exists, consider the
+                // following example (#22978). Imagine that crate A defines a defaulted trait
+                // `Foo` and a fn that operates on pairs of types:
                 //
                 // ```
                 // // Crate A
@@ -109,11 +109,12 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
                         ty::TyAdt(self_def, _) => Some(self_def.did),
+                        ty::TyForeign(did) => Some(did),
                         _ => None,
                     };
 
                     let msg = match opt_self_def_id {
-                        // We only want to permit structs/enums, but not *all* structs/enums.
+                        // We only want to permit nominal types, but not *all* nominal types.
                         // They must be local to the current crate, so that people
                         // can't do `unsafe impl Send for Rc<SomethingLocal>` or
                         // `impl !Send for Box<SomethingLocalAndSend>`.

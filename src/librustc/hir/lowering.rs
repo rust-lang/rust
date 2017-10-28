@@ -1722,6 +1722,9 @@ impl<'a> LoweringContext<'a> {
                     ForeignItemKind::Static(ref t, m) => {
                         hir::ForeignItemStatic(this.lower_ty(t), m)
                     }
+                    ForeignItemKind::Ty => {
+                        hir::ForeignItemType
+                    }
                 },
                 vis: this.lower_visibility(&i.vis, None),
                 span: i.span,

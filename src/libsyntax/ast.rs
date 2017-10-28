@@ -2007,13 +2007,16 @@ pub enum ForeignItemKind {
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
     Static(P<Ty>, bool),
+    /// A foreign type
+    Ty,
 }
 
 impl ForeignItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
-            ForeignItemKind::Static(..) => "foreign static item"
+            ForeignItemKind::Static(..) => "foreign static item",
+            ForeignItemKind::Ty => "foreign type",
         }
     }
 }
