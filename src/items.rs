@@ -14,7 +14,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use syntax::{abi, ast, ptr, symbol};
-use syntax::ast::ImplItem;
+use syntax::ast::{CrateSugar, ImplItem};
 use syntax::codemap::{BytePos, Span};
 use syntax::visit;
 
@@ -1765,10 +1765,12 @@ fn rewrite_fn_base(
     }
 
     // Skip `pub(crate)`.
-    let lo_after_visibility = if let ast::Visibility::Crate(s) = fn_sig.visibility {
-        context.codemap.span_after(mk_sp(s.hi(), span.hi()), ")")
-    } else {
-        span.lo()
+    let lo_after_visibility = match fn_sig.visibility {
+        ast::Visibility::Crate(s, CrateSugar::PubCrate) => {
+            context.codemap.span_after(mk_sp(s.hi(), span.hi()), ")")
+        }
+        ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
+        _ => span.lo(),
     };
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = fn_sig

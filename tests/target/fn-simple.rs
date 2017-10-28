@@ -104,3 +104,5 @@ mod foo {
 
 // #2082
 pub(crate) fn init() {}
+
+crate fn init() {}

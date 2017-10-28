@@ -11,8 +11,8 @@
 use std::borrow::Cow;
 
 use syntax::{abi, ptr};
-use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
-                  Path, Visibility};
+use syntax::ast::{self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem,
+                  NestedMetaItemKind, Path, Visibility};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 
 use rewrite::RewriteContext;
@@ -37,7 +37,8 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
     match *vis {
         Visibility::Public => Cow::from("pub "),
         Visibility::Inherited => Cow::from(""),
-        Visibility::Crate(_) => Cow::from("pub(crate) "),
+        Visibility::Crate(_, CrateSugar::PubCrate) => Cow::from("pub(crate) "),
+        Visibility::Crate(_, CrateSugar::JustCrate) => Cow::from("crate "),
         Visibility::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.to_string());
