@@ -367,8 +367,8 @@ impl Session {
                 do_method()
             },
             _ => {
-                let lint_id = lint::LintId::of(lint);
-                let id_span_message = (DiagnosticMessageId::LintId(lint_id), span, message.to_owned());
+                let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
+                let id_span_message = (lint_id, span, message.to_owned());
                 let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
                 if fresh {
                     do_method()
