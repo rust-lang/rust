@@ -53,8 +53,8 @@ error: defining a method called `add` on this type; consider implementing the `s
 error: defining a method called `drop` on this type; consider implementing the `std::ops::Drop` trait or choosing a less ambiguous name
   --> $DIR/methods.rs:21:5
    |
-21 |     pub fn drop(&mut self) { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+21 |     pub(crate) fn drop(&mut self) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
   --> $DIR/methods.rs:31:17

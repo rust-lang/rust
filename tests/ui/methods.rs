@@ -18,7 +18,7 @@ struct T;
 
 impl T {
     pub fn add(self, other: T) -> T { self }
-    pub fn drop(&mut self) { }
+    pub(crate) fn drop(&mut self) { }
 
     fn neg(self) -> Self { self } // no error, private function
     fn eq(&self, other: T) -> bool { true } // no error, private function
