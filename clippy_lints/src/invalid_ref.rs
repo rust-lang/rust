@@ -34,22 +34,23 @@ impl LintPass for InvalidRef {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if_let_chain!{[
-            let ExprCall(ref path, ref args) = expr.node,
-            let ExprPath(ref qpath) = path.node,
-            args.len() == 0,
-            let ty::TyRef(..) = cx.tables.expr_ty(expr).sty, 
-            let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id)),
-        ], {
-            let msg = if match_def_path(cx.tcx, def_id, &paths::MEM_ZEROED) | match_def_path(cx.tcx, def_id, &paths::INIT) {
-                ZERO_REF_SUMMARY
-            } else if match_def_path(cx.tcx, def_id, &paths::MEM_UNINIT) | match_def_path(cx.tcx, def_id, &paths::UNINIT) {
-                UNINIT_REF_SUMMARY
-            } else {
-                return;
-            };
-            span_help_and_lint(cx, INVALID_REF, expr.span, msg, HELP);
-        }}        
+        if_chain! {
+            if let ExprCall(ref path, ref args) = expr.node;
+            if let ExprPath(ref qpath) = path.node;
+            if args.len() == 0;
+            if let ty::TyRef(..) = cx.tables.expr_ty(expr).sty; 
+            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));
+            then {
+                let msg = if match_def_path(cx.tcx, def_id, &paths::MEM_ZEROED) | match_def_path(cx.tcx, def_id, &paths::INIT) {
+                    ZERO_REF_SUMMARY
+                } else if match_def_path(cx.tcx, def_id, &paths::MEM_UNINIT) | match_def_path(cx.tcx, def_id, &paths::UNINIT) {
+                    UNINIT_REF_SUMMARY
+                } else {
+                    return;
+                };
+                span_help_and_lint(cx, INVALID_REF, expr.span, msg, HELP);
+            }
+        }        
         return;
     }
 }

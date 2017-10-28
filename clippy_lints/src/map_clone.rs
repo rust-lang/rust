@@ -35,22 +35,36 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let body = cx.tcx.hir.body(closure_eid);
                         let closure_expr = remove_blocks(&body.value);
                         let ty = cx.tables.pat_ty(&body.arguments[0].pat);
-                        if_let_chain! {[
+                        if_chain! {
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
-                            let Some(first_arg) = iter_input_pats(decl, body).next(),
-                            let Some(arg_ident) = get_arg_name(&first_arg.pat),
+                            if let Some(first_arg) = iter_input_pats(decl, body).next();
+                            if let Some(arg_ident) = get_arg_name(&first_arg.pat);
                             // the method is being called on a known type (option or iterator)
-                            let Some(type_name) = get_type_name(cx, expr, &args[0])
-                        ], {
-                            // look for derefs, for .map(|x| *x)
-                            if only_derefs(cx, &*closure_expr, arg_ident) &&
-                                // .cloned() only removes one level of indirection, don't lint on more
-                                walk_ptrs_ty_depth(cx.tables.pat_ty(&first_arg.pat)).1 == 1
-                            {
-                                // the argument is not an &mut T
-                                if let ty::TyRef(_, tam) = ty.sty {
-                                    if tam.mutbl == MutImmutable {
+                            if let Some(type_name) = get_type_name(cx, expr, &args[0]);
+                            then {
+                                // look for derefs, for .map(|x| *x)
+                                if only_derefs(cx, &*closure_expr, arg_ident) &&
+                                    // .cloned() only removes one level of indirection, don't lint on more
+                                    walk_ptrs_ty_depth(cx.tables.pat_ty(&first_arg.pat)).1 == 1
+                                {
+                                    // the argument is not an &mut T
+                                    if let ty::TyRef(_, tam) = ty.sty {
+                                        if tam.mutbl == MutImmutable {
+                                            span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
+                                                "you seem to be using .map() to clone the contents of an {}, consider \
+                                                using `.cloned()`", type_name),
+                                                &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                                        }
+                                    }
+                                }
+                                // explicit clone() calls ( .map(|x| x.clone()) )
+                                else if let ExprMethodCall(ref clone_call, _, ref clone_args) = closure_expr.node {
+                                    if clone_call.name == "clone" &&
+                                        clone_args.len() == 1 &&
+                                        match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
+                                        expr_eq_name(&clone_args[0], arg_ident)
+                                    {
                                         span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                             "you seem to be using .map() to clone the contents of an {}, consider \
                                             using `.cloned()`", type_name),
@@ -58,20 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     }
                                 }
                             }
-                            // explicit clone() calls ( .map(|x| x.clone()) )
-                            else if let ExprMethodCall(ref clone_call, _, ref clone_args) = closure_expr.node {
-                                if clone_call.name == "clone" &&
-                                    clone_args.len() == 1 &&
-                                    match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
-                                    expr_eq_name(&clone_args[0], arg_ident)
-                                {
-                                    span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                                        "you seem to be using .map() to clone the contents of an {}, consider \
-                                        using `.cloned()`", type_name),
-                                        &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
-                                }
-                            }
-                        }}
+                        }
                     },
                     ExprPath(ref path) => if match_qpath(path, &paths::CLONE) {
                         let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");

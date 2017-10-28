@@ -35,25 +35,27 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
-        if_let_chain!{[
-            let ty::TyRef(_, ref ty) = cx.tables.expr_ty_adjusted(expr).sty,
-            let ty::TySlice(..) = ty.ty.sty,
-            let ExprAddrOf(_, ref addressee) = expr.node,
-            let Some(vec_args) = higher::vec_macro(cx, addressee),
-        ], {
-            check_vec_macro(cx, &vec_args, expr.span);
-        }}
+        if_chain! {
+            if let ty::TyRef(_, ref ty) = cx.tables.expr_ty_adjusted(expr).sty;
+            if let ty::TySlice(..) = ty.ty.sty;
+            if let ExprAddrOf(_, ref addressee) = expr.node;
+            if let Some(vec_args) = higher::vec_macro(cx, addressee);
+            then {
+                check_vec_macro(cx, &vec_args, expr.span);
+            }
+        }
 
         // search for `for _ in vec![…]`
-        if_let_chain!{[
-            let Some((_, arg, _)) = higher::for_loop(expr),
-            let Some(vec_args) = higher::vec_macro(cx, arg),
-            is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg))),
-        ], {
-            // report the error around the `vec!` not inside `<std macros>:`
-            let span = arg.span.ctxt().outer().expn_info().map(|info| info.call_site).expect("unable to get call_site");
-            check_vec_macro(cx, &vec_args, span);
-        }}
+        if_chain! {
+            if let Some((_, arg, _)) = higher::for_loop(expr);
+            if let Some(vec_args) = higher::vec_macro(cx, arg);
+            if is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg)));
+            then {
+                // report the error around the `vec!` not inside `<std macros>:`
+                let span = arg.span.ctxt().outer().expn_info().map(|info| info.call_site).expect("unable to get call_site");
+                check_vec_macro(cx, &vec_args, span);
+            }
+        }
     }
 }
 

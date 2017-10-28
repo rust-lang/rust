@@ -251,55 +251,57 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx Stmt) {
-        if_let_chain! {[
-            let StmtDecl(ref d, _) = s.node,
-            let DeclLocal(ref l) = d.node,
-            let PatKind::Binding(an, _, i, None) = l.pat.node,
-            let Some(ref init) = l.init
-        ], {
-            if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
-                let init = Sugg::hir(cx, init, "..");
-                let (mutopt,initref) = if an == BindingAnnotation::RefMut {
-                    ("mut ", init.mut_addr())
-                } else {
-                    ("", init.addr())
-                };
-                let tyopt = if let Some(ref ty) = l.ty {
-                    format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
-                } else {
-                    "".to_owned()
-                };
-                span_lint_and_then(cx,
-                    TOPLEVEL_REF_ARG,
-                    l.pat.span,
-                    "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
-                    |db| {
-                        db.span_suggestion(s.span,
-                                           "try",
-                                           format!("let {name}{tyopt} = {initref};",
-                                                   name=snippet(cx, i.span, "_"),
-                                                   tyopt=tyopt,
-                                                   initref=initref));
-                    }
-                );
+        if_chain! {
+            if let StmtDecl(ref d, _) = s.node;
+            if let DeclLocal(ref l) = d.node;
+            if let PatKind::Binding(an, _, i, None) = l.pat.node;
+            if let Some(ref init) = l.init;
+            then {
+                if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
+                    let init = Sugg::hir(cx, init, "..");
+                    let (mutopt,initref) = if an == BindingAnnotation::RefMut {
+                        ("mut ", init.mut_addr())
+                    } else {
+                        ("", init.addr())
+                    };
+                    let tyopt = if let Some(ref ty) = l.ty {
+                        format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
+                    } else {
+                        "".to_owned()
+                    };
+                    span_lint_and_then(cx,
+                        TOPLEVEL_REF_ARG,
+                        l.pat.span,
+                        "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
+                        |db| {
+                            db.span_suggestion(s.span,
+                                               "try",
+                                               format!("let {name}{tyopt} = {initref};",
+                                                       name=snippet(cx, i.span, "_"),
+                                                       tyopt=tyopt,
+                                                       initref=initref));
+                        }
+                    );
+                }
             }
-        }};
-        if_let_chain! {[
-            let StmtSemi(ref expr, _) = s.node,
-            let Expr_::ExprBinary(ref binop, ref a, ref b) = expr.node,
-            binop.node == BiAnd || binop.node == BiOr,
-            let Some(sugg) = Sugg::hir_opt(cx, a),
-        ], {
-            span_lint_and_then(cx,
-                SHORT_CIRCUIT_STATEMENT,
-                s.span,
-                "boolean short circuit operator in statement may be clearer using an explicit test",
-                |db| {
-                    let sugg = if binop.node == BiOr { !sugg } else { sugg };
-                    db.span_suggestion(s.span, "replace it with",
-                                       format!("if {} {{ {}; }}", sugg, &snippet(cx, b.span, "..")));
-                });
-        }};
+        };
+        if_chain! {
+            if let StmtSemi(ref expr, _) = s.node;
+            if let Expr_::ExprBinary(ref binop, ref a, ref b) = expr.node;
+            if binop.node == BiAnd || binop.node == BiOr;
+            if let Some(sugg) = Sugg::hir_opt(cx, a);
+            then {
+                span_lint_and_then(cx,
+                    SHORT_CIRCUIT_STATEMENT,
+                    s.span,
+                    "boolean short circuit operator in statement may be clearer using an explicit test",
+                    |db| {
+                        let sugg = if binop.node == BiOr { !sugg } else { sugg };
+                        db.span_suggestion(s.span, "replace it with",
+                                           format!("if {} {{ {}; }}", sugg, &snippet(cx, b.span, "..")));
+                    });
+            }
+        };
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
@@ -582,17 +584,18 @@ fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
 }
 
 fn check_cast(cx: &LateContext, span: Span, e: &Expr, ty: &Ty) {
-    if_let_chain! {[
-        let TyPtr(MutTy { mutbl, .. }) = ty.node,
-        let ExprLit(ref lit) = e.node,
-        let LitKind::Int(value, ..) = lit.node,
-        value == 0,
-        !in_constant(cx, e.id)
-    ], {
-        let msg = match mutbl {
-            Mutability::MutMutable => "`0 as *mut _` detected. Consider using `ptr::null_mut()`",
-            Mutability::MutImmutable => "`0 as *const _` detected. Consider using `ptr::null()`",
-        };
-        span_lint(cx, ZERO_PTR, span, msg);
-    }}
+    if_chain! {
+        if let TyPtr(MutTy { mutbl, .. }) = ty.node;
+        if let ExprLit(ref lit) = e.node;
+        if let LitKind::Int(value, ..) = lit.node;
+        if value == 0;
+        if !in_constant(cx, e.id);
+        then {
+            let msg = match mutbl {
+                Mutability::MutMutable => "`0 as *mut _` detected. Consider using `ptr::null_mut()`",
+                Mutability::MutImmutable => "`0 as *const _` detected. Consider using `ptr::null()`",
+            };
+            span_lint(cx, ZERO_PTR, span, msg);
+        }
+    }
 }

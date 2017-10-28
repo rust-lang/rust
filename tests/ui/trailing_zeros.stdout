@@ -1,14 +1,15 @@
-if_let_chain!{[
-    let Expr_::ExprBinary(ref op, ref left, ref right) = expr.node,
-    BinOp_::BiEq == op.node,
-    let Expr_::ExprBinary(ref op1, ref left1, ref right1) = left.node,
-    BinOp_::BiBitAnd == op1.node,
-    let Expr_::ExprPath(ref path) = left1.node,
-    match_qpath(path, &["x"]),
-    let Expr_::ExprLit(ref lit) = right1.node,
-    let LitKind::Int(15, _) = lit.node,
-    let Expr_::ExprLit(ref lit1) = right.node,
-    let LitKind::Int(0, _) = lit1.node,
-], {
-    // report your lint here
-}}
+if_chain! {
+    if let Expr_::ExprBinary(ref op, ref left, ref right) = expr.node;
+    if BinOp_::BiEq == op.node;
+    if let Expr_::ExprBinary(ref op1, ref left1, ref right1) = left.node;
+    if BinOp_::BiBitAnd == op1.node;
+    if let Expr_::ExprPath(ref path) = left1.node;
+    if match_qpath(path, &["x"]);
+    if let Expr_::ExprLit(ref lit) = right1.node;
+    if let LitKind::Int(15, _) = lit.node;
+    if let Expr_::ExprLit(ref lit1) = right.node;
+    if let LitKind::Int(0, _) = lit1.node;
+    then {
+        // report your lint here
+    }
+}

@@ -75,25 +75,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         if in_macro(pat.span) {
             return;
         }
-        if_let_chain! {[
-            let PatKind::Binding(BindingAnnotation::Ref, _, name, _) = pat.node,
-            let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
-            tam.mutbl == MutImmutable,
-            let ty::TyRef(_, ref tam) = tam.ty.sty,
+        if_chain! {
+            if let PatKind::Binding(BindingAnnotation::Ref, _, name, _) = pat.node;
+            if let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty;
+            if tam.mutbl == MutImmutable;
+            if let ty::TyRef(_, ref tam) = tam.ty.sty;
             // only lint immutable refs, because borrowed `&mut T` cannot be moved out
-            tam.mutbl == MutImmutable,
-        ], {
-            span_lint_and_then(
-                cx,
-                NEEDLESS_BORROW,
-                pat.span,
-                "this pattern creates a reference to a reference",
-                |db| {
-                    if let Some(snippet) = snippet_opt(cx, name.span) {
-                        db.span_suggestion(pat.span, "change this to", snippet);
+            if tam.mutbl == MutImmutable;
+            then {
+                span_lint_and_then(
+                    cx,
+                    NEEDLESS_BORROW,
+                    pat.span,
+                    "this pattern creates a reference to a reference",
+                    |db| {
+                        if let Some(snippet) = snippet_opt(cx, name.span) {
+                            db.span_suggestion(pat.span, "change this to", snippet);
+                        }
                     }
-                }
-            )
-        }}
+                )
+            }
+        }
     }
 }

@@ -28,15 +28,16 @@ use std::collections::HashMap;
 /// prints
 ///
 /// ```
-/// if_let_chain!{[
-///     let Expr_::ExprIf(ref cond, ref then, None) = item.node,
-///     let Expr_::ExprBinary(BinOp::Eq, ref left, ref right) = cond.node,
-///     let Expr_::ExprPath(ref path) = left.node,
-///     let Expr_::ExprLit(ref lit) = right.node,
-///     let LitKind::Int(42, _) = lit.node,
-/// ], {
-///     // report your lint here
-/// }}
+/// if_chain!{
+///     if let Expr_::ExprIf(ref cond, ref then, None) = item.node,
+///     if let Expr_::ExprBinary(BinOp::Eq, ref left, ref right) = cond.node,
+///     if let Expr_::ExprPath(ref path) = left.node,
+///     if let Expr_::ExprLit(ref lit) = right.node,
+///     if let LitKind::Int(42, _) = lit.node,
+///     then {
+///         // report your lint here
+///     }
+/// }
 /// ```
 declare_lint! {
     pub LINT_AUTHOR,
@@ -53,13 +54,14 @@ impl LintPass for Pass {
 }
 
 fn prelude() {
-    println!("if_let_chain!{{[");
+    println!("if_chain! {{");
 }
 
 fn done() {
-    println!("], {{");
-    println!("    // report your lint here");
-    println!("}}}}");
+    println!("    then {{");
+    println!("        // report your lint here");
+    println!("    }}");
+    println!("}}");
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
@@ -181,36 +183,36 @@ struct PrintVisitor {
 
 impl<'tcx> Visitor<'tcx> for PrintVisitor {
     fn visit_expr(&mut self, expr: &Expr) {
-        print!("    let Expr_::Expr");
+        print!("    if let Expr_::Expr");
         let current = format!("{}.node", self.current);
         match expr.node {
             Expr_::ExprBox(ref inner) => {
                 let inner_pat = self.next("inner");
-                println!("Box(ref {}) = {},", inner_pat, current);
+                println!("Box(ref {}) = {};", inner_pat, current);
                 self.current = inner_pat;
                 self.visit_expr(inner);
             },
             Expr_::ExprArray(ref elements) => {
                 let elements_pat = self.next("elements");
-                println!("Array(ref {}) = {},", elements_pat, current);
-                println!("    {}.len() == {},", elements_pat, elements.len());
+                println!("Array(ref {}) = {};", elements_pat, current);
+                println!("    if {}.len() == {};", elements_pat, elements.len());
                 for (i, element) in elements.iter().enumerate() {
                     self.current = format!("{}[{}]", elements_pat, i);
                     self.visit_expr(element);
                 }
             },
             Expr_::ExprCall(ref _func, ref _args) => {
-                println!("Call(ref func, ref args) = {},", current);
+                println!("Call(ref func, ref args) = {};", current);
                 println!("    // unimplemented: `ExprCall` is not further destructured at the moment");
             },
             Expr_::ExprMethodCall(ref _method_name, ref _generics, ref _args) => {
-                println!("MethodCall(ref method_name, ref generics, ref args) = {},", current);
+                println!("MethodCall(ref method_name, ref generics, ref args) = {};", current);
                 println!("    // unimplemented: `ExprMethodCall` is not further destructured at the moment");
             },
             Expr_::ExprTup(ref elements) => {
                 let elements_pat = self.next("elements");
-                println!("Tup(ref {}) = {},", elements_pat, current);
-                println!("    {}.len() == {},", elements_pat, elements.len());
+                println!("Tup(ref {}) = {};", elements_pat, current);
+                println!("    if {}.len() == {};", elements_pat, elements.len());
                 for (i, element) in elements.iter().enumerate() {
                     self.current = format!("{}[{}]", elements_pat, i);
                     self.visit_expr(element);
@@ -220,8 +222,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let op_pat = self.next("op");
                 let left_pat = self.next("left");
                 let right_pat = self.next("right");
-                println!("Binary(ref {}, ref {}, ref {}) = {},", op_pat, left_pat, right_pat, current);
-                println!("    BinOp_::{:?} == {}.node,", op.node, op_pat);
+                println!("Binary(ref {}, ref {}, ref {}) = {};", op_pat, left_pat, right_pat, current);
+                println!("    if BinOp_::{:?} == {}.node;", op.node, op_pat);
                 self.current = left_pat;
                 self.visit_expr(left);
                 self.current = right_pat;
@@ -229,42 +231,42 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
             },
             Expr_::ExprUnary(ref op, ref inner) => {
                 let inner_pat = self.next("inner");
-                println!("Unary(UnOp::{:?}, ref {}) = {},", op, inner_pat, current);
+                println!("Unary(UnOp::{:?}, ref {}) = {};", op, inner_pat, current);
                 self.current = inner_pat;
                 self.visit_expr(inner);
             },
             Expr_::ExprLit(ref lit) => {
                 let lit_pat = self.next("lit");
-                println!("Lit(ref {}) = {},", lit_pat, current);
+                println!("Lit(ref {}) = {};", lit_pat, current);
                 match lit.node {
-                    LitKind::Bool(val) => println!("    let LitKind::Bool({:?}) = {}.node,", val, lit_pat),
-                    LitKind::Char(c) => println!("    let LitKind::Char({:?}) = {}.node,", c, lit_pat),
-                    LitKind::Byte(b) => println!("    let LitKind::Byte({}) = {}.node,", b, lit_pat),
+                    LitKind::Bool(val) => println!("    if let LitKind::Bool({:?}) = {}.node;", val, lit_pat),
+                    LitKind::Char(c) => println!("    if let LitKind::Char({:?}) = {}.node;", c, lit_pat),
+                    LitKind::Byte(b) => println!("    if let LitKind::Byte({}) = {}.node;", b, lit_pat),
                     // FIXME: also check int type
-                    LitKind::Int(i, _) => println!("    let LitKind::Int({}, _) = {}.node,", i, lit_pat),
-                    LitKind::Float(..) => println!("    let LitKind::Float(..) = {}.node,", lit_pat),
-                    LitKind::FloatUnsuffixed(_) => println!("    let LitKind::FloatUnsuffixed(_) = {}.node,", lit_pat),
+                    LitKind::Int(i, _) => println!("    if let LitKind::Int({}, _) = {}.node;", i, lit_pat),
+                    LitKind::Float(..) => println!("    if let LitKind::Float(..) = {}.node;", lit_pat),
+                    LitKind::FloatUnsuffixed(_) => println!("    if let LitKind::FloatUnsuffixed(_) = {}.node;", lit_pat),
                     LitKind::ByteStr(ref vec) => {
                         let vec_pat = self.next("vec");
-                        println!("    let LitKind::ByteStr(ref {}) = {}.node,", vec_pat, lit_pat);
-                        println!("    let [{:?}] = **{},", vec, vec_pat);
+                        println!("    if let LitKind::ByteStr(ref {}) = {}.node;", vec_pat, lit_pat);
+                        println!("    if let [{:?}] = **{};", vec, vec_pat);
                     },
                     LitKind::Str(ref text, _) => {
                         let str_pat = self.next("s");
-                        println!("    let LitKind::Str(ref {}) = {}.node,", str_pat, lit_pat);
-                        println!("    {}.as_str() == {:?}", str_pat, &*text.as_str())
+                        println!("    if let LitKind::Str(ref {}) = {}.node;", str_pat, lit_pat);
+                        println!("    if {}.as_str() == {:?}", str_pat, &*text.as_str())
                     },
                 }
             },
             Expr_::ExprCast(ref expr, ref _ty) => {
                 let cast_pat = self.next("expr");
-                println!("Cast(ref {}, _) = {},", cast_pat, current);
+                println!("Cast(ref {}, _) = {};", cast_pat, current);
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
             Expr_::ExprType(ref expr, ref _ty) => {
                 let cast_pat = self.next("expr");
-                println!("Type(ref {}, _) = {},", cast_pat, current);
+                println!("Type(ref {}, _) = {};", cast_pat, current);
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
@@ -273,11 +275,11 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let then_pat = self.next("then");
                 if let Some(ref else_) = *opt_else {
                     let else_pat = self.next("else_");
-                    println!("If(ref {}, ref {}, Some(ref {})) = {},", cond_pat, then_pat, else_pat, current);
+                    println!("If(ref {}, ref {}, Some(ref {})) = {};", cond_pat, then_pat, else_pat, current);
                     self.current = else_pat;
                     self.visit_expr(else_);
                 } else {
-                    println!("If(ref {}, ref {}, None) = {},", cond_pat, then_pat, current);
+                    println!("If(ref {}, ref {}, None) = {};", cond_pat, then_pat, current);
                 }
                 self.current = cond_pat;
                 self.visit_expr(cond);
@@ -285,37 +287,37 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.visit_expr(then);
             },
             Expr_::ExprWhile(ref _cond, ref _body, ref _opt_label) => {
-                println!("While(ref cond, ref body, ref opt_label) = {},", current);
+                println!("While(ref cond, ref body, ref opt_label) = {};", current);
                 println!("    // unimplemented: `ExprWhile` is not further destructured at the moment");
             },
             Expr_::ExprLoop(ref _body, ref _opt_label, ref _desuraging) => {
-                println!("Loop(ref body, ref opt_label, ref desugaring) = {},", current);
+                println!("Loop(ref body, ref opt_label, ref desugaring) = {};", current);
                 println!("    // unimplemented: `ExprLoop` is not further destructured at the moment");
             },
             Expr_::ExprMatch(ref _expr, ref _arms, ref _desugaring) => {
-                println!("Match(ref expr, ref arms, ref desugaring) = {},", current);
+                println!("Match(ref expr, ref arms, ref desugaring) = {};", current);
                 println!("    // unimplemented: `ExprMatch` is not further destructured at the moment");
             },
             Expr_::ExprClosure(ref _capture_clause, ref _func, _, _, _) => {
-                println!("Closure(ref capture_clause, ref func, _, _, _) = {},", current);
+                println!("Closure(ref capture_clause, ref func, _, _, _) = {};", current);
                 println!("    // unimplemented: `ExprClosure` is not further destructured at the moment");
             },
             Expr_::ExprYield(ref sub) => {
                 let sub_pat = self.next("sub");
-                println!("Yield(ref sub) = {},", current);
+                println!("Yield(ref sub) = {};", current);
                 self.current = sub_pat;
                 self.visit_expr(sub);
             },
             Expr_::ExprBlock(ref block) => {
                 let block_pat = self.next("block");
-                println!("Block(ref {}) = {},", block_pat, current);
+                println!("Block(ref {}) = {};", block_pat, current);
                 self.current = block_pat;
                 self.visit_block(block);
             },
             Expr_::ExprAssign(ref target, ref value) => {
                 let target_pat = self.next("target");
                 let value_pat = self.next("value");
-                println!("Assign(ref {}, ref {}) = {},", target_pat, value_pat, current);
+                println!("Assign(ref {}, ref {}) = {};", target_pat, value_pat, current);
                 self.current = target_pat;
                 self.visit_expr(target);
                 self.current = value_pat;
@@ -325,8 +327,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let op_pat = self.next("op");
                 let target_pat = self.next("target");
                 let value_pat = self.next("value");
-                println!("AssignOp(ref {}, ref {}, ref {}) = {},", op_pat, target_pat, value_pat, current);
-                println!("    BinOp_::{:?} == {}.node,", op.node, op_pat);
+                println!("AssignOp(ref {}, ref {}, ref {}) = {};", op_pat, target_pat, value_pat, current);
+                println!("    if BinOp_::{:?} == {}.node;", op.node, op_pat);
                 self.current = target_pat;
                 self.visit_expr(target);
                 self.current = value_pat;
@@ -335,23 +337,23 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
             Expr_::ExprField(ref object, ref field_name) => {
                 let obj_pat = self.next("object");
                 let field_name_pat = self.next("field_name");
-                println!("Field(ref {}, ref {}) = {},", obj_pat, field_name_pat, current);
-                println!("    {}.node.as_str() == {:?}", field_name_pat, field_name.node.as_str());
+                println!("Field(ref {}, ref {}) = {};", obj_pat, field_name_pat, current);
+                println!("    if {}.node.as_str() == {:?}", field_name_pat, field_name.node.as_str());
                 self.current = obj_pat;
                 self.visit_expr(object);
             },
             Expr_::ExprTupField(ref object, ref field_id) => {
                 let obj_pat = self.next("object");
                 let field_id_pat = self.next("field_id");
-                println!("TupField(ref {}, ref {}) = {},", obj_pat, field_id_pat, current);
-                println!("    {}.node == {}", field_id_pat, field_id.node);
+                println!("TupField(ref {}, ref {}) = {};", obj_pat, field_id_pat, current);
+                println!("    if {}.node == {}", field_id_pat, field_id.node);
                 self.current = obj_pat;
                 self.visit_expr(object);
             },
             Expr_::ExprIndex(ref object, ref index) => {
                 let object_pat = self.next("object");
                 let index_pat = self.next("index");
-                println!("Index(ref {}, ref {}) = {},", object_pat, index_pat, current);
+                println!("Index(ref {}, ref {}) = {};", object_pat, index_pat, current);
                 self.current = object_pat;
                 self.visit_expr(object);
                 self.current = index_pat;
@@ -359,13 +361,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
             },
             Expr_::ExprPath(ref path) => {
                 let path_pat = self.next("path");
-                println!("Path(ref {}) = {},", path_pat, current);
+                println!("Path(ref {}) = {};", path_pat, current);
                 self.current = path_pat;
                 self.visit_qpath(path, expr.id, expr.span);
             },
             Expr_::ExprAddrOf(mutability, ref inner) => {
                 let inner_pat = self.next("inner");
-                println!("AddrOf({:?}, ref {}) = {},", mutability, inner_pat, current);
+                println!("AddrOf({:?}, ref {}) = {};", mutability, inner_pat, current);
                 self.current = inner_pat;
                 self.visit_expr(inner);
             },
@@ -373,29 +375,29 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let destination_pat = self.next("destination");
                 if let Some(ref value) = *opt_value {
                     let value_pat = self.next("value");
-                    println!("Break(ref {}, Some(ref {})) = {},", destination_pat, value_pat, current);
+                    println!("Break(ref {}, Some(ref {})) = {};", destination_pat, value_pat, current);
                     self.current = value_pat;
                     self.visit_expr(value);
                 } else {
-                    println!("Break(ref {}, None) = {},", destination_pat, current);
+                    println!("Break(ref {}, None) = {};", destination_pat, current);
                 }
                 // FIXME: implement label printing
             },
             Expr_::ExprAgain(ref _destination) => {
                 let destination_pat = self.next("destination");
-                println!("Again(ref {}) = {},", destination_pat, current);
+                println!("Again(ref {}) = {};", destination_pat, current);
                 // FIXME: implement label printing
             },
             Expr_::ExprRet(ref opt_value) => if let Some(ref value) = *opt_value {
                 let value_pat = self.next("value");
-                println!("Ret(Some(ref {})) = {},", value_pat, current);
+                println!("Ret(Some(ref {})) = {};", value_pat, current);
                 self.current = value_pat;
                 self.visit_expr(value);
             } else {
-                println!("Ret(None) = {},", current);
+                println!("Ret(None) = {};", current);
             },
             Expr_::ExprInlineAsm(_, ref _input, ref _output) => {
-                println!("InlineAsm(_, ref input, ref output) = {},", current);
+                println!("InlineAsm(_, ref input, ref output) = {};", current);
                 println!("    // unimplemented: `ExprInlineAsm` is not further destructured at the moment");
             },
             Expr_::ExprStruct(ref path, ref fields, ref opt_base) => {
@@ -404,7 +406,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 if let Some(ref base) = *opt_base {
                     let base_pat = self.next("base");
                     println!(
-                        "Struct(ref {}, ref {}, Some(ref {})) = {},",
+                        "Struct(ref {}, ref {}, Some(ref {})) = {};",
                         path_pat,
                         fields_pat,
                         base_pat,
@@ -413,17 +415,17 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     self.current = base_pat;
                     self.visit_expr(base);
                 } else {
-                    println!("Struct(ref {}, ref {}, None) = {},", path_pat, fields_pat, current);
+                    println!("Struct(ref {}, ref {}, None) = {};", path_pat, fields_pat, current);
                 }
                 self.current = path_pat;
                 self.visit_qpath(path, expr.id, expr.span);
-                println!("    {}.len() == {},", fields_pat, fields.len());
+                println!("    if {}.len() == {};", fields_pat, fields.len());
                 println!("    // unimplemented: field checks");
             },
             // FIXME: compute length (needs type info)
             Expr_::ExprRepeat(ref value, _) => {
                 let value_pat = self.next("value");
-                println!("Repeat(ref {}, _) = {},", value_pat, current);
+                println!("Repeat(ref {}, _) = {};", value_pat, current);
                 println!("// unimplemented: repeat count check");
                 self.current = value_pat;
                 self.visit_expr(value);
@@ -432,9 +434,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     }
 
     fn visit_qpath(&mut self, path: &QPath, _: NodeId, _: Span) {
-        print!("    match_qpath({}, &[", self.current);
+        print!("    if match_qpath({}, &[", self.current);
         print_path(path, &mut true);
-        println!("]),");
+        println!("]);");
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None

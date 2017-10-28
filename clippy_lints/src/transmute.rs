@@ -214,7 +214,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 e.span,
                                 &format!("transmute from a type (`{}`) to a pointer to that type (`{}`)", from_ty, to_ty),
                             ),
-                            (&ty::TyRawPtr(from_pty), &ty::TyRef(_, to_rty)) => span_lint_and_then(
+                            (&ty::TyRawPtr(from_pty), &ty::TyRef(_, to_ref_ty)) => span_lint_and_then(
                                 cx,
                                 TRANSMUTE_PTR_TO_REF,
                                 e.span,
@@ -226,16 +226,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 ),
                                 |db| {
                                     let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                    let (deref, cast) = if to_rty.mutbl == Mutability::MutMutable {
+                                    let (deref, cast) = if to_ref_ty.mutbl == Mutability::MutMutable {
                                         ("&mut *", "*mut")
                                     } else {
                                         ("&*", "*const")
                                     };
 
-                                    let arg = if from_pty.ty == to_rty.ty {
+                                    let arg = if from_pty.ty == to_ref_ty.ty {
                                         arg
                                     } else {
-                                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_rty.ty)))
+                                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty.ty)))
                                     };
 
                                     db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
@@ -299,16 +299,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 /// the type's `ToString` implementation. In weird cases it could lead to types
 /// with invalid `'_`
 /// lifetime, but it should be rare.
-fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: Ty) -> String {
+fn get_type_snippet(cx: &LateContext, path: &QPath, to_ref_ty: Ty) -> String {
     let seg = last_path_segment(path);
-    if_let_chain!{[
-        let Some(ref params) = seg.parameters,
-        !params.parenthesized,
-        let Some(to_ty) = params.types.get(1),
-        let TyRptr(_, ref to_ty) = to_ty.node,
-    ], {
-        return snippet(cx, to_ty.ty.span, &to_rty.to_string()).to_string();
-    }}
+    if_chain! {
+        if let Some(ref params) = seg.parameters;
+        if !params.parenthesized;
+        if let Some(to_ty) = params.types.get(1);
+        if let TyRptr(_, ref to_ty) = to_ty.node;
+        then {
+            return snippet(cx, to_ty.ty.span, &to_ref_ty.to_string()).to_string();
+        }
+    }
 
-    to_rty.to_string()
+    to_ref_ty.to_string()
 }

@@ -86,22 +86,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {
-        if_let_chain!{[
-            self.last.is_none(),
-            let Some(ref expr) = block.expr,
-            match_type(cx, cx.tables.expr_ty(expr), &paths::REGEX),
-            let Some(span) = is_expn_of(expr.span, "regex"),
-        ], {
-            if !self.spans.contains(&span) {
-                span_lint(cx,
-                          REGEX_MACRO,
-                          span,
-                          "`regex!(_)` found. \
-                          Please use `Regex::new(_)`, which is faster for now.");
-                self.spans.insert(span);
+        if_chain! {
+            if self.last.is_none();
+            if let Some(ref expr) = block.expr;
+            if match_type(cx, cx.tables.expr_ty(expr), &paths::REGEX);
+            if let Some(span) = is_expn_of(expr.span, "regex");
+            then {
+                if !self.spans.contains(&span) {
+                    span_lint(cx,
+                              REGEX_MACRO,
+                              span,
+                              "`regex!(_)` found. \
+                              Please use `Regex::new(_)`, which is faster for now.");
+                    self.spans.insert(span);
+                }
+                self.last = Some(block.id);
             }
-            self.last = Some(block.id);
-        }}
+        }
     }
 
     fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block) {
@@ -111,24 +112,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if_let_chain!{[
-            let ExprCall(ref fun, ref args) = expr.node,
-            let ExprPath(ref qpath) = fun.node,
-            args.len() == 1,
-            let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, fun.hir_id)),
-        ], {
-            if match_def_path(cx.tcx, def_id, &paths::REGEX_NEW) ||
-               match_def_path(cx.tcx, def_id, &paths::REGEX_BUILDER_NEW) {
-                check_regex(cx, &args[0], true);
-            } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_NEW) ||
-               match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
-                check_regex(cx, &args[0], false);
-            } else if match_def_path(cx.tcx, def_id, &paths::REGEX_SET_NEW) {
-                check_set(cx, &args[0], true);
-            } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_SET_NEW) {
-                check_set(cx, &args[0], false);
+        if_chain! {
+            if let ExprCall(ref fun, ref args) = expr.node;
+            if let ExprPath(ref qpath) = fun.node;
+            if args.len() == 1;
+            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, fun.hir_id));
+            then {
+                if match_def_path(cx.tcx, def_id, &paths::REGEX_NEW) ||
+                   match_def_path(cx.tcx, def_id, &paths::REGEX_BUILDER_NEW) {
+                    check_regex(cx, &args[0], true);
+                } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_NEW) ||
+                   match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
+                    check_regex(cx, &args[0], false);
+                } else if match_def_path(cx.tcx, def_id, &paths::REGEX_SET_NEW) {
+                    check_set(cx, &args[0], true);
+                } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_SET_NEW) {
+                    check_set(cx, &args[0], false);
+                }
             }
-        }}
+        }
     }
 }
 
@@ -179,14 +181,15 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
 }
 
 fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {
-    if_let_chain! {[
-        let ExprAddrOf(_, ref expr) = expr.node,
-        let ExprArray(ref exprs) = expr.node,
-    ], {
-        for expr in exprs {
-            check_regex(cx, expr, utf8);
+    if_chain! {
+        if let ExprAddrOf(_, ref expr) = expr.node;
+        if let ExprArray(ref exprs) = expr.node;
+        then {
+            for expr in exprs {
+                check_regex(cx, expr, utf8);
+            }
         }
-    }}
+    }
 }
 
 fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {

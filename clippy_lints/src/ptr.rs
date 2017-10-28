@@ -156,13 +156,14 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
         {
             if match_type(cx, ty, &paths::VEC) {
                 let mut ty_snippet = None;
-                if_let_chain!([
-                    let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node,
-                    let Some(&PathSegment{parameters: Some(ref parameters), ..}) = path.segments.last(),
-                    parameters.types.len() == 1,
-                ], {
-                    ty_snippet = snippet_opt(cx, parameters.types[0].span);
-                });
+                if_chain! {
+                    if let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
+                    if let Some(&PathSegment{parameters: Some(ref parameters), ..}) = path.segments.last();
+                    if parameters.types.len() == 1;
+                    then {
+                        ty_snippet = snippet_opt(cx, parameters.types[0].span);
+                    }
+                };
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
                     span_lint_and_then(
                         cx,

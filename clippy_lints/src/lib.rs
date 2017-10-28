@@ -11,6 +11,8 @@
 #![feature(inclusive_range_syntax, range_contains)]
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 
+#![recursion_limit="256"]
+
 #[macro_use]
 extern crate rustc;
 extern crate rustc_typeck;
@@ -54,6 +56,9 @@ extern crate itertools;
 extern crate pulldown_cmark;
 extern crate url;
 
+#[macro_use]
+extern crate if_chain;
+
 macro_rules! declare_restriction_lint {
     { pub $name:tt, $description:tt } => {
         declare_lint! { pub $name, Allow, $description }
@@ -88,6 +93,7 @@ pub mod entry;
 pub mod enum_clike;
 pub mod enum_glob_use;
 pub mod enum_variants;
+pub mod erasing_op;
 pub mod eq_op;
 pub mod escape;
 pub mod eta_reduction;
@@ -100,6 +106,7 @@ pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
+pub mod fallible_impl_from;
 pub mod infinite_iter;
 pub mod int_plus_one;
 pub mod invalid_ref;
@@ -252,6 +259,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box needless_continue::NeedlessContinue);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
+    reg.register_late_lint_pass(box erasing_op::ErasingOp);
     reg.register_early_lint_pass(box items_after_statements::ItemsAfterStatements);
     reg.register_late_lint_pass(box mut_mut::MutMut);
     reg.register_late_lint_pass(box mut_reference::UnnecessaryMutPassed);
@@ -341,6 +349,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
     reg.register_early_lint_pass(box const_static_lifetime::StaticConst);
+    reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -446,6 +455,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
+        fallible_impl_from::FALLIBLE_IMPL_FROM,
         infinite_iter::INFINITE_ITER,
         invalid_ref::INVALID_REF,
         is_unit_expr::UNIT_EXPR,

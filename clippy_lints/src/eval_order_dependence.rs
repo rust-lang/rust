@@ -298,23 +298,24 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 
         match expr.node {
             ExprPath(ref qpath) => {
-                if_let_chain! {[
-                    let QPath::Resolved(None, ref path) = *qpath,
-                    path.segments.len() == 1,
-                    let def::Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id),
-                    local_id == self.var,
+                if_chain! {
+                    if let QPath::Resolved(None, ref path) = *qpath;
+                    if path.segments.len() == 1;
+                    if let def::Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id);
+                    if local_id == self.var;
                     // Check that this is a read, not a write.
-                    !is_in_assignment_position(self.cx, expr),
-                ], {
-                    span_note_and_lint(
-                        self.cx,
-                        EVAL_ORDER_DEPENDENCE,
-                        expr.span,
-                        "unsequenced read of a variable",
-                        self.write_expr.span,
-                        "whether read occurs before this write depends on evaluation order"
-                    );
-                }}
+                    if !is_in_assignment_position(self.cx, expr);
+                    then {
+                        span_note_and_lint(
+                            self.cx,
+                            EVAL_ORDER_DEPENDENCE,
+                            expr.span,
+                            "unsequenced read of a variable",
+                            self.write_expr.span,
+                            "whether read occurs before this write depends on evaluation order"
+                        );
+                    }
+                }
             }
             // We're about to descend a closure. Since we don't know when (or
             // if) the closure will be evaluated, any reads in it might not

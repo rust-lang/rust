@@ -119,27 +119,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
                 }
             }
         }
-        if_let_chain!{[
-            let Expr_::ExprBinary(ref op, ref left, ref right) = e.node,
-            BinOp_::BiEq == op.node,
-            let Expr_::ExprBinary(ref op1, ref left1, ref right1) = left.node,
-            BinOp_::BiBitAnd == op1.node,
-            let Expr_::ExprLit(ref lit) = right1.node,
-            let LitKind::Int(n, _) = lit.node,
-            let Expr_::ExprLit(ref lit1) = right.node,
-            let LitKind::Int(0, _) = lit1.node,
-            n.leading_zeros() == n.count_zeros(),
-            n > u128::from(self.verbose_bit_mask_threshold),
-        ], {
-            span_lint_and_then(cx,
-                               VERBOSE_BIT_MASK,
-                               e.span,
-                               "bit mask could be simplified with a call to `trailing_zeros`",
-                               |db| {
-                let sugg = Sugg::hir(cx, left1, "...").maybe_par();
-                db.span_suggestion(e.span, "try", format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()));
-            });
-        }}
+        if_chain! {
+            if let Expr_::ExprBinary(ref op, ref left, ref right) = e.node;
+            if BinOp_::BiEq == op.node;
+            if let Expr_::ExprBinary(ref op1, ref left1, ref right1) = left.node;
+            if BinOp_::BiBitAnd == op1.node;
+            if let Expr_::ExprLit(ref lit) = right1.node;
+            if let LitKind::Int(n, _) = lit.node;
+            if let Expr_::ExprLit(ref lit1) = right.node;
+            if let LitKind::Int(0, _) = lit1.node;
+            if n.leading_zeros() == n.count_zeros();
+            if n > u128::from(self.verbose_bit_mask_threshold);
+            then {
+                span_lint_and_then(cx,
+                                   VERBOSE_BIT_MASK,
+                                   e.span,
+                                   "bit mask could be simplified with a call to `trailing_zeros`",
+                                   |db| {
+                    let sugg = Sugg::hir(cx, left1, "...").maybe_par();
+                    db.span_suggestion(e.span, "try", format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()));
+                });
+            }
+        }
     }
 }
 

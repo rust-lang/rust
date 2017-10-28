@@ -140,12 +140,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         let parent_fn = cx.tcx.hir.get_parent(e.id);
                                         let parent_impl = cx.tcx.hir.get_parent(parent_fn);
                                         // the crate node is the only one that is not in the map
-                                        if_let_chain!{[
-                                            parent_impl != ast::CRATE_NODE_ID,
-                                            let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl),
-                                            let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node,
-                                            trait_ref.path.def.def_id() == trait_id
-                                        ], { return; }}
+                                        if_chain! {
+                                            if parent_impl != ast::CRATE_NODE_ID;
+                                            if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
+                                            if let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
+                                            if trait_ref.path.def.def_id() == trait_id;
+                                            then { return; }
+                                        }
                                         implements_trait($cx, $ty, trait_id, &[$rty])
                                     },)*
                                     _ => false,
