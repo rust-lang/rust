@@ -42,7 +42,7 @@ use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predic
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
-use ty::layout::{CachedLayout, TargetDataLayout};
+use ty::layout::{LayoutDetails, TargetDataLayout};
 use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
@@ -79,7 +79,7 @@ use hir;
 /// Internal storage
 pub struct GlobalArenas<'tcx> {
     // internings
-    layout: TypedArena<CachedLayout>,
+    layout: TypedArena<LayoutDetails>,
 
     // references
     generics: TypedArena<ty::Generics>,
@@ -916,7 +916,7 @@ pub struct GlobalCtxt<'tcx> {
 
     stability_interner: RefCell<FxHashSet<&'tcx attr::Stability>>,
 
-    layout_interner: RefCell<FxHashSet<&'tcx CachedLayout>>,
+    layout_interner: RefCell<FxHashSet<&'tcx LayoutDetails>>,
 
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
@@ -1014,7 +1014,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         interned
     }
 
-    pub fn intern_layout(self, layout: CachedLayout) -> &'gcx CachedLayout {
+    pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
         if let Some(layout) = self.layout_interner.borrow().get(&layout) {
             return layout;
         }

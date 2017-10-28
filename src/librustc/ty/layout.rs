@@ -802,7 +802,7 @@ pub enum Variants {
     /// at a non-0 offset, after where the discriminant would go.
     Tagged {
         discr: Scalar,
-        variants: Vec<CachedLayout>,
+        variants: Vec<LayoutDetails>,
     },
 
     /// Multiple cases distinguished by a niche (values invalid for a type):
@@ -818,7 +818,7 @@ pub enum Variants {
         niche_variants: RangeInclusive<usize>,
         niche: Scalar,
         niche_start: u128,
-        variants: Vec<CachedLayout>,
+        variants: Vec<LayoutDetails>,
     }
 }
 
@@ -842,7 +842,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]
-pub struct CachedLayout {
+pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
     pub abi: Abi,
@@ -851,11 +851,11 @@ pub struct CachedLayout {
     pub size: Size
 }
 
-impl CachedLayout {
+impl LayoutDetails {
     fn scalar<C: HasDataLayout>(cx: C, scalar: Scalar) -> Self {
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
-        CachedLayout {
+        LayoutDetails {
             variants: Variants::Single { index: 0 },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
@@ -867,7 +867,7 @@ impl CachedLayout {
 
     fn uninhabited(field_count: usize) -> Self {
         let align = Align::from_bytes(1, 1).unwrap();
-        CachedLayout {
+        LayoutDetails {
             variants: Variants::Single { index: 0 },
             fields: FieldPlacement::Union(field_count),
             abi: Abi::Uninhabited,
@@ -880,7 +880,7 @@ impl CachedLayout {
 
 fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                        -> Result<&'tcx CachedLayout, LayoutError<'tcx>>
+                        -> Result<&'tcx LayoutDetails, LayoutError<'tcx>>
 {
     let (param_env, ty) = query.into_parts();
 
@@ -892,7 +892,7 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     tcx.layout_depth.set(depth+1);
-    let layout = CachedLayout::compute_uncached(tcx, param_env, ty);
+    let layout = LayoutDetails::compute_uncached(tcx, param_env, ty);
     tcx.layout_depth.set(depth);
 
     layout
@@ -905,7 +905,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     };
 }
 
-impl<'a, 'tcx> CachedLayout {
+impl<'a, 'tcx> LayoutDetails {
     fn compute_uncached(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         param_env: ty::ParamEnv<'tcx>,
                         ty: Ty<'tcx>)
@@ -921,13 +921,13 @@ impl<'a, 'tcx> CachedLayout {
             }
         };
         let scalar = |value: Primitive| {
-            tcx.intern_layout(CachedLayout::scalar(cx, scalar_unit(value)))
+            tcx.intern_layout(LayoutDetails::scalar(cx, scalar_unit(value)))
         };
         let scalar_pair = |a: Scalar, b: Scalar| {
             let align = a.value.align(dl).max(b.value.align(dl)).max(dl.aggregate_align);
             let b_offset = a.value.size(dl).abi_align(b.value.align(dl));
             let size = (b_offset + b.value.size(dl)).abi_align(align);
-            CachedLayout {
+            LayoutDetails {
                 variants: Variants::Single { index: 0 },
                 fields: FieldPlacement::Arbitrary {
                     offsets: vec![Size::from_bytes(0), b_offset],
@@ -1024,7 +1024,7 @@ impl<'a, 'tcx> CachedLayout {
                 }
 
                 if field.abi == Abi::Uninhabited {
-                    return Ok(CachedLayout::uninhabited(fields.len()));
+                    return Ok(LayoutDetails::uninhabited(fields.len()));
                 }
 
                 if field.is_unsized() {
@@ -1110,9 +1110,9 @@ impl<'a, 'tcx> CachedLayout {
 
                         // Two non-ZST fields, and they're both scalars.
                         (Some((i, &TyLayout {
-                            cached: &CachedLayout { abi: Abi::Scalar(ref a), .. }, ..
+                            details: &LayoutDetails { abi: Abi::Scalar(ref a), .. }, ..
                         })), Some((j, &TyLayout {
-                            cached: &CachedLayout { abi: Abi::Scalar(ref b), .. }, ..
+                            details: &LayoutDetails { abi: Abi::Scalar(ref b), .. }, ..
                         })), None) => {
                             // Order by the memory placement, not source order.
                             let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> CachedLayout {
                 }
             }
 
-            Ok(CachedLayout {
+            Ok(LayoutDetails {
                 variants: Variants::Single { index: 0 },
                 fields: FieldPlacement::Arbitrary {
                     offsets,
@@ -1167,13 +1167,13 @@ impl<'a, 'tcx> CachedLayout {
         Ok(match ty.sty {
             // Basic scalars.
             ty::TyBool => {
-                tcx.intern_layout(CachedLayout::scalar(cx, Scalar {
+                tcx.intern_layout(LayoutDetails::scalar(cx, Scalar {
                     value: Int(I8, false),
                     valid_range: 0..=1
                 }))
             }
             ty::TyChar => {
-                tcx.intern_layout(CachedLayout::scalar(cx, Scalar {
+                tcx.intern_layout(LayoutDetails::scalar(cx, Scalar {
                     value: Int(I32, false),
                     valid_range: 0..=0x10FFFF
                 }))
@@ -1189,12 +1189,12 @@ impl<'a, 'tcx> CachedLayout {
             ty::TyFnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
                 ptr.valid_range.start = 1;
-                tcx.intern_layout(CachedLayout::scalar(cx, ptr))
+                tcx.intern_layout(LayoutDetails::scalar(cx, ptr))
             }
 
             // The never type.
             ty::TyNever => {
-                tcx.intern_layout(CachedLayout::uninhabited(0))
+                tcx.intern_layout(LayoutDetails::uninhabited(0))
             }
 
             // Potentially-fat pointers.
@@ -1207,13 +1207,13 @@ impl<'a, 'tcx> CachedLayout {
 
                 let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
                 if pointee.is_sized(tcx, param_env, DUMMY_SP) {
-                    return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
+                    return Ok(tcx.intern_layout(LayoutDetails::scalar(cx, data_ptr)));
                 }
 
                 let unsized_part = tcx.struct_tail(pointee);
                 let metadata = match unsized_part.sty {
                     ty::TyForeign(..) => {
-                        return Ok(tcx.intern_layout(CachedLayout::scalar(cx, data_ptr)));
+                        return Ok(tcx.intern_layout(LayoutDetails::scalar(cx, data_ptr)));
                     }
                     ty::TySlice(_) | ty::TyStr => {
                         scalar_unit(Int(dl.ptr_sized_integer(), false))
@@ -1244,7 +1244,7 @@ impl<'a, 'tcx> CachedLayout {
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
-                tcx.intern_layout(CachedLayout {
+                tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
                     fields: FieldPlacement::Array {
                         stride: element.size,
@@ -1261,7 +1261,7 @@ impl<'a, 'tcx> CachedLayout {
             }
             ty::TySlice(element) => {
                 let element = cx.layout_of(element)?;
-                tcx.intern_layout(CachedLayout {
+                tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
                     fields: FieldPlacement::Array {
                         stride: element.size,
@@ -1277,7 +1277,7 @@ impl<'a, 'tcx> CachedLayout {
                 })
             }
             ty::TyStr => {
-                tcx.intern_layout(CachedLayout {
+                tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
                     fields: FieldPlacement::Array {
                         stride: Size::from_bytes(1),
@@ -1350,7 +1350,7 @@ impl<'a, 'tcx> CachedLayout {
                 let align = dl.vector_align(size);
                 let size = size.abi_align(align);
 
-                tcx.intern_layout(CachedLayout {
+                tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: 0 },
                     fields: FieldPlacement::Array {
                         stride: element.size,
@@ -1380,7 +1380,7 @@ impl<'a, 'tcx> CachedLayout {
                 };
                 if inh_first.is_none() {
                     // Uninhabited because it has no variants, or only uninhabited ones.
-                    return Ok(tcx.intern_layout(CachedLayout::uninhabited(0)));
+                    return Ok(tcx.intern_layout(LayoutDetails::uninhabited(0)));
                 }
 
                 if def.is_union() {
@@ -1414,7 +1414,7 @@ impl<'a, 'tcx> CachedLayout {
                         size = cmp::max(size, field.size);
                     }
 
-                    return Ok(tcx.intern_layout(CachedLayout {
+                    return Ok(tcx.intern_layout(LayoutDetails {
                         variants: Variants::Single { index: 0 },
                         fields: FieldPlacement::Union(variants[0].len()),
                         abi: Abi::Aggregate {
@@ -1519,7 +1519,7 @@ impl<'a, 'tcx> CachedLayout {
                             }).collect::<Result<Vec<_>, _>>()?;
 
                             let offset = st[i].fields.offset(field_index) + offset;
-                            let CachedLayout {
+                            let LayoutDetails {
                                 size,
                                 mut align,
                                 mut primitive_align,
@@ -1543,7 +1543,7 @@ impl<'a, 'tcx> CachedLayout {
                             align = align.max(niche_align);
                             primitive_align = primitive_align.max(niche_align);
 
-                            return Ok(tcx.intern_layout(CachedLayout {
+                            return Ok(tcx.intern_layout(LayoutDetails {
                                 variants: Variants::NicheFilling {
                                     dataful_variant: i,
                                     niche_variants,
@@ -1681,7 +1681,7 @@ impl<'a, 'tcx> CachedLayout {
                         packed: false
                     }
                 };
-                tcx.intern_layout(CachedLayout {
+                tcx.intern_layout(LayoutDetails {
                     variants: Variants::Tagged {
                         discr,
                         variants
@@ -1709,7 +1709,7 @@ impl<'a, 'tcx> CachedLayout {
                 return Err(LayoutError::Unknown(ty));
             }
             ty::TyInfer(_) | ty::TyError => {
-                bug!("CachedLayout::compute: unexpected type `{}`", ty)
+                bug!("LayoutDetails::compute: unexpected type `{}`", ty)
             }
         })
     }
@@ -2010,13 +2010,13 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub struct TyLayout<'tcx> {
     pub ty: Ty<'tcx>,
-    cached: &'tcx CachedLayout
+    details: &'tcx LayoutDetails
 }
 
 impl<'tcx> Deref for TyLayout<'tcx> {
-    type Target = &'tcx CachedLayout;
-    fn deref(&self) -> &&'tcx CachedLayout {
-        &self.cached
+    type Target = &'tcx LayoutDetails;
+    fn deref(&self) -> &&'tcx LayoutDetails {
+        &self.details
     }
 }
 
@@ -2087,10 +2087,10 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (TyCtxt<'a, 'tcx, 'tcx>, ty::ParamEnv<'tcx
         let (tcx, param_env) = self;
 
         let ty = tcx.normalize_associated_type_in_env(&ty, param_env.reveal_all());
-        let cached = tcx.layout_raw(param_env.reveal_all().and(ty))?;
+        let details = tcx.layout_raw(param_env.reveal_all().and(ty))?;
         let layout = TyLayout {
             ty,
-            cached
+            details
         };
 
         // NB: This recording is normally disabled; when enabled, it
@@ -2099,7 +2099,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (TyCtxt<'a, 'tcx, 'tcx>, ty::ParamEnv<'tcx
         // completed, to avoid problems around recursive structures
         // and the like. (Admitedly, I wasn't able to reproduce a problem
         // here, but it seems like the right thing to do. -nmatsakis)
-        CachedLayout::record_layout_for_printing(tcx, ty, param_env, layout);
+        LayoutDetails::record_layout_for_printing(tcx, ty, param_env, layout);
 
         Ok(layout)
     }
@@ -2116,10 +2116,10 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>,
         let (tcx_at, param_env) = self;
 
         let ty = tcx_at.tcx.normalize_associated_type_in_env(&ty, param_env.reveal_all());
-        let cached = tcx_at.layout_raw(param_env.reveal_all().and(ty))?;
+        let details = tcx_at.layout_raw(param_env.reveal_all().and(ty))?;
         let layout = TyLayout {
             ty,
-            cached
+            details
         };
 
         // NB: This recording is normally disabled; when enabled, it
@@ -2128,7 +2128,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>,
         // completed, to avoid problems around recursive structures
         // and the like. (Admitedly, I wasn't able to reproduce a problem
         // here, but it seems like the right thing to do. -nmatsakis)
-        CachedLayout::record_layout_for_printing(tcx_at.tcx, ty, param_env, layout);
+        LayoutDetails::record_layout_for_printing(tcx_at.tcx, ty, param_env, layout);
 
         Ok(layout)
     }
@@ -2139,8 +2139,8 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         where C: LayoutOf<Ty<'tcx>> + HasTyCtxt<'tcx>,
               C::TyLayout: MaybeResult<TyLayout<'tcx>>
     {
-        let cached = match self.variants {
-            Variants::Single { index } if index == variant_index => self.cached,
+        let details = match self.variants {
+            Variants::Single { index } if index == variant_index => self.details,
 
             Variants::Single { index } => {
                 // Deny calling for_variant more than once for non-Single enums.
@@ -2153,9 +2153,9 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                     ty::TyAdt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!()
                 };
-                let mut cached = CachedLayout::uninhabited(fields);
-                cached.variants = Variants::Single { index: variant_index };
-                cx.tcx().intern_layout(cached)
+                let mut details = LayoutDetails::uninhabited(fields);
+                details.variants = Variants::Single { index: variant_index };
+                cx.tcx().intern_layout(details)
             }
 
             Variants::NicheFilling { ref variants, .. } |
@@ -2164,11 +2164,11 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             }
         };
 
-        assert_eq!(cached.variants, Variants::Single { index: variant_index });
+        assert_eq!(details.variants, Variants::Single { index: variant_index });
 
         TyLayout {
             ty: self.ty,
-            cached
+            details
         }
     }
 
@@ -2257,9 +2257,9 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                     Variants::Tagged { ref discr, .. } |
                     Variants::NicheFilling { niche: ref discr, .. } => {
                         assert_eq!(i, 0);
-                        let layout = CachedLayout::scalar(tcx, discr.clone());
+                        let layout = LayoutDetails::scalar(tcx, discr.clone());
                         return MaybeResult::from_ok(TyLayout {
-                            cached: tcx.intern_layout(layout),
+                            details: tcx.intern_layout(layout),
                             ty: discr.value.to_ty(tcx)
                         });
                     }
@@ -2465,7 +2465,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Scalar {
     }
 }
 
-impl_stable_hash_for!(struct ::ty::layout::CachedLayout {
+impl_stable_hash_for!(struct ::ty::layout::LayoutDetails {
     variants,
     fields,
     abi,
