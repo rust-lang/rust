@@ -261,12 +261,12 @@ fn filter_packages_with_hitlist<'a>(
     packages: Vec<Value>,
     workspace_hitlist: &'a WorkspaceHitlist,
 ) -> Result<Vec<Value>, &'a String> {
-    if *workspace_hitlist == WorkspaceHitlist::All {
+    let some_hitlist: Option<HashSet<&String>> =
+        workspace_hitlist.get_some().map(HashSet::from_iter);
+    if some_hitlist.is_none() {
         return Ok(packages);
     }
-    let mut hitlist: HashSet<&String> = workspace_hitlist
-        .get_some()
-        .map_or(HashSet::new(), HashSet::from_iter);
+    let mut hitlist = some_hitlist.unwrap();
     let members: Vec<Value> = packages
         .into_iter()
         .filter(|member| {
