@@ -203,6 +203,16 @@
 # Where to install man pages in `prefix` above
 #mandir = "share/man"
 
+# Where to install data in `prefix` above (currently unused)
+#datadir = "share"
+
+# Where to install additional info in `prefix` above (currently unused)
+#infodir = "share/info"
+
+# Where to install local state (currently unused)
+# If this is a relative path, it will get installed in `prefix` above
+#localstatedir = "/var/lib"
+
 # =============================================================================
 # Options for compiling Rust code itself
 # =============================================================================
