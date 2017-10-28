@@ -264,7 +264,7 @@ define_maps! { <'tcx>
     [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                                  -> Result<&'tcx ty::layout::CachedLayout,
+                                  -> Result<&'tcx ty::layout::LayoutDetails,
                                             ty::layout::LayoutError<'tcx>>,
 
     [] fn dylib_dependency_formats: DylibDepFormats(CrateNum)
