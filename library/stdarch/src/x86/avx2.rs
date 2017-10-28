@@ -755,7 +755,9 @@ pub unsafe fn _mm_maskload_epi32(mem_addr: *const i32, mask: i32x4) -> i32x4 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpmaskmovd))]
-pub unsafe fn _mm256_maskload_epi32(mem_addr: *const i32, mask: i32x8) -> i32x8 {
+pub unsafe fn _mm256_maskload_epi32(
+    mem_addr: *const i32, mask: i32x8
+) -> i32x8 {
     maskloadd256(mem_addr as *const i8, mask)
 }
 
@@ -775,7 +777,9 @@ pub unsafe fn _mm_maskload_epi64(mem_addr: *const i64, mask: i64x2) -> i64x2 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpmaskmovq))]
-pub unsafe fn _mm256_maskload_epi64(mem_addr: *const i64, mask: i64x4) -> i64x4 {
+pub unsafe fn _mm256_maskload_epi64(
+    mem_addr: *const i64, mask: i64x4
+) -> i64x4 {
     maskloadq256(mem_addr as *const i8, mask)
 }
 
@@ -795,7 +799,9 @@ pub unsafe fn _mm_maskstore_epi32(mem_addr: *mut i32, mask: i32x4, a: i32x4) {
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpmaskmovd))]
-pub unsafe fn _mm256_maskstore_epi32(mem_addr: *mut i32, mask: i32x8, a: i32x8) {
+pub unsafe fn _mm256_maskstore_epi32(
+    mem_addr: *mut i32, mask: i32x8, a: i32x8
+) {
     maskstored256(mem_addr as *mut i8, mask, a)
 }
 
@@ -815,7 +821,9 @@ pub unsafe fn _mm_maskstore_epi64(mem_addr: *mut i64, mask: i64x2, a: i64x2) {
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpmaskmovq))]
-pub unsafe fn _mm256_maskstore_epi64(mem_addr: *mut i64, mask: i64x4, a: i64x4) {
+pub unsafe fn _mm256_maskstore_epi64(
+    mem_addr: *mut i64, mask: i64x4, a: i64x4
+) {
     maskstoreq256(mem_addr as *mut i8, mask, a)
 }
 
@@ -1184,7 +1192,8 @@ pub unsafe fn _mm256_shuffle_epi8(a: u8x32, b: u8x32) -> u8x32 {
     pshufb(a, b)
 }
 
-/// Shuffle 32-bit integers in 128-bit lanes of `a` using the control in `imm8`.
+/// Shuffle 32-bit integers in 128-bit lanes of `a` using the control in
+/// `imm8`.
 ///
 /// ```rust
 /// # #![feature(cfg_target_feature)]

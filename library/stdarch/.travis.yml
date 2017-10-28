@@ -20,13 +20,7 @@ matrix:
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
       script: |
         cargo install rustfmt-nightly
-        cargo fmt -- --write-mode=diff
-        cd stdsimd
-        cargo fmt -- --write-mode=diff
-        cd assert-instr-macro
-        cargo fmt -- --write-mode=diff
-        cd ../simd-test-macro
-        cargo fmt -- --write-mode=diff
+        cargo fmt --all -- --write-mode=diff
   allow_failures:
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
 
