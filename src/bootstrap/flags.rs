@@ -136,9 +136,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         let subcommand = match subcommand {
             Some(s) => s,
             None => {
-                // No subcommand -- show the general usage and subcommand help
+                // No or an invalid subcommand -- show the general usage and subcommand help
+                // An exit code will be 0 when no subcommand is given, and 1 in case of an invalid
+                // subcommand.
                 println!("{}\n", subcommand_help);
-                process::exit(1);
+                let exit_code = if args.is_empty() { 0 } else { 1 };
+                process::exit(exit_code);
             }
         };
 
