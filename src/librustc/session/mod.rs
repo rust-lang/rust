@@ -75,10 +75,10 @@ pub struct Session {
     pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
-    /// Set of (LintId, Option<Span>, message) tuples tracking lint
+    /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
-    /// in order to avoid redundantly verbose output (Issue #24690).
-    pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Option<Span>, String)>>,
+    /// in order to avoid redundantly verbose output (Issue #24690, #44953).
+    pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
@@ -162,6 +162,13 @@ enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
     // add more variants as needed to support one-time diagnostics
+}
+
+/// Diagnostic message id - used in order to avoid emitting the same message more than once
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DiagnosticMessageId {
+    LintId(lint::LintId),
+    StabilityId(u32)
 }
 
 impl Session {
@@ -360,7 +367,7 @@ impl Session {
                 do_method()
             },
             _ => {
-                let lint_id = lint::LintId::of(lint);
+                let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
                 let id_span_message = (lint_id, span, message.to_owned());
                 let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
                 if fresh {

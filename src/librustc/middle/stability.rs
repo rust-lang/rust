@@ -18,8 +18,9 @@ use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
+use session::DiagnosticMessageId;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
@@ -597,8 +598,29 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            feature.as_str(), &r),
                     None => format!("use of unstable library feature '{}'", &feature)
                 };
-                emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
-                                 GateIssue::Library(Some(issue)), &msg);
+
+
+                let msp: MultiSpan = span.into();
+                let cm = &self.sess.parse_sess.codemap();
+                let span_key = msp.primary_span().and_then(|sp: Span|
+                    if sp != DUMMY_SP {
+                        let file = cm.lookup_char_pos(sp.lo()).file;
+                        if file.name.starts_with("<") && file.name.ends_with(" macros>") {
+                            None
+                        } else {
+                            Some(span)
+                        }
+                    } else {
+                        None
+                    }
+                );
+
+                let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
+                let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(error_id);
+                if fresh {
+                    emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
+                                     GateIssue::Library(Some(issue)), &msg);
+                }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
