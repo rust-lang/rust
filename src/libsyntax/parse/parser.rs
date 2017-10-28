@@ -1033,7 +1033,23 @@ impl<'a> Parser<'a> {
                 } else {
                     if let Err(e) = self.expect(t) {
                         fe(e);
-                        break;
+                        // Attempt to keep parsing if it was a similar separator
+                        if let Some(ref tokens) = t.similar_tokens() {
+                            if tokens.contains(&self.token) {
+                                self.bump();
+                            }
+                        }
+                        // Attempt to keep parsing if it was an omitted separator
+                        match f(self) {
+                            Ok(t) => {
+                                v.push(t);
+                                continue;
+                            },
+                            Err(mut e) => {
+                                e.cancel();
+                                break;
+                            }
+                        }
                     }
                 }
             }
