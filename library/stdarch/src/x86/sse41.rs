@@ -6,6 +6,34 @@ use stdsimd_test::assert_instr;
 
 use v128::*;
 
+// SSE4 rounding constans
+/// round to nearest
+pub const _MM_FROUND_TO_NEAREST_INT: i32 = 0x00;
+/// round down
+pub const _MM_FROUND_TO_NEG_INF: i32 = 0x01;
+/// round up
+pub const _MM_FROUND_TO_POS_INF: i32 = 0x02;
+/// truncate
+pub const _MM_FROUND_TO_ZERO: i32 = 0x03;
+/// use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+pub const _MM_FROUND_CUR_DIRECTION: i32 = 0x04;
+/// do not suppress exceptions
+pub const _MM_FROUND_RAISE_EXC: i32 = 0x00;
+/// suppress exceptions
+pub const _MM_FROUND_NO_EXC: i32 = 0x08;
+/// round to nearest and do not suppress exceptions
+pub const _MM_FROUND_NINT: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_NEAREST_INT);
+/// round down and do not suppress exceptions
+pub const _MM_FROUND_FLOOR: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_NEG_INF);
+/// round up and do not suppress exceptions
+pub const _MM_FROUND_CEIL: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_POS_INF);
+/// truncate and do not suppress exceptions
+pub const _MM_FROUND_TRUNC: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_ZERO);
+/// use MXCSR.RC and do not suppress exceptions; see `vendor::_MM_SET_ROUNDING_MODE`
+pub const _MM_FROUND_RINT: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_CUR_DIRECTION);
+/// use MXCSR.RC and suppress exceptions; see `vendor::_MM_SET_ROUNDING_MODE`
+pub const _MM_FROUND_NEARBYINT: i32 = (_MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTION);
+
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pblendvb))]
@@ -233,6 +261,191 @@ pub unsafe fn _mm_dp_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
     constify_imm8!(imm8, call)
 }
 
+/// Round the packed double-precision (64-bit) floating-point elements in `a`
+/// down to an integer value, and store the results as packed double-precision
+/// floating-point elements.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundpd))]
+pub unsafe fn _mm_floor_pd(a: f64x2) -> f64x2 {
+    roundpd(a, _MM_FROUND_FLOOR)
+}
+
+/// Round the packed single-precision (32-bit) floating-point elements in `a`
+/// down to an integer value, and store the results as packed single-precision
+/// floating-point elements.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundps))]
+pub unsafe fn _mm_floor_ps(a: f32x4) -> f32x4 {
+    roundps(a, _MM_FROUND_FLOOR)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in `b`
+/// down to an integer value, store the result as a double-precision
+/// floating-point element in the lower element of the intrinsic result,
+/// and copy the upper element from `a` to the upper element of the intrinsic
+/// result.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundsd))]
+pub unsafe fn _mm_floor_sd(a: f64x2, b: f64x2) -> f64x2 {
+    roundsd(a, b, _MM_FROUND_FLOOR)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in `b`
+/// down to an integer value, store the result as a single-precision
+/// floating-point element in the lower element of the intrinsic result,
+/// and copy the upper 3 packed elements from `a` to the upper elements
+/// of the intrinsic result.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundss))]
+pub unsafe fn _mm_floor_ss(a: f32x4, b: f32x4) -> f32x4 {
+    roundss(a, b, _MM_FROUND_FLOOR)
+}
+
+/// Round the packed double-precision (64-bit) floating-point elements in `a`
+/// up to an integer value, and store the results as packed double-precision
+/// floating-point elements.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundpd))]
+pub unsafe fn _mm_ceil_pd(a: f64x2) -> f64x2 {
+    roundpd(a, _MM_FROUND_CEIL)
+}
+
+/// Round the packed single-precision (32-bit) floating-point elements in `a`
+/// up to an integer value, and store the results as packed single-precision
+/// floating-point elements.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundps))]
+pub unsafe fn _mm_ceil_ps(a: f32x4) -> f32x4 {
+    roundps(a, _MM_FROUND_CEIL)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in `b`
+/// up to an integer value, store the result as a double-precision
+/// floating-point element in the lower element of the intrisic result,
+/// and copy the upper element from `a` to the upper element
+/// of the intrinsic result.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundsd))]
+pub unsafe fn _mm_ceil_sd(a: f64x2, b: f64x2) -> f64x2 {
+    roundsd(a, b, _MM_FROUND_CEIL)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in `b`
+/// up to an integer value, store the result as a single-precision
+/// floating-point element in the lower element of the intrinsic result,
+/// and copy the upper 3 packed elements from `a` to the upper elements
+/// of the intrinsic result.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundss))]
+pub unsafe fn _mm_ceil_ss(a: f32x4, b: f32x4) -> f32x4 {
+    roundss(a, b, _MM_FROUND_CEIL)
+}
+
+/// Round the packed double-precision (64-bit) floating-point elements in `a`
+/// using the `rounding` parameter, and store the results as packed
+/// double-precision floating-point elements.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+/// ```
+/// use stdsimd::vendor;
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
+/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+/// ```
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundpd, rounding = 0))]
+pub unsafe fn _mm_round_pd(a: f64x2, rounding: i32) -> f64x2 {
+    macro_rules! call {
+        ($imm4:expr) => { roundpd(a, $imm4) }
+    }
+    constify_imm4!(rounding, call)
+}
+
+/// Round the packed single-precision (32-bit) floating-point elements in `a`
+/// using the `rounding` parameter, and store the results as packed
+/// single-precision floating-point elements.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+/// ```
+/// use stdsimd::vendor;
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
+/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+/// ```
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundps, rounding = 0))]
+pub unsafe fn _mm_round_ps(a: f32x4, rounding: i32) -> f32x4 {
+    macro_rules! call {
+        ($imm4:expr) => { roundps(a, $imm4) }
+    }
+    constify_imm4!(rounding, call)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in `b`
+/// using the `rounding` parameter, store the result as a double-precision
+/// floating-point element in the lower element of the intrinsic result,
+/// and copy the upper element from `a` to the upper element of the intrinsic
+/// result.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+/// ```
+/// use stdsimd::vendor;
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
+/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+/// ```
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundsd, rounding = 0))]
+pub unsafe fn _mm_round_sd(a: f64x2, b: f64x2, rounding: i32) -> f64x2 {
+    macro_rules! call {
+        ($imm4:expr) => { roundsd(a, b, $imm4) }
+    }
+    constify_imm4!(rounding, call)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in `b`
+/// using the `rounding` parameter, store the result as a single-precision
+/// floating-point element in the lower element of the intrinsic result,
+/// and copy the upper 3 packed elements from `a` to the upper elements
+/// of the instrinsic result.
+/// Rounding is done according to the rounding parameter, which can be one of:
+///
+/// ```
+/// use stdsimd::vendor;
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
+/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+/// ```
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(roundss, rounding = 0))]
+pub unsafe fn _mm_round_ss(a: f32x4, b: f32x4, rounding: i32) -> f32x4 {
+    macro_rules! call {
+        ($imm4:expr) => { roundss(a, b, $imm4) }
+    }
+    constify_imm4!(rounding, call)
+}
+
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.sse41.pblendvb"]
@@ -261,6 +474,14 @@ extern "C" {
     fn dppd(a: f64x2, b: f64x2, imm8: u8) -> f64x2;
     #[link_name = "llvm.x86.sse41.dpps"]
     fn dpps(a: f32x4, b: f32x4, imm8: u8) -> f32x4;
+    #[link_name = "llvm.x86.sse41.round.pd"]
+    fn roundpd(a: f64x2, rounding: i32) -> f64x2;
+    #[link_name = "llvm.x86.sse41.round.ps"]
+    fn roundps(a: f32x4, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.sse41.round.sd"]
+    fn roundsd(a: f64x2, b: f64x2, rounding: i32) -> f64x2;
+    #[link_name = "llvm.x86.sse41.round.ss"]
+    fn roundss(a: f32x4, b: f32x4, rounding: i32) -> f32x4;
 }
 
 #[cfg(test)]
@@ -476,5 +697,115 @@ mod tests {
         let b = f32x4::new(1.0, 4.0, 0.5, 10.0);
         let e = f32x4::new(14.5, 0.0, 14.5, 0.0);
         assert_eq!(sse41::_mm_dp_ps(a, b, 0b01110101), e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_floor_pd() {
+        let a = f64x2::new(2.5, 4.5);
+        let r = sse41::_mm_floor_pd(a);
+        let e = f64x2::new(2.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_floor_ps() {
+        let a = f32x4::new(2.5, 4.5, 8.5, 16.5);
+        let r = sse41::_mm_floor_ps(a);
+        let e = f32x4::new(2.0, 4.0, 8.0, 16.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_floor_sd() {
+        let a = f64x2::new(2.5, 4.5);
+        let b = f64x2::new(-1.5, -3.5);
+        let r = sse41::_mm_floor_sd(a, b);
+        let e = f64x2::new(-2.0, 4.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_floor_ss() {
+        let a = f32x4::new(2.5, 4.5, 8.5, 16.5);
+        let b = f32x4::new(-1.5, -3.5, -7.5, -15.5);
+        let r = sse41::_mm_floor_ss(a, b);
+        let e = f32x4::new(-2.0, 4.5, 8.5, 16.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_ceil_pd() {
+        let a = f64x2::new(1.5, 3.5);
+        let r = sse41::_mm_ceil_pd(a);
+        let e = f64x2::new(2.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_ceil_ps() {
+        let a = f32x4::new(1.5, 3.5, 7.5, 15.5);
+        let r = sse41::_mm_ceil_ps(a);
+        let e = f32x4::new(2.0, 4.0, 8.0, 16.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_ceil_sd() {
+        let a = f64x2::new(1.5, 3.5);
+        let b = f64x2::new(-2.5, -4.5);
+        let r = sse41::_mm_ceil_sd(a, b);
+        let e = f64x2::new(-2.0, 3.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_ceil_ss() {
+        let a = f32x4::new(1.5, 3.5, 7.5, 15.5);
+        let b = f32x4::new(-2.5, -4.5, -8.5, -16.5);
+        let r = sse41::_mm_ceil_ss(a, b);
+        let e = f32x4::new(-2.0, 3.5, 7.5, 15.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_round_pd() {
+        let a = f64x2::new(1.25, 3.75);
+        let r = sse41::_mm_round_pd(a, sse41::_MM_FROUND_TO_NEAREST_INT);
+        let e = f64x2::new(1.0, 4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_round_ps() {
+        let a = f32x4::new(2.25, 4.75, -1.75, -4.25);
+        let r = sse41::_mm_round_ps(a, sse41::_MM_FROUND_TO_ZERO);
+        let e = f32x4::new(2.0, 4.0, -1.0, -4.0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_round_sd() {
+        use x86::sse;
+        let a = f64x2::new(1.5, 3.5);
+        let b = f64x2::new(-2.5, -4.5);
+        let old_mode = sse::_MM_GET_ROUNDING_MODE();
+        sse::_MM_SET_ROUNDING_MODE(sse::_MM_ROUND_TOWARD_ZERO);
+        let r = sse41::_mm_round_sd(a, b, sse41::_MM_FROUND_CUR_DIRECTION);
+        sse::_MM_SET_ROUNDING_MODE(old_mode);
+        let e = f64x2::new(-2.0, 3.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_round_ss() {
+        use x86::sse;
+        let a = f32x4::new(1.5, 3.5, 7.5, 15.5);
+        let b = f32x4::new(-1.75, -4.5, -8.5, -16.5);
+        let old_mode = sse::_MM_GET_ROUNDING_MODE();
+        sse::_MM_SET_ROUNDING_MODE(sse::_MM_ROUND_NEAREST);
+        let r = sse41::_mm_round_ss(a, b, sse41::_MM_FROUND_CUR_DIRECTION);
+        sse::_MM_SET_ROUNDING_MODE(old_mode);
+        let e = f32x4::new(-2.0, 3.5, 7.5, 15.5);
+        assert_eq!(r, e);
     }
 }
