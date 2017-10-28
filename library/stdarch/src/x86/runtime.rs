@@ -162,78 +162,100 @@ fn inv_test_bit(v: usize, idx: u32) -> bool {
 /// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 fn detect_features() -> usize {
-    let ebx;
-    let ecx;
-    let edx;
+    let extended_features_ebx;
+    let proc_info_ecx;
+    let proc_info_edx;
 
     unsafe {
         /// To obtain all feature flags we need two CPUID queries:
 
         /// 1. EAX=1, ECX=0: Queries "Processor Info and Feature Bits"
         /// This gives us most of the CPU features in ECX and EDX (see
-        /// below),
+        /// below).
         asm!("cpuid"
-             : "={ecx}"(ecx), "={edx}"(edx)
+             : "={ecx}"(proc_info_ecx), "={edx}"(proc_info_edx)
              : "{eax}"(0x00000001u32), "{ecx}"(0 as u32)
              : :);
 
         /// 2. EAX=7, ECX=0: Queries "Extended Features"
         /// This gives us information about bmi,bmi2, and avx2 support
-        /// (see below).
+        /// (see below); the result in ECX is not currently needed.
         asm!("cpuid"
-             : "={ebx}"(ebx)
+             : "={ebx}"(extended_features_ebx)
              : "{eax}"(0x00000007u32), "{ecx}"(0 as u32)
              : :);
     }
 
     let mut value: usize = 0;
 
-    // CPUID call with EAX=7, ECX=0 => Extended Features in EBX and ECX
-    // (the result in ECX is not currently needed):
-    if inv_test_bit(ebx, 3) {
+    if inv_test_bit(extended_features_ebx, 3) {
         value = set_bit(value, __Feature::bmi as u32);
     }
-    if inv_test_bit(ebx, 5) {
-        value = set_bit(value, __Feature::avx2 as u32);
-    }
-    if inv_test_bit(ebx, 8) {
+    if inv_test_bit(extended_features_ebx, 8) {
         value = set_bit(value, __Feature::bmi2 as u32);
     }
 
-    // CPUID call with EAX=1 => feature bits in ECX and EDX:
-    if inv_test_bit(ecx, 0) {
+    if inv_test_bit(proc_info_ecx, 0) {
         value = set_bit(value, __Feature::sse3 as u32);
     }
-    if inv_test_bit(ecx, 5) {
+    if inv_test_bit(proc_info_ecx, 5) {
         value = set_bit(value, __Feature::abm as u32);
     }
-    if inv_test_bit(ecx, 9) {
+    if inv_test_bit(proc_info_ecx, 9) {
         value = set_bit(value, __Feature::ssse3 as u32);
     }
-    if inv_test_bit(ecx, 12) {
+    if inv_test_bit(proc_info_ecx, 12) {
         value = set_bit(value, __Feature::fma as u32);
     }
-    if inv_test_bit(ecx, 19) {
+    if inv_test_bit(proc_info_ecx, 19) {
         value = set_bit(value, __Feature::sse4_1 as u32);
     }
-    if inv_test_bit(ecx, 20) {
+    if inv_test_bit(proc_info_ecx, 20) {
         value = set_bit(value, __Feature::sse4_2 as u32);
     }
-    if inv_test_bit(ecx, 21) {
+    if inv_test_bit(proc_info_ecx, 21) {
         value = set_bit(value, __Feature::tbm as u32);
     }
-    if inv_test_bit(ecx, 23) {
+    if inv_test_bit(proc_info_ecx, 23) {
         value = set_bit(value, __Feature::popcnt as u32);
     }
-    if inv_test_bit(ecx, 28) {
-        value = set_bit(value, __Feature::avx as u32);
-    }
 
-    if inv_test_bit(edx, 25) {
+    if inv_test_bit(proc_info_edx, 25) {
         value = set_bit(value, __Feature::sse as u32);
     }
-    if inv_test_bit(edx, 26) {
+    if inv_test_bit(proc_info_edx, 26) {
         value = set_bit(value, __Feature::sse2 as u32);
+    }
+
+    // ECX[26] detects XSAVE and ECX[27] detects OSXSAVE, that is, whether the
+    // OS is AVX enabled and supports saving the state of the AVX/AVX2 vector
+    // registers on context-switches, see:
+    //
+    // - https://software.intel.com/en-us/blogs/2011/04/14/is-avx-enabled
+    // - https://hg.mozilla.
+    // org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
+    //
+    if inv_test_bit(proc_info_ecx, 26) && inv_test_bit(proc_info_ecx, 27) {
+        unsafe fn xgetbv(xcr_no: u32) -> u64 {
+            let eax: u32;
+            let edx: u32;
+            // xgetbv
+            asm!("xgetbv"
+                 : "={eax}"(eax),  "={edx}"(edx)
+                 : "{ecx}"(xcr_no)
+                 : :);
+            ((edx as u64) << 32) | (eax as u64)
+        }
+
+        // This is safe because on x86 `xgetbv` is always available.
+        if unsafe { xgetbv(0) } & 6 == 6 {
+            if inv_test_bit(proc_info_ecx, 28) {
+                value = set_bit(value, __Feature::avx as u32);
+            }
+            if inv_test_bit(extended_features_ebx, 5) {
+                value = set_bit(value, __Feature::avx2 as u32);
+            }
+        }
     }
 
     value
