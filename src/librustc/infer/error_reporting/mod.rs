@@ -66,7 +66,7 @@ use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, Region, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Region, Ty, TyCtxt, TypeFoldable, TypeVariants};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -673,14 +673,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                          values: Option<ValuePairs<'tcx>>,
                          terr: &TypeError<'tcx>)
     {
-        let (expected_found, is_simple_error) = match values {
-            None => (None, false),
+        let (expected_found, exp_found, is_simple_error) = match values {
+            None => (None, None, false),
             Some(values) => {
-                let is_simple_error = match values {
+                let (is_simple_error, exp_found) = match values {
                     ValuePairs::Types(exp_found) => {
-                        exp_found.expected.is_primitive() && exp_found.found.is_primitive()
+                        let is_simple_err = exp_found.expected.is_primitive()
+                            && exp_found.found.is_primitive();
+
+                        (is_simple_err, Some(exp_found))
                     }
-                    _ => false,
+                    _ => (false, None),
                 };
                 let vals = match self.values_str(&values) {
                     Some((expected, found)) => Some((expected, found)),
@@ -690,11 +693,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         return
                     }
                 };
-                (vals, is_simple_error)
+                (vals, exp_found, is_simple_error)
             }
         };
 
         let span = cause.span;
+
+        diag.span_label(span, terr.to_string());
+        if let Some((sp, msg)) = secondary_span {
+            diag.span_label(sp, msg);
+        }
 
         if let Some((expected, found)) = expected_found {
             match (terr, is_simple_error, expected == found) {
@@ -704,16 +712,35 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         &format!(" ({})", values.expected.sort_string(self.tcx)),
                         &format!(" ({})", values.found.sort_string(self.tcx)));
                 }
-                (_, false,  _) => {
+                (_, false, _) => {
+                    if let Some(exp_found) = exp_found {
+                        let (def_id, ret_ty) = match exp_found.found.sty {
+                            TypeVariants::TyFnDef(def, _) => {
+                                (Some(def), Some(self.tcx.fn_sig(def).output()))
+                            }
+                            _ => (None, None)
+                        };
+
+                        let exp_is_struct = match exp_found.expected.sty {
+                            TypeVariants::TyAdt(def, _) => def.is_struct(),
+                            _ => false
+                        };
+
+                        if let (Some(def_id), Some(ret_ty)) = (def_id, ret_ty) {
+                            if exp_is_struct && exp_found.expected == ret_ty.0 {
+                                let message = format!(
+                                    "did you mean `{}(/* fields */)`?",
+                                    self.tcx.item_path_str(def_id)
+                                );
+                                diag.span_label(cause.span, message);
+                            }
+                        }
+                    }
+
                     diag.note_expected_found(&"type", expected, found);
                 }
                 _ => (),
             }
-        }
-
-        diag.span_label(span, terr.to_string());
-        if let Some((sp, msg)) = secondary_span {
-            diag.span_label(sp, msg);
         }
 
         self.note_error_origin(diag, &cause);
