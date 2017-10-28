@@ -401,16 +401,6 @@ fn bar(x: &str, y: &str) -> &str { }
 fn baz<'a>(x: &'a str, y: &str) -> &str { }
 ```
 
-Here's an example that is currently an error, but may work in a future version
-of Rust:
-
-```compile_fail,E0106
-struct Foo<'a>(&'a str);
-
-trait Quux { }
-impl Quux for Foo { }
-```
-
 Lifetime elision in implementation headers was part of the lifetime elision
 RFC. It is, however, [currently unimplemented][iss15872].
 
