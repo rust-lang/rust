@@ -15,8 +15,8 @@ For example:
 ```rust,compile_fail
 #![feature(on_unimplemented)]
 
-#[rustc_on_unimplemented="a collection of type `{Self}` cannot be built from an \
-                          iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented="an iterator over elements of type `{A}` \
+    cannot be built from a collection of type `{Self}`"]
 trait MyIterator<A> {
     fn next(&mut self) -> A;
 }
@@ -37,9 +37,9 @@ error[E0277]: the trait bound `&[{integer}]: MyIterator<char>` is not satisfied
   --> <anon>:14:5
    |
 14 |     iterate_chars(&[1, 2, 3][..]);
-   |     ^^^^^^^^^^^^^ the trait `MyIterator<char>` is not implemented for `&[{integer}]`
+   |     ^^^^^^^^^^^^^ an iterator over elements of type `char` cannot be built from a collection of type `&[{integer}]`
    |
-   = note: a collection of type `&[{integer}]` cannot be built from an iterator over elements of type `char`
+   = help: the trait `MyIterator<char>` is not implemented for `&[{integer}]`
    = note: required by `iterate_chars`
 
 error: aborting due to previous error
