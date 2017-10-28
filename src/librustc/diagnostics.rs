@@ -1875,7 +1875,7 @@ fn main() {
 "##,
 
 E0601: r##"
-No `main` function was found in a binary crate. To fix this error, just add a
+No `main` function was found in a binary crate. To fix this error, add a
 `main` function. For example:
 
 ```
