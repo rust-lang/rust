@@ -721,16 +721,45 @@ impl UdpSocket {
 
     /// Moves this UDP socket into or out of nonblocking mode.
     ///
-    /// On Unix this corresponds to calling fcntl, and on Windows this
-    /// corresponds to calling ioctlsocket.
+    /// This will result in `recv`, `recv_from`, `send`, and `send_to`
+    /// operations becoming nonblocking, i.e. immediately returning from their
+    /// calls. If the IO operation is successful, `Ok` is returned and no
+    /// further action is required. If the IO operation could not be completed
+    /// and needs to be retried, an error with kind
+    /// [`io::ErrorKind::WouldBlock`] is returned.
+    ///
+    /// On Unix platforms, calling this method corresponds to calling `fcntl`
+    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// `ioctlsocket` `FIONBIO`.
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     ///
     /// # Examples
     ///
+    /// Create a UDP socket bound to `127.0.0.1:7878` and read bytes in
+    /// nonblocking mode:
+    ///
     /// ```no_run
+    /// use std::io;
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
-    /// socket.set_nonblocking(true).expect("set_nonblocking call failed");
+    /// let socket = UdpSocket::bind("127.0.0.1:7878").unwrap();
+    /// socket.set_nonblocking(true).unwrap();
+    ///
+    /// # fn wait_for_fd() { unimplemented!() }
+    /// let mut buf = [0; 10];
+    /// let (num_bytes_read, _) = loop {
+    ///     match socket.recv_from(&mut buf) {
+    ///         Ok(n) => break n,
+    ///         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///             // wait until network socket is ready, typically implemented
+    ///             // via platform-specific APIs such as epoll or IOCP
+    ///             wait_for_fd();
+    ///         }
+    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///     }
+    /// };
+    /// println!("bytes: {:?}", &buf[..num_bytes_read]);
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
