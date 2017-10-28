@@ -5,7 +5,7 @@ RUN sh /scripts/android-base-apt-get.sh
 
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
-    download_and_make_toolchain android-ndk-r13b-linux-x86_64.zip arm64 21
+    download_and_make_toolchain android-ndk-r15c-linux-x86_64.zip arm64 21
 
 ENV PATH=$PATH:/android/ndk/arm64-21/bin
 
