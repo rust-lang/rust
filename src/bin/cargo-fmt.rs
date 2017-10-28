@@ -330,8 +330,13 @@ fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, io::
 
         // If we can find any local dependencies, we will try to get targets from those as well.
         for path in get_path_to_local_dependencies(&packages) {
-            env::set_current_dir(path)?;
-            targets.append(&mut get_targets(workspace_hitlist)?);
+            match env::set_current_dir(path) {
+                Ok(..) => match get_targets(workspace_hitlist) {
+                    Ok(ref mut t) => targets.append(t),
+                    Err(..) => continue,
+                },
+                Err(..) => continue,
+            }
         }
 
         env::set_current_dir(cur_dir)?;
