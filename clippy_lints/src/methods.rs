@@ -735,7 +735,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let name = implitem.name;
         let parent = cx.tcx.hir.get_parent(implitem.id);
         let item = cx.tcx.hir.expect_item(parent);
-        if_chain! {[
+        if_chain! {
             if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
             if let Some(first_arg_ty) = sig.decl.inputs.get(0);
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next();
