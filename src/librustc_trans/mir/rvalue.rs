@@ -878,18 +878,11 @@ fn cast_float_to_int(bcx: &Builder,
     // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
     // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
     fn compute_clamp_bounds<F: Float>(signed: bool, int_ty: Type) -> (u128, u128) {
-        let f_min = if signed {
-            let rounded_min = F::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
-            assert_eq!(rounded_min.status, Status::OK);
-            rounded_min.value
-        } else {
-            F::ZERO
-        };
-
+        let rounded_min = F::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
+        assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = F::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
         assert!(rounded_max.value.is_finite());
-
-        (f_min.to_bits(), rounded_max.value.to_bits())
+        (rounded_min.value.to_bits(), rounded_max.value.to_bits())
     }
     fn int_max(signed: bool, int_ty: Type) -> u128 {
         let shift_amount = 128 - int_ty.int_width();
@@ -906,11 +899,6 @@ fn cast_float_to_int(bcx: &Builder,
             0
         }
     }
-    let (f_min, f_max) = match float_ty.float_width() {
-        32 => compute_clamp_bounds::<ieee::Single>(signed, int_ty),
-        64 => compute_clamp_bounds::<ieee::Double>(signed, int_ty),
-        n => bug!("unsupported float width {}", n),
-    };
     let float_bits_to_llval = |bits| {
         let bits_llval = match float_ty.float_width() {
             32 => C_u32(bcx.ccx, bits as u32),
@@ -918,6 +906,11 @@ fn cast_float_to_int(bcx: &Builder,
             n => bug!("unsupported float width {}", n),
         };
         consts::bitcast(bits_llval, float_ty)
+    };
+    let (f_min, f_max) = match float_ty.float_width() {
+        32 => compute_clamp_bounds::<ieee::Single>(signed, int_ty),
+        64 => compute_clamp_bounds::<ieee::Double>(signed, int_ty),
+        n => bug!("unsupported float width {}", n),
     };
     let f_min = float_bits_to_llval(f_min);
     let f_max = float_bits_to_llval(f_max);
@@ -935,37 +928,38 @@ fn cast_float_to_int(bcx: &Builder,
     // undef does not introduce any non-determinism either.
     // More importantly, the above procedure correctly implements saturating conversion.
     // Proof (sketch):
-    // If x is NaN, 0 is trivially returned.
+    // If x is NaN, 0 is returned by definition.
     // Otherwise, x is finite or infinite and thus can be compared with f_min and f_max.
     // This yields three cases to consider:
     // (1) if x in [f_min, f_max], the result of fpto[su]i is returned, which agrees with
     //     saturating conversion for inputs in that range.
     // (2) if x > f_max, then x is larger than int_ty::MAX. This holds even if f_max is rounded
     //     (i.e., if f_max < int_ty::MAX) because in those cases, nextUp(f_max) is already larger
-    //     than int_ty::MAX. Because x is larger than int_ty::MAX, the return value is correct.
+    //     than int_ty::MAX. Because x is larger than int_ty::MAX, the return value of int_ty::MAX
+    //     is correct.
     // (3) if x < f_min, then x is smaller than int_ty::MIN. As shown earlier, f_min exactly equals
-    //     int_ty::MIN and therefore the return value of int_ty::MIN is immediately correct.
+    //     int_ty::MIN and therefore the return value of int_ty::MIN is correct.
     // QED.
 
     // Step 1 was already performed above.
 
-    // Step 2: We use two comparisons and two selects, with s1 being the result:
-    //     %less = fcmp ult %x, %f_min
+    // Step 2: We use two comparisons and two selects, with %s1 being the result:
+    //     %less_or_nan = fcmp ult %x, %f_min
     //     %greater = fcmp olt %x, %f_max
-    //     %s0 = select %less, int_ty::MIN, %fptosi_result
+    //     %s0 = select %less_or_nan, int_ty::MIN, %fptosi_result
     //     %s1 = select %greater, int_ty::MAX, %s0
-    // Note that %less uses an *unordered* comparison. This comparison is true if the operands are
-    // not comparable (i.e., if x is NaN). The unordered comparison ensures that s1 becomes
-    // int_ty::MIN if x is NaN.
-    // Performance note: It can be lowered to a flipped comparison and a negation (and the negation
-    // can be merged into the select), so it not necessarily any more expensive than a ordered
-    // ("normal") comparison. Whether these optimizations will be performed is ultimately up to the
-    // backend but at least x86 does that.
-    let less = bcx.fcmp(llvm::RealULT, x, f_min);
+    // Note that %less_or_nan uses an *unordered* comparison. This comparison is true if the
+    // operands are not comparable (i.e., if x is NaN). The unordered comparison ensures that s1
+    // becomes int_ty::MIN if x is NaN.
+    // Performance note: Unordered comparison can be lowered to a "flipped" comparison and a
+    // negation, and the negation can be merged into the select. Therefore, it not necessarily any
+    // more expensive than a ordered ("normal") comparison. Whether these optimizations will be
+    // performed is ultimately up to the backend, but at least x86 does perform them.
+    let less_or_nan = bcx.fcmp(llvm::RealULT, x, f_min);
     let greater = bcx.fcmp(llvm::RealOGT, x, f_max);
-    let int_max = C_big_integral(int_ty, int_max(signed, int_ty) as u128);
+    let int_max = C_big_integral(int_ty, int_max(signed, int_ty));
     let int_min = C_big_integral(int_ty, int_min(signed, int_ty) as u128);
-    let s0 = bcx.select(less, int_min, fptosui_result);
+    let s0 = bcx.select(less_or_nan, int_min, fptosui_result);
     let s1 = bcx.select(greater, int_max, s0);
 
     // Step 3: NaN replacement.
@@ -973,7 +967,7 @@ fn cast_float_to_int(bcx: &Builder,
     // Therefore we only need to execute this step for signed integer types.
     if signed {
         // LLVM has no isNaN predicate, so we use (x == x) instead
-        bcx.select(bcx.fcmp(llvm::RealOEQ, x, x), s1, C_big_integral(int_ty, 0))
+        bcx.select(bcx.fcmp(llvm::RealOEQ, x, x), s1, C_uint(int_ty, 0))
     } else {
         s1
     }
