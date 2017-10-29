@@ -10,25 +10,66 @@
 
 //! A module for working with processes.
 //!
-//! # Examples
+//! This module is mostly concerned with spawning and interacting with child
+//! processes, but it also provides [`abort`] and [`exit`] for terminating the
+//! current process.
 //!
-//! Basic usage where we try to execute the `cat` shell command:
+//! # Spawning a process
 //!
-//! ```should_panic
+//! The [`Command`] struct is used to configure and spawn processes:
+//!
+//! ```
 //! use std::process::Command;
 //!
-//! let mut child = Command::new("/bin/cat")
-//!                         .arg("file.txt")
-//!                         .spawn()
-//!                         .expect("failed to execute child");
+//! let output = Command::new("echo")
+//!                      .arg("Hello world")
+//!                      .output()
+//!                      .expect("Failed to execute command");
 //!
-//! let ecode = child.wait()
-//!                  .expect("failed to wait on child");
-//!
-//! assert!(ecode.success());
+//! assert_eq!(b"Hello world\n", output.stdout.as_slice());
 //! ```
 //!
-//! Calling a command with input and reading its output:
+//! Several methods on [`Command`], such as [`spawn`] or [`output`], can be used
+//! to spawn a process. In particular, [`output`] spawns the child process and
+//! waits until the process terminates, while [`spawn`] will return a [`Child`]
+//! that represents the spawned child process.
+//!
+//! # Handling I/O
+//!
+//! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be
+//! configured by passing an [`Stdio`] to the corresponding method on
+//! [`Command`]. Once spawned, they can be accessed from the [`Child`]. For
+//! example, piping output from one command into another command can be done
+//! like so:
+//!
+//! ```no_run
+//! use std::process::{Command, Stdio};
+//!
+//! // stdout must be configured with `Stdio::piped` in order to use
+//! // `echo_child.stdout`
+//! let echo_child = Command::new("echo")
+//!     .arg("Oh no, a tpyo!")
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("Failed to start echo process");
+//!
+//! // Note that `echo_child` is moved here, but we won't be needing
+//! // `echo_child` anymore
+//! let echo_out = echo_child.stdout.expect("Failed to open echo stdout");
+//!
+//! let mut sed_child = Command::new("sed")
+//!     .arg("s/tpyo/typo/")
+//!     .stdin(Stdio::from(echo_out))
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("Failed to start sed process");
+//!
+//! let output = sed_child.wait_with_output().expect("Failed to wait on sed");
+//! assert_eq!(b"Oh no, a typo!\n", output.stdout.as_slice());
+//! ```
+//!
+//! Note that [`ChildStderr`] and [`ChildStdout`] implement [`Write`] and
+//! [`ChildStdin`] implements [`Read`]:
 //!
 //! ```no_run
 //! use std::process::{Command, Stdio};
@@ -52,6 +93,26 @@
 //!
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
+//!
+//! [`abort`]: fn.abort.html
+//! [`exit`]: fn.exit.html
+//!
+//! [`Command`]: struct.Command.html
+//! [`spawn`]: struct.Command.html#method.spawn
+//! [`output`]: struct.Command.html#method.output
+//!
+//! [`Child`]: struct.Child.html
+//! [`ChildStdin`]: struct.ChildStdin.html
+//! [`ChildStdout`]: struct.ChildStdout.html
+//! [`ChildStderr`]: struct.ChildStderr.html
+//! [`Stdio`]: struct.Stdio.html
+//!
+//! [`stdout`]: struct.Command.html#method.stdout
+//! [`stdin`]: struct.Command.html#method.stdin
+//! [`stderr`]: struct.Command.html#method.stderr
+//!
+//! [`Write`]: ../io/trait.Write.html
+//! [`Read`]: ../io/trait.Read.html
 
 #![stable(feature = "process", since = "1.0.0")]
 
