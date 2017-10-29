@@ -16,6 +16,8 @@
 // stripping away any starting or ending parenthesis characters—hence this
 // test of the JSON error format.
 
+#![warn(unused_parens)]
+
 fn main() {
     // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not
     // the malformed `1 / (2 + 3`

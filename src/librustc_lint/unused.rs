@@ -225,7 +225,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
 }
 
 declare_lint! {
-    UNUSED_PARENS,
+    pub(super) UNUSED_PARENS,
     Warn,
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
@@ -350,7 +350,7 @@ impl EarlyLintPass for UnusedImportBraces {
 }
 
 declare_lint! {
-    UNUSED_ALLOCATION,
+    pub(super) UNUSED_ALLOCATION,
     Warn,
     "detects unnecessary allocations that can be eliminated"
 }
