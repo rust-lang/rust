@@ -371,6 +371,11 @@
                 return false;
             }
 
+            function checkReturned(obj, val) {
+                return obj && obj.type && obj.type.output &&
+                       obj.type.output.name.toLowerCase() === val;
+            }
+
             function typePassesFilter(filter, type) {
                 // No filter
                 if (filter < 0) return true;
@@ -495,6 +500,15 @@
                                 });
                             }
                         } else if (findArg(searchIndex[j], val)) {
+                            if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
+                                results.push({
+                                    id: j,
+                                    index: 0,
+                                    // we want lev results to go lower than others
+                                    lev: lev_distance,
+                                });
+                            }
+                        } else if (checkReturned(searchIndex[j], val)) {
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
                                 results.push({
                                     id: j,
