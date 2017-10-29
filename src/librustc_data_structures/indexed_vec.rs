@@ -86,7 +86,11 @@ macro_rules! newtype_index {
     // ---- private rules ----
 
     // Base case, user-defined constants (if any) have already been defined
-    (@derives[$($derives:ident),*] @type[$type:ident] @pub[$($pub:tt)*] @max[$max:expr] @debug_name[$debug_name:expr]) => (
+    (@derives    [$($derives:ident),*]
+     @type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$max:expr]
+     @debug_name [$debug_name:expr]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         pub struct $type($($pub)* u32);
 
@@ -110,8 +114,12 @@ macro_rules! newtype_index {
 
     // By not including the @derives marker in this list nor in the default args, we can force it
     // to come first if it exists
-    (@type[$type:ident] @pub[$($pub:tt)*] @max[$max:expr] @debug_name[$debug_name:expr]
-            derive [$($derives:ident),+] $($tokens:tt)*) => (
+    (@type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$max:expr]
+     @debug_name [$debug_name:expr]
+                 derive [$($derives:ident),+]
+                 $($tokens:tt)*) => (
         newtype_index!(
             @derives    [$($derives),+]
             @type       [$type]
@@ -122,7 +130,11 @@ macro_rules! newtype_index {
     );
 
     // The case where no derives are added
-    (@type[$type:ident] @pub[$($pub:tt)*] @max[$max:expr] @debug_name[$debug_name:expr] $($tokens:tt)*) => (
+    (@type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$max:expr]
+     @debug_name [$debug_name:expr]
+                 $($tokens:tt)*) => (
         newtype_index!(
             @derives    []
             @type       [$type]
@@ -133,8 +145,12 @@ macro_rules! newtype_index {
     );
 
     // Rewrite final without comma to one that includes comma
-    (@derives[$($derives:ident),*] @type[$type:ident] @pub[$($pub:tt)*] @max[$max:expr] @debug_name[$debug_name:expr]
-            $name:ident = $constant:expr) => (
+    (@derives    [$($derives:ident),*]
+     @type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$max:expr]
+     @debug_name [$debug_name:expr]
+                 $name:ident = $constant:expr) => (
         newtype_index!(
             @derives    [$($derives),*]
             @type       [$type]
@@ -145,8 +161,13 @@ macro_rules! newtype_index {
     );
 
     // Rewrite final const without comma to one that includes comma
-    (@derives[$($derives:ident),*] @type[$type:ident] @pub[$($pub:tt)*] @max[$_max:expr] @debug_name[$debug_name:expr]
-            $(#[doc = $doc:expr])* const $name:ident = $constant:expr) => (
+    (@derives    [$($derives:ident),*]
+     @type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$_max:expr]
+     @debug_name [$debug_name:expr]
+                 $(#[doc = $doc:expr])*
+                 const $name:ident = $constant:expr) => (
         newtype_index!(
             @derives    [$($derives),*]
             @type       [$type]
@@ -157,8 +178,13 @@ macro_rules! newtype_index {
     );
 
     // Replace existing default for max
-    (@derives[$($derives:ident),*] @type[$type:ident] @pub[$($pub:tt)*] @max[$_max:expr] @debug_name[$debug_name:expr]
-            MAX = $max:expr, $($tokens:tt)*) => (
+    (@derives    [$($derives:ident),*]
+     @type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$_max:expr]
+     @debug_name [$debug_name:expr]
+                 MAX = $max:expr,
+                 $($tokens:tt)*) => (
         newtype_index!(
             @derives    [$($derives),*]
             @type       [$type]
@@ -169,8 +195,13 @@ macro_rules! newtype_index {
     );
 
     // Replace existing default for debug_name
-    (@derives[$($derives:ident),*] @type[$type:ident] @pub[$($pub:tt)*] @max[$max:expr] @debug_name[$_debug_name:expr]
-            DEBUG_NAME = $debug_name:expr, $($tokens:tt)*) => (
+    (@derives    [$($derives:ident),*]
+     @type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$max:expr]
+     @debug_name [$_debug_name:expr]
+                 DEBUG_NAME = $debug_name:expr,
+                 $($tokens:tt)*) => (
         newtype_index!(
             @derives    [$($derives),*]
             @type       [$type]
@@ -181,8 +212,14 @@ macro_rules! newtype_index {
     );
 
     // Assign a user-defined constant
-    (@derives[$($derives:ident),*] @type[$type:ident] @pub[$($pub:tt)*] @max[$max:expr] @debug_name[$debug_name:expr]
-            $(#[doc = $doc:expr])* const $name:ident = $constant:expr, $($tokens:tt)*) => (
+    (@derives    [$($derives:ident),*]
+     @type       [$type:ident]
+     @pub        [$($pub:tt)*]
+     @max        [$max:expr]
+     @debug_name [$debug_name:expr]
+                 $(#[doc = $doc:expr])*
+                 const $name:ident = $constant:expr,
+                 $($tokens:tt)*) => (
         $(#[doc = $doc])*
         pub const $name: $type = $type($constant);
         newtype_index!(
