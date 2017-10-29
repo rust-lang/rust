@@ -158,7 +158,8 @@ pub struct BlockRemainder {
 
 newtype_index!(FirstStatementIndex
     {
-        DEBUG_FORMAT = "{}",
+        derive[RustcEncodable, RustcDecodable]
+        DEBUG_NAME = "",
         MAX = SCOPE_DATA_REMAINDER_MAX,
     });
 
