@@ -395,19 +395,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         assert!(self.bccx.region_scope_tree.scopes_intersect(old_loan.kill_scope,
                                                        new_loan.kill_scope));
 
-        let err_old_new = match self.report_error_if_loan_conflicts_with_restriction(
+        let err_old_new = Result::err(self.report_error_if_loan_conflicts_with_restriction(
             old_loan, new_loan, old_loan, new_loan
-        ) {
-            Err(err) => Some(err),
-            Ok(_) => None
-        };
-
-        let err_new_old = match self.report_error_if_loan_conflicts_with_restriction(
+        ));
+        let err_new_old = Result::err(self.report_error_if_loan_conflicts_with_restriction(
             new_loan, old_loan, old_loan, new_loan
-        ) {
-            Err(err) => Some(err),
-            Ok(_) => None
-        };
+        ));
 
         if let Some(mut err_old) = err_old_new {
             err_old.emit();
