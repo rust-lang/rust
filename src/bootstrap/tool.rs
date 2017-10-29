@@ -415,10 +415,8 @@ impl Step for Clippy {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        match run.builder.top_stage {
-            1 => run.never(),
-            _ => run.path("src/tools/clippy"),
-        }
+        let builder = run.builder;
+        run.path("src/tools/clippy").default_condition(builder.build.config.extended)
     }
 
     fn make_run(run: RunConfig) {
