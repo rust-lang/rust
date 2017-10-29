@@ -2040,6 +2040,20 @@ impl<'tcx> TyS<'tcx> {
             }
         }
     }
+
+    pub fn has_metadata<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        use syntax_pos::DUMMY_SP;
+        if self.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+            return false;
+        }
+
+        let tail = tcx.struct_tail(self);
+        match tail.sty {
+            ty::TyForeign(..) => false,
+            ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
