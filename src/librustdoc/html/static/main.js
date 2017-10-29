@@ -361,19 +361,30 @@
             }
 
             function findArg(obj, val) {
+                var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (obj && obj.type && obj.type.inputs.length > 0) {
                     for (var i = 0; i < obj.type.inputs.length; i++) {
                         if (obj.type.inputs[i].name === val) {
-                            return true;
+                            // No need to check anything else: we found it. Let's just move on.
+                            return 0;
+                        }
+                        var tmp = levenshtein(obj.type.inputs[i].name, val);
+                        if (tmp < lev_distance) {
+                            lev_distance = tmp;
                         }
                     }
                 }
-                return false;
+                return lev_distance;
             }
 
             function checkReturned(obj, val) {
-                return obj && obj.type && obj.type.output &&
-                       obj.type.output.name.toLowerCase() === val;
+                if (obj && obj.type && obj.type.output) {
+                    if (obj.type.output.name.toLowerCase() === val) {
+                        return 0;
+                    }
+                    return levenshtein(obj.type.output.name.toLowerCase(), val);
+                }
+                return MAX_LEV_DISTANCE + 1;
             }
 
             function typePassesFilter(filter, type) {
@@ -489,8 +500,7 @@
                                 });
                             }
                         } else if (
-                            (lev_distance = levenshtein(searchWords[j], val)) <=
-                                MAX_LEV_DISTANCE) {
+                            (lev_distance = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
                                 results.push({
                                     id: j,
@@ -499,7 +509,8 @@
                                     lev: lev_distance,
                                 });
                             }
-                        } else if (findArg(searchIndex[j], val)) {
+                        } else if (
+                            (lev_distance = findArg(searchIndex[j], val)) <= MAX_LEV_DISTANCE) {
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
                                 results.push({
                                     id: j,
@@ -508,7 +519,9 @@
                                     lev: lev_distance,
                                 });
                             }
-                        } else if (checkReturned(searchIndex[j], val)) {
+                        } else if (
+                            (lev_distance = checkReturned(searchIndex[j], val)) <=
+                            MAX_LEV_DISTANCE) {
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
                                 results.push({
                                     id: j,
