@@ -263,6 +263,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             HirDef::Union(..) |
             HirDef::Enum(..) |
             HirDef::TyAlias(..) |
+            HirDef::TyForeign(..) |
             HirDef::Trait(_) => {
                 let span = self.span_from_span(sub_span.expect("No span found for type ref"));
                 self.dumper.dump_ref(Ref {
@@ -1538,6 +1539,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 }
 
                 self.visit_ty(ty);
+            }
+            ast::ForeignItemKind::Ty => {
+                if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
+                    down_cast_data!(var_data, DefData, item.span);
+                    self.dumper.dump_def(item.vis == ast::Visibility::Public, var_data);
+                }
             }
         }
     }

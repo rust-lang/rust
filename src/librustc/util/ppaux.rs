@@ -17,7 +17,7 @@ use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::{TyClosure, TyGenerator, TyProjection, TyAnon};
+use ty::{TyClosure, TyGenerator, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use util::nodemap::FxHashSet;
@@ -1012,6 +1012,7 @@ define_print! {
                         Ok(())
                     }
                 }
+                TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
                 TyProjection(ref data) => data.print(f, cx),
                 TyAnon(def_id, substs) => {
                     ty::tls::with(|tcx| {

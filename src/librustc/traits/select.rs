@@ -1705,6 +1705,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     // say nothing; a candidate may be added by
                     // `assemble_candidates_from_object_ty`.
                 }
+                ty::TyForeign(..) => {
+                    // Since the contents of foreign types is unknown,
+                    // we don't add any `..` impl. Default traits could
+                    // still be provided by a manual implementation for
+                    // this trait and type.
+                }
                 ty::TyParam(..) |
                 ty::TyProjection(..) => {
                     // In these cases, we don't know what the actual
@@ -2022,7 +2028,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(Vec::new()))
             }
 
-            ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) => Never,
+            ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) | ty::TyForeign(..) => Never,
 
             ty::TyTuple(tys, _) => {
                 Where(ty::Binder(tys.last().into_iter().cloned().collect()))
@@ -2066,7 +2072,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(Vec::new()))
             }
 
-            ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) | ty::TyGenerator(..) |
+            ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
+            ty::TyGenerator(..) | ty::TyForeign(..) |
             ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 Never
             }
@@ -2148,6 +2155,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyDynamic(..) |
             ty::TyParam(..) |
+            ty::TyForeign(..) |
             ty::TyProjection(..) |
             ty::TyInfer(ty::TyVar(_)) |
             ty::TyInfer(ty::FreshTy(_)) |

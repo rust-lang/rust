@@ -2044,6 +2044,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ItemType::Primitive       => ("primitives", "Primitive Types"),
                 ItemType::AssociatedType  => ("associated-types", "Associated Types"),
                 ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
+                ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
             };
             write!(w, "<h2 id='{id}' class='section-header'>\
                        <a href=\"#{id}\">{name}</a></h2>\n<table>",
@@ -3679,7 +3680,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                    ItemType::Enum, ItemType::Constant, ItemType::Static, ItemType::Trait,
                    ItemType::Function, ItemType::Typedef, ItemType::Union, ItemType::Impl,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
-                   ItemType::AssociatedType, ItemType::AssociatedConst] {
+                   ItemType::AssociatedType, ItemType::AssociatedConst, ItemType::ForeignType] {
         if items.iter().any(|it| {
             if let clean::DefaultImplItem(..) = it.inner {
                 false
@@ -3708,6 +3709,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                 ItemType::Primitive       => ("primitives", "Primitive Types"),
                 ItemType::AssociatedType  => ("associated-types", "Associated Types"),
                 ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
+                ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
             };
             sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
                                       id = short,

@@ -49,6 +49,7 @@ pub enum SimplifiedTypeGen<D>
     AnonSimplifiedType(D),
     FunctionSimplifiedType(usize),
     ParameterSimplifiedType,
+    ForeignSimplifiedType(DefId),
 }
 
 /// Tries to simplify a type by dropping type parameters, deref'ing away any reference types, etc.
@@ -113,6 +114,9 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyAnon(def_id, _) => {
             Some(AnonSimplifiedType(def_id))
         }
+        ty::TyForeign(def_id) => {
+            Some(ForeignSimplifiedType(def_id))
+        }
         ty::TyInfer(_) | ty::TyError => None,
     }
 }
@@ -140,6 +144,7 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
             AnonSimplifiedType(d) => AnonSimplifiedType(map(d)),
             FunctionSimplifiedType(n) => FunctionSimplifiedType(n),
             ParameterSimplifiedType => ParameterSimplifiedType,
+            ForeignSimplifiedType(d) => ForeignSimplifiedType(d),
         }
     }
 }
@@ -172,6 +177,7 @@ impl<'gcx, D> HashStable<StableHashingContext<'gcx>> for SimplifiedTypeGen<D>
             GeneratorSimplifiedType(d) => d.hash_stable(hcx, hasher),
             AnonSimplifiedType(d) => d.hash_stable(hcx, hasher),
             FunctionSimplifiedType(n) => n.hash_stable(hcx, hasher),
+            ForeignSimplifiedType(d) => d.hash_stable(hcx, hasher),
         }
     }
 }

@@ -288,7 +288,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     err.emit();
                 });
             }
-            ForeignItemKind::Static(..) => {}
+            ForeignItemKind::Static(..) | ForeignItemKind::Ty => {}
         }
 
         visit::walk_foreign_item(self, fi)

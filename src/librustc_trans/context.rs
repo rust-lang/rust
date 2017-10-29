@@ -32,6 +32,7 @@ use rustc::session::Session;
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
+use rustc_trans_utils;
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -299,6 +300,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         common::type_is_freeze(self.tcx, ty)
+    }
+
+    pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
+        rustc_trans_utils::common::type_has_metadata(self.tcx, ty)
     }
 
     pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {

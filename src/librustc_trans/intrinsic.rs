@@ -139,13 +139,15 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
-            if !bcx.ccx.shared().type_is_sized(tp_ty) {
+            if bcx.ccx.shared().type_is_sized(tp_ty) {
+                let lltp_ty = type_of::type_of(ccx, tp_ty);
+                C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+            } else if bcx.ccx.shared().type_has_metadata(tp_ty) {
                 let (llsize, _) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llsize
             } else {
-                let lltp_ty = type_of::type_of(ccx, tp_ty);
-                C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+                C_usize(ccx, 0u64)
             }
         }
         "min_align_of" => {
@@ -154,12 +156,14 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
-            if !bcx.ccx.shared().type_is_sized(tp_ty) {
+            if bcx.ccx.shared().type_is_sized(tp_ty) {
+                C_usize(ccx, ccx.align_of(tp_ty) as u64)
+            } else if bcx.ccx.shared().type_has_metadata(tp_ty) {
                 let (_, llalign) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llalign
             } else {
-                C_usize(ccx, ccx.align_of(tp_ty) as u64)
+                C_usize(ccx, 1u64)
             }
         }
         "pref_align_of" => {

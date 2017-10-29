@@ -335,6 +335,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                         output);
                 }
             },
+            ty::TyForeign(did) => self.push_def_path(did, output),
             ty::TyFnDef(..) |
             ty::TyFnPtr(_) => {
                 let sig = t.fn_sig(self.tcx);

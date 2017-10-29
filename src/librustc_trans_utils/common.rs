@@ -25,6 +25,19 @@ pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> boo
     ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
 }
 
+pub fn type_has_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    if type_is_sized(tcx, ty) {
+        return false;
+    }
+
+    let tail = tcx.struct_tail(ty);
+    match tail.sty {
+        ty::TyForeign(..) => false,
+        ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+        _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+    }
+}
+
 pub fn requests_inline<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: &ty::Instance<'tcx>
