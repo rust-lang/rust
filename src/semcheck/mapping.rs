@@ -293,6 +293,7 @@ impl NameMapping {
             Variant(_) |
             Trait(_) |
             TyAlias(_) |
+            TyForeign(_) |
             AssociatedTy(_) |
             PrimTy(_) |
             TyParam(_) |
