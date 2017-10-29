@@ -564,8 +564,6 @@ extern "C" {
                                    ElementCount: c_uint,
                                    Packed: Bool)
                                    -> TypeRef;
-    pub fn LLVMCountStructElementTypes(StructTy: TypeRef) -> c_uint;
-    pub fn LLVMGetStructElementTypes(StructTy: TypeRef, Dest: *mut TypeRef);
     pub fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
 
     // Operations on array, pointer, and vector types (sequence types)
@@ -574,7 +572,6 @@ extern "C" {
     pub fn LLVMVectorType(ElementType: TypeRef, ElementCount: c_uint) -> TypeRef;
 
     pub fn LLVMGetElementType(Ty: TypeRef) -> TypeRef;
-    pub fn LLVMGetArrayLength(ArrayTy: TypeRef) -> c_uint;
     pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
     // Operations on other types
@@ -600,10 +597,7 @@ extern "C" {
     pub fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
     pub fn LLVMConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
     pub fn LLVMConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
-    // only for isize/vector
     pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
-    pub fn LLVMIsNull(Val: ValueRef) -> Bool;
-    pub fn LLVMIsUndef(Val: ValueRef) -> Bool;
 
     // Operations on metadata
     pub fn LLVMMDStringInContext(C: ContextRef, Str: *const c_char, SLen: c_uint) -> ValueRef;
@@ -724,7 +718,9 @@ extern "C" {
                                        FunctionTy: TypeRef)
                                        -> ValueRef;
     pub fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
+    pub fn LLVMRustAddAlignmentAttr(Fn: ValueRef, index: c_uint, bytes: u32);
     pub fn LLVMRustAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: u64);
+    pub fn LLVMRustAddDereferenceableOrNullAttr(Fn: ValueRef, index: c_uint, bytes: u64);
     pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
                                               index: c_uint,
@@ -754,7 +750,11 @@ extern "C" {
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: c_uint);
     pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: Attribute);
+    pub fn LLVMRustAddAlignmentCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u32);
     pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u64);
+    pub fn LLVMRustAddDereferenceableOrNullCallSiteAttr(Instr: ValueRef,
+                                                        index: c_uint,
+                                                        bytes: u64);
 
     // Operations on load/store instructions (only)
     pub fn LLVMSetVolatile(MemoryAccessInst: ValueRef, volatile: Bool);
@@ -1193,15 +1193,13 @@ extern "C" {
     pub fn LLVMRustBuildAtomicLoad(B: BuilderRef,
                                    PointerVal: ValueRef,
                                    Name: *const c_char,
-                                   Order: AtomicOrdering,
-                                   Alignment: c_uint)
+                                   Order: AtomicOrdering)
                                    -> ValueRef;
 
     pub fn LLVMRustBuildAtomicStore(B: BuilderRef,
                                     Val: ValueRef,
                                     Ptr: ValueRef,
-                                    Order: AtomicOrdering,
-                                    Alignment: c_uint)
+                                    Order: AtomicOrdering)
                                     -> ValueRef;
 
     pub fn LLVMRustBuildAtomicCmpXchg(B: BuilderRef,
@@ -1235,23 +1233,6 @@ extern "C" {
 
     /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
-    /// Number of bytes clobbered when doing a Store to *T.
-    pub fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
-
-    /// Distance between successive elements in an array of T. Includes ABI padding.
-    pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
-
-    /// Returns the preferred alignment of a type.
-    pub fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
-    /// Returns the minimum alignment of a type.
-    pub fn LLVMABIAlignmentOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
-
-    /// Computes the byte offset of the indexed struct element for a
-    /// target.
-    pub fn LLVMOffsetOfElement(TD: TargetDataRef,
-                               StructTy: TypeRef,
-                               Element: c_uint)
-                               -> c_ulonglong;
 
     /// Disposes target data.
     pub fn LLVMDisposeTargetData(TD: TargetDataRef);
@@ -1328,11 +1309,6 @@ extern "C" {
                              ElementTypes: *const TypeRef,
                              ElementCount: c_uint,
                              Packed: Bool);
-
-    pub fn LLVMConstNamedStruct(S: TypeRef,
-                                ConstantVals: *const ValueRef,
-                                Count: c_uint)
-                                -> ValueRef;
 
     /// Enables LLVM debug output.
     pub fn LLVMRustSetDebug(Enabled: c_int);

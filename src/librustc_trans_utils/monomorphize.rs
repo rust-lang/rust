@@ -12,7 +12,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::DropInPlaceFnLangItem;
 use rustc::traits;
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{self, Ty, TyCtxt};
 
 pub use rustc::ty::Instance;
@@ -123,14 +123,5 @@ pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             bug!("invalid CoerceUnsized vtable: {:?}", vtable);
         }
     }
-}
-
-/// Returns the normalized type of a struct field
-pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_substs: &Substs<'tcx>,
-                          f: &'tcx ty::FieldDef)
-                          -> Ty<'tcx>
-{
-    tcx.fully_normalize_associated_types_in(&f.ty(tcx, param_substs))
 }
 

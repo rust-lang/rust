@@ -151,7 +151,7 @@ impl<T> Place<T> for IntermediateBox<T> {
 unsafe fn finalize<T>(b: IntermediateBox<T>) -> Box<T> {
     let p = b.ptr as *mut T;
     mem::forget(b);
-    mem::transmute(p)
+    Box::from_raw(p)
 }
 
 fn make_place<T>() -> IntermediateBox<T> {
@@ -300,7 +300,10 @@ impl<T: ?Sized> Box<T> {
                issue = "27730")]
     #[inline]
     pub unsafe fn from_unique(u: Unique<T>) -> Self {
-        mem::transmute(u)
+        #[cfg(stage0)]
+        return mem::transmute(u);
+        #[cfg(not(stage0))]
+        return Box(u);
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
@@ -362,7 +365,14 @@ impl<T: ?Sized> Box<T> {
                issue = "27730")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        unsafe { mem::transmute(b) }
+        #[cfg(stage0)]
+        return unsafe { mem::transmute(b) };
+        #[cfg(not(stage0))]
+        return {
+            let unique = b.0;
+            mem::forget(b);
+            unique
+        };
     }
 }
 
@@ -627,7 +637,7 @@ impl Box<Any + Send> {
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any + Send>> {
         <Box<Any>>::downcast(self).map_err(|s| unsafe {
             // reapply the Send marker
-            mem::transmute::<Box<Any>, Box<Any + Send>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut (Any + Send))
         })
     }
 }
