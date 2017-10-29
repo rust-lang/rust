@@ -927,7 +927,7 @@ impl<T> AtomicPtr<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "atomic_from", since = "1.22.0")]
 impl<T> From<*mut T> for AtomicPtr<T> {
     #[inline]
     fn from(p: *mut T) -> Self { Self::new(p) }
@@ -973,7 +973,7 @@ macro_rules! atomic_int {
             }
         }
 
-        #[$stable]
+        #[stable(feature = "atomic_from", since = "1.22.0")]
         impl From<$int_type> for $atomic_type {
             #[inline]
             fn from(v: $int_type) -> Self { Self::new(v) }
