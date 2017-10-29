@@ -228,7 +228,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// moves the value out of `src` without preventing further usage of `src`.
 /// If `T` is not `Copy`, then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
 /// The pointer must be aligned; use `read_unaligned` if that is not the case.
@@ -264,7 +264,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// moves the value out of `src` without preventing further usage of `src`.
 /// If `T` is not `Copy`, then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
 /// # Examples
@@ -397,7 +397,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// moves the value out of `src` without preventing further usage of `src`.
 /// If `T` is not `Copy`, then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
 /// # Examples
@@ -871,7 +871,7 @@ impl<T: ?Sized> *const T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// The pointer must be aligned; use `read_unaligned` if that is not the case.
@@ -925,7 +925,7 @@ impl<T: ?Sized> *const T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
@@ -961,7 +961,7 @@ impl<T: ?Sized> *const T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
@@ -1569,7 +1569,7 @@ impl<T: ?Sized> *mut T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// The pointer must be aligned; use `read_unaligned` if that is not the case.
@@ -1623,7 +1623,7 @@ impl<T: ?Sized> *mut T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `src` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
@@ -1659,7 +1659,7 @@ impl<T: ?Sized> *mut T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
