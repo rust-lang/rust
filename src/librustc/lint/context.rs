@@ -352,6 +352,9 @@ pub struct LateContext<'a, 'tcx: 'a> {
     lint_sess: LintSession<'tcx, LateLintPassObject>,
 
     last_ast_node_with_lint_attrs: ast::NodeId,
+
+    /// Generic type parameters in scope for the item we are in.
+    pub generics: Option<&'tcx hir::Generics>,
 }
 
 /// Context for lint checking of the AST, after expansion, before lowering to
@@ -646,13 +649,16 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {
+        let generics = self.generics.take();
+        self.generics = it.node.generics();
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
             cx.with_param_env(it.id, |cx| {
                 run_lints!(cx, check_item, late_passes, it);
                 hir_visit::walk_item(cx, it);
                 run_lints!(cx, check_item_post, late_passes, it);
             });
-        })
+        });
+        self.generics = generics;
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
@@ -774,6 +780,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+        let generics = self.generics.take();
+        self.generics = Some(&trait_item.generics);
         self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
             cx.with_param_env(trait_item.id, |cx| {
                 run_lints!(cx, check_trait_item, late_passes, trait_item);
@@ -781,9 +789,12 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
                 run_lints!(cx, check_trait_item_post, late_passes, trait_item);
             });
         });
+        self.generics = generics;
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        let generics = self.generics.take();
+        self.generics = Some(&impl_item.generics);
         self.with_lint_attrs(impl_item.id, &impl_item.attrs, |cx| {
             cx.with_param_env(impl_item.id, |cx| {
                 run_lints!(cx, check_impl_item, late_passes, impl_item);
@@ -791,6 +802,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
                 run_lints!(cx, check_impl_item_post, late_passes, impl_item);
             });
         });
+        self.generics = generics;
     }
 
     fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
@@ -991,6 +1003,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
         last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,
+        generics: None,
     };
 
     // Visit the whole crate.
