@@ -793,7 +793,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_expect", since = "1.4.0")]
-    pub fn expect(self, msg: &str) -> T {
+    pub fn expect<S: fmt::Display>(self, msg: S) -> T {
         match self {
             Ok(t) => t,
             Err(e) => unwrap_failed(msg, e),
@@ -853,7 +853,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_expect_err", since = "1.17.0")]
-    pub fn expect_err(self, msg: &str) -> E {
+    pub fn expect_err<S: fmt::Display>(self, msg: S) -> E {
         match self {
             Ok(t) => unwrap_failed(msg, t),
             Err(e) => e,
@@ -902,7 +902,7 @@ impl<T: Default, E> Result<T, E> {
 // This is a separate function to reduce the code size of the methods
 #[inline(never)]
 #[cold]
-fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
+fn unwrap_failed<S: fmt::Display, E: fmt::Debug>(msg: S, error: E) -> ! {
     panic!("{}: {:?}", msg, error)
 }
 
