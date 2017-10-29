@@ -42,7 +42,7 @@
 //! example, piping output from one command into another command can be done
 //! like so:
 //!
-//! ```
+//! ```no_run
 //! use std::process::{Command, Stdio};
 //!
 //! // stdout must be configured with `Stdio::piped` in order to use
@@ -71,7 +71,7 @@
 //! Note that [`ChildStderr`] and [`ChildStdout`] implement [`Write`] and
 //! [`ChildStdin`] implements [`Read`]:
 //!
-//! ```
+//! ```no_run
 //! use std::process::{Command, Stdio};
 //! use std::io::Write;
 //!
