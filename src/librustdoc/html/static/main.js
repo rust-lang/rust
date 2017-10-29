@@ -884,6 +884,7 @@
             elems[0].onclick = function() { printTab(0); };
             elems[1].onclick = function() { printTab(1); };
             elems[2].onclick = function() { printTab(2); };
+            printTab(currentTab);
         }
 
         function search(e) {
