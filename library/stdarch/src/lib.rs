@@ -144,6 +144,9 @@ pub mod vendor {
 
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     pub use arm::*;
+
+    #[cfg(target_arch = "aarch64")]
+    pub use aarch64::*;
 }
 
 #[macro_use]
@@ -160,3 +163,5 @@ mod x86;
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 mod arm;
+#[cfg(target_arch = "aarch64")]
+mod aarch64;

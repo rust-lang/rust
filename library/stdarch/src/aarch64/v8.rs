@@ -5,8 +5,6 @@
 //! [armv8]: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.
 //! ddi0487a.k_10775/index.html
 
-pub use super::v7::*;
-
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -59,7 +57,7 @@ pub unsafe fn _cls_u64(x: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use arm::v8;
+    use aarch64::v8;
 
     #[test]
     fn _rev_u64() {
