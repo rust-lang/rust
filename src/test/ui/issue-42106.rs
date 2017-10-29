@@ -10,7 +10,7 @@
 
 fn do_something<T>(collection: &mut Vec<T>) {
     let _a = &collection;
-    collection.swap(1, 2); //~ ERROR E0502
+    collection.swap(1, 2);
 }
 
 fn main() {}
