@@ -46,5 +46,5 @@ impl<T> Drop for Wrap<T> {
 
 // END RUST SOURCE
 // START rustc.node12.nll.0.mir
-// | R4: {bb1[3], bb1[4], bb1[5], bb2[0], bb2[1], bb2[2], bb3[0], bb4[0], bb4[1], bb4[2], bb6[0], bb7[0], bb7[1], bb8[0]}
+// | '_#4r: {bb1[3], bb1[4], bb1[5], bb2[0], bb2[1], bb2[2], bb3[0], bb4[0], bb4[1], bb4[2], bb6[0], bb7[0], bb7[1], bb8[0]}
 // END rustc.node12.nll.0.mir

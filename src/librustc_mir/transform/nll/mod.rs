@@ -192,7 +192,7 @@ impl Region {
 }
 
 newtype_index!(RegionIndex {
-    DEBUG_NAME = "R",
+    DEBUG_FORMAT = "'_#{}r",
 });
 
 /// Right now, we piggy back on the `ReVar` to store our NLL inference

@@ -133,11 +133,11 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         StorageLive(_5);
-//         _5 = promoted1;
+//         _5 = promoted[1];
 //         _4 = &'12ds (*_5);
 //         StorageLive(_7);
 //         StorageLive(_8);
-//         _8 = promoted0;
+//         _8 = promoted[0];
 //         _7 = &'10s (*_8);
 //         _3 = D1<'12ds, '10s>::{{constructor}}(_4, _7);
 //         EndRegion('10s);

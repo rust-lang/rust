@@ -44,5 +44,5 @@ unsafe impl<#[may_dangle] T> Drop for Wrap<T> {
 
 // END RUST SOURCE
 // START rustc.node12.nll.0.mir
-// | R4: {bb1[3], bb1[4], bb1[5], bb2[0], bb2[1]}
+// | '_#4r: {bb1[3], bb1[4], bb1[5], bb2[0], bb2[1]}
 // END rustc.node12.nll.0.mir

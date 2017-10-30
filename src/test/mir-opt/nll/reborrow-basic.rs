@@ -28,9 +28,9 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.node13.nll.0.mir
-// | R5: {bb0[6], bb0[7], bb0[8], bb0[9], bb0[10], bb0[11], bb0[12], bb0[13], bb0[14]}
+// | '_#5r: {bb0[6], bb0[7], bb0[8], bb0[9], bb0[10], bb0[11], bb0[12], bb0[13], bb0[14]}
 // ...
-// | R7: {bb0[11], bb0[12], bb0[13], bb0[14]}
+// | '_#7r: {bb0[11], bb0[12], bb0[13], bb0[14]}
 // END rustc.node13.nll.0.mir
 // START rustc.node13.nll.0.mir
 // let _2: &'_#5r mut i32;
