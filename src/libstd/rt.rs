@@ -26,6 +26,15 @@
 // Re-export some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
+#[cfg(feature = "backtrace")]
+pub use sys_common::backtrace::begin_short_backtrace;
+
+#[cfg(not(feature = "backtrace"))]
+#[unstable(feature = "rt", reason = "this is only exported for use in libtest", issue = "0")]
+pub fn begin_short_backtrace<F: FnOnce() -> R, R>(f: F) -> R {
+    f()
+}
+
 // To reduce the generated code of the new `lang_start`, this function is doing
 // the real work.
 #[cfg(not(test))]
@@ -56,7 +65,7 @@ fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
         // Let's run some code!
         #[cfg(feature = "backtrace")]
         let exit_code = panic::catch_unwind(|| {
-            ::sys_common::backtrace::__rust_begin_short_backtrace(move || main())
+            ::sys_common::backtrace::begin_short_backtrace(move || main())
         });
         #[cfg(not(feature = "backtrace"))]
         let exit_code = panic::catch_unwind(move || main());
