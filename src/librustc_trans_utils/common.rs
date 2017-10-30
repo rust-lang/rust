@@ -51,7 +51,8 @@ pub fn requests_inline<'a, 'tcx>(
         // available to normal end-users.
         return true
     }
-    attr::requests_inline(&instance.def.attrs(tcx)[..])
+    attr::requests_inline(&instance.def.attrs(tcx)[..]) ||
+        tcx.is_const_fn(instance.def.def_id())
 }
 
 pub fn is_inline_instance<'a, 'tcx>(
