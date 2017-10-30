@@ -93,12 +93,13 @@ pub mod entry;
 pub mod enum_clike;
 pub mod enum_glob_use;
 pub mod enum_variants;
-pub mod erasing_op;
 pub mod eq_op;
+pub mod erasing_op;
 pub mod escape;
 pub mod eta_reduction;
 pub mod eval_order_dependence;
 pub mod explicit_write;
+pub mod fallible_impl_from;
 pub mod format;
 pub mod formatting;
 pub mod functions;
@@ -106,7 +107,6 @@ pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
-pub mod fallible_impl_from;
 pub mod infinite_iter;
 pub mod int_plus_one;
 pub mod invalid_ref;
@@ -209,7 +209,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     let mut store = reg.sess.lint_store.borrow_mut();
     store.register_removed(
         "should_assert_eq",
-        "`assert!()` will be more flexible with RFC 2011"
+        "`assert!()` will be more flexible with RFC 2011",
     );
     store.register_removed(
         "extend_from_slice",
@@ -360,11 +360,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
 
     reg.register_lint_group("clippy_pedantic", vec![
         booleans::NONMINIMAL_BOOL,
-        const_static_lifetime::CONST_STATIC_LIFETIME,
         empty_enum::EMPTY_ENUM,
         enum_glob_use::ENUM_GLOB_USE,
         enum_variants::PUB_ENUM_VARIANT_NAMES,
         enum_variants::STUTTER,
+        fallible_impl_from::FALLIBLE_IMPL_FROM,
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
         int_plus_one::INT_PLUS_ONE,
@@ -423,6 +423,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         booleans::LOGIC_BUG,
         bytecount::NAIVE_BYTECOUNT,
         collapsible_if::COLLAPSIBLE_IF,
+        const_static_lifetime::CONST_STATIC_LIFETIME,
         copies::IF_SAME_THEN_ELSE,
         copies::IFS_SAME_COND,
         copies::MATCH_SAME_ARMS,
@@ -441,6 +442,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         enum_variants::MODULE_INCEPTION,
         eq_op::EQ_OP,
         eq_op::OP_REF,
+        erasing_op::ERASING_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
         eval_order_dependence::DIVERGING_SUB_EXPRESSION,
@@ -455,7 +457,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
-        fallible_impl_from::FALLIBLE_IMPL_FROM,
         infinite_iter::INFINITE_ITER,
         invalid_ref::INVALID_REF,
         is_unit_expr::UNIT_EXPR,
@@ -509,6 +510,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::SINGLE_CHAR_PATTERN,
         methods::STRING_EXTEND_CHARS,
         methods::TEMPORARY_CSTRING_AS_PTR,
+        methods::USELESS_ASREF,
         methods::WRONG_SELF_CONVENTION,
         minmax::MIN_MAX,
         misc::CMP_NAN,

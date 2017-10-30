@@ -924,6 +924,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::TyAlias(id) |
         Def::AssociatedTy(id) |
         Def::TyParam(id) |
+        Def::TyForeign(id) |
         Def::Struct(id) |
         Def::StructCtor(id, ..) |
         Def::Union(id) |
