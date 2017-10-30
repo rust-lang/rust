@@ -19,7 +19,6 @@ use attributes;
 use base;
 use consts;
 use context::CrateContext;
-use common;
 use declare;
 use llvm;
 use monomorphize::Instance;
@@ -173,7 +172,7 @@ fn predefine_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               symbol_name: &str) {
     let def_id = ccx.tcx().hir.local_def_id(node_id);
     let instance = Instance::mono(ccx.tcx(), def_id);
-    let ty = common::instance_ty(ccx.tcx(), &instance);
+    let ty = instance.ty(ccx.tcx());
     let llty = ccx.layout_of(ty).llvm_type(ccx);
 
     let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
@@ -198,7 +197,7 @@ fn predefine_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert!(!instance.substs.needs_infer() &&
             !instance.substs.has_param_types());
 
-    let mono_ty = common::instance_ty(ccx.tcx(), &instance);
+    let mono_ty = instance.ty(ccx.tcx());
     let attrs = instance.def.attrs(ccx.tcx());
     let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
     unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
@@ -224,7 +223,7 @@ fn predefine_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
-    if common::is_inline_instance(ccx.tcx(), &instance) {
+    if instance.def.is_inline(ccx.tcx()) {
         attributes::inline(lldecl, attributes::InlineAttr::Hint);
     }
     attributes::from_fn_attrs(ccx, &attrs, lldecl);

@@ -468,7 +468,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = common::instance_ty(ccx.tcx(), &instance);
+    let fn_ty = instance.ty(ccx.tcx());
     let sig = common::ty_fn_sig(ccx, fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
 

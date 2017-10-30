@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, AttributePlace};
 use base;
 use builder::Builder;
-use common::{instance_ty, ty_fn_sig, C_usize};
+use common::{ty_fn_sig, C_usize};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -649,7 +649,7 @@ pub struct FnType<'tcx> {
 impl<'a, 'tcx> FnType<'tcx> {
     pub fn of_instance(ccx: &CrateContext<'a, 'tcx>, instance: &ty::Instance<'tcx>)
                        -> Self {
-        let fn_ty = instance_ty(ccx.tcx(), &instance);
+        let fn_ty = instance.ty(ccx.tcx());
         let sig = ty_fn_sig(ccx, fn_ty);
         let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
         FnType::new(ccx, sig, &[])

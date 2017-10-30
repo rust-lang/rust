@@ -103,7 +103,6 @@
 //! inlining, even when they are not marked #[inline].
 
 use rustc_mir::monomorphize::collector::InliningMap;
-use common;
 use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -115,6 +114,7 @@ use std::collections::hash_map::Entry;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, InstantiationMode};
+use rustc::ty::Instance;
 
 pub use rustc::mir::mono::CodegenUnit;
 
@@ -575,7 +575,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = common::def_ty(tcx, impl_def_id, instance.substs);
+                let impl_self_ty = Instance::new(impl_def_id, instance.substs).ty(tcx);
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }

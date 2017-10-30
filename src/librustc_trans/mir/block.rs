@@ -273,7 +273,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 args = &args[..1 + place.has_extra() as usize];
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::TyDynamic(..) => {
-                        let fn_ty = common::instance_ty(bcx.ccx.tcx(), &drop_fn);
+                        let fn_ty = drop_fn.ty(bcx.ccx.tcx());
                         let sig = common::ty_fn_sig(bcx.ccx, fn_ty);
                         let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
                         let fn_ty = FnType::new_vtable(bcx.ccx, sig, &[]);
@@ -535,8 +535,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }).collect();
 
 
-                    let callee_ty = common::instance_ty(
-                        bcx.ccx.tcx(), instance.as_ref().unwrap());
+                    let callee_ty = instance.as_ref().unwrap().ty(bcx.ccx.tcx());
                     trans_intrinsic_call(&bcx, callee_ty, &fn_ty, &args, dest,
                                          terminator.source_info.span);
 
