@@ -139,11 +139,21 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                                            location: Location) {
         if let Some(regioncx) = self.nonlexical_regioncx {
             for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
-                let borrow_region = regioncx.region_value(borrow_data.region.to_region_index());
-                if !borrow_region.may_contain_point(location) && location != borrow_data.location {
-                    debug!("kill_loans_out_of_scope_at_location: kill{:?} \
-                           location={:?} borrow_data={:?}", borrow_index, location, borrow_data);
-                    sets.kill(&borrow_index);
+                let borrow_region = borrow_data.region.to_region_index();
+                if !regioncx.region_contains_point(borrow_region, location) {
+                    // The region checker really considers the borrow
+                    // to start at the point **after** the location of
+                    // the borrow, but the borrow checker puts the gen
+                    // directly **on** the location of the
+                    // borrow. This results in a gen/kill both being
+                    // generated for same point if we are not
+                    // careful. Probably we should change the point of
+                    // the gen, but for now we hackily account for the
+                    // mismatch here by not generating a kill for the
+                    // location on the borrow itself.
+                    if location != borrow_data.location {
+                        sets.kill(&borrow_index);
+                    }
                 }
             }
         }

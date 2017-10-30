@@ -9,13 +9,12 @@
 // except according to those terms.
 
 use rustc::ty::{self, RegionKind};
-use rustc::mir::{Location, Mir};
+use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::infer::InferCtxt;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
-use std::fmt;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
 use util as mir_util;
@@ -149,39 +148,6 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         }
         Ok(())
     });
-}
-
-#[derive(Clone, Default, PartialEq, Eq)]
-pub struct Region {
-    points: BTreeSet<Location>,
-    free_regions: BTreeSet<RegionIndex>,
-}
-
-impl fmt::Debug for Region {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        formatter.debug_set()
-                 .entries(&self.points)
-                 .entries(&self.free_regions)
-                 .finish()
-    }
-}
-
-impl Region {
-    pub fn add_point(&mut self, point: Location) -> bool {
-        self.points.insert(point)
-    }
-
-    pub fn add_free_region(&mut self, region: RegionIndex) -> bool {
-        self.free_regions.insert(region)
-    }
-
-    pub fn may_contain_point(&self, point: Location) -> bool {
-        self.points.contains(&point)
-    }
-
-    pub fn may_contain_free_region(&self, region: RegionIndex) -> bool {
-        self.free_regions.contains(&region)
-    }
 }
 
 newtype_index!(RegionIndex {

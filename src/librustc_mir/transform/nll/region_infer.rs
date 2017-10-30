@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Region, RegionIndex};
+use super::RegionIndex;
 use super::free_regions::FreeRegions;
 use rustc::infer::InferCtxt;
 use rustc::mir::{Location, Mir};
 use rustc::ty;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
+use std::collections::BTreeSet;
+use std::fmt;
 
 pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
@@ -52,6 +54,41 @@ struct RegionDefinition<'tcx> {
     /// empty, but grows as we add constraints. The final value is
     /// determined when `solve()` is executed.
     value: Region,
+}
+
+/// The value of an individual region variable. Region variables
+/// consist of a set of points in the CFG as well as a set of "free
+/// regions", which are sometimes written as `end(R)`. These
+/// correspond to the named lifetimes and refer to portions of the
+/// caller's control-flow graph -- specifically some portion that can
+/// be reached after we return.
+#[derive(Clone, Default, PartialEq, Eq)]
+struct Region {
+    points: BTreeSet<Location>,
+    free_regions: BTreeSet<RegionIndex>,
+}
+
+impl fmt::Debug for Region {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        formatter.debug_set()
+                 .entries(&self.points)
+                 .entries(&self.free_regions)
+                 .finish()
+    }
+}
+
+impl Region {
+    fn add_point(&mut self, point: Location) -> bool {
+        self.points.insert(point)
+    }
+
+    fn add_free_region(&mut self, region: RegionIndex) -> bool {
+        self.free_regions.insert(region)
+    }
+
+    fn contains_point(&self, point: Location) -> bool {
+        self.points.contains(&point)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -157,10 +194,15 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
         self.definitions.indices()
     }
 
-    /// Returns the inferred value for the region `r`.
+    /// Returns true if the region `r` contains the point `p`.
     ///
     /// Until `solve()` executes, this value is not particularly meaningful.
-    pub fn region_value(&self, r: RegionIndex) -> &Region {
+    pub fn region_contains_point(&self, r: RegionIndex, p: Location) -> bool {
+        self.definitions[r].value.contains_point(p)
+    }
+
+    /// Returns access to the value of `r` for debugging purposes.
+    pub(super) fn region_value(&self, r: RegionIndex) -> &fmt::Debug {
         &self.definitions[r].value
     }
 
@@ -235,7 +277,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
         while let Some(p) = stack.pop() {
             debug!("        dfs: p={:?}", p);
 
-            if !from_region.may_contain_point(p) {
+            if !from_region.contains_point(p) {
                 debug!("            not in from-region");
                 continue;
             }
