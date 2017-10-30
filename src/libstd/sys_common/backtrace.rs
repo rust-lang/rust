@@ -47,27 +47,27 @@ pub struct Frame {
 const MAX_NB_FRAMES: usize = 100;
 
 /// Prints the current backtrace.
-pub fn print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
+pub fn print(w: &mut Write, format: PrintFormat, entry_point: usize) -> io::Result<()> {
     static LOCK: Mutex = Mutex::new();
 
     // Use a lock to prevent mixed output in multithreading context.
     // Some platforms also requires it, like `SymFromAddr` on Windows.
     unsafe {
         LOCK.lock();
-        let res = _print(w, format);
+        let res = _print(w, format, entry_point);
         LOCK.unlock();
         res
     }
 }
 
-fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
+fn _print(w: &mut Write, format: PrintFormat, entry_point: usize) -> io::Result<()> {
     let mut frames = [Frame {
         exact_position: ptr::null(),
         symbol_addr: ptr::null(),
     }; MAX_NB_FRAMES];
     let (nb_frames, context) = unwind_backtrace(&mut frames)?;
     let (skipped_before, skipped_after) =
-        filter_frames(&frames[..nb_frames], format, &context);
+        filter_frames(&frames[..nb_frames], format, &context, entry_point);
     if skipped_before + skipped_after > 0 {
         writeln!(w, "note: Some details are omitted, \
                      run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
@@ -76,8 +76,8 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
 
     let filtered_frames = &frames[..nb_frames - skipped_after];
     for (index, frame) in filtered_frames.iter().skip(skipped_before).enumerate() {
-        resolve_symname(*frame, |symname| {
-            output(w, index, *frame, symname, format)
+        resolve_symname(*frame, |syminfo| {
+            output(w, index, *frame, syminfo.map(|i| i.0), format)
         }, &context)?;
         let has_more_filenames = foreach_symbol_fileline(*frame, |file, line| {
             output_fileline(w, file, line, format)
@@ -94,27 +94,32 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
 /// backtrace, according to the backtrace format.
 fn filter_frames(frames: &[Frame],
                  format: PrintFormat,
-                 context: &BacktraceContext) -> (usize, usize)
+                 context: &BacktraceContext,
+                 entry_point: usize) -> (usize, usize)
 {
     if format == PrintFormat::Full {
         return (0, 0);
     }
 
-    let skipped_before = 0;
+    let skipped_before = frames.iter().position(|frame| {
+        let mut addr = None;
+        let _ = resolve_symname(*frame, |syminfo| {
+            addr = syminfo.map(|a| a.1);
+            Ok(())
+        }, context);
+        addr == Some(entry_point)
+    }).map(|p| p + 1).unwrap_or(0);
 
-    let skipped_after = frames.len() - frames.iter().position(|frame| {
+    let skipped_after = frames.iter().rev().position(|frame| {
         let mut is_marker = false;
-        let _ = resolve_symname(*frame, |symname| {
-            if let Some(mangled_symbol_name) = symname {
-                // Use grep to find the concerned functions
-                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
-                    is_marker = true;
-                }
+        let _ = resolve_symname(*frame, |syminfo| {
+            if syminfo.map(|i| i.1) == Some(MARK_START.0 as usize) {
+                is_marker = true;
             }
             Ok(())
         }, context);
         is_marker
-    }).unwrap_or(frames.len());
+    }).map(|p| p + 1).unwrap_or(0);
 
     if skipped_before + skipped_after >= frames.len() {
         // Avoid showing completely empty backtraces
@@ -124,13 +129,19 @@ fn filter_frames(frames: &[Frame],
     (skipped_before, skipped_after)
 }
 
+#[derive(Eq, PartialEq)]
+struct Function(*const ());
+unsafe impl Sync for Function {}
 
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+static MARK_START: Function = Function(mark_start as *const ());
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`
 #[inline(never)]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-    where F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
-{
-    f()
+pub fn mark_start(f: &mut FnMut()) {
+    f();
+    unsafe {
+        asm!("" ::: "memory" : "volatile"); // A dummy statement to prevent tail call optimization
+    }
 }
 
 /// Controls how the backtrace should be formated.

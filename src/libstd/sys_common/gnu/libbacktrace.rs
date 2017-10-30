@@ -63,9 +63,9 @@ where F: FnMut(&[u8], u32) -> io::Result<()>
 pub fn resolve_symname<F>(frame: Frame,
                           callback: F,
                           _: &BacktraceContext) -> io::Result<()>
-    where F: FnOnce(Option<&str>) -> io::Result<()>
+    where F: FnOnce(Option<(&str, usize)>) -> io::Result<()>
 {
-    let symname = {
+    let syminfo = {
         let state = unsafe { init_state() };
         if state.is_null() {
             return Err(io::Error::new(
@@ -73,8 +73,8 @@ pub fn resolve_symname<F>(frame: Frame,
                 "failed to allocate libbacktrace state")
             )
         }
-        let mut data = ptr::null();
-        let data_addr = &mut data as *mut *const libc::c_char;
+        let mut data = (ptr::null(), 0);
+        let data_addr = &mut data as *mut _;
         let ret = unsafe {
             backtrace_syminfo(state,
                               frame.symbol_addr as libc::uintptr_t,
@@ -82,15 +82,15 @@ pub fn resolve_symname<F>(frame: Frame,
                               error_cb,
                               data_addr as *mut libc::c_void)
         };
-        if ret == 0 || data.is_null() {
+        if ret == 0 || data.0.is_null() {
             None
         } else {
             unsafe {
-                CStr::from_ptr(data).to_str().ok()
+                CStr::from_ptr(data.0).to_str().ok().map(|s| (s, data.1))
             }
         }
     };
-    callback(symname)
+    callback(syminfo)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -145,10 +145,10 @@ extern fn error_cb(_data: *mut libc::c_void, _msg: *const libc::c_char,
 extern fn syminfo_cb(data: *mut libc::c_void,
                      _pc: libc::uintptr_t,
                      symname: *const libc::c_char,
-                     _symval: libc::uintptr_t,
+                     symval: libc::uintptr_t,
                      _symsize: libc::uintptr_t) {
-    let slot = data as *mut *const libc::c_char;
-    unsafe { *slot = symname; }
+    let slot = data as *mut (*const libc::c_char, usize);
+    unsafe { *slot = (symname, symval); }
 }
 extern fn pcinfo_cb(data: *mut libc::c_void,
                     _pc: libc::uintptr_t,

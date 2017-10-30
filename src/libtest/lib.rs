@@ -1453,7 +1453,10 @@ pub fn run_test(opts: &TestOpts,
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
 fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
-    f()
+    f();
+    unsafe {
+        asm!("" ::: "memory" : "volatile"); // A dummy statement to prevent tail call optimization
+    }
 }
 
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> TestResult {
