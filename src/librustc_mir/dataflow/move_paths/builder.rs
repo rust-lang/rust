@@ -352,8 +352,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         debug!("gather_move({:?}, {:?})", self.loc, lval);
 
         let tcx = self.builder.tcx;
+        let gcx = tcx.global_tcx();
         let lv_ty = lval.ty(self.builder.mir, tcx).to_ty(tcx);
-        if !lv_ty.moves_by_default(tcx, self.builder.param_env, DUMMY_SP) {
+        let erased_ty = gcx.lift(&tcx.erase_regions(&lv_ty)).unwrap();
+        if !erased_ty.moves_by_default(gcx, self.builder.param_env, DUMMY_SP) {
             debug!("gather_move({:?}, {:?}) - {:?} is Copy. skipping", self.loc, lval, lv_ty);
             return
         }

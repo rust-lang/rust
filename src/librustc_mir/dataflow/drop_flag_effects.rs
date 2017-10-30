@@ -151,7 +151,9 @@ pub(crate) fn on_all_drop_children_bits<'a, 'tcx, F>(
         let ty = lvalue.ty(mir, tcx).to_ty(tcx);
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, lvalue, ty);
 
-        if ty.needs_drop(tcx, ctxt.param_env) {
+        let gcx = tcx.global_tcx();
+        let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
+        if erased_ty.needs_drop(gcx, ctxt.param_env) {
             each_child(child);
         } else {
             debug!("on_all_drop_children_bits - skipping")
@@ -196,7 +198,9 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
         // don't move out of non-Copy things
         let lvalue = &move_data.move_paths[path].lvalue;
         let ty = lvalue.ty(mir, tcx).to_ty(tcx);
-        if !ty.moves_by_default(tcx, param_env, DUMMY_SP) {
+        let gcx = tcx.global_tcx();
+        let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
+        if !erased_ty.moves_by_default(gcx, param_env, DUMMY_SP) {
             continue;
         }
 
