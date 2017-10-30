@@ -95,17 +95,17 @@ where
 
 pub fn resolve_symname<F>(frame: Frame, callback: F, _: &BacktraceContext) -> io::Result<()>
 where
-    F: FnOnce(Option<&str>) -> io::Result<()>,
+    F: FnOnce(Option<(&str, usize)>) -> io::Result<()>,
 {
     unsafe {
         let mut info: Dl_info = intrinsics::init();
-        let symname =
+        let syminfo =
             if dladdr(frame.exact_position as *mut _, &mut info) == 0 || info.dli_sname.is_null() {
                 None
             } else {
-                CStr::from_ptr(info.dli_sname).to_str().ok()
+                CStr::from_ptr(info.dli_sname).to_str().ok().map(|s| (s, info.dli_saddr as usize))
             };
-        callback(symname)
+        callback(syminfo)
     }
 }
 
