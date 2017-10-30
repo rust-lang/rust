@@ -34,8 +34,28 @@ pub trait FileExt {
     ///
     /// The current file cursor is not affected by this function.
     ///
-    /// Note that similar to `File::read`, it is not an error to return with a
+    /// Note that similar to [`File::read`], it is not an error to return with a
     /// short read.
+    ///
+    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::prelude::FileExt;
+    /// use std::fs::File;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let mut buf = [0u8; 8];
+    /// let file = File::open("foo.txt")?;
+    ///
+    /// // We now read 8 bytes from the offset 10.
+    /// let num_bytes_read = file.read_at(&mut buf, 10)?;
+    /// println!("read {} bytes: {:?}", num_bytes_read, buf);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
@@ -51,8 +71,26 @@ pub trait FileExt {
     /// When writing beyond the end of the file, the file is appropriately
     /// extended and the intermediate bytes are initialized with the value 0.
     ///
-    /// Note that similar to `File::write`, it is not an error to return a
+    /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
+    ///
+    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::prelude::FileExt;
+    /// use std::fs::File;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let file = File::open("foo.txt")?;
+    ///
+    /// // We now write at the offset 10.
+    /// file.write_at(b"sushi", 10)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
 }
