@@ -9,37 +9,49 @@
 // except according to those terms.
 
 use super::{Region, RegionIndex};
-use std::mem;
+use super::free_regions::FreeRegions;
 use rustc::infer::InferCtxt;
 use rustc::mir::{Location, Mir};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc::ty;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
 
-pub struct RegionInferenceContext {
+pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
     /// variables are identified by their index (`RegionIndex`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
-    definitions: IndexVec<RegionIndex, RegionDefinition>,
+    definitions: IndexVec<RegionIndex, RegionDefinition<'tcx>>,
+
+    /// The indices of all "free regions" in scope. These are the
+    /// lifetime parameters (anonymous and named) declared in the
+    /// function signature:
+    ///
+    ///     fn foo<'a, 'b>(x: &Foo<'a, 'b>)
+    ///            ^^  ^^     ^
+    ///
+    /// These indices will be from 0..N, as it happens, but we collect
+    /// them into a vector for convenience.
+    free_regions: Vec<RegionIndex>,
 
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
-
-    /// List of errors we have accumulated as we add constraints.
-    /// After solving is done, this is replaced with an empty vector.
-    errors: Vec<InferenceError>,
-}
-
-pub struct InferenceError {
-    pub constraint_point: Location,
-    pub name: (), // FIXME(nashenas88) RegionName
 }
 
 #[derive(Default)]
-struct RegionDefinition {
-    name: (), // FIXME(nashenas88) RegionName
+struct RegionDefinition<'tcx> {
+    /// If this is a free-region, then this is `Some(X)` where `X` is
+    /// the name of the region.
+    name: Option<ty::Region<'tcx>>,
+
+    /// If true, this is a constant region which cannot grow larger.
+    /// This is used for named regions as well as `'static`.
+    constant: bool,
+
+    /// The current value of this inference variable. This starts out
+    /// empty, but grows as we add constraints. The final value is
+    /// determined when `solve()` is executed.
     value: Region,
-    capped: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -49,14 +61,73 @@ pub struct Constraint {
     point: Location,
 }
 
-impl RegionInferenceContext {
-    pub fn new(num_region_variables: usize) -> Self {
-        Self {
+impl<'tcx> RegionInferenceContext<'tcx> {
+    /// Creates a new region inference context with a total of
+    /// `num_region_variables` valid inference variables; the first N
+    /// of those will be constant regions representing the free
+    /// regions defined in `free_regions`.
+    pub fn new(free_regions: &FreeRegions<'tcx>,
+               num_region_variables: usize,
+               mir: &Mir<'tcx>)
+               -> Self {
+        let mut result = Self {
             definitions: (0..num_region_variables)
                 .map(|_| RegionDefinition::default())
                 .collect(),
             constraints: Vec::new(),
-            errors: Vec::new(),
+            free_regions: Vec::new(),
+        };
+
+        result.init_free_regions(free_regions, mir);
+
+        result
+    }
+
+    fn init_free_regions(&mut self,
+                         free_regions: &FreeRegions<'tcx>,
+                         mir: &Mir<'tcx>)
+    {
+        let &FreeRegions { ref indices, ref free_region_map } = free_regions;
+
+        // For each free region variable X, it should contain:
+        //
+        // (a) the entire CFG
+        // (b) `end(Y)` for all regions Y such that X: Y (or Y <= X)
+        //
+        // we add however the regions for clause (b) somewhat in
+        // reverse, because of how the data structure in
+        // `free_regions` is organized.
+        for (free_region, index) in indices {
+            let variable = RegionIndex::new(*index);
+
+            self.free_regions.push(variable);
+
+            self.definitions[variable].name = Some(free_region);
+            self.definitions[variable].constant = true;
+
+            // Add all nodes in the CFG to `definition.value`.
+            for (block, block_data) in mir.basic_blocks().iter_enumerated() {
+                let definition = &mut self.definitions[variable];
+                for statement_index in 0 .. block_data.statements.len() + 1 {
+                    let location = Location { block, statement_index };
+                    definition.value.add_point(location);
+                }
+            }
+
+            // Add `end(X)` into the set for X.
+            self.definitions[variable].value.add_free_region(variable);
+
+            // Go through each region Y that outlives X (i.e., where
+            // Y: X is true). Add `end(X)` into the set for `Y`.
+            for superregion in free_region_map.regions_that_outlive(&free_region) {
+                let superregion_index = RegionIndex::new(indices[superregion]);
+                self.definitions[superregion_index].value.add_free_region(variable);
+            }
+
+            debug!("init_free_regions: region variable for `{:?}` is `{:?}` with value `{:?}`",
+                   free_region,
+                   variable,
+                   self.definitions[variable].value);
         }
     }
 
@@ -72,42 +143,25 @@ impl RegionInferenceContext {
         &self.definitions[r].value
     }
 
-    /// Flags a region as being "capped" -- this means that if its
-    /// value is required to grow as a result of some constraint
-    /// (e.g., `add_live_point` or `add_outlives`), that indicates an
-    /// error. This is used for the regions representing named
-    /// lifetime parameters on a function: they get initialized to
-    /// their complete value, and then "capped" so that they can no
-    /// longer grow.
-    #[allow(dead_code)]
-    pub(super) fn cap_var(&mut self, v: RegionIndex) {
-        self.definitions[v].capped = true;
-    }
-
+    /// Indicates that the region variable `v` is live at the point `point`.
     pub(super) fn add_live_point(&mut self, v: RegionIndex, point: Location) {
         debug!("add_live_point({:?}, {:?})", v, point);
         let definition = &mut self.definitions[v];
-        if definition.value.add_point(point) {
-            if definition.capped {
-                self.errors.push(InferenceError {
-                    constraint_point: point,
-                    name: definition.name,
-                });
-            }
-        }
+        definition.value.add_point(point);
     }
 
+    /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
     pub(super) fn add_outlives(&mut self, sup: RegionIndex, sub: RegionIndex, point: Location) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
         self.constraints.push(Constraint { sup, sub, point });
     }
 
     /// Perform region inference.
-    pub(super) fn solve<'a, 'gcx, 'tcx>(
+    pub(super) fn solve<'a, 'gcx>(
         &mut self,
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         mir: &'a Mir<'tcx>,
-    ) -> Vec<InferenceError>
+    )
     where
         'gcx: 'tcx + 'a,
         'tcx: 'a,
@@ -125,23 +179,6 @@ impl RegionInferenceContext {
 
                 if dfs.copy(sub, &mut sup_def.value, constraint.point) {
                     changed = true;
-                    if sup_def.capped {
-                        // This is kind of a hack, but when we add a
-                        // constraint, the "point" is always the point
-                        // AFTER the action that induced the
-                        // constraint. So report the error on the
-                        // action BEFORE that.
-                        assert!(constraint.point.statement_index > 0);
-                        let p = Location {
-                            block: constraint.point.block,
-                            statement_index: constraint.point.statement_index - 1,
-                        };
-
-                        self.errors.push(InferenceError {
-                            constraint_point: p,
-                            name: sup_def.name,
-                        });
-                    }
                 }
 
                 debug!("    sup (after) : {:?}", sup_def.value);
@@ -149,8 +186,6 @@ impl RegionInferenceContext {
             }
             debug!("\n");
         }
-
-        mem::replace(&mut self.errors, Vec::new())
     }
 }
 
@@ -179,7 +214,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
         while let Some(p) = stack.pop() {
             debug!("        dfs: p={:?}", p);
 
-            if !from_region.may_contain(p) {
+            if !from_region.may_contain_point(p) {
                 debug!("            not in from-region");
                 continue;
             }
@@ -214,19 +249,11 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
             };
 
             if successor_points.is_empty() {
-                // FIXME handle free regions
                 // If we reach the END point in the graph, then copy
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
-                // for region_decl in self.infcx.tcx.tables.borrow().free_region_map() {
-                //     // FIXME(nashenas88) figure out skolemized_end points
-                //     let block = self.env.graph.skolemized_end(region_decl.name);
-                //     let skolemized_end_point = Location {
-                //         block,
-                //         statement_index: 0,
-                //     };
-                //     changed |= to_region.add_point(skolemized_end_point);
-                // }
+
+                to_region.free_regions.extend(&from_region.free_regions);
             } else {
                 stack.extend(successor_points);
             }

@@ -22,6 +22,7 @@ use util as mir_util;
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+mod free_regions;
 mod subtype;
 
 pub(crate) mod region_infer;
@@ -36,9 +37,12 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource,
     mir: &mut Mir<'tcx>,
-) -> RegionInferenceContext {
+) -> RegionInferenceContext<'tcx> {
+    // Compute named region information.
+    let free_regions = &free_regions::free_regions(infcx, source);
+
     // Replace all regions with fresh inference variables.
-    let num_region_variables = renumber::renumber_mir(infcx, mir);
+    let num_region_variables = renumber::renumber_mir(infcx, free_regions, mir);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -61,11 +65,9 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
 
     // Create the region inference context, generate the constraints,
     // and then solve them.
-    let mut regioncx = RegionInferenceContext::new(num_region_variables);
+    let mut regioncx = RegionInferenceContext::new(free_regions, num_region_variables, mir);
     constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
-    let errors = regioncx.solve(infcx, &mir);
-
-    assert!(errors.is_empty(), "FIXME: report region inference failures");
+    regioncx.solve(infcx, &mir);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests.
@@ -152,11 +154,15 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Region {
     points: BTreeSet<Location>,
+    free_regions: BTreeSet<RegionIndex>,
 }
 
 impl fmt::Debug for Region {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(formatter, "{:?}", self.points)
+        formatter.debug_set()
+                 .entries(&self.points)
+                 .entries(&self.free_regions)
+                 .finish()
     }
 }
 
@@ -165,8 +171,16 @@ impl Region {
         self.points.insert(point)
     }
 
-    pub fn may_contain(&self, point: Location) -> bool {
+    pub fn add_free_region(&mut self, region: RegionIndex) -> bool {
+        self.free_regions.insert(region)
+    }
+
+    pub fn may_contain_point(&self, point: Location) -> bool {
         self.points.contains(&point)
+    }
+
+    pub fn may_contain_free_region(&self, region: RegionIndex) -> bool {
+        self.free_regions.contains(&region)
     }
 }
 

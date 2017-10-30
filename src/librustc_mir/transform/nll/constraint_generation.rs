@@ -29,7 +29,7 @@ use super::region_infer::RegionInferenceContext;
 
 pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    regioncx: &mut RegionInferenceContext,
+    regioncx: &mut RegionInferenceContext<'tcx>,
     mir: &Mir<'tcx>,
     mir_source: MirSource,
     liveness: &LivenessResults,
@@ -45,7 +45,7 @@ pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
 
 struct ConstraintGeneration<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
-    regioncx: &'cx mut RegionInferenceContext,
+    regioncx: &'cx mut RegionInferenceContext<'tcx>,
     mir: &'cx Mir<'tcx>,
     liveness: &'cx LivenessResults,
     mir_source: MirSource,
