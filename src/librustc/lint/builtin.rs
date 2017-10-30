@@ -107,12 +107,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub FAT_PTR_TRANSMUTES,
-    Allow,
-    "detects transmutes of fat pointers"
-}
-
-declare_lint! {
     pub TRIVIAL_CASTS,
     Allow,
     "detects trivial casts which could be removed"
@@ -250,7 +244,6 @@ impl LintPass for HardwiredLints {
             UNUSED_FEATURES,
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
-            FAT_PTR_TRANSMUTES,
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,

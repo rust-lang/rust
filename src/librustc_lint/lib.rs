@@ -28,6 +28,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(i128_type)]
+#![feature(macro_vis_matcher)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
@@ -163,7 +164,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_UNSAFE,
                     PATH_STATEMENTS,
                     UNUSED_ATTRIBUTES,
-                    UNUSED_MACROS);
+                    UNUSED_MACROS,
+                    UNUSED_ALLOCATION,
+                    UNUSED_DOC_COMMENT,
+                    UNUSED_EXTERN_CRATES,
+                    UNUSED_FEATURES,
+                    UNUSED_PARENS);
 
     // Guidelines for creating a future incompatibility lint:
     //
@@ -239,15 +245,15 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     // Register renamed and removed lints
     store.register_renamed("unknown_features", "unused_features");
-    store.register_removed("unsigned_negation",
-                           "replaced by negate_unsigned feature gate");
+    store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
     store.register_removed("raw_pointer_derive", "using derive with raw pointers is ok");
     // This was renamed to raw_pointer_derive, which was then removed,
     // so it is also considered removed
-    store.register_removed("raw_pointer_deriving",
-                           "using derive with raw pointers is ok");
+    store.register_removed("raw_pointer_deriving", "using derive with raw pointers is ok");
     store.register_removed("drop_with_repr_extern", "drop flags have been removed");
+    store.register_removed("fat_ptr_transmutes", "was accidentally removed back in 2014");
+    store.register_removed("deprecated_attr", "use `deprecated` instead");
     store.register_removed("transmute_from_fn_item_types",
         "always cast functions before transmuting them");
     store.register_removed("hr_lifetime_in_assoc_type",

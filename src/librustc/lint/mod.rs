@@ -84,29 +84,16 @@ impl Lint {
     }
 }
 
-/// Build a `Lint` initializer.
-#[macro_export]
-macro_rules! lint_initializer {
-    ($name:ident, $level:ident, $desc:expr) => (
-        ::rustc::lint::Lint {
-            name: stringify!($name),
-            default_level: ::rustc::lint::$level,
-            desc: $desc,
-        }
-    )
-}
-
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
-    (pub $name:ident, $level:ident, $desc:expr) => (
-        pub static $name: &'static ::rustc::lint::Lint
-            = &lint_initializer!($name, $level, $desc);
-    );
-    ($name:ident, $level:ident, $desc:expr) => (
-        static $name: &'static ::rustc::lint::Lint
-            = &lint_initializer!($name, $level, $desc);
-    );
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            desc: $desc
+        };
+    )
 }
 
 /// Declare a static `LintArray` and return it as an expression.

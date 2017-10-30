@@ -4,7 +4,12 @@ warning: unnecessary parentheses around `return` value
 18 |   return (<T as ToString>::to_string(&arg)); //~WARN unnecessary parentheses around `return` value
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
    |
-   = note: #[warn(unused_parens)] on by default
+note: lint level defined here
+  --> $DIR/path-lookahead.rs:13:9
+   |
+13 | #![warn(unused)]
+   |         ^^^^^^
+   = note: #[warn(unused_parens)] implied by #[warn(unused)]
 
 warning: function is never used: `with_parens`
   --> $DIR/path-lookahead.rs:17:1

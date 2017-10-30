@@ -1854,6 +1854,19 @@ impl Item_ {
             _ => None,
         }
     }
+
+    pub fn generics(&self) -> Option<&Generics> {
+        Some(match *self {
+            ItemFn(_, _, _, _, ref generics, _) |
+            ItemTy(_, ref generics) |
+            ItemEnum(_, ref generics) |
+            ItemStruct(_, ref generics) |
+            ItemUnion(_, ref generics) |
+            ItemTrait(_, ref generics, _, _) |
+            ItemImpl(_, _, _, ref generics, _, _, _)=> generics,
+            _ => return None
+        })
+    }
 }
 
 /// A reference from an trait to one of its associated items. This

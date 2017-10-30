@@ -395,10 +395,21 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         assert!(self.bccx.region_scope_tree.scopes_intersect(old_loan.kill_scope,
                                                        new_loan.kill_scope));
 
-        self.report_error_if_loan_conflicts_with_restriction(
-            old_loan, new_loan, old_loan, new_loan) &&
-        self.report_error_if_loan_conflicts_with_restriction(
-            new_loan, old_loan, old_loan, new_loan)
+        let err_old_new = self.report_error_if_loan_conflicts_with_restriction(
+            old_loan, new_loan, old_loan, new_loan).err();
+        let err_new_old = self.report_error_if_loan_conflicts_with_restriction(
+            new_loan, old_loan, old_loan, new_loan).err();
+
+        match (err_old_new, err_new_old) {
+            (Some(mut err), None) | (None, Some(mut err)) => err.emit(),
+            (Some(mut err_old), Some(mut err_new)) => {
+                err_old.emit();
+                err_new.cancel();
+            }
+            (None, None) => return true,
+        }
+
+        false
     }
 
     pub fn report_error_if_loan_conflicts_with_restriction(&self,
@@ -406,7 +417,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                                            loan2: &Loan<'tcx>,
                                                            old_loan: &Loan<'tcx>,
                                                            new_loan: &Loan<'tcx>)
-                                                           -> bool {
+                                                           -> Result<(), DiagnosticBuilder<'a>> {
         //! Checks whether the restrictions introduced by `loan1` would
         //! prohibit `loan2`. Returns false if an error is reported.
 
@@ -416,7 +427,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                loan2);
 
         if compatible_borrow_kinds(loan1.kind, loan2.kind) {
-            return true;
+            return Ok(());
         }
 
         let loan2_base_path = owned_ptr_base_path_rc(&loan2.loan_path);
@@ -520,11 +531,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 _ => { }
             }
 
-            err.emit();
-            return false;
+            return Err(err);
         }
 
-        true
+        Ok(())
     }
 
     fn consume_common(&self,

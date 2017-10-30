@@ -140,8 +140,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                     self.tcx.lint_node(CONST_ERR,
                                        expr.id,
                                        expr.span,
-                                       &format!("constant evaluation error: {}. This will \
-                                                 become a HARD ERROR in the future",
+                                       &format!("constant evaluation error: {}",
                                                 err.description().into_oneline()));
                 }
             }

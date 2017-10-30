@@ -50,6 +50,7 @@
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 #![cfg_attr(windows, feature(libc))]
+#![feature(macro_vis_matcher)]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]

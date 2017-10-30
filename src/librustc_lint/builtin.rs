@@ -621,12 +621,6 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
-declare_lint! {
-    DEPRECATED_ATTR,
-    Warn,
-    "detects use of deprecated attributes"
-}
-
 /// Checks for use of attributes which have been deprecated.
 #[derive(Clone)]
 pub struct DeprecatedAttr {
@@ -645,7 +639,7 @@ impl DeprecatedAttr {
 
 impl LintPass for DeprecatedAttr {
     fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED_ATTR)
+        lint_array!()
     }
 }
 
