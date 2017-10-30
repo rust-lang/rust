@@ -238,25 +238,32 @@ pub fn run_compiler<'a>(args: &[String],
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
-    let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
-
-    do_or_return!(callbacks.late_callback(&matches,
-                                          &sess,
-                                          &*cstore,
-                                          &input,
-                                          &odir,
-                                          &ofile), Some(sess));
-
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
-    (driver::compile_input::<DefaultTransCrate>(&sess,
-                           &cstore,
-                           &input,
-                           &odir,
-                           &ofile,
-                           Some(plugins),
-                           &control),
-     Some(sess))
+
+    let trans_name = sess.opts.debugging_opts.trans.unwrap_or_else(||"llvm".to_string());
+    match *trans_name {
+        "llvm" => {
+            let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
+
+            do_or_return!(callbacks.late_callback(&matches,
+                                                  &sess,
+                                                  &*cstore,
+                                                  &input,
+                                                  &odir,
+                                                  &ofile), Some(sess));
+
+            (driver::compile_input::<DefaultTransCrate>(&sess,
+                                                        &cstore,
+                                                        &input,
+                                                        &odir,
+                                                        &ofile,
+                                                        Some(plugins),
+                                                        &control),
+            Some(sess))
+        }
+        _ => sess.fatal(&format!("Invalid trans {}", trans_name)),
+    }
 }
 
 // Extract output directory and file from matches.
