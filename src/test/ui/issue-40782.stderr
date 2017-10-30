@@ -1,0 +1,11 @@
+error: missing `in` in `for` loop
+  --> $DIR/issue-40782.rs:12:11
+   |
+12 |     for i 0..2 {
+   |           ^
+   |           |
+   |           expected `in` here
+   |           help: try adding `in`: `for i in 0..2`
+
+error: aborting due to previous error
+
