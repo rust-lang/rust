@@ -1625,6 +1625,15 @@ impl<T: Send> error::Error for TrySendError<T> {
     }
 }
 
+#[stable(feature = "mpsc_error_conversions", since = "1.23.0")]
+impl<T> From<SendError<T>> for TrySendError<T> {
+    fn from(err: SendError<T>) -> TrySendError<T> {
+        match err {
+            SendError(t) => TrySendError::Disconnected(t),
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for RecvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1677,7 +1686,7 @@ impl error::Error for TryRecvError {
     }
 }
 
-#[stable(feature = "mpsc_recv_error_from", since = "1.23.0")]
+#[stable(feature = "mpsc_error_conversions", since = "1.23.0")]
 impl From<RecvError> for TryRecvError {
     fn from(err: RecvError) -> TryRecvError {
         match err {
@@ -1718,7 +1727,7 @@ impl error::Error for RecvTimeoutError {
     }
 }
 
-#[stable(feature = "mpsc_recv_error_from", since = "1.23.0")]
+#[stable(feature = "mpsc_error_conversions", since = "1.23.0")]
 impl From<RecvError> for RecvTimeoutError {
     fn from(err: RecvError) -> RecvTimeoutError {
         match err {
