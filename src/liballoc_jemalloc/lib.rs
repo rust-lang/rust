@@ -45,6 +45,10 @@ mod contents {
     extern "C" {
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
                        target_os = "dragonfly", target_os = "windows", target_env = "musl"),
+                   link_name = "je_malloc")]
+        fn malloc(size: size_t) -> *mut c_void;
+        #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_mallocx")]
         fn mallocx(size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
@@ -111,8 +115,15 @@ mod contents {
     pub unsafe extern fn __rde_alloc(size: usize,
                                      align: usize,
                                      err: *mut u8) -> *mut u8 {
+        // `mallocx` should only be used for over-alignment, so if the align
+        // flags are zero, calls `malloc` instead of `mallocx` to save a few
+        // branches.
         let flags = align_to_flags(align);
-        let ptr = mallocx(size as size_t, flags) as *mut u8;
+        let ptr = if flags == 0 as c_int {
+            malloc(size as size_t) as *mut u8
+        } else {
+            mallocx(size as size_t, flags) as *mut u8
+        };
         if ptr.is_null() {
             let layout = Layout::from_size_align_unchecked(size, align);
             ptr::write(err as *mut AllocErr,
