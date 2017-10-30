@@ -265,17 +265,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if self.tcx.sess.opts.debugging_opts.nll {
             for error in errors {
                 match *error {
-                    RegionResolutionError::ConcreteFailure(origin, ..) |
-                    RegionResolutionError::GenericBoundFailure(origin, ..) => {
-                        self.tcx.sess.delay_span_bug(origin.span(),
-                                                     &format!("unreported region error {:?}",
-                                                              error));
+                    RegionResolutionError::ConcreteFailure(ref origin, ..) |
+                    RegionResolutionError::GenericBoundFailure(ref origin, ..) => {
+                        self.tcx.sess.span_warn(
+                            origin.span(),
+                            &format!("not reporting region error due to -Znll: {:?}",
+                                     error));
                     }
 
-                    RegionResolutionError::SubSupConflict(rvo, ..) => {
-                        self.tcx.sess.delay_span_bug(rvo.span(),
-                                                     &format!("unreported region error {:?}",
-                                                              error));
+                    RegionResolutionError::SubSupConflict(ref rvo, ..) => {
+                        self.tcx.sess.span_warn(
+                            rvo.span(),
+                            &format!("not reporting region error due to -Znll: {:?}", error));
                     }
                 }
             }
