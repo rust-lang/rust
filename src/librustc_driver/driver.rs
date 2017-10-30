@@ -31,7 +31,6 @@ use rustc_incremental;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
-use rustc_trans as trans;
 use rustc_trans_utils::trans_crate::TransCrate;
 use rustc_typeck as typeck;
 use rustc_privacy;
@@ -40,7 +39,6 @@ use rustc_plugin as plugin;
 use rustc_passes::{self, ast_validation, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
-use ::DefaultTransCrate;
 
 use serialize::json;
 
@@ -68,7 +66,8 @@ use pretty::ReplaceBodyWithLoop;
 
 use profile;
 
-pub fn compile_input(sess: &Session,
+pub fn compile_input(trans: Box<TransCrate>,
+                     sess: &Session,
                      cstore: &CStore,
                      input_path: &Option<PathBuf>,
                      input: &Input,
@@ -76,8 +75,6 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
-    use rustc::session::config::CrateType;
-
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
             let state = &mut $make_state;
@@ -94,22 +91,6 @@ pub fn compile_input(sess: &Session,
         }}
     }
 
-    if cfg!(not(feature="llvm")) {
-        for cty in sess.opts.crate_types.iter() {
-            match *cty {
-                CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
-                CrateType::CrateTypeExecutable => {},
-                _ => {
-                    sess.parse_sess.span_diagnostic.warn(
-                        &format!("LLVM unsupported, so output type {} is not supported", cty)
-                    );
-                },
-            }
-        }
-
-        sess.abort_if_errors();
-    }
-
     if sess.profile_queries() {
         profile::begin();
     }
@@ -117,7 +98,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans, dep_graph) = {
+    let (outputs, ongoing_trans, dep_graph) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -217,7 +198,8 @@ pub fn compile_input(sess: &Session,
             None
         };
 
-        phase_3_run_analysis_passes(control,
+        phase_3_run_analysis_passes(&*trans,
+                                    control,
                                     sess,
                                     cstore,
                                     hir_map,
@@ -254,7 +236,7 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            let trans = phase_4_translate_to_llvm::<DefaultTransCrate>(tcx, rx);
+            let ongoing_trans = phase_4_translate_to_llvm(&*trans, tcx, rx);
 
             if log_enabled!(::log::Level::Info) {
                 println!("Post-trans");
@@ -268,7 +250,7 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
-            Ok((outputs.clone(), trans, tcx.dep_graph.clone()))
+            Ok((outputs.clone(), ongoing_trans, tcx.dep_graph.clone()))
         })??
     };
 
@@ -276,25 +258,7 @@ pub fn compile_input(sess: &Session,
         sess.code_stats.borrow().print_type_sizes();
     }
 
-    let (phase5_result, trans) =
-        phase_5_run_llvm_passes::<DefaultTransCrate>(sess, &dep_graph, trans);
-
-    controller_entry_point!(after_llvm,
-                            sess,
-                            CompileState::state_after_llvm(input, sess, outdir, output, &trans),
-                            phase5_result);
-    phase5_result?;
-
-    // Run the linker on any artifacts that resulted from the LLVM run.
-    // This should produce either a finished executable or library.
-    time(sess.time_passes(), "linking", || {
-        DefaultTransCrate::link_binary(sess, &trans, &outputs)
-    });
-
-    // Now that we won't touch anything in the incremental compilation directory
-    // any more, we can finalize it (which involves renaming it)
-    #[cfg(feature="llvm")]
-    rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
+    trans.join_trans_and_link(ongoing_trans, sess, &dep_graph, &outputs)?;
 
     if sess.opts.debugging_opts.perf_stats {
         sess.print_perf_stats();
@@ -340,7 +304,6 @@ pub struct CompileController<'a> {
     pub after_expand: PhaseController<'a>,
     pub after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
-    pub after_llvm: PhaseController<'a>,
     pub compilation_done: PhaseController<'a>,
 
     // FIXME we probably want to group the below options together and offer a
@@ -366,7 +329,6 @@ impl<'a> CompileController<'a> {
             after_expand: PhaseController::basic(),
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
-            after_llvm: PhaseController::basic(),
             compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
             keep_ast: false,
@@ -415,7 +377,6 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
-    pub trans: Option<&'a trans::CrateTranslation>,
 }
 
 impl<'a, 'tcx> CompileState<'a, 'tcx> {
@@ -440,7 +401,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             resolutions: None,
             analysis: None,
             tcx: None,
-            trans: None,
         }
     }
 
@@ -523,19 +483,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             expanded_crate: krate,
             hir_crate: Some(hir_crate),
             crate_name: Some(crate_name),
-            out_file: out_file.as_ref().map(|s| &**s),
-            ..CompileState::empty(input, session, out_dir)
-        }
-    }
-
-    fn state_after_llvm(input: &'a Input,
-                        session: &'tcx Session,
-                        out_dir: &'a Option<PathBuf>,
-                        out_file: &'a Option<PathBuf>,
-                        trans: &'a trans::CrateTranslation)
-                        -> Self {
-        CompileState {
-            trans: Some(trans),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }
@@ -933,7 +880,6 @@ pub fn default_provide(providers: &mut ty::maps::Providers) {
     reachable::provide(providers);
     resolve_lifetime::provide(providers);
     rustc_privacy::provide(providers);
-    DefaultTransCrate::provide(providers);
     typeck::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
@@ -947,13 +893,13 @@ pub fn default_provide(providers: &mut ty::maps::Providers) {
 
 pub fn default_provide_extern(providers: &mut ty::maps::Providers) {
     cstore::provide_extern(providers);
-    DefaultTransCrate::provide_extern(providers);
 }
 
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
+pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
+                                               control: &CompileController,
                                                sess: &'tcx Session,
                                                cstore: &'tcx CrateStore,
                                                hir_map: hir_map::Map<'tcx>,
@@ -1006,10 +952,12 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
 
     let mut local_providers = ty::maps::Providers::default();
     default_provide(&mut local_providers);
+    trans.provide(&mut local_providers);
     (control.provide)(&mut local_providers);
 
     let mut extern_providers = local_providers;
     default_provide_extern(&mut extern_providers);
+    trans.provide_extern(&mut extern_providers);
     (control.provide_extern)(&mut extern_providers);
 
     let (tx, rx) = mpsc::channel();
@@ -1101,9 +1049,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'a, 'tcx, Trans: TransCrate>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn phase_4_translate_to_llvm<'a, 'tcx>(trans: &TransCrate,
+                                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            rx: mpsc::Receiver<Box<Any + Send>>)
-                                           -> <Trans as TransCrate>::OngoingCrateTranslation {
+                                           -> Box<Any> {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
@@ -1112,32 +1061,13 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx, Trans: TransCrate>(tcx: TyCtxt<'a, 't
 
     let translation =
         time(time_passes, "translation", move || {
-            Trans::trans_crate(tcx, rx)
+            trans.trans_crate(tcx, rx)
         });
     if tcx.sess.profile_queries() {
         profile::dump("profile_queries".to_string())
     }
 
     translation
-}
-
-/// Run LLVM itself, producing a bitcode file, assembly file or object file
-/// as a side effect.
-pub fn phase_5_run_llvm_passes<Trans: TransCrate>(sess: &Session,
-                               dep_graph: &DepGraph,
-                               trans: <Trans as TransCrate>::OngoingCrateTranslation)
-                               -> (CompileResult, <Trans as TransCrate>::TranslatedCrate) {
-    let trans = Trans::join_trans(trans, sess, dep_graph);
-
-    if sess.opts.debugging_opts.incremental_info {
-        Trans::dump_incremental_data(&trans);
-    }
-
-    time(sess.time_passes(),
-         "serialize work products",
-         move || rustc_incremental::save_work_products(sess, dep_graph));
-
-    (sess.compile_status(), trans)
 }
 
 fn escape_dep_filename(filename: &FileName) -> String {

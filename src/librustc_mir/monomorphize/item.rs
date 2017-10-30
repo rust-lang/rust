@@ -26,6 +26,7 @@ use std::fmt::{self, Write};
 use std::iter;
 use rustc::mir::mono::Linkage;
 use syntax_pos::symbol::Symbol;
+use syntax::codemap::Span;
 pub use rustc::mir::mono::MonoItem;
 
 pub fn linkage_by_name(name: &str) -> Option<Linkage> {
@@ -243,6 +244,18 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             printer.push_instance_as_string(instance, &mut result);
             result
         }
+    }
+
+    fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+        match *self.as_mono_item() {
+            MonoItem::Fn(Instance { def, .. }) => {
+                tcx.hir.as_local_node_id(def.def_id())
+            }
+            MonoItem::Static(node_id) |
+            MonoItem::GlobalAsm(node_id) => {
+                Some(node_id)
+            }
+        }.map(|node_id| tcx.hir.span(node_id))
     }
 }
 

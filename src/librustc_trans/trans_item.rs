@@ -25,11 +25,10 @@ use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use rustc::hir;
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{TyCtxt, TypeFoldable};
+use rustc::ty::TypeFoldable;
 use rustc::ty::layout::LayoutOf;
 use syntax::ast;
 use syntax::attr;
-use syntax_pos::Span;
 use std::fmt;
 
 pub use rustc::mir::mono::MonoItem;
@@ -105,18 +104,6 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                self.to_string(cx.tcx),
                self.to_raw_string(),
                cx.codegen_unit.name());
-    }
-
-    fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
-        match *self.as_mono_item() {
-            MonoItem::Fn(Instance { def, .. }) => {
-                tcx.hir.as_local_node_id(def.def_id())
-            }
-            MonoItem::Static(node_id) |
-            MonoItem::GlobalAsm(node_id) => {
-                Some(node_id)
-            }
-        }.map(|node_id| tcx.hir.span(node_id))
     }
 
     fn to_raw_string(&self) -> String {

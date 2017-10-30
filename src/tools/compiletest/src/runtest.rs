@@ -1278,7 +1278,7 @@ impl<'test> TestCx<'test> {
             TargetLocation::ThisFile(self.make_exe_name()),
         );
 
-        rustc.arg("-L").arg(&self.aux_output_dir_name());
+        rustc.arg("-L").arg(&self.aux_output_dir_name()).env("RUSTC_COMPILETEST", "1");
 
         match self.config.mode {
             CompileFail | Ui => {

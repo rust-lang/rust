@@ -34,7 +34,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_const_math;
-extern crate rustc_trans;
+extern crate rustc_trans_utils;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
@@ -62,6 +62,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc::channel;
+
+use rustc_driver::rustc_trans;
 
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;

@@ -40,7 +40,7 @@ const CFG: &'static str = "cfg";
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum Disposition { Reused, Translated }
 
-pub(crate) fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;

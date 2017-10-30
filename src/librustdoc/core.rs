@@ -19,7 +19,6 @@ use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::util::nodemap::FxHashMap;
 use rustc_trans;
-use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
@@ -140,22 +139,22 @@ pub fn run_core(search_paths: SearchPaths,
                                                                false,
                                                                Some(codemap.clone()));
 
-    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, cpath, diagnostic_handler, codemap,
     );
-    rustc_trans::init(&sess);
+    let trans = rustc_trans::LlvmTransCrate::new(&sess);
+    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
-    target_features::add_configuration(&mut cfg, &sess);
+    target_features::add_configuration(&mut cfg, &sess, &*trans);
     sess.parse_sess.config = cfg;
 
     let control = &driver::CompileController::basic();
 
     let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
 
-    let name = link::find_crate_name(Some(&sess), &krate.attrs, &input);
+    let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
     let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
         let result = driver::phase_2_configure_and_expand(&sess,
@@ -177,7 +176,8 @@ pub fn run_core(search_paths: SearchPaths,
                                                           &[],
                                                           &sess);
 
-    abort_on_err(driver::phase_3_run_analysis_passes(control,
+    abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
+                                                     control,
                                                      &sess,
                                                      &*cstore,
                                                      hir_map,

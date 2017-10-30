@@ -104,7 +104,7 @@ fn test_env<F>(source_string: &str,
     options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
-    let cstore = Rc::new(CStore::new(::DefaultTransCrate::metadata_loader()));
+    let cstore = Rc::new(CStore::new(::DefaultTransCrate::new().metadata_loader()));
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,

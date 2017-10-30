@@ -32,6 +32,7 @@ extern crate syntax;
 extern crate syntax_pos;
 
 mod assert_dep_graph;
+pub mod assert_module_sources;
 mod persist;
 
 pub use assert_dep_graph::assert_dep_graph;
