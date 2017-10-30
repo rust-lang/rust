@@ -134,12 +134,12 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
         }
     }
 
-    /// Returns a vector of all things less than `a`.
+    /// Returns a vector of all things greater than `a`.
     ///
     /// Really this probably ought to be `impl Iterator<Item=&T>`, but
     /// I'm too lazy to make that work, and -- given the caching
     /// strategy -- it'd be a touch tricky anyhow.
-    pub fn less_than(&self, a: &T) -> Vec<&T> {
+    pub fn greater_than(&self, a: &T) -> Vec<&T> {
         match self.index(a) {
             Some(a) => self.with_closure(|closure| {
                 closure.iter(a.0).map(|i| &self.elements[i]).collect()
