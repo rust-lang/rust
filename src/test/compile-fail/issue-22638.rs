@@ -12,6 +12,7 @@
 
 #![recursion_limit = "20"]
 #![type_length_limit = "20000000"]
+#![crate_type = "rlib"]
 
 #[derive(Clone)]
 struct A (B);
@@ -66,5 +67,3 @@ impl D {
 pub fn matches() {
     A(B::Variant1).matches(&(|| ()))
 }
-
-fn main() {}
