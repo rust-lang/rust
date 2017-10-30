@@ -415,3 +415,13 @@ fn match_with_trailing_spaces() {
         None => 1,
     }
 }
+
+fn issue_2099() {
+    let a = match x {
+};
+    let b = match x {
+        
+    };
+
+    match x {}
+}
