@@ -21,6 +21,8 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
 pub use dataflow::indexes::BorrowIndex;
+use transform::nll::region_infer::RegionInferenceContext;
+use transform::nll::ToRegionIndex;
 
 use syntax_pos::Span;
 
@@ -36,6 +38,7 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     location_map: FxHashMap<Location, BorrowIndex>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
     region_span_map: FxHashMap<RegionKind, Span>,
+    nonlexical_regioncx: Option<&'a RegionInferenceContext>,
 }
 
 // temporarily allow some dead fields: `kind` and `region` will be
@@ -64,7 +67,10 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+               mir: &'a Mir<'tcx>,
+               nonlexical_regioncx: Option<&'a RegionInferenceContext>)
+               -> Self {
         let mut visitor = GatherBorrows { idx_vec: IndexVec::new(),
                                           location_map: FxHashMap(),
                                           region_map: FxHashMap(),
@@ -75,7 +81,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                          borrows: visitor.idx_vec,
                          location_map: visitor.location_map,
                          region_map: visitor.region_map,
-                         region_span_map: visitor.region_span_map};
+                         region_span_map: visitor.region_span_map,
+                         nonlexical_regioncx };
 
         struct GatherBorrows<'tcx> {
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
@@ -121,8 +128,25 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     /// meaning there.  Otherwise, it should return some.
     pub fn opt_region_end_span(&self, region: &Region) -> Option<Span> {
         let opt_span = self.region_span_map.get(region);
-        assert!(opt_span.is_some(), "end region not found for {:?}", region);
+        assert!(self.nonlexical_regioncx.is_some() ||
+                opt_span.is_some(), "end region not found for {:?}", region);
         opt_span.map(|s| s.end_point())
+    }
+
+    /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
+    fn kill_loans_out_of_scope_at_location(&self,
+                                           sets: &mut BlockSets<BorrowIndex>,
+                                           location: Location) {
+        if let Some(regioncx) = self.nonlexical_regioncx {
+            for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
+                let borrow_region = regioncx.region_value(borrow_data.region.to_region_index());
+                if !borrow_region.may_contain(location) && location != borrow_data.location {
+                    debug!("kill_loans_out_of_scope_at_location: kill{:?} \
+                           location={:?} borrow_data={:?}", borrow_index, location, borrow_data);
+                    sets.kill(&borrow_index);
+                }
+            }
+        }
     }
 }
 
@@ -149,6 +173,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         match stmt.kind {
             mir::StatementKind::EndRegion(region_scope) => {
                 if let Some(borrow_indexes) = self.region_map.get(&ReScope(region_scope)) {
+                    assert!(self.nonlexical_regioncx.is_none());
                     for idx in borrow_indexes { sets.kill(&idx); }
                 } else {
                     // (if there is no entry, then there are no borrows to be tracked)
@@ -175,11 +200,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::Nop => {}
 
         }
+
+        self.kill_loans_out_of_scope_at_location(sets, location);
     }
+
     fn terminator_effect(&self,
-                         _sets: &mut BlockSets<BorrowIndex>,
-                         _location: Location) {
-        // no terminators start nor end region scopes.
+                         sets: &mut BlockSets<BorrowIndex>,
+                         location: Location) {
+        self.kill_loans_out_of_scope_at_location(sets, location);
     }
 
     fn propagate_call_return(&self,

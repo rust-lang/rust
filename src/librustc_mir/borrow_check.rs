@@ -17,7 +17,8 @@ use rustc::ty::maps::Providers;
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue, Local};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::transform::{MirSource};
+use rustc::mir::transform::MirSource;
+use transform::nll;
 
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
@@ -62,7 +63,7 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 }
 
 fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                   mir: &Mir<'gcx>,
+                                   input_mir: &Mir<'gcx>,
                                    def_id: DefId,
                                    src: MirSource)
 {
@@ -72,7 +73,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
     let id = src.item_id();
 
-    let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx, param_env) {
+    let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx, param_env) {
         Ok(move_data) => move_data,
         Err((move_data, move_errors)) => {
             for move_error in move_errors {
@@ -100,10 +101,23 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         }
     };
 
+    // Make our own copy of the MIR. This copy will be modified (in place) to
+    // contain non-lexical lifetimes. It will have a lifetime tied
+    // to the inference context.
+    let mut mir: Mir<'tcx> = input_mir.clone();
+    let mir = &mut mir;
+
+    // If we are in non-lexical mode, compute the non-lexical lifetimes.
+    let opt_regioncx = if !tcx.sess.opts.debugging_opts.nll {
+        None
+    } else {
+        Some(nll::compute_regions(infcx, src, mir))
+    };
+
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let flow_borrows = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                                   Borrows::new(tcx, mir),
+                                   Borrows::new(tcx, mir, opt_regioncx.as_ref()),
                                    |bd, i| bd.location(i));
     let flow_inits = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                                  MaybeInitializedLvals::new(tcx, mir, &mdpe),
