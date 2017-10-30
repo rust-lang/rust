@@ -20,6 +20,7 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{PathBuf, Path};
+use super::graphviz::write_mir_fn_graphviz;
 
 const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -149,6 +150,14 @@ where
         extra_data(PassWhere::AfterCFG, &mut file)?;
         Ok(())
     });
+
+    if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
+        file_path.set_extension("dot");
+        let _ = fs::File::create(&file_path).and_then(|mut file| {
+            write_mir_fn_graphviz(tcx, source.item_id(), mir, &mut file)?;
+            Ok(())
+        });
+    }
 }
 
 /// Write out a human-readable textual representation for the given MIR.
