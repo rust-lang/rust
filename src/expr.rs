@@ -1450,9 +1450,8 @@ fn rewrite_match(
 
     // Do not take the rhs overhead from the upper expressions into account
     // when rewriting match condition.
-    let new_width = context.config.max_width().checked_sub(shape.used_width())?;
     let cond_shape = Shape {
-        width: new_width,
+        width: context.budget(shape.used_width()),
         ..shape
     };
     // 6 = `match `
