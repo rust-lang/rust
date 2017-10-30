@@ -91,19 +91,19 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option
     return None;
 }
 
-pub struct MoveDataParamEnv<'tcx> {
+pub struct MoveDataParamEnv<'gcx, 'tcx> {
     pub(crate) move_data: MoveData<'tcx>,
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    pub(crate) param_env: ty::ParamEnv<'gcx>,
 }
 
-pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                mir: &Mir<'tcx>,
-                                node_id: ast::NodeId,
-                                attributes: &[ast::Attribute],
-                                dead_unwinds: &IdxSet<BasicBlock>,
-                                bd: BD,
-                                p: P)
-                                -> DataflowResults<BD>
+pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                 mir: &Mir<'tcx>,
+                                                 node_id: ast::NodeId,
+                                                 attributes: &[ast::Attribute],
+                                                 dead_unwinds: &IdxSet<BasicBlock>,
+                                                 bd: BD,
+                                                 p: P)
+                                                 -> DataflowResults<BD>
     where BD: BitDenotation,
           P: Fn(&BD, BD::Idx) -> &fmt::Debug
 {
@@ -612,9 +612,9 @@ pub trait BitDenotation: DataflowOperator {
                              dest_lval: &mir::Lvalue);
 }
 
-impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
+impl<'a, 'gcx, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
 {
-    pub fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn new(_tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                dead_unwinds: &'a IdxSet<mir::BasicBlock>,
                denotation: D) -> Self {

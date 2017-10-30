@@ -83,7 +83,7 @@ fn find_dead_unwinds<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     id: ast::NodeId,
-    env: &MoveDataParamEnv<'tcx>)
+    env: &MoveDataParamEnv<'tcx, 'tcx>)
     -> IdxSetBuf<BasicBlock>
 {
     debug!("find_dead_unwinds({:?})", mir.span);
@@ -146,7 +146,7 @@ impl InitializationData {
     fn apply_location<'a,'tcx>(&mut self,
                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                mir: &Mir<'tcx>,
-                               env: &MoveDataParamEnv<'tcx>,
+                               env: &MoveDataParamEnv<'tcx, 'tcx>,
                                loc: Location)
     {
         drop_flag_effects_for_location(tcx, mir, env, loc, |path, df| {
@@ -280,9 +280,9 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    env: &'a MoveDataParamEnv<'tcx>,
-    flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx>>,
-    flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx>>,
+    env: &'a MoveDataParamEnv<'tcx, 'tcx>,
+    flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx, 'tcx>>,
+    flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx, 'tcx>>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }

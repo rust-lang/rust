@@ -29,8 +29,8 @@ use std::fmt;
 // `Borrows` maps each dataflow bit to an `Rvalue::Ref`, which can be
 // uniquely identified in the MIR by the `Location` of the assigment
 // statement in which it appears on the right hand side.
-pub struct Borrows<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
@@ -63,8 +63,8 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
     }
 }
 
-impl<'a, 'tcx> Borrows<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         let mut visitor = GatherBorrows { idx_vec: IndexVec::new(),
                                           location_map: FxHashMap(),
                                           region_map: FxHashMap(),
@@ -126,7 +126,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     type Idx = BorrowIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
@@ -191,14 +191,14 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for Borrows<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // union effects of preds when computing borrows
     }
 }
 
-impl<'a, 'tcx> DataflowOperator for Borrows<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> DataflowOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no Rvalue::Refs are active by default
