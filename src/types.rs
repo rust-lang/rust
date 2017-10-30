@@ -67,9 +67,8 @@ pub fn rewrite_path(
                 result.push_str("::");
             }
 
-            let extra_offset = extra_offset(&result, shape);
             // 3 = ">::".len()
-            let shape = shape.shrink_left(extra_offset)?.sub_width(3)?;
+            let shape = shape.sub_width(3)?;
 
             result = rewrite_path_segments(
                 PathContext::Type,
