@@ -61,15 +61,16 @@ pub struct Constraint {
     point: Location,
 }
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
     /// of those will be constant regions representing the free
     /// regions defined in `free_regions`.
-    pub fn new(free_regions: &FreeRegions<'tcx>,
-               num_region_variables: usize,
-               mir: &Mir<'tcx>)
-               -> Self {
+    pub fn new(
+        free_regions: &FreeRegions<'tcx>,
+        num_region_variables: usize,
+        mir: &Mir<'tcx>,
+    ) -> Self {
         let mut result = Self {
             definitions: (0..num_region_variables)
                 .map(|_| RegionDefinition::default())
@@ -83,33 +84,49 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         result
     }
 
-    fn init_free_regions(&mut self,
-                         free_regions: &FreeRegions<'tcx>,
-                         mir: &Mir<'tcx>)
-    {
-        let &FreeRegions { ref indices, ref free_region_map } = free_regions;
+    /// Initializes the region variables for each free region
+    /// (lifetime parameter). The first N variables always correspond
+    /// to the free regions appearing in the function signature (both
+    /// named and anonymous) and where clauses. This function iterates
+    /// over those regions and initializes them with minimum values.
+    ///
+    /// For example:
+    ///
+    ///     fn foo<'a, 'b>(..) where 'a: 'b
+    ///
+    /// would initialize two variables like so:
+    ///
+    ///     R0 = { CFG, R0 } // 'a
+    ///     R1 = { CFG, R0, R1 } // 'b
+    ///
+    /// Here, R0 represents `'a`, and it contains (a) the entire CFG
+    /// and (b) any free regions that it outlives, which in this case
+    /// is just itself. R1 (`'b`) in contrast also outlives `'a` and
+    /// hence contains R0 and R1.
+    fn init_free_regions(&mut self, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) {
+        let &FreeRegions {
+            ref indices,
+            ref free_region_map,
+        } = free_regions;
 
-        // For each free region variable X, it should contain:
-        //
-        // (a) the entire CFG
-        // (b) `end(Y)` for all regions Y such that X: Y (or Y <= X)
-        //
-        // we add however the regions for clause (b) somewhat in
-        // reverse, because of how the data structure in
-        // `free_regions` is organized.
+        // For each free region X:
         for (free_region, index) in indices {
             let variable = RegionIndex::new(*index);
 
             self.free_regions.push(variable);
 
+            // Initialize the name and a few other details.
             self.definitions[variable].name = Some(free_region);
             self.definitions[variable].constant = true;
 
             // Add all nodes in the CFG to `definition.value`.
             for (block, block_data) in mir.basic_blocks().iter_enumerated() {
                 let definition = &mut self.definitions[variable];
-                for statement_index in 0 .. block_data.statements.len() + 1 {
-                    let location = Location { block, statement_index };
+                for statement_index in 0..block_data.statements.len() + 1 {
+                    let location = Location {
+                        block,
+                        statement_index,
+                    };
                     definition.value.add_point(location);
                 }
             }
@@ -121,13 +138,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Y: X is true). Add `end(X)` into the set for `Y`.
             for superregion in free_region_map.regions_that_outlive(&free_region) {
                 let superregion_index = RegionIndex::new(indices[superregion]);
-                self.definitions[superregion_index].value.add_free_region(variable);
+                self.definitions[superregion_index]
+                    .value
+                    .add_free_region(variable);
             }
 
-            debug!("init_free_regions: region variable for `{:?}` is `{:?}` with value `{:?}`",
-                   free_region,
-                   variable,
-                   self.definitions[variable].value);
+            debug!(
+                "init_free_regions: region variable for `{:?}` is `{:?}` with value `{:?}`",
+                free_region,
+                variable,
+                self.definitions[variable].value
+            );
         }
     }
 
@@ -157,15 +178,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Perform region inference.
-    pub(super) fn solve<'a, 'gcx>(
-        &mut self,
-        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-        mir: &'a Mir<'tcx>,
-    )
-    where
-        'gcx: 'tcx + 'a,
-        'tcx: 'a,
-    {
+    pub(super) fn solve(&mut self, infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &Mir<'tcx>) {
+        self.propagate_constraints(infcx, mir);
+    }
+
+    /// Propagate the region constraints: this will grow the values
+    /// for each region variable until all the constraints are
+    /// satisfied. Note that some values may grow **too** large to be
+    /// feasible, but we check this later.
+    fn propagate_constraints(&mut self, infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &Mir<'tcx>) {
         let mut changed = true;
         let mut dfs = Dfs::new(infcx, mir);
         while changed {
