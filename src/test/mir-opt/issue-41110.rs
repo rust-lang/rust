@@ -14,7 +14,10 @@ fn main() {
     let x = S.other(S.id());
 }
 
-pub fn test() {
+// no_mangle and extern C to make sure this gets instantiated even in an
+// executable.
+#[no_mangle]
+pub extern "C" fn test() {
     let u = S;
     let mut v = S;
     drop(v);

@@ -23,7 +23,10 @@ fn test1(x: bool, y: i32) -> Foo {
     }
 }
 
-fn main() {}
+fn main() {
+    // Make sure the function actually gets instantiated.
+    test1(false, 0);
+}
 
 // END RUST SOURCE
 // START rustc.node12.Deaggregator.before.mir

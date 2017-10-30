@@ -19,7 +19,10 @@ fn test(x: i32) -> [Foo; 2] {
     [Foo::A(x), Foo::A(x)]
 }
 
-fn main() { }
+fn main() {
+    // Make sure the function actually gets instantiated.
+    test(0);
+}
 
 // END RUST SOURCE
 // START rustc.node10.Deaggregator.before.mir
