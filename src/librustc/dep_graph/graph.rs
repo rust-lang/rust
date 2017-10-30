@@ -756,7 +756,7 @@ impl CurrentDepGraph {
         self.task_stack.push(OpenTask::Regular {
             node: key,
             reads: Vec::new(),
-            read_set: FxHashSet(),
+            read_set: DepNodeIndexSet::Zero,
         });
     }
 
@@ -778,7 +778,7 @@ impl CurrentDepGraph {
     fn push_anon_task(&mut self) {
         self.task_stack.push(OpenTask::Anon {
             reads: Vec::new(),
-            read_set: FxHashSet(),
+            read_set: DepNodeIndexSet::Zero,
         });
     }
 
@@ -890,19 +890,79 @@ impl CurrentDepGraph {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum OpenTask {
     Regular {
         node: DepNode,
         reads: Vec<DepNodeIndex>,
-        read_set: FxHashSet<DepNodeIndex>,
+        read_set: DepNodeIndexSet,
     },
     Anon {
         reads: Vec<DepNodeIndex>,
-        read_set: FxHashSet<DepNodeIndex>,
+        read_set: DepNodeIndexSet,
     },
     Ignore,
     EvalAlways {
         node: DepNode,
     },
+}
+
+// Many kinds of nodes often only have between 0 and 3 edges, so we provide a
+// specialized set implementation that does not allocate for those some counts.
+#[derive(Debug, PartialEq, Eq)]
+enum DepNodeIndexSet {
+    Zero,
+    One(DepNodeIndex),
+    Two(DepNodeIndex, DepNodeIndex),
+    Three(DepNodeIndex, DepNodeIndex, DepNodeIndex),
+    Four(DepNodeIndex, DepNodeIndex, DepNodeIndex, DepNodeIndex),
+    Many(FxHashSet<DepNodeIndex>),
+}
+
+impl DepNodeIndexSet {
+    #[inline(always)]
+    fn insert(&mut self, x: DepNodeIndex) -> bool {
+        let new_state = match *self {
+            DepNodeIndexSet::Zero => {
+                DepNodeIndexSet::One(x)
+            }
+            DepNodeIndexSet::One(a) => {
+                if x == a {
+                    return false
+                } else {
+                    DepNodeIndexSet::Two(x, a)
+                }
+            }
+            DepNodeIndexSet::Two(a, b) => {
+                if x == a || x == b {
+                    return false
+                } else {
+                    DepNodeIndexSet::Three(x, a, b)
+                }
+            }
+            DepNodeIndexSet::Three(a, b, c) => {
+                if x == a || x == b || x == c {
+                    return false
+                } else {
+                    DepNodeIndexSet::Four(x, a, b, c)
+                }
+            }
+            DepNodeIndexSet::Four(a, b, c, d) => {
+                if x == a || x == b || x == c || x == d {
+                    return false
+                } else {
+                    let hash_set: FxHashSet<_> = [x, a, b, c, d].into_iter()
+                                                                .cloned()
+                                                                .collect();
+                    DepNodeIndexSet::Many(hash_set)
+                }
+            }
+            DepNodeIndexSet::Many(ref mut set) => {
+                return set.insert(x)
+            }
+        };
+
+        *self = new_state;
+        true
+    }
 }
