@@ -627,6 +627,9 @@ extern "rust-intrinsic" {
     pub fn rustc_peek<T>(_: T) -> T;
 
     /// Aborts the execution of the process.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::process::abort`](../../std/process/fn.abort.html)
     pub fn abort() -> !;
 
     /// Tells LLVM that this point in the code is not reachable, enabling
