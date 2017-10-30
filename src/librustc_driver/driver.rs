@@ -1003,7 +1003,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
     passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
-    passes.push_pass(MIR_VALIDATED, mir::transform::nll::NLL);
 
     // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
 

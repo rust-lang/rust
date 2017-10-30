@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::{self, RegionKind, TyCtxt};
+use rustc::ty::{self, RegionKind};
 use rustc::mir::{Location, Mir};
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc::infer::InferCtxt;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -28,27 +28,6 @@ pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
 
 mod renumber;
-
-// MIR Pass for non-lexical lifetimes
-pub struct NLL;
-
-impl MirPass for NLL {
-    fn run_pass<'a, 'tcx>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        source: MirSource,
-        input_mir: &mut Mir<'tcx>,
-    ) {
-        if !tcx.sess.opts.debugging_opts.nll {
-            return;
-        }
-
-        tcx.infer_ctxt().enter(|ref infcx| {
-            let mut mir = input_mir.clone();
-            let _ = compute_regions(infcx, source, &mut mir);
-        });
-    }
-}
 
 /// Computes the (non-lexical) regions from the input MIR.
 ///
