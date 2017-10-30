@@ -374,6 +374,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::FILTER_MAP,
         methods::OPTION_MAP_UNWRAP_OR,
         methods::OPTION_MAP_UNWRAP_OR_ELSE,
+        methods::RESULT_MAP_UNWRAP_OR_ELSE,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,

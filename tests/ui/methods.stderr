@@ -220,6 +220,38 @@ help: try using and_then instead
 148 |                        });
     |
 
+error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling `ok().map_or_else(g, f)` instead
+   --> $DIR/methods.rs:159:13
+    |
+159 |       let _ = res.map(|x| x + 1)
+    |  _____________^
+160 | |
+161 | |                .unwrap_or_else(|e| 0); // should lint even though this call is on a separate line
+    | |_____________________________________^
+    |
+    = note: `-D result-map-unwrap-or-else` implied by `-D warnings`
+    = note: replace `map(|x| x + 1).unwrap_or_else(|e| 0)` with `ok().map_or_else(|e| 0, |x| x + 1)`
+
+error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling `ok().map_or_else(g, f)` instead
+   --> $DIR/methods.rs:163:13
+    |
+163 |       let _ = res.map(|x| {
+    |  _____________^
+164 | |                         x + 1
+165 | |                     }
+166 | |               ).unwrap_or_else(|e| 0);
+    | |_____________________________________^
+
+error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling `ok().map_or_else(g, f)` instead
+   --> $DIR/methods.rs:167:13
+    |
+167 |       let _ = res.map(|x| x + 1)
+    |  _____________^
+168 | |                .unwrap_or_else(|e|
+169 | |                     0
+170 | |                 );
+    | |_________________^
+
 error: unnecessary structure name repetition
    --> $DIR/methods.rs:196:24
     |
