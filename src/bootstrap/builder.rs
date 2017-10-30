@@ -617,12 +617,13 @@ impl<'a> Builder<'a> {
         if self.is_very_verbose() {
             cargo.arg("-v");
         }
-        // FIXME: cargo bench does not accept `--release`
-        if self.config.rust_optimize && cmd != "bench" {
-            cargo.arg("--release");
+        if self.config.rust_optimize {
+            // FIXME: cargo bench does not accept `--release`
+            if cmd != "bench" {
+                cargo.arg("--release");
+            }
 
-            if mode != Mode::Libstd &&
-               self.config.rust_codegen_units.is_none() &&
+            if self.config.rust_codegen_units.is_none() &&
                self.build.is_rust_llvm(compiler.host)
 
             {
