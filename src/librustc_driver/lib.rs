@@ -226,8 +226,6 @@ pub fn run_compiler<'a>(args: &[String],
         },
     };
 
-    let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
-
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
@@ -240,6 +238,8 @@ pub fn run_compiler<'a>(args: &[String],
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
+    let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
+
     do_or_return!(callbacks.late_callback(&matches,
                                           &sess,
                                           &*cstore,
@@ -249,7 +249,7 @@ pub fn run_compiler<'a>(args: &[String],
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
-    (driver::compile_input(&sess,
+    (driver::compile_input::<DefaultTransCrate>(&sess,
                            &cstore,
                            &input,
                            &odir,
