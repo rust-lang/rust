@@ -57,6 +57,7 @@ use borrow::Cow;
 use cell;
 use char;
 use convert;
+use core::array;
 use fmt::{self, Debug, Display};
 use mem::transmute;
 use num;
@@ -277,6 +278,13 @@ impl Error for num::ParseIntError {
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl Error for num::TryFromIntError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl Error for array::TryFromSliceError {
     fn description(&self) -> &str {
         self.__description()
     }
