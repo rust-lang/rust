@@ -32,7 +32,6 @@ use rustc_incremental;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
-use rustc_trans as trans;
 use rustc_trans_utils::trans_crate::TransCrate;
 use rustc_typeck as typeck;
 use rustc_privacy;
@@ -41,7 +40,6 @@ use rustc_plugin as plugin;
 use rustc_passes::{self, ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
-use ::DefaultTransCrate;
 
 use serialize::json;
 
@@ -207,7 +205,7 @@ pub fn compile_input<Trans: TransCrate>(sess: &Session,
             None
         };
 
-        phase_3_run_analysis_passes<Trans, _, _>(sess,
+        phase_3_run_analysis_passes::<Trans, _, _>(sess,
                                     cstore,
                                     hir_map,
                                     analysis,
@@ -387,7 +385,7 @@ impl<'a> PhaseController<'a> {
 /// State that is passed to a callback. What state is available depends on when
 /// during compilation the callback is made. See the various constructor methods
 /// (`state_*`) in the impl to see which data is provided for any given entry point.
-pub struct CompileState<'a, 'tcx: 'a> {
+pub struct CompileState<'a, 'tcx: 'a, Trans: TransCrate> {
     pub input: &'a Input,
     pub session: &'tcx Session,
     pub krate: Option<ast::Crate>,
@@ -405,10 +403,10 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
-    pub trans: Option<&'a trans::CrateTranslation>,
+    pub trans: Option<&'a <Trans as TransCrate>::TranslatedCrate>,
 }
 
-impl<'a, 'tcx> CompileState<'a, 'tcx> {
+impl<'a, 'tcx, Trans: TransCrate> CompileState<'a, 'tcx, Trans> {
     fn empty(input: &'a Input,
              session: &'tcx Session,
              out_dir: &'a Option<PathBuf>)
@@ -525,7 +523,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                         session: &'tcx Session,
                         out_dir: &'a Option<PathBuf>,
                         out_file: &'a Option<PathBuf>,
-                        trans: &'a trans::CrateTranslation)
+                        trans: &'a <Trans as TransCrate>::TranslatedCrate)
                         -> Self {
         CompileState {
             trans: Some(trans),

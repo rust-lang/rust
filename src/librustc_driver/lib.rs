@@ -241,9 +241,9 @@ pub fn run_compiler<'a>(args: &[String],
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
 
-    let trans_name = sess.opts.debugging_opts.trans.unwrap_or_else(||"llvm".to_string());
-    match *trans_name {
-        "llvm" => {
+    let trans_name = sess.opts.debugging_opts.trans.as_ref().map(|s|&**s);
+    match trans_name {
+        None => {
             let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
 
             do_or_return!(callbacks.late_callback(&matches,
@@ -262,7 +262,26 @@ pub fn run_compiler<'a>(args: &[String],
                                                         &control),
             Some(sess))
         }
-        _ => sess.fatal(&format!("Invalid trans {}", trans_name)),
+        Some("llvm") => {
+            let cstore = Rc::new(CStore::new(rustc_trans::LlvmTransCrate::metadata_loader()));
+
+            do_or_return!(callbacks.late_callback(&matches,
+                                                  &sess,
+                                                  &*cstore,
+                                                  &input,
+                                                  &odir,
+                                                  &ofile), Some(sess));
+
+            (driver::compile_input::<rustc_trans::LlvmTransCrate>(&sess,
+                                                                 &cstore,
+                                                                 &input,
+                                                                 &odir,
+                                                                 &ofile,
+                                                                 Some(plugins),
+                                                                 &control),
+            Some(sess))
+        }
+        Some(trans_name) => sess.fatal(&format!("Invalid trans {}", trans_name)),
     }
 }
 
