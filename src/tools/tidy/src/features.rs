@@ -351,7 +351,7 @@ fn map_lib_features(base_src_path: &Path,
                 }
             }
             becoming_feature = None;
-            if line.contains("rustc_const_unstable(") && line.contains("#[") {
+            if line.contains("rustc_const_unstable(") {
                 // const fn features are handled specially
                 let feature_name = match find_attr_val(line, "feature") {
                     Some(name) => name,
