@@ -287,12 +287,13 @@ fn rewrite_comment_inner(
         .checked_sub(closer.len() + opener.len())
         .unwrap_or(1);
     let indent_str = shape.indent.to_string(config);
-    let fmt = StringFormat {
+    let fmt_indent = shape.indent + (opener.len() - line_start.len());
+    let mut fmt = StringFormat {
         opener: "",
         closer: "",
         line_start: line_start,
         line_end: "",
-        shape: Shape::legacy(max_chars, shape.indent + (opener.len() - line_start.len())),
+        shape: Shape::legacy(max_chars, fmt_indent),
         trim_end: true,
         config: config,
     };
@@ -317,26 +318,69 @@ fn rewrite_comment_inner(
         });
 
     let mut result = opener.to_owned();
+    let mut is_prev_line_multi_line = false;
+    let comment_line_separator = format!("\n{}{}", indent_str, line_start);
     for line in lines {
         if result == opener {
             if line.is_empty() {
                 continue;
             }
         } else {
-            result.push('\n');
-            result.push_str(&indent_str);
-            result.push_str(line_start);
+            if is_prev_line_multi_line && !line.is_empty() {
+                result.push(' ')
+            } else {
+                result.push_str(&comment_line_separator);
+            }
         }
 
-        if config.wrap_comments() && line.len() > max_chars {
-            let rewrite = rewrite_string(line, &fmt).unwrap_or_else(|| line.to_owned());
-            result.push_str(&rewrite);
+        if config.wrap_comments() && line.len() > fmt.shape.width && !has_url(line) {
+            match rewrite_string(line, &fmt, Some(max_chars)) {
+                Some(ref s) => {
+                    is_prev_line_multi_line = s.contains('\n');
+                    result.push_str(s);
+                }
+                None if is_prev_line_multi_line => {
+                    // We failed to put the current `line` next to the previous `line`.
+                    // Remove the trailing space, then start rewrite on the next line.
+                    result.pop();
+                    result.push_str(&comment_line_separator);
+                    fmt.shape = Shape::legacy(max_chars, fmt_indent);
+                    match rewrite_string(line, &fmt, Some(max_chars)) {
+                        Some(ref s) => {
+                            is_prev_line_multi_line = s.contains('\n');
+                            result.push_str(s);
+                        }
+                        None => {
+                            is_prev_line_multi_line = false;
+                            result.push_str(line);
+                        }
+                    }
+                }
+                None => {
+                    is_prev_line_multi_line = false;
+                    result.push_str(line);
+                }
+            }
+
+            fmt.shape = if is_prev_line_multi_line {
+                // 1 = " "
+                let offset = 1 + last_line_width(&result) - line_start.len();
+                Shape {
+                    width: max_chars.checked_sub(offset).unwrap_or(0),
+                    indent: fmt_indent,
+                    offset: fmt.shape.offset + offset,
+                }
+            } else {
+                Shape::legacy(max_chars, fmt_indent)
+            };
         } else {
             if line.is_empty() && result.ends_with(' ') {
                 // Remove space if this is an empty comment or a doc comment.
                 result.pop();
             }
             result.push_str(line);
+            fmt.shape = Shape::legacy(max_chars, fmt_indent);
+            is_prev_line_multi_line = false;
         }
     }
 
