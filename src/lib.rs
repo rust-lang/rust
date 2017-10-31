@@ -1,6 +1,7 @@
 // error-pattern:cargo-clippy
 #![feature(plugin_registrar)]
 #![feature(rustc_private)]
+#![feature(macro_vis_matcher)]
 #![allow(unknown_lints)]
 #![allow(missing_docs_in_private_items)]
 
