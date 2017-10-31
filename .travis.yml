@@ -1,16 +1,8 @@
 language: rust
 script:
   - (cargo install mdbook --git https://github.com/azerupi/mdBook.git --force || true)
-  - mkdir src
-  - echo "[Introduction](introduction.md)\n" >> src/SUMMARY.md
-  - |
-    for f in $(ls text/* | sort)
-    do
-        echo "- [$(basename $f ".md")]($(basename $f))" >> src/SUMMARY.md
-        mv $f src
-    done
-  - cp README.md src/introduction.md
-  - mdbook build -d .
+  - ./generate-book.sh
+  - mv book/* .
 deploy:
   provider: pages
   skip_cleanup: true
