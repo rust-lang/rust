@@ -124,6 +124,10 @@ all of those, as well as a helper crate providing those types and traits, and
 we do not yet know what interfaces we need or want. We propose experimenting
 via the crates.io ecosystem first, before considering such interfaces.
 
+Cargo could compile and run a separate `build.rs`-like script to run each
+metabuild function independently, rather than a single script that invokes all
+of them.
+
 We could avoid introducing an extensible mechanism, and instead introduce
 individual semantic build interfaces one-by-one within Cargo itself. However,
 this would drastically impair experimentation and development, and in
