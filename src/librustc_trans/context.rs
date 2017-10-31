@@ -159,9 +159,7 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
         Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid relocation mode",
-                             sess.opts
-                                 .cg
-                                 .code_model));
+                              reloc_model_arg));
             sess.abort_if_errors();
             bug!();
         }

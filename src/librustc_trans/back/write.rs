@@ -173,9 +173,7 @@ pub fn target_machine_factory(sess: &Session)
         Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid code model",
-                             sess.opts
-                                 .cg
-                                 .code_model));
+                              code_model_arg));
             sess.abort_if_errors();
             bug!();
         }
