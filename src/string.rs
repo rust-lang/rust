@@ -50,7 +50,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     let stripped_str = re.replace_all(orig, "$1");
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
-    let shape = fmt.shape.visual_indent(0);
+    let shape = fmt.shape;
     let indent = shape.indent.to_string(fmt.config);
     let punctuation = ":,;.";
 
