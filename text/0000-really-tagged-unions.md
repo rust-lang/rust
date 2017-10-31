@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Formally define the enum `#[repr(X)]` attributes to force a non-C-like enum to be equivalent to a tag followed by a union. This serves two purposes: allowing low-level Rust code to independently initialize the tag and payload, and allowing C(++) to safely manipulate these types.
+Formally define the enum `#[repr(u32, i8, etc..)]` and `#[repr(C)]` attributes to force a non-C-like enum to have a defined layouts. This serves two purposes: allowing low-level Rust code to independently initialize the tag and payload, and allowing C(++) to safely manipulate these types.
 
 
 # Motivation
@@ -188,11 +188,11 @@ To accomplish this task, we need dedicated support from the language.
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-An enum can currently be adorned with `#[repr(X)]` where `X` is one of Rust's integer types (u8, isize, etc). For C-like enums -- enums which have no variants with associated data -- this specifies that the enum should have the ABI of that integer type (size, alignment, and calling convention). `#[repr(C)]` just tells Rust to try to pick whatever integer type that a C compiler for the target platform would use for an enum.
+An enum can currently be adorned with `#[repr(X)]` where `X` is one of Rust's integer types (u8, isize, etc). For C-like enums -- enums which have no variants with associated data -- this specifies that the enum should have the ABI of that integer type (size, alignment, and calling convention). `#[repr(C)]` currently just tells Rust to try to pick whatever integer type that a C compiler for the target platform would use for an enum.
 
-With this RFC, `#[repr(X)]` on a non-C-like enum will also have a meaning: the enum must be represented by a struct with two members: a tag followed by a union. The tag is a C-like enum with `#[repr(X)]`, and every composite member of the union is `#[repr(C)]`.
+With this RFC, two new guaranteed, C(++)-compatible enum layouts will be added. 
 
-Specifically, this definition:
+`#[repr(X)]` on a non-C-like enum will now mean: the enum must be represented as a C-union of C-structs that each start with a C-like enum with `#[repr(X)]`. The other fields of the structs are the payloads of the variants. This is a mouthful, so let's look at an example. This definition:
 
 ```rust
 #[repr(X)]
@@ -204,7 +204,117 @@ enum MyEnum {
 }
 ```
 
-Is equivalent to the following:
+Has the same layout as the following:
+
+```rust
+#[repr(C)]
+union MyEnumRepr {
+    A: MyEnumVariantA,
+    B: MyEnumVariantB,
+    C: MyEnumVariantC,
+    D: MyEnumVariantD,
+}
+
+#[repr(X)]
+enum MyEnumTag { A, B, C, D }
+
+#[repr(C)]
+struct MyEnumVariantA(MyEnumTag, u32);
+
+#[repr(C)]
+struct MyEnumVariantB(MyEnumTag, f32, u64);
+
+#[repr(C)]
+struct MyEnumVariantC { tag: MyEnumTag, x: u32, y: u8 }
+
+#[repr(C)]
+struct MyEnumVariantD(MyEnumTag);
+```
+
+Note that the structs must be `repr(C)`, because otherwise the MyEnumTag value wouldn't be guaranteed to have the same position in each variant.
+
+C++ can also correctly manipulate this enum with the following definition:
+
+```cpp
+#include <stdint.h>
+
+enum class MyEnumTag: CppEquivalentOfX { A, B, C, D };
+struct MyEnumPayloadA { MyEnumTag tag; uint32_t payload; };
+struct MyEnumPayloadB { MyEnumTag tag; float _0; uint64_t _1;  };
+struct MyEnumPayloadC { MyEnumTag tag; uint32_t x; uint8_t y; };
+struct MyEnumPayloadD { MyEnumTag tag; };
+
+union MyEnum {
+    MyEnumVariantA A;
+    MyEnumVariantB B;
+    MyEnumVariantC C;
+    MyEnumVariantD D;
+};
+```
+
+The correct C definition is essentially the same, but with the `enum class` replaced with a plain integer of the appropriate type.
+
+This layout might be a bit surprising to those used to using tagged unions in C(++), which are commonly
+represented as a `(tag, union)` pair. There are two reasons to prefer this more complex layout. First, it's what Rust has incidentally used this layout for a long time, so code that wants to begin relying on this layout will be compatible with old versions of Rust. Second, it can make slightly better use of space. For instance:
+
+```rust
+#[repr(u8)]
+enum TwoCases {
+    A(u8, u16),
+    B(u16),
+}
+```
+
+Becomes
+
+```rust
+union TwoCasesRepr {
+    A: TwoCasesVariantA,
+    B: TwoCasesVariantB,
+}
+
+#[repr(u8)]
+enum TwoCasesTag { A, B }
+
+#[repr(C)]
+struct TwoCasesVariantA(TwoCasesTag, u8, u16);
+
+#[repr(C)]
+struct TwoCasesVariantB(TwoCasesTag, u16);
+```
+
+Which ends up being 4 bytes large, because the TwoCasesVariantA struct can be laid out like: 
+
+```text
+[ u8  | u8  |   u16    ]
+  --    --    --    --
+```
+
+While a (tag, union) pair would have to make it 6 bytes large:
+
+```text
+[ u8  | pad | u8  | pad |   u16   ]
+  --    --    --    --    --    --
+        ^         ^- u16 needs 16-bit align
+        |
+    (u8, u16) struct needs 16-bit align 
+```
+
+However, for better compatibility with common C(++) idioms, and better ergonomics for low-level Rust programs, this RFC defines `repr(C)` on a tagged enum to specify the `(tag, union)` representation. Specifically the layout will be equivalent to a C-struct containing a C-like `repr(X)` enum followed by a C-union containing each payload.
+
+So for example this enum:
+
+```
+#[repr(C, X)]
+enum MyEnum {
+    A(u32),
+    B(f32, u64),
+    C { x: u32, y: u8 },
+    D,
+}
+```
+
+Has the same layout as the following: 
 
 ```rust
 #[repr(C)]
@@ -252,14 +362,14 @@ struct MyEnum {
 };
 ```
 
-The correct C definition is essentially the same, but with the `enum class` replaced with a plain integer of the appropriate type.
+If a non-C-like enum is *only* `#[repr(C)]`, then the layout will be the same as `#[repr(C, X)]`, but the C-like tag enum will instead just be `#[repr(C)]` (so it will have whatever size C enums default to). 
 
-In addition, it is defined for Rust programs to cast/reinterpret/transmute such an enum into the equivalent tag+union Rust definition above. Seperately manipulating the tag and payload is also defined. The tag and payload need only be in a consistent/initialized state when the value is matched on (which includes Dropping it). This means that the contents of a `#[repr(X)]` enum cannot be inspected by outer enums for storage optimizations -- `Option<MyEnum>` must be larger than `MyEnum`.
+For both layouts, it is defined for Rust programs to cast/reinterpret/transmute such an enum into the equivalent Repr definition. Seperately manipulating the tag and payload is also defined. The tag and payload need only be in a consistent/initialized state when the value is matched on (which includes Dropping it). 
 
 For instance, this code is valid (using the same definitions above):
 
 ```rust
-/// Tries to parse a MyEnum from a custom binary format, overwriting `dest`.
+/// Tries to parse a `#[repr(C, u8)] MyEnum` from a custom binary format, overwriting `dest`.
 /// On Err, `dest` may be partially overwritten (but will be in a memory-safe state)
 fn parse_my_enum_from<'a>(dest: &'a mut MyEnum, input: &mut &[u8]) -> Result<(), &'static str> {
     unsafe {
@@ -295,22 +405,31 @@ fn parse_my_enum_from<'a>(dest: &'a mut MyEnum, input: &mut &[u8]) -> Result<(),
 ```
 
 
+It should be noted that Rust enums should still idiomatically not have any repr annotation, as this allows for maximum optimization opportunities and the precise layout is unlikely to matter. If a deterministic layout is required, `repr(X)` should be preferred by default over `repr(C, X)` as it has a strictly superior space-usage, and incidentally works in older versions of Rust. However `repr(C, X)` is a reasonable choice for a more idiomatic-feeling tagged union, or to interoperate with an existing C(++) codebase.
+
+
+
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-Since the whole point of this proposal is to enable low-level control, the guide-level explanation should cover all the relevant corner-cases and details in sufficient detail. All that remains is to discuss implementation details. Thankfully, this is very simple: unless there's been an error, this should exactly match the current behaviour of the compiler.
+Since the whole point of this proposal is to enable low-level control, the guide-level explanation should cover all the relevant corner-cases and details in sufficient detail. All that remains is to discuss implementation details.
 
-It was [informally decided earilier this year](https://github.com/rust-lang/rust/issues/40029) that we should have this behaviour, as it was being relied on and it made sense. There is even a test in the rust-lang repo that was added to ensure that this behaviour doesn't regress.
+It was [informally decided earilier this year](https://github.com/rust-lang/rust/issues/40029) that `repr(X)`should have the behaviour this RFC proposes, as it was being partially relied on (in that it supressed dangerous optimizations) and it made sense to the developers. There is even a test in the rust-lang repo that was added to ensure that this behaviour doesn't regress. So this part of the proposal is already implemented and somewhat tested on stable Rust. This RFC just seeks to codify that this won't break in the future.
 
-We may need to double-check that the sub-structs are actually being marked as `repr(C)`.
+However `repr(C, X)` currently doesn't do anything different from `repr(X)`. Changing this should be a relatively minor tweak to the code that lowers Rust code to a particular ABI. Anyone relying on `repr(C, X)` being the same as `repr(X)` is relying on unspecified behaviour, but a cargo bomb run should still be done just to check.
 
+TODO: add a run-pass test that should be added to the Rust repo.
 
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-There aren't really any drawbacks: we already decided to do this. This is just making it official.
+Half of this proposal is already implemented, and the other half should be trivial. The existence of this proposal can also be completely ignored by anyone who doesn't care about it, as they can keep using the default Rust repr. This is simply making things that exist sort-of-by-accident do something useful, which is basically a pure win considering the implementation/maintenance burden is minimal.
 
+One minor issue with this proposal is that there's no way to request the `repr(X)` layout with the `repr(C)` tag size. To be blunt, this doesn't seem very important. It's unclear if developers should even use bare `repr(C)` on tagged unions, as the default C enum size is actually quite large for a tag. This is also consistent with the Rust philosophy of trying to minimize unecessary platform-specific details. Also, a desperate Rust programmer could acquire the desired behaviour with platform-specific cfgs (Rust has to basically guess at the type of a `repr(C)` enum anyway).
+
+The remaining drawbacks amount to "what if this is the *wrong* interpretation", which shall be adressed in the alternatives.
 
 
 # Rationale and alternatives
@@ -328,22 +447,20 @@ In which case it should probably become an error/warning. This isn't particularl
 
 ## The tag should come after the union, and/or order should be manually specified
 
-There isn't a particularly compelling reason to move the tag around because of how padding and alignment are handled: you can't actually save space by putting the tag after, as long as your tag is a reasonable size.
+With the `repr(C)` layout, there isn't a particularly compelling reason to move the tag around because of how padding and alignment are handled: you can't actually save space by putting the tag after, as long as your tag is a reasonable size.
 
 It's possible positioning the tag afterwards could be desirable to interoperate with a definition that is provided by a third party (hardware spec or some existing C library). However there are tons of other tag packing strategies that we also can't handle, so we'd probably want a more robust solution for those kinds of cases anyway.
+
+With the `repr(X)` layout, this could potentially save space (for instance, with a variant like `A(u16, u8)`). However the benefits are relatively minimal compared to the increased complexity. If that complexity is desirable, it can be adressed with a future extension.
 
 
 
 ## Compound variants shouldn't automatically be marked as `repr(C)`
 
-It's possible in the pure-Rust case to only want the outer-most level to be well-defined and to still let the inner contents be aggressively optimized. This interpretation and the RFC's primary interpretation can always be implemented on top of the other one by just making all compound variants into outline structs, just like how the desugarrings in the previous sections were written.
+With the `repr(X)` layout this isn't really possible, because the tag needs a deterministic position, and we can't "partially" `repr(C)` a struct.
 
-So this is just a matter of "what is a good default". The FFI case clearly wants fully defined layouts, while the pure-Rust case seems like a toss up. It seems like `repr(C)` is therefore the more ergonomic default.
+With either layout, one can make the payload be a single repr(Rust) struct, and that will have its layout agressively optimized, because `repr(C)` isn't infectious. So this is just a matter of "what is a good default". The FFI case clearly wants fully defined layouts, while the pure-Rust case seems like a toss up. It seems like `repr(C)` is therefore the better default.
 
-
-## The tag shouldn't be opaque to outer enums
-
-So for instance `Option<MyEnum>` could be the same size as `MyEnum`. The author hasn't fully thought this issue out. It seems like it might be fine? It just seems safest to completely abandon optimization. Feedback is welcome here.
 
 
 
@@ -351,12 +468,74 @@ So for instance `Option<MyEnum>` could be the same size as `MyEnum`. The author 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-The unresolved questions basically amount to future extensions of this design. Here are some basic sketches/notes for things which are possible, but which have been left out for simplicity.
+There are currently two unresolved questions:
+
+
+
+## Should the tag of a repr(X/C) enum be opaque?
+
+Should this code be valid:
+
+```rust
+let x: Option<MyEnum> = Some(mem::uninitialized());
+if let Some(ref mut inner) = x {
+    initialize(inner);
+} else { unreachable!() }
+```
+
+It relies on the fact that the Some-ness of an Option (or any `repr(Rust)` enum) can't rely on the tag of a `repr(C/X)` enum. Or in other words, `repr(X/C)` enums have opaque tags. The cost of making this work is that `Option<MyEnum>` would have to be larger than `MyEnum`.
+
+It would be *nice* for this to work, but if push come to shove, a developer can just make `#[repr(u8)] MyOption<T> { ... }`.
+
+
+
+## What should a repr(C) enum lower single-value payloads to?
+
+This enum:
+
+```rust
+#[repr(C)]
+enum MyEnum {
+    A(u32),
+    B(f32, usize),
+}
+```
+
+may have its union lowered to one of two forms:
+
+```rust
+// does a union wear pants like this
+#[repr(C)]
+union MyEnumPayload1 {
+    A: u32,
+    B: MyEnumPayloadB,
+}
+
+// or this
+#[repr(C)]
+union MyEnumPayload2 {
+    A: MyEnumPayloadA,
+    B: MyEnumPayloadB,
+}
+
+#[repr(C)]
+struct MyEnumPayloadA(u32);
+
+#[repr(C)]
+struct MyEnumPayloadB(f32, usize);
+```
+
+In almost all cases this distinction doesn't matter, but there's a few places where C ABIs care about whether something is in a struct or not, and the author is unclear if that could matter here. The latter is "easier" for machine-generated reprs to produce, while the former is potentially more "natural" for humans.
+
+
+# Future Extensions
+
+Here's some quick sketches of future extensions which could be done to this design.
 
 * A field/method for the tag/payload (my_enum.tag, my_enum.payload)
     * Probably should be a field to avoid conflicts with user-defined methods
     * Might need `#[repr(pub(X))]` for API design reasons
 * Compiler-generated definitions for the Repr types
     * With inherent type aliases on the enum? (`MyEnum::Tag`, `MyEnum::Payload`, `MyEnum::PayloadA`, etc.)
-* As discussed in the previous section, more advanced tag placement strategies?
+* As discussed in previous sections, more advanced tag placement strategies?
 * Allow specifying tag's value: `#[repr(u32)] MyEnum { A(u32) = 2, B = 5 }`
