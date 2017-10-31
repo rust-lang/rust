@@ -747,7 +747,7 @@ impl<'a> Linker for EmLinker<'a> {
 fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
     let mut symbols = Vec::new();
 
-    let export_threshold = symbol_export::threshold(tcx);
+    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for &(ref name, _, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
         if level.is_below_threshold(export_threshold) {
             symbols.push(name.clone());
