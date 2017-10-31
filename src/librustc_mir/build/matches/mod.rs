@@ -56,7 +56,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // create binding start block for link them by false edges
         let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
-        let binding_start_blocks: Vec<_> = (0..candidate_count + 1)
+        let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
             .map(|_| self.cfg.start_new_block()).collect();
 
         // assemble a list of candidates: there is one candidate per
@@ -72,23 +72,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     arm.patterns.iter()
                                 .map(move |pat| (arm_index, pat, arm.guard.clone()))
                 })
-                .zip(binding_start_blocks.iter().zip(binding_start_blocks.iter().skip(1)))
+                .zip(pre_binding_blocks.iter().zip(pre_binding_blocks.iter().skip(1)))
                 .map(|((arm_index, pattern, guard),
-                       (binding_start_block, next_candidate_binding_start_block))| {
+                       (pre_binding_block, next_candidate_pre_binding_block))| {
                     Candidate {
                         span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard,
                         arm_index,
-                        binding_start_block: *binding_start_block,
-                        next_candidate_binding_start_block: *next_candidate_binding_start_block,
+                        pre_binding_block: *pre_binding_block,
+                        next_candidate_pre_binding_block: *next_candidate_pre_binding_block,
                     }
                 })
                 .collect();
 
         let outer_source_info = self.source_info(span);
-        self.cfg.terminate(*binding_start_blocks.last().unwrap(),
+        self.cfg.terminate(*pre_binding_blocks.last().unwrap(),
                            outer_source_info, TerminatorKind::Unreachable);
 
         // this will generate code to test discriminant_lvalue and
@@ -165,8 +165,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             // since we don't call `match_candidates`, next fields is unused
             arm_index: 0,
-            binding_start_block: block,
-            next_candidate_binding_start_block: block
+            pre_binding_block: block,
+            next_candidate_pre_binding_block: block
         };
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
@@ -298,8 +298,8 @@ pub struct Candidate<'pat, 'tcx:'pat> {
     arm_index: usize,
 
     // ...and the blocks for add false edges between candidates
-    binding_start_block: BasicBlock,
-    next_candidate_binding_start_block: BasicBlock,
+    pre_binding_block: BasicBlock,
+    next_candidate_pre_binding_block: BasicBlock,
 }
 
 #[derive(Clone, Debug)]
@@ -723,12 +723,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let candidate_source_info = self.source_info(candidate.span);
 
         self.cfg.terminate(block, candidate_source_info,
-                               TerminatorKind::FalseEdges {
-                                   real_target: candidate.binding_start_block,
-                                   imaginary_targets:
-                                       vec![candidate.next_candidate_binding_start_block]});
+                               TerminatorKind::Goto { target: candidate.pre_binding_block });
 
-        block = candidate.binding_start_block;
+        block = self.cfg.start_new_block();
+        self.cfg.terminate(candidate.pre_binding_block, candidate_source_info,
+                               TerminatorKind::FalseEdges {
+                                   real_target: block,
+                                   imaginary_targets:
+                                       vec![candidate.next_candidate_pre_binding_block]});
+
         self.bind_matched_candidate(block, candidate.bindings);
 
         if let Some(guard) = candidate.guard {
@@ -748,7 +751,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                TerminatorKind::FalseEdges {
                                    real_target: otherwise,
                                    imaginary_targets:
-                                       vec![candidate.next_candidate_binding_start_block] });
+                                       vec![candidate.next_candidate_pre_binding_block] });
             Some(otherwise)
         } else {
             self.cfg.terminate(block, candidate_source_info,
