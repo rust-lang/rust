@@ -5,6 +5,7 @@ version = "0.0.0"
 build = "build.rs"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
+description = "The Rust Standard Library"
 
 [lib]
 name = "std"
