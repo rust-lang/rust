@@ -269,14 +269,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     RegionResolutionError::GenericBoundFailure(ref origin, ..) => {
                         self.tcx.sess.span_warn(
                             origin.span(),
-                            &format!("not reporting region error due to -Znll: {:?}",
-                                     error));
+                            "not reporting region error due to -Znll");
                     }
 
                     RegionResolutionError::SubSupConflict(ref rvo, ..) => {
                         self.tcx.sess.span_warn(
                             rvo.span(),
-                            &format!("not reporting region error due to -Znll: {:?}", error));
+                            "not reporting region error due to -Znll");
                     }
                 }
             }

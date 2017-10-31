@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll: SubSupConflict(AddrOfRegion($DIR/named-region-basic.rs:19:5: 19:8), Reborrow($DIR/named-region-basic.rs:19:5: 19:8), ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:3) => named_region_basic[317d]::foo[0] }, BrNamed(CrateNum(0):DefIndex(1:10), 'b(88))), Reborrow($DIR/named-region-basic.rs:19:5: 19:8), ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:3) => named_region_basic[317d]::foo[0] }, BrNamed(CrateNum(0):DefIndex(1:9), 'a(86))))
+warning: not reporting region error due to -Znll
   --> $DIR/named-region-basic.rs:19:5
    |
 19 |     &*x
