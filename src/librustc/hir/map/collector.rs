@@ -219,7 +219,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                                                  f: F) {
         let prev_owner = self.current_dep_node_owner;
         let prev_signature_dep_index = self.current_signature_dep_index;
-        let prev_full_dep_index = self.current_signature_dep_index;
+        let prev_full_dep_index = self.current_full_dep_index;
         let prev_in_body = self.currently_in_body;
 
         let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
