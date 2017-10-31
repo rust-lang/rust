@@ -51,7 +51,11 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let src = MirSource::from_local_def_id(tcx, def_id);
     debug!("run query mir_borrowck: {}", tcx.node_path_str(src.item_id()));
 
-    if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.opts.debugging_opts.borrowck_mir {
+    if {
+        !tcx.has_attr(def_id, "rustc_mir_borrowck") &&
+            !tcx.sess.opts.debugging_opts.borrowck_mir &&
+            !tcx.sess.opts.debugging_opts.nll
+    } {
         return;
     }
 
