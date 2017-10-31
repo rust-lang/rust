@@ -166,6 +166,24 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     }
 }
 
+pub fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
+    let tls_model_arg = match sess.opts.cg.tls_model {
+        Some(ref s) => &s[..],
+        None => &sess.target.target.options.tls_model[..],
+    };
+
+    match ::back::write::TLS_MODEL_ARGS.iter().find(
+        |&&arg| arg.0 == tls_model_arg) {
+        Some(x) => x.1,
+        _ => {
+            sess.err(&format!("{:?} is not a valid TLS model",
+                              tls_model_arg));
+            sess.abort_if_errors();
+            bug!();
+        }
+    }
+}
+
 fn is_any_library(sess: &Session) -> bool {
     sess.crate_types.borrow().iter().any(|ty| {
         *ty != config::CrateTypeExecutable

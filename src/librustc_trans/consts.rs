@@ -23,6 +23,7 @@ use monomorphize::Instance;
 use type_::Type;
 use type_of;
 use rustc::ty;
+use context::get_tls_model;
 
 use rustc::hir;
 
@@ -196,7 +197,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
         for attr in attrs {
             if attr.check_name("thread_local") {
-                llvm::set_thread_local(g, true);
+                llvm::set_thread_local_mode(g, get_tls_model(ccx.sess()));
             }
         }
 
@@ -215,7 +216,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         // symbol and another one doesn't.
         for attr in ccx.tcx().get_attrs(def_id).iter() {
             if attr.check_name("thread_local") {
-                llvm::set_thread_local(g, true);
+                llvm::set_thread_local_mode(g, get_tls_model(ccx.sess()));
             }
         }
         if ccx.use_dll_storage_attrs() && !ccx.tcx().is_foreign_item(def_id) {
@@ -305,9 +306,8 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         debuginfo::create_global_var_metadata(ccx, id, g);
 
-        if attr::contains_name(attrs,
-                               "thread_local") {
-            llvm::set_thread_local(g, true);
+        if attr::contains_name(attrs, "thread_local") {
+            llvm::set_thread_local_mode(g, get_tls_model(ccx.sess()));
         }
 
         base::set_link_section(ccx, g, attrs);
