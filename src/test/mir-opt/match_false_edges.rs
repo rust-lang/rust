@@ -21,8 +21,8 @@ fn guard2(_:i32) -> bool {
 fn full_tested_match()
 {
     let _ = match Some(42) {
-        Some(_) if guard() => 1,
-        Some(_) => 2,
+        Some(x) if guard() => 1 + x,
+        Some(y) => 2 + y,
         None => 3
     };
 }
@@ -42,50 +42,54 @@ fn main() {
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
-//      _3 = discriminant(_2);
-//      switchInt(_3) -> [0isize: bb8, otherwise: bb9];
+//      _5 = discriminant(_2);
+//      switchInt(_5) -> [0isize: bb6, otherwise: bb7];
 //  }
 //  bb1: { // arm1
-//      _1 = const 1i32;
-//      goto -> bb13;
-//  }
-//  bb2: { // arm2
-//      _1 = const 2i32;
-//      goto -> bb13;
-//  }
-//  bb3: { // arm3
-//      _1 = const 3i32;
-//      goto -> bb13;
-//  }
-//  bb4: { // binding1
+//      StorageLive(_7);
+//      _7 = _3;
+//      _1 = Add(const 1i32, _7);
 //      ...
-//      _4 = const guard() -> bb10;
+//      goto -> bb11;
 //  }
-//  bb5: { // binding2
-//      falseEdges -> [real: bb2, imaginary: bb6];
+//  bb2: { // binding1 guard
+//      StorageLive(_3);
+//      _3 = ((_2 as Some).0: i32);
+//      StorageLive(_6);
+//      _6 = const guard() -> bb8;
 //  }
-//  bb6: { // binding3
-//      falseEdges -> [real: bb3, imaginary: bb7];
+//  bb3: { // binding2 & arm2
+//      StorageLive(_4);
+//      _4 = ((_2 as Some).0: i32);
+//      StorageLive(_8);
+//      _8 = _4;
+//      _1 = Add(const 2i32, _8);
+//      StorageDead(_8);
+//      goto -> bb11;
 //  }
-//  bb7: {
+//  bb4: { // binding3(empty) arm3
+//      _1 = const 3i32;
+//      goto -> bb11;
+//  }
+//  bb5: {
 //      unreachable;
 //  }
+//  bb6: {
+//      falseEdges -> [real: bb4, imaginary: bb5]; // from before_binding3 to unreachable
+//  }
+//  bb7: {
+//      falseEdges -> [real: bb2, imaginary: bb3]; // from before_binding1 to binding2
+//  }
 //  bb8: {
-//      falseEdges -> [real: bb6, imaginary: bb7]; // from before_binding3 to unreachable
+//      switchInt(_6) -> [0u8: bb9, otherwise: bb1]; // end of guard
 //  }
 //  bb9: {
-//      falseEdges -> [real: bb4, imaginary: bb5]; // from before_binding1 to binding2
+//      falseEdges -> [real: bb10, imaginary: bb3]; // after_guard to binding2
 //  }
 //  bb10: {
-//      switchInt(_4) -> [0u8: bb11, otherwise: bb1]; // end of guard
+//      falseEdges -> [real: bb3, imaginary: bb4]; // from before_binding2 to binding3
 //  }
 //  bb11: {
-//      falseEdges -> [real: bb12, imaginary: bb5]; // after_guard to binding2
-//  }
-//  bb12: {
-//      falseEdges -> [real: bb5, imaginary: bb6]; // from before_binding2 to binding3
-//  }
-//  bb13: {
 //      ...
 //      return;
 //  }
@@ -93,74 +97,74 @@ fn main() {
 //
 // END rustc.node17.NLL.before.mir
 //
-// START rustc.node36.NLL.before.mir
+// START rustc.node40.NLL.before.mir
 // bb0: {
 //     ...
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
 //     _7 = discriminant(_2);
-//     switchInt(_7) -> [1isize: bb10, otherwise: bb13];
+//     switchInt(_7) -> [1isize: bb8, otherwise: bb11];
 // }
 // bb1: { // arm1
 //      _1 = const 1i32;
-//      goto -> bb17;
+//      goto -> bb15;
 // }
-// bb2: { // arm2
-//     _1 = const 2i32;
-//     goto -> bb17;
-// }
-// bb3: { // arm3
+// bb2: { // arm3
 //     _1 = const 3i32;
-//      goto -> bb17;
+//      goto -> bb15;
 // }
-// bb4: { // arm4
-//     _1 = const 4i32;
-//      goto -> bb17;
+// bb3: { // binding1: Some(w) if guard() =>
+//     StorageLive(_3);
+//     _3 = ((_2 as Some).0: i32);
+//     StorageLive(_8);
+//     _8 = const guard() -> bb9;
 // }
-// bb5: { // binding1: Some(w) if guard() =>
-//     ...
-//     _8 = const guard() -> bb11;
-// }
-// bb6: { // binding2: x =>
-//     ...
+// bb4: { // binding2 & arm2
+//     StorageLive(_4);
 //     _4 = _2;
-//     falseEdges -> [real: bb2, imaginary: bb7]; // after binding2 to binding3
-//    }
-// bb7: { // binding3: Some(y) if guard2(y) =>
-//     ...
-//     _10 = const guard2(_11) -> bb14;
+//     _1 = const 2i32;
+//     goto -> bb15;
 // }
-// bb8: { // binding4: z_ =>
-//     ...
+// bb5: { // binding3: Some(y) if guard2(y) =>
+//     StorageLive(_5);
+//     _5 = ((_2 as Some).0: i32);
+//     StorageLive(_10);
+//     StorageLive(_11);
+//     _11 = _5;
+//    _10 = const guard2(_11) -> bb12;
+// }
+// bb6: { // binding4 & arm4
+//     StorageLive(_6);
 //     _6 = _2;
-//     falseEdges -> [real: bb4, imaginary: bb9]; // after binding3 to unreachable
+//     _1 = const 4i32;
+//     goto -> bb15;
 // }
-// bb9: {
+// bb7: {
 //     unreachable;
 // }
+// bb8: {
+//     falseEdges -> [real: bb3, imaginary: bb4]; // from before_binding1 to binding2
+// }
+// bb9: {
+//     switchInt(_8) -> [0u8: bb10, otherwise: bb1]; // end of gurard
+// }
 // bb10: {
-//     falseEdges -> [real: bb5, imaginary: bb6]; // from before_binding1 to binding2
+//     falseEdges -> [real: bb11, imaginary: bb4]; // after guard to binding2
 // }
 // bb11: {
-//     switchInt(_8) -> [0u8: bb12, otherwise: bb1]; // end of gurard
+//     falseEdges -> [real: bb4, imaginary: bb5]; // from before_binding2 to binding3
 // }
 // bb12: {
-//     falseEdges -> [real: bb13, imaginary: bb6]; // after guard to binding2
+//      StorageDead(_11);
+//      switchInt(_10) -> [0u8: bb13, otherwise: bb2]; // end of guard2
 // }
 // bb13: {
-//     falseEdges -> [real: bb6, imaginary: bb7]; // from before_binding2 to binding3
+//     falseEdges -> [real: bb14, imaginary: bb6]; // after guard2 to binding4
 // }
 // bb14: {
-//      ...
-//      switchInt(_10) -> [0u8: bb15, otherwise: bb3]; // end of guard2
+//     falseEdges -> [real: bb6, imaginary: bb7]; // from befor binding4 to unreachable
 // }
 // bb15: {
-//     falseEdges -> [real: bb16, imaginary: bb8]; // after guard2 to binding4
-// }
-// bb16: {
-//     falseEdges -> [real: bb8, imaginary: bb9]; // from befor binding3 to binding4
-// }
-// bb17: {
 //     ...
 //     return;
 // }
-// END rustc.node36.NLL.before.mir
+// END rustc.node40.NLL.before.mir

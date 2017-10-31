@@ -752,10 +752,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Some(otherwise)
         } else {
             self.cfg.terminate(block, candidate_source_info,
-                               TerminatorKind::FalseEdges {
-                                   real_target: arm_block,
-                                   imaginary_targets:
-                                       vec![candidate.next_candidate_binding_start_block]});
+                               TerminatorKind::Goto { target: arm_block });
             None
         }
     }
