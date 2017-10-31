@@ -1,0 +1,26 @@
+language: rust
+before_install:
+  - openssl aes-256-cbc -K $encrypted_1cc96cfefdcd_key -iv $encrypted_1cc96cfefdcd_iv -in rfcs-publish-key.enc -out ~/.ssh/rfcs-publish-key -d
+  - chmod u=rw,og= ~/.ssh/rfcs-publish-key
+  - echo "Host github.com" >> ~/.ssh/config
+  - echo "  IdentityFile ~/.ssh/rfcs-publish-key" >> ~/.ssh/config
+  - git --version
+script:
+  - rev=$(git rev-parse --short HEAD)
+  - (cargo install mdbook --git https://github.com/azerupi/mdBook.git --force || true)
+  - ./generate-book.sh
+  - cd book
+  - git init
+  - git config --global user.name "bors"
+  - git config --global user.email "bors@rust-lang.org"
+  - git remote add upstream git@github.com:rust-lang/rfcs.git
+  - git fetch upstream
+  - git reset upstream/gh-pages
+  - touch .
+  - git add -A .
+  - git commit -m "Rebuild book at ${rev}"
+  - git push -q upstream HEAD:gh-pages > /dev/null 2>&1
+branches:
+  only:
+    - master
+
