@@ -617,14 +617,16 @@ impl<'a> Builder<'a> {
         if self.is_very_verbose() {
             cargo.arg("-v");
         }
-        // FIXME: cargo bench does not accept `--release`
-        if self.config.rust_optimize && cmd != "bench" {
-            cargo.arg("--release");
+        if self.config.rust_optimize {
+            // FIXME: cargo bench does not accept `--release`
+            if cmd != "bench" {
+                cargo.arg("--release");
+            }
 
-            if mode != Mode::Libstd &&
+            if mode != Mode::Libstd && // FIXME(#45320)
                self.config.rust_codegen_units.is_none() &&
-               self.build.is_rust_llvm(compiler.host)
-
+               self.build.is_rust_llvm(compiler.host) &&
+               !target.contains("mips") // FIXME(#45654)
             {
                 cargo.env("RUSTC_THINLTO", "1");
             }
