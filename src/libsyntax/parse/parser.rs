@@ -3174,23 +3174,16 @@ impl<'a> Parser<'a> {
                 mem::replace(self, parser_snapshot_before_in);
 
                 match self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None) {
-                    Ok(expr) => {
-                        // Successfully parsed the expr, print a nice error message.
+                    Ok(_) => {
+                        // Successfully parsed the expr which means that the 'in' keyword is
+                        // missing, e.g. 'for i 0..2'
                         in_err.cancel();
-                        let in_span = parser_snapshot_after_in.span;
+                        let in_span = parser_snapshot_after_in.prev_span
+                            .between(parser_snapshot_after_in.span);
                         let mut err = self.sess.span_diagnostic
                             .struct_span_err(in_span, "missing `in` in `for` loop");
                         err.span_label(in_span, "expected `in` here");
-                        let sugg = pprust::to_string(|s| {
-                            s.s.word("for ")?;
-                            s.print_pat(&pat)?;
-                            s.s.word(" in ")?;
-                            s.print_expr(&expr)
-                        });
-                        err.span_suggestion(
-                            in_span,
-                            "try adding `in`",
-                            sugg);
+                        err.span_suggestion_short(in_span, "try adding `in` here", "in".into());
                         Err(err)
                     }
                     Err(mut expr_err) => {
