@@ -54,7 +54,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "xsv",
         repo: "https://github.com/BurntSushi/xsv",
-        sha: "4b308adbe48ac81657fd124b90b44f7c3263f771",
+        sha: "66956b6bfd62d6ac767a6b6499c982eae20a2c9f",
         lock: None,
         packages: &[],
     },
