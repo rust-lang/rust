@@ -3194,8 +3194,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-
-            }
+        }
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
