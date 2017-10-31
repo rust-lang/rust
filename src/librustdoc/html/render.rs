@@ -3221,18 +3221,19 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
     };
 
     if let Some(self_ty) = self_type_opt {
-        let (by_mut_ref, by_box) = match self_ty {
+        let (by_mut_ref, by_box, by_value) = match self_ty {
             SelfTy::SelfBorrowed(_, mutability) |
             SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
-                (mutability == Mutability::Mutable, false)
+                (mutability == Mutability::Mutable, false, false)
             },
             SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
-                (false, Some(did) == cache().owned_box_did)
+                (false, Some(did) == cache().owned_box_did, false)
             },
-            _ => (false, false),
+            SelfTy::SelfValue => (false, false, true),
+            _ => (false, false, false),
         };
 
-        (deref_mut_ || !by_mut_ref) && !by_box
+        (deref_mut_ || !by_mut_ref) && !by_box && !by_value
     } else {
         false
     }
