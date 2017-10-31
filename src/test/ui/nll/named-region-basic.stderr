@@ -1,0 +1,29 @@
+warning: not reporting region error due to -Znll: SubSupConflict(AddrOfRegion($DIR/named-region-basic.rs:19:5: 19:8), Reborrow($DIR/named-region-basic.rs:19:5: 19:8), ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:3) => named_region_basic[317d]::foo[0] }, BrNamed(CrateNum(0):DefIndex(1:10), 'b(88))), Reborrow($DIR/named-region-basic.rs:19:5: 19:8), ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:3) => named_region_basic[317d]::foo[0] }, BrNamed(CrateNum(0):DefIndex(1:9), 'a(86))))
+  --> $DIR/named-region-basic.rs:19:5
+   |
+19 |     &*x
+   |     ^^^
+
+error[E0597]: `*x` does not live long enough
+  --> $DIR/named-region-basic.rs:19:6
+   |
+19 |     &*x
+   |      ^^ does not live long enough
+   |
+   = note: borrowed value must be valid for the static lifetime...
+note: ...but borrowed value is only valid for the lifetime 'a as defined on the function body at 18:1
+  --> $DIR/named-region-basic.rs:18:1
+   |
+18 | / fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
+19 | |     &*x
+20 | | }
+   | |_^
+
+error: free region `'a` does not outlive `'b`
+  --> $DIR/named-region-basic.rs:19:5
+   |
+19 |     &*x
+   |     ^^^
+
+error: aborting due to 2 previous errors
+

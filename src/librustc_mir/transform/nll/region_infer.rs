@@ -17,6 +17,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
 use std::collections::BTreeSet;
 use std::fmt;
+use syntax_pos::Span;
 
 pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
@@ -70,10 +71,11 @@ struct Region {
 
 impl fmt::Debug for Region {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        formatter.debug_set()
-                 .entries(&self.points)
-                 .entries(&self.free_regions)
-                 .finish()
+        formatter
+            .debug_set()
+            .entries(&self.points)
+            .entries(&self.free_regions)
+            .finish()
     }
 }
 
@@ -93,8 +95,16 @@ impl Region {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Constraint {
-    sub: RegionIndex,
+    /// Where did this constraint arise?
+    span: Span,
+
+    /// The region SUP must outlive SUB...
     sup: RegionIndex,
+
+    /// Region that must be outlived.
+    sub: RegionIndex,
+
+    /// At this location.
     point: Location,
 }
 
@@ -210,56 +220,116 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     pub(super) fn add_live_point(&mut self, v: RegionIndex, point: Location) {
         debug!("add_live_point({:?}, {:?})", v, point);
         let definition = &mut self.definitions[v];
-        definition.value.add_point(point);
+        if !definition.constant {
+            definition.value.add_point(point);
+        } else {
+            // Constants are used for free regions, which already
+            // contain all the points in the control-flow graph.
+            assert!(definition.value.contains_point(point));
+        }
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
-    pub(super) fn add_outlives(&mut self, sup: RegionIndex, sub: RegionIndex, point: Location) {
+    pub(super) fn add_outlives(
+        &mut self,
+        span: Span,
+        sup: RegionIndex,
+        sub: RegionIndex,
+        point: Location,
+    ) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
-        self.constraints.push(Constraint { sup, sub, point });
+        self.constraints.push(Constraint {
+            span,
+            sup,
+            sub,
+            point,
+        });
     }
 
     /// Perform region inference.
     pub(super) fn solve(&mut self, infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &Mir<'tcx>) {
-        self.propagate_constraints(infcx, mir);
+        let errors = self.propagate_constraints(mir);
+
+        // worst error msg ever
+        for (fr1, span, fr2) in errors {
+            infcx.tcx.sess.span_err(
+                span,
+                &format!(
+                    "free region `{}` does not outlive `{}`",
+                    self.definitions[fr1].name.unwrap(),
+                    self.definitions[fr2].name.unwrap()
+                ),
+            );
+        }
     }
 
     /// Propagate the region constraints: this will grow the values
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    fn propagate_constraints(&mut self, infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &Mir<'tcx>) {
+    fn propagate_constraints(
+        &mut self,
+        mir: &Mir<'tcx>,
+    ) -> Vec<(RegionIndex, Span, RegionIndex)> {
         let mut changed = true;
-        let mut dfs = Dfs::new(infcx, mir);
+        let mut dfs = Dfs::new(mir);
+        let mut error_regions = FxHashSet();
+        let mut errors = vec![];
         while changed {
             changed = false;
             for constraint in &self.constraints {
+                debug!("constraint: {:?}", constraint);
                 let sub = &self.definitions[constraint.sub].value.clone();
                 let sup_def = &mut self.definitions[constraint.sup];
-                debug!("constraint: {:?}", constraint);
+
                 debug!("    sub (before): {:?}", sub);
                 debug!("    sup (before): {:?}", sup_def.value);
 
-                if dfs.copy(sub, &mut sup_def.value, constraint.point) {
-                    changed = true;
-                }
+                if !sup_def.constant {
+                    // If this is not a constant, then grow the value as needed to
+                    // accommodate the outlives constraint.
 
-                debug!("    sup (after) : {:?}", sup_def.value);
-                debug!("    changed     : {:?}", changed);
+                    if dfs.copy(sub, &mut sup_def.value, constraint.point) {
+                        changed = true;
+                    }
+
+                    debug!("    sup (after) : {:?}", sup_def.value);
+                    debug!("    changed     : {:?}", changed);
+                } else {
+                    // If this is a constant, check whether it *would
+                    // have* to grow in order for the constraint to be
+                    // satisfied. If so, create an error.
+
+                    let mut sup_value = sup_def.value.clone();
+                    if dfs.copy(sub, &mut sup_value, constraint.point) {
+                        // Constant values start out with the entire
+                        // CFG, so it must be some new free region
+                        // that was added. Find one.
+                        let &new_region = sup_value
+                            .free_regions
+                            .difference(&sup_def.value.free_regions)
+                            .next()
+                            .unwrap();
+                        debug!("    new_region : {:?}", new_region);
+                        if error_regions.insert(constraint.sup) {
+                            errors.push((constraint.sup, constraint.span, new_region));
+                        }
+                    }
+                }
             }
             debug!("\n");
         }
+        errors
     }
 }
 
-struct Dfs<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
-    #[allow(dead_code)] infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+struct Dfs<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
-        Self { infcx, mir }
+impl<'a, 'tcx> Dfs<'a, 'tcx> {
+    fn new(mir: &'a Mir<'tcx>) -> Self {
+        Self { mir }
     }
 
     fn copy(
@@ -316,7 +386,10 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> Dfs<'a, 'gcx, 'tcx> {
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
 
-                to_region.free_regions.extend(&from_region.free_regions);
+                debug!("        dfs: free_regions={:?}", from_region.free_regions);
+                for &fr in &from_region.free_regions {
+                    changed |= to_region.free_regions.insert(fr);
+                }
             } else {
                 stack.extend(successor_points);
             }
