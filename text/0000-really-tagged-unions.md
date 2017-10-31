@@ -206,7 +206,7 @@ enum MyEnum {
 
 Is equivalent to the following:
 
-```
+```rust
 #[repr(C)]
 struct MyEnumRepr {
     tag: MyEnumTag,
@@ -358,5 +358,5 @@ The unresolved questions basically amount to future extensions of this design. H
     * Might need `#[repr(pub(X))]` for API design reasons
 * Compiler-generated definitions for the Repr types
     * With inherent type aliases on the enum? (`MyEnum::Tag`, `MyEnum::Payload`, `MyEnum::PayloadA`, etc.)
-* As discess in previous section, more advanced tag placement strategies?
+* As discussed in the previous section, more advanced tag placement strategies?
 * Allow specifying tag's value: `#[repr(u32)] MyEnum { A(u32) = 2, B = 5 }`
