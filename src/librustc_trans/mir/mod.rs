@@ -11,20 +11,18 @@
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::{self, TypeFoldable};
+use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
-use rustc::mir::tcx::LvalueTy;
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
 use rustc::session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, Funclet};
+use common::{CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
-use abi::{ArgAttribute, FnType};
-use type_of;
+use abi::{ArgAttribute, FnType, PassMode};
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -61,7 +59,7 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    llpersonalityslot: Option<ValueRef>,
+    personality_slot: Option<LvalueRef<'tcx>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
@@ -86,7 +84,7 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// directly using an `OperandRef`, which makes for tighter LLVM
     /// IR. The conditions for using an `OperandRef` are as follows:
     ///
-    /// - the type of the local must be judged "immediate" by `type_is_immediate`
+    /// - the type of the local must be judged "immediate" by `is_llvm_immediate`
     /// - the operand must never be referenced indirectly
     ///     - we should not take its address using the `&` operator
     ///     - nor should it appear in an lvalue path like `tmp.a`
@@ -177,14 +175,13 @@ enum LocalRef<'tcx> {
     Operand(Option<OperandRef<'tcx>>),
 }
 
-impl<'tcx> LocalRef<'tcx> {
-    fn new_operand<'a>(ccx: &CrateContext<'a, 'tcx>,
-                       ty: Ty<'tcx>) -> LocalRef<'tcx> {
-        if common::type_is_zero_size(ccx, ty) {
+impl<'a, 'tcx> LocalRef<'tcx> {
+    fn new_operand(ccx: &CrateContext<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
+        if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            LocalRef::Operand(Some(OperandRef::new_zst(ccx, ty)))
+            LocalRef::Operand(Some(OperandRef::new_zst(ccx, layout)))
         } else {
             LocalRef::Operand(None)
         }
@@ -232,7 +229,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         llfn,
         fn_ty,
         ccx,
-        llpersonalityslot: None,
+        personality_slot: None,
         blocks: block_bcxs,
         unreachable_block: None,
         cleanup_kinds,
@@ -255,7 +252,8 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
-            let ty = mircx.monomorphize(&decl.ty);
+            let layout = bcx.ccx.layout_of(mircx.monomorphize(&decl.ty));
+            assert!(!layout.ty.has_erasable_regions());
 
             if let Some(name) = decl.name {
                 // User variable
@@ -264,15 +262,14 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
                 if !lvalue_locals.contains(local.index()) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
-                    return LocalRef::new_operand(bcx.ccx, ty);
+                    return LocalRef::new_operand(bcx.ccx, layout);
                 }
 
                 debug!("alloc: {:?} ({}) -> lvalue", local, name);
-                assert!(!ty.has_erasable_regions());
-                let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
+                let lvalue = LvalueRef::alloca(&bcx, layout, &name.as_str());
                 if dbg {
                     let (scope, span) = mircx.debug_loc(decl.source_info);
-                    declare_local(&bcx, &mircx.debug_context, name, ty, scope,
+                    declare_local(&bcx, &mircx.debug_context, name, layout.ty, scope,
                         VariableAccess::DirectVariable { alloca: lvalue.llval },
                         VariableKind::LocalVariable, span);
                 }
@@ -282,18 +279,18 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 if local == mir::RETURN_POINTER && mircx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return pointer) -> lvalue", local);
                     let llretptr = llvm::get_param(llfn, 0);
-                    LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty),
+                    LocalRef::Lvalue(LvalueRef::new_sized(llretptr,
+                                                          layout,
                                                           Alignment::AbiAligned))
                 } else if lvalue_locals.contains(local.index()) {
                     debug!("alloc: {:?} -> lvalue", local);
-                    assert!(!ty.has_erasable_regions());
-                    LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty,  &format!("{:?}", local)))
+                    LocalRef::Lvalue(LvalueRef::alloca(&bcx, layout, &format!("{:?}", local)))
                 } else {
                     // If this is an immediate local, we do not create an
                     // alloca in advance. Instead we wait until we see the
                     // definition and update the operand there.
                     debug!("alloc: {:?} -> operand", local);
-                    LocalRef::new_operand(bcx.ccx, ty)
+                    LocalRef::new_operand(bcx.ccx, layout)
                 }
             }
         };
@@ -384,7 +381,6 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
-        let arg_ty = mircx.monomorphize(&arg_decl.ty);
 
         let name = if let Some(name) = arg_decl.name {
             name.as_str().to_string()
@@ -398,26 +394,17 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // to reconstruct it into a tuple local variable, from multiple
             // individual LLVM function arguments.
 
+            let arg_ty = mircx.monomorphize(&arg_decl.ty);
             let tupled_arg_tys = match arg_ty.sty {
                 ty::TyTuple(ref tys, _) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let lvalue = LvalueRef::alloca(bcx, arg_ty, &name);
-            for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
-                let (dst, _) = lvalue.trans_field_ptr(bcx, i);
+            let lvalue = LvalueRef::alloca(bcx, bcx.ccx.layout_of(arg_ty), &name);
+            for i in 0..tupled_arg_tys.len() {
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
-                if common::type_is_fat_ptr(bcx.ccx, tupled_arg_ty) {
-                    // We pass fat pointers as two words, but inside the tuple
-                    // they are the two sub-fields of a single aggregate field.
-                    let meta = &mircx.fn_ty.args[idx];
-                    idx += 1;
-                    arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, dst));
-                    meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, dst));
-                } else {
-                    arg.store_fn_arg(bcx, &mut llarg_idx, dst);
-                }
+                arg.store_fn_arg(bcx, &mut llarg_idx, lvalue.project_field(bcx, i));
             }
 
             // Now that we have one alloca that contains the aggregate value,
@@ -442,82 +429,56 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         let arg = &mircx.fn_ty.args[idx];
         idx += 1;
-        let llval = if arg.is_indirect() {
-            // Don't copy an indirect argument to an alloca, the caller
-            // already put it in a temporary alloca and gave it up
-            // FIXME: lifetimes
-            if arg.pad.is_some() {
-                llarg_idx += 1;
-            }
-            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
-            bcx.set_value_name(llarg, &name);
+        if arg.pad.is_some() {
             llarg_idx += 1;
-            llarg
-        } else if !lvalue_locals.contains(local.index()) &&
-                  arg.cast.is_none() && arg_scope.is_none() {
-            if arg.is_ignore() {
-                return LocalRef::new_operand(bcx.ccx, arg_ty);
-            }
+        }
 
+        if arg_scope.is_none() && !lvalue_locals.contains(local.index()) {
             // We don't have to cast or keep the argument in the alloca.
             // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
             // of putting everything in allocas just so we can use llvm.dbg.declare.
-            if arg.pad.is_some() {
-                llarg_idx += 1;
+            let local = |op| LocalRef::Operand(Some(op));
+            match arg.mode {
+                PassMode::Ignore => {
+                    return local(OperandRef::new_zst(bcx.ccx, arg.layout));
+                }
+                PassMode::Direct(_) => {
+                    let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+                    bcx.set_value_name(llarg, &name);
+                    llarg_idx += 1;
+                    return local(
+                        OperandRef::from_immediate_or_packed_pair(bcx, llarg, arg.layout));
+                }
+                PassMode::Pair(..) => {
+                    let a = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+                    bcx.set_value_name(a, &(name.clone() + ".0"));
+                    llarg_idx += 1;
+
+                    let b = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+                    bcx.set_value_name(b, &(name + ".1"));
+                    llarg_idx += 1;
+
+                    return local(OperandRef {
+                        val: OperandValue::Pair(a, b),
+                        layout: arg.layout
+                    });
+                }
+                _ => {}
             }
+        }
+
+        let lvalue = if arg.is_indirect() {
+            // Don't copy an indirect argument to an alloca, the caller
+            // already put it in a temporary alloca and gave it up.
+            // FIXME: lifetimes
             let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            bcx.set_value_name(llarg, &name);
             llarg_idx += 1;
-            let val = if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                let meta = &mircx.fn_ty.args[idx];
-                idx += 1;
-                assert_eq!((meta.cast, meta.pad), (None, None));
-                let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
-                llarg_idx += 1;
-
-                // FIXME(eddyb) As we can't perfectly represent the data and/or
-                // vtable pointer in a fat pointers in Rust's typesystem, and
-                // because we split fat pointers into two ArgType's, they're
-                // not the right type so we have to cast them for now.
-                let pointee = match arg_ty.sty {
-                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => ty,
-                    ty::TyAdt(def, _) if def.is_box() => arg_ty.boxed_ty(),
-                    _ => bug!()
-                };
-                let data_llty = type_of::in_memory_type_of(bcx.ccx, pointee);
-                let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
-
-                let llarg = bcx.pointercast(llarg, data_llty.ptr_to());
-                bcx.set_value_name(llarg, &(name.clone() + ".ptr"));
-                let llmeta = bcx.pointercast(llmeta, meta_llty);
-                bcx.set_value_name(llmeta, &(name + ".meta"));
-
-                OperandValue::Pair(llarg, llmeta)
-            } else {
-                bcx.set_value_name(llarg, &name);
-                OperandValue::Immediate(llarg)
-            };
-            let operand = OperandRef {
-                val,
-                ty: arg_ty
-            };
-            return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
+            LvalueRef::new_sized(llarg, arg.layout, Alignment::AbiAligned)
         } else {
-            let lltemp = LvalueRef::alloca(bcx, arg_ty, &name);
-            if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                // we pass fat pointers as two words, but we want to
-                // represent them internally as a pointer to two words,
-                // so make an alloca to store them in.
-                let meta = &mircx.fn_ty.args[idx];
-                idx += 1;
-                arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, lltemp.llval));
-                meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, lltemp.llval));
-            } else  {
-                // otherwise, arg is passed by value, so make a
-                // temporary and store it there
-                arg.store_fn_arg(bcx, &mut llarg_idx, lltemp.llval);
-            }
-            lltemp.llval
+            let tmp = LvalueRef::alloca(bcx, arg.layout, &name);
+            arg.store_fn_arg(bcx, &mut llarg_idx, tmp);
+            tmp
         };
         arg_scope.map(|scope| {
             // Is this a regular argument?
@@ -525,21 +486,24 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 // The Rust ABI passes indirect variables using a pointer and a manual copy, so we
                 // need to insert a deref here, but the C ABI uses a pointer and a copy using the
                 // byval attribute, for which LLVM does the deref itself, so we must not add it.
-                let variable_access = if arg.is_indirect() &&
-                    !arg.attrs.contains(ArgAttribute::ByVal) {
-                    VariableAccess::IndirectVariable {
-                        alloca: llval,
-                        address_operations: &deref_op,
-                    }
-                } else {
-                    VariableAccess::DirectVariable { alloca: llval }
+                let mut variable_access = VariableAccess::DirectVariable {
+                    alloca: lvalue.llval
                 };
+
+                if let PassMode::Indirect(ref attrs) = arg.mode {
+                    if !attrs.contains(ArgAttribute::ByVal) {
+                        variable_access = VariableAccess::IndirectVariable {
+                            alloca: lvalue.llval,
+                            address_operations: &deref_op,
+                        };
+                    }
+                }
 
                 declare_local(
                     bcx,
                     &mircx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
-                    arg_ty,
+                    arg.layout.ty,
                     scope,
                     variable_access,
                     VariableKind::ArgumentVariable(arg_index + 1),
@@ -549,15 +513,15 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             }
 
             // Or is it the closure environment?
-            let (closure_ty, env_ref) = match arg_ty.sty {
-                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (mt.ty, true),
-                _ => (arg_ty, false)
+            let (closure_layout, env_ref) = match arg.layout.ty.sty {
+                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (bcx.ccx.layout_of(mt.ty), true),
+                _ => (arg.layout, false)
             };
 
-            let upvar_tys = match closure_ty.sty {
+            let upvar_tys = match closure_layout.ty.sty {
                 ty::TyClosure(def_id, substs) |
                 ty::TyGenerator(def_id, substs, _) => substs.upvar_tys(def_id, tcx),
-                _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_ty)
+                _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_layout.ty)
             };
 
             // Store the pointer to closure data in an alloca for debuginfo
@@ -568,21 +532,17 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
-                let alloc = bcx.alloca(common::val_ty(llval), "__debuginfo_env_ptr", None);
-                bcx.store(llval, alloc, None);
-                alloc
+                let alloc = LvalueRef::alloca(bcx,
+                    bcx.ccx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
+                    "__debuginfo_env_ptr");
+                bcx.store(lvalue.llval, alloc.llval, None);
+                alloc.llval
             } else {
-                llval
-            };
-
-            let layout = bcx.ccx.layout_of(closure_ty);
-            let offsets = match *layout {
-                layout::Univariant { ref variant, .. } => &variant.offsets[..],
-                _ => bug!("Closures are only supposed to be Univariant")
+                lvalue.llval
             };
 
             for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
-                let byte_offset_of_var_in_env = offsets[i].bytes();
+                let byte_offset_of_var_in_env = closure_layout.fields.offset(i).bytes();
 
                 let ops = unsafe {
                     [llvm::LLVMRustDIBuilderCreateOpDeref(),
@@ -620,8 +580,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 );
             }
         });
-        LocalRef::Lvalue(LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty),
-                                              Alignment::AbiAligned))
+        LocalRef::Lvalue(lvalue)
     }).collect()
 }
 
@@ -629,6 +588,6 @@ mod analyze;
 mod block;
 mod constant;
 pub mod lvalue;
-mod operand;
+pub mod operand;
 mod rvalue;
 mod statement;

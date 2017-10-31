@@ -18,17 +18,17 @@ use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::middle::lang_items::LangItem;
+use abi;
 use base;
 use builder::Builder;
 use consts;
 use declare;
-use machine;
-use monomorphize;
 use type_::Type;
+use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{Layout, LayoutTyper};
+use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::hir;
 
@@ -40,105 +40,6 @@ use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use context::{CrateContext, SharedCrateContext};
-
-pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Layout::FatPointer { .. } = *ccx.layout_of(ty) {
-        true
-    } else {
-        false
-    }
-}
-
-pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    let layout = ccx.layout_of(ty);
-    match *layout {
-        Layout::CEnum { .. } |
-        Layout::Scalar { .. } |
-        Layout::Vector { .. } => true,
-
-        Layout::FatPointer { .. } => false,
-
-        Layout::Array { .. } |
-        Layout::Univariant { .. } |
-        Layout::General { .. } |
-        Layout::UntaggedUnion { .. } |
-        Layout::RawNullablePointer { .. } |
-        Layout::StructWrappedNullablePointer { .. } => {
-            !layout.is_unsized() && layout.size(ccx).bytes() == 0
-        }
-    }
-}
-
-/// Returns Some([a, b]) if the type has a pair of fields with types a and b.
-pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
-                                  -> Option<[Ty<'tcx>; 2]> {
-    match ty.sty {
-        ty::TyAdt(adt, substs) => {
-            assert_eq!(adt.variants.len(), 1);
-            let fields = &adt.variants[0].fields;
-            if fields.len() != 2 {
-                return None;
-            }
-            Some([monomorphize::field_ty(ccx.tcx(), substs, &fields[0]),
-                  monomorphize::field_ty(ccx.tcx(), substs, &fields[1])])
-        }
-        ty::TyClosure(def_id, substs) => {
-            let mut tys = substs.upvar_tys(def_id, ccx.tcx());
-            tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
-                if tys.next().is_some() {
-                    None
-                } else {
-                    Some([first_ty, second_ty])
-                }
-            }))
-        }
-        ty::TyGenerator(def_id, substs, _) => {
-            let mut tys = substs.field_tys(def_id, ccx.tcx());
-            tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
-                if tys.next().is_some() {
-                    None
-                } else {
-                    Some([first_ty, second_ty])
-                }
-            }))
-        }
-        ty::TyTuple(tys, _) => {
-            if tys.len() != 2 {
-                return None;
-            }
-            Some([tys[0], tys[1]])
-        }
-        _ => None
-    }
-}
-
-/// Returns true if the type is represented as a pair of immediates.
-pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
-                                  -> bool {
-    match *ccx.layout_of(ty) {
-        Layout::FatPointer { .. } => true,
-        Layout::Univariant { ref variant, .. } => {
-            // There must be only 2 fields.
-            if variant.offsets.len() != 2 {
-                return false;
-            }
-
-            match type_pair_fields(ccx, ty) {
-                Some([a, b]) => {
-                    type_is_immediate(ccx, a) && type_is_immediate(ccx, b)
-                }
-                None => false
-            }
-        }
-        _ => false
-    }
-}
-
-/// Identify types which have size zero at runtime.
-pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    let layout = ccx.layout_of(ty);
-    !layout.is_unsized() && layout.size(ccx).bytes() == 0
-}
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All))
@@ -245,15 +146,11 @@ pub fn C_uint(t: Type, i: u64) -> ValueRef {
     }
 }
 
-pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
+pub fn C_uint_big(t: Type, u: u128) -> ValueRef {
     unsafe {
-        let words = [u as u64, u.wrapping_shr(64) as u64];
+        let words = [u as u64, (u >> 64) as u64];
         llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, words.as_ptr())
     }
-}
-
-pub fn C_nil(ccx: &CrateContext) -> ValueRef {
-    C_struct(ccx, &[], false)
 }
 
 pub fn C_bool(ccx: &CrateContext, val: bool) -> ValueRef {
@@ -273,8 +170,7 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
 }
 
 pub fn C_usize(ccx: &CrateContext, i: u64) -> ValueRef {
-    let bit_size = machine::llbitsize_of_real(ccx, ccx.isize_ty());
-
+    let bit_size = ccx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
         assert!(i < (1<<bit_size));
@@ -317,8 +213,15 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 // you will be kicked off fast isel. See issue #4352 for an example of this.
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
-    let cs = consts::ptrcast(C_cstr(cx, s, false), Type::i8p(cx));
-    C_named_struct(cx.str_slice_type(), &[cs, C_usize(cx, len as u64)])
+    let cs = consts::ptrcast(C_cstr(cx, s, false),
+        cx.layout_of(cx.tcx().mk_str()).llvm_type(cx).ptr_to());
+    C_fat_ptr(cx, cs, C_usize(cx, len as u64))
+}
+
+pub fn C_fat_ptr(cx: &CrateContext, ptr: ValueRef, meta: ValueRef) -> ValueRef {
+    assert_eq!(abi::FAT_PTR_ADDR, 0);
+    assert_eq!(abi::FAT_PTR_EXTRA, 1);
+    C_struct(cx, &[ptr, meta], false)
 }
 
 pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
@@ -330,12 +233,6 @@ pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) ->
         llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,
                                        packed as Bool)
-    }
-}
-
-pub fn C_named_struct(t: Type, elts: &[ValueRef]) -> ValueRef {
-    unsafe {
-        llvm::LLVMConstNamedStruct(t.to_ref(), elts.as_ptr(), elts.len() as c_uint)
     }
 }
 
@@ -362,13 +259,14 @@ pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(v: ValueRef, us: &[c_uint])
-              -> ValueRef {
+pub fn const_get_elt(v: ValueRef, idx: u64) -> ValueRef {
     unsafe {
+        assert_eq!(idx as c_uint as u64, idx);
+        let us = &[idx as c_uint];
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
-        debug!("const_get_elt(v={:?}, us={:?}, r={:?})",
-               Value(v), us, Value(r));
+        debug!("const_get_elt(v={:?}, idx={}, r={:?})",
+               Value(v), idx, Value(r));
 
         r
     }
@@ -405,19 +303,6 @@ pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
         } else {
             None
         }
-    }
-}
-
-pub fn is_undef(val: ValueRef) -> bool {
-    unsafe {
-        llvm::LLVMIsUndef(val) != False
-    }
-}
-
-#[allow(dead_code)] // potentially useful
-pub fn is_null(val: ValueRef) -> bool {
-    unsafe {
-        llvm::LLVMIsNull(val) != False
     }
 }
 

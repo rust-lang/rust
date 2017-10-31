@@ -178,12 +178,44 @@ extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
 #endif
 }
 
+extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
+                                                 unsigned Index,
+                                                 uint32_t Bytes) {
+  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  AttrBuilder B;
+  B.addAlignmentAttr(Bytes);
+#if LLVM_VERSION_GE(5, 0)
+  Call.setAttributes(Call.getAttributes().addAttributes(
+      Call->getContext(), Index, B));
+#else
+  Call.setAttributes(Call.getAttributes().addAttributes(
+      Call->getContext(), Index,
+      AttributeSet::get(Call->getContext(), Index, B)));
+#endif
+}
+
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
                                                        unsigned Index,
                                                        uint64_t Bytes) {
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
+#if LLVM_VERSION_GE(5, 0)
+  Call.setAttributes(Call.getAttributes().addAttributes(
+      Call->getContext(), Index, B));
+#else
+  Call.setAttributes(Call.getAttributes().addAttributes(
+      Call->getContext(), Index,
+      AttributeSet::get(Call->getContext(), Index, B)));
+#endif
+}
+
+extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
+                                                             unsigned Index,
+                                                             uint64_t Bytes) {
+  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  AttrBuilder B;
+  B.addDereferenceableOrNullAttr(Bytes);
 #if LLVM_VERSION_GE(5, 0)
   Call.setAttributes(Call.getAttributes().addAttributes(
       Call->getContext(), Index, B));
@@ -206,11 +238,37 @@ extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
 #endif
 }
 
+extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn,
+                                         unsigned Index,
+                                         uint32_t Bytes) {
+  Function *A = unwrap<Function>(Fn);
+  AttrBuilder B;
+  B.addAlignmentAttr(Bytes);
+#if LLVM_VERSION_GE(5, 0)
+  A->addAttributes(Index, B);
+#else
+  A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
+#endif
+}
+
 extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
                                                uint64_t Bytes) {
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
+#if LLVM_VERSION_GE(5, 0)
+  A->addAttributes(Index, B);
+#else
+  A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
+#endif
+}
+
+extern "C" void LLVMRustAddDereferenceableOrNullAttr(LLVMValueRef Fn,
+                                                     unsigned Index,
+                                                     uint64_t Bytes) {
+  Function *A = unwrap<Function>(Fn);
+  AttrBuilder B;
+  B.addDereferenceableOrNullAttr(Bytes);
 #if LLVM_VERSION_GE(5, 0)
   A->addAttributes(Index, B);
 #else
@@ -257,21 +315,18 @@ extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef V) {
 
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMValueRef Source, const char *Name,
-                        LLVMAtomicOrdering Order, unsigned Alignment) {
+                        LLVMAtomicOrdering Order) {
   LoadInst *LI = new LoadInst(unwrap(Source), 0);
   LI->setAtomic(fromRust(Order));
-  LI->setAlignment(Alignment);
   return wrap(unwrap(B)->Insert(LI, Name));
 }
 
 extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,
                                                  LLVMValueRef V,
                                                  LLVMValueRef Target,
-                                                 LLVMAtomicOrdering Order,
-                                                 unsigned Alignment) {
+                                                 LLVMAtomicOrdering Order) {
   StoreInst *SI = new StoreInst(unwrap(V), unwrap(Target));
   SI->setAtomic(fromRust(Order));
-  SI->setAlignment(Alignment);
   return wrap(unwrap(B)->Insert(SI));
 }
 
