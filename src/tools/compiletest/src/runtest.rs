@@ -1404,6 +1404,7 @@ actual:\n\
                     "-Zdump-mir-exclude-pass-number"]);
 
                 let mir_dump_dir = self.get_mir_dump_dir();
+                let _ = fs::remove_dir_all(&mir_dump_dir);
                 create_dir_all(mir_dump_dir.as_path()).unwrap();
                 let mut dir_opt = "-Zdump-mir-dir=".to_string();
                 dir_opt.push_str(mir_dump_dir.to_str().unwrap());
@@ -2367,12 +2368,10 @@ actual:\n\
     }
 
     fn get_mir_dump_dir(&self) -> PathBuf {
-        let mut mir_dump_dir = PathBuf::from(self.config.build_base
-                                                    .as_path()
-                                                    .to_str()
-                                                    .unwrap());
+        let mut mir_dump_dir = PathBuf::from(self.config.build_base.as_path());
         debug!("input_file: {:?}", self.testpaths.file);
-        mir_dump_dir.push(self.testpaths.file.file_stem().unwrap().to_str().unwrap());
+        mir_dump_dir.push(&self.testpaths.relative_dir);
+        mir_dump_dir.push(self.testpaths.file.file_stem().unwrap());
         mir_dump_dir
     }
 
