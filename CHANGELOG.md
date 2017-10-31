@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.168
+* Rustup to *rustc 1.23.0-nightly (f0fe716db 2017-10-30)*
+
 ## 0.0.167
 * Rustup to *rustc 1.23.0-nightly (90ef3372e 2017-10-29)*
 * New lints: [`const_static_lifetime`], [`erasing_op`], [`fallible_impl_from`], [`println_empty_string`], [`useless_asref`]
