@@ -74,10 +74,11 @@ fail, they should panic.
 
 Future versions of this interface with higher integration into Cargo may
 incorporate ways for Cargo to pass pre-parsed data from `Cargo.toml`, or ways
-for the `metabuild` functions to return semantic error information. This
-minimal specification allows for experimentation with such interfaces within
-the crates.io ecosystem, by providing an adapter from the raw metabuild
-interface.
+for the `metabuild` functions to return semantic error information. Metabuild
+interfaces may also wish to run scripts in parallel, provide dependencies
+between them, or orchestrate their execution in many other ways. This minimal
+specification allows for experimentation with such interfaces within the
+crates.io ecosystem, by providing an adapter from the raw metabuild interface.
 
 # Reference-level explanation
 
