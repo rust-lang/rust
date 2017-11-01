@@ -47,7 +47,7 @@ Misc
 
 Compatibility Notes
 -------------------
-- [The minimum Android version that rustc can build for has been bumped to `4.0` from `2.3`][43880]
+- [The minimum Android version that rustc can build for has been bumped to `4.0` from `2.3`][45656]
 
 [45075]: https://github.com/rust-lang/rust/pull/45075
 [45094]: https://github.com/rust-lang/rust/pull/45094
@@ -65,6 +65,7 @@ Compatibility Notes
 [44015]: https://github.com/rust-lang/rust/pull/44015
 [43716]: https://github.com/rust-lang/rust/pull/43716
 [43017]: https://github.com/rust-lang/rust/pull/43017
+[45656]: https://github.com/rust-lang/rust/pull/45656
 [cargo/3992]: https://github.com/rust-lang/cargo/pull/3992
 [cargo/4496]: https://github.com/rust-lang/cargo/pull/4496
 [cargo/4571]: https://github.com/rust-lang/cargo/pull/4571
