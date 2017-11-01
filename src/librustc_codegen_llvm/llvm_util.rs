@@ -126,7 +126,7 @@ pub fn print(req: PrintRequest, sess: &Session) {
         match req {
             PrintRequest::TargetCPUs => llvm::LLVMRustPrintTargetCPUs(tm),
             PrintRequest::TargetFeatures => llvm::LLVMRustPrintTargetFeatures(tm),
-            _ => bug!("rustc_trans can't handle print request: {:?}", req),
+            _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
         }
     }
 }

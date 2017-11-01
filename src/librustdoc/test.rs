@@ -34,8 +34,8 @@ use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
-use rustc_trans;
-use rustc_trans::back::link;
+use rustc_codegen_llvm;
+use rustc_codegen_llvm::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
@@ -83,11 +83,11 @@ pub fn run(input: &str,
     let handler =
         errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
 
-    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(box rustc_codegen_llvm::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, Some(input_path.clone()), handler, codemap.clone(),
     );
-    rustc_trans::init(&sess);
+    rustc_codegen_llvm::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
@@ -246,11 +246,11 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     // Compile the code
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
-    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(box rustc_codegen_llvm::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, None, diagnostic_handler, codemap,
     );
-    rustc_trans::init(&sess);
+    rustc_codegen_llvm::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));

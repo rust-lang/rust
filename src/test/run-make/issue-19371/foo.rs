@@ -15,7 +15,7 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_errors;
-extern crate rustc_trans;
+extern crate rustc_codegen_llvm;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
@@ -60,9 +60,9 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
     }
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
-    let cstore = Rc::new(CStore::new(Box::new(rustc_trans::LlvmMetadataLoader)));
+    let cstore = Rc::new(CStore::new(Box::new(rustc_codegen_llvm::LlvmMetadataLoader)));
     let sess = build_session(opts, None, descriptions);
-    rustc_trans::init(&sess);
+    rustc_codegen_llvm::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     (sess, cstore)
 }

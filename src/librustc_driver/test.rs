@@ -16,7 +16,7 @@ use std::sync::mpsc;
 use driver;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
-use rustc_trans;
+use rustc_codegen_llvm;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::middle::resolve_lifetime;
@@ -111,7 +111,7 @@ fn test_env<F>(source_string: &str,
                                        None,
                                        diagnostic_handler,
                                        Rc::new(CodeMap::new(FilePathMapping::empty())));
-    rustc_trans::init(&sess);
+    rustc_codegen_llvm::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: driver::anon_src(),

@@ -84,7 +84,7 @@ pub fn profq_msg(msg: ProfileQueriesMsg) {
             // Do nothing.
             //
             // FIXME(matthewhammer): Multi-threaded translation phase triggers the panic below.
-            // From backtrace: rustc_trans::back::write::spawn_work::{{closure}}.
+            // From backtrace: rustc_codegen_llvm::back::write::spawn_work::{{closure}}.
             //
             // panic!("no channel on which to send profq_msg: {:?}", msg)
         }

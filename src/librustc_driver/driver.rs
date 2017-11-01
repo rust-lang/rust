@@ -32,7 +32,6 @@ use rustc_incremental;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
-use rustc_trans as trans;
 use rustc_trans_utils::trans_crate::TransCrate;
 use rustc_typeck as typeck;
 use rustc_privacy;
@@ -41,7 +40,6 @@ use rustc_plugin as plugin;
 use rustc_passes::{self, ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
-use ::DefaultTransCrate;
 
 use serialize::json;
 
@@ -67,7 +65,7 @@ use derive_registrar;
 
 use profile;
 
-pub fn compile_input(sess: &Session,
+pub fn compile_input<Trans: TransCrate>(sess: &Session,
                      cstore: &CStore,
                      input: &Input,
                      outdir: &Option<PathBuf>,
@@ -207,7 +205,7 @@ pub fn compile_input(sess: &Session,
             None
         };
 
-        phase_3_run_analysis_passes(sess,
+        phase_3_run_analysis_passes::<Trans, _, _>(sess,
                                     cstore,
                                     hir_map,
                                     analysis,
@@ -244,7 +242,7 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            let trans = phase_4_translate_to_llvm::<DefaultTransCrate>(tcx, rx);
+            let trans = phase_4_translate_to_llvm::<Trans>(tcx, rx);
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -267,18 +265,19 @@ pub fn compile_input(sess: &Session,
     }
 
     let (phase5_result, trans) =
-        phase_5_run_llvm_passes::<DefaultTransCrate>(sess, &dep_graph, trans);
+        phase_5_run_llvm_passes::<Trans>(sess, &dep_graph, trans);
 
-    controller_entry_point!(after_llvm,
-                            sess,
-                            CompileState::state_after_llvm(input, sess, outdir, output, &trans),
-                            phase5_result);
     phase5_result?;
+
+    if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe ||
+                                               i == OutputType::Metadata) {
+        return Ok(());
+    }
 
     // Run the linker on any artifacts that resulted from the LLVM run.
     // This should produce either a finished executable or library.
     time(sess.time_passes(), "linking", || {
-        DefaultTransCrate::link_binary(sess, &trans, &outputs)
+        Trans::link_binary(sess, &trans, &outputs)
     });
 
     // Now that we won't touch anything in the incremental compilation directory
@@ -338,7 +337,6 @@ pub struct CompileController<'a> {
     pub after_expand: PhaseController<'a>,
     pub after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
-    pub after_llvm: PhaseController<'a>,
     pub compilation_done: PhaseController<'a>,
 
     // FIXME we probably want to group the below options together and offer a
@@ -357,7 +355,6 @@ impl<'a> CompileController<'a> {
             after_expand: PhaseController::basic(),
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
-            after_llvm: PhaseController::basic(),
             compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
             keep_ast: false,
@@ -405,7 +402,6 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
-    pub trans: Option<&'a trans::CrateTranslation>,
 }
 
 impl<'a, 'tcx> CompileState<'a, 'tcx> {
@@ -431,7 +427,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             resolutions: None,
             analysis: None,
             tcx: None,
-            trans: None,
         }
     }
 
@@ -516,19 +511,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             expanded_crate: krate,
             hir_crate: Some(hir_crate),
             crate_name: Some(crate_name),
-            out_file: out_file.as_ref().map(|s| &**s),
-            ..CompileState::empty(input, session, out_dir)
-        }
-    }
-
-    fn state_after_llvm(input: &'a Input,
-                        session: &'tcx Session,
-                        out_dir: &'a Option<PathBuf>,
-                        out_file: &'a Option<PathBuf>,
-                        trans: &'a trans::CrateTranslation)
-                        -> Self {
-        CompileState {
-            trans: Some(trans),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }
@@ -910,7 +892,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
+pub fn phase_3_run_analysis_passes<'tcx, Trans: TransCrate, F, R>(sess: &'tcx Session,
                                                cstore: &'tcx CrateStore,
                                                hir_map: hir_map::Map<'tcx>,
                                                mut analysis: ty::CrateAnalysis,
@@ -966,7 +948,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
-    DefaultTransCrate::provide_local(&mut local_providers);
+    Trans::provide_local(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     traits::provide(&mut local_providers);
@@ -979,7 +961,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
-    DefaultTransCrate::provide_extern(&mut extern_providers);
+    Trans::provide_extern(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     traits::provide_extern(&mut extern_providers);
     // FIXME(eddyb) get rid of this once we replace const_eval with miri.
