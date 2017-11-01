@@ -18,16 +18,16 @@
 use Span;
 use symbol::{Ident, Symbol};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use serialize::{Decoder, Encoder, UseSpecializedDecodable, UseSpecializedEncodable};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(pub(super) u32);
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, RustcEncodable, RustcDecodable)]
 pub struct SyntaxContextData {
     pub outer_mark: Mark,
     pub prev_ctxt: SyntaxContext,
@@ -35,10 +35,10 @@ pub struct SyntaxContextData {
 }
 
 /// A mark is a unique id associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct Mark(u32);
 
-#[derive(Default)]
+#[derive(Clone, Default, RustcEncodable, RustcDecodable)]
 struct MarkData {
     parent: Mark,
     modern: bool,
@@ -64,6 +64,14 @@ impl Mark {
 
     pub fn from_u32(raw: u32) -> Mark {
         Mark(raw)
+    }
+
+    pub fn translate(&self, offset: u32) -> Mark {
+        if self.0 != 0 {
+            Mark(self.0 + offset)
+        } else {
+            Mark(self.0)
+        }
     }
 
     pub fn expn_info(self) -> Option<ExpnInfo> {
@@ -106,11 +114,24 @@ impl Mark {
     }
 }
 
-struct HygieneData {
+pub struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
     gensym_to_ctxt: HashMap<Symbol, SyntaxContext>,
+    used_marks: Vec<Mark>,
+    used_syntax_contexts: Vec<SyntaxContext>,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct HygieneDataMap {
+    marks: HashMap<Mark, MarkData>,
+    syntax_contexts: HashMap<SyntaxContext, SyntaxContextData>,
+    gensym_to_ctxt: HashMap<Symbol, SyntaxContext>,
+}
+
+thread_local! {
+    static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
 }
 
 impl HygieneData {
@@ -120,14 +141,80 @@ impl HygieneData {
             syntax_contexts: vec![SyntaxContextData::default()],
             markings: HashMap::new(),
             gensym_to_ctxt: HashMap::new(),
+            used_marks: Vec::new(),
+            used_syntax_contexts: Vec::new(),
         }
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        thread_local! {
-            static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
-        }
         HYGIENE_DATA.with(|data| f(&mut *data.borrow_mut()))
+    }
+
+    pub fn safe_with<T, F: FnOnce(&HygieneData) -> T>(f: F) -> T {
+        HYGIENE_DATA.with(|data| f(&*data.borrow()))
+    }
+
+    pub fn to_map(&self) -> HygieneDataMap {
+        let mut marks = HashMap::new();
+        let mut syntax_contexts = HashMap::new();
+
+        let mut mark_queue: VecDeque<_> = self.used_marks.iter().cloned().collect();
+        let mut ctxt_queue: VecDeque<_> = self.used_syntax_contexts.iter().cloned().collect();
+        ctxt_queue.extend(self.gensym_to_ctxt.values());
+        let gensym_to_ctxt = self.gensym_to_ctxt.clone();
+
+        let mut visited_marks = HashSet::new();
+        let mut visited_ctxts = HashSet::new();
+
+        while !(mark_queue.is_empty() && ctxt_queue.is_empty()) {
+            let next_mark = mark_queue.pop_front().and_then(|mark|
+                // skip default mark and already visited marks
+                if visited_marks.contains(&mark) || mark.0 == 0 {
+                    None
+                } else {
+                    visited_marks.insert(mark);
+                    Some(mark)
+                });
+            let next_ctxt = ctxt_queue.pop_front().and_then(|ctxt|
+                // skip default context and already visited contexts
+                if visited_ctxts.contains(&ctxt) || ctxt.0 == 0 {
+                    None
+                } else {
+                    visited_ctxts.insert(ctxt);
+                    Some(ctxt)
+                });
+
+            if let Some(mark) = next_mark {
+                let data = &self.marks[mark.0 as usize];
+
+                mark_queue.push_back(data.parent);
+                if let Some(ref info) = data.expn_info {
+                    ctxt_queue.push_back(info.call_site.ctxt());
+
+                    if let Some(span) = info.callee.span {
+                        ctxt_queue.push_back(span.ctxt());
+                    }
+                }
+
+                marks.insert(mark, data.clone());
+            }
+
+            if let Some(ctxt) = next_ctxt {
+                let data = self.syntax_contexts[ctxt.0 as usize];
+
+                mark_queue.push_back(data.outer_mark);
+                ctxt_queue.push_back(data.prev_ctxt);
+                ctxt_queue.push_back(data.modern);
+
+                syntax_contexts.insert(ctxt, data);
+            }
+        }
+
+        HygieneDataMap {
+            marks,
+            syntax_contexts,
+            gensym_to_ctxt,
+        }
     }
 }
 
@@ -135,7 +222,148 @@ pub fn clear_markings() {
     HygieneData::with(|data| data.markings = HashMap::new());
 }
 
+fn register_mark_use(mark: Mark) {
+    HygieneData::with(|data| if !data.used_marks.contains(&mark) {
+        data.used_marks.push(mark);
+    });
+}
+
+fn register_syntax_context_use(ctxt: SyntaxContext) {
+    HygieneData::with(|data| if !data.used_syntax_contexts.contains(&ctxt) {
+        data.used_syntax_contexts.push(ctxt)
+    });
+}
+
+/// Holds information about a HygieneData imported from another crate.
+/// See `imported_hygiene_data()` in `rustc_metadata` for more information.
+#[derive(Default)]
+pub struct ImportedHygieneData {
+    /// Map an external crate's syntax contexts to the current crate's.
+    ctxt_map: HashMap<SyntaxContext, SyntaxContext>,
+    /// Map an external crate's marks to the current crate's.
+    mark_map: HashMap<Mark, Mark>,
+}
+
+impl ImportedHygieneData {
+    fn insert_ctxt(&mut self, external: SyntaxContext, target: SyntaxContext) {
+        assert!(!self.ctxt_map.contains_key(&external));
+        self.ctxt_map.insert(external, target);
+    }
+
+    fn insert_mark(&mut self, external: Mark, target: Mark) {
+        assert!(!self.mark_map.contains_key(&external));
+        self.mark_map.insert(external, target);
+    }
+
+    pub fn translate_ctxt(&self, external: SyntaxContext) -> SyntaxContext {
+        if external.0 != 0 {
+            self.ctxt_map[&external]
+        } else {
+            external
+        }
+    }
+
+    pub fn translate_mark(&self, external: Mark) -> Mark {
+        if external.0 != 0 {
+            self.mark_map[&external]
+        } else {
+            external
+        }
+    }
+
+    pub fn translate_span(&self, external: Span) -> Span {
+        Span::new(external.lo(), external.hi(), self.translate_ctxt(external.ctxt()))
+    }
+
+    fn translate_mark_data(&self, data: MarkData) -> MarkData {
+        MarkData {
+            parent: self.translate_mark(data.parent),
+            modern: data.modern,
+            expn_info: data.expn_info.as_ref().map(|info| {
+                ExpnInfo {
+                    call_site: self.translate_span(info.call_site),
+                    callee: NameAndSpan {
+                        format: info.callee.format.clone(),
+                        allow_internal_unstable: info.callee.allow_internal_unstable,
+                        allow_internal_unsafe: info.callee.allow_internal_unsafe,
+                        span: info.callee.span.map(|span| self.translate_span(span)),
+                    },
+                }
+            }),
+        }
+    }
+
+    fn translate_ctxt_data(&self, data: SyntaxContextData) -> SyntaxContextData {
+        SyntaxContextData {
+            outer_mark: self.translate_mark(data.outer_mark),
+            prev_ctxt: self.translate_ctxt(data.prev_ctxt),
+            modern: self.translate_ctxt(data.modern),
+        }
+    }
+}
+
+pub fn extend_hygiene_data(extend_with: HygieneDataMap) -> ImportedHygieneData {
+    HygieneData::with(move |data| {
+        let mut imported_map = ImportedHygieneData::default();
+        let mark_offset = data.marks.len() as u32;
+        let ctxt_offset = data.syntax_contexts.len() as u32;
+
+        let HygieneDataMap {
+            mut marks,
+            mut syntax_contexts,
+            mut gensym_to_ctxt,
+        } = extend_with;
+
+        let marks: Vec<_> = marks
+            .drain()
+            .enumerate()
+            .map(|(index_offset, (mark, data))| {
+                let index_offset = index_offset as u32;
+                imported_map.insert_mark(mark, Mark(mark_offset + index_offset));
+                data
+            })
+            .collect();
+
+        let syntax_contexts: Vec<_> = syntax_contexts
+            .drain()
+            .enumerate()
+            .map(|(index_offset, (ctxt, data))| {
+                let index_offset = index_offset as u32;
+                imported_map.insert_ctxt(ctxt, SyntaxContext(ctxt_offset + index_offset));
+                data
+            })
+            .collect();
+
+        for mark in marks {
+            data.marks.push(imported_map.translate_mark_data(mark));
+        }
+
+        for ctxt in syntax_contexts {
+            data.syntax_contexts.push(imported_map.translate_ctxt_data(ctxt));
+        }
+
+        data.gensym_to_ctxt
+            .extend(gensym_to_ctxt
+                        .drain()
+                        .map(|(symbol, ctxt)| (symbol, imported_map.translate_ctxt(ctxt))));
+
+        imported_map
+    })
+}
+
 impl SyntaxContext {
+    pub fn from_u32(raw: u32) -> SyntaxContext {
+        SyntaxContext(raw)
+    }
+
+    pub fn translate(&self, offset: u32) -> SyntaxContext {
+        if self.0 != 0 {
+            SyntaxContext(self.0 + offset)
+        } else {
+            SyntaxContext(self.0)
+        }
+    }
+
     pub const fn empty() -> Self {
         SyntaxContext(0)
     }
@@ -286,7 +514,7 @@ impl fmt::Debug for SyntaxContext {
 }
 
 /// Extra information for tracking spans of macro and syntax sugar expansion
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
@@ -302,7 +530,7 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct NameAndSpan {
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
@@ -330,7 +558,7 @@ impl NameAndSpan {
 }
 
 /// The source of expansion.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum ExpnFormat {
     /// e.g. #[derive(...)] <item>
     MacroAttribute(Symbol),
@@ -341,7 +569,7 @@ pub enum ExpnFormat {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
     BackArrow,
     DotFill,
@@ -360,15 +588,29 @@ impl CompilerDesugaringKind {
     }
 }
 
-impl Encodable for SyntaxContext {
-    fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
-        Ok(()) // FIXME(jseyfried) intercrate hygiene
+impl UseSpecializedDecodable for SyntaxContext {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<SyntaxContext, D::Error> {
+        d.read_u32().map(|u| SyntaxContext(u))
     }
 }
 
-impl Decodable for SyntaxContext {
-    fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
-        Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
+impl UseSpecializedEncodable for SyntaxContext {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        register_syntax_context_use(*self);
+        s.emit_u32(self.0)
+    }
+}
+
+impl UseSpecializedDecodable for Mark {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<Mark, D::Error> {
+        d.read_u32().map(Mark::from_u32)
+    }
+}
+
+impl UseSpecializedEncodable for Mark {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        register_mark_use(*self);
+        s.emit_u32(self.0)
     }
 }
 

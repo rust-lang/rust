@@ -25,7 +25,7 @@ use rustc_back::PanicStrategy;
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
 use syntax::symbol::Symbol;
-use syntax_pos::{self, Span};
+use syntax_pos::{self, hygiene, Span};
 
 use std::marker::PhantomData;
 use std::mem;
@@ -209,6 +209,7 @@ pub struct CrateRoot {
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: LazySeq<DefIndex>,
     pub index: LazySeq<index::Index>,
+    pub hygiene_data: Lazy<hygiene::HygieneDataMap>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
