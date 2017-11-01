@@ -579,8 +579,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::NodeItem(&hir::Item { node: hir::ItemUse(ref path, _), .. }) |
             Node::NodeVisibility(&hir::Visibility::Restricted { ref path, .. }) => path.def,
 
-            Node::NodeExpr(&hir::Expr { node: hir::ExprPath(ref qpath), .. }) |
             Node::NodeExpr(&hir::Expr { node: hir::ExprStruct(ref qpath, ..), .. }) |
+            Node::NodeExpr(&hir::Expr { node: hir::ExprPath(ref qpath), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::Path(ref qpath), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::Struct(ref qpath, ..), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::TupleStruct(ref qpath, ..), .. }) => {
@@ -643,7 +643,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Static(..) |
             HirDef::Const(..) |
             HirDef::AssociatedConst(..) |
-            HirDef::StructCtor(..) |
             HirDef::VariantCtor(..) => {
                 let span = self.span_from_span(sub_span.unwrap());
                 Some(Ref {
@@ -676,6 +675,18 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     kind: RefKind::Type,
                     span,
                     ref_id: id_from_def_id(def_id),
+                })
+            }
+            HirDef::StructCtor(def_id, _) => {
+                // This is a reference to a tuple struct where the def_id points
+                // to an invisible constructor function. That is not a very useful
+                // def, so adjust to point to the tuple struct itself.
+                let span = self.span_from_span(sub_span.unwrap());
+                let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
+                Some(Ref {
+                    kind: RefKind::Type,
+                    span,
+                    ref_id: id_from_def_id(parent_def_id),
                 })
             }
             HirDef::Method(decl_id) => {
