@@ -516,11 +516,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let lint_deprecated = |note: Option<Symbol>| {
+        let lint_deprecated = |def_id: DefId, note: Option<Symbol>| {
+            let path = self.item_path_str(def_id);
+
             let msg = if let Some(note) = note {
-                format!("use of deprecated item: {}", note)
+                format!("use of deprecated item '{}': {}", path, note)
             } else {
-                format!("use of deprecated item")
+                format!("use of deprecated item '{}'", path)
             };
 
             self.lint_node(lint::builtin::DEPRECATED, id, span, &msg);
@@ -538,7 +540,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             };
 
             if !skip {
-                lint_deprecated(depr_entry.attr.note);
+                lint_deprecated(def_id, depr_entry.attr.note);
             }
         }
 
@@ -557,7 +559,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, .. }), ..})
                 = stability {
             if id != ast::DUMMY_NODE_ID {
-                lint_deprecated(Some(reason));
+                lint_deprecated(def_id, Some(reason));
             }
         }
 
