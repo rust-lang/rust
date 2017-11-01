@@ -7,7 +7,7 @@ fn op(x: Typ, key : &[u8], upd : Box<Fn(Option<&memcache::Item>) -> (memcache::S
         "cool"}
 
 
-fn weird_comment(/* /*/ double level */ comment */ x: Hello /*/*/* tripple, even */*/*/,
+fn weird_comment(/* /*/ double level */ comment */ x: Hello /*/*/* triple, even */*/*/,
 // Does this work?
 y: World
 ) {

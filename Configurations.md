@@ -506,7 +506,7 @@ trait Lorem {
         dolor: Dolor,
         sit: Sit,
         amet: Amet,
-        consectetur: onsectetur,
+        consectetur: Consectetur,
         adipiscing: Adipiscing,
         elit: Elit,
     );
@@ -516,7 +516,7 @@ trait Lorem {
         dolor: Dolor,
         sit: Sit,
         amet: Amet,
-        consectetur: onsectetur,
+        consectetur: Consectetur,
         adipiscing: Adipiscing,
         elit: Elit,
     ) {
@@ -569,7 +569,7 @@ trait Lorem {
         dolor: Dolor,
         sit: Sit,
         amet: Amet,
-        consectetur: onsectetur,
+        consectetur: Consectetur,
         adipiscing: Adipiscing,
         elit: Elit,
     ) {
@@ -598,7 +598,7 @@ trait Lorem {
              dolor: Dolor,
              sit: Sit,
              amet: Amet,
-             consectetur: onsectetur,
+             consectetur: Consectetur,
              adipiscing: Adipiscing,
              elit: Elit);
 
@@ -606,7 +606,7 @@ trait Lorem {
              dolor: Dolor,
              sit: Sit,
              amet: Amet,
-             consectetur: onsectetur,
+             consectetur: Consectetur,
              adipiscing: Adipiscing,
              elit: Elit) {
         // body

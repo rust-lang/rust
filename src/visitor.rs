@@ -295,7 +295,7 @@ impl<'a> FmtVisitor<'a> {
         // complex in the module case. It is complex because the module could be
         // in a separate file and there might be attributes in both files, but
         // the AST lumps them all together.
-        let filterd_attrs;
+        let filtered_attrs;
         let mut attrs = &item.attrs;
         match item.node {
             ast::ItemKind::Mod(ref m) => {
@@ -314,7 +314,7 @@ impl<'a> FmtVisitor<'a> {
                 } else {
                     // Module is not inline and should not be skipped. We want
                     // to process only the attributes in the current file.
-                    filterd_attrs = item.attrs
+                    filtered_attrs = item.attrs
                         .iter()
                         .filter_map(|a| {
                             let attr_file = self.codemap.lookup_char_pos(a.span.lo()).file;
@@ -327,8 +327,8 @@ impl<'a> FmtVisitor<'a> {
                         .collect::<Vec<_>>();
                     // Assert because if we should skip it should be caught by
                     // the above case.
-                    assert!(!self.visit_attrs(&filterd_attrs, ast::AttrStyle::Outer));
-                    attrs = &filterd_attrs;
+                    assert!(!self.visit_attrs(&filtered_attrs, ast::AttrStyle::Outer));
+                    attrs = &filtered_attrs;
                 }
             }
             _ => if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {

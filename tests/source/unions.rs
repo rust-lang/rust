@@ -93,7 +93,7 @@ pub union State<F: FnMut() -> ()> { now: F }
 
 pub union State<F: FnMut()> { now: F }
 
-union Palette { /// A map of indizes in the palette to a count of pixels in approximately that color
+union Palette { /// A map of indices in the palette to a count of pixels in approximately that color
                     foo: i32}
 
 // Splitting a single line comment into a block previously had a misalignment

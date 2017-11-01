@@ -10,7 +10,7 @@ impl Handle {
     }
 }
 
-// Long function without return type that should not be reformated.
+// Long function without return type that should not be reformatted.
 fn veeeeeeeeeeeeeeeeeeeeery_long_name(a: FirstTypeeeeeeeeee, b: SecondTypeeeeeeeeeeeeeeeeeeeeeee) {}
 
 fn veeeeeeeeeeeeeeeeeeeeeery_long_name(a: FirstTypeeeeeeeeee, b: SecondTypeeeeeeeeeeeeeeeeeeeeeee) {}

@@ -128,7 +128,7 @@ are included as out of line modules from `src/lib.rs`.
 If `rustfmt` successfully reformatted the code it will exit with `0` exit
 status. Exit status `1` signals some unexpected error, like an unknown option or
 a failure to read a file. Exit status `2` is returned if there are syntax errors
-in the input files. `rustfmt` can't format syntatically invalid code. Finally,
+in the input files. `rustfmt` can't format syntactically invalid code. Finally,
 exit status `3` is returned if there are some issues which can't be resolved
 automatically. For example, if you have a very long comment line `rustfmt`
 doesn't split it. Instead it prints a warning and exits with `3`.
@@ -209,7 +209,7 @@ options covering different styles. File an issue, or even better, submit a PR.
 * When you run rustfmt, place a file named `rustfmt.toml` or `.rustfmt.toml` in
   target file directory or its parents to override the default settings of
   rustfmt. You can generate a file containing the default configuration with
-  `rustfm --dump-default-config rustfmt.toml` and customize as needed.
+  `rustfmt --dump-default-config rustfmt.toml` and customize as needed.
 * After successful compilation, a `rustfmt` executable can be found in the
   target directory.
 * If you're having issues compiling Rustfmt (or compile errors when trying to

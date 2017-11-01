@@ -161,7 +161,7 @@ pub struct State<F: FnMut()> {
 }
 
 struct Palette {
-    /// A map of indizes in the palette to a count of pixels in approximately
+    /// A map of indices in the palette to a count of pixels in approximately
     /// that color
     foo: i32,
 }

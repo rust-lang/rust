@@ -572,7 +572,7 @@ where
             let comment_end = match self.inner.peek() {
                 Some(..) => {
                     let mut block_open_index = post_snippet.find("/*");
-                    // check if it realy is a block comment (and not //*)
+                    // check if it really is a block comment (and not //*)
                     if let Some(i) = block_open_index {
                         if i > 0 && &post_snippet[i - 1..i] == "/" {
                             block_open_index = None;

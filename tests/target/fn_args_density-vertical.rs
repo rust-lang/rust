@@ -1,6 +1,6 @@
 // rustfmt-fn_args_density: Vertical
 
-// Empty list shoul stay on one line.
+// Empty list should stay on one line.
 fn do_bar() -> u8 {
     bar()
 }
