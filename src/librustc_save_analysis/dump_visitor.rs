@@ -318,16 +318,15 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             let mut collector = PathCollector::new();
             collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
-            for &(id, ref p, ..) in &collector.collected_paths {
+
+            for (id, i, sp, ..) in collector.collected_idents {
                 let hir_id = self.tcx.hir.node_to_hir_id(id);
                 let typ = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
                     Some(s) => s.to_string(),
                     None => continue,
                 };
-                // get the span only for the name of the variable (I hope the path is only ever a
-                // variable name, but who knows?)
-                let sub_span = span_utils.span_for_last_ident(p.span);
-                if !self.span.filter_generated(sub_span, p.span) {
+                let sub_span = span_utils.span_for_last_ident(sp);
+                if !self.span.filter_generated(sub_span, sp) {
                     let id = ::id_from_node_id(id, &self.save_ctxt);
                     let span = self.span_from_span(sub_span.expect("No span found for variable"));
 
@@ -335,8 +334,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         kind: DefKind::Local,
                         id,
                         span,
-                        name: path_to_string(p),
-                        qualname: format!("{}::{}", qualname, path_to_string(p)),
+                        name: i.to_string(),
+                        qualname: format!("{}::{}", qualname, i.to_string()),
                         value: typ,
                         parent: None,
                         children: vec![],
@@ -389,14 +388,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         if let Some(body) = body {
             self.nest_tables(id, |v| v.nest_scope(id, |v| v.visit_block(body)));
         }
-    }
-
-    fn process_trait_ref(&mut self, trait_ref: &'l ast::TraitRef) {
-        let trait_ref_data = self.save_ctxt.get_trait_ref_data(trait_ref);
-        if let Some(trait_ref_data) = trait_ref_data {
-            self.dumper.dump_ref(trait_ref_data);
-        }
-        self.process_path(trait_ref.ref_id, &trait_ref.path);
     }
 
     fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
@@ -783,7 +774,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
     }
 
-    fn process_path(&mut self, id: NodeId, path: &ast::Path) {
+    fn process_path(&mut self, id: NodeId, path: &'l ast::Path) {
         let path_data = self.save_ctxt.get_path_data(id, path);
         if generated_code(path.span) && path_data.is_none() {
             return;
@@ -797,6 +788,27 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         };
 
         self.dumper.dump_ref(path_data);
+
+        // Type parameters
+        for seg in &path.segments {
+            if let Some(ref params) = seg.parameters {
+                match **params {
+                    ast::PathParameters::AngleBracketed(ref data) => {
+                        for t in &data.types {
+                            self.visit_ty(t);
+                        }
+                    }
+                    ast::PathParameters::Parenthesized(ref data) => {
+                        for t in &data.inputs {
+                            self.visit_ty(t);
+                        }
+                        if let Some(ref t) = data.output {
+                            self.visit_ty(t);
+                        }
+                    }
+                }
+            }
+        }
 
         // Modules or types in the path prefix.
         match self.save_ctxt.get_path_def(id) {
@@ -904,7 +916,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         collector.visit_pat(&p);
         self.visit_pat(&p);
 
-        for &(id, ref p, immut) in &collector.collected_paths {
+        for (id, i, sp, immut) in collector.collected_idents {
             let mut value = match immut {
                 ast::Mutability::Immutable => value.to_string(),
                 _ => String::new(),
@@ -924,10 +936,10 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).
-            let sub_span = self.span.span_for_last_ident(p.span);
+            let sub_span = self.span.span_for_last_ident(sp);
             // Rust uses the id of the pattern for var lookups, so we'll use it too.
-            if !self.span.filter_generated(sub_span, p.span) {
-                let qualname = format!("{}${}", path_to_string(p), id);
+            if !self.span.filter_generated(sub_span, sp) {
+                let qualname = format!("{}${}", i.to_string(), id);
                 let id = ::id_from_node_id(id, &self.save_ctxt);
                 let span = self.span_from_span(sub_span.expect("No span found for variable"));
 
@@ -935,7 +947,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     kind: DefKind::Local,
                     id,
                     span,
-                    name: path_to_string(p),
+                    name: i.to_string(),
                     qualname,
                     value: typ,
                     parent: None,
@@ -1263,7 +1275,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         for param in generics.ty_params.iter() {
             for bound in param.bounds.iter() {
                 if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
-                    self.process_trait_ref(&trait_ref.trait_ref);
+                    self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
                 }
             }
             if let Some(ref ty) = param.default {
@@ -1430,15 +1442,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
             self.visit_pat(&pattern);
         }
 
-        // This is to get around borrow checking, because we need mut self to call process_path.
-        let mut paths_to_process = vec![];
-
         // process collected paths
-        for &(id, ref p, immut) in &collector.collected_paths {
+        for (id, i, sp, immut) in collector.collected_idents {
             match self.save_ctxt.get_path_def(id) {
                 HirDef::Local(id) => {
                     let mut value = if immut == ast::Mutability::Immutable {
-                        self.span.snippet(p.span).to_string()
+                        self.span.snippet(sp).to_string()
                     } else {
                         "<mutable>".to_string()
                     };
@@ -1451,18 +1460,16 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     value.push_str(": ");
                     value.push_str(&typ);
 
-                    assert!(p.segments.len() == 1,
-                            "qualified path for local variable def in arm");
-                    if !self.span.filter_generated(Some(p.span), p.span) {
-                        let qualname = format!("{}${}", path_to_string(p), id);
+                    if !self.span.filter_generated(Some(sp), sp) {
+                        let qualname = format!("{}${}", i.to_string(), id);
                         let id = ::id_from_node_id(id, &self.save_ctxt);
-                        let span = self.span_from_span(p.span);
+                        let span = self.span_from_span(sp);
 
                         self.dumper.dump_def(false, Def {
                             kind: DefKind::Local,
                             id,
                             span,
-                            name: path_to_string(p),
+                            name: i.to_string(),
                             qualname,
                             value: typ,
                             parent: None,
@@ -1474,19 +1481,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                         });
                     }
                 }
-                HirDef::StructCtor(..) | HirDef::VariantCtor(..) |
-                HirDef::Const(..) | HirDef::AssociatedConst(..) |
-                HirDef::Struct(..) | HirDef::Variant(..) |
-                HirDef::TyAlias(..) | HirDef::AssociatedTy(..) |
-                HirDef::SelfTy(..) => {
-                    paths_to_process.push((id, p.clone()))
-                }
-                def => error!("unexpected definition kind when processing collected paths: {:?}",
+                def => error!("unexpected definition kind when processing collected idents: {:?}",
                               def),
             }
         }
 
-        for &(id, ref path) in &paths_to_process {
+        for (id, ref path) in collector.collected_paths {
             self.process_path(id, path);
         }
         walk_list!(self, visit_expr, &arm.guard);
