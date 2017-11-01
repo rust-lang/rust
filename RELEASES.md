@@ -45,6 +45,10 @@ Misc
 - [Stabilised the `compile_fail` attribute for code fences.][43949] This now
   lets you specify that a given code example will fail to compile.
 
+Compatibility Notes
+-------------------
+- [The minimum Android version that rustc can build for has been bumped to `4.0` from `2.3`][43880]
+
 [45075]: https://github.com/rust-lang/rust/pull/45075
 [45094]: https://github.com/rust-lang/rust/pull/45094
 [45095]: https://github.com/rust-lang/rust/pull/45095
