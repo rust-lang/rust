@@ -901,7 +901,9 @@ pub enum ExprKind {
     /// A function call
     ///
     /// The first field resolves to the function itself,
-    /// and the second field is the list of arguments
+    /// and the second field is the list of arguments.
+    /// This also represents calling the constructor of
+    /// tuple-like ADTs such as tuple structs and enum variants.
     Call(P<Expr>, Vec<P<Expr>>),
     /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///

@@ -49,7 +49,9 @@ mod imp {
                   target_arch = "powerpc64",
                   target_arch = "s390x")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", target_pointer_width = "32"))]
+        const NR_GETRANDOM: libc::c_long = 0x40000000 + 318;
+        #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;

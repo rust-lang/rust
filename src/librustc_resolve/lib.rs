@@ -3606,12 +3606,12 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn report_conflict(&mut self,
+    fn report_conflict<'b>(&mut self,
                        parent: Module,
                        ident: Ident,
                        ns: Namespace,
-                       new_binding: &NameBinding,
-                       old_binding: &NameBinding) {
+                       new_binding: &NameBinding<'b>,
+                       old_binding: &NameBinding<'b>) {
         // Error on the second of two conflicting names
         if old_binding.span.lo() > new_binding.span.lo() {
             return self.report_conflict(parent, ident, ns, old_binding, new_binding);
@@ -3681,6 +3681,26 @@ impl<'a> Resolver<'a> {
         if old_binding.span != syntax_pos::DUMMY_SP {
             err.span_label(old_binding.span, format!("previous {} of the {} `{}` here",
                                                       old_noun, old_kind, name));
+        }
+
+        // See https://github.com/rust-lang/rust/issues/32354
+        if old_binding.is_import() || new_binding.is_import() {
+            let binding = if new_binding.is_import() {
+                new_binding
+            } else {
+                old_binding
+            };
+
+            let cm = self.session.codemap();
+            let rename_msg = "You can use `as` to change the binding name of the import";
+
+            if let Ok(snippet) = cm.span_to_snippet(binding.span) {
+                err.span_suggestion(binding.span,
+                                    rename_msg,
+                                    format!("{} as Other{}", snippet, name));
+            } else {
+                err.span_label(binding.span, rename_msg);
+            }
         }
 
         err.emit();
