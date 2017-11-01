@@ -14,7 +14,7 @@ use dep_graph::DepNode;
 use ich::Fingerprint;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
-newtype_index!(SerializedDepNodeIndex { derive[RustcEncodable, RustcDecodable] });
+newtype_index!(SerializedDepNodeIndex);
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]

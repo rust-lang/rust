@@ -46,51 +46,51 @@ macro_rules! newtype_index {
     ($name:ident) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
-            @type       [$name]
-            @pub        [pub]
-            @max        [::std::u32::MAX]
-            @debug_name [unsafe {::std::intrinsics::type_name::<$name>() }]);
+            @type         [$name]
+            @pub          [pub]
+            @max          [::std::u32::MAX]
+            @debug_format ["{}"]);
     );
 
     ($name:ident nopub) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
-            @type       [$name]
-            @pub        []
-            @max        [::std::u32::MAX]
-            @debug_name [unsafe {::std::intrinsics::type_name::<$name>() }]);
+            @type         [$name]
+            @pub          []
+            @max          [::std::u32::MAX]
+            @debug_format ["{}"]);
     );
 
     // Define any constants
     ($name:ident { $($tokens:tt)+ }) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
-            @type       [$name]
-            @pub        [pub]
-            @max        [::std::u32::MAX]
-            @debug_name [unsafe {::std::intrinsics::type_name::<$name>() }]
-                        $($tokens)+);
+            @type         [$name]
+            @pub          [pub]
+            @max          [::std::u32::MAX]
+            @debug_format ["{}"]
+                          $($tokens)+);
     );
 
     // Define any constants
     ($name:ident nopub { $($tokens:tt)+ }) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
-            @type       [$name]
-            @pub        []
-            @max        [::std::u32::MAX]
-            @debug_name [unsafe {::std::intrinsics::type_name::<$name>() }]
-                        $($tokens)+);
+            @type         [$name]
+            @pub          []
+            @max          [::std::u32::MAX]
+            @debug_format [unsafe {::std::intrinsics::type_name::<$name>() }]
+                          $($tokens)+);
     );
 
     // ---- private rules ----
 
     // Base case, user-defined constants (if any) have already been defined
-    (@derives    [$($derives:ident),*]
-     @type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$max:expr]
-     @debug_name [$debug_name:expr]) => (
+    (@derives      [$($derives:ident,)*]
+     @type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         pub struct $type($($pub)* u32);
 
@@ -105,130 +105,217 @@ macro_rules! newtype_index {
             }
         }
 
+        newtype_index!(
+            @handle_debug
+            @derives      [$($derives,)*]
+            @type         [$type]
+            @debug_format [$debug_format]);
+    );
+
+    // base case for handle_debug where format is custom. No Debug implementation is emitted.
+    (@handle_debug
+     @derives      [$($_derives:ident,)*]
+     @type         [$type:ident]
+     @debug_format [custom]) => ();
+
+    // base case for handle_debug, no debug overrides found, so use default
+    (@handle_debug
+     @derives      []
+     @type         [$type:ident]
+     @debug_format [$debug_format:expr]) => (
         impl ::std::fmt::Debug for $type {
             fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                write!(fmt, "{}{}", $debug_name, self.0)
+                write!(fmt, $debug_format, self.0)
             }
         }
     );
 
-    // By not including the @derives marker in this list nor in the default args, we can force it
-    // to come first if it exists
-    (@type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$max:expr]
-     @debug_name [$debug_name:expr]
-                 derive [$($derives:ident),+]
-                 $($tokens:tt)*) => (
+    // Debug is requested for derive, don't generate any Debug implementation.
+    (@handle_debug
+     @derives      [Debug, $($derives:ident,)*]
+     @type         [$type:ident]
+     @debug_format [$debug_format:expr]) => ();
+
+    // It's not Debug, so just pop it off the front of the derives stack and check the rest.
+    (@handle_debug
+     @derives      [$_derive:ident, $($derives:ident,)*]
+     @type         [$type:ident]
+     @debug_format [$debug_format:expr]) => (
         newtype_index!(
-            @derives    [$($derives),+]
-            @type       [$type]
-            @pub        [$($pub)*]
-            @max        [$max]
-            @debug_name [$debug_name]
-                        $($tokens)*);
+            @handle_debug
+            @derives      [$($derives,)*]
+            @type         [$type]
+            @debug_format [$debug_format]);
     );
 
-    // The case where no derives are added
-    (@type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$max:expr]
-     @debug_name [$debug_name:expr]
-                 $($tokens:tt)*) => (
+    // Append comma to end of derives list if it's missing
+    (@type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   derive [$($derives:ident),*]
+                   $($tokens:tt)*) => (
         newtype_index!(
-            @derives    []
-            @type       [$type]
-            @pub        [$($pub)*]
-            @max        [$max]
-            @debug_name [$debug_name]
-                        $($tokens)*);
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          derive [$($derives,)*]
+                          $($tokens)*);
+    );
+
+    // By not including the @derives marker in this list nor in the default args, we can force it
+    // to come first if it exists. When encodable is custom, just use the derives list as-is.
+    (@type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   derive [$($derives:ident,)+]
+                   ENCODABLE = custom
+                   $($tokens:tt)*) => (
+        newtype_index!(
+            @derives      [$($derives,)+]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
+    );
+
+    // By not including the @derives marker in this list nor in the default args, we can force it
+    // to come first if it exists. When encodable isn't custom, add serialization traits by default.
+    (@type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   derive [$($derives:ident,)+]
+                   $($tokens:tt)*) => (
+        newtype_index!(
+            @derives      [$($derives,)+ RustcDecodable, RustcEncodable,]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
+    );
+
+    // The case where no derives are added, but encodable is overriden. Don't
+    // derive serialization traits
+    (@type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   ENCODABLE = custom
+                   $($tokens:tt)*) => (
+        newtype_index!(
+            @derives      []
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
+    );
+
+    // The case where no derives are added, add serialization derives by default
+    (@type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   $($tokens:tt)*) => (
+        newtype_index!(
+            @derives      [RustcDecodable, RustcEncodable,]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
     );
 
     // Rewrite final without comma to one that includes comma
-    (@derives    [$($derives:ident),*]
-     @type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$max:expr]
-     @debug_name [$debug_name:expr]
-                 $name:ident = $constant:expr) => (
+    (@derives      [$($derives:ident,)*]
+     @type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   $name:ident = $constant:expr) => (
         newtype_index!(
-            @derives    [$($derives),*]
-            @type       [$type]
-            @pub        [$($pub)*]
-            @max        [$max]
-            @debug_name [$debug_name]
-                        $name = $constant,);
+            @derives      [$($derives,)*]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $name = $constant,);
     );
 
     // Rewrite final const without comma to one that includes comma
-    (@derives    [$($derives:ident),*]
-     @type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$_max:expr]
-     @debug_name [$debug_name:expr]
-                 $(#[doc = $doc:expr])*
-                 const $name:ident = $constant:expr) => (
+    (@derives      [$($derives:ident,)*]
+     @type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$_max:expr]
+     @debug_format [$debug_format:expr]
+                   $(#[doc = $doc:expr])*
+                   const $name:ident = $constant:expr) => (
         newtype_index!(
-            @derives    [$($derives),*]
-            @type       [$type]
-            @pub        [$($pub)*]
-            @max        [$max]
-            @debug_name [$debug_name]
-                        $(#[doc = $doc])* const $name = $constant,);
+            @derives      [$($derives,)*]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $(#[doc = $doc])* const $name = $constant,);
     );
 
     // Replace existing default for max
-    (@derives    [$($derives:ident),*]
-     @type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$_max:expr]
-     @debug_name [$debug_name:expr]
-                 MAX = $max:expr,
-                 $($tokens:tt)*) => (
+    (@derives      [$($derives:ident,)*]
+     @type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$_max:expr]
+     @debug_format [$debug_format:expr]
+                   MAX = $max:expr,
+                   $($tokens:tt)*) => (
         newtype_index!(
-            @derives    [$($derives),*]
-            @type       [$type]
-            @pub        [$($pub)*]
-            @max        [$max]
-            @debug_name [$debug_name]
-                        $($tokens)*);
+            @derives      [$($derives,)*]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
     );
 
-    // Replace existing default for debug_name
-    (@derives    [$($derives:ident),*]
-     @type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$max:expr]
-     @debug_name [$_debug_name:expr]
-                 DEBUG_NAME = $debug_name:expr,
-                 $($tokens:tt)*) => (
+    // Replace existing default for debug_format
+    (@derives      [$($derives:ident,)*]
+     @type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$_debug_format:expr]
+                   DEBUG_FORMAT = $debug_format:expr,
+                   $($tokens:tt)*) => (
         newtype_index!(
-            @derives    [$($derives),*]
-            @type       [$type]
-            @pub        [$($pub)*]
-            @max        [$max]
-            @debug_name [$debug_name]
-                        $($tokens)*);
+            @derives      [$($derives,)*]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
     );
 
     // Assign a user-defined constant
-    (@derives    [$($derives:ident),*]
-     @type       [$type:ident]
-     @pub        [$($pub:tt)*]
-     @max        [$max:expr]
-     @debug_name [$debug_name:expr]
-                 $(#[doc = $doc:expr])*
-                 const $name:ident = $constant:expr,
-                 $($tokens:tt)*) => (
+    (@derives      [$($derives:ident,)*]
+     @type         [$type:ident]
+     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   $(#[doc = $doc:expr])*
+                   const $name:ident = $constant:expr,
+                   $($tokens:tt)*) => (
         $(#[doc = $doc])*
         pub const $name: $type = $type($constant);
         newtype_index!(
-            @derives    [$($derives),*]
-            @type       [$type]
-            @pub        [$($pub)*]
-            @max        [$max]
-            @debug_name [$debug_name]
-                        $($tokens)*);
+            @derives      [$($derives,)*]
+            @type         [$type]
+            @pub          [$($pub)*]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
     );
 }
 

@@ -312,7 +312,7 @@ struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
-newtype_index!(ScopeId { derive[RustcEncodable, RustcDecodable] });
+newtype_index!(ScopeId);
 
 ///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a

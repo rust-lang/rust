@@ -18,6 +18,9 @@ use std::u32;
 
 newtype_index!(CrateNum nopub
     {
+        derive[Debug]
+        ENCODABLE = custom
+
         /// Item definitions in the currently-compiled crate would have the CrateNum
         /// LOCAL_CRATE in their DefId.
         const LOCAL_CRATE = 0,
