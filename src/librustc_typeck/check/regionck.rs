@@ -360,11 +360,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         // Make a copy of the region obligations vec because we'll need
         // to be able to borrow the fulfillment-cx below when projecting.
-        let region_obligations =
-            self.fulfillment_cx
-                .borrow()
-                .region_obligations(node_id)
-                .to_vec();
+        let region_obligations = self.infcx.take_region_obligations(node_id);
 
         for r_o in &region_obligations {
             debug!("visit_region_obligations: r_o={:?} cause={:?}",
@@ -375,8 +371,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Processing the region obligations should not cause the list to grow further:
-        assert_eq!(region_obligations.len(),
-                   self.fulfillment_cx.borrow().region_obligations(node_id).len());
+        assert!(self.infcx.take_region_obligations(node_id).is_empty());
     }
 
     fn code_to_origin(&self,
