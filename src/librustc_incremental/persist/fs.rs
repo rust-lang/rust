@@ -131,6 +131,7 @@ const LOCK_FILE_EXT: &'static str = ".lock";
 const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
 const WORK_PRODUCTS_FILENAME: &'static str = "work-products.bin";
 const METADATA_HASHES_FILENAME: &'static str = "metadata.bin";
+const QUERY_CACHE_FILENAME: &'static str = "query-cache.bin";
 
 // We encode integers using the following base, so they are shorter than decimal
 // or hexadecimal numbers (we want short file and directory names). Since these
@@ -148,6 +149,10 @@ pub fn work_products_path(sess: &Session) -> PathBuf {
 
 pub fn metadata_hash_export_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, METADATA_HASHES_FILENAME)
+}
+
+pub fn query_cache_path(sess: &Session) -> PathBuf {
+    in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
 }
 
 pub fn lock_file_path(session_dir: &Path) -> PathBuf {

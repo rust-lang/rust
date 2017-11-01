@@ -54,11 +54,6 @@ pub const METADATA_VERSION: u8 = 4;
 pub const METADATA_HEADER: &'static [u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
-/// The shorthand encoding uses an enum's variant index `usize`
-/// and is offset by this value so it never matches a real variant.
-/// This offset is also chosen so that the first byte is never < 0x80.
-pub const SHORTHAND_OFFSET: usize = 0x80;
-
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
 ///

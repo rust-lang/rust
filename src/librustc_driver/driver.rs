@@ -940,6 +940,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let time_passes = sess.time_passes();
 
+    let query_result_on_disk_cache = time(time_passes,
+        "load query result cache",
+        || rustc_incremental::load_query_result_cache(sess));
+
     let named_region_map = time(time_passes,
                                 "lifetime resolution",
                                 || middle::resolve_lifetime::krate(sess, cstore, &hir_map))?;
@@ -1048,6 +1052,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              resolutions,
                              named_region_map,
                              hir_map,
+                             query_result_on_disk_cache,
                              name,
                              tx,
                              output_filenames,

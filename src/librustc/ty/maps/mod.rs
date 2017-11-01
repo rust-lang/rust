@@ -70,6 +70,9 @@ mod config;
 pub use self::config::QueryConfig;
 use self::config::QueryDescription;
 
+mod on_disk_cache;
+pub use self::on_disk_cache::OnDiskCache;
+
 // Each of these maps also corresponds to a method on a
 // `Provider` trait for requesting a value of that type,
 // and a method on `Maps` itself for doing that in a

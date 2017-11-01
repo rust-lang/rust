@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use errors::DiagnosticBuilder;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHashingContextProvider};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -599,6 +600,24 @@ impl DepGraph {
         debug_assert!(old_fingerprint.is_none(),
                       "DepGraph::try_mark_green() - Duplicate fingerprint \
                       insertion for {:?}", dep_node);
+
+        // ... emitting any stored diagnostic ...
+        {
+            let diagnostics = tcx.on_disk_query_result_cache
+                                 .load_diagnostics(prev_dep_node_index);
+
+            if diagnostics.len() > 0 {
+                let handle = tcx.sess.diagnostic();
+
+                // Promote the previous diagnostics to the current session.
+                tcx.on_disk_query_result_cache
+                   .store_diagnostics(dep_node_index, diagnostics.clone());
+
+                for diagnostic in diagnostics {
+                    DiagnosticBuilder::new_diagnostic(handle, diagnostic).emit();
+                }
+            }
+        }
 
         // ... and finally storing a "Green" entry in the color map.
         let old_color = data.colors

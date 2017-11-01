@@ -89,6 +89,7 @@ pub use self::maps::queries;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
+pub mod codec;
 pub mod error;
 mod erase_regions;
 pub mod fast_reject;

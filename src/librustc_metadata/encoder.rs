@@ -25,14 +25,13 @@ use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
+use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 
-use std::hash::Hash;
-use std::intrinsics;
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
@@ -119,7 +118,7 @@ impl<'a, 'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
-        self.encode_with_shorthand(ty, &ty.sty, |ecx| &mut ecx.type_shorthands)
+        ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
     }
 }
 
@@ -127,20 +126,17 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
     fn specialized_encode(&mut self,
                           predicates: &ty::GenericPredicates<'tcx>)
                           -> Result<(), Self::Error> {
-        predicates.parent.encode(self)?;
-        predicates.predicates.len().encode(self)?;
-        for predicate in &predicates.predicates {
-            self.encode_with_shorthand(predicate, predicate, |ecx| &mut ecx.predicate_shorthands)?
-        }
-        Ok(())
+        ty_codec::encode_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
+    }
+}
+
+impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
+    fn position(&self) -> usize {
+        self.opaque.position()
     }
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-
-    pub fn position(&self) -> usize {
-        self.opaque.position()
-    }
 
     fn emit_node<F: FnOnce(&mut Self, usize) -> R, R>(&mut self, f: F) -> R {
         assert_eq!(self.lazy_state, LazyState::NoNode);
@@ -202,44 +198,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             assert!(pos + LazySeq::<T>::min_size(len) <= ecx.position());
             LazySeq::with_position_and_length(pos, len)
         })
-    }
-
-    /// Encode the given value or a previously cached shorthand.
-    fn encode_with_shorthand<T, U, M>(&mut self,
-                                      value: &T,
-                                      variant: &U,
-                                      map: M)
-                                      -> Result<(), <Self as Encoder>::Error>
-        where M: for<'b> Fn(&'b mut Self) -> &'b mut FxHashMap<T, usize>,
-              T: Clone + Eq + Hash,
-              U: Encodable
-    {
-        let existing_shorthand = map(self).get(value).cloned();
-        if let Some(shorthand) = existing_shorthand {
-            return self.emit_usize(shorthand);
-        }
-
-        let start = self.position();
-        variant.encode(self)?;
-        let len = self.position() - start;
-
-        // The shorthand encoding uses the same usize as the
-        // discriminant, with an offset so they can't conflict.
-        let discriminant = unsafe { intrinsics::discriminant_value(variant) };
-        assert!(discriminant < SHORTHAND_OFFSET as u64);
-        let shorthand = start + SHORTHAND_OFFSET;
-
-        // Get the number of bits that leb128 could fit
-        // in the same space as the fully encoded type.
-        let leb128_bits = len * 7;
-
-        // Check that the shorthand is a not longer than the
-        // full encoding itself, i.e. it's an obvious win.
-        if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
-            map(self).insert(value.clone(), shorthand);
-        }
-
-        Ok(())
     }
 
     // Encodes something that corresponds to a single DepNode::GlobalMetaData

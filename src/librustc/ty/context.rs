@@ -855,6 +855,11 @@ pub struct GlobalCtxt<'tcx> {
 
     pub dep_graph: DepGraph,
 
+    /// This provides access to the incr. comp. on-disk cache for query results.
+    /// Do not access this directly. It is only meant to be used by
+    /// `DepGraph::try_mark_green()` and the query infrastructure in `ty::maps`.
+    pub(crate) on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
+
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
@@ -1056,6 +1061,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
+                                  on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
                                   crate_name: &str,
                                   tx: mpsc::Sender<Box<Any + Send>>,
                                   output_filenames: &OutputFilenames,
@@ -1139,6 +1145,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_arenas: arenas,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
+            on_disk_query_result_cache,
             types: common_types,
             named_region_map: NamedRegionMap {
                 defs,
@@ -1300,6 +1307,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.in_scope_traits_map(def_index);
         }
     }
+
+    pub fn serialize_query_result_cache<E>(self,
+                                           encoder: &mut E)
+                                           -> Result<(), E::Error>
+        where E: ::rustc_serialize::Encoder
+    {
+        self.on_disk_query_result_cache.serialize(encoder)
+    }
+
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {

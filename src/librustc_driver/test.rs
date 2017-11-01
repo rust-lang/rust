@@ -23,6 +23,7 @@ use rustc::middle::resolve_lifetime;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::maps::OnDiskCache;
 use rustc::infer::{self, InferOk, InferResult};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc_metadata::cstore::CStore;
@@ -156,6 +157,7 @@ fn test_env<F>(source_string: &str,
                              resolutions,
                              named_region_map.unwrap(),
                              hir_map,
+                             OnDiskCache::new_empty(sess.codemap()),
                              "test_crate",
                              tx,
                              &outputs,
