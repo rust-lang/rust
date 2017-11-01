@@ -1339,24 +1339,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 hir::ImplItemKind::Method(..) => {
                     let trait_span = tcx.hir.span_if_local(ty_trait_item.def_id);
                     if ty_trait_item.kind == ty::AssociatedKind::Method {
-                        let err_count = tcx.sess.err_count();
                         compare_impl_method(tcx,
                                             &ty_impl_item,
                                             impl_item.span,
                                             &ty_trait_item,
                                             impl_trait_ref,
-                                            trait_span,
-                                            true); // start with old-broken-mode
-                        if err_count == tcx.sess.err_count() {
-                            // old broken mode did not report an error. Try with the new mode.
-                            compare_impl_method(tcx,
-                                                &ty_impl_item,
-                                                impl_item.span,
-                                                &ty_trait_item,
-                                                impl_trait_ref,
-                                                trait_span,
-                                                false); // use the new mode
-                        }
+                                            trait_span);
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \
