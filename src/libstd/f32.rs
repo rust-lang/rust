@@ -23,6 +23,8 @@ use core::num;
 use intrinsics;
 #[cfg(not(test))]
 use num::FpCategory;
+#[cfg(not(test))]
+use sys::cmath;
 
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -35,92 +37,6 @@ pub use core::f32::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
 pub use core::f32::{MIN, MIN_POSITIVE, MAX};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::consts;
-
-#[allow(dead_code)]
-mod cmath {
-    use libc::{c_float, c_int};
-
-    extern {
-        pub fn cbrtf(n: c_float) -> c_float;
-        pub fn erff(n: c_float) -> c_float;
-        pub fn erfcf(n: c_float) -> c_float;
-        pub fn expm1f(n: c_float) -> c_float;
-        pub fn fdimf(a: c_float, b: c_float) -> c_float;
-        pub fn fmodf(a: c_float, b: c_float) -> c_float;
-        pub fn ilogbf(n: c_float) -> c_int;
-        pub fn logbf(n: c_float) -> c_float;
-        pub fn log1pf(n: c_float) -> c_float;
-        pub fn modff(n: c_float, iptr: &mut c_float) -> c_float;
-        pub fn nextafterf(x: c_float, y: c_float) -> c_float;
-        pub fn tgammaf(n: c_float) -> c_float;
-
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgammaf_r")]
-        pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypotf")]
-        pub fn hypotf(x: c_float, y: c_float) -> c_float;
-    }
-
-    // See the comments in the `floor` function for why MSVC is special
-    // here.
-    #[cfg(not(target_env = "msvc"))]
-    extern {
-        pub fn acosf(n: c_float) -> c_float;
-        pub fn asinf(n: c_float) -> c_float;
-        pub fn atan2f(a: c_float, b: c_float) -> c_float;
-        pub fn atanf(n: c_float) -> c_float;
-        pub fn coshf(n: c_float) -> c_float;
-        pub fn sinhf(n: c_float) -> c_float;
-        pub fn tanf(n: c_float) -> c_float;
-        pub fn tanhf(n: c_float) -> c_float;
-    }
-
-    #[cfg(target_env = "msvc")]
-    pub use self::shims::*;
-    #[cfg(target_env = "msvc")]
-    mod shims {
-        use libc::c_float;
-
-        #[inline]
-        pub unsafe fn acosf(n: c_float) -> c_float {
-            f64::acos(n as f64) as c_float
-        }
-
-        #[inline]
-        pub unsafe fn asinf(n: c_float) -> c_float {
-            f64::asin(n as f64) as c_float
-        }
-
-        #[inline]
-        pub unsafe fn atan2f(n: c_float, b: c_float) -> c_float {
-            f64::atan2(n as f64, b as f64) as c_float
-        }
-
-        #[inline]
-        pub unsafe fn atanf(n: c_float) -> c_float {
-            f64::atan(n as f64) as c_float
-        }
-
-        #[inline]
-        pub unsafe fn coshf(n: c_float) -> c_float {
-            f64::cosh(n as f64) as c_float
-        }
-
-        #[inline]
-        pub unsafe fn sinhf(n: c_float) -> c_float {
-            f64::sinh(n as f64) as c_float
-        }
-
-        #[inline]
-        pub unsafe fn tanf(n: c_float) -> c_float {
-            f64::tan(n as f64) as c_float
-        }
-
-        #[inline]
-        pub unsafe fn tanhf(n: c_float) -> c_float {
-            f64::tanh(n as f64) as c_float
-        }
-    }
-}
 
 #[cfg(not(test))]
 #[lang = "f32"]
