@@ -20,7 +20,7 @@ pub use self::dladdr::resolve_symname;
 #[cfg(target_os = "emscripten")]
 pub fn foreach_symbol_fileline<F>(_: Frame, _: F, _: &BacktraceContext) -> io::Result<bool>
 where
-    F: FnMut(&[u8], ::libc::c_int) -> io::Result<()>
+    F: FnMut(&[u8], u32) -> io::Result<()>
 {
     Ok(false)
 }

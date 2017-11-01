@@ -17,6 +17,7 @@ use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
 use time::Duration;
 
+pub use libc::strlen;
 pub use self::rand::hashmap_random_keys;
 
 #[macro_use] pub mod compat;

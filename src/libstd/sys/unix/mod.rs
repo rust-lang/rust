@@ -30,6 +30,7 @@ use libc;
 #[cfg(all(not(dox), target_os = "l4re"))]      pub use os::linux as platform;
 
 pub use self::rand::hashmap_random_keys;
+pub use libc::strlen;
 
 #[macro_use]
 pub mod weak;
