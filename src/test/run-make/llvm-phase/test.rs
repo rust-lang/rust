@@ -13,13 +13,13 @@
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_llvm;
-extern crate rustc_trans;
+extern crate rustc_codegen_llvm;
 #[macro_use] extern crate syntax;
 extern crate getopts;
 
 use rustc_driver::{CompilerCalls, Compilation};
 use rustc_driver::driver::CompileController;
-use rustc_trans::ModuleSource;
+use rustc_codegen_llvm::ModuleSource;
 use rustc::session::Session;
 use syntax::codemap::FileLoader;
 use std::env;

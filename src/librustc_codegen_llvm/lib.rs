@@ -329,7 +329,7 @@ pub struct CrateInfo {
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }
 
-__build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
+__build_diagnostic_array! { librustc_codegen_llvm, DIAGNOSTICS }
 
 pub fn provide_local(providers: &mut Providers) {
     back::symbol_names::provide(providers);

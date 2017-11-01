@@ -19,8 +19,8 @@ use rustc::ty::{self, TyCtxt, GlobalArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::util::nodemap::FxHashMap;
-use rustc_trans;
-use rustc_trans::back::link;
+use rustc_codegen_llvm;
+use rustc_codegen_llvm::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
@@ -143,11 +143,11 @@ pub fn run_core(search_paths: SearchPaths,
                                                                false,
                                                                Some(codemap.clone()));
 
-    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(box rustc_codegen_llvm::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, cpath, diagnostic_handler, codemap,
     );
-    rustc_trans::init(&sess);
+    rustc_codegen_llvm::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));

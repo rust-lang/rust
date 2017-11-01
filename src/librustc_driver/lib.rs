@@ -48,7 +48,7 @@ extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
 #[cfg(feature="llvm")]
-extern crate rustc_trans;
+extern crate rustc_codegen_llvm;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -156,10 +156,10 @@ pub fn run<F>(run_compiler: F) -> isize
 #[cfg(not(feature="llvm"))]
 pub use rustc_trans_utils::trans_crate::MetadataOnlyTransCrate as DefaultTransCrate;
 #[cfg(feature="llvm")]
-pub use rustc_trans::LlvmTransCrate as DefaultTransCrate;
+pub use rustc_codegen_llvm::LlvmTransCrate as DefaultTransCrate;
 
 #[cfg(not(feature="llvm"))]
-mod rustc_trans {
+mod rustc_codegen_llvm {
     use syntax_pos::symbol::Symbol;
     use rustc::session::Session;
     use rustc::session::config::PrintRequest;
@@ -205,7 +205,7 @@ pub fn run_compiler<'a>(args: &[String],
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
     if sopts.debugging_opts.debug_llvm {
-        rustc_trans::enable_llvm_debug();
+        rustc_codegen_llvm::enable_llvm_debug();
     }
 
     let descriptions = diagnostics_registry();
@@ -231,7 +231,7 @@ pub fn run_compiler<'a>(args: &[String],
     let mut sess = session::build_session_with_codemap(
         sopts, input_file_path, descriptions, codemap, emitter_dest,
     );
-    rustc_trans::init(&sess);
+    rustc_codegen_llvm::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, cfg);
@@ -263,7 +263,9 @@ pub fn run_compiler<'a>(args: &[String],
             Some(sess))
         }
         Some("llvm") => {
-            let cstore = Rc::new(CStore::new(rustc_trans::LlvmTransCrate::metadata_loader()));
+            let cstore = Rc::new(
+                CStore::new(rustc_codegen_llvm::LlvmTransCrate::metadata_loader())
+            );
 
             do_or_return!(callbacks.late_callback(&matches,
                                                   &sess,
@@ -272,13 +274,13 @@ pub fn run_compiler<'a>(args: &[String],
                                                   &odir,
                                                   &ofile), Some(sess));
 
-            (driver::compile_input::<rustc_trans::LlvmTransCrate>(&sess,
-                                                                 &cstore,
-                                                                 &input,
-                                                                 &odir,
-                                                                 &ofile,
-                                                                 Some(plugins),
-                                                                 &control),
+            (driver::compile_input::<rustc_codegen_llvm::LlvmTransCrate>(&sess,
+                                                                         &cstore,
+                                                                         &input,
+                                                                         &odir,
+                                                                         &ofile,
+                                                                         Some(plugins),
+                                                                         &control),
             Some(sess))
         }
         Some(trans_name) => sess.fatal(&format!("Invalid trans {}", trans_name)),
@@ -546,7 +548,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 let mut sess = build_session(sopts.clone(),
                     None,
                     descriptions.clone());
-                rustc_trans::init(&sess);
+                rustc_codegen_llvm::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 target_features::add_configuration(&mut cfg, &sess);
@@ -806,20 +808,20 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
-                    for &(name, _) in rustc_trans::back::write::RELOC_MODEL_ARGS.iter() {
+                    for &(name, _) in rustc_codegen_llvm::back::write::RELOC_MODEL_ARGS.iter() {
                         println!("    {}", name);
                     }
                     println!("");
                 }
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
-                    for &(name, _) in rustc_trans::back::write::CODE_GEN_MODEL_ARGS.iter(){
+                    for &(name, _) in rustc_codegen_llvm::back::write::CODE_GEN_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }
                     println!("");
                 }
                 PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
-                    rustc_trans::print(*req, sess);
+                    rustc_codegen_llvm::print(*req, sess);
                 }
                 PrintRequest::NativeStaticLibs => {
                     println!("Native static libs can be printed only during linking");
@@ -861,7 +863,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
-        rustc_trans::print_version();
+        rustc_codegen_llvm::print_version();
     }
 }
 
@@ -1158,7 +1160,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        rustc_trans::print_passes();
+        rustc_codegen_llvm::print_passes();
         return None;
     }
 
@@ -1287,7 +1289,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     #[cfg(feature="llvm")]
-    all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_codegen_llvm::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);
