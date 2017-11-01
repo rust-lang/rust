@@ -2451,7 +2451,7 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
-#[stable(feature = "from_ref", since = "1.22.0")]
+#[unstable(feature = "from_ref", issue = "45703")]
 pub fn from_ref<T>(s: &T) -> &[T] {
     unsafe {
         from_raw_parts(s, 1)
@@ -2459,7 +2459,7 @@ pub fn from_ref<T>(s: &T) -> &[T] {
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
-#[stable(feature = "from_ref", since = "1.22.0")]
+#[unstable(feature = "from_ref", issue = "45703")]
 pub fn from_ref_mut<T>(s: &mut T) -> &mut [T] {
     unsafe {
         from_raw_parts_mut(s, 1)

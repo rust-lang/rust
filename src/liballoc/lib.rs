@@ -93,6 +93,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]
+#![feature(from_ref)]
 #![feature(fundamental)]
 #![feature(fused)]
 #![feature(generic_param_attrs)]
