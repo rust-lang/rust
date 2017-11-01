@@ -69,15 +69,32 @@ struct FileEntry {
 
 type Cache = HashMap<PathBuf, FileEntry>;
 
+fn small_url_encode(s: &str) -> String {
+    s.replace("<", "%3C")
+     .replace(">", "%3E")
+     .replace(" ", "%20")
+     .replace("?", "%3F")
+     .replace("'", "%27")
+     .replace("&", "%26")
+     .replace(",", "%2C")
+     .replace(":", "%3A")
+     .replace(";", "%3B")
+     .replace("[", "%5B")
+     .replace("]", "%5D")
+}
+
 impl FileEntry {
     fn parse_ids(&mut self, file: &Path, contents: &str, errors: &mut bool) {
         if self.ids.is_empty() {
             with_attrs_in_source(contents, " id", |fragment, i, _| {
                 let frag = fragment.trim_left_matches("#").to_owned();
+                let encoded = small_url_encode(&frag);
                 if !self.ids.insert(frag) {
                     *errors = true;
                     println!("{}:{}: id is not unique: `{}`", file.display(), i, fragment);
                 }
+                // Just in case, we also add the encoded id.
+                self.ids.insert(encoded);
             });
         }
     }

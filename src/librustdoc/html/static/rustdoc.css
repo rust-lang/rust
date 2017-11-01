@@ -188,18 +188,16 @@ nav.sub {
 
 .js-only, .hidden { display: none !important; }
 
-.sidebar {
-	padding: 10px;
-}
 .sidebar img {
 	margin: 20px auto;
 	display: block;
+	margin-top: 10px;
 }
 
 .sidebar .location {
 	border: 1px solid;
 	font-size: 17px;
-	margin: 30px 0 20px 0;
+	margin: 30px 10px 20px 10px;
 	text-align: center;
 	word-wrap: break-word;
 }
@@ -220,7 +218,7 @@ nav.sub {
 .location a:first-child { font-weight: 500; }
 
 .block {
-	padding: 0 10px;
+	padding: 0;
 	margin-bottom: 14px;
 }
 .block h2, .block h3 {
@@ -229,7 +227,7 @@ nav.sub {
 	text-align: center;
 }
 .block ul, .block li {
-	margin: 0;
+	margin: 0 10px;
 	padding: 0;
 	list-style: none;
 }
@@ -243,6 +241,23 @@ nav.sub {
 	font-size: 14px;
 	font-weight: 300;
 	transition: border 500ms ease-out;
+}
+
+.sidebar-title {
+	border-top: 1px solid #777;
+	border-bottom: 1px solid #777;
+	text-align: center;
+	font-size: 17px;
+	margin-bottom: 5px;
+}
+
+.sidebar-links {
+	margin-bottom: 15px;
+}
+
+.sidebar-links > a {
+	padding-left: 10px;
+	width: 100%;
 }
 
 .content {
