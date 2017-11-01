@@ -21,6 +21,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::FxHashMap;
 use rustc_allocator::ALLOCATOR_METHODS;
+use syntax::attr;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -180,7 +181,15 @@ pub fn provide_extern(providers: &mut Providers) {
 }
 
 fn export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
-    if tcx.contains_extern_indicator(sym_def_id) {
+    // We export anything that's not mangled at the "C" layer as it probably has
+    // to do with ABI concerns. We do not, however, apply such treatment to
+    // special symbols in the standard library for various plumbing between
+    // core/std/allocators/etc. For example symbols used to hook up allocation
+    // are not considered for export
+    let is_extern = tcx.contains_extern_indicator(sym_def_id);
+    let std_internal = attr::contains_name(&tcx.get_attrs(sym_def_id),
+                                           "rustc_std_internal_symbol");
+    if is_extern && !std_internal {
         SymbolExportLevel::C
     } else {
         SymbolExportLevel::Rust
