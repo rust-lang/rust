@@ -3167,10 +3167,7 @@ impl<'a> Parser<'a> {
         attrs.extend(iattrs);
 
         let hi = self.prev_span;
-        Ok(self.mk_expr(
-            span_lo.to(hi),
-            ExprKind::ForLoop(pat, expr, loop_block, opt_ident),
-            attrs))
+        Ok(self.mk_expr(span_lo.to(hi), ExprKind::ForLoop(pat, expr, loop_block, opt_ident), attrs))
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
