@@ -157,14 +157,6 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         });
     }
 
-    pub fn register_region_obligation(&mut self,
-                                      t_a: Ty<'tcx>,
-                                      r_b: ty::Region<'tcx>,
-                                      cause: ObligationCause<'tcx>)
-    {
-        register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
-    }
-
     pub fn register_predicate_obligation(&mut self,
                                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                          obligation: PredicateObligation<'tcx>)
