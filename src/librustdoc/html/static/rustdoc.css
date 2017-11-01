@@ -545,7 +545,8 @@ a {
 .content .search-results td:first-child { padding-right: 0; }
 .content .search-results td:first-child a { padding-right: 10px; }
 
-tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black;
+tr.result span.primitive::after {
+	content: ' (primitive type)'; font-style: italic; color: black;
 }
 
 body.blur > :not(#help) {
@@ -759,6 +760,15 @@ span.since {
 	margin-left: 30px;
 	margin-bottom: 20px;
 	margin-top: 5px;
+}
+
+.docblock > .section-header:first-child {
+	margin-left: 15px;
+	margin-top: 0;
+}
+
+.docblock > .section-header:first-child:hover > a:before {
+	left: -10px;
 }
 
 .enum > .collapsed, .struct > .collapsed {
