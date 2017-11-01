@@ -25,8 +25,10 @@ use std::cell::RefCell;
 /// The primary goal of `Span` is to be as small as possible and fit into other structures
 /// (that's why it uses `packed` as well). Decoding speed is the second priority.
 /// See `SpanData` for the info on span fields in decoded representation.
+
+/// FIXME: Don't use packed attribute on sparc64/v9, see: #45509
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(packed)]
+#[cfg_attr(not(any(target_arch = "sparc64", target_arch = "sparcv9")), repr(packed))]
 pub struct Span(u32);
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
