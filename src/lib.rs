@@ -575,7 +575,9 @@ pub fn run(input: Input, config: &Config) -> Summary {
 
             if report.has_warnings() {
                 match term::stderr() {
-                    Some(ref t) if isatty() && t.supports_color() => {
+                    Some(ref t)
+                        if isatty() && t.supports_color() && t.supports_attr(term::Attr::Bold) =>
+                    {
                         match report.print_warnings_fancy(term::stderr().unwrap()) {
                             Ok(..) => (),
                             Err(..) => panic!("Unable to write to stderr: {}", report),
