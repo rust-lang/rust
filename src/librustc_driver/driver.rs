@@ -267,11 +267,12 @@ pub fn compile_input<Trans: TransCrate>(sess: &Session,
     let (phase5_result, trans) =
         phase_5_run_llvm_passes::<Trans>(sess, &dep_graph, trans);
 
-    controller_entry_point!(after_llvm,
-                            sess,
-                            CompileState::state_after_llvm(input, sess, outdir, output, &trans),
-                            phase5_result);
     phase5_result?;
+
+    if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe ||
+                                               i == OutputType::Metadata) {
+        return Ok(());
+    }
 
     // Run the linker on any artifacts that resulted from the LLVM run.
     // This should produce either a finished executable or library.
@@ -336,7 +337,6 @@ pub struct CompileController<'a> {
     pub after_expand: PhaseController<'a>,
     pub after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
-    pub after_llvm: PhaseController<'a>,
     pub compilation_done: PhaseController<'a>,
 
     // FIXME we probably want to group the below options together and offer a
@@ -355,7 +355,6 @@ impl<'a> CompileController<'a> {
             after_expand: PhaseController::basic(),
             after_hir_lowering: PhaseController::basic(),
             after_analysis: PhaseController::basic(),
-            after_llvm: PhaseController::basic(),
             compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
             keep_ast: false,
@@ -385,7 +384,7 @@ impl<'a> PhaseController<'a> {
 /// State that is passed to a callback. What state is available depends on when
 /// during compilation the callback is made. See the various constructor methods
 /// (`state_*`) in the impl to see which data is provided for any given entry point.
-pub struct CompileState<'a, 'tcx: 'a, Trans: TransCrate> {
+pub struct CompileState<'a, 'tcx: 'a> {
     pub input: &'a Input,
     pub session: &'tcx Session,
     pub krate: Option<ast::Crate>,
@@ -403,10 +402,9 @@ pub struct CompileState<'a, 'tcx: 'a, Trans: TransCrate> {
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
-    pub trans: Option<&'a <Trans as TransCrate>::TranslatedCrate>,
 }
 
-impl<'a, 'tcx, Trans: TransCrate> CompileState<'a, 'tcx, Trans> {
+impl<'a, 'tcx> CompileState<'a, 'tcx> {
     fn empty(input: &'a Input,
              session: &'tcx Session,
              out_dir: &'a Option<PathBuf>)
@@ -429,7 +427,6 @@ impl<'a, 'tcx, Trans: TransCrate> CompileState<'a, 'tcx, Trans> {
             resolutions: None,
             analysis: None,
             tcx: None,
-            trans: None,
         }
     }
 
@@ -514,19 +511,6 @@ impl<'a, 'tcx, Trans: TransCrate> CompileState<'a, 'tcx, Trans> {
             expanded_crate: krate,
             hir_crate: Some(hir_crate),
             crate_name: Some(crate_name),
-            out_file: out_file.as_ref().map(|s| &**s),
-            ..CompileState::empty(input, session, out_dir)
-        }
-    }
-
-    fn state_after_llvm(input: &'a Input,
-                        session: &'tcx Session,
-                        out_dir: &'a Option<PathBuf>,
-                        out_file: &'a Option<PathBuf>,
-                        trans: &'a <Trans as TransCrate>::TranslatedCrate)
-                        -> Self {
-        CompileState {
-            trans: Some(trans),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }

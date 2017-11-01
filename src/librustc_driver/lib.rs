@@ -66,7 +66,7 @@ use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
-use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
+use rustc::session::config::{Input, PrintRequest, ErrorOutputType};
 use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
@@ -241,8 +241,8 @@ pub fn run_compiler<'a>(args: &[String],
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
 
-    let trans_name = sess.opts.debugging_opts.trans.as_ref().map(|s|&**s);
-    match trans_name {
+    let trans_name = sess.opts.debugging_opts.trans.clone();
+    match trans_name.as_ref().map(|s|&**s) {
         None => {
             let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
 
@@ -633,11 +633,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         if sess.opts.debugging_opts.no_analysis ||
            sess.opts.debugging_opts.ast_json {
             control.after_hir_lowering.stop = Compilation::Stop;
-        }
-
-        if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe ||
-                                                   i == OutputType::Metadata) {
-            control.after_llvm.stop = Compilation::Stop;
         }
 
         if save_analysis(sess) {
