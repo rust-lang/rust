@@ -15,7 +15,6 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(rand)]
 #![feature(conservative_impl_trait)]
 #![feature(i128_type)]
 #![feature(inclusive_range_syntax)]
@@ -25,6 +24,7 @@ extern crate graphviz;
 #[macro_use] extern crate rustc;
 extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;
+extern crate rand;
 
 #[macro_use] extern crate log;
 extern crate syntax;

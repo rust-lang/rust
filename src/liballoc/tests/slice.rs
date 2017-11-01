@@ -10,8 +10,9 @@
 
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::mem;
-use std::__rand::{Rng, thread_rng};
 use std::rc::Rc;
+
+use rand::{Rng, thread_rng};
 
 fn square(n: usize) -> usize {
     n * n

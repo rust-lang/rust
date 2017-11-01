@@ -10,11 +10,13 @@
 
 // ignore-emscripten no threads support
 
-#![feature(rand)]
+#![feature(rustc_private)]
 #![feature(sort_unstable)]
 #![feature(const_atomic_usize_new)]
 
-use std::__rand::{thread_rng, Rng};
+extern crate rand;
+
+use rand::{thread_rng, Rng};
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::panic;

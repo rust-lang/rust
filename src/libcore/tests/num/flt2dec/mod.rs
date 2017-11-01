@@ -10,8 +10,7 @@
 
 use std::prelude::v1::*;
 use std::{str, mem, i16, f32, f64, fmt};
-use std::__rand as rand;
-use rand::{Rand, XorShiftRng};
+use rand::{self, Rand, XorShiftRng};
 use rand::distributions::{IndependentSample, Range};
 
 use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};

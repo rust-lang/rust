@@ -28,6 +28,7 @@ name = "alloc"
 version = "0.0.0"
 dependencies = [
  "core 0.0.0",
+ "rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "std_unicode 0.0.0",
 ]
 
@@ -367,7 +368,7 @@ version = "0.1.0"
 name = "core"
 version = "0.0.0"
 dependencies = [
- "rand 0.0.0",
+ "rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1368,13 +1369,6 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.0.0"
-dependencies = [
- "core 0.0.0",
-]
-
-[[package]]
-name = "rand"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
@@ -1596,6 +1590,7 @@ name = "rustc_back"
 version = "0.0.0"
 dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
@@ -1703,6 +1698,7 @@ version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
@@ -2125,7 +2121,7 @@ dependencies = [
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
  "profiler_builtins 0.0.0",
- "rand 0.0.0",
+ "rand 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_asan 0.0.0",
  "rustc_lsan 0.0.0",
  "rustc_msan 0.0.0",

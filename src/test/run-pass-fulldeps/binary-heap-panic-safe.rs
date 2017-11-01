@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rand, std_panic)]
+#![feature(rustc_private, std_panic)]
 
-use std::__rand::{thread_rng, Rng};
+extern crate rand;
+
+use rand::{thread_rng, Rng};
 use std::panic::{self, AssertUnwindSafe};
 
 use std::collections::BinaryHeap;

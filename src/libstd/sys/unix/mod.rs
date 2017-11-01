@@ -29,6 +29,8 @@ use libc;
 #[cfg(all(not(dox), target_os = "fuchsia"))]   pub use os::fuchsia as platform;
 #[cfg(all(not(dox), target_os = "l4re"))]      pub use os::linux as platform;
 
+pub use self::rand::hashmap_random_keys;
+
 #[macro_use]
 pub mod weak;
 

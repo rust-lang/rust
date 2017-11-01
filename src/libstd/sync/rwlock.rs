@@ -554,8 +554,6 @@ impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    #![allow(deprecated)] // rand
-
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
@@ -576,7 +574,7 @@ mod tests {
 
     #[test]
     fn frob() {
-        const N: usize = 10;
+        const N: u32 = 10;
         const M: usize = 1000;
 
         let r = Arc::new(RwLock::new(()));

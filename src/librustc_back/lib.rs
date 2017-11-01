@@ -29,11 +29,10 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(libc)]
-#![feature(rand)]
-#![cfg_attr(test, feature(rand))]
 
 extern crate syntax;
 extern crate libc;
+extern crate rand;
 extern crate serialize;
 #[macro_use] extern crate log;
 

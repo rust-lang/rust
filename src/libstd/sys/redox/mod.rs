@@ -12,6 +12,8 @@
 
 use io::{self, ErrorKind};
 
+pub use self::rand::hashmap_random_keys;
+
 pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;

@@ -356,6 +356,7 @@ use prelude::v1::*;
 
 // Access to Bencher, etc.
 #[cfg(test)] extern crate test;
+#[cfg(test)] extern crate rand;
 
 // We want to reexport a few macros from core but libcore has already been
 // imported by the compiler (via our #[no_std] attribute) In this case we just
@@ -364,9 +365,6 @@ use prelude::v1::*;
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
 
-#[doc(masked)]
-#[allow(deprecated)]
-extern crate rand as core_rand;
 #[macro_use]
 #[macro_reexport(vec, format)]
 extern crate alloc;
@@ -504,23 +502,11 @@ mod sys;
 
 // Private support modules
 mod panicking;
-mod rand;
 mod memchr;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 pub mod rt;
-
-// Some external utilities of the standard library rely on randomness (aka
-// rustc_back::TempDir and tests) and need a way to get at the OS rng we've got
-// here. This module is not at all intended for stabilization as-is, however,
-// but it may be stabilized long-term. As a result we're exposing a hidden,
-// unstable module so we can get our build working.
-#[doc(hidden)]
-#[unstable(feature = "rand", issue = "27703")]
-pub mod __rand {
-    pub use rand::{thread_rng, ThreadRng, Rng};
-}
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`
