@@ -51,7 +51,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     live_symbols: Box<FxHashSet<ast::NodeId>>,
     struct_has_extern_repr: bool,
-    ignore_non_const_paths: bool,
+    in_pat: bool,
     inherited_pub_visibility: bool,
     ignore_variant_stack: Vec<DefId>,
 }
@@ -75,10 +75,10 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_definition(&mut self, def: Def) {
         match def {
-            Def::Const(_) | Def::AssociatedConst(..) => {
+            Def::Const(_) | Def::AssociatedConst(..) | Def::TyAlias(_) => {
                 self.check_def_id(def.def_id());
             }
-            _ if self.ignore_non_const_paths => (),
+            _ if self.in_pat => (),
             Def::PrimTy(..) | Def::SelfTy(..) |
             Def::Local(..) | Def::Upvar(..) => {}
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
@@ -289,9 +289,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             _ => ()
         }
 
-        self.ignore_non_const_paths = true;
+        self.in_pat = true;
         intravisit::walk_pat(self, pat);
-        self.ignore_non_const_paths = false;
+        self.in_pat = false;
     }
 
     fn visit_path(&mut self, path: &'tcx hir::Path, _: ast::NodeId) {
@@ -429,7 +429,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tables: &ty::TypeckTables::empty(None),
         live_symbols: box FxHashSet(),
         struct_has_extern_repr: false,
-        ignore_non_const_paths: false,
+        in_pat: false,
         inherited_pub_visibility: false,
         ignore_variant_stack: vec![],
     };
