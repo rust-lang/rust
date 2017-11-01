@@ -214,13 +214,11 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             }
             super::CompareImplMethodObligation { item_name,
                                                  impl_item_def_id,
-                                                 trait_item_def_id,
-                                                 lint_id } => {
+                                                 trait_item_def_id } => {
                 Some(super::CompareImplMethodObligation {
                     item_name,
                     impl_item_def_id,
                     trait_item_def_id,
-                    lint_id,
                 })
             }
             super::ExprAssignable => Some(super::ExprAssignable),

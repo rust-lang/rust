@@ -208,10 +208,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
         },
         FutureIncompatibleInfo {
-            id: LintId::of(EXTRA_REQUIREMENT_IN_IMPL),
-            reference: "issue #37166 <https://github.com/rust-lang/rust/issues/37166>",
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(LEGACY_DIRECTORY_OWNERSHIP),
             reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
         },
@@ -276,4 +272,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36891");
     store.register_removed("lifetime_underscore",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36892");
+    store.register_removed("extra_requirement_in_impl",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/37166");
 }

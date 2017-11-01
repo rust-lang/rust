@@ -880,14 +880,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let SubregionOrigin::CompareImplMethodObligation {
-            span, item_name, impl_item_def_id, trait_item_def_id, lint_id
+            span, item_name, impl_item_def_id, trait_item_def_id,
         } = origin {
             self.report_extra_impl_obligation(span,
                                               item_name,
                                               impl_item_def_id,
                                               trait_item_def_id,
-                                              &format!("`{}: {}`", bound_kind, sub),
-                                              lint_id)
+                                              &format!("`{}: {}`", bound_kind, sub))
                 .emit();
             return;
         }
