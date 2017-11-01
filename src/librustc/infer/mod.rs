@@ -36,7 +36,7 @@ use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
-use util::nodemap::FxHashMap;
+use util::nodemap::{NodeMap, FxHashMap};
 use arena::DroplessArena;
 
 use self::combine::CombineFields;
@@ -135,6 +135,32 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     // This flag is true while there is an active snapshot.
     in_snapshot: Cell<bool>,
+
+    // A set of constraints that regionck must validate. Each
+    // constraint has the form `T:'a`, meaning "some type `T` must
+    // outlive the lifetime 'a". These constraints derive from
+    // instantiated type parameters. So if you had a struct defined
+    // like
+    //
+    //     struct Foo<T:'static> { ... }
+    //
+    // then in some expression `let x = Foo { ... }` it will
+    // instantiate the type parameter `T` with a fresh type `$0`. At
+    // the same time, it will record a region obligation of
+    // `$0:'static`. This will get checked later by regionck. (We
+    // can't generally check these things right away because we have
+    // to wait until types are resolved.)
+    //
+    // These are stored in a map keyed to the id of the innermost
+    // enclosing fn body / static initializer expression. This is
+    // because the location where the obligation was incurred can be
+    // relevant with respect to which sublifetime assumptions are in
+    // place. The reason that we store under the fn-id, and not
+    // something more fine-grained, is so that it is easier for
+    // regionck to be sure that it has found *all* the region
+    // obligations (otherwise, it's easy to fail to walk to a
+    // particular node-id).
+    region_obligations: RefCell<NodeMap<Vec<RegionObligation<'tcx>>>>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -317,6 +343,14 @@ pub enum FixupError {
     UnresolvedTy(TyVid)
 }
 
+/// See the `region_obligations` field for more information.
+#[derive(Clone)]
+pub struct RegionObligation<'tcx> {
+    pub sub_region: ty::Region<'tcx>,
+    pub sup_type: Ty<'tcx>,
+    pub cause: ObligationCause<'tcx>,
+}
+
 impl fmt::Display for FixupError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::FixupError::*;
@@ -386,6 +420,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
+            region_obligations: RefCell::new(NodeMap()),
         }))
     }
 }
@@ -953,6 +988,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
+    /// Registers that the given region obligation must be resolved
+    /// from within the scope of `body_id`. These regions are enqueued
+    /// and later processed by regionck, when full type information is
+    /// available (see `region_obligations` field for more
+    /// information).
+    pub fn register_region_obligation(&self,
+                                      body_id: ast::NodeId,
+                                      obligation: RegionObligation<'tcx>)
+    {
+        self.region_obligations.borrow_mut().entry(body_id)
+                                            .or_insert(vec![])
+                                            .push(obligation);
+    }
+
+    /// Get the region obligations that must be proven (during
+    /// `regionck`) for the given `body_id` (removing them from the
+    /// map as a side-effect).
+    pub fn take_region_obligations(&self,
+                                   body_id: ast::NodeId)
+                                   -> Vec<RegionObligation<'tcx>>
+    {
+        match self.region_obligations.borrow_mut().remove(&body_id) {
+            None => vec![],
+            Some(vec) => vec,
+        }
+    }
+
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
         self.type_variables
             .borrow_mut()
@@ -1073,6 +1135,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                              region_context: DefId,
                                              region_map: &region::ScopeTree,
                                              free_regions: &FreeRegionMap<'tcx>) {
+        // TODO assert!(self.region_obligations.borrow().is_empty(),
+        // TODO         "region_obligations not empty: {:#?}",
+        // TODO         self.region_obligations.borrow());
+
         let region_rels = RegionRelations::new(self.tcx,
                                                region_context,
                                                region_map,
@@ -1533,3 +1599,12 @@ impl<'tcx> TypeFoldable<'tcx> for TypeTrace<'tcx> {
         self.cause.visit_with(visitor) || self.values.visit_with(visitor)
     }
 }
+
+impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",
+               self.sub_region,
+               self.sup_type)
+    }
+}
+
