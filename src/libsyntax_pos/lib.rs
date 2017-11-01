@@ -75,6 +75,21 @@ pub struct SpanData {
     pub ctxt: SyntaxContext,
 }
 
+impl SpanData {
+    #[inline]
+    pub fn with_lo(&self, lo: BytePos) -> Span {
+        Span::new(lo, self.hi, self.ctxt)
+    }
+    #[inline]
+    pub fn with_hi(&self, hi: BytePos) -> Span {
+        Span::new(self.lo, hi, self.ctxt)
+    }
+    #[inline]
+    pub fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
+        Span::new(self.lo, self.hi, ctxt)
+    }
+}
+
 // The interner in thread-local, so `Span` shouldn't move between threads.
 impl !Send for Span {}
 impl !Sync for Span {}
@@ -109,8 +124,7 @@ impl Span {
     }
     #[inline]
     pub fn with_lo(self, lo: BytePos) -> Span {
-        let base = self.data();
-        Span::new(lo, base.hi, base.ctxt)
+        self.data().with_lo(lo)
     }
     #[inline]
     pub fn hi(self) -> BytePos {
@@ -118,8 +132,7 @@ impl Span {
     }
     #[inline]
     pub fn with_hi(self, hi: BytePos) -> Span {
-        let base = self.data();
-        Span::new(base.lo, hi, base.ctxt)
+        self.data().with_hi(hi)
     }
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
@@ -127,20 +140,21 @@ impl Span {
     }
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
-        let base = self.data();
-        Span::new(base.lo, base.hi, ctxt)
+        self.data().with_ctxt(ctxt)
     }
 
     /// Returns a new span representing just the end-point of this span
     pub fn end_point(self) -> Span {
-        let lo = cmp::max(self.hi().0 - 1, self.lo().0);
-        self.with_lo(BytePos(lo))
+        let span = self.data();
+        let lo = cmp::max(span.hi.0 - 1, span.lo.0);
+        span.with_lo(BytePos(lo))
     }
 
     /// Returns a new span representing the next character after the end-point of this span
     pub fn next_point(self) -> Span {
-        let lo = cmp::max(self.hi().0, self.lo().0 + 1);
-        Span::new(BytePos(lo), BytePos(lo), self.ctxt())
+        let span = self.data();
+        let lo = cmp::max(span.hi.0, span.lo.0 + 1);
+        Span::new(BytePos(lo), BytePos(lo), span.ctxt)
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
@@ -150,7 +164,9 @@ impl Span {
 
     /// Return true if `self` fully encloses `other`.
     pub fn contains(self, other: Span) -> bool {
-        self.lo() <= other.lo() && other.hi() <= self.hi()
+        let span = self.data();
+        let other = other.data();
+        span.lo <= other.lo && other.hi <= span.hi
     }
 
     /// Return true if the spans are equal with regards to the source text.
@@ -158,13 +174,17 @@ impl Span {
     /// Use this instead of `==` when either span could be generated code,
     /// and you only care that they point to the same bytes of source text.
     pub fn source_equal(&self, other: &Span) -> bool {
-        self.lo() == other.lo() && self.hi() == other.hi()
+        let span = self.data();
+        let other = other.data();
+        span.lo == other.lo && span.hi == other.hi
     }
 
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`
     pub fn trim_start(self, other: Span) -> Option<Span> {
-        if self.hi() > other.hi() {
-            Some(self.with_lo(cmp::max(self.lo(), other.hi())))
+        let span = self.data();
+        let other = other.data();
+        if span.hi > other.hi {
+            Some(span.with_lo(cmp::max(span.lo, other.hi)))
         } else {
             None
         }
@@ -268,29 +288,35 @@ impl Span {
 
     /// Return a `Span` that would enclose both `self` and `end`.
     pub fn to(self, end: Span) -> Span {
+        let span = self.data();
+        let end = end.data();
         Span::new(
-            cmp::min(self.lo(), end.lo()),
-            cmp::max(self.hi(), end.hi()),
+            cmp::min(span.lo, end.lo),
+            cmp::max(span.hi, end.hi),
             // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
-            if self.ctxt() == SyntaxContext::empty() { end.ctxt() } else { self.ctxt() },
+            if span.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
         )
     }
 
     /// Return a `Span` between the end of `self` to the beginning of `end`.
     pub fn between(self, end: Span) -> Span {
+        let span = self.data();
+        let end = end.data();
         Span::new(
-            self.hi(),
-            end.lo(),
-            if end.ctxt() == SyntaxContext::empty() { end.ctxt() } else { self.ctxt() },
+            span.hi,
+            end.lo,
+            if end.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
         )
     }
 
     /// Return a `Span` between the beginning of `self` to the beginning of `end`.
     pub fn until(self, end: Span) -> Span {
+        let span = self.data();
+        let end = end.data();
         Span::new(
-            self.lo(),
-            end.lo(),
-            if end.ctxt() == SyntaxContext::empty() { end.ctxt() } else { self.ctxt() },
+            span.lo,
+            end.lo,
+            if end.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
         )
     }
 }
@@ -316,13 +342,14 @@ impl Default for Span {
 
 impl serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        let span = self.data();
         s.emit_struct("Span", 2, |s| {
             s.emit_struct_field("lo", 0, |s| {
-                self.lo().encode(s)
+                span.lo.encode(s)
             })?;
 
             s.emit_struct_field("hi", 1, |s| {
-                self.hi().encode(s)
+                span.hi.encode(s)
             })
         })
     }
