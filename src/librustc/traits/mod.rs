@@ -152,7 +152,6 @@ pub enum ObligationCauseCode<'tcx> {
         item_name: ast::Name,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
-        lint_id: Option<ast::NodeId>,
     },
 
     /// Checking that this expression can be assigned where it needs to be

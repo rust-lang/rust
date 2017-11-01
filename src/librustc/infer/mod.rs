@@ -274,10 +274,6 @@ pub enum SubregionOrigin<'tcx> {
         item_name: ast::Name,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
-
-        // this is `Some(_)` if this error arises from the bug fix for
-        // #18937. This is a temporary measure.
-        lint_id: Option<ast::NodeId>,
     },
 }
 
@@ -1532,14 +1528,12 @@ impl<'tcx> SubregionOrigin<'tcx> {
 
             traits::ObligationCauseCode::CompareImplMethodObligation { item_name,
                                                                        impl_item_def_id,
-                                                                       trait_item_def_id,
-                                                                       lint_id } =>
+                                                                       trait_item_def_id, } =>
                 SubregionOrigin::CompareImplMethodObligation {
                     span: cause.span,
                     item_name,
                     impl_item_def_id,
                     trait_item_def_id,
-                    lint_id,
                 },
 
             _ => default(),

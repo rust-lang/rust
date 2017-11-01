@@ -33,7 +33,6 @@ use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
 use middle::const_val;
-use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast;
 use session::DiagnosticMessageId;
@@ -481,30 +480,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         item_name: ast::Name,
                                         _impl_item_def_id: DefId,
                                         trait_item_def_id: DefId,
-                                        requirement: &fmt::Display,
-                                        lint_id: Option<ast::NodeId>) // (*)
+                                        requirement: &fmt::Display)
                                         -> DiagnosticBuilder<'tcx>
     {
-        // (*) This parameter is temporary and used only for phasing
-        // in the bug fix to #18937. If it is `Some`, it has a kind of
-        // weird effect -- the diagnostic is reported as a lint, and
-        // the builder which is returned is marked as canceled.
-
         let msg = "impl has stricter requirements than trait";
-        let mut err = match lint_id {
-            Some(node_id) => {
-                self.tcx.struct_span_lint_node(EXTRA_REQUIREMENT_IN_IMPL,
-                                               node_id,
-                                               error_span,
-                                               msg)
-            }
-            None => {
-                struct_span_err!(self.tcx.sess,
-                                 error_span,
-                                 E0276,
-                                 "{}", msg)
-            }
-        };
+        let mut err = struct_span_err!(self.tcx.sess,
+                                       error_span,
+                                       E0276,
+                                       "{}", msg);
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             let span = self.tcx.sess.codemap().def_span(trait_item_span);
@@ -543,15 +526,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut err = match *error {
             SelectionError::Unimplemented => {
                 if let ObligationCauseCode::CompareImplMethodObligation {
-                    item_name, impl_item_def_id, trait_item_def_id, lint_id
+                    item_name, impl_item_def_id, trait_item_def_id,
                 } = obligation.cause.code {
                     self.report_extra_impl_obligation(
                         span,
                         item_name,
                         impl_item_def_id,
                         trait_item_def_id,
-                        &format!("`{}`", obligation.predicate),
-                        lint_id)
+                        &format!("`{}`", obligation.predicate))
                         .emit();
                     return;
                 }
