@@ -163,6 +163,9 @@ pub fn main() {
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
         // We're invoking the compiler programatically, so we ignore this/
         let mut orig_args: Vec<String> = env::args().collect();
+        if orig_args.len() <= 1 {
+            std::process::exit(1);
+        }
         if orig_args[1] == "rustc" {
             // we still want to be able to invoke it normally though
             orig_args.remove(1);
