@@ -92,7 +92,10 @@ requiring a sufficiently new version of Cargo to understand `metabuild`.
 
 If any of the strings mentioned in `metabuild` do not match one of the
 build-dependencies, Cargo should produce an error (*before* attempting to
-generate and compile a `build.rs` script).
+generate and compile a `build.rs` script). However, if a string matches a
+conditional build-dependency, such as one conditional on a feature or target,
+then Cargo should only invoke that build-dependency's `metabuild` function when
+those conditions apply.
 
 Cargo's documentation on `metabuild` should recommend a preferred crate for
 parsing data from `Cargo.toml`, to avoid every provider of a metabuild function
