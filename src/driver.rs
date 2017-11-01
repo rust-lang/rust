@@ -161,7 +161,7 @@ pub fn main() {
 
     rustc_driver::in_rustc_thread(|| {
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
-        // We're invoking the compiler programatically, so we ignore this/
+        // We're invoking the compiler programmatically, so we ignore this/
         let mut orig_args: Vec<String> = env::args().collect();
         if orig_args.len() <= 1 {
             std::process::exit(1);
