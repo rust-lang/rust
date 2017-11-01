@@ -3158,7 +3158,6 @@ impl<'a> Parser<'a> {
             let in_span = self.prev_span.between(self.span);
             let mut err = self.sess.span_diagnostic
                 .struct_span_err(in_span, "missing `in` in `for` loop");
-            err.span_label(in_span, "expected `in` here");
             err.span_suggestion_short(in_span, "try adding `in` here", " in ".into());
             err.emit();
         }
