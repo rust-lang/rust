@@ -25,18 +25,18 @@ use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, Move
 use super::{MoveError};
 use super::IllegalMoveOriginKind::*;
 
-struct MoveDataBuilder<'a, 'tcx: 'a> {
+struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParamEnv<'gcx>,
     data: MoveData<'tcx>,
     errors: Vec<MoveError<'tcx>>,
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn new(mir: &'a Mir<'tcx>,
-           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-           param_env: ty::ParamEnv<'tcx>)
+           tcx: TyCtxt<'a, 'gcx, 'tcx>,
+           param_env: ty::ParamEnv<'gcx>)
            -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
@@ -86,7 +86,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     }
 }
 
-impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
+impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     /// This creates a MovePath for a given lvalue, returning an `MovePathError`
     /// if that lvalue can't be moved from.
     ///
@@ -175,7 +175,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn finalize(self) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
         debug!("{}", {
             debug!("moves for {:?}:", self.mir.span);
@@ -197,11 +197,11 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     }
 }
 
-pub(super) fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>,
-                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     param_env: ty::ParamEnv<'tcx>)
-                                     -> Result<MoveData<'tcx>,
-                                               (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
+pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>,
+                                           tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                           param_env: ty::ParamEnv<'gcx>)
+                                           -> Result<MoveData<'tcx>,
+                                                     (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
     let mut builder = MoveDataBuilder::new(mir, tcx, param_env);
 
     for (bb, block) in mir.basic_blocks().iter_enumerated() {
@@ -220,7 +220,7 @@ pub(super) fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>,
     builder.finalize()
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn gather_statement(&mut self, loc: Location, stmt: &Statement<'tcx>) {
         debug!("gather_statement({:?}, {:?})", loc, stmt);
         (Gatherer { builder: self, loc }).gather_statement(stmt);
@@ -232,12 +232,12 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     }
 }
 
-struct Gatherer<'b, 'a: 'b, 'tcx: 'a> {
-    builder: &'b mut MoveDataBuilder<'a, 'tcx>,
+struct Gatherer<'b, 'a: 'b, 'gcx: 'tcx, 'tcx: 'a> {
+    builder: &'b mut MoveDataBuilder<'a, 'gcx, 'tcx>,
     loc: Location,
 }
 
-impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
+impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match stmt.kind {
             StatementKind::Assign(ref lval, ref rval) => {
@@ -352,8 +352,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         debug!("gather_move({:?}, {:?})", self.loc, lval);
 
         let tcx = self.builder.tcx;
+        let gcx = tcx.global_tcx();
         let lv_ty = lval.ty(self.builder.mir, tcx).to_ty(tcx);
-        if !lv_ty.moves_by_default(tcx, self.builder.param_env, DUMMY_SP) {
+        let erased_ty = gcx.lift(&tcx.erase_regions(&lv_ty)).unwrap();
+        if !erased_ty.moves_by_default(gcx, self.builder.param_env, DUMMY_SP) {
             debug!("gather_move({:?}, {:?}) - {:?} is Copy. skipping", self.loc, lval, lv_ty);
             return
         }

@@ -68,7 +68,7 @@ use rustc::mir::visit::{LvalueContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, GeneratorInterior};
 use rustc::ty::subst::{Kind, Substs};
 use util::dump_mir;
-use util::liveness;
+use util::liveness::{self, LivenessMode};
 use rustc_const_math::ConstInt;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -348,7 +348,10 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ignored.visit_mir(mir);
 
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
-    let liveness = liveness::liveness_of_locals(mir);
+    let liveness = liveness::liveness_of_locals(mir, LivenessMode {
+        include_regular_use: true,
+        include_drops: true,
+    });
     liveness::dump_mir(tcx, "generator_liveness", source, mir, &liveness);
 
     let mut storage_liveness_map = HashMap::new();

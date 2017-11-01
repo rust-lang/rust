@@ -417,7 +417,7 @@ pub enum BorrowKind {
 
 newtype_index!(Local
     {
-        DEBUG_NAME = "_",
+        DEBUG_FORMAT = "_{}",
         const RETURN_POINTER = 0,
     });
 
@@ -553,7 +553,7 @@ pub struct UpvarDecl {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-newtype_index!(BasicBlock { DEBUG_NAME = "bb" });
+newtype_index!(BasicBlock { DEBUG_FORMAT = "bb{}" });
 
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
@@ -1135,7 +1135,7 @@ pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>
 /// and the index is a local.
 pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
-newtype_index!(Field { DEBUG_NAME = "field" });
+newtype_index!(Field { DEBUG_FORMAT = "field[{}]" });
 
 impl<'tcx> Lvalue<'tcx> {
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Lvalue<'tcx> {
@@ -1202,7 +1202,7 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 
 newtype_index!(VisibilityScope
     {
-        DEBUG_NAME = "scope",
+        DEBUG_FORMAT = "scope[{}]",
         const ARGUMENT_VISIBILITY_SCOPE = 0,
     });
 
@@ -1529,7 +1529,7 @@ pub struct Constant<'tcx> {
     pub literal: Literal<'tcx>,
 }
 
-newtype_index!(Promoted { DEBUG_NAME = "promoted" });
+newtype_index!(Promoted { DEBUG_FORMAT = "promoted[{}]" });
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
@@ -1637,6 +1637,14 @@ impl fmt::Debug for Location {
 }
 
 impl Location {
+    /// Returns the location immediately after this one within the enclosing block.
+    ///
+    /// Note that if this location represents a terminator, then the
+    /// resulting location would be out of bounds and invalid.
+    pub fn successor_within_block(&self) -> Location {
+        Location { block: self.block, statement_index: self.statement_index + 1 }
+    }
+
     pub fn dominates(&self, other: &Location, dominators: &Dominators<BasicBlock>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index

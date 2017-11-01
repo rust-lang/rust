@@ -8,169 +8,150 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::infer::InferenceContext;
-use rustc::ty::TypeFoldable;
-use rustc::ty::subst::{Kind, Substs};
-use rustc::ty::{Ty, TyCtxt, ClosureSubsts, RegionVid, RegionKind};
-use rustc::mir::{Mir, Location, Rvalue, BasicBlock, Statement, StatementKind};
-use rustc::mir::visit::{MutVisitor, Lookup};
-use rustc::mir::transform::{MirPass, MirSource};
-use rustc::infer::{self as rustc_infer, InferCtxt};
-use rustc::util::nodemap::FxHashSet;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use syntax_pos::DUMMY_SP;
-use std::collections::HashMap;
+use rustc::ty::{self, RegionKind};
+use rustc::mir::{Location, Mir};
+use rustc::mir::transform::MirSource;
+use rustc::infer::InferCtxt;
+use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::indexed_vec::Idx;
+use std::collections::BTreeSet;
 use std::fmt;
+use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
 use util as mir_util;
 use self::mir_util::PassWhere;
 
-mod infer;
+mod constraint_generation;
+mod subtype;
 
-#[allow(dead_code)]
-struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    lookup_map: HashMap<RegionVid, Lookup>,
-    regions: IndexVec<RegionIndex, Region>,
-    #[allow(dead_code)]
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub(crate) mod region_infer;
+use self::region_infer::RegionInferenceContext;
+
+mod renumber;
+
+/// Computes the (non-lexical) regions from the input MIR.
+///
+/// This may result in errors being reported.
+pub fn compute_regions<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    source: MirSource,
+    mir: &mut Mir<'tcx>,
+) -> RegionInferenceContext {
+    // Replace all regions with fresh inference variables.
+    let num_region_variables = renumber::renumber_mir(infcx, mir);
+
+    // Compute what is live where.
+    let liveness = &LivenessResults {
+        regular: liveness::liveness_of_locals(
+            &mir,
+            LivenessMode {
+                include_regular_use: true,
+                include_drops: false,
+            },
+        ),
+
+        drop: liveness::liveness_of_locals(
+            &mir,
+            LivenessMode {
+                include_regular_use: false,
+                include_drops: true,
+            },
+        ),
+    };
+
+    // Create the region inference context, generate the constraints,
+    // and then solve them.
+    let mut regioncx = RegionInferenceContext::new(num_region_variables);
+    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
+    let errors = regioncx.solve(infcx, &mir);
+
+    assert!(errors.is_empty(), "FIXME: report region inference failures");
+
+    // Dump MIR results into a file, if that is enabled. This let us
+    // write unit-tests.
+    dump_mir_results(infcx, liveness, source, &mir, &regioncx);
+
+    regioncx
 }
 
-impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        NLLVisitor {
-            infcx,
-            lookup_map: HashMap::new(),
-            regions: IndexVec::new(),
-        }
+struct LivenessResults {
+    regular: LivenessResult,
+    drop: LivenessResult,
+}
+
+fn dump_mir_results<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    liveness: &LivenessResults,
+    source: MirSource,
+    mir: &Mir<'tcx>,
+    regioncx: &RegionInferenceContext,
+) {
+    if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
+        return;
     }
 
-    pub fn into_results(self) -> (HashMap<RegionVid, Lookup>, IndexVec<RegionIndex, Region>) {
-        (self.lookup_map, self.regions)
-    }
-
-    fn renumber_regions<T>(&mut self, value: &T) -> T where T: TypeFoldable<'tcx> {
-        self.infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
-            self.regions.push(Region::default());
-            self.infcx.next_region_var(rustc_infer::MiscVariable(DUMMY_SP))
+    let regular_liveness_per_location: FxHashMap<_, _> = mir.basic_blocks()
+        .indices()
+        .flat_map(|bb| {
+            let mut results = vec![];
+            liveness
+                .regular
+                .simulate_block(&mir, bb, |location, local_set| {
+                    results.push((location, local_set.clone()));
+                });
+            results
         })
-    }
+        .collect();
 
-    fn store_region(&mut self, region: &RegionKind, lookup: Lookup) {
-        if let RegionKind::ReVar(rid) = *region {
-            self.lookup_map.entry(rid).or_insert(lookup);
-        }
-    }
-
-    fn store_ty_regions(&mut self, ty: &Ty<'tcx>, lookup: Lookup) {
-        for region in ty.regions() {
-            self.store_region(region, lookup);
-        }
-    }
-
-    fn store_kind_regions(&mut self, kind: &'tcx Kind, lookup: Lookup) {
-        if let Some(ty) = kind.as_type() {
-            self.store_ty_regions(&ty, lookup);
-        } else if let Some(region) = kind.as_region() {
-            self.store_region(region, lookup);
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, lookup: Lookup) {
-        let old_ty = *ty;
-        *ty = self.renumber_regions(&old_ty);
-        self.store_ty_regions(ty, lookup);
-    }
-
-    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
-        *substs = self.renumber_regions(&{*substs});
-        let lookup = Lookup::Loc(location);
-        for kind in *substs {
-            self.store_kind_regions(kind, lookup);
-        }
-    }
-
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        match *rvalue {
-            Rvalue::Ref(ref mut r, _, _) => {
-                let old_r = *r;
-                *r = self.renumber_regions(&old_r);
-                let lookup = Lookup::Loc(location);
-                self.store_region(r, lookup);
-            }
-            Rvalue::Use(..) |
-            Rvalue::Repeat(..) |
-            Rvalue::Len(..) |
-            Rvalue::Cast(..) |
-            Rvalue::BinaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) |
-            Rvalue::UnaryOp(..) |
-            Rvalue::Discriminant(..) |
-            Rvalue::NullaryOp(..) |
-            Rvalue::Aggregate(..) => {
-                // These variants don't contain regions.
-            }
-        }
-        self.super_rvalue(rvalue, location);
-    }
-
-    fn visit_closure_substs(&mut self,
-                            substs: &mut ClosureSubsts<'tcx>,
-                            location: Location) {
-        *substs = self.renumber_regions(substs);
-        let lookup = Lookup::Loc(location);
-        for kind in substs.substs {
-            self.store_kind_regions(kind, lookup);
-        }
-    }
-
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
-        if let StatementKind::EndRegion(_) = statement.kind {
-            statement.kind = StatementKind::Nop;
-        }
-        self.super_statement(block, statement, location);
-    }
-}
-
-// MIR Pass for non-lexical lifetimes
-pub struct NLL;
-
-impl MirPass for NLL {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
-                          mir: &mut Mir<'tcx>) {
-        if !tcx.sess.opts.debugging_opts.nll {
-            return;
-        }
-
-        tcx.infer_ctxt().enter(|infcx| {
-            // Clone mir so we can mutate it without disturbing the rest of the compiler
-            let mut renumbered_mir = mir.clone();
-            let mut visitor = NLLVisitor::new(&infcx);
-            visitor.visit_mir(&mut renumbered_mir);
-            mir_util::dump_mir(tcx, None, "nll", &0, source, mir, |pass_where, out| {
-                if let PassWhere::BeforeCFG = pass_where {
-                    for (index, value) in visitor.regions.iter_enumerated() {
-                        writeln!(out, "// R{:03}: {:?}", index.0, value)?;
-                    }
-                }
-                Ok(())
-            });
-            let (_lookup_map, regions) = visitor.into_results();
-            let mut inference_context = InferenceContext::new(regions);
-            inference_context.solve(&infcx, &renumbered_mir);
+    let drop_liveness_per_location: FxHashMap<_, _> = mir.basic_blocks()
+        .indices()
+        .flat_map(|bb| {
+            let mut results = vec![];
+            liveness
+                .drop
+                .simulate_block(&mir, bb, |location, local_set| {
+                    results.push((location, local_set.clone()));
+                });
+            results
         })
-    }
+        .collect();
+
+    mir_util::dump_mir(infcx.tcx, None, "nll", &0, source, mir, |pass_where, out| {
+        match pass_where {
+            // Before the CFG, dump out the values for each region variable.
+            PassWhere::BeforeCFG => for region in regioncx.regions() {
+                writeln!(
+                    out,
+                    "| {:?}: {:?}",
+                    region,
+                    regioncx.region_value(region)
+                )?;
+            },
+
+            // Before each basic block, dump out the values
+            // that are live on entry to the basic block.
+            PassWhere::BeforeBlock(bb) => {
+                let s = live_variable_set(&liveness.regular.ins[bb], &liveness.drop.ins[bb]);
+                writeln!(out, "    | Live variables on entry to {:?}: {}", bb, s)?;
+            }
+
+            PassWhere::InCFG(location) => {
+                let s = live_variable_set(
+                    &regular_liveness_per_location[&location],
+                    &drop_liveness_per_location[&location],
+                );
+                writeln!(out, "            | Live variables at {:?}: {}", location, s)?;
+            }
+
+            PassWhere::AfterCFG => {}
+        }
+        Ok(())
+    });
 }
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Region {
-    points: FxHashSet<Location>,
+    points: BTreeSet<Location>,
 }
 
 impl fmt::Debug for Region {
@@ -189,4 +170,52 @@ impl Region {
     }
 }
 
-newtype_index!(RegionIndex);
+newtype_index!(RegionIndex {
+    DEBUG_FORMAT = "'_#{}r",
+});
+
+/// Right now, we piggy back on the `ReVar` to store our NLL inference
+/// regions. These are indexed with `RegionIndex`. This method will
+/// assert that the region is a `ReVar` and convert the internal index
+/// into a `RegionIndex`. This is reasonable because in our MIR we
+/// replace all free regions with inference variables.
+pub trait ToRegionIndex {
+    fn to_region_index(&self) -> RegionIndex;
+}
+
+impl ToRegionIndex for RegionKind {
+    fn to_region_index(&self) -> RegionIndex {
+        if let &ty::ReVar(vid) = self {
+            RegionIndex::new(vid.index as usize)
+        } else {
+            bug!("region is not an ReVar: {:?}", self)
+        }
+    }
+}
+
+fn live_variable_set(regular: &LocalSet, drops: &LocalSet) -> String {
+    // sort and deduplicate:
+    let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();
+
+    // construct a string with each local, including `(drop)` if it is
+    // only dropped, versus a regular use.
+    let mut string = String::new();
+    for local in all_locals {
+        string.push_str(&format!("{:?}", local));
+
+        if !regular.contains(&local) {
+            assert!(drops.contains(&local));
+            string.push_str(" (drop)");
+        }
+
+        string.push_str(", ");
+    }
+
+    let len = if string.is_empty() {
+        0
+    } else {
+        string.len() - 2
+    };
+
+    format!("[{}]", &string[..len])
+}

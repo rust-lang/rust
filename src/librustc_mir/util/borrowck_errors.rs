@@ -93,7 +93,7 @@ pub trait BorrowckErrors {
                                       opt_via: &str,
                                       old_loan_span: Span,
                                       old_opt_via: &str,
-                                      old_load_end_span:Span,
+                                      old_load_end_span: Option<Span>,
                                       o: Origin)
                                       -> DiagnosticBuilder
     {
@@ -106,13 +106,17 @@ pub trait BorrowckErrors {
             err.span_label(new_loan_span,
                            format!("mutable borrow starts here in previous \
                                     iteration of loop{}", opt_via));
-            err.span_label(old_load_end_span, "mutable borrow ends here");
+            if let Some(old_load_end_span) = old_load_end_span {
+                err.span_label(old_load_end_span, "mutable borrow ends here");
+            }
         } else {
             err.span_label(old_loan_span,
                            format!("first mutable borrow occurs here{}", old_opt_via));
             err.span_label(new_loan_span,
                            format!("second mutable borrow occurs here{}", opt_via));
-            err.span_label(old_load_end_span, "first borrow ends here");
+            if let Some(old_load_end_span) = old_load_end_span {
+                err.span_label(old_load_end_span, "first borrow ends here");
+            }
         }
         err
     }
@@ -121,7 +125,7 @@ pub trait BorrowckErrors {
                                               new_loan_span: Span,
                                               desc: &str,
                                               old_loan_span: Span,
-                                              old_load_end_span: Span,
+                                              old_load_end_span: Option<Span>,
                                               o: Origin)
                                               -> DiagnosticBuilder
     {
@@ -134,9 +138,11 @@ pub trait BorrowckErrors {
         err.span_label(
             new_loan_span,
             "second closure is constructed here");
-        err.span_label(
-            old_load_end_span,
-            "borrow from first closure ends here");
+        if let Some(old_load_end_span) = old_load_end_span {
+            err.span_label(
+                old_load_end_span,
+                "borrow from first closure ends here");
+        }
         err
     }
 
@@ -147,7 +153,7 @@ pub trait BorrowckErrors {
                                              old_loan_span: Span,
                                              noun_old: &str,
                                              old_opt_via: &str,
-                                             previous_end_span: Span,
+                                             previous_end_span: Option<Span>,
                                              o: Origin)
                                              -> DiagnosticBuilder
     {
@@ -158,7 +164,9 @@ pub trait BorrowckErrors {
                        format!("closure construction occurs here{}", opt_via));
         err.span_label(old_loan_span,
                        format!("borrow occurs here{}", old_opt_via));
-        err.span_label(previous_end_span, "borrow ends here");
+        if let Some(previous_end_span) = previous_end_span {
+            err.span_label(previous_end_span, "borrow ends here");
+        }
         err
     }
 
@@ -169,7 +177,7 @@ pub trait BorrowckErrors {
                                                  kind_new: &str,
                                                  old_loan_span: Span,
                                                  old_opt_via: &str,
-                                                 previous_end_span: Span,
+                                                 previous_end_span: Option<Span>,
                                                  o: Origin)
                                                  -> DiagnosticBuilder
     {
@@ -181,7 +189,9 @@ pub trait BorrowckErrors {
                        format!("borrow occurs here{}", opt_via));
         err.span_label(old_loan_span,
                        format!("closure construction occurs here{}", old_opt_via));
-        err.span_label(previous_end_span, "borrow from closure ends here");
+        if let Some(previous_end_span) = previous_end_span {
+            err.span_label(previous_end_span, "borrow from closure ends here");
+        }
         err
     }
 
@@ -194,7 +204,7 @@ pub trait BorrowckErrors {
                                         noun_old: &str,
                                         kind_old: &str,
                                         msg_old: &str,
-                                        old_load_end_span: Span,
+                                        old_load_end_span: Option<Span>,
                                         o: Origin)
                                         -> DiagnosticBuilder
     {
@@ -203,7 +213,9 @@ pub trait BorrowckErrors {
                          desc_new, msg_new, kind_new, noun_old, kind_old, msg_old, OGN=o);
         err.span_label(span, format!("{} borrow occurs here{}", kind_new, msg_new));
         err.span_label(old_span, format!("{} borrow occurs here{}", kind_old, msg_old));
-        err.span_label(old_load_end_span, format!("{} borrow ends here", kind_old));
+        if let Some(old_load_end_span) = old_load_end_span {
+            err.span_label(old_load_end_span, format!("{} borrow ends here", kind_old));
+        }
         err
     }
 
@@ -429,7 +441,7 @@ pub trait BorrowckErrors {
     }
 }
 
-impl<'b, 'tcx, 'gcx> BorrowckErrors for TyCtxt<'b, 'tcx, 'gcx> {
+impl<'b, 'gcx, 'tcx> BorrowckErrors for TyCtxt<'b, 'gcx, 'tcx> {
     fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                          sp: S,
                                                          msg: &str,

@@ -69,23 +69,23 @@ pub(super) mod borrows;
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedLvals` yields the set of
 /// l-values that would require a dynamic drop-flag at that statement.
-pub struct MaybeInitializedLvals<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct MaybeInitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'tcx>,
+    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> MaybeInitializedLvals<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'tcx>)
+               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
         MaybeInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
     }
 }
 
-impl<'a, 'tcx: 'a> HasMoveData<'tcx> for MaybeInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -124,23 +124,23 @@ impl<'a, 'tcx: 'a> HasMoveData<'tcx> for MaybeInitializedLvals<'a, 'tcx> {
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeInitializedLvals` yields the set of
 /// l-values that would require a dynamic drop-flag at that statement.
-pub struct MaybeUninitializedLvals<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct MaybeUninitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'tcx>,
+    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> MaybeUninitializedLvals<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx> MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'tcx>)
+               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
         MaybeUninitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
     }
 }
 
-impl<'a, 'tcx: 'a> HasMoveData<'tcx> for MaybeUninitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -185,27 +185,27 @@ impl<'a, 'tcx: 'a> HasMoveData<'tcx> for MaybeUninitializedLvals<'a, 'tcx> {
 /// Similarly, at a given `drop` statement, the set-difference between
 /// this data and `MaybeInitializedLvals` yields the set of l-values
 /// that would require a dynamic drop-flag at that statement.
-pub struct DefinitelyInitializedLvals<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct DefinitelyInitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'tcx>,
+    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> DefinitelyInitializedLvals<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'tcx>)
+               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
         DefinitelyInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
     }
 }
 
-impl<'a, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
-impl<'a, 'tcx> MaybeInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -216,7 +216,7 @@ impl<'a, 'tcx> MaybeInitializedLvals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MaybeUninitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -227,7 +227,7 @@ impl<'a, 'tcx> MaybeUninitializedLvals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DefinitelyInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -238,7 +238,7 @@ impl<'a, 'tcx> DefinitelyInitializedLvals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_init" }
     fn bits_per_block(&self) -> usize {
@@ -290,7 +290,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_uninit" }
     fn bits_per_block(&self) -> usize {
@@ -345,7 +345,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "definite_init" }
     fn bits_per_block(&self) -> usize {
@@ -399,21 +399,21 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for MaybeInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for MaybeUninitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 & pred2 // "definitely" means we intersect effects of both preds
@@ -430,21 +430,21 @@ impl<'a, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'tcx> {
 // propagating, or you start at all-ones and then use Intersect as
 // your merge when propagating.
 
-impl<'a, 'tcx> DataflowOperator for MaybeInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> DataflowOperator for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = uninitialized
     }
 }
 
-impl<'a, 'tcx> DataflowOperator for MaybeUninitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> DataflowOperator for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'tcx> DataflowOperator for DefinitelyInitializedLvals<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> DataflowOperator for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         true // bottom = initialized (start_block_effect counters this at outset)

@@ -17,7 +17,8 @@ use rustc::ty::maps::Providers;
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue, Local};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::transform::{MirSource};
+use rustc::mir::transform::MirSource;
+use transform::nll;
 
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
@@ -46,93 +47,120 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    let mir = tcx.mir_validated(def_id);
+    let input_mir = tcx.mir_validated(def_id);
     let src = MirSource::from_local_def_id(tcx, def_id);
     debug!("run query mir_borrowck: {}", tcx.node_path_str(src.item_id()));
 
-    let mir: &Mir<'tcx> = &mir.borrow();
-    if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.opts.debugging_opts.borrowck_mir {
+    if {
+        !tcx.has_attr(def_id, "rustc_mir_borrowck") &&
+            !tcx.sess.opts.debugging_opts.borrowck_mir &&
+            !tcx.sess.opts.debugging_opts.nll
+    } {
         return;
     }
 
-    let id = src.item_id();
+    tcx.infer_ctxt().enter(|infcx| {
+        let input_mir: &Mir = &input_mir.borrow();
+        do_mir_borrowck(&infcx, input_mir, def_id, src);
+    });
+    debug!("mir_borrowck done");
+}
+
+fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                   input_mir: &Mir<'gcx>,
+                                   def_id: DefId,
+                                   src: MirSource)
+{
+    let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
-    tcx.infer_ctxt().enter(|_infcx| {
 
-        let move_data = match MoveData::gather_moves(mir, tcx, param_env) {
-            Ok(move_data) => move_data,
-            Err((move_data, move_errors)) => {
-                for move_error in move_errors {
-                    let (span, kind): (Span, IllegalMoveOriginKind) = match move_error {
-                        MoveError::UnionMove { .. } =>
-                            unimplemented!("dont know how to report union move errors yet."),
-                        MoveError::IllegalMove { cannot_move_out_of: o } => (o.span, o.kind),
-                    };
-                    let origin = Origin::Mir;
-                    let mut err = match kind {
-                        IllegalMoveOriginKind::Static =>
-                            tcx.cannot_move_out_of(span, "static item", origin),
-                        IllegalMoveOriginKind::BorrowedContent =>
-                            tcx.cannot_move_out_of(span, "borrowed_content", origin),
-                        IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } =>
-                            tcx.cannot_move_out_of_interior_of_drop(span, ty, origin),
-                        IllegalMoveOriginKind::InteriorOfSlice { elem_ty: ty, is_index } =>
-                            tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
-                        IllegalMoveOriginKind::InteriorOfArray { elem_ty: ty, is_index } =>
-                            tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
-                    };
-                    err.emit();
-                }
-                move_data
+    let id = src.item_id();
+
+    let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx, param_env) {
+        Ok(move_data) => move_data,
+        Err((move_data, move_errors)) => {
+            for move_error in move_errors {
+                let (span, kind): (Span, IllegalMoveOriginKind) = match move_error {
+                    MoveError::UnionMove { .. } =>
+                        unimplemented!("dont know how to report union move errors yet."),
+                    MoveError::IllegalMove { cannot_move_out_of: o } => (o.span, o.kind),
+                };
+                let origin = Origin::Mir;
+                let mut err = match kind {
+                    IllegalMoveOriginKind::Static =>
+                        tcx.cannot_move_out_of(span, "static item", origin),
+                    IllegalMoveOriginKind::BorrowedContent =>
+                        tcx.cannot_move_out_of(span, "borrowed_content", origin),
+                    IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } =>
+                        tcx.cannot_move_out_of_interior_of_drop(span, ty, origin),
+                    IllegalMoveOriginKind::InteriorOfSlice { elem_ty: ty, is_index } =>
+                        tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
+                    IllegalMoveOriginKind::InteriorOfArray { elem_ty: ty, is_index } =>
+                        tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin),
+                };
+                err.emit();
             }
-        };
-        let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
-        let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
-        let flow_borrows = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                                       Borrows::new(tcx, mir),
-                                       |bd, i| bd.location(i));
-        let flow_inits = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                                     MaybeInitializedLvals::new(tcx, mir, &mdpe),
-                                     |bd, i| &bd.move_data().move_paths[i]);
-        let flow_uninits = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                                       MaybeUninitializedLvals::new(tcx, mir, &mdpe),
-                                       |bd, i| &bd.move_data().move_paths[i]);
+            move_data
+        }
+    };
 
-        let mut mbcx = MirBorrowckCtxt {
-            tcx: tcx,
-            mir: mir,
-            node_id: id,
-            move_data: &mdpe.move_data,
-            param_env: param_env,
-            fake_infer_ctxt: &_infcx,
-        };
+    // Make our own copy of the MIR. This copy will be modified (in place) to
+    // contain non-lexical lifetimes. It will have a lifetime tied
+    // to the inference context.
+    let mut mir: Mir<'tcx> = input_mir.clone();
+    let mir = &mut mir;
 
-        let mut state = InProgress::new(flow_borrows,
-                                        flow_inits,
-                                        flow_uninits);
+    // If we are in non-lexical mode, compute the non-lexical lifetimes.
+    let opt_regioncx = if !tcx.sess.opts.debugging_opts.nll {
+        None
+    } else {
+        Some(nll::compute_regions(infcx, src, mir))
+    };
 
-        mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
-    });
+    let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
+    let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
+    let flow_borrows = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+                                   Borrows::new(tcx, mir, opt_regioncx.as_ref()),
+                                   |bd, i| bd.location(i));
+    let flow_inits = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+                                 MaybeInitializedLvals::new(tcx, mir, &mdpe),
+                                 |bd, i| &bd.move_data().move_paths[i]);
+    let flow_uninits = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+                                   MaybeUninitializedLvals::new(tcx, mir, &mdpe),
+                                   |bd, i| &bd.move_data().move_paths[i]);
 
-    debug!("mir_borrowck done");
+    let mut mbcx = MirBorrowckCtxt {
+        tcx: tcx,
+        mir: mir,
+        node_id: id,
+        move_data: &mdpe.move_data,
+        param_env: param_env,
+        fake_infer_ctxt: &infcx,
+    };
+
+    let mut state = InProgress::new(flow_borrows,
+                                    flow_inits,
+                                    flow_uninits);
+
+    mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 }
 
 #[allow(dead_code)]
 pub struct MirBorrowckCtxt<'c, 'b, 'a: 'b+'c, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    mir: &'b Mir<'gcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    mir: &'b Mir<'tcx>,
     node_id: ast::NodeId,
-    move_data: &'b MoveData<'gcx>,
+    move_data: &'b MoveData<'tcx>,
     param_env: ParamEnv<'tcx>,
     fake_infer_ctxt: &'c InferCtxt<'c, 'gcx, 'tcx>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
-pub struct InProgress<'b, 'tcx: 'b> {
-    borrows: FlowInProgress<Borrows<'b, 'tcx>>,
-    inits: FlowInProgress<MaybeInitializedLvals<'b, 'tcx>>,
-    uninits: FlowInProgress<MaybeUninitializedLvals<'b, 'tcx>>,
+pub struct InProgress<'b, 'gcx: 'tcx, 'tcx: 'b> {
+    borrows: FlowInProgress<Borrows<'b, 'gcx, 'tcx>>,
+    inits: FlowInProgress<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
+    uninits: FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
 }
 
 struct FlowInProgress<BD> where BD: BitDenotation {
@@ -147,12 +175,12 @@ struct FlowInProgress<BD> where BD: BitDenotation {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
+impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'tcx>
     for MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx>
 {
-    type FlowState = InProgress<'b, 'gcx>;
+    type FlowState = InProgress<'b, 'gcx, 'tcx>;
 
-    fn mir(&self) -> &'b Mir<'gcx> { self.mir }
+    fn mir(&self) -> &'b Mir<'tcx> { self.mir }
 
     fn reset_to_entry_of(&mut self, bb: BasicBlock, flow_state: &mut Self::FlowState) {
         flow_state.each_flow(|b| b.reset_to_entry_of(bb),
@@ -193,7 +221,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
 
     fn visit_statement_entry(&mut self,
                              location: Location,
-                             stmt: &Statement<'gcx>,
+                             stmt: &Statement<'tcx>,
                              flow_state: &Self::FlowState) {
         let summary = flow_state.summary();
         debug!("MirBorrowckCtxt::process_statement({:?}, {:?}): {}", location, stmt, summary);
@@ -261,7 +289,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
 
     fn visit_terminator_entry(&mut self,
                               location: Location,
-                              term: &Terminator<'gcx>,
+                              term: &Terminator<'tcx>,
                               flow_state: &Self::FlowState) {
         let loc = location;
         let summary = flow_state.summary();
@@ -405,9 +433,9 @@ enum WriteKind {
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
     fn access_lvalue(&mut self,
                      context: Context,
-                     lvalue_span: (&Lvalue<'gcx>, Span),
+                     lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
-                     flow_state: &InProgress<'b, 'gcx>) {
+                     flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         // FIXME: also need to check permissions (e.g. reject mut
         // borrow of immutable ref, moves through non-`Box`-ref)
         let (sd, rw) = kind;
@@ -425,8 +453,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                     context, lvalue_span, borrow),
                             ReadKind::Borrow(bk) => {
                                 let end_issued_loan_span =
-                                    flow_state.borrows.base_results.operator().region_span(
-                                        &borrow.region).end_point();
+                                    flow_state.borrows.base_results.operator().opt_region_end_span(
+                                        &borrow.region);
                                 this.report_conflicting_borrow(
                                     context, common_prefix, lvalue_span, bk,
                                     &borrow, end_issued_loan_span)
@@ -438,8 +466,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         match kind {
                             WriteKind::MutableBorrow(bk) => {
                                 let end_issued_loan_span =
-                                    flow_state.borrows.base_results.operator().region_span(
-                                        &borrow.region).end_point();
+                                    flow_state.borrows.base_results.operator().opt_region_end_span(
+                                        &borrow.region);
                                 this.report_conflicting_borrow(
                                     context, common_prefix, lvalue_span, bk,
                                     &borrow, end_issued_loan_span)
@@ -460,10 +488,10 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn mutate_lvalue(&mut self,
                      context: Context,
-                     lvalue_span: (&Lvalue<'gcx>, Span),
+                     lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: ShallowOrDeep,
                      mode: MutateMode,
-                     flow_state: &InProgress<'b, 'gcx>) {
+                     flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         // Write of P[i] or *P, or WriteAndRead of any P, requires P init'd.
         match mode {
             MutateMode::WriteAndRead => {
@@ -482,9 +510,9 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn consume_rvalue(&mut self,
                       context: Context,
-                      (rvalue, span): (&Rvalue<'gcx>, Span),
+                      (rvalue, span): (&Rvalue<'tcx>, Span),
                       _location: Location,
-                      flow_state: &InProgress<'b, 'gcx>) {
+                      flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         match *rvalue {
             Rvalue::Ref(_/*rgn*/, bk, ref lvalue) => {
                 let access_kind = match bk {
@@ -540,8 +568,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn consume_operand(&mut self,
                        context: Context,
                        consume_via_drop: ConsumeKind,
-                       (operand, span): (&Operand<'gcx>, Span),
-                       flow_state: &InProgress<'b, 'gcx>) {
+                       (operand, span): (&Operand<'tcx>, Span),
+                       flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         match *operand {
             Operand::Consume(ref lvalue) => {
                 self.consume_lvalue(context, consume_via_drop, (lvalue, span), flow_state)
@@ -553,8 +581,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn consume_lvalue(&mut self,
                       context: Context,
                       consume_via_drop: ConsumeKind,
-                      lvalue_span: (&Lvalue<'gcx>, Span),
-                      flow_state: &InProgress<'b, 'gcx>) {
+                      lvalue_span: (&Lvalue<'tcx>, Span),
+                      flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         let lvalue = lvalue_span.0;
         let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
         let moves_by_default =
@@ -584,8 +612,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
     fn check_if_reassignment_to_immutable_state(&mut self,
                                                 context: Context,
-                                                (lvalue, span): (&Lvalue<'gcx>, Span),
-                                                flow_state: &InProgress<'b, 'gcx>) {
+                                                (lvalue, span): (&Lvalue<'tcx>, Span),
+                                                flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         let move_data = self.move_data;
 
         // determine if this path has a non-mut owner (and thus needs checking).
@@ -635,8 +663,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn check_if_path_is_moved(&mut self,
                               context: Context,
                               desired_action: &str,
-                              lvalue_span: (&Lvalue<'gcx>, Span),
-                              flow_state: &InProgress<'b, 'gcx>) {
+                              lvalue_span: (&Lvalue<'tcx>, Span),
+                              flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         // FIXME: analogous code in check_loans first maps `lvalue` to
         // its base_path ... but is that what we want here?
         let lvalue = self.base_path(lvalue_span.0);
@@ -725,7 +753,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     /// An Err result includes a tag indicated why the search failed.
     /// Currenly this can only occur if the lvalue is built off of a
     /// static variable, as we do not track those in the MoveData.
-    fn move_path_closest_to(&mut self, lvalue: &Lvalue<'gcx>)
+    fn move_path_closest_to(&mut self, lvalue: &Lvalue<'tcx>)
                             -> Result<MovePathIndex, NoMovePathFound>
     {
         let mut last_prefix = lvalue;
@@ -743,7 +771,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     }
 
     fn move_path_for_lvalue(&mut self,
-                            lvalue: &Lvalue<'gcx>)
+                            lvalue: &Lvalue<'tcx>)
                             -> Option<MovePathIndex>
     {
         // If returns None, then there is no move path corresponding
@@ -758,8 +786,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn check_if_assigned_path_is_moved(&mut self,
                                        context: Context,
-                                       (lvalue, span): (&Lvalue<'gcx>, Span),
-                                       flow_state: &InProgress<'b, 'gcx>) {
+                                       (lvalue, span): (&Lvalue<'tcx>, Span),
+                                       flow_state: &InProgress<'b, 'gcx, 'tcx>) {
         // recur down lvalue; dispatch to check_if_path_is_moved when necessary
         let mut lvalue = lvalue;
         loop {
@@ -827,10 +855,10 @@ enum NoMovePathFound {
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
     fn each_borrow_involving_path<F>(&mut self,
                                      _context: Context,
-                                     access_lvalue: (ShallowOrDeep, &Lvalue<'gcx>),
-                                     flow_state: &InProgress<'b, 'gcx>,
+                                     access_lvalue: (ShallowOrDeep, &Lvalue<'tcx>),
+                                     flow_state: &InProgress<'b, 'gcx, 'tcx>,
                                      mut op: F)
-        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'gcx>, &Lvalue) -> Control
+        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>, &Lvalue) -> Control
     {
         let (access, lvalue) = access_lvalue;
 
@@ -928,9 +956,9 @@ mod prefixes {
     }
 
 
-    pub(super) struct Prefixes<'c, 'tcx: 'c> {
+    pub(super) struct Prefixes<'c, 'gcx: 'tcx, 'tcx: 'c> {
         mir: &'c Mir<'tcx>,
-        tcx: TyCtxt<'c, 'tcx, 'tcx>,
+        tcx: TyCtxt<'c, 'gcx, 'tcx>,
         kind: PrefixSet,
         next: Option<&'c Lvalue<'tcx>>,
     }
@@ -951,15 +979,15 @@ mod prefixes {
         /// (inclusive) from longest to smallest, potentially
         /// terminating the iteration early based on `kind`.
         pub(super) fn prefixes<'d>(&self,
-                                   lvalue: &'d Lvalue<'gcx>,
+                                   lvalue: &'d Lvalue<'tcx>,
                                    kind: PrefixSet)
-                                   -> Prefixes<'d, 'gcx> where 'b: 'd
+                                   -> Prefixes<'d, 'gcx, 'tcx> where 'b: 'd
         {
             Prefixes { next: Some(lvalue), kind, mir: self.mir, tcx: self.tcx }
         }
     }
 
-    impl<'c, 'tcx> Iterator for Prefixes<'c, 'tcx> {
+    impl<'c, 'gcx, 'tcx> Iterator for Prefixes<'c, 'gcx, 'tcx> {
         type Item = &'c Lvalue<'tcx>;
         fn next(&mut self) -> Option<Self::Item> {
             let mut cursor = match self.next {
@@ -1101,7 +1129,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                  (lvalue, span): (&Lvalue, Span),
                                  gen_borrow_kind: BorrowKind,
                                  issued_borrow: &BorrowData,
-                                 end_issued_loan_span: Span) {
+                                 end_issued_loan_span: Option<Span>) {
         use self::prefixes::IsPrefixOf;
 
         assert!(common_prefix.is_prefix_of(lvalue));
@@ -1315,7 +1343,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     // moves out of a Box. They should be removed when/if we stop
     // treating Box specially (e.g. when/if DerefMove is added...)
 
-    fn base_path<'d>(&self, lvalue: &'d Lvalue<'gcx>) -> &'d Lvalue<'gcx> {
+    fn base_path<'d>(&self, lvalue: &'d Lvalue<'tcx>) -> &'d Lvalue<'tcx> {
         //! Returns the base of the leftmost (deepest) dereference of an
         //! Box in `lvalue`. If there is no dereference of an Box
         //! in `lvalue`, then it just returns `lvalue` itself.
@@ -1364,10 +1392,10 @@ impl ContextKind {
     fn new(self, loc: Location) -> Context { Context { kind: self, loc: loc } }
 }
 
-impl<'b, 'tcx: 'b> InProgress<'b, 'tcx> {
-    pub(super) fn new(borrows: DataflowResults<Borrows<'b, 'tcx>>,
-                      inits: DataflowResults<MaybeInitializedLvals<'b, 'tcx>>,
-                      uninits: DataflowResults<MaybeUninitializedLvals<'b, 'tcx>>)
+impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
+    pub(super) fn new(borrows: DataflowResults<Borrows<'b, 'gcx, 'tcx>>,
+                      inits: DataflowResults<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
+                      uninits: DataflowResults<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>)
                       -> Self {
         InProgress {
             borrows: FlowInProgress::new(borrows),
@@ -1380,9 +1408,9 @@ impl<'b, 'tcx: 'b> InProgress<'b, 'tcx> {
                              mut xform_borrows: XB,
                              mut xform_inits: XI,
                              mut xform_uninits: XU) where
-        XB: FnMut(&mut FlowInProgress<Borrows<'b, 'tcx>>),
-        XI: FnMut(&mut FlowInProgress<MaybeInitializedLvals<'b, 'tcx>>),
-        XU: FnMut(&mut FlowInProgress<MaybeUninitializedLvals<'b, 'tcx>>),
+        XB: FnMut(&mut FlowInProgress<Borrows<'b, 'gcx, 'tcx>>),
+        XI: FnMut(&mut FlowInProgress<MaybeInitializedLvals<'b, 'gcx, 'tcx>>),
+        XU: FnMut(&mut FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>),
     {
         xform_borrows(&mut self.borrows);
         xform_inits(&mut self.inits);
@@ -1438,7 +1466,7 @@ impl<'b, 'tcx: 'b> InProgress<'b, 'tcx> {
     }
 }
 
-impl<'b, 'tcx> FlowInProgress<MaybeUninitializedLvals<'b, 'tcx>> {
+impl<'b, 'gcx, 'tcx> FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>> {
     fn has_any_child_of(&self, mpi: MovePathIndex) -> Option<MovePathIndex> {
         let move_data = self.base_results.operator().move_data();
 

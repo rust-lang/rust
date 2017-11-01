@@ -158,7 +158,7 @@ pub struct BlockRemainder {
 
 newtype_index!(FirstStatementIndex
     {
-        DEBUG_NAME = "",
+        DEBUG_FORMAT = "{}",
         MAX = SCOPE_DATA_REMAINDER_MAX,
     });
 

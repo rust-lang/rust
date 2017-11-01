@@ -56,13 +56,13 @@ pub enum PassWhere {
 /// - `substring1&substring2,...` -- `&`-separated list of substrings
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
-pub fn dump_mir<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             pass_num: Option<(MirSuite, MirPassIndex)>,
-                             pass_name: &str,
-                             disambiguator: &Display,
-                             source: MirSource,
-                             mir: &Mir<'tcx>,
-                             extra_data: F)
+pub fn dump_mir<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                   pass_num: Option<(MirSuite, MirPassIndex)>,
+                                   pass_name: &str,
+                                   disambiguator: &Display,
+                                   source: MirSource,
+                                   mir: &Mir<'tcx>,
+                                   extra_data: F)
 where
     F: FnMut(PassWhere, &mut Write) -> io::Result<()>
 {
@@ -77,10 +77,10 @@ where
                           disambiguator, source, mir, extra_data);
 }
 
-pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              pass_name: &str,
-                              source: MirSource)
-                              -> bool {
+pub fn dump_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                    pass_name: &str,
+                                    source: MirSource)
+                                    -> bool {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return false,
         Some(ref filters) => filters,
@@ -101,14 +101,14 @@ pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 // `item_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
-fn dump_matched_mir_node<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      pass_num: Option<(MirSuite, MirPassIndex)>,
-                                      pass_name: &str,
-                                      node_path: &str,
-                                      disambiguator: &Display,
-                                      source: MirSource,
-                                      mir: &Mir<'tcx>,
-                                      mut extra_data: F)
+fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                            pass_num: Option<(MirSuite, MirPassIndex)>,
+                                            pass_name: &str,
+                                            node_path: &str,
+                                            disambiguator: &Display,
+                                            source: MirSource,
+                                            mir: &Mir<'tcx>,
+                                            mut extra_data: F)
 where
     F: FnMut(PassWhere, &mut Write) -> io::Result<()>
 {
@@ -161,10 +161,10 @@ where
 }
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  single: Option<DefId>,
-                                  w: &mut Write)
-                                  -> io::Result<()>
+pub fn write_mir_pretty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                        single: Option<DefId>,
+                                        w: &mut Write)
+                                        -> io::Result<()>
 {
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
@@ -192,12 +192,12 @@ pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Ok(())
 }
 
-pub fn write_mir_fn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 src: MirSource,
-                                 mir: &Mir<'tcx>,
-                                 extra_data: &mut F,
-                                 w: &mut Write)
-                                 -> io::Result<()>
+pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       src: MirSource,
+                                       mir: &Mir<'tcx>,
+                                       extra_data: &mut F,
+                                       w: &mut Write)
+                                       -> io::Result<()>
 where
     F: FnMut(PassWhere, &mut Write) -> io::Result<()>
 {
@@ -321,11 +321,11 @@ fn write_scope_tree(tcx: TyCtxt,
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-pub fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             src: MirSource,
-                             mir: &Mir,
-                             w: &mut Write)
-                             -> io::Result<()> {
+pub fn write_mir_intro<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       src: MirSource,
+                                       mir: &Mir,
+                                       w: &mut Write)
+                                       -> io::Result<()> {
     write_mir_sig(tcx, src, mir, w)?;
     writeln!(w, " {{")?;
 

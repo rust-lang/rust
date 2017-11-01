@@ -21,10 +21,10 @@ use rustc_data_structures::indexed_vec::Idx;
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       single: Option<DefId>,
-                                       w: &mut W)
-                                       -> io::Result<()>
+pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
+                                   single: Option<DefId>,
+                                   w: &mut W)
+                                   -> io::Result<()>
     where W: Write
 {
     for def_id in dump_mir_def_ids(tcx, single) {
@@ -36,10 +36,10 @@ pub fn write_mir_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Write a graphviz DOT graph of the MIR.
-pub fn write_mir_fn_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        nodeid: NodeId,
-                                        mir: &Mir,
-                                        w: &mut W) -> io::Result<()>
+pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
+                                      nodeid: NodeId,
+                                      mir: &Mir,
+                                      w: &mut W) -> io::Result<()>
     where W: Write
 {
     writeln!(w, "digraph Mir_{} {{", nodeid)?;
@@ -137,11 +137,11 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<'a, 'tcx, W: Write>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                         nid: NodeId,
-                                         mir: &Mir,
-                                         w: &mut W)
-                                         -> io::Result<()> {
+fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                               nid: NodeId,
+                                               mir: &Mir,
+                                               w: &mut W)
+                                               -> io::Result<()> {
     write!(w, "    label=<fn {}(", dot::escape_html(&tcx.node_path_str(nid)))?;
 
     // fn argument types.

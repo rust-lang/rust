@@ -484,7 +484,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             // 3. Where does old loan expire.
 
             let previous_end_span =
-                old_loan.kill_scope.span(self.tcx(), &self.bccx.region_scope_tree).end_point();
+                Some(old_loan.kill_scope.span(self.tcx(), &self.bccx.region_scope_tree)
+                     .end_point());
 
             let mut err = match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) =>

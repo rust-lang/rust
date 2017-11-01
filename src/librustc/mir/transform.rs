@@ -39,13 +39,13 @@ pub enum MirSource {
     GeneratorDrop(NodeId),
 }
 
-impl<'a, 'tcx> MirSource {
-    pub fn from_local_def_id(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> MirSource {
+impl<'a, 'gcx, 'tcx> MirSource {
+    pub fn from_local_def_id(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> MirSource {
         let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
         Self::from_node(tcx, id)
     }
 
-    pub fn from_node(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> MirSource {
+    pub fn from_node(tcx: TyCtxt<'a, 'gcx, 'tcx>, id: NodeId) -> MirSource {
         use hir::*;
 
         // Handle constants in enum discriminants, types, and repeat expressions.
