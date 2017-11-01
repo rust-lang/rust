@@ -80,9 +80,18 @@ declare_lint! {
 
 /// **What it does:** Checks for transmutes from an integer to a `char`.
 ///
-/// **Why is this bad?** Not every integer is a unicode scalar value.
+/// **Why is this bad?** Not every integer is a Unicode scalar value.
 ///
-/// **Known problems:** None.
+/// **Known problems:**
+/// - [`from_u32`] which this lint suggests using is slower than `transmute`
+/// as it needs to validate the input.
+/// If you are certain that the input is always a valid Unicode scalar value,
+/// use [`from_u32_unchecked`] which is as fast as `transmute`
+/// but has a semantically meaningful name.
+/// - You might want to handle `None` returned from [`from_u32`] instead of calling `unwrap`.
+///
+/// [`from_u32`]: https://doc.rust-lang.org/std/char/fn.from_u32.html
+/// [`from_u32_unchecked`]: https://doc.rust-lang.org/std/char/fn.from_u32_unchecked.html
 ///
 /// **Example:**
 /// ```rust
