@@ -73,7 +73,7 @@ travis_time_finish
 
 travis_fold start make-prepare
 travis_time_start
-retry make prepare
+RUST_BACKTRACE=1 retry make prepare
 travis_fold end make-prepare
 travis_time_finish
 
@@ -90,6 +90,12 @@ else
 fi
 
 if [ ! -z "$SCRIPT" ]; then
+  # RUST_BACKTRACE=1 can slow down tests a lot.
+  # Thus we don't enable it for jobs that are running tests.
+  # (ref: https://mozilla.logbot.info/rust-infra/20170923#c26921)
+  if [[ ! "$SCRIPT" =~ " test" ]]; then
+    export RUST_BACKTRACE=1
+  fi
   sh -x -c "$SCRIPT"
 else
   do_make() {
@@ -103,7 +109,7 @@ else
     return $retval
   }
 
-  do_make tidy
-  do_make all
+  RUST_BACKTRACE=1 do_make tidy
+  RUST_BACKTRACE=1 do_make all
   do_make "$RUST_CHECK_TARGET"
 fi
