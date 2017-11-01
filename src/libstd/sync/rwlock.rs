@@ -82,7 +82,7 @@ pub struct RwLock<T: ?Sized> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: ?Sized + Send + Sync> Send for RwLock<T> {}
+unsafe impl<T: ?Sized + Send> Send for RwLock<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 
