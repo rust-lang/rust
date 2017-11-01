@@ -1131,9 +1131,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                              region_context: DefId,
                                              region_map: &region::ScopeTree,
                                              free_regions: &FreeRegionMap<'tcx>) {
-        // TODO assert!(self.region_obligations.borrow().is_empty(),
-        // TODO         "region_obligations not empty: {:#?}",
-        // TODO         self.region_obligations.borrow());
+        assert!(self.is_tainted_by_errors() || self.region_obligations.borrow().is_empty(),
+                "region_obligations not empty: {:#?}",
+                self.region_obligations.borrow());
 
         let region_rels = RegionRelations::new(self.tcx,
                                                region_context,

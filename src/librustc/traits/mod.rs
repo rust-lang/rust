@@ -511,6 +511,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            unnormalized_env.reveal);
 
     tcx.infer_ctxt().enter(|infcx| {
+        let body_id = cause.body_id;
         let predicates = match fully_normalize(
             &infcx,
             cause,
@@ -536,6 +537,14 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let region_scope_tree = region::ScopeTree::default();
         let free_regions = FreeRegionMap::new();
+
+        // TODO We should really... do something with these. But as of
+        // this writing we were ignoring them, just without knowing
+        // it, and it would take some refactoring to stop doing so.
+        // (In particular, the needed methods currently live in
+        // regionck.) -nmatsakis
+        let _ = infcx.take_region_obligations(body_id);
+
         infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,
