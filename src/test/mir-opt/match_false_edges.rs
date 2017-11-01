@@ -18,12 +18,19 @@ fn guard2(_:i32) -> bool {
     true
 }
 
-fn full_tested_match()
-{
+fn full_tested_match() {
     let _ = match Some(42) {
         Some(x) if guard() => 1 + x,
         Some(y) => 2 + y,
-        None => 3
+        None => 3,
+    };
+}
+
+fn full_tested_match2() {
+    let _ = match Some(42) {
+        Some(x) if guard() => 1 + x,
+        None => 3,
+        Some(y) => 2 + y,
     };
 }
 
@@ -93,11 +100,66 @@ fn main() {
 //      ...
 //      return;
 //  }
-//
-//
 // END rustc.node17.NLL.before.mir
 //
 // START rustc.node40.NLL.before.mir
+//  bb0: {
+//      ...
+//      _2 = std::option::Option<i32>::Some(const 42i32,);
+//      _5 = discriminant(_2);
+//      switchInt(_5) -> [0isize: bb4, otherwise: bb3];
+//  }
+//  bb1: { // arm1
+//      StorageLive(_7);
+//      _7 = _3;
+//      _1 = Add(const 1i32, _7);
+//      ...
+//      goto -> bb11;
+//  }
+//  bb2: { // binding3(empty) and arm3
+//      _1 = const 3i32;
+//      goto -> bb11;
+//  }
+//  bb3: {
+//      falseEdges -> [real: bb7, imaginary: bb4]; //pre_binding1
+//  }
+//  bb4: {
+//      falseEdges -> [real: bb2, imaginary: bb5]; //pre_binding2
+//  }
+//  bb5: {
+//      falseEdges -> [real: bb10, imaginary: bb6]; //pre_binding3
+//  }
+//  bb6: {
+//      unreachable;
+//  }
+//  bb7: { // binding1 and guard
+//      StorageLive(_3);
+//      _3 = ((_2 as Some).0: i32);
+//      StorageLive(_6);
+//      _6 = const guard() -> bb8;
+//  }
+//  bb8: { // end of guard
+//      switchInt(_6) -> [0u8: bb9, otherwise: bb1];
+//  }
+//  bb9: { // to pre_binding2
+//      falseEdges -> [real: bb5, imaginary: bb4];
+//  }
+//  bb10: { // binding2 and arm2
+//      StorageLive(_4);
+//      _4 = ((_2 as Some).0: i32);
+//      StorageLive(_8);
+//      _8 = _4;
+//      _1 = Add(const 2i32, _8);
+//      StorageDead(_8);
+//      goto -> bb11;
+//  }
+//  bb11: {
+//      ...
+//      return;
+//  }
+// END rustc.node40.NLL.before.mir
+//
+// START rustc.node63.NLL.before.mir
 // bb0: {
 //     ...
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
@@ -171,4 +233,4 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node40.NLL.before.mir
+// END rustc.node63.NLL.before.mir
