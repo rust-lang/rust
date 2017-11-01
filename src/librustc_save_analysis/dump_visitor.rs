@@ -775,6 +775,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     }
 
     fn process_path(&mut self, id: NodeId, path: &'l ast::Path) {
+        debug!("process_path {:?}", path);
         let path_data = self.save_ctxt.get_path_data(id, path);
         if generated_code(path.span) && path_data.is_none() {
             return;
@@ -862,11 +863,23 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         walk_list!(self, visit_expr, base);
     }
 
-    fn process_method_call(&mut self, ex: &'l ast::Expr, args: &'l [P<ast::Expr>]) {
+    fn process_method_call(&mut self,
+                           ex: &'l ast::Expr,
+                           seg: &'l ast::PathSegment,
+                           args: &'l [P<ast::Expr>]) {
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(mcd, RefData, ex.span);
             if !generated_code(ex.span) {
                 self.dumper.dump_ref(mcd);
+            }
+        }
+
+        // Explicit types in the turbo-fish.
+        if let Some(ref params) = seg.parameters {
+            if let ast::PathParameters::AngleBracketed(ref data) = **params {
+                for t in &data.types {
+                    self.visit_ty(t);
+                }
             }
         }
 
@@ -1330,7 +1343,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 let def = self.save_ctxt.get_path_def(hir_expr.id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
-            ast::ExprKind::MethodCall(.., ref args) => self.process_method_call(ex, args),
+            ast::ExprKind::MethodCall(ref seg, ref args) => self.process_method_call(ex, seg, args),
             ast::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 
