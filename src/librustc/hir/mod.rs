@@ -1871,7 +1871,7 @@ impl Item_ {
             ItemEnum(_, ref generics) |
             ItemStruct(_, ref generics) |
             ItemUnion(_, ref generics) |
-            ItemTrait(_, ref generics, _, _) |
+            ItemTrait(_, _, ref generics, _, _) |
             ItemImpl(_, _, _, ref generics, _, _, _)=> generics,
             _ => return None
         })
