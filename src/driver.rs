@@ -129,7 +129,7 @@ fn show_version() {
 pub fn main() {
     use std::env;
 
-    if env::var("CLIPPY_DOGFOOD").map(|_| true).unwrap_or(false) {
+    if env::var("CLIPPY_DOGFOOD").is_ok() {
         panic!("yummy");
     }
 
@@ -161,8 +161,11 @@ pub fn main() {
 
     rustc_driver::in_rustc_thread(|| {
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
-        // We're invoking the compiler programatically, so we ignore this/
+        // We're invoking the compiler programmatically, so we ignore this/
         let mut orig_args: Vec<String> = env::args().collect();
+        if orig_args.len() <= 1 {
+            std::process::exit(1);
+        }
         if orig_args[1] == "rustc" {
             // we still want to be able to invoke it normally though
             orig_args.remove(1);
