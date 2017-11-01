@@ -1,7 +1,7 @@
 - Feature Name: as_cell
 - Start Date: 2016-11-13
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1789
-- Rust Issue: https://github.com/rust-lang/rust/issues/43038
+- RFC PR: [rust-lang/rfcs#1789](https://github.com/rust-lang/rfcs/pull/1789)
+- Rust Issue: [rust-lang/rust#43038](https://github.com/rust-lang/rust/issues/43038)
 
 # Summary
 [summary]: #summary

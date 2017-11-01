@@ -1,7 +1,7 @@
 - Feature Name: move_cell
 - Start Date: 2016-06-15
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1651
-- Rust Issue: https://github.com/rust-lang/rust/issues/39264
+- RFC PR: [rust-lang/rfcs#1651](https://github.com/rust-lang/rfcs/pull/1651)
+- Rust Issue: [rust-lang/rust#39264](https://github.com/rust-lang/rust/issues/39264)
 
 # Summary
 [summary]: #summary

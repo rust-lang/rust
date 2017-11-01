@@ -1,6 +1,6 @@
 - Start Date: 2015-01-13
-- RFC PR: https://github.com/rust-lang/rfcs/pull/580
-- Rust Issue: https://github.com/rust-lang/rust/issues/22479
+- RFC PR: [rust-lang/rfcs#580](https://github.com/rust-lang/rfcs/pull/580)
+- Rust Issue: [rust-lang/rust#22479](https://github.com/rust-lang/rust/issues/22479)
 
 # Summary
 

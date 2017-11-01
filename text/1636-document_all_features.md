@@ -1,6 +1,6 @@
 - Feature Name: document_all_features
 - Start Date: 2016-06-03
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1636
+- RFC PR: [rust-lang/rfcs#1636](https://github.com/rust-lang/rfcs/pull/1636)
 - Rust Issue: https://github.com/rust-lang-nursery/reference/issues/9
 
 

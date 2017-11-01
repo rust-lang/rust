@@ -1,6 +1,6 @@
 - Feature Name: intrinsic-semantics
 - Start Date: 2015-09-29
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1300
+- RFC PR: [rust-lang/rfcs#1300](https://github.com/rust-lang/rfcs/pull/1300)
 - Rust Issue: N/A
 
 # Summary

@@ -1,7 +1,7 @@
 - Feature Name: dropck_parametricity
 - Start Date: 2015-08-05
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1238/
-- Rust Issue: https://github.com/rust-lang/rust/issues/28498
+- RFC PR: [rust-lang/rfcs#1238](https://github.com/rust-lang/rfcs/pull/1238)/
+- Rust Issue: [rust-lang/rust#28498](https://github.com/rust-lang/rust/issues/28498)
 
 # Summary
 

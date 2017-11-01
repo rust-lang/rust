@@ -1,7 +1,7 @@
 - Feature Name: NA
 - Start Date: 2015-08-06
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1240
-- Rust Issue: https://github.com/rust-lang/rust/issues/27060
+- RFC PR: [rust-lang/rfcs#1240](https://github.com/rust-lang/rfcs/pull/1240)
+- Rust Issue: [rust-lang/rust#27060](https://github.com/rust-lang/rust/issues/27060)
 
 # Summary
 

@@ -1,5 +1,5 @@
 - Start Date: 2014-09-19
-- RFC PR: https://github.com/rust-lang/rfcs/pull/256
+- RFC PR: [rust-lang/rfcs#256](https://github.com/rust-lang/rfcs/pull/256)
 - Rust Issue: https://github.com/rust-lang/rfcs/pull/256
 
 # Summary

@@ -1,6 +1,6 @@
 - Feature Name: More API Documentation Conventions
 - Start Date: 2016-03-31
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1574
+- RFC PR: [rust-lang/rfcs#1574](https://github.com/rust-lang/rfcs/pull/1574)
 - Rust Issue: N/A
 
 # Summary

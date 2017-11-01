@@ -1,7 +1,7 @@
 - Feature Name: deprecate_anonymous_parameters
 - Start Date: 2016-07-19
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1685
-- Rust Issue: https://github.com/rust-lang/rust/issues/41686
+- RFC PR: [rust-lang/rfcs#1685](https://github.com/rust-lang/rfcs/pull/1685)
+- Rust Issue: [rust-lang/rust#41686](https://github.com/rust-lang/rust/issues/41686)
 
 # Summary
 [summary]: #summary

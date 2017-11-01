@@ -1,7 +1,7 @@
 - Feature Name: `copy_closures`
 - Start Date: 2017-08-27
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2132
-- Rust Issue: https://github.com/rust-lang/rust/issues/44490
+- RFC PR: [rust-lang/rfcs#2132](https://github.com/rust-lang/rfcs/pull/2132)
+- Rust Issue: [rust-lang/rust#44490](https://github.com/rust-lang/rust/issues/44490)
 
 # Summary
 [summary]: #summary

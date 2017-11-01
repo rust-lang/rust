@@ -1,6 +1,6 @@
 - Feature Name: `repr_transparent`
 - Start Date: 2016-09-26
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1758
+- RFC PR: [rust-lang/rfcs#1758](https://github.com/rust-lang/rfcs/pull/1758)
 - Rust Issue:https://github.com/rust-lang/rust/issues/43036
 
 # Summary

@@ -1,7 +1,7 @@
 - Feature Name: `intra_rustdoc_links`
 - Start Date: 2017-03-06
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1946
-- Rust Issue: https://github.com/rust-lang/rust/issues/43466
+- RFC PR: [rust-lang/rfcs#1946](https://github.com/rust-lang/rfcs/pull/1946)
+- Rust Issue: [rust-lang/rust#43466](https://github.com/rust-lang/rust/issues/43466)
 
 # Summary
 [summary]: #summary

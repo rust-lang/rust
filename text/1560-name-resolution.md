@@ -1,7 +1,7 @@
 - Feature Name: item_like_imports
 - Start Date: 2016-02-09
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1560
-- Rust Issue: https://github.com/rust-lang/rust/issues/35120
+- RFC PR: [rust-lang/rfcs#1560](https://github.com/rust-lang/rfcs/pull/1560)
+- Rust Issue: [rust-lang/rust#35120](https://github.com/rust-lang/rust/issues/35120)
 
 # Summary
 [summary]: #summary

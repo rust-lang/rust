@@ -1,7 +1,7 @@
 - Feature Name: `match_vert_prefix`
 - Start Date: 2017-02-23
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1925
-- Rust Issue: https://github.com/rust-lang/rust/issues/44101
+- RFC PR: [rust-lang/rfcs#1925](https://github.com/rust-lang/rfcs/pull/1925)
+- Rust Issue: [rust-lang/rust#44101](https://github.com/rust-lang/rust/issues/44101)
 
 # Summary
 [summary]: #summary

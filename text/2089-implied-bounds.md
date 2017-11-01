@@ -1,7 +1,7 @@
 - Feature Name: `implied_bounds`
 - Start Date: 2017-07-28
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2089
-- Rust Issue: https://github.com/rust-lang/rust/issues/44491
+- RFC PR: [rust-lang/rfcs#2089](https://github.com/rust-lang/rfcs/pull/2089)
+- Rust Issue: [rust-lang/rust#44491](https://github.com/rust-lang/rust/issues/44491)
 
 # Summary
 [summary]: #summary
