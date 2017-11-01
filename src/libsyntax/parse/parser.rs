@@ -3154,47 +3154,23 @@ impl<'a> Parser<'a> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
         let pat = self.parse_pat()?;
-        // Save the state of the parser before parsing 'in'.
-        let parser_snapshot_before_in = self.clone();
-        match self.expect_keyword(keywords::In) {
-            Ok(()) => {
-                let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-                let (iattrs, loop_block) = self.parse_inner_attrs_and_block()?;
-                attrs.extend(iattrs);
-
-                let hi = self.prev_span;
-                Ok(self.mk_expr(
-                    span_lo.to(hi),
-                    ExprKind::ForLoop(pat, expr, loop_block, opt_ident),
-                    attrs))
-            }
-            Err(mut in_err) => {
-                let parser_snapshot_after_in = self.clone();
-                // Rewind to before attempting to parse the 'in'.
-                mem::replace(self, parser_snapshot_before_in);
-
-                match self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None) {
-                    Ok(_) => {
-                        // Successfully parsed the expr which means that the 'in' keyword is
-                        // missing, e.g. 'for i 0..2'
-                        in_err.cancel();
-                        let in_span = parser_snapshot_after_in.prev_span
-                            .between(parser_snapshot_after_in.span);
-                        let mut err = self.sess.span_diagnostic
-                            .struct_span_err(in_span, "missing `in` in `for` loop");
-                        err.span_label(in_span, "expected `in` here");
-                        err.span_suggestion_short(in_span, "try adding `in` here", " in ".into());
-                        Err(err)
-                    }
-                    Err(mut expr_err) => {
-                        // Couldn't parse as an expr, return original error and parser state.
-                        expr_err.cancel();
-                        mem::replace(self, parser_snapshot_after_in);
-                        Err(in_err)
-                    }
-                }
-            }
+        if !self.eat_keyword(keywords::In) {
+            let in_span = self.prev_span.between(self.span);
+            let mut err = self.sess.span_diagnostic
+                .struct_span_err(in_span, "missing `in` in `for` loop");
+            err.span_label(in_span, "expected `in` here");
+            err.span_suggestion_short(in_span, "try adding `in` here", " in ".into());
+            err.emit();
         }
+        let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+        let (iattrs, loop_block) = self.parse_inner_attrs_and_block()?;
+        attrs.extend(iattrs);
+
+        let hi = self.prev_span;
+        Ok(self.mk_expr(
+            span_lo.to(hi),
+            ExprKind::ForLoop(pat, expr, loop_block, opt_ident),
+            attrs))
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
