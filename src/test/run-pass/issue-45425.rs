@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    A = "" + 1
-    //~^ ERROR binary operation `+` cannot be applied to type `&str`
-}
+use std::ops::Add;
 
-enum Bar {
-    A = Foo::A as isize
+fn ref_add<T>(a: &T, b: &T) -> T
+where
+    for<'x> &'x T: Add<&'x T, Output = T>,
+{
+    a + b
 }
 
 fn main() {}
