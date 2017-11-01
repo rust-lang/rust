@@ -396,7 +396,7 @@ fn rewrite_comment_inner(
 /// Returns true if the given string MAY include URLs or alike.
 fn has_url(s: &str) -> bool {
     // This function may return false positive, but should get its job done in most cases.
-    s.contains("https://") || s.contains("http://")
+    s.contains("https://") || s.contains("http://") || s.contains("ftp://") || s.contains("file://")
 }
 
 /// Given the span, rewrite the missing comment inside it if available.
