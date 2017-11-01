@@ -51,7 +51,7 @@ fn show_version() {
 pub fn main() {
     use std::env;
 
-    if env::var("CLIPPY_DOGFOOD").map(|_| true).unwrap_or(false) {
+    if env::var("CLIPPY_DOGFOOD").is_ok() {
         panic!("yummy");
     }
 
