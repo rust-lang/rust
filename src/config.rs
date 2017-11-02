@@ -113,15 +113,6 @@ impl Density {
     }
 }
 
-configuration_option_enum! { LicensePolicy:
-    // Do not place license text at top of files
-    NoLicense,
-    // Use the text in "license" field as the license
-    TextLicense,
-    // Use a text file as the license text
-    FileLicense,
-}
-
 configuration_option_enum! { MultilineStyle:
     // Use horizontal layout if it fits in one line, fall back to vertical
     PreferSingle,
