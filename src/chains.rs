@@ -152,8 +152,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     }).collect::<Option<Vec<_>>>()?;
 
     // Total of all items excluding the last.
-    let extend_last_subexr = last_line_extendable(&parent_rewrite) && rewrites.is_empty();
-    let almost_total = if extend_last_subexr {
+    let extend_last_subexpr = last_line_extendable(&parent_rewrite) && rewrites.is_empty();
+    let almost_total = if extend_last_subexpr {
         last_line_width(&parent_rewrite)
     } else {
         rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len()
@@ -195,7 +195,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     // In particular, overflowing is effective when the last child is a method with a multi-lined
     // block-like argument (e.g. closure):
     // ```
-    // parent.child1.chlid2.last_child(|a, b, c| {
+    // parent.child1.child2.last_child(|a, b, c| {
     //     let x = foo(a, b, c);
     //     let y = bar(a, b, c);
     //
@@ -208,14 +208,14 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     // `rewrite_last` rewrites the last child on its own line. We use a closure here instead of
     // directly calling `rewrite_chain_subexpr()` to avoid exponential blowup.
     let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, last_shape);
-    let (last_subexpr_str, fits_single_line) = if all_in_one_line || extend_last_subexr {
+    let (last_subexpr_str, fits_single_line) = if all_in_one_line || extend_last_subexpr {
         // First we try to 'overflow' the last child and see if it looks better than using
         // vertical layout.
         parent_shape.offset_left(almost_total).map(|shape| {
             if let Some(rw) = rewrite_chain_subexpr(last_subexpr, total_span, context, shape) {
                 // We allow overflowing here only if both of the following conditions match:
                 // 1. The entire chain fits in a single line expect the last child.
-                // 2. `last_chlid_str.lines().count() >= 5`.
+                // 2. `last_child_str.lines().count() >= 5`.
                 let line_count = rw.lines().count();
                 let fits_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
                 if fits_single_line && line_count >= 5 {

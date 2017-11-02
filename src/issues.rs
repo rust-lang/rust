@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Objects for seeking through a char stream for occurences of TODO and FIXME.
+// Objects for seeking through a char stream for occurrences of TODO and FIXME.
 // Depending on the loaded configuration, may also check that these have an
 // associated issue number.
 

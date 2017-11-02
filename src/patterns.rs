@@ -118,8 +118,8 @@ impl Rewrite for Pat {
                 };
                 Some(result)
             }
-            PatKind::Struct(ref path, ref fields, elipses) => {
-                rewrite_struct_pat(path, fields, elipses, self.span, context, shape)
+            PatKind::Struct(ref path, ref fields, ellipsis) => {
+                rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
             }
             // FIXME(#819) format pattern macros.
             PatKind::Mac(..) => Some(context.snippet(self.span)),
@@ -130,7 +130,7 @@ impl Rewrite for Pat {
 fn rewrite_struct_pat(
     path: &ast::Path,
     fields: &[codemap::Spanned<ast::FieldPat>],
-    elipses: bool,
+    ellipsis: bool,
     span: Span,
     context: &RewriteContext,
     shape: Shape,
@@ -139,15 +139,15 @@ fn rewrite_struct_pat(
     let path_shape = shape.sub_width(2)?;
     let path_str = rewrite_path(context, PathContext::Expr, None, path, path_shape)?;
 
-    if fields.is_empty() && !elipses {
+    if fields.is_empty() && !ellipsis {
         return Some(format!("{} {{}}", path_str));
     }
 
-    let (elipses_str, terminator) = if elipses { (", ..", "..") } else { ("", "}") };
+    let (ellipsis_str, terminator) = if ellipsis { (", ..", "..") } else { ("", "}") };
 
     // 3 = ` { `, 2 = ` }`.
     let (h_shape, v_shape) =
-        struct_lit_shape(shape, context, path_str.len() + 3, elipses_str.len() + 2)?;
+        struct_lit_shape(shape, context, path_str.len() + 3, ellipsis_str.len() + 2)?;
 
     let items = itemize_list(
         context.codemap,
@@ -169,7 +169,7 @@ fn rewrite_struct_pat(
     let mut fields_str = write_list(&item_vec, &fmt)?;
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
 
-    if elipses {
+    if ellipsis {
         if fields_str.contains('\n') || fields_str.len() > one_line_width {
             // Add a missing trailing comma.
             if fmt.trailing_separator == SeparatorTactic::Never {
@@ -180,7 +180,7 @@ fn rewrite_struct_pat(
             fields_str.push_str("..");
         } else {
             if !fields_str.is_empty() {
-                // there are preceeding struct fields being matched on
+                // there are preceding struct fields being matched on
                 if fmt.tactic == DefinitiveListTactic::Vertical {
                     // if the tactic is Vertical, write_list already added a trailing ,
                     fields_str.push_str(" ");

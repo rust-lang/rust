@@ -15,7 +15,7 @@
 // foo!( x, y, z ). The token x may represent an identifier in the code, but we
 // interpreted as an expression.
 // Macro uses which are not-list like, such as bar!(key => val), will not be
-// reformated.
+// reformatted.
 // List-like invocations with parentheses will be formatted as function calls,
 // and those with brackets will be formatted as array literals.
 

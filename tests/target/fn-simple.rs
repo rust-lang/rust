@@ -21,7 +21,7 @@ fn simple(
 
 fn weird_comment(
     // /*/ double level */ comment
-    x: Hello, // /*/* tripple, even */*/
+    x: Hello, // /*/* triple, even */*/
     // Does this work?
     y: World,
 ) {

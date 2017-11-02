@@ -235,7 +235,7 @@ macro_rules! create_config {
 
         // Just like the Config struct but with each property wrapped
         // as Option<T>. This is used to parse a rustfmt.toml that doesn't
-        // specity all properties of `Config`.
+        // specify all properties of `Config`.
         // We first parse into `PartialConfig`, then create a default `Config`
         // and overwrite the properties with corresponding values from `PartialConfig`.
         #[derive(Deserialize, Serialize, Clone)]

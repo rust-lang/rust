@@ -2,7 +2,7 @@ fn issue1468() {
 euc_jp_decoder_functions!({
 let trail_minus_offset = byte.wrapping_sub(0xA1);
 // Fast-track Hiragana (60% according to Lunde)
-// and Katakana (10% acconding to Lunde).
+// and Katakana (10% according to Lunde).
 if jis0208_lead_minus_offset == 0x03 &&
 trail_minus_offset < 0x53 {
 // Hiragana

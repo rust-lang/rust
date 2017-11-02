@@ -170,7 +170,7 @@ pub fn format_expr(
         ast::ExprKind::TupField(..) |
         ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
         ast::ExprKind::Mac(ref mac) => {
-            // Failure to rewrite a marco should not imply failure to
+            // Failure to rewrite a macro should not imply failure to
             // rewrite the expression.
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
                 .or_else(|| Some(context.snippet(expr.span)))

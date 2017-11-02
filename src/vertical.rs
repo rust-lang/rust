@@ -183,7 +183,7 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
     }
 }
 
-fn struct_field_preix_max_min_width<T: AlignedItem>(
+fn struct_field_prefix_max_min_width<T: AlignedItem>(
     context: &RewriteContext,
     fields: &[T],
     shape: Shape,
@@ -219,7 +219,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
     // 1 = ","
     let item_shape = Shape::indented(item_indent, context.config).sub_width(1)?;
     let (mut field_prefix_max_width, field_prefix_min_width) =
-        struct_field_preix_max_min_width(context, fields, item_shape);
+        struct_field_prefix_max_min_width(context, fields, item_shape);
     let max_diff = field_prefix_max_width
         .checked_sub(field_prefix_min_width)
         .unwrap_or(0);

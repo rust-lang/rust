@@ -159,7 +159,7 @@ pub struct State<F: FnMut() -> ()> { now: F }
 
 pub struct State<F: FnMut()> { now: F }
 
-struct Palette { /// A map of indizes in the palette to a count of pixels in approximately that color
+struct Palette { /// A map of indices in the palette to a count of pixels in approximately that color
                     foo: i32}
 
 // Splitting a single line comment into a block previously had a misalignment
