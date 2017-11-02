@@ -1955,7 +1955,11 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     // Remove the quote characters.
     let str_lit = &string_lit[1..string_lit.len() - 1];
 
-    rewrite_string(str_lit, &StringFormat::new(shape, context.config))
+    rewrite_string(
+        str_lit,
+        &StringFormat::new(shape.visual_indent(0), context.config),
+        None,
+    )
 }
 
 fn string_requires_rewrite(
