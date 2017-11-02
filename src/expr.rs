@@ -641,8 +641,12 @@ fn rewrite_closure(
         };
         if no_return_type && !needs_block {
             // block.stmts.len() == 1
-            if let Some(expr) = stmt_expr(&block.stmts[0]) {
-                if let Some(rw) = rewrite_closure_expr(expr, &prefix, context, body_shape) {
+            if let Some(ref expr) = stmt_expr(&block.stmts[0]) {
+                if let Some(rw) = if is_block_closure_forced(expr) {
+                    rewrite_closure_with_block(context, shape, &prefix, expr)
+                } else {
+                    rewrite_closure_expr(expr, &prefix, context, body_shape)
+                } {
                     return Some(rw);
                 }
             }
@@ -2247,7 +2251,34 @@ fn rewrite_last_closure(
         if prefix.contains('\n') {
             return None;
         }
+        // If we are inside macro, we do not want to add or remove block from closure body.
+        if context.inside_macro {
+            return expr.rewrite(context, shape);
+        }
+
         let body_shape = shape.offset_left(extra_offset)?;
+
+        // We force to use block for the body of the closure for certain kinds of expressions.
+        if is_block_closure_forced(body) {
+            return rewrite_closure_with_block(context, body_shape, &prefix, body).and_then(
+                |body_str| {
+                    // If the expression can fit in a single line, we need not force block closure.
+                    if body_str.lines().count() <= 7 {
+                        match rewrite_closure_expr(body, &prefix, context, shape) {
+                            Some(ref single_line_body_str)
+                                if !single_line_body_str.contains('\n') =>
+                            {
+                                Some(single_line_body_str.clone())
+                            }
+                            _ => Some(body_str),
+                        }
+                    } else {
+                        Some(body_str)
+                    }
+                },
+            );
+        }
+
         // When overflowing the closure which consists of a single control flow expression,
         // force to use block if its condition uses multi line.
         let is_multi_lined_cond = rewrite_cond(context, body, body_shape)
@@ -2261,6 +2292,23 @@ fn rewrite_last_closure(
         return expr.rewrite(context, shape);
     }
     None
+}
+
+fn is_block_closure_forced(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprKind::If(..) |
+        ast::ExprKind::IfLet(..) |
+        ast::ExprKind::Loop(..) |
+        ast::ExprKind::While(..) |
+        ast::ExprKind::WhileLet(..) |
+        ast::ExprKind::ForLoop(..) => true,
+        ast::ExprKind::AddrOf(_, ref expr) |
+        ast::ExprKind::Box(ref expr) |
+        ast::ExprKind::Try(ref expr) |
+        ast::ExprKind::Unary(_, ref expr) |
+        ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced(expr),
+        _ => false,
+    }
 }
 
 fn rewrite_last_arg_with_overflow<'a, T>(
