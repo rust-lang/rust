@@ -1198,12 +1198,13 @@ impl<'a> ControlFlow<'a> {
             context
                 .codemap
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
-            self.pat
-                .map_or(cond_span.lo(), |p| if self.matcher.is_empty() {
+            self.pat.map_or(cond_span.lo(), |p| {
+                if self.matcher.is_empty() {
                     p.span.lo()
                 } else {
                     context.codemap.span_before(self.span, self.matcher.trim())
-                }),
+                }
+            }),
         );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -2753,13 +2754,17 @@ where
     if items.len() == 1 {
         // 3 = "(" + ",)"
         let nested_shape = shape.sub_width(3)?.visual_indent(1);
-        return items.next().unwrap().rewrite(context, nested_shape).map(
-            |s| if context.config.spaces_within_parens() {
-                format!("( {}, )", s)
-            } else {
-                format!("({},)", s)
-            },
-        );
+        return items
+            .next()
+            .unwrap()
+            .rewrite(context, nested_shape)
+            .map(|s| {
+                if context.config.spaces_within_parens() {
+                    format!("( {}, )", s)
+                } else {
+                    format!("({},)", s)
+                }
+            });
     }
 
     let list_lo = context.codemap.span_after(span, "(");

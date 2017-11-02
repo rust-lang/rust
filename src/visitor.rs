@@ -136,13 +136,15 @@ impl<'a> FmtVisitor<'a> {
                     self.last_pos,
                     attr_lo.unwrap_or(first_stmt.span.lo()),
                 ));
-                let len = CommentCodeSlices::new(&snippet).nth(0).and_then(
-                    |(kind, _, s)| if kind == CodeCharKind::Normal {
-                        s.rfind('\n')
-                    } else {
-                        None
-                    },
-                );
+                let len = CommentCodeSlices::new(&snippet)
+                    .nth(0)
+                    .and_then(|(kind, _, s)| {
+                        if kind == CodeCharKind::Normal {
+                            s.rfind('\n')
+                        } else {
+                            None
+                        }
+                    });
                 if let Some(len) = len {
                     self.last_pos = self.last_pos + BytePos::from_usize(len);
                 }
