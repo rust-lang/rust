@@ -48,3 +48,18 @@ fn issue_1874() {
 y
     }
 }
+
+fn combine_patterns() {
+    let x = match y {
+        Some(
+            Some(
+                Foo {
+                    z: Bar(..),
+                    a: Bar(..),
+                    b: Bar(..),
+                },
+            ),
+        ) => z,
+        _ => return,
+    };
+}
