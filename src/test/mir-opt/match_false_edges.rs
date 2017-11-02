@@ -20,17 +20,17 @@ fn guard2(_:i32) -> bool {
 
 fn full_tested_match() {
     let _ = match Some(42) {
-        Some(x) if guard() => 1 + x,
-        Some(y) => 2 + y,
-        None => 3,
+        Some(x) if guard() => (1, x),
+        Some(y) => (2, y),
+        None => (3, 3),
     };
 }
 
 fn full_tested_match2() {
     let _ = match Some(42) {
-        Some(x) if guard() => 1 + x,
-        None => 3,
-        Some(y) => 2 + y,
+        Some(x) if guard() => (1, x),
+        None => (3, 3),
+        Some(y) => (2, y),
     };
 }
 
@@ -55,12 +55,12 @@ fn main() {
 //  bb1: { // arm1
 //      StorageLive(_7);
 //      _7 = _3;
-//      _1 = Add(const 1i32, _7);
-//      ...
+//      _1 = (const 1i32, _7);
+//      StorageDead(_7);
 //      goto -> bb11;
 //  }
 //  bb2: { // binding3(empty) and arm3
-//      _1 = const 3i32;
+//      _1 = (const 3i32, const 3i32);
 //      goto -> bb11;
 //  }
 //  bb3: {
@@ -92,7 +92,7 @@ fn main() {
 //      _4 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
 //      _8 = _4;
-//      _1 = Add(const 2i32, _8);
+//      _1 = (const 2i32, _8);
 //      StorageDead(_8);
 //      goto -> bb11;
 //  }
@@ -102,7 +102,7 @@ fn main() {
 //  }
 // END rustc.node17.SimplifyBranches-initial.before.mir
 //
-// START rustc.node40.SimplifyBranches-initial.before.mir
+// START rustc.node42.SimplifyBranches-initial.before.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
@@ -112,12 +112,12 @@ fn main() {
 //  bb1: { // arm1
 //      StorageLive(_7);
 //      _7 = _3;
-//      _1 = Add(const 1i32, _7);
-//      ...
+//      _1 = (const 1i32, _7);
+//      StorageDead(_7);
 //      goto -> bb11;
 //  }
 //  bb2: { // binding3(empty) and arm3
-//      _1 = const 3i32;
+//      _1 = (const 3i32, const 3i32);
 //      goto -> bb11;
 //  }
 //  bb3: {
@@ -149,7 +149,7 @@ fn main() {
 //      _4 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
 //      _8 = _4;
-//      _1 = Add(const 2i32, _8);
+//      _1 = (const 2i32, _8);
 //      StorageDead(_8);
 //      goto -> bb11;
 //  }
@@ -157,9 +157,9 @@ fn main() {
 //      ...
 //      return;
 //  }
-// END rustc.node40.SimplifyBranches-initial.before.mir
+// END rustc.node42.SimplifyBranches-initial.before.mir
 //
-// START rustc.node63.SimplifyBranches-initial.before.mir
+// START rustc.node67.SimplifyBranches-initial.before.mir
 // bb0: {
 //     ...
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
@@ -233,4 +233,4 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node63.SimplifyBranches-initial.before.mir
+// END rustc.node67.SimplifyBranches-initial.before.mir
