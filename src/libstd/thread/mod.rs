@@ -27,9 +27,9 @@
 //! a thread will unwind the stack, running destructors and freeing
 //! owned resources. While not meant as a 'try/catch' mechanism, panics
 //! in Rust can nonetheless be caught with
-//! ['catch_unwind'](../../std/panic/fn.catch_unwind.html) and recovered
+//! [`catch_unwind`](../../std/panic/fn.catch_unwind.html) and recovered
 //! from, or alternatively be resumed with
-//! ['resume_unwind'](../../std/panic/fn.resume_unwind.html). If the panic
+//! [`resume_unwind`](../../std/panic/fn.resume_unwind.html). If the panic
 //! is not caught the thread will exit, but the panic may optionally be
 //! detected from a different thread with `join`. If the main thread panics
 //! without the panic being caught, the application will exit with a
