@@ -441,6 +441,11 @@ fn test_format_args() {
     print!("x is {}, y is {1}, name is {n}", x, y, n = name);
 }
 
+
+union TestUnion {
+    f1: u32
+}
+
 struct FrameBuffer;
 
 struct SilenceGenerator;

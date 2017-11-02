@@ -558,8 +558,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         if !self.span.filter_generated(sub_span, item.span) {
             let span = self.span_from_span(sub_span.expect("No span found for struct"));
+            let kind = match item.node {
+                ast::ItemKind::Struct(_, _) => DefKind::Struct,
+                ast::ItemKind::Union(_, _) => DefKind::Union,
+                _ => unreachable!(),
+            };
             self.dumper.dump_def(item.vis == ast::Visibility::Public, Def {
-                kind: DefKind::Struct,
+                kind,
                 id: ::id_from_node_id(item.id, &self.save_ctxt),
                 span,
                 name,
@@ -1216,7 +1221,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) =>
                 self.process_static_or_const_item(item, &typ, &expr),
-            Struct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
+            Struct(ref def, ref ty_params) | Union(ref def, ref ty_params) => {
+                self.process_struct(item, def, ty_params)
+            }
             Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
             Impl(..,
                  ref ty_params,
