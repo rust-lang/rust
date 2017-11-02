@@ -22,7 +22,7 @@ fn a() {
 fn b() {
     // Here we take the supplied types, resulting in an error later on.
     with_closure(|x: u32, y: i32| {
-        //~^ ERROR mismatched types
+        //~^ ERROR type mismatch in closure arguments
     });
 }
 
