@@ -65,6 +65,7 @@ case "$TRAVIS_OS_NAME" in
         # NOTE OSx's nm doesn't accept the `--defined-only` or provide an equivalent.
         # Use GNU nm instead
         NM=gnm
+        brew update
         brew install binutils
         ;;
     *)
