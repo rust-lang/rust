@@ -47,16 +47,6 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @pub          [pub]
-            @max          [::std::u32::MAX]
-            @debug_format ["{}"]);
-    );
-
-    ($name:ident nopub) => (
-        newtype_index!(
-            // Leave out derives marker so we can use its absence to ensure it comes first
-            @type         [$name]
-            @pub          []
             @max          [::std::u32::MAX]
             @debug_format ["{}"]);
     );
@@ -66,20 +56,8 @@ macro_rules! newtype_index {
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
-            @pub          [pub]
             @max          [::std::u32::MAX]
             @debug_format ["{}"]
-                          $($tokens)+);
-    );
-
-    // Define any constants
-    ($name:ident nopub { $($tokens:tt)+ }) => (
-        newtype_index!(
-            // Leave out derives marker so we can use its absence to ensure it comes first
-            @type         [$name]
-            @pub          []
-            @max          [::std::u32::MAX]
-            @debug_format [unsafe {::std::intrinsics::type_name::<$name>() }]
                           $($tokens)+);
     );
 
@@ -87,8 +65,8 @@ macro_rules! newtype_index {
 
     // Base case, user-defined constants (if any) have already been defined
     (@derives      [$($derives:ident,)*]
-     @type         [$type:ident]
      @pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
@@ -148,16 +126,43 @@ macro_rules! newtype_index {
             @debug_format [$debug_format]);
     );
 
-    // Append comma to end of derives list if it's missing
+    // Handle the case where someone wants to make the internal field public
     (@type         [$type:ident]
-     @pub          [$($pub:tt)*]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   pub idx
+                   $($tokens:tt)*) => (
+        newtype_index!(
+            @pub          [pub]
+            @type         [$type]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
+    );
+
+    // The default case is that the internal field is private
+    (@type         [$type:ident]
+     @max          [$max:expr]
+     @debug_format [$debug_format:expr]
+                   $($tokens:tt)*) => (
+        newtype_index!(
+            @pub          []
+            @type         [$type]
+            @max          [$max]
+            @debug_format [$debug_format]
+                          $($tokens)*);
+    );
+
+    // Append comma to end of derives list if it's missing
+    (@pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]
                    derive [$($derives:ident),*]
                    $($tokens:tt)*) => (
         newtype_index!(
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           derive [$($derives,)*]
@@ -166,8 +171,8 @@ macro_rules! newtype_index {
 
     // By not including the @derives marker in this list nor in the default args, we can force it
     // to come first if it exists. When encodable is custom, just use the derives list as-is.
-    (@type         [$type:ident]
-     @pub          [$($pub:tt)*]
+    (@pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]
                    derive [$($derives:ident,)+]
@@ -175,8 +180,8 @@ macro_rules! newtype_index {
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)+]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $($tokens)*);
@@ -184,16 +189,16 @@ macro_rules! newtype_index {
 
     // By not including the @derives marker in this list nor in the default args, we can force it
     // to come first if it exists. When encodable isn't custom, add serialization traits by default.
-    (@type         [$type:ident]
-     @pub          [$($pub:tt)*]
+    (@pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]
                    derive [$($derives:ident,)+]
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)+ RustcDecodable, RustcEncodable,]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $($tokens)*);
@@ -201,31 +206,31 @@ macro_rules! newtype_index {
 
     // The case where no derives are added, but encodable is overriden. Don't
     // derive serialization traits
-    (@type         [$type:ident]
-     @pub          [$($pub:tt)*]
+    (@pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      []
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
 
     // The case where no derives are added, add serialization derives by default
-    (@type         [$type:ident]
-     @pub          [$($pub:tt)*]
+    (@pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [RustcDecodable, RustcEncodable,]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $($tokens)*);
@@ -233,15 +238,15 @@ macro_rules! newtype_index {
 
     // Rewrite final without comma to one that includes comma
     (@derives      [$($derives:ident,)*]
-     @type         [$type:ident]
      @pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]
                    $name:ident = $constant:expr) => (
         newtype_index!(
             @derives      [$($derives,)*]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $name = $constant,);
@@ -249,16 +254,16 @@ macro_rules! newtype_index {
 
     // Rewrite final const without comma to one that includes comma
     (@derives      [$($derives:ident,)*]
-     @type         [$type:ident]
      @pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$_max:expr]
      @debug_format [$debug_format:expr]
                    $(#[doc = $doc:expr])*
                    const $name:ident = $constant:expr) => (
         newtype_index!(
             @derives      [$($derives,)*]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $(#[doc = $doc])* const $name = $constant,);
@@ -266,16 +271,16 @@ macro_rules! newtype_index {
 
     // Replace existing default for max
     (@derives      [$($derives:ident,)*]
-     @type         [$type:ident]
      @pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$_max:expr]
      @debug_format [$debug_format:expr]
                    MAX = $max:expr,
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)*]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $($tokens)*);
@@ -283,16 +288,16 @@ macro_rules! newtype_index {
 
     // Replace existing default for debug_format
     (@derives      [$($derives:ident,)*]
-     @type         [$type:ident]
      @pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$_debug_format:expr]
                    DEBUG_FORMAT = $debug_format:expr,
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)*]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $($tokens)*);
@@ -300,8 +305,8 @@ macro_rules! newtype_index {
 
     // Assign a user-defined constant
     (@derives      [$($derives:ident,)*]
-     @type         [$type:ident]
      @pub          [$($pub:tt)*]
+     @type         [$type:ident]
      @max          [$max:expr]
      @debug_format [$debug_format:expr]
                    $(#[doc = $doc:expr])*
@@ -311,8 +316,8 @@ macro_rules! newtype_index {
         pub const $name: $type = $type($constant);
         newtype_index!(
             @derives      [$($derives,)*]
-            @type         [$type]
             @pub          [$($pub)*]
+            @type         [$type]
             @max          [$max]
             @debug_format [$debug_format]
                           $($tokens)*);

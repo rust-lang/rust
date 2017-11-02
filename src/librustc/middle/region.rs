@@ -156,7 +156,11 @@ pub struct BlockRemainder {
     pub first_statement_index: FirstStatementIndex,
 }
 
-newtype_index!(FirstStatementIndex { MAX = SCOPE_DATA_REMAINDER_MAX });
+newtype_index!(FirstStatementIndex
+    {
+        pub idx
+        MAX = SCOPE_DATA_REMAINDER_MAX
+    });
 
 impl From<ScopeData> for Scope {
     #[inline]

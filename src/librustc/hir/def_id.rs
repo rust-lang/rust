@@ -16,7 +16,7 @@ use serialize::{self, Encoder, Decoder};
 use std::fmt;
 use std::u32;
 
-newtype_index!(CrateNum nopub
+newtype_index!(CrateNum
     {
         derive[Debug]
         ENCODABLE = custom
