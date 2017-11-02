@@ -1079,11 +1079,12 @@
             return output;
         }
 
-        function makeTabHeader(tabNb, text) {
+        function makeTabHeader(tabNb, text, nbElems) {
             if (currentTab === tabNb) {
-                return '<div class="selected">' + text + '</div>';
+                return '<div class="selected">' + text +
+                       ' <div class="count">(' + nbElems + ')</div></div>';
             }
-            return '<div>' + text + '</div>';
+            return '<div>' + text + ' <div class="count">(' + nbElems + ')</div></div>';
         }
 
         function showResults(results) {
@@ -1093,9 +1094,9 @@
             output = '<h1>Results for ' + escape(query.query) +
                 (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
                 '<div id="titles">' +
-                makeTabHeader(0, "Types/modules") +
-                makeTabHeader(1, "As parameters") +
-                makeTabHeader(2, "As return value") +
+                makeTabHeader(0, "Types/modules", results['others'].length) +
+                makeTabHeader(1, "As parameters", results['in_args'].length) +
+                makeTabHeader(2, "As return value", results['returned'].length) +
                 '</div><div id="results">';
 
             output += addTab(results['others'], query);
