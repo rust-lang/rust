@@ -469,6 +469,29 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         debug!("check_method_receiver: sig={:?}", sig);
 
         let self_arg_ty = sig.inputs()[0];
+
+        if fcx.tcx.sess.features.borrow().arbitrary_self_types {
+            let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
+
+            let mut autoderef = fcx.autoderef(span, self_arg_ty);
+            while let Some((potential_self_ty, _)) = autoderef.next() {
+                debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`", potential_self_ty, self_ty);
+
+                // there's gotta be a more idiomatic way of checking if types are equal than this
+                if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, self_ty, potential_self_ty) {
+                    err.cancel();
+                    continue;
+                } else {
+                    // we found a type that matches `self_ty`
+                    autoderef.finalize();
+                    return;
+                }
+            }
+
+            span_err!(fcx.tcx.sess, span, E0307, "invalid `self` type: {:?}", self_arg_ty);
+            return;
+        }
+
         let rcvr_ty = match ExplicitSelf::determine(self_ty, self_arg_ty) {
             ExplicitSelf::ByValue => self_ty,
             ExplicitSelf::ByReference(region, mutbl) => {
