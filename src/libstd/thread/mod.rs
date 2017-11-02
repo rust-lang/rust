@@ -31,7 +31,7 @@
 //! from, or alternatively be resumed with
 //! [`resume_unwind`](../../std/panic/fn.resume_unwind.html). If the panic
 //! is not caught the thread will exit, but the panic may optionally be
-//! detected from a different thread with `join`. If the main thread panics
+//! detected from a different thread with [`join`]. If the main thread panics
 //! without the panic being caught, the application will exit with a
 //! non-zero exit code.
 //!
