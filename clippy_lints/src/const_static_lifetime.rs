@@ -37,7 +37,7 @@ impl StaticConst {
     // Recursively visit types
     fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext) {
         match ty.node {
-            // Be carefull of nested structures (arrays and tuples)
+            // Be careful of nested structures (arrays and tuples)
             TyKind::Array(ref ty, _) => {
                 self.visit_type(&*ty, cx);
             },

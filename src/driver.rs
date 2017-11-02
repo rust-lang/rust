@@ -82,7 +82,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                             .as_ref()
                             .expect(
                                 "at this compilation stage \
-                                 the krate must be parsed",
+                                 the crate must be parsed",
                             )
                             .span,
                     );

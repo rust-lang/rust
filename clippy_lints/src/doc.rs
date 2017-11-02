@@ -224,7 +224,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
 
                     let (begin, span) = spans[index];
 
-                    // Adjust for the begining of the current `Event`
+                    // Adjust for the beginning of the current `Event`
                     let span = span.with_lo(span.lo() + BytePos::from_usize(offset - begin));
 
                     check_text(cx, valid_idents, &text, span);

@@ -75,7 +75,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.148
 * Update to *rustc 1.21.0-nightly (37c7d0ebb 2017-07-31)*
-* New lints: [`unreadable_literal`], [`inconsisten_digit_grouping`], [`large_digit_groups`]
+* New lints: [`unreadable_literal`], [`inconsistent_digit_grouping`], [`large_digit_groups`]
 
 ## 0.0.147
 * Update to *rustc 1.21.0-nightly (aac223f4f 2017-07-30)*
