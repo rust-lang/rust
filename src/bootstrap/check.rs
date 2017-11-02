@@ -402,6 +402,10 @@ impl Step for Clippy {
             cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
             // clippy tests need to know about the stage sysroot
             cargo.env("SYSROOT", builder.sysroot(compiler));
+            cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
+            cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+            let host_libs = builder.stage_out(compiler, Mode::Tool).join(builder.cargo_dir());
+            cargo.env("HOST_LIBS", host_libs);
             // clippy tests need to find the driver
             cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
