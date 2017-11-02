@@ -23,6 +23,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
 use syntax::ast;
 use syntax::codemap::Spanned;
+use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -68,7 +69,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::Binding(..) |
             PatKind::Ref(..) => false,
         };
-        if is_non_ref_pat && tcx.sess.features.borrow().match_default_bindings {
+        if is_non_ref_pat {
             debug!("pattern is non reference pattern");
             let mut exp_ty = self.resolve_type_vars_with_obligations(&expected);
 
@@ -113,10 +114,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
             if pat_adjustments.len() > 0 {
-                debug!("default binding mode is now {:?}", def_bm);
-                self.inh.tables.borrow_mut()
-                    .pat_adjustments_mut()
-                    .insert(pat.hir_id, pat_adjustments);
+                if tcx.sess.features.borrow().match_default_bindings {
+                    debug!("default binding mode is now {:?}", def_bm);
+                    self.inh.tables.borrow_mut()
+                        .pat_adjustments_mut()
+                        .insert(pat.hir_id, pat_adjustments);
+                } else {
+                    let mut err = feature_gate::feature_err(
+                        &tcx.sess.parse_sess,
+                        "match_default_bindings",
+                        pat.span,
+                        feature_gate::GateIssue::Language,
+                        "non-reference pattern used to match a reference",
+                    );
+                    if let Ok(snippet) = tcx.sess.codemap().span_to_snippet(pat.span) {
+                        err.span_suggestion(pat.span, "consider using", format!("&{}", &snippet));
+                    }
+                    err.emit();
+                }
             }
         }
 
@@ -325,8 +340,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             if let Some(mut err) = err {
                                 if is_arg {
                                     if let PatKind::Binding(..) = inner.node {
-                                        if let Ok(snippet) = self.sess().codemap()
-                                                                        .span_to_snippet(pat.span)
+                                        if let Ok(snippet) = tcx.sess.codemap()
+                                                                     .span_to_snippet(pat.span)
                                         {
                                             err.help(&format!("did you mean `{}: &{}`?",
                                                               &snippet[1..],

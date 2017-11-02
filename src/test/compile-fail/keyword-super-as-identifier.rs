@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let super = "foo"; //~ ERROR failed to resolve. There are too many initial `super`s
+    let super = 22; //~ ERROR failed to resolve. There are too many initial `super`s
 }

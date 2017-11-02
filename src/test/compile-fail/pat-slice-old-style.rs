@@ -17,8 +17,9 @@ fn slice_pat(x: &[u8]) {
     // OLD!
     match x {
         [a, b..] => {},
-        //~^ ERROR expected an array or slice, found `&[u8]`
-        //~| HELP the semantics of slice patterns changed recently; see issue #23121
+        //~^ ERROR non-reference pattern used to match a reference
+        //~| HELP add #![feature(match_default_bindings)] to the crate attributes to enable
+        //~| HELP consider using
         _ => panic!(),
     }
 }
