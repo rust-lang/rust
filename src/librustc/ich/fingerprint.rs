@@ -30,6 +30,11 @@ impl Fingerprint {
     }
 
     #[inline]
+    pub fn as_value(&self) -> (u64, u64) {
+        (self.0, self.1)
+    }
+
+    #[inline]
     pub fn combine(self, other: Fingerprint) -> Fingerprint {
         // See https://stackoverflow.com/a/27952689 on why this function is
         // implemented this way.

@@ -63,7 +63,7 @@ use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Ref, RefKind, SpanData, MacroRef, Def, DefKind, Relation, RelationKind,
-               ExternalCrateData};
+               ExternalCrateData, GlobalCrateId};
 use rls_data::config::Config;
 
 
@@ -81,10 +81,6 @@ pub enum Data {
     DefData(Def),
     RelationData(Relation),
 }
-
-macro_rules! option_try(
-    ($e:expr) => (match $e { Some(e) => e, None => return None })
-);
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     fn span_from_span(&self, span: Span) -> SpanData {
@@ -119,9 +115,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             };
             let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
-                name: self.tcx.crate_name(n).to_string(),
-                num: n.as_u32(),
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
+                num: n.as_u32(),
+                id: GlobalCrateId {
+                    name: self.tcx.crate_name(n).to_string(),
+                    disambiguator: self.tcx.crate_disambiguator(n)
+                                       .to_fingerprint().as_value(),
+                },
             });
         }
 
@@ -728,8 +728,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // macro uses.
         let callsite = span.source_callsite();
         let callsite_span = self.span_from_span(callsite);
-        let callee = option_try!(span.source_callee());
-        let callee_span = option_try!(callee.span);
+        let callee = span.source_callee()?;
+        let callee_span = callee.span?;
 
         // Ignore attribute macros, their spans are usually mangled
         if let MacroAttribute(_) = callee.format {

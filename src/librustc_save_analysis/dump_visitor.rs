@@ -46,8 +46,8 @@ use json_dumper::{JsonDumper, DumpOutput};
 use span_utils::SpanUtils;
 use sig;
 
-use rls_data::{CratePreludeData, Import, ImportKind, SpanData, Ref, RefKind,
-               Def, DefKind, Relation, RelationKind};
+use rls_data::{CratePreludeData, GlobalCrateId, Import, ImportKind, SpanData,
+               Ref, RefKind, Def, DefKind, Relation, RelationKind};
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
@@ -131,7 +131,11 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         });
 
         let data = CratePreludeData {
-            crate_name: name.into(),
+            crate_id: GlobalCrateId {
+                name: name.into(),
+                disambiguator: self.tcx.sess.local_crate_disambiguator()
+                                   .to_fingerprint().as_value(),
+            },
             crate_root: crate_root.unwrap_or("<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
             span: self.span_from_span(krate.span),
