@@ -301,7 +301,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         )?;
         ecx.memory.write_ptr_sized_unsigned(ptr, PrimVal::Bytes(0))?;
         ecx.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
-        ecx.globals.insert(
+        ecx.tcx.interpret_interner.borrow_mut().cache(
             GlobalId {
                 instance,
                 promoted: None,
