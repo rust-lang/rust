@@ -26,7 +26,7 @@
 //! Fatal logic errors in Rust cause *thread panic*, during which
 //! a thread will unwind the stack, running destructors and freeing
 //! owned resources. While not meant as a 'try/catch' mechanism, panics
-//! in Rust can nonetheless be caught with
+//! in Rust can nonetheless be caught (unless compiling with `panic=abort`) with
 //! [`catch_unwind`](../../std/panic/fn.catch_unwind.html) and recovered
 //! from, or alternatively be resumed with
 //! [`resume_unwind`](../../std/panic/fn.resume_unwind.html). If the panic
