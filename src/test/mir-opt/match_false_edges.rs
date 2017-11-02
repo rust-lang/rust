@@ -45,7 +45,7 @@ fn main() {
 
 // END RUST SOURCE
 //
-// START rustc.node17.NLL.before.mir
+// START rustc.node17.SimplifyBranches-initial.before.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
@@ -87,7 +87,7 @@ fn main() {
 //  bb9: { // to pre_binding2
 //      falseEdges -> [real: bb4, imaginary: bb4];
 //  }
-//  bb10: { // binding2 and arm2
+//  bb10: { // bindingNoLandingPads.before.mir2 and arm2
 //      StorageLive(_4);
 //      _4 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
@@ -100,9 +100,9 @@ fn main() {
 //      ...
 //      return;
 //  }
-// END rustc.node17.NLL.before.mir
+// END rustc.node17.SimplifyBranches-initial.before.mir
 //
-// START rustc.node40.NLL.before.mir
+// START rustc.node40.SimplifyBranches-initial.before.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
@@ -157,9 +157,9 @@ fn main() {
 //      ...
 //      return;
 //  }
-// END rustc.node40.NLL.before.mir
+// END rustc.node40.SimplifyBranches-initial.before.mir
 //
-// START rustc.node63.NLL.before.mir
+// START rustc.node63.SimplifyBranches-initial.before.mir
 // bb0: {
 //     ...
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
@@ -233,4 +233,4 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node63.NLL.before.mir
+// END rustc.node63.SimplifyBranches-initial.before.mir
