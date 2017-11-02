@@ -242,7 +242,8 @@ impl CodeMap {
                                 src_hash: u128,
                                 source_len: usize,
                                 mut file_local_lines: Vec<BytePos>,
-                                mut file_local_multibyte_chars: Vec<MultiByteChar>)
+                                mut file_local_multibyte_chars: Vec<MultiByteChar>,
+                                mut file_local_non_narrow_chars: Vec<NonNarrowChar>)
                                 -> Rc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
@@ -258,6 +259,10 @@ impl CodeMap {
             mbc.pos = mbc.pos + start_pos;
         }
 
+        for swc in &mut file_local_non_narrow_chars {
+            *swc = *swc + start_pos;
+        }
+
         let filemap = Rc::new(FileMap {
             name: filename,
             name_was_remapped,
@@ -270,6 +275,7 @@ impl CodeMap {
             end_pos,
             lines: RefCell::new(file_local_lines),
             multibyte_chars: RefCell::new(file_local_multibyte_chars),
+            non_narrow_chars: RefCell::new(file_local_non_narrow_chars),
         });
 
         files.push(filemap.clone());
@@ -297,6 +303,24 @@ impl CodeMap {
                 let line = a + 1; // Line numbers start at 1
                 let linebpos = (*f.lines.borrow())[a];
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
+                let col = chpos - linechpos;
+
+                let col_display = {
+                    let non_narrow_chars = f.non_narrow_chars.borrow();
+                    let start_width_idx = non_narrow_chars
+                        .binary_search_by_key(&linebpos, |x| x.pos())
+                        .unwrap_or_else(|x| x);
+                    let end_width_idx = non_narrow_chars
+                        .binary_search_by_key(&pos, |x| x.pos())
+                        .unwrap_or_else(|x| x);
+                    let special_chars = end_width_idx - start_width_idx;
+                    let non_narrow: usize =
+                        non_narrow_chars[start_width_idx..end_width_idx]
+                        .into_iter()
+                        .map(|x| x.width())
+                        .sum();
+                    col.0 - special_chars + non_narrow
+                };
                 debug!("byte pos {:?} is on the line at byte pos {:?}",
                        pos, linebpos);
                 debug!("char pos {:?} is on the line at char pos {:?}",
@@ -306,14 +330,28 @@ impl CodeMap {
                 Loc {
                     file: f,
                     line,
-                    col: chpos - linechpos,
+                    col,
+                    col_display,
                 }
             }
             Err(f) => {
+                let col_display = {
+                    let non_narrow_chars = f.non_narrow_chars.borrow();
+                    let end_width_idx = non_narrow_chars
+                        .binary_search_by_key(&pos, |x| x.pos())
+                        .unwrap_or_else(|x| x);
+                    let non_narrow: usize =
+                        non_narrow_chars[0..end_width_idx]
+                        .into_iter()
+                        .map(|x| x.width())
+                        .sum();
+                    chpos.0 - end_width_idx + non_narrow
+                };
                 Loc {
                     file: f,
                     line: 0,
                     col: chpos,
+                    col_display,
                 }
             }
         }

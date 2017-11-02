@@ -364,6 +364,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
             end_pos: _,
             ref lines,
             ref multibyte_chars,
+            ref non_narrow_chars,
         } = *self;
 
         name.hash_stable(hcx, hasher);
@@ -389,6 +390,12 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
         for &char_pos in multibyte_chars.iter() {
             stable_multibyte_char(char_pos, start_pos).hash_stable(hcx, hasher);
         }
+
+        let non_narrow_chars = non_narrow_chars.borrow();
+        non_narrow_chars.len().hash_stable(hcx, hasher);
+        for &char_pos in non_narrow_chars.iter() {
+            stable_non_narrow_char(char_pos, start_pos).hash_stable(hcx, hasher);
+        }
     }
 }
 
@@ -407,4 +414,13 @@ fn stable_multibyte_char(mbc: ::syntax_pos::MultiByteChar,
     } = mbc;
 
     (pos.0 - filemap_start.0, bytes as u32)
+}
+
+fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
+                          filemap_start: ::syntax_pos::BytePos)
+                          -> (u32, u32) {
+    let pos = swc.pos();
+    let width = swc.width();
+
+    (pos.0 - filemap_start.0, width as u32)
 }

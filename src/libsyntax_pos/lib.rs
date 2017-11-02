@@ -44,6 +44,8 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 extern crate serialize;
 extern crate serialize as rustc_serialize; // used by deriving
 
+extern crate unicode_width;
+
 pub mod hygiene;
 pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
 
@@ -494,6 +496,63 @@ pub struct MultiByteChar {
     pub bytes: usize,
 }
 
+/// Identifies an offset of a non-narrow character in a FileMap
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+pub enum NonNarrowChar {
+    /// Represents a zero-width character
+    ZeroWidth(BytePos),
+    /// Represents a wide (fullwidth) character
+    Wide(BytePos),
+}
+
+impl NonNarrowChar {
+    fn new(pos: BytePos, width: usize) -> Self {
+        match width {
+            0 => NonNarrowChar::ZeroWidth(pos),
+            2 => NonNarrowChar::Wide(pos),
+            _ => panic!("width {} given for non-narrow character", width),
+        }
+    }
+
+    /// Returns the absolute offset of the character in the CodeMap
+    pub fn pos(&self) -> BytePos {
+        match *self {
+            NonNarrowChar::ZeroWidth(p) |
+            NonNarrowChar::Wide(p) => p,
+        }
+    }
+
+    /// Returns the width of the character, 0 (zero-width) or 2 (wide)
+    pub fn width(&self) -> usize {
+        match *self {
+            NonNarrowChar::ZeroWidth(_) => 0,
+            NonNarrowChar::Wide(_) => 2,
+        }
+    }
+}
+
+impl Add<BytePos> for NonNarrowChar {
+    type Output = Self;
+
+    fn add(self, rhs: BytePos) -> Self {
+        match self {
+            NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos + rhs),
+            NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos + rhs),
+        }
+    }
+}
+
+impl Sub<BytePos> for NonNarrowChar {
+    type Output = Self;
+
+    fn sub(self, rhs: BytePos) -> Self {
+        match self {
+            NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos - rhs),
+            NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos - rhs),
+        }
+    }
+}
+
 /// The state of the lazy external source loading mechanism of a FileMap.
 #[derive(PartialEq, Eq, Clone)]
 pub enum ExternalSource {
@@ -552,11 +611,13 @@ pub struct FileMap {
     pub lines: RefCell<Vec<BytePos>>,
     /// Locations of multi-byte characters in the source code
     pub multibyte_chars: RefCell<Vec<MultiByteChar>>,
+    /// Width of characters that are not narrow in the source code
+    pub non_narrow_chars: RefCell<Vec<NonNarrowChar>>,
 }
 
 impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("FileMap", 7, |s| {
+        s.emit_struct("FileMap", 8, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
             s.emit_struct_field("src_hash", 6, |s| self.src_hash.encode(s))?;
@@ -610,6 +671,9 @@ impl Encodable for FileMap {
             })?;
             s.emit_struct_field("multibyte_chars", 5, |s| {
                 (*self.multibyte_chars.borrow()).encode(s)
+            })?;
+            s.emit_struct_field("non_narrow_chars", 7, |s| {
+                (*self.non_narrow_chars.borrow()).encode(s)
             })
         })
     }
@@ -618,7 +682,7 @@ impl Encodable for FileMap {
 impl Decodable for FileMap {
     fn decode<D: Decoder>(d: &mut D) -> Result<FileMap, D::Error> {
 
-        d.read_struct("FileMap", 6, |d| {
+        d.read_struct("FileMap", 8, |d| {
             let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
@@ -657,6 +721,8 @@ impl Decodable for FileMap {
             })?;
             let multibyte_chars: Vec<MultiByteChar> =
                 d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
+            let non_narrow_chars: Vec<NonNarrowChar> =
+                d.read_struct_field("non_narrow_chars", 7, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name,
                 name_was_remapped,
@@ -671,7 +737,8 @@ impl Decodable for FileMap {
                 src_hash,
                 external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
-                multibyte_chars: RefCell::new(multibyte_chars)
+                multibyte_chars: RefCell::new(multibyte_chars),
+                non_narrow_chars: RefCell::new(non_narrow_chars)
             })
         })
     }
@@ -709,6 +776,7 @@ impl FileMap {
             end_pos: Pos::from_usize(end_pos),
             lines: RefCell::new(Vec::new()),
             multibyte_chars: RefCell::new(Vec::new()),
+            non_narrow_chars: RefCell::new(Vec::new()),
         }
     }
 
@@ -796,6 +864,23 @@ impl FileMap {
             bytes,
         };
         self.multibyte_chars.borrow_mut().push(mbc);
+    }
+
+    pub fn record_width(&self, pos: BytePos, ch: char) {
+        let width = match ch {
+            '\t' | '\n' =>
+                // Tabs will consume one column.
+                // Make newlines take one column so that displayed spans can point them.
+                1,
+            ch =>
+                // Assume control characters are zero width.
+                // FIXME: How can we decide between `width` and `width_cjk`?
+                unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0),
+        };
+        // Only record non-narrow characters.
+        if width != 1 {
+            self.non_narrow_chars.borrow_mut().push(NonNarrowChar::new(pos, width));
+        }
     }
 
     pub fn is_real_file(&self) -> bool {
@@ -944,7 +1029,9 @@ pub struct Loc {
     /// The (1-based) line number
     pub line: usize,
     /// The (0-based) column offset
-    pub col: CharPos
+    pub col: CharPos,
+    /// The (0-based) column offset when displayed
+    pub col_display: usize,
 }
 
 /// A source code location used as the result of lookup_char_pos_adj
