@@ -88,6 +88,7 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
@@ -101,6 +102,7 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
@@ -108,7 +110,7 @@ matrix:
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
-      if: branch = auto
+      # if: branch = auto
     - env: IMAGE=armhf-gnu
       if: branch = auto
     - env: IMAGE=cross DEPLOY=1

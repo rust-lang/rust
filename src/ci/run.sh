@@ -65,6 +65,13 @@ else
   fi
 fi
 
+if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+    ncpus=$(sysctl -n hw.ncpu)
+else
+    ncpus=$(grep processor /proc/cpuinfo | wc -l)
+    export RUST_BACKTRACE=1
+fi
+
 travis_fold start configure
 travis_time_start
 $SRC/configure $RUST_CONFIGURE_ARGS
@@ -73,7 +80,7 @@ travis_time_finish
 
 travis_fold start make-prepare
 travis_time_start
-RUST_BACKTRACE=1 retry make prepare
+retry make prepare
 travis_fold end make-prepare
 travis_time_finish
 
@@ -83,19 +90,7 @@ make check-bootstrap
 travis_fold end check-bootstrap
 travis_time_finish
 
-if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-    ncpus=$(sysctl -n hw.ncpu)
-else
-    ncpus=$(grep processor /proc/cpuinfo | wc -l)
-fi
-
 if [ ! -z "$SCRIPT" ]; then
-  # RUST_BACKTRACE=1 can slow down tests a lot.
-  # Thus we don't enable it for jobs that are running tests.
-  # (ref: https://mozilla.logbot.info/rust-infra/20170923#c26921)
-  if [[ ! "$SCRIPT" =~ " test" ]]; then
-    export RUST_BACKTRACE=1
-  fi
   sh -x -c "$SCRIPT"
 else
   do_make() {
@@ -109,7 +104,7 @@ else
     return $retval
   }
 
-  RUST_BACKTRACE=1 do_make tidy
-  RUST_BACKTRACE=1 do_make all
+  do_make tidy
+  do_make all
   do_make "$RUST_CHECK_TARGET"
 fi
