@@ -75,6 +75,7 @@ This API is completely unstable and subject to change.
 #![feature(advanced_slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(crate_visibility_modifier)]
 #![feature(conservative_impl_trait)]
 #![feature(match_default_bindings)]
 #![feature(never_type)]

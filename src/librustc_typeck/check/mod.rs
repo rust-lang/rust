@@ -136,7 +136,8 @@ mod autoderef;
 pub mod dropck;
 pub mod _match;
 pub mod writeback;
-pub mod regionck;
+mod regionck;
+mod regionck_outlives;
 pub mod coercion;
 pub mod demand;
 pub mod method;
@@ -657,27 +658,8 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
                                         value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
-        let ok = self.normalize_associated_types_in_as_infer_ok(span, body_id, param_env, value);
+        let ok = self.partially_normalize_associated_types_in(span, body_id, param_env, value);
         self.register_infer_ok_obligations(ok)
-    }
-
-    fn normalize_associated_types_in_as_infer_ok<T>(&self,
-                                                    span: Span,
-                                                    body_id: ast::NodeId,
-                                                    param_env: ty::ParamEnv<'tcx>,
-                                                    value: &T)
-                                                    -> InferOk<'tcx, T>
-        where T : TypeFoldable<'tcx>
-    {
-        debug!("normalize_associated_types_in(value={:?})", value);
-        let mut selcx = traits::SelectionContext::new(self);
-        let cause = ObligationCause::misc(span, body_id);
-        let traits::Normalized { value, obligations } =
-            traits::normalize(&mut selcx, param_env, cause, value);
-        debug!("normalize_associated_types_in: result={:?} predicates={:?}",
-            value,
-            obligations);
-        InferOk { value, obligations }
     }
 
     /// Replace any late-bound regions bound in `value` with
@@ -1970,10 +1952,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                     -> InferOk<'tcx, T>
         where T : TypeFoldable<'tcx>
     {
-        self.inh.normalize_associated_types_in_as_infer_ok(span,
-                                                           self.body_id,
-                                                           self.param_env,
-                                                           value)
+        self.inh.partially_normalize_associated_types_in(span,
+                                                         self.body_id,
+                                                         self.param_env,
+                                                         value)
     }
 
     pub fn require_type_meets(&self,
