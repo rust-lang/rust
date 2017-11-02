@@ -193,6 +193,24 @@ declare_lint! {
      `map_or_else(g, f)`"
 }
 
+/// **What it does:** Checks for usage of `result.map(_).unwrap_or_else(_)`.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `result.ok().map_or_else(_, _)`.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// x.map(|a| a + 1).unwrap_or_else(some_function)
+/// ```
+declare_lint! {
+    pub RESULT_MAP_UNWRAP_OR_ELSE,
+    Allow,
+    "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
+     `.ok().map_or_else(g, f)`"
+}
+
 /// **What it does:** Checks for usage of `_.map_or(None, _)`.
 ///
 /// **Why is this bad?** Readability, this can be written more concisely as
@@ -615,6 +633,7 @@ impl LintPass for Pass {
             OK_EXPECT,
             OPTION_MAP_UNWRAP_OR,
             OPTION_MAP_UNWRAP_OR_ELSE,
+            RESULT_MAP_UNWRAP_OR_ELSE,
             OPTION_MAP_OR_NONE,
             OR_FUN_CALL,
             CHARS_NEXT_CMP,
@@ -1241,13 +1260,25 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr]
     }
 }
 
-/// lint use of `map().unwrap_or_else()` for `Option`s
-fn lint_map_unwrap_or_else<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, map_args: &'tcx [hir::Expr], unwrap_args: &'tcx [hir::Expr]) {
+/// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
+fn lint_map_unwrap_or_else<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
+    map_args: &'tcx [hir::Expr],
+    unwrap_args: &'tcx [hir::Expr],
+) {
     // lint if the caller of `map()` is an `Option`
-    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
+    let is_option = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION);
+    let is_result = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::RESULT);
+    if is_option || is_result {
         // lint message
-        let msg = "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling \
-                   `map_or_else(g, f)` instead";
+        let msg = if is_option {
+            "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling \
+            `map_or_else(g, f)` instead"
+        } else {
+            "called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling \
+            `ok().map_or_else(g, f)` instead"
+        };
         // get snippets for args to map() and unwrap_or_else()
         let map_snippet = snippet(cx, map_args[1].span, "..");
         let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
@@ -1258,18 +1289,32 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir
         if same_span && !multiline {
             span_note_and_lint(
                 cx,
-                OPTION_MAP_UNWRAP_OR_ELSE,
+                if is_option {
+                    OPTION_MAP_UNWRAP_OR_ELSE
+                } else {
+                    RESULT_MAP_UNWRAP_OR_ELSE
+                },
                 expr.span,
                 msg,
                 expr.span,
                 &format!(
-                    "replace `map({0}).unwrap_or_else({1})` with `map_or_else({1}, {0})`",
+                    "replace `map({0}).unwrap_or_else({1})` with `{2}map_or_else({1}, {0})`",
                     map_snippet,
-                    unwrap_snippet
+                    unwrap_snippet,
+                    if is_result { "ok()." } else { "" }
                 ),
             );
         } else if same_span && multiline {
-            span_lint(cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg);
+            span_lint(
+                cx,
+                if is_option {
+                    OPTION_MAP_UNWRAP_OR_ELSE
+                } else {
+                    RESULT_MAP_UNWRAP_OR_ELSE
+                },
+                expr.span,
+                msg,
+            );
         };
     }
 }
