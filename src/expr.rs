@@ -2281,15 +2281,7 @@ where
             ast::ExprKind::Closure(..) => {
                 // If the argument consists of multiple closures, we do not overflow
                 // the last closure.
-                if args.len() > 1
-                    && args.iter()
-                        .rev()
-                        .skip(1)
-                        .filter_map(|arg| arg.to_expr())
-                        .any(|expr| match expr.node {
-                            ast::ExprKind::Closure(..) => true,
-                            _ => false,
-                        }) {
+                if args_have_many_closure(args) {
                     None
                 } else {
                     rewrite_last_closure(context, expr, shape)
@@ -2308,6 +2300,22 @@ where
     } else {
         None
     }
+}
+
+fn args_have_many_closure<T>(args: &[&T]) -> bool
+where
+    T: ToExpr,
+{
+    args.iter()
+        .filter(|arg| {
+            arg.to_expr()
+                .map(|e| match e.node {
+                    ast::ExprKind::Closure(..) => true,
+                    _ => false,
+                })
+                .unwrap_or(false)
+        })
+        .count() > 1
 }
 
 fn can_be_overflowed<'a, T>(context: &RewriteContext, args: &[&T]) -> bool
