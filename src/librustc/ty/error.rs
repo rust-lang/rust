@@ -298,6 +298,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 db.span_note(found.origin_span,
                              "...that also applies to the same type variable here");
             }
+            OldStyleLUB(err) => {
+                db.note("this was previously accepted by the compiler but has been phased out");
+                db.note("for more information, see https://github.com/rust-lang/rust/issues/45852");
+
+                self.note_and_explain_type_err(db, &err, sp);
+            }
             _ => {}
         }
     }
