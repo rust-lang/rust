@@ -1415,15 +1415,15 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 let value = self.span.snippet(subexpression.span);
                 self.process_var_decl(pattern, value);
                 debug!("for loop, walk sub-expr: {:?}", subexpression.node);
-                visit::walk_expr(self, subexpression);
+                self.visit_expr(subexpression);
                 visit::walk_block(self, block);
             }
             ast::ExprKind::IfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
                 let value = self.span.snippet(subexpression.span);
                 self.process_var_decl(pattern, value);
-                visit::walk_expr(self, subexpression);
+                self.visit_expr(subexpression);
                 visit::walk_block(self, block);
-                opt_else.as_ref().map(|el| visit::walk_expr(self, el));
+                opt_else.as_ref().map(|el| self.visit_expr(el));
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.visit_expr(element);
