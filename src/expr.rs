@@ -2350,6 +2350,7 @@ where
     }
 }
 
+/// Returns true if the given vector of arguments has more than one `ast::ExprKind::Closure`.
 fn args_have_many_closure<T>(args: &[&T]) -> bool
 where
     T: ToExpr,
