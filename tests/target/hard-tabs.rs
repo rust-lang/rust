@@ -74,10 +74,12 @@ fn main() {
 		arg(a, b, c, d, e)
 	}
 
-	loong_func().quux(move || if true {
-		1
-	} else {
-		2
+	loong_func().quux(move || {
+		if true {
+			1
+		} else {
+			2
+		}
 	});
 
 	fffffffffffffffffffffffffffffffffff(a, {
