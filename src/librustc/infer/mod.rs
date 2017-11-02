@@ -1451,6 +1451,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.generator_sig(def_id)
     }
+
+    /// Normalizes associated types in `value`, potentially returning
+    /// new obligations that must further be processed.
+    pub fn partially_normalize_associated_types_in<T>(&self,
+                                                  span: Span,
+                                                  body_id: ast::NodeId,
+                                                  param_env: ty::ParamEnv<'tcx>,
+                                                  value: &T)
+                                                  -> InferOk<'tcx, T>
+        where T : TypeFoldable<'tcx>
+    {
+        debug!("partially_normalize_associated_types_in(value={:?})", value);
+        let mut selcx = traits::SelectionContext::new(self);
+        let cause = ObligationCause::misc(span, body_id);
+        let traits::Normalized { value, obligations } =
+            traits::normalize(&mut selcx, param_env, cause, value);
+        debug!("partially_normalize_associated_types_in: result={:?} predicates={:?}",
+            value,
+            obligations);
+        InferOk { value, obligations }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
