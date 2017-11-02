@@ -65,7 +65,7 @@ example, the `issue-1111.rs` test file is configured by the file
 
 ## Hack!
 
-Here are some [good starting issues](https://github.com/rust-lang-nursery/rustfmt/issues?q=is%3Aopen+is%3Aissue+label%3Aeasy).
+Here are some [good starting issues](https://github.com/rust-lang-nursery/rustfmt/issues?q=is%3Aopen+is%3Aissue+label%3Agood-first-issue).
 
 If you've found areas which need polish and don't have issues, please submit a
 PR, don't feel there needs to be an issue.
