@@ -1,3 +1,5 @@
+//! 64-bit wide vector types
+
 use simd_llvm::*;
 
 define_ty_doc! {

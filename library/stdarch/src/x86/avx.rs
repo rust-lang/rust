@@ -1,3 +1,18 @@
+//! Advanced Vector Extensions (AVX)
+//!
+//! The references are:
+//!
+//! - [Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2:
+//! Instruction Set Reference, A-Z][intel64_ref]. - [AMD64 Architecture
+//! Programmer's Manual, Volume 3: General-Purpose and System
+//! Instructions][amd64_ref].
+//!
+//! [Wikipedia][wiki] provides a quick overview of the instructions available.
+//!
+//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
+
 use std::mem;
 use std::ptr;
 
@@ -113,7 +128,7 @@ pub unsafe fn _mm256_shuffle_pd(a: f64x4, b: f64x4, imm8: i32) -> f64x4 {
             }
         }
     }
-    match (imm8 >> 0) & 0x1 {
+    match imm8 & 0x1 {
         0 => shuffle1!(0),
         _ => shuffle1!(1),
     }
@@ -161,7 +176,7 @@ pub unsafe fn _mm256_shuffle_ps(a: f32x8, b: f32x8, imm8: i32) -> f32x8 {
             }
         }
     }
-    match (imm8 >> 0) & 0x3 {
+    match imm8 & 0x3 {
         0 => shuffle1!(0, 4),
         1 => shuffle1!(1, 5),
         2 => shuffle1!(2, 6),
@@ -594,69 +609,69 @@ pub unsafe fn _mm256_xor_ps(a: f32x8, b: f32x8) -> f32x8 {
     mem::transmute(a ^ b)
 }
 
-// Equal (ordered, non-signaling)
+/// Equal (ordered, non-signaling)
 pub const _CMP_EQ_OQ: u8 = 0x00;
-// Less-than (ordered, signaling)
+/// Less-than (ordered, signaling)
 pub const _CMP_LT_OS: u8 = 0x01;
-// Less-than-or-equal (ordered, signaling)
+/// Less-than-or-equal (ordered, signaling)
 pub const _CMP_LE_OS: u8 = 0x02;
-// Unordered (non-signaling)
+/// Unordered (non-signaling)
 pub const _CMP_UNORD_Q: u8 = 0x03;
-// Not-equal (unordered, non-signaling)
+/// Not-equal (unordered, non-signaling)
 pub const _CMP_NEQ_UQ: u8 = 0x04;
-// Not-less-than (unordered, signaling)
+/// Not-less-than (unordered, signaling)
 pub const _CMP_NLT_US: u8 = 0x05;
-// Not-less-than-or-equal (unordered, signaling)
+/// Not-less-than-or-equal (unordered, signaling)
 pub const _CMP_NLE_US: u8 = 0x06;
-// Ordered (non-signaling)
+/// Ordered (non-signaling)
 pub const _CMP_ORD_Q: u8 = 0x07;
-// Equal (unordered, non-signaling)
+/// Equal (unordered, non-signaling)
 pub const _CMP_EQ_UQ: u8 = 0x08;
-// Not-greater-than-or-equal (unordered, signaling)
+/// Not-greater-than-or-equal (unordered, signaling)
 pub const _CMP_NGE_US: u8 = 0x09;
-// Not-greater-than (unordered, signaling)
+/// Not-greater-than (unordered, signaling)
 pub const _CMP_NGT_US: u8 = 0x0a;
-// False (ordered, non-signaling)
+/// False (ordered, non-signaling)
 pub const _CMP_FALSE_OQ: u8 = 0x0b;
-// Not-equal (ordered, non-signaling)
+/// Not-equal (ordered, non-signaling)
 pub const _CMP_NEQ_OQ: u8 = 0x0c;
-// Greater-than-or-equal (ordered, signaling)
+/// Greater-than-or-equal (ordered, signaling)
 pub const _CMP_GE_OS: u8 = 0x0d;
-// Greater-than (ordered, signaling)
+/// Greater-than (ordered, signaling)
 pub const _CMP_GT_OS: u8 = 0x0e;
-// True (unordered, non-signaling)
+/// True (unordered, non-signaling)
 pub const _CMP_TRUE_UQ: u8 = 0x0f;
-// Equal (ordered, signaling)
+/// Equal (ordered, signaling)
 pub const _CMP_EQ_OS: u8 = 0x10;
-// Less-than (ordered, non-signaling)
+/// Less-than (ordered, non-signaling)
 pub const _CMP_LT_OQ: u8 = 0x11;
-// Less-than-or-equal (ordered, non-signaling)
+/// Less-than-or-equal (ordered, non-signaling)
 pub const _CMP_LE_OQ: u8 = 0x12;
-// Unordered (signaling)
+/// Unordered (signaling)
 pub const _CMP_UNORD_S: u8 = 0x13;
-// Not-equal (unordered, signaling)
+/// Not-equal (unordered, signaling)
 pub const _CMP_NEQ_US: u8 = 0x14;
-// Not-less-than (unordered, non-signaling)
+/// Not-less-than (unordered, non-signaling)
 pub const _CMP_NLT_UQ: u8 = 0x15;
-// Not-less-than-or-equal (unordered, non-signaling)
+/// Not-less-than-or-equal (unordered, non-signaling)
 pub const _CMP_NLE_UQ: u8 = 0x16;
-// Ordered (signaling)
+/// Ordered (signaling)
 pub const _CMP_ORD_S: u8 = 0x17;
-// Equal (unordered, signaling)
+/// Equal (unordered, signaling)
 pub const _CMP_EQ_US: u8 = 0x18;
-// Not-greater-than-or-equal (unordered, non-signaling)
+/// Not-greater-than-or-equal (unordered, non-signaling)
 pub const _CMP_NGE_UQ: u8 = 0x19;
-// Not-greater-than (unordered, non-signaling)
+/// Not-greater-than (unordered, non-signaling)
 pub const _CMP_NGT_UQ: u8 = 0x1a;
-// False (ordered, signaling)
+/// False (ordered, signaling)
 pub const _CMP_FALSE_OS: u8 = 0x1b;
-// Not-equal (ordered, signaling)
+/// Not-equal (ordered, signaling)
 pub const _CMP_NEQ_OS: u8 = 0x1c;
-// Greater-than-or-equal (ordered, non-signaling)
+/// Greater-than-or-equal (ordered, non-signaling)
 pub const _CMP_GE_OQ: u8 = 0x1d;
-// Greater-than (ordered, non-signaling)
+/// Greater-than (ordered, non-signaling)
 pub const _CMP_GT_OQ: u8 = 0x1e;
-// True (unordered, signaling)
+/// True (unordered, signaling)
 pub const _CMP_TRUE_US: u8 = 0x1f;
 
 /// Compare packed double-precision (64-bit) floating-point
@@ -920,13 +935,10 @@ pub unsafe fn _mm_permutevar_ps(a: f32x4, b: i32x4) -> f32x4 {
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
 pub unsafe fn _mm256_permute_ps(a: f32x8, imm8: i32) -> f32x8 {
     let imm8 = (imm8 & 0xFF) as u8;
-    const fn add4(x: u32) -> u32 {
-        x + 4
-    }
     macro_rules! shuffle4 {
         ($a:expr, $b:expr, $c:expr, $d:expr) => {
             simd_shuffle8(a, _mm256_undefined_ps(), [
-                $a, $b, $c, $d, add4($a), add4($b), add4($c), add4($d)
+                $a, $b, $c, $d, $a + 4, $b + 4, $c + 4, $d + 4
             ])
         }
     }
@@ -960,7 +972,7 @@ pub unsafe fn _mm256_permute_ps(a: f32x8, imm8: i32) -> f32x8 {
             }
         }
     }
-    match (imm8 >> 0) & 0b11 {
+    match imm8 & 0b11 {
         0b00 => shuffle1!(0),
         0b01 => shuffle1!(1),
         0b10 => shuffle1!(2),
@@ -1014,7 +1026,7 @@ pub unsafe fn _mm_permute_ps(a: f32x4, imm8: i32) -> f32x4 {
             }
         }
     }
-    match (imm8 >> 0) & 0b11 {
+    match imm8 & 0b11 {
         0b00 => shuffle1!(0),
         0b01 => shuffle1!(1),
         0b10 => shuffle1!(2),
@@ -1022,6 +1034,8 @@ pub unsafe fn _mm_permute_ps(a: f32x4, imm8: i32) -> f32x4 {
     }
 }
 
+/// Shuffle double-precision (64-bit) floating-point elements in `a`
+/// within 256-bit lanes using the control in `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vpermilpd))]
@@ -1074,7 +1088,7 @@ pub unsafe fn _mm256_permute_pd(a: f64x4, imm8: i32) -> f64x4 {
             }
         }
     }
-    match (imm8 >> 0) & 0x1 {
+    match imm8 & 0x1 {
         0 => shuffle1!(0),
         _ => shuffle1!(1),
     }
@@ -1102,7 +1116,7 @@ pub unsafe fn _mm_permute_pd(a: f64x2, imm8: i32) -> f64x2 {
             }
         }
     }
-    match (imm8 >> 0) & 0x1 {
+    match imm8 & 0x1 {
         0 => shuffle1!(0),
         _ => shuffle1!(1),
     }
@@ -2750,8 +2764,7 @@ mod tests {
         let a = f32x8::new(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = f32x8::new(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = avx::_mm256_dp_ps(a, b, 0xFF);
-        let e =
-            f32x8::new(200., 200., 200., 200., 2387., 2387., 2387., 2387.);
+        let e = f32x8::new(200., 200., 200., 200., 2387., 2387., 2387., 2387.);
         assert_eq!(r, e);
     }
 

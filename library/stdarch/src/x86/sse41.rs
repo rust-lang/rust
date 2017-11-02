@@ -1,3 +1,4 @@
+//! Streaming SIMD Extensions 4.1 (SSE4.1)
 
 use std::mem;
 
@@ -22,18 +23,28 @@ pub const _MM_FROUND_RAISE_EXC: i32 = 0x00;
 /// suppress exceptions
 pub const _MM_FROUND_NO_EXC: i32 = 0x08;
 /// round to nearest and do not suppress exceptions
-pub const _MM_FROUND_NINT: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_NEAREST_INT);
+pub const _MM_FROUND_NINT: i32 = 0x00;
 /// round down and do not suppress exceptions
-pub const _MM_FROUND_FLOOR: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_NEG_INF);
+pub const _MM_FROUND_FLOOR: i32 =
+    (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_NEG_INF);
 /// round up and do not suppress exceptions
-pub const _MM_FROUND_CEIL: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_POS_INF);
+pub const _MM_FROUND_CEIL: i32 =
+    (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_POS_INF);
 /// truncate and do not suppress exceptions
 pub const _MM_FROUND_TRUNC: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_TO_ZERO);
-/// use MXCSR.RC and do not suppress exceptions; see `vendor::_MM_SET_ROUNDING_MODE`
-pub const _MM_FROUND_RINT: i32 = (_MM_FROUND_RAISE_EXC | _MM_FROUND_CUR_DIRECTION);
+/// use MXCSR.RC and do not suppress exceptions; see
+/// `vendor::_MM_SET_ROUNDING_MODE`
+pub const _MM_FROUND_RINT: i32 =
+    (_MM_FROUND_RAISE_EXC | _MM_FROUND_CUR_DIRECTION);
 /// use MXCSR.RC and suppress exceptions; see `vendor::_MM_SET_ROUNDING_MODE`
-pub const _MM_FROUND_NEARBYINT: i32 = (_MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTION);
+pub const _MM_FROUND_NEARBYINT: i32 =
+    (_MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTION);
 
+/// Blend packed 8-bit integers from `a` and `b` using `mask`
+///
+/// The high bit of each corresponding mask byte determines the selection.
+/// If the high bit is set the element of `a` is selected. The element
+/// of `b` is selected otherwise.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pblendvb))]
@@ -41,6 +52,11 @@ pub unsafe fn _mm_blendv_epi8(a: i8x16, b: i8x16, mask: i8x16) -> i8x16 {
     pblendvb(a, b, mask)
 }
 
+/// Blend packed 16-bit integers from `a` and `b` using the mask `imm8`.
+///
+/// The mask bits determine the selection. A clear bit selects the
+/// corresponding element of `a`, and a set bit the corresponding
+/// element of `b`.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pblendw, imm8 = 0xF0))]
@@ -209,8 +225,8 @@ pub unsafe fn _mm_max_epu16(a: u16x8, b: u16x8) -> u16x8 {
     pmaxuw(a, b)
 }
 
-// Compare packed 32-bit integers in `a` and `b`, and return packed maximum
-// values.
+/// Compare packed 32-bit integers in `a` and `b`, and return packed maximum
+/// values.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmaxsd, imm8 = 0))]
@@ -218,8 +234,8 @@ pub unsafe fn _mm_max_epi32(a: i32x4, b: i32x4) -> i32x4 {
     pmaxsd(a, b)
 }
 
-// Compare packed unsigned 32-bit integers in `a` and `b`, and return packed
-// maximum values.
+/// Compare packed unsigned 32-bit integers in `a` and `b`, and return packed
+/// maximum values.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmaxud, imm8 = 0))]
@@ -356,11 +372,17 @@ pub unsafe fn _mm_ceil_ss(a: f32x4, b: f32x4) -> f32x4 {
 ///
 /// ```
 /// use stdsimd::vendor;
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
-/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+///
+/// // round to nearest, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// // round down, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// // round up, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// // truncate, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
+/// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
 #[inline(always)]
 #[target_feature = "+sse4.1"]
@@ -379,11 +401,17 @@ pub unsafe fn _mm_round_pd(a: f64x2, rounding: i32) -> f64x2 {
 ///
 /// ```
 /// use stdsimd::vendor;
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
-/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+///
+/// // round to nearest, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// // round down, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// // round up, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// // truncate, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
+/// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
 #[inline(always)]
 #[target_feature = "+sse4.1"]
@@ -404,11 +432,17 @@ pub unsafe fn _mm_round_ps(a: f32x4, rounding: i32) -> f32x4 {
 ///
 /// ```
 /// use stdsimd::vendor;
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
-/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+///
+/// // round to nearest, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// // round down, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// // round up, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// // truncate, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
+/// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
 #[inline(always)]
 #[target_feature = "+sse4.1"]
@@ -429,11 +463,17 @@ pub unsafe fn _mm_round_sd(a: f64x2, b: f64x2, rounding: i32) -> f64x2 {
 ///
 /// ```
 /// use stdsimd::vendor;
-/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC); // round to nearest, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);     // round down, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);     // round up, and suppress exceptions
-/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);        // truncate, and suppress exceptions
-/// vendor::_MM_FROUND_CUR_DIRECTION; // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`
+///
+/// // round to nearest, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
+/// // round down, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_NEG_INF |vendor::_MM_FROUND_NO_EXC);
+/// // round up, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_POS_INF |vendor::_MM_FROUND_NO_EXC);
+/// // truncate, and suppress exceptions:
+/// (vendor::_MM_FROUND_TO_ZERO |vendor::_MM_FROUND_NO_EXC);
+/// // use MXCSR.RC; see `vendor::_MM_SET_ROUNDING_MODE`:
+/// vendor::_MM_FROUND_CUR_DIRECTION;
 /// ```
 #[inline(always)]
 #[target_feature = "+sse4.1"]

@@ -26,7 +26,7 @@
 //! others at:
 //!
 //! * [i686](https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/)
-//! * [x86_64](https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/)
+//! * [`x86_64`](https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/)
 //! * [arm](https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/)
 //! * [aarch64](https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/)
 //!
@@ -122,6 +122,12 @@
            simd_ffi, target_feature, cfg_target_feature, i128_type, asm,
            const_atomic_usize_new, stmt_expr_attributes)]
 #![cfg_attr(test, feature(proc_macro, test))]
+#![cfg_attr(feature = "cargo-clippy",
+            allow(inline_always, too_many_arguments, cast_sign_loss,
+                  cast_lossless, cast_possible_wrap,
+                  cast_possible_truncation, cast_precision_loss,
+                  shadow_reuse, cyclomatic_complexity, similar_names,
+                  doc_markdown, many_single_char_names))]
 
 #[cfg(test)]
 extern crate stdsimd_test;

@@ -1,6 +1,27 @@
+//! Advanced Vector Extensions 2 (AVX)
+//!
+//! AVX2 expands most AVX commands to 256-bit wide vector registers and
+//! adds [FMA](https://en.wikipedia.org/wiki/Fused_multiply-accumulate).
+//!
+//! The references are:
+//!
+//! - [Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2:
+//!   Instruction Set Reference, A-Z][intel64_ref].
+//! - [AMD64 Architecture Programmer's Manual, Volume 3: General-Purpose and
+//!   System Instructions][amd64_ref].
+//!
+//! Wikipedia's [AVX][wiki_avx] and [FMA][wiki_fma] pages provide a quick
+//! overview of the instructions available.
+//!
+//! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
+//! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
+//! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
+//! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
+
 use simd_llvm::simd_cast;
 use simd_llvm::{simd_shuffle2, simd_shuffle4, simd_shuffle8};
 use simd_llvm::{simd_shuffle16, simd_shuffle32};
+
 use v256::*;
 use v128::*;
 use x86::__m256i;
@@ -116,28 +137,25 @@ pub unsafe fn _mm256_alignr_epi8(a: i8x32, b: i8x32, n: i32) -> i8x32 {
         (a, b, n)
     };
 
-    const fn add(a: u32, b: u32) -> u32 {
-        a + b
-    }
     macro_rules! shuffle {
         ($shift:expr) => {
             simd_shuffle32(b, a, [
-                add(0, $shift), add(1, $shift),
-                add(2, $shift), add(3, $shift),
-                add(4, $shift), add(5, $shift),
-                add(6, $shift), add(7, $shift),
-                add(8, $shift), add(9, $shift),
-                add(10, $shift), add(11, $shift),
-                add(12, $shift), add(13, $shift),
-                add(14, $shift), add(15, $shift),
-                add(16, $shift), add(17, $shift),
-                add(18, $shift), add(19, $shift),
-                add(20, $shift), add(21, $shift),
-                add(22, $shift), add(23, $shift),
-                add(24, $shift), add(25, $shift),
-                add(26, $shift), add(27, $shift),
-                add(28, $shift), add(29, $shift),
-                add(30, $shift), add(31, $shift),
+                0 + $shift, 1 + $shift,
+                2 + $shift, 3 + $shift,
+                4 + $shift, 5 + $shift,
+                6 + $shift, 7 + $shift,
+                8 + $shift, 9 + $shift,
+                10 + $shift, 11 + $shift,
+                12 + $shift, 13 + $shift,
+                14 + $shift, 15 + $shift,
+                16 + $shift, 17 + $shift,
+                18 + $shift, 19 + $shift,
+                20 + $shift, 21 + $shift,
+                22 + $shift, 23 + $shift,
+                24 + $shift, 25 + $shift,
+                26 + $shift, 27 + $shift,
+                28 + $shift, 29 + $shift,
+                30 + $shift, 31 + $shift,
             ])
         }
     }
@@ -340,7 +358,7 @@ pub unsafe fn _mm256_blendv_epi8(a: i8x32, b: i8x32, mask: __m256i) -> i8x32 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
 pub unsafe fn _mm_broadcastb_epi8(a: i8x16) -> i8x16 {
-    simd_shuffle16(a, i8x16::splat(0i8), [0u32; 16])
+    simd_shuffle16(a, i8x16::splat(0_i8), [0_u32; 16])
 }
 
 /// Broadcast the low packed 8-bit integer from `a` to all elements of
@@ -349,7 +367,7 @@ pub unsafe fn _mm_broadcastb_epi8(a: i8x16) -> i8x16 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
 pub unsafe fn _mm256_broadcastb_epi8(a: i8x16) -> i8x32 {
-    simd_shuffle32(a, i8x16::splat(0i8), [0u32; 32])
+    simd_shuffle32(a, i8x16::splat(0_i8), [0_u32; 32])
 }
 
 // NB: simd_shuffle4 with integer data types for `a` and `b` is
@@ -360,7 +378,7 @@ pub unsafe fn _mm256_broadcastb_epi8(a: i8x16) -> i8x32 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 pub unsafe fn _mm_broadcastd_epi32(a: i32x4) -> i32x4 {
-    simd_shuffle4(a, i32x4::splat(0i32), [0u32; 4])
+    simd_shuffle4(a, i32x4::splat(0_i32), [0_u32; 4])
 }
 
 // NB: simd_shuffle4 with integer data types for `a` and `b` is
@@ -371,7 +389,7 @@ pub unsafe fn _mm_broadcastd_epi32(a: i32x4) -> i32x4 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 pub unsafe fn _mm256_broadcastd_epi32(a: i32x4) -> i32x8 {
-    simd_shuffle8(a, i32x4::splat(0i32), [0u32; 8])
+    simd_shuffle8(a, i32x4::splat(0_i32), [0_u32; 8])
 }
 
 /// Broadcast the low packed 64-bit integer from `a` to all elements of
@@ -380,7 +398,7 @@ pub unsafe fn _mm256_broadcastd_epi32(a: i32x4) -> i32x8 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpbroadcastq))]
 pub unsafe fn _mm_broadcastq_epi64(a: i64x2) -> i64x2 {
-    simd_shuffle2(a, i64x2::splat(0i64), [0u32; 2])
+    simd_shuffle2(a, i64x2::splat(0_i64), [0_u32; 2])
 }
 
 // NB: simd_shuffle4 with integer data types for `a` and `b` is
@@ -391,7 +409,7 @@ pub unsafe fn _mm_broadcastq_epi64(a: i64x2) -> i64x2 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 pub unsafe fn _mm256_broadcastq_epi64(a: i64x2) -> i64x4 {
-    simd_shuffle4(a, i64x2::splat(0i64), [0u32; 4])
+    simd_shuffle4(a, i64x2::splat(0_i64), [0_u32; 4])
 }
 
 /// Broadcast the low double-precision (64-bit) floating-point element
@@ -400,7 +418,7 @@ pub unsafe fn _mm256_broadcastq_epi64(a: i64x2) -> i64x4 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vmovddup))]
 pub unsafe fn _mm_broadcastsd_pd(a: f64x2) -> f64x2 {
-    simd_shuffle2(a, f64x2::splat(0f64), [0u32; 2])
+    simd_shuffle2(a, f64x2::splat(0_f64), [0_u32; 2])
 }
 
 /// Broadcast the low double-precision (64-bit) floating-point element
@@ -409,7 +427,7 @@ pub unsafe fn _mm_broadcastsd_pd(a: f64x2) -> f64x2 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 pub unsafe fn _mm256_broadcastsd_pd(a: f64x2) -> f64x4 {
-    simd_shuffle4(a, f64x2::splat(0f64), [0u32; 4])
+    simd_shuffle4(a, f64x2::splat(0_f64), [0_u32; 4])
 }
 
 // NB: broadcastsi128_si256 is often compiled to vinsertf128 or
@@ -419,7 +437,7 @@ pub unsafe fn _mm256_broadcastsd_pd(a: f64x2) -> f64x4 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 pub unsafe fn _mm256_broadcastsi128_si256(a: i64x2) -> i64x4 {
-    simd_shuffle4(a, i64x2::splat(0i64), [0, 1, 0, 1])
+    simd_shuffle4(a, i64x2::splat(0_i64), [0, 1, 0, 1])
 }
 
 /// Broadcast the low single-precision (32-bit) floating-point element
@@ -428,7 +446,7 @@ pub unsafe fn _mm256_broadcastsi128_si256(a: i64x2) -> i64x4 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 pub unsafe fn _mm_broadcastss_ps(a: f32x4) -> f32x4 {
-    simd_shuffle4(a, f32x4::splat(0f32), [0u32; 4])
+    simd_shuffle4(a, f32x4::splat(0_f32), [0_u32; 4])
 }
 
 /// Broadcast the low single-precision (32-bit) floating-point element
@@ -437,7 +455,7 @@ pub unsafe fn _mm_broadcastss_ps(a: f32x4) -> f32x4 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 pub unsafe fn _mm256_broadcastss_ps(a: f32x4) -> f32x8 {
-    simd_shuffle8(a, f32x4::splat(0f32), [0u32; 8])
+    simd_shuffle8(a, f32x4::splat(0_f32), [0_u32; 8])
 }
 
 /// Broadcast the low packed 16-bit integer from a to all elements of
@@ -446,7 +464,7 @@ pub unsafe fn _mm256_broadcastss_ps(a: f32x4) -> f32x8 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
 pub unsafe fn _mm_broadcastw_epi16(a: i16x8) -> i16x8 {
-    simd_shuffle8(a, i16x8::splat(0i16), [0u32; 8])
+    simd_shuffle8(a, i16x8::splat(0_i16), [0_u32; 8])
 }
 
 /// Broadcast the low packed 16-bit integer from a to all elements of
@@ -455,7 +473,7 @@ pub unsafe fn _mm_broadcastw_epi16(a: i16x8) -> i16x8 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
 pub unsafe fn _mm256_broadcastw_epi16(a: i16x8) -> i16x16 {
-    simd_shuffle16(a, i16x8::splat(0i16), [0u32; 16])
+    simd_shuffle16(a, i16x8::splat(0_i16), [0_u32; 16])
 }
 
 // TODO _mm256_bslli_epi128
@@ -565,8 +583,8 @@ pub unsafe fn _mm256_cvtepi8_epi32(a: i8x16) -> i32x8 {
     simd_cast::<::v64::i8x8, _>(simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]))
 }
 
-// An i8x4 type is pretty useless, but we need it as an intermediate type in
-// _mm256_cvtepi8_epi64.
+/// An i8x4 type is pretty useless, but we need it as an intermediate type in
+/// _mm256_cvtepi8_epi64.
 #[repr(simd)]
 #[allow(non_camel_case_types)]
 struct i8x4(i8, i8, i8, i8);

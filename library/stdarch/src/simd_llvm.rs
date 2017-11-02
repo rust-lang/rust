@@ -1,3 +1,7 @@
+//! LLVM's simd platform intrinsics
+//!
+//! TODO: should use `link_llvm_intrinsic` instead: issue #112
+
 extern "platform-intrinsic" {
     pub fn simd_eq<T, U>(x: T, y: T) -> U;
     pub fn simd_ne<T, U>(x: T, y: T) -> U;

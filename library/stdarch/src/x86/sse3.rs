@@ -1,3 +1,5 @@
+//! Streaming SIMD Extensions 3 (SSE3)
+
 use x86::__m128i;
 use simd_llvm::{simd_shuffle2, simd_shuffle4};
 use v128::*;

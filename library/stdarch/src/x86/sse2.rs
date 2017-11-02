@@ -1,3 +1,5 @@
+//! Streaming SIMD Extensions 2 (SSE2)
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -316,20 +318,17 @@ pub unsafe fn _mm_subs_epu16(a: u16x8, b: u16x8) -> u16x8 {
 #[cfg_attr(test, assert_instr(pslldq, imm8 = 1))]
 pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (__m128i::splat(0), imm8 as u32);
-    const fn sub(a: u32, b: u32) -> u32 {
-        a - b
-    }
     macro_rules! shuffle {
         ($shift:expr) => {
             simd_shuffle16::<__m128i, __m128i>(zero, a, [
-                sub(16, $shift), sub(17, $shift),
-                sub(18, $shift), sub(19, $shift),
-                sub(20, $shift), sub(21, $shift),
-                sub(22, $shift), sub(23, $shift),
-                sub(24, $shift), sub(25, $shift),
-                sub(26, $shift), sub(27, $shift),
-                sub(28, $shift), sub(29, $shift),
-                sub(30, $shift), sub(31, $shift),
+                16 - $shift, 17 - $shift,
+                18 - $shift, 19 - $shift,
+                20 - $shift, 21 - $shift,
+                22 - $shift, 23 - $shift,
+                24 - $shift, 25 - $shift,
+                26 - $shift, 27 - $shift,
+                28 - $shift, 29 - $shift,
+                30 - $shift, 31 - $shift,
             ])
         }
     }
@@ -463,20 +462,17 @@ pub unsafe fn _mm_sra_epi32(a: i32x4, count: i32x4) -> i32x4 {
 #[cfg_attr(test, assert_instr(psrldq, imm8 = 1))]
 pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (__m128i::splat(0), imm8 as u32);
-    const fn add(a: u32, b: u32) -> u32 {
-        a + b
-    }
     macro_rules! shuffle {
         ($shift:expr) => {
             simd_shuffle16::<__m128i, __m128i>(a, zero, [
-                add(0, $shift), add(1, $shift),
-                add(2, $shift), add(3, $shift),
-                add(4, $shift), add(5, $shift),
-                add(6, $shift), add(7, $shift),
-                add(8, $shift), add(9, $shift),
-                add(10, $shift), add(11, $shift),
-                add(12, $shift), add(13, $shift),
-                add(14, $shift), add(15, $shift),
+                0 + $shift, 1 + $shift,
+                2 + $shift, 3 + $shift,
+                4 + $shift, 5 + $shift,
+                6 + $shift, 7 + $shift,
+                8 + $shift, 9 + $shift,
+                10 + $shift, 11 + $shift,
+                12 + $shift, 13 + $shift,
+                14 + $shift, 15 + $shift,
             ])
         }
     }
@@ -1102,14 +1098,10 @@ pub unsafe fn _mm_shuffle_epi32(a: i32x4, imm8: i32) -> i32x4 {
 pub unsafe fn _mm_shufflehi_epi16(a: i16x8, imm8: i32) -> i16x8 {
     // See _mm_shuffle_epi32.
     let imm8 = (imm8 & 0xFF) as u8;
-    const fn add4(x: u32) -> u32 {
-        x + 4
-    }
-
     macro_rules! shuffle_done {
         ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
             simd_shuffle8(a, a, [
-                0, 1, 2, 3, add4($x01), add4($x23), add4($x45), add4($x67),
+                0, 1, 2, 3, $x01 + 4, $x23 + 4, $x45 + 4, $x67 + 4,
             ])
         }
     }
@@ -1657,7 +1649,7 @@ pub unsafe fn _mm_cmpnge_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(comisd))]
 pub unsafe fn _mm_comieq_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(comieqsd(a, b) as u8)
+    comieqsd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for less-than.
@@ -1665,7 +1657,7 @@ pub unsafe fn _mm_comieq_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(comisd))]
 pub unsafe fn _mm_comilt_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(comiltsd(a, b) as u8)
+    comiltsd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for less-than-or-equal.
@@ -1673,7 +1665,7 @@ pub unsafe fn _mm_comilt_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(comisd))]
 pub unsafe fn _mm_comile_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(comilesd(a, b) as u8)
+    comilesd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for greater-than.
@@ -1681,7 +1673,7 @@ pub unsafe fn _mm_comile_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(comisd))]
 pub unsafe fn _mm_comigt_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(comigtsd(a, b) as u8)
+    comigtsd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for greater-than-or-equal.
@@ -1689,7 +1681,7 @@ pub unsafe fn _mm_comigt_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(comisd))]
 pub unsafe fn _mm_comige_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(comigesd(a, b) as u8)
+    comigesd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for not-equal.
@@ -1697,7 +1689,7 @@ pub unsafe fn _mm_comige_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(comisd))]
 pub unsafe fn _mm_comineq_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(comineqsd(a, b) as u8)
+    comineqsd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for equality.
@@ -1705,7 +1697,7 @@ pub unsafe fn _mm_comineq_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(ucomisd))]
 pub unsafe fn _mm_ucomieq_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(ucomieqsd(a, b) as u8)
+    ucomieqsd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for less-than.
@@ -1713,7 +1705,7 @@ pub unsafe fn _mm_ucomieq_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(ucomisd))]
 pub unsafe fn _mm_ucomilt_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(ucomiltsd(a, b) as u8)
+    ucomiltsd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for less-than-or-equal.
@@ -1721,7 +1713,7 @@ pub unsafe fn _mm_ucomilt_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(ucomisd))]
 pub unsafe fn _mm_ucomile_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(ucomilesd(a, b) as u8)
+    ucomilesd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for greater-than.
@@ -1729,7 +1721,7 @@ pub unsafe fn _mm_ucomile_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(ucomisd))]
 pub unsafe fn _mm_ucomigt_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(ucomigtsd(a, b) as u8)
+    ucomigtsd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for greater-than-or-equal.
@@ -1737,7 +1729,7 @@ pub unsafe fn _mm_ucomigt_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(ucomisd))]
 pub unsafe fn _mm_ucomige_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(ucomigesd(a, b) as u8)
+    ucomigesd(a, b) as u8 != 0
 }
 
 /// Compare the lower element of `a` and `b` for not-equal.
@@ -1745,7 +1737,7 @@ pub unsafe fn _mm_ucomige_sd(a: f64x2, b: f64x2) -> bool {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(ucomisd))]
 pub unsafe fn _mm_ucomineq_sd(a: f64x2, b: f64x2) -> bool {
-    mem::transmute(ucomineqsd(a, b) as u8)
+    ucomineqsd(a, b) as u8 != 0
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in "a" to
@@ -1894,7 +1886,7 @@ pub unsafe fn _mm_setr_pd(a: f64, b: f64) -> f64x2 {
     f64x2::new(a, b)
 }
 
-/// returns packed double-precision (64-bit) floating-point elements with all
+/// Returns packed double-precision (64-bit) floating-point elements with all
 /// zeros.
 #[inline(always)]
 #[target_feature = "+sse2"]
@@ -1912,8 +1904,6 @@ pub unsafe fn _mm_setzero_pd() -> f64x2 {
 pub unsafe fn _mm_movemask_pd(a: f64x2) -> i32 {
     movmskpd(a)
 }
-
-
 
 /// Load 128-bits (composed of 2 packed double-precision (64-bit)
 /// floating-point elements) from memory into the returned vector.

@@ -1,3 +1,5 @@
+//! Streaming SIMD Extensions (SSE)
+
 use simd_llvm::simd_shuffle4;
 use v128::*;
 use v64::f32x2;
@@ -1136,7 +1138,7 @@ pub unsafe fn _mm_storeh_pi(p: *mut u64, a: f32x4) {
         // is just silly
         let a64: u64x2 = mem::transmute(a);
         let a_hi = a64.extract(1);
-        *p = mem::transmute(a_hi);
+        *p = a_hi;
     } else {
         // target_arch = "x86_64"
         // If this is a `u64x2` LLVM generates a pshufd + movq, but we really
@@ -1167,7 +1169,7 @@ pub unsafe fn _mm_storel_pi(p: *mut u64, a: f32x4) {
         // stack.
         let a64: u64x2 = mem::transmute(a);
         let a_hi = a64.extract(0);
-        *p = mem::transmute(a_hi);
+        *p = a_hi;
     } else {
         // target_arch = "x86_64"
         let a64: f64x2 = mem::transmute(a);
@@ -1306,7 +1308,7 @@ pub unsafe fn _mm_sfence() {
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(stmxcsr))]
 pub unsafe fn _mm_getcsr() -> u32 {
-    let mut result = 0i32;
+    let mut result = 0_i32;
     stmxcsr((&mut result) as *mut _ as *mut i8);
     result as u32
 }
@@ -1455,6 +1457,7 @@ pub const _MM_EXCEPT_OVERFLOW: u32 = 0x0008;
 pub const _MM_EXCEPT_UNDERFLOW: u32 = 0x0010;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 pub const _MM_EXCEPT_INEXACT: u32 = 0x0020;
+/// See [`_MM_GET_EXCEPTION_STATE`](fn._MM_GET_EXCEPTION_STATE.html)
 pub const _MM_EXCEPT_MASK: u32 = 0x003f;
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
@@ -1469,6 +1472,7 @@ pub const _MM_MASK_OVERFLOW: u32 = 0x0400;
 pub const _MM_MASK_UNDERFLOW: u32 = 0x0800;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 pub const _MM_MASK_INEXACT: u32 = 0x1000;
+/// See [`_MM_GET_EXCEPTION_MASK`](fn._MM_GET_EXCEPTION_MASK.html)
 pub const _MM_MASK_MASK: u32 = 0x1f80;
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
@@ -1479,14 +1483,18 @@ pub const _MM_ROUND_DOWN: u32 = 0x2000;
 pub const _MM_ROUND_UP: u32 = 0x4000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 pub const _MM_ROUND_TOWARD_ZERO: u32 = 0x6000;
+
+/// See [`_MM_GET_ROUNDING_MODE`](fn._MM_GET_ROUNDING_MODE.html)
 pub const _MM_ROUND_MASK: u32 = 0x6000;
 
+/// See [`_MM_GET_FLUSH_ZERO_MODE`](fn._MM_GET_FLUSH_ZERO_MODE.html)
 pub const _MM_FLUSH_ZERO_MASK: u32 = 0x8000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 pub const _MM_FLUSH_ZERO_ON: u32 = 0x8000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 pub const _MM_FLUSH_ZERO_OFF: u32 = 0x0000;
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]
@@ -1494,6 +1502,7 @@ pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
     _mm_getcsr() & _MM_MASK_MASK
 }
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]
@@ -1501,6 +1510,7 @@ pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
     _mm_getcsr() & _MM_EXCEPT_MASK
 }
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]
@@ -1508,6 +1518,7 @@ pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
     _mm_getcsr() & _MM_FLUSH_ZERO_MASK
 }
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]
@@ -1515,6 +1526,7 @@ pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
     _mm_getcsr() & _MM_ROUND_MASK
 }
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]
@@ -1522,6 +1534,7 @@ pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_MASK_MASK) | x)
 }
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]
@@ -1529,6 +1542,7 @@ pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_EXCEPT_MASK) | x)
 }
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]
@@ -1538,6 +1552,7 @@ pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
     _mm_setcsr(val)
 }
 
+/// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
 #[target_feature = "+sse"]

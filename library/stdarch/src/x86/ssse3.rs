@@ -1,3 +1,5 @@
+//! Supplemental Streaming SIMD Extensions 3 (SSSE3)
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -84,20 +86,17 @@ pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
         (a, b, n)
     };
 
-    const fn add(a: u32, b: u32) -> u32 {
-        a + b
-    }
     macro_rules! shuffle {
         ($shift:expr) => {
             simd_shuffle16(b, a, [
-                add(0, $shift), add(1, $shift),
-                add(2, $shift), add(3, $shift),
-                add(4, $shift), add(5, $shift),
-                add(6, $shift), add(7, $shift),
-                add(8, $shift), add(9, $shift),
-                add(10, $shift), add(11, $shift),
-                add(12, $shift), add(13, $shift),
-                add(14, $shift), add(15, $shift),
+                0 + $shift, 1 + $shift,
+                2 + $shift, 3 + $shift,
+                4 + $shift, 5 + $shift,
+                6 + $shift, 7 + $shift,
+                8 + $shift, 9 + $shift,
+                10 + $shift, 11 + $shift,
+                12 + $shift, 13 + $shift,
+                14 + $shift, 15 + $shift,
             ])
         }
     }

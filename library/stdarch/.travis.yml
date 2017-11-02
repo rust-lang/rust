@@ -21,9 +21,13 @@ matrix:
       script: |
         cargo install rustfmt-nightly
         cargo fmt --all -- --write-mode=diff
+    - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+      script: |
+        cargo install clippy
+        cargo clippy --all -- -D clippy-pedantic
   allow_failures:
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-
+    - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
 install:
   - if [ "$NO_ADD" == "" ]; then rustup target add $TARGET; fi
 

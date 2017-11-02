@@ -21,7 +21,7 @@ use stdsimd_test::assert_instr;
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
 pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
-    _bextr2_u32(a, (start & 0xffu32) | ((len & 0xffu32) << 8u32))
+    _bextr2_u32(a, (start & 0xff_u32) | ((len & 0xff_u32) << 8_u32))
 }
 
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
@@ -31,7 +31,7 @@ pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 #[cfg_attr(test, assert_instr(bextr))]
 #[cfg(not(target_arch = "x86"))]
 pub unsafe fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
-    _bextr2_u64(a, (start & 0xffu64) | ((len & 0xffu64) << 8u64))
+    _bextr2_u64(a, (start & 0xff_u64) | ((len & 0xff_u64) << 8_u64))
 }
 
 /// Extracts bits of `a` specified by `control` into
@@ -97,7 +97,7 @@ pub unsafe fn _blsi_u64(x: u64) -> u64 {
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsmsk))]
 pub unsafe fn _blsmsk_u32(x: u32) -> u32 {
-    x ^ (x.wrapping_sub(1u32))
+    x ^ (x.wrapping_sub(1_u32))
 }
 
 /// Get mask up to lowest set bit.
@@ -106,7 +106,7 @@ pub unsafe fn _blsmsk_u32(x: u32) -> u32 {
 #[cfg_attr(test, assert_instr(blsmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blsmsk_u64(x: u64) -> u64 {
-    x ^ (x.wrapping_sub(1u64))
+    x ^ (x.wrapping_sub(1_u64))
 }
 
 /// Resets the lowest set bit of `x`.

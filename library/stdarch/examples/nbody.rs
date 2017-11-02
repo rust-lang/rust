@@ -1,12 +1,20 @@
+//! n-body benchmark from the [benchmarks game][bg].
+//!
+//! [bg]: https://benchmarksgame.alioth.debian.org/u64q/nbody-description.
+//! html#nbody
+
 #![cfg_attr(feature = "strict", deny(warnings))]
 #![feature(cfg_target_feature)]
 #![feature(target_feature)]
+#![cfg_attr(feature = "cargo-clippy",
+            allow(similar_names, missing_docs_in_private_items,
+                  shadow_reuse, print_stdout))]
 
 extern crate stdsimd;
 use self::stdsimd::simd;
 use simd::f64x2;
 
-const PI: f64 = 3.141592653589793;
+const PI: f64 = std::f64::consts::PI;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
 const DAYS_PER_YEAR: f64 = 365.24;
 
@@ -29,7 +37,7 @@ impl Frsqrt for f64x2 {
                     f32x4::new(t.extract(0), t.extract(1), 0., 0.),
                 ).as_f64x4()
             };
-            f64x2::new(u.extract(0), u.extract(1))
+            Self::new(u.extract(0), u.extract(1))
         }
         #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
                   target_feature = "neon"))]
@@ -61,8 +69,8 @@ struct Body {
 impl Body {
     fn new(
         x0: f64, x1: f64, x2: f64, v0: f64, v1: f64, v2: f64, mass: f64
-    ) -> Body {
-        Body {
+    ) -> Self {
+        Self {
             x: [x0, x1, x2],
             _fill: 0.0,
             v: [v0, v1, v2],
@@ -103,8 +111,8 @@ fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
 
     i = 0;
     while i < N {
-        for m in 0..3 {
-            dx[m] = f64x2::new(r[i][m], r[i + 1][m]);
+        for (m, dx) in dx.iter_mut().enumerate() {
+            *dx = f64x2::new(r[i][m], r[i + 1][m]);
         }
 
         dsquared = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
@@ -144,11 +152,10 @@ fn energy(bodies: &[Body; N_BODIES]) -> f64 {
         e += bi.mass
             * (bi.v[0] * bi.v[0] + bi.v[1] * bi.v[1] + bi.v[2] * bi.v[2])
             / 2.0;
-        for j in i + 1..N_BODIES {
-            let bj = &bodies[j];
+        for bj in bodies.iter().take(N_BODIES).skip(i + 1) {
             let mut dx = [0.0; 3];
-            for k in 0..3 {
-                dx[k] = bi.x[k] - bj.x[k];
+            for (k, dx) in dx.iter_mut().enumerate() {
+                *dx = bi.x[k] - bj.x[k];
             }
             let mut distance = 0.0;
             for &d in &dx {
@@ -210,7 +217,7 @@ fn main() {
         .nth(1)
         .expect("need one arg")
         .parse()
-        .unwrap();
+        .expect("argument should be a usize");
 
     offset_momentum(&mut bodies);
     println!("{:.9}", energy(&bodies));

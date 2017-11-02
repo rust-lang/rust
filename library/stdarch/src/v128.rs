@@ -1,3 +1,5 @@
+//! 128-bit wide vector types
+
 use simd_llvm::*;
 
 define_ty! { f64x2, f64, f64 }

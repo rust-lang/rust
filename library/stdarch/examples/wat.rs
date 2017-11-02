@@ -1,5 +1,8 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 #![feature(target_feature)]
+#![cfg_attr(feature = "cargo-clippy",
+            allow(missing_docs_in_private_items, result_unwrap_used,
+                  option_unwrap_used, print_stdout, use_debug))]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod example {

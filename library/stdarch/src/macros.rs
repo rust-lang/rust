@@ -1,3 +1,5 @@
+//! Utility macros
+
 macro_rules! define_ty {
     ($name:ident, $($elty:ident),+) => {
         #[repr(simd)]

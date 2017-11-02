@@ -1,3 +1,7 @@
+//! Streaming SIMD Extensions 4.2 (SSE4.2)
+//!
+//! Extends SSE4.1 with STTNI (String and Text New Instructions).
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -5,42 +9,42 @@ use v128::*;
 use x86::__m128i;
 
 /// String contains unsigned 8-bit characters *(Default)*
-pub const _SIDD_UBYTE_OPS: i8 = 0b00000000;
+pub const _SIDD_UBYTE_OPS: i8 = 0b0000_0000;
 /// String contains unsigned 16-bit characters
-pub const _SIDD_UWORD_OPS: i8 = 0b00000001;
+pub const _SIDD_UWORD_OPS: i8 = 0b0000_0001;
 /// String contains signed 8-bit characters
-pub const _SIDD_SBYTE_OPS: i8 = 0b00000010;
+pub const _SIDD_SBYTE_OPS: i8 = 0b0000_0010;
 /// String contains unsigned 16-bit characters
-pub const _SIDD_SWORD_OPS: i8 = 0b00000011;
+pub const _SIDD_SWORD_OPS: i8 = 0b0000_0011;
 
 /// For each character in `a`, find if it is in `b` *(Default)*
-pub const _SIDD_CMP_EQUAL_ANY: i8 = 0b00000000;
-/// For each character in `a`, determine if `b[0] <= c <= b[1] or b[1] <= c <=
-/// b[2]...`
-pub const _SIDD_CMP_RANGES: i8 = 0b00000100;
+pub const _SIDD_CMP_EQUAL_ANY: i8 = 0b0000_0000;
+/// For each character in `a`, determine if
+/// `b[0] <= c <= b[1] or b[1] <= c <= b[2]...`
+pub const _SIDD_CMP_RANGES: i8 = 0b0000_0100;
 /// The strings defined by `a` and `b` are equal
-pub const _SIDD_CMP_EQUAL_EACH: i8 = 0b00001000;
+pub const _SIDD_CMP_EQUAL_EACH: i8 = 0b0000_1000;
 /// Search for the defined substring in the target
-pub const _SIDD_CMP_EQUAL_ORDERED: i8 = 0b00001100;
+pub const _SIDD_CMP_EQUAL_ORDERED: i8 = 0b0000_1100;
 
 /// Do not negate results *(Default)*
-pub const _SIDD_POSITIVE_POLARITY: i8 = 0b00000000;
+pub const _SIDD_POSITIVE_POLARITY: i8 = 0b0000_0000;
 /// Negate results
-pub const _SIDD_NEGATIVE_POLARITY: i8 = 0b00010000;
+pub const _SIDD_NEGATIVE_POLARITY: i8 = 0b0001_0000;
 /// Do not negate results before the end of the string
-pub const _SIDD_MASKED_POSITIVE_POLARITY: i8 = 0b00100000;
+pub const _SIDD_MASKED_POSITIVE_POLARITY: i8 = 0b0010_0000;
 /// Negate results only before the end of the string
-pub const _SIDD_MASKED_NEGATIVE_POLARITY: i8 = 0b00110000;
+pub const _SIDD_MASKED_NEGATIVE_POLARITY: i8 = 0b0011_0000;
 
 /// **Index only**: return the least significant bit *(Default)*
-pub const _SIDD_LEAST_SIGNIFICANT: i8 = 0b00000000;
+pub const _SIDD_LEAST_SIGNIFICANT: i8 = 0b0000_0000;
 /// **Index only**: return the most significant bit
-pub const _SIDD_MOST_SIGNIFICANT: i8 = 0b01000000;
+pub const _SIDD_MOST_SIGNIFICANT: i8 = 0b0100_0000;
 
 /// **Mask only**: return the bit mask
-pub const _SIDD_BIT_MASK: i8 = 0b00000000;
+pub const _SIDD_BIT_MASK: i8 = 0b0000_0000;
 /// **Mask only**: return the byte mask
-pub const _SIDD_UNIT_MASK: i8 = 0b01000000;
+pub const _SIDD_UNIT_MASK: i8 = 0b0100_0000;
 
 /// Compare packed strings with implicit lengths in `a` and `b` using the
 /// control in `imm8`, and return the generated mask.

@@ -131,19 +131,16 @@ pub enum __Feature {
     #[doc(hidden)] __NonExhaustive,
 }
 
+/// Sets the `bit`-th bit of `x`.
 fn set_bit(x: usize, bit: u32) -> usize {
     debug_assert!(32 > bit);
     x | 1 << bit
 }
 
+/// Tests the `bit`-th bit of `x`.
 fn test_bit(x: usize, bit: u32) -> bool {
     debug_assert!(32 > bit);
     x & (1 << bit) != 0
-}
-
-fn inv_test_bit(v: usize, idx: u32) -> bool {
-    debug_assert!(32 > idx);
-    ((v >> idx) & 1) != 0
 }
 
 /// Run-time feature detection on x86 works by using the CPUID instruction.
@@ -174,7 +171,7 @@ fn detect_features() -> usize {
         /// below).
         asm!("cpuid"
              : "={ecx}"(proc_info_ecx), "={edx}"(proc_info_edx)
-             : "{eax}"(0x00000001u32), "{ecx}"(0 as u32)
+             : "{eax}"(0x0000_0001_u32), "{ecx}"(0 as u32)
              : :);
 
         /// 2. EAX=7, ECX=0: Queries "Extended Features"
@@ -182,48 +179,48 @@ fn detect_features() -> usize {
         /// (see below); the result in ECX is not currently needed.
         asm!("cpuid"
              : "={ebx}"(extended_features_ebx)
-             : "{eax}"(0x00000007u32), "{ecx}"(0 as u32)
+             : "{eax}"(0x0000_0007_u32), "{ecx}"(0 as u32)
              : :);
     }
 
     let mut value: usize = 0;
 
-    if inv_test_bit(extended_features_ebx, 3) {
+    if test_bit(extended_features_ebx, 3) {
         value = set_bit(value, __Feature::bmi as u32);
     }
-    if inv_test_bit(extended_features_ebx, 8) {
+    if test_bit(extended_features_ebx, 8) {
         value = set_bit(value, __Feature::bmi2 as u32);
     }
 
-    if inv_test_bit(proc_info_ecx, 0) {
+    if test_bit(proc_info_ecx, 0) {
         value = set_bit(value, __Feature::sse3 as u32);
     }
-    if inv_test_bit(proc_info_ecx, 5) {
+    if test_bit(proc_info_ecx, 5) {
         value = set_bit(value, __Feature::abm as u32);
     }
-    if inv_test_bit(proc_info_ecx, 9) {
+    if test_bit(proc_info_ecx, 9) {
         value = set_bit(value, __Feature::ssse3 as u32);
     }
-    if inv_test_bit(proc_info_ecx, 12) {
+    if test_bit(proc_info_ecx, 12) {
         value = set_bit(value, __Feature::fma as u32);
     }
-    if inv_test_bit(proc_info_ecx, 19) {
+    if test_bit(proc_info_ecx, 19) {
         value = set_bit(value, __Feature::sse4_1 as u32);
     }
-    if inv_test_bit(proc_info_ecx, 20) {
+    if test_bit(proc_info_ecx, 20) {
         value = set_bit(value, __Feature::sse4_2 as u32);
     }
-    if inv_test_bit(proc_info_ecx, 21) {
+    if test_bit(proc_info_ecx, 21) {
         value = set_bit(value, __Feature::tbm as u32);
     }
-    if inv_test_bit(proc_info_ecx, 23) {
+    if test_bit(proc_info_ecx, 23) {
         value = set_bit(value, __Feature::popcnt as u32);
     }
 
-    if inv_test_bit(proc_info_edx, 25) {
+    if test_bit(proc_info_edx, 25) {
         value = set_bit(value, __Feature::sse as u32);
     }
-    if inv_test_bit(proc_info_edx, 26) {
+    if test_bit(proc_info_edx, 26) {
         value = set_bit(value, __Feature::sse2 as u32);
     }
 
@@ -235,7 +232,9 @@ fn detect_features() -> usize {
     // - https://hg.mozilla.
     // org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
     //
-    if inv_test_bit(proc_info_ecx, 26) && inv_test_bit(proc_info_ecx, 27) {
+    if test_bit(proc_info_ecx, 26) && test_bit(proc_info_ecx, 27) {
+        /// XGETBV: reads the contents of the extended control
+        /// register (XCR).
         unsafe fn xgetbv(xcr_no: u32) -> u64 {
             let eax: u32;
             let edx: u32;
@@ -249,10 +248,10 @@ fn detect_features() -> usize {
 
         // This is safe because on x86 `xgetbv` is always available.
         if unsafe { xgetbv(0) } & 6 == 6 {
-            if inv_test_bit(proc_info_ecx, 28) {
+            if test_bit(proc_info_ecx, 28) {
                 value = set_bit(value, __Feature::avx as u32);
             }
-            if inv_test_bit(extended_features_ebx, 5) {
+            if test_bit(extended_features_ebx, 5) {
                 value = set_bit(value, __Feature::avx2 as u32);
             }
         }

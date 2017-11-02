@@ -1,7 +1,9 @@
-#![cfg_attr(feature = "strict", deny(warnings))]
 #![feature(cfg_target_feature)]
+#![cfg_attr(feature = "strict", deny(warnings))]
+#![cfg_attr(feature = "cargo-clippy", allow(option_unwrap_used))]
 
 extern crate cupid;
+
 #[macro_use]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 extern crate stdsimd;
