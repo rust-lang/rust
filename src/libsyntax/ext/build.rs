@@ -591,6 +591,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
            id: ast::DUMMY_NODE_ID,
            rules: BlockCheckMode::Default,
            span,
+           attrs: ast::ThinVec::new(),
         })
     }
 
