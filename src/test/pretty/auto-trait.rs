@@ -12,8 +12,6 @@
 
 // pp-exact
 
-trait MyTrait { }
-
-impl MyTrait for .. { }
+auto trait MyTrait { }
 
 pub fn main() { }
