@@ -469,12 +469,21 @@ pub fn f<T>(arg: T)
 being legal (even if it's warned against by default) the set of
 `PrivateTrait`'s implementations becomes a part of `f`'s interface.
 `PrivateTrait` can still be freely renamed or even splitted into several traits
-though.
+though.  
+`rustdoc` may be not fully prepared to document items with private traits in
+bounds, manually written documentation explaining how to use the interface
+may be required.
 
 # Rationale and Alternatives
 [alternatives]: #alternatives
 
 Names for the lints are subject to bikeshedding.
+
+`private_interfaces` and `private_bounds` can be merged into one lint.
+The rationale for keeping them separate is different probabilities
+of errors in case of lint violations.  
+The first lint indicates an almost guaranteed error on client side,
+the second one is more in the "missing documentation" category.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
