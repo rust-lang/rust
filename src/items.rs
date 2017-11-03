@@ -1189,12 +1189,13 @@ fn format_tuple_struct(
     result.push_str(&header_str);
 
     let body_lo = if fields.is_empty() {
-        context.codemap.span_after(span, "(")
+        let lo = get_bytepos_after_visibility(context, vis, span, ")");
+        context.codemap.span_after(mk_sp(lo, span.hi()), "(")
     } else {
         fields[0].span.lo()
     };
     let body_hi = if fields.is_empty() {
-        context.codemap.span_after(span, ")")
+        context.codemap.span_after(mk_sp(body_lo, span.hi()), ")")
     } else {
         // This is a dirty hack to work around a missing `)` from the span of the last field.
         let last_arg_span = fields[fields.len() - 1].span;
@@ -1242,7 +1243,10 @@ fn format_tuple_struct(
                 .to_string(context.config))
         }
         result.push('(');
-        let snippet = context.snippet(mk_sp(body_lo, context.codemap.span_before(span, ")")));
+        let snippet = context.snippet(mk_sp(
+            body_lo,
+            context.codemap.span_before(mk_sp(body_lo, span.hi()), ")"),
+        ));
         if snippet.is_empty() {
             // `struct S ()`
         } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
