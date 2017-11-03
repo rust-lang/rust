@@ -109,6 +109,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        AnonymousParameters,
                        IllegalFloatLiteralPattern,
                        UnusedDocComment,
+                       AutoImpl,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -182,6 +183,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     // - Eventually, remove lint
     store.register_future_incompatible(sess,
                                        vec![
+        FutureIncompatibleInfo {
+            id: LintId::of(AUTO_IMPL),
+            reference: "issue #13231 <https://github.com/rust-lang/rust/issues/13231>",
+        },
         FutureIncompatibleInfo {
             id: LintId::of(PRIVATE_IN_PUBLIC),
             reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",

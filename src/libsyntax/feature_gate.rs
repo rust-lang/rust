@@ -1357,10 +1357,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::DefaultImpl(..) => {
+            ast::ItemKind::AutoImpl(..) => {
                 gate_feature_post!(&self, optin_builtin_traits,
                                    i.span,
-                                   "default trait implementations are experimental \
+                                   "auto trait implementations are experimental \
                                     and possibly buggy");
             }
 
@@ -1387,6 +1387,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         }
                     }
                 }
+            }
+
+            ast::ItemKind::Trait(ast::IsAuto::Yes, ..) => {
+                gate_feature_post!(&self, optin_builtin_traits,
+                                   i.span,
+                                   "auto traits are experimental and possibly buggy");
             }
 
             ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {

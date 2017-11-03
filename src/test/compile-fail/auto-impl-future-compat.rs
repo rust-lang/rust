@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
-// pp-exact
-
-trait MyTrait { }
-
-impl MyTrait for .. { }
-
-pub fn main() { }
+trait Foo {}
+impl Foo for .. {}
+//~^ ERROR The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`
+//~^^ WARN this was previously accepted by the compiler

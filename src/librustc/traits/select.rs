@@ -25,9 +25,9 @@ use super::TraitNotObjectSafe;
 use super::Selection;
 use super::SelectionResult;
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure, VtableGenerator,
-            VtableFnPointer, VtableObject, VtableDefaultImpl};
+            VtableFnPointer, VtableObject, VtableAutoImpl};
 use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableGeneratorData,
-            VtableClosureData, VtableDefaultImplData, VtableFnPointerData};
+            VtableClosureData, VtableAutoImplData, VtableFnPointerData};
 use super::util;
 
 use dep_graph::{DepNodeIndex, DepKind};
@@ -225,7 +225,7 @@ enum SelectionCandidate<'tcx> {
     BuiltinCandidate { has_nested: bool },
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(DefId),
-    DefaultImplCandidate(DefId),
+    AutoImplCandidate(DefId),
 
     /// This is a trait matching with a projected type as `Self`, and
     /// we found an applicable bound in the trait definition.
@@ -260,7 +260,7 @@ impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
                 }
             }
             ImplCandidate(def_id) => ImplCandidate(def_id),
-            DefaultImplCandidate(def_id) => DefaultImplCandidate(def_id),
+            AutoImplCandidate(def_id) => AutoImplCandidate(def_id),
             ProjectionCandidate => ProjectionCandidate,
             FnPointerCandidate => FnPointerCandidate,
             ObjectCandidate => ObjectCandidate,
@@ -910,7 +910,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate {
             ty::Predicate::Trait(ref data) => {
-                self.tcx().trait_has_default_impl(data.def_id())
+                self.tcx().trait_is_auto(data.def_id())
             }
             _ => {
                 false
@@ -1368,10 +1368,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
         self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
-        // Default implementations have lower priority, so we only
+        // Auto implementations have lower priority, so we only
         // consider triggering a default if there is no other impl that can apply.
         if candidates.vec.is_empty() {
-            self.assemble_candidates_from_default_impls(obligation, &mut candidates)?;
+            self.assemble_candidates_from_auto_impls(obligation, &mut candidates)?;
         }
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
@@ -1686,18 +1686,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn assemble_candidates_from_default_impls(&mut self,
+    fn assemble_candidates_from_auto_impls(&mut self,
                                               obligation: &TraitObligation<'tcx>,
                                               candidates: &mut SelectionCandidateSet<'tcx>)
                                               -> Result<(), SelectionError<'tcx>>
     {
         // OK to skip binder here because the tests we do below do not involve bound regions
         let self_ty = *obligation.self_ty().skip_binder();
-        debug!("assemble_candidates_from_default_impls(self_ty={:?})", self_ty);
+        debug!("assemble_candidates_from_auto_impls(self_ty={:?})", self_ty);
 
         let def_id = obligation.predicate.def_id();
 
-        if self.tcx().trait_has_default_impl(def_id) {
+        if self.tcx().trait_is_auto(def_id) {
             match self_ty.sty {
                 ty::TyDynamic(..) => {
                     // For object types, we don't know what the closed
@@ -1728,11 +1728,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     // this path.
                 }
                 ty::TyInfer(ty::TyVar(_)) => {
-                    // the defaulted impl might apply, we don't know
+                    // the auto impl might apply, we don't know
                     candidates.ambiguous = true;
                 }
                 _ => {
-                    candidates.vec.push(DefaultImplCandidate(def_id.clone()))
+                    candidates.vec.push(AutoImplCandidate(def_id.clone()))
                 }
             }
         }
@@ -1933,7 +1933,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         match other.candidate {
             ObjectCandidate |
             ParamCandidate(_) | ProjectionCandidate => match victim.candidate {
-                DefaultImplCandidate(..) => {
+                AutoImplCandidate(..) => {
                     bug!(
                         "default implementations shouldn't be recorded \
                          when there are other valid candidates");
@@ -2282,9 +2282,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(VtableParam(obligations))
             }
 
-            DefaultImplCandidate(trait_def_id) => {
-                let data = self.confirm_default_impl_candidate(obligation, trait_def_id);
-                Ok(VtableDefaultImpl(data))
+            AutoImplCandidate(trait_def_id) => {
+                let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
+                Ok(VtableAutoImpl(data))
             }
 
             ImplCandidate(impl_def_id) => {
@@ -2417,29 +2417,29 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ///
     /// 1. For each constituent type `Y` in `X`, `Y : Foo` holds
     /// 2. For each where-clause `C` declared on `Foo`, `[Self => X] C` holds.
-    fn confirm_default_impl_candidate(&mut self,
+    fn confirm_auto_impl_candidate(&mut self,
                                       obligation: &TraitObligation<'tcx>,
                                       trait_def_id: DefId)
-                                      -> VtableDefaultImplData<PredicateObligation<'tcx>>
+                                      -> VtableAutoImplData<PredicateObligation<'tcx>>
     {
-        debug!("confirm_default_impl_candidate({:?}, {:?})",
+        debug!("confirm_auto_impl_candidate({:?}, {:?})",
                obligation,
                trait_def_id);
 
         // binder is moved below
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
         let types = self.constituent_types_for_ty(self_ty);
-        self.vtable_default_impl(obligation, trait_def_id, ty::Binder(types))
+        self.vtable_auto_impl(obligation, trait_def_id, ty::Binder(types))
     }
 
-    /// See `confirm_default_impl_candidate`
-    fn vtable_default_impl(&mut self,
+    /// See `confirm_auto_impl_candidate`
+    fn vtable_auto_impl(&mut self,
                            obligation: &TraitObligation<'tcx>,
                            trait_def_id: DefId,
                            nested: ty::Binder<Vec<Ty<'tcx>>>)
-                           -> VtableDefaultImplData<PredicateObligation<'tcx>>
+                           -> VtableAutoImplData<PredicateObligation<'tcx>>
     {
-        debug!("vtable_default_impl: nested={:?}", nested);
+        debug!("vtable_auto_impl: nested={:?}", nested);
 
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
         let mut obligations = self.collect_predicates_for_types(
@@ -2465,9 +2465,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         obligations.extend(trait_obligations);
 
-        debug!("vtable_default_impl: obligations={:?}", obligations);
+        debug!("vtable_auto_impl: obligations={:?}", obligations);
 
-        VtableDefaultImplData {
+        VtableAutoImplData {
             trait_def_id,
             nested: obligations
         }

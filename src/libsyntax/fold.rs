@@ -908,8 +908,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             let generics = folder.fold_generics(generics);
             ItemKind::Union(folder.fold_variant_data(struct_def), generics)
         }
-        ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
-            ItemKind::DefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
+        ItemKind::AutoImpl(unsafety, ref trait_ref) => {
+            ItemKind::AutoImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
         ItemKind::Impl(unsafety,
                        polarity,
@@ -926,7 +926,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             folder.fold_ty(ty),
             impl_items.move_flat_map(|item| folder.fold_impl_item(item)),
         ),
-        ItemKind::Trait(unsafety, generics, bounds, items) => ItemKind::Trait(
+        ItemKind::Trait(is_auto, unsafety, generics, bounds, items) => ItemKind::Trait(
+            is_auto,
             unsafety,
             folder.fold_generics(generics),
             folder.fold_bounds(bounds),

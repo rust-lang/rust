@@ -114,7 +114,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id)).unwrap();
-                if !tcx.trait_has_default_impl(trait_ref.def_id) {
+                if !tcx.trait_is_auto(trait_ref.def_id) {
                     error_192(tcx, item.span);
                 }
             }
@@ -318,7 +318,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     fn check_trait(&mut self, item: &hir::Item) {
         let trait_def_id = self.tcx.hir.local_def_id(item.id);
 
-        if self.tcx.trait_has_default_impl(trait_def_id) {
+        if self.tcx.trait_is_auto(trait_def_id) {
             self.check_auto_trait(trait_def_id, item.span);
         }
 

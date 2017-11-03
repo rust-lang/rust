@@ -270,7 +270,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
                     hir::ItemImpl(..) | hir::ItemTrait(..) |
                     hir::ItemStruct(..) | hir::ItemEnum(..) |
-                    hir::ItemUnion(..) | hir::ItemDefaultImpl(..) |
+                    hir::ItemUnion(..) | hir::ItemAutoImpl(..) |
                     hir::ItemGlobalAsm(..) => {}
                 }
             }

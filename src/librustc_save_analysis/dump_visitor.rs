@@ -1232,7 +1232,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                  ref impl_items) => {
                 self.process_impl(item, ty_params, trait_ref, &typ, impl_items)
             }
-            Trait(_, ref generics, ref trait_refs, ref methods) =>
+            Trait(_, _, ref generics, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
             Mod(ref m) => {
                 self.process_mod(item);

@@ -34,7 +34,7 @@ pub struct TraitDef {
     /// be usable with the sugar (or without it).
     pub paren_sugar: bool,
 
-    pub has_default_impl: bool,
+    pub has_auto_impl: bool,
 
     /// The ICH of this trait's DefPath, cached here so it doesn't have to be
     /// recomputed all the time.
@@ -51,14 +51,14 @@ impl<'a, 'gcx, 'tcx> TraitDef {
     pub fn new(def_id: DefId,
                unsafety: hir::Unsafety,
                paren_sugar: bool,
-               has_default_impl: bool,
+               has_auto_impl: bool,
                def_path_hash: DefPathHash)
                -> TraitDef {
         TraitDef {
             def_id,
             paren_sugar,
             unsafety,
-            has_default_impl,
+            has_auto_impl,
             def_path_hash,
         }
     }

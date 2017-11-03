@@ -213,7 +213,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                         item.span,
                                         Some("place qualifiers on individual impl items instead"));
             }
-            ItemKind::DefaultImpl(..) => {
+            ItemKind::AutoImpl(..) => {
                 self.invalid_visibility(&item.vis, item.span, None);
             }
             ItemKind::ForeignMod(..) => {
@@ -229,7 +229,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(.., ref bounds, ref trait_items) => {
+            ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
+                if is_auto == IsAuto::Yes {
+                    // Auto traits cannot have generics, super traits nor contain items.
+                    if !generics.ty_params.is_empty() {
+                        self.err_handler().span_err(item.span,
+                                                    "auto traits cannot have generics");
+                    }
+                    if !bounds.is_empty() {
+                        self.err_handler().span_err(item.span,
+                                                    "auto traits cannot have super traits");
+                    }
+                    if !trait_items.is_empty() {
+                        self.err_handler().span_err(item.span,
+                                                    "auto traits cannot contain items");
+                    }
+                }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {

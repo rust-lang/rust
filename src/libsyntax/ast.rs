@@ -1581,6 +1581,13 @@ impl FnDecl {
     }
 }
 
+/// Is the trait definition an auto trait?
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum IsAuto {
+    Yes,
+    No
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Unsafety {
     Unsafe,
@@ -1942,12 +1949,12 @@ pub enum ItemKind {
     Union(VariantData, Generics),
     /// A Trait declaration (`trait` or `pub trait`).
     ///
-    /// E.g. `trait Foo { .. }` or `trait Foo<T> { .. }`
-    Trait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
+    /// E.g. `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`
+    Trait(IsAuto, Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
     /// Auto trait implementation.
     ///
     /// E.g. `impl Trait for .. {}` or `impl<T> Trait<T> for .. {}`
-    DefaultImpl(Unsafety, TraitRef),
+    AutoImpl(Unsafety, TraitRef),
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
@@ -1986,7 +1993,7 @@ impl ItemKind {
             ItemKind::Mac(..) |
             ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |
-            ItemKind::DefaultImpl(..) => "item"
+            ItemKind::AutoImpl(..) => "item"
         }
     }
 }

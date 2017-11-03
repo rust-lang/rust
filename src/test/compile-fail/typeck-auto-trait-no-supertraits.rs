@@ -35,6 +35,7 @@
 #![feature(optin_builtin_traits)]
 
 trait Magic: Copy {} //~ ERROR E0568
+#[allow(auto_impl)]
 impl Magic for .. {}
 impl<T:Magic> Magic for T {}
 

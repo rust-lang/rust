@@ -10,20 +10,27 @@
 
 #![feature(optin_builtin_traits)]
 
-trait NotSame {}
+auto trait Auto {}
+// Redundant but accepted until we remove it.
 #[allow(auto_impl)]
-impl NotSame for .. {}
-impl<A> !NotSame for (A, A) {}
+impl Auto for .. {}
 
-trait OneOfEach {}
+unsafe auto trait AutoUnsafe {}
 
-impl<A> OneOfEach for (A,) {}
+impl !Auto for bool {}
+impl !AutoUnsafe for bool {}
 
-impl<A, B> OneOfEach for (A, B)
-where
-    (B,): OneOfEach,
-    (A, B): NotSame,
-{
+struct AutoBool(bool);
+
+impl Auto for AutoBool {}
+unsafe impl AutoUnsafe for AutoBool {}
+
+fn take_auto<T: Auto>(_: T) {}
+fn take_auto_unsafe<T: AutoUnsafe>(_: T) {}
+
+fn main() {
+    take_auto(0);
+    take_auto(AutoBool(true));
+    take_auto_unsafe(0);
+    take_auto_unsafe(AutoBool(true));
 }
-
-fn main() {}

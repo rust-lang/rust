@@ -96,7 +96,7 @@ pub struct LoweringContext<'a> {
     exported_macros: Vec<hir::MacroDef>,
 
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    trait_default_impl: BTreeMap<DefId, NodeId>,
+    trait_auto_impl: BTreeMap<DefId, NodeId>,
 
     is_generator: bool,
 
@@ -146,7 +146,7 @@ pub fn lower_crate(sess: &Session,
         impl_items: BTreeMap::new(),
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
-        trait_default_impl: BTreeMap::new(),
+        trait_auto_impl: BTreeMap::new(),
         exported_macros: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
@@ -198,7 +198,7 @@ impl<'a> LoweringContext<'a> {
                     ItemKind::Union(_, ref generics) |
                     ItemKind::Enum(_, ref generics) |
                     ItemKind::Ty(_, ref generics) |
-                    ItemKind::Trait(_, ref generics, ..) => {
+                    ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics.lifetimes.len();
                         self.lctx.type_def_lifetime_params.insert(def_id, count);
@@ -284,7 +284,7 @@ impl<'a> LoweringContext<'a> {
             bodies: self.bodies,
             body_ids,
             trait_impls: self.trait_impls,
-            trait_default_impl: self.trait_default_impl,
+            trait_auto_impl: self.trait_auto_impl,
         }
     }
 
@@ -1479,14 +1479,14 @@ impl<'a> LoweringContext<'a> {
                 let vdata = self.lower_variant_data(vdata);
                 hir::ItemUnion(vdata, self.lower_generics(generics))
             }
-            ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 let trait_ref = self.lower_trait_ref(trait_ref);
 
                 if let Def::Trait(def_id) = trait_ref.path.def {
-                    self.trait_default_impl.insert(def_id, id);
+                    self.trait_auto_impl.insert(def_id, id);
                 }
 
-                hir::ItemDefaultImpl(self.lower_unsafety(unsafety),
+                hir::ItemAutoImpl(self.lower_unsafety(unsafety),
                                      trait_ref)
             }
             ItemKind::Impl(unsafety,
@@ -1515,10 +1515,11 @@ impl<'a> LoweringContext<'a> {
                               self.lower_ty(ty),
                               new_impl_items)
             }
-            ItemKind::Trait(unsafety, ref generics, ref bounds, ref items) => {
+            ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
                 let bounds = self.lower_bounds(bounds);
                 let items = items.iter().map(|item| self.lower_trait_item_ref(item)).collect();
-                hir::ItemTrait(self.lower_unsafety(unsafety),
+                hir::ItemTrait(self.lower_is_auto(is_auto),
+                               self.lower_unsafety(unsafety),
                                self.lower_generics(generics),
                                bounds,
                                items)
@@ -1738,6 +1739,13 @@ impl<'a> LoweringContext<'a> {
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
             decl: self.lower_fn_decl(&sig.decl),
+        }
+    }
+
+    fn lower_is_auto(&mut self, a: IsAuto) -> hir::IsAuto {
+        match a {
+            IsAuto::Yes => hir::IsAuto::Yes,
+            IsAuto::No => hir::IsAuto::No,
         }
     }
 

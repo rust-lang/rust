@@ -1845,7 +1845,7 @@ impl<'a> Resolver<'a> {
                                              |this| visit::walk_item(this, item));
             }
 
-            ItemKind::DefaultImpl(_, ref trait_ref) => {
+            ItemKind::AutoImpl(_, ref trait_ref) => {
                 self.with_optional_trait_ref(Some(trait_ref), |this, _| {
                     // Resolve type arguments in trait path
                     visit::walk_trait_ref(this, trait_ref);
@@ -1858,7 +1858,7 @@ impl<'a> Resolver<'a> {
                                             item.id,
                                             impl_items),
 
-            ItemKind::Trait(_, ref generics, ref bounds, ref trait_items) => {
+            ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
                     let local_def_id = this.definitions.local_def_id(item.id);

@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // Always use types for non-local impls, where types are always
         // available, and filename/line-number is mostly uninteresting.
-        let use_types = !self.is_default_impl(impl_def_id) && (!impl_def_id.is_local() || {
+        let use_types = !self.is_auto_impl(impl_def_id) && (!impl_def_id.is_local() || {
             // Otherwise, use filename/line-number if forced.
             let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
             !force_no_types

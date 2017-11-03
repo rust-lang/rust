@@ -288,11 +288,11 @@ pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
 
-    /// Vtable for default trait implementations
+    /// Vtable for auto trait implementations
     /// This carries the information and nested obligations with regards
-    /// to a default implementation for a trait `Trait`. The nested obligations
+    /// to an auto implementation for a trait `Trait`. The nested obligations
     /// ensure the trait implementation holds for all the constituent types.
-    VtableDefaultImpl(VtableDefaultImplData<N>),
+    VtableAutoImpl(VtableAutoImplData<N>),
 
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter. The `Vec<N>` represents the
@@ -354,7 +354,7 @@ pub struct VtableClosureData<'tcx, N> {
 }
 
 #[derive(Clone)]
-pub struct VtableDefaultImplData<N> {
+pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
@@ -758,7 +758,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(i) => i.nested,
             VtableParam(n) => n,
             VtableBuiltin(i) => i.nested,
-            VtableDefaultImpl(d) => d.nested,
+            VtableAutoImpl(d) => d.nested,
             VtableClosure(c) => c.nested,
             VtableGenerator(c) => c.nested,
             VtableObject(d) => d.nested,
@@ -771,7 +771,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             &mut VtableImpl(ref mut i) => &mut i.nested,
             &mut VtableParam(ref mut n) => n,
             &mut VtableBuiltin(ref mut i) => &mut i.nested,
-            &mut VtableDefaultImpl(ref mut d) => &mut d.nested,
+            &mut VtableAutoImpl(ref mut d) => &mut d.nested,
             &mut VtableGenerator(ref mut c) => &mut c.nested,
             &mut VtableClosure(ref mut c) => &mut c.nested,
             &mut VtableObject(ref mut d) => &mut d.nested,
@@ -795,7 +795,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
                 vtable_base: o.vtable_base,
                 nested: o.nested.into_iter().map(f).collect(),
             }),
-            VtableDefaultImpl(d) => VtableDefaultImpl(VtableDefaultImplData {
+            VtableAutoImpl(d) => VtableAutoImpl(VtableAutoImplData {
                 trait_def_id: d.trait_def_id,
                 nested: d.nested.into_iter().map(f).collect(),
             }),

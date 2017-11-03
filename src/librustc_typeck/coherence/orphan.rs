@@ -100,11 +100,11 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                 // This final impl is legal according to the orpan
                 // rules, but it invalidates the reasoning from
                 // `two_foos` above.
-                debug!("trait_ref={:?} trait_def_id={:?} trait_has_default_impl={}",
+                debug!("trait_ref={:?} trait_def_id={:?} trait_is_auto={}",
                        trait_ref,
                        trait_def_id,
-                       self.tcx.trait_has_default_impl(trait_def_id));
-                if self.tcx.trait_has_default_impl(trait_def_id) &&
+                       self.tcx.trait_is_auto(trait_def_id));
+                if self.tcx.trait_is_auto(trait_def_id) &&
                    !trait_def_id.is_local() {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
@@ -142,7 +142,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     }
                 }
             }
-            hir::ItemDefaultImpl(_, ref item_trait_ref) => {
+            hir::ItemAutoImpl(_, ref item_trait_ref) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}",
                        self.tcx.hir.node_to_string(item.id));

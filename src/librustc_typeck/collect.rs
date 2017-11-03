@@ -73,7 +73,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
-        is_default_impl,
+        is_auto_impl,
         ..*providers
     };
 }
@@ -273,7 +273,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => generics,
-                ItemTrait(_, ref generics, ..) => {
+                ItemTrait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_node_id {
                         result.predicates.push(ty::TraitRef {
@@ -425,7 +425,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.predicates_of(def_id);
             convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
         },
-        hir::ItemDefaultImpl(..) => {
+        hir::ItemAutoImpl(..) => {
             tcx.impl_trait_ref(def_id);
         }
         hir::ItemImpl(..) => {
@@ -670,7 +670,7 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let (generics, bounds) = match item.node {
-        hir::ItemTrait(_, ref generics, ref supertraits, _) => (generics, supertraits),
+        hir::ItemTrait(.., ref generics, ref supertraits, _) => (generics, supertraits),
         _ => span_bug!(item.span,
                        "super_predicates invoked on non-trait"),
     };
@@ -713,7 +713,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let item = tcx.hir.expect_item(node_id);
 
     let unsafety = match item.node {
-        hir::ItemTrait(unsafety, ..) => unsafety,
+        hir::ItemTrait(_, unsafety, ..) => unsafety,
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -730,11 +730,14 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let def_path_hash = tcx.def_path_hash(def_id);
-    let has_default_impl = tcx.hir.trait_is_auto(def_id);
+    let is_auto = match item.node {
+        hir::ItemTrait(hir::IsAuto::Yes, ..) => true,
+        _ => tcx.hir.trait_is_auto(def_id),
+    };
     let def = ty::TraitDef::new(def_id,
                                 unsafety,
                                 paren_sugar,
-                                has_default_impl,
+                                is_auto,
                                 def_path_hash);
     tcx.alloc_trait_def(def)
 }
@@ -888,7 +891,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     generics
                 }
 
-                ItemTrait(_, ref generics, ..) => {
+                ItemTrait(_, _, ref generics, ..) => {
                     // Add in the self type parameter.
                     //
                     // Something of a hack: use the node id for the trait, also as
@@ -1074,7 +1077,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
-                ItemDefaultImpl(..) |
+                ItemAutoImpl(..) |
                 ItemTrait(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
@@ -1223,7 +1226,7 @@ fn impl_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     match tcx.hir.expect_item(node_id).node {
-        hir::ItemDefaultImpl(_, ref ast_trait_ref) => {
+        hir::ItemAutoImpl(_, ref ast_trait_ref) => {
             Some(AstConv::instantiate_mono_trait_ref(&icx,
                                                      ast_trait_ref,
                                                      tcx.mk_self_type()))
@@ -1350,7 +1353,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     generics
                 }
 
-                ItemTrait(_, ref generics, .., ref items) => {
+                ItemTrait(_, _, ref generics, .., ref items) => {
                     is_trait = Some((ty::TraitRef {
                         def_id,
                         substs: Substs::identity_for_item(tcx, def_id)
@@ -1665,13 +1668,13 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn is_default_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn is_auto_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              def_id: DefId)
                              -> bool {
     match tcx.hir.get_if_local(def_id) {
-        Some(hir_map::NodeItem(&hir::Item { node: hir::ItemDefaultImpl(..), .. }))
+        Some(hir_map::NodeItem(&hir::Item { node: hir::ItemAutoImpl(..), .. }))
              => true,
         Some(_) => false,
-        _ => bug!("is_default_impl applied to non-local def-id {:?}", def_id)
+        _ => bug!("is_auto_impl applied to non-local def-id {:?}", def_id)
     }
 }

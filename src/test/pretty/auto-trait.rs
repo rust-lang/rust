@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,17 +10,10 @@
 
 #![feature(optin_builtin_traits)]
 
-trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0568
-#[allow(auto_impl)]
-impl Magic for .. {}
-impl<T:Magic> Magic for T {}
+// pp-exact
 
-fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
+auto trait MyTrait { }
 
-#[derive(Debug)]
-struct NoClone;
+unsafe auto trait UnsafeMyTrait { }
 
-fn main() {
-    let (a, b) = copy(NoClone);
-    println!("{:?} {:?}", a, b);
-}
+pub fn main() { }

@@ -24,9 +24,7 @@ Example:
 ```rust
 #![feature(optin_builtin_traits)]
 
-trait Valid {}
-
-impl Valid for .. {}
+auto trait Valid {}
 
 struct True;
 struct False;

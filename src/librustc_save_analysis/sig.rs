@@ -477,8 +477,13 @@ impl Sig for ast::Item {
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
-            ast::ItemKind::Trait(unsafety, ref generics, ref bounds, _) => {
+            ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, _) => {
                 let mut text = String::new();
+
+                if is_auto == ast::IsAuto::Yes {
+                    text.push_str("auto ");
+                }
+
                 if unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
@@ -499,7 +504,7 @@ impl Sig for ast::Item {
 
                 Ok(sig)
             }
-            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 let mut text = String::new();
                 if unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");

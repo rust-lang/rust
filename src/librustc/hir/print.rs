@@ -660,7 +660,7 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
-            hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
+            hir::ItemAutoImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
@@ -717,9 +717,10 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            hir::ItemTrait(unsafety, ref generics, ref bounds, ref trait_items) => {
+            hir::ItemTrait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
+                self.print_is_auto(is_auto)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
                 self.print_name(item.name)?;
@@ -2272,6 +2273,13 @@ impl<'a> State<'a> {
         match s {
             hir::Unsafety::Normal => Ok(()),
             hir::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    pub fn print_is_auto(&mut self, s: hir::IsAuto) -> io::Result<()> {
+        match s {
+            hir::IsAuto::Yes => self.word_nbsp("auto"),
+            hir::IsAuto::No => Ok(()),
         }
     }
 }

@@ -10,20 +10,13 @@
 
 #![feature(optin_builtin_traits)]
 
-trait NotSame {}
-#[allow(auto_impl)]
-impl NotSame for .. {}
-impl<A> !NotSame for (A, A) {}
-
-trait OneOfEach {}
-
-impl<A> OneOfEach for (A,) {}
-
-impl<A, B> OneOfEach for (A, B)
-where
-    (B,): OneOfEach,
-    (A, B): NotSame,
-{
-}
-
+auto trait Generic<T> {}
+//~^ ERROR auto traits cannot have generics
+//~^^ traits with auto impls (`e.g. impl Trait for ..`) can not have type parameters
+auto trait Bound : Copy {}
+//~^ ERROR auto traits cannot have super traits
+//~^^ traits with auto impls (`e.g. impl Trait for ..`) cannot have predicates
+auto trait MyTrait { fn foo() {} }
+//~^ ERROR auto traits cannot contain items
+//~^^ traits with default impls (`e.g. impl Trait for ..`) must have no methods or associated items
 fn main() {}

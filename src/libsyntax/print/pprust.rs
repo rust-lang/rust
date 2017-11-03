@@ -1287,7 +1287,7 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.ident, item.span, true)?;
             }
-            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
@@ -1338,10 +1338,11 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            ast::ItemKind::Trait(unsafety, ref generics, ref bounds, ref trait_items) => {
+            ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
+                self.print_is_auto(is_auto)?;
                 self.word_nbsp("trait")?;
                 self.print_ident(item.ident)?;
                 self.print_generics(generics)?;
@@ -3121,6 +3122,13 @@ impl<'a> State<'a> {
         match s {
             ast::Unsafety::Normal => Ok(()),
             ast::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    pub fn print_is_auto(&mut self, s: ast::IsAuto) -> io::Result<()> {
+        match s {
+            ast::IsAuto::Yes => self.word_nbsp("auto"),
+            ast::IsAuto::No => Ok(()),
         }
     }
 }

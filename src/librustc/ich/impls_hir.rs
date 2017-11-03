@@ -898,7 +898,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
             hir::ItemForeignMod(..)  |
             hir::ItemGlobalAsm(..)   |
             hir::ItemMod(..)         |
-            hir::ItemDefaultImpl(..) |
+            hir::ItemAutoImpl(..) |
             hir::ItemTrait(..)       |
             hir::ItemImpl(..)        |
             hir::ItemTy(..)          |
@@ -944,8 +944,8 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemEnum(enum_def, generics),
     ItemStruct(variant_data, generics),
     ItemUnion(variant_data, generics),
-    ItemTrait(unsafety, generics, bounds, item_refs),
-    ItemDefaultImpl(unsafety, trait_ref),
+    ItemTrait(is_auto, unsafety, generics, bounds, item_refs),
+    ItemAutoImpl(unsafety, trait_ref),
     ItemImpl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
 });
 
@@ -1126,6 +1126,10 @@ impl_stable_hash_for!(enum hir::Mutability {
     MutImmutable
 });
 
+impl_stable_hash_for!(enum hir::IsAuto {
+    Yes,
+    No
+});
 
 impl_stable_hash_for!(enum hir::Unsafety {
     Unsafe,

@@ -313,7 +313,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemExternCrate(_) |
             hir::ItemUse(..) |
             hir::ItemMod(..) |
-            hir::ItemDefaultImpl(..) |
+            hir::ItemAutoImpl(..) |
             hir::ItemForeignMod(..) |
             hir::ItemGlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
@@ -332,7 +332,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemEnum(_, ref generics) |
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) |
-            hir::ItemTrait(_, ref generics, ..) |
+            hir::ItemTrait(_, _, ref generics, ..) |
             hir::ItemImpl(_, _, _, ref generics, ..) => {
                 // These kinds of items have only early bound lifetime parameters.
                 let mut index = if let hir::ItemTrait(..) = item.node {
@@ -688,7 +688,7 @@ fn compute_object_lifetime_defaults(sess: &Session, hir_map: &Map)
             hir::ItemUnion(_, ref generics) |
             hir::ItemEnum(_, ref generics) |
             hir::ItemTy(_, ref generics) |
-            hir::ItemTrait(_, ref generics, ..) => {
+            hir::ItemTrait(_, _, ref generics, ..) => {
                 let result = object_lifetime_defaults_for_item(hir_map, generics);
 
                 // Debugging aid.
@@ -844,7 +844,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 index += 1; // Self comes first.
             }
             match parent.node {
-                hir::ItemTrait(_, ref generics, ..) |
+                hir::ItemTrait(_, _, ref generics, ..) |
                 hir::ItemImpl(_, _, _, ref generics, ..) => {
                     index += (generics.lifetimes.len() + generics.ty_params.len()) as u32;
                 }
