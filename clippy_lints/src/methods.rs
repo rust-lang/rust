@@ -760,15 +760,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next();
             if let hir::ItemImpl(_, _, _, _, None, ref self_ty, _) = item.node;
             then {
+                if cx.access_levels.is_exported(implitem.id) {
                 // check missing trait implementations
-                for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                    if name == method_name &&
-                       sig.decl.inputs.len() == n_args &&
-                       out_type.matches(&sig.decl.output) &&
-                       self_kind.matches(first_arg_ty, first_arg, self_ty, false, &implitem.generics) {
-                        span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
-                            "defining a method called `{}` on this type; consider implementing \
-                             the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                        if name == method_name &&
+                        sig.decl.inputs.len() == n_args &&
+                        out_type.matches(&sig.decl.output) &&
+                        self_kind.matches(first_arg_ty, first_arg, self_ty, false, &implitem.generics) {
+                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
+                                "defining a method called `{}` on this type; consider implementing \
+                                the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                        }
                     }
                 }
     

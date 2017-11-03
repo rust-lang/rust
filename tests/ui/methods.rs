@@ -14,11 +14,14 @@ use std::iter::FromIterator;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
 
-struct T;
+pub struct T;
 
 impl T {
-    fn add(self, other: T) -> T { self }
-    fn drop(&mut self) { }
+    pub fn add(self, other: T) -> T { self }
+
+    pub(crate) fn drop(&mut self) { } // no error, not public interfact
+    fn neg(self) -> Self { self } // no error, private function
+    fn eq(&self, other: T) -> bool { true } // no error, private function
 
     fn sub(&self, other: T) -> &T { self } // no error, self is a ref
     fn div(self) -> T { self } // no error, different #arguments
