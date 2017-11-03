@@ -372,7 +372,7 @@ impl Session {
         match self.opts.error_format {
             // when outputting JSON for tool consumption, the tool might want
             // the duplicates
-            config::ErrorOutputType::Json => {
+            config::ErrorOutputType::Json(_) => {
                 do_method()
             },
             _ => {
@@ -736,11 +736,11 @@ pub fn build_session_with_codemap(sopts: config::Options,
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
             Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false))
         }
-        (config::ErrorOutputType::Json, None) => {
-            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
+        (config::ErrorOutputType::Json(pretty), None) => {
+            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(), pretty))
         }
-        (config::ErrorOutputType::Json, Some(dst)) => {
-            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone()))
+        (config::ErrorOutputType::Json(pretty), Some(dst)) => {
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(), pretty))
         }
         (config::ErrorOutputType::Short(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true))
@@ -918,7 +918,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false))
         }
-        config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, true))
         }
@@ -933,7 +933,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false))
         }
-        config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
         config::ErrorOutputType::Short(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, true))
         }

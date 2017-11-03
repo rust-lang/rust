@@ -30,36 +30,41 @@ use std::rc::Rc;
 use std::io::{self, Write};
 use std::vec;
 
-use rustc_serialize::json::as_json;
+use rustc_serialize::json::{as_json, as_pretty_json};
 
 pub struct JsonEmitter {
     dst: Box<Write + Send>,
     registry: Option<Registry>,
     cm: Rc<CodeMapper + 'static>,
+    pretty: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
-                  code_map: Rc<CodeMap>) -> JsonEmitter {
+                  code_map: Rc<CodeMap>,
+                  pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
             cm: code_map,
+            pretty,
         }
     }
 
-    pub fn basic() -> JsonEmitter {
+    pub fn basic(pretty: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)))
+        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)), pretty)
     }
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<Registry>,
-               code_map: Rc<CodeMap>) -> JsonEmitter {
+               code_map: Rc<CodeMap>,
+               pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
             cm: code_map,
+            pretty,
         }
     }
 }
@@ -67,7 +72,12 @@ impl JsonEmitter {
 impl Emitter for JsonEmitter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
         let data = Diagnostic::from_diagnostic_builder(db, self);
-        if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
+        let result = if self.pretty {
+            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+        } else {
+            writeln!(&mut self.dst, "{}", as_json(&data))
+        };
+        if let Err(e) = result {
             panic!("failed to print diagnostics: {:?}", e);
         }
     }

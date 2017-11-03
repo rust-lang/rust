@@ -155,7 +155,7 @@ impl OutputType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
     HumanReadable(ColorConfig),
-    Json,
+    Json(bool),
     Short(ColorConfig),
 }
 
@@ -1104,6 +1104,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable ThinLTO when possible"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether #[inline] functions are in all cgus"),
+    pretty_json_error_format: bool = (false, parse_bool, [UNTRACKED],
+          "allow `--error-format=pretty-json` (used for compiletest)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1433,7 +1435,8 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
             Some("human") => ErrorOutputType::HumanReadable(color),
-            Some("json")  => ErrorOutputType::Json,
+            Some("json")  => ErrorOutputType::Json(false),
+            Some("pretty-json") => ErrorOutputType::Json(true),
             Some("short") => ErrorOutputType::Short(color),
 
             None => ErrorOutputType::HumanReadable(color),
@@ -1473,6 +1476,11 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     });
 
     let debugging_opts = build_debugging_options(matches, error_format);
+
+    if !debugging_opts.pretty_json_error_format && error_format == ErrorOutputType::Json(true) {
+        early_error(ErrorOutputType::Json(false), "--error-format=pretty-json is unstable \
+                                                   (use -Zpretty-json-error-format)");
+    }
 
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
