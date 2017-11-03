@@ -37,7 +37,7 @@ use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::layout::{Layout, LayoutError};
 use ty::steal::Steal;
 use ty::subst::Substs;
-use util::nodemap::{DefIdSet, DefIdMap, ItemLocalMap};
+use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -236,7 +236,7 @@ define_maps! { <'tcx>
     [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
     [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
-    [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Rc<ItemLocalMap<bool>>,
+    [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Rc<ItemLocalSet>,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
     [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
                           -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,

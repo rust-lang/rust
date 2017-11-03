@@ -86,7 +86,7 @@ use syntax_pos::Span;
 
 use std::fmt;
 use std::rc::Rc;
-use util::nodemap::ItemLocalMap;
+use util::nodemap::ItemLocalSet;
 
 #[derive(Clone, PartialEq)]
 pub enum Categorization<'tcx> {
@@ -286,7 +286,7 @@ pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
-    rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>,
+    rvalue_promotable_map: Option<Rc<ItemLocalSet>>,
     infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
 }
 
@@ -395,7 +395,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>)
+               rvalue_promotable_map: Option<Rc<ItemLocalSet>>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
         MemCategorizationContext {
             tcx,
@@ -897,7 +897,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
         let hir_id = self.tcx.hir.node_to_hir_id(id);
-        let promotable = self.rvalue_promotable_map.as_ref().map(|m| m[&hir_id.local_id])
+        let promotable = self.rvalue_promotable_map.as_ref().map(|m| m.contains(&hir_id.local_id))
                                                             .unwrap_or(false);
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).

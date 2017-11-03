@@ -31,7 +31,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use util::nodemap::ItemLocalMap;
+use util::nodemap::ItemLocalSet;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -279,7 +279,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>)
+               rvalue_promotable_map: Option<Rc<ItemLocalSet>>)
                -> Self
     {
         ExprUseVisitor {
