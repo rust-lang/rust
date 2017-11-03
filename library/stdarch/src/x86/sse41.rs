@@ -4,7 +4,7 @@ use std::mem;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
-use simd_llvm::{simd_cast, simd_shuffle4, simd_shuffle8};
+use simd_llvm::{simd_cast, simd_shuffle2, simd_shuffle4, simd_shuffle8};
 
 use v128::*;
 
@@ -261,6 +261,7 @@ pub unsafe fn _mm_cmpeq_epi64(a: i64x2, b: i64x2) -> i64x2 {
 }
 
 /// Sign extend packed 8-bit integers in `a` to packed 16-bit integers
+#[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovsxbw))]
 pub unsafe fn _mm_cvtepi8_epi16(a: i8x16) -> i16x8 {
@@ -268,12 +269,23 @@ pub unsafe fn _mm_cvtepi8_epi16(a: i8x16) -> i16x8 {
 }
 
 /// Sign extend packed 8-bit integers in `a` to packed 32-bit integers
+#[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovsxbd))]
 pub unsafe fn _mm_cvtepi8_epi32(a: i8x16) -> i32x4 {
     let cast = simd_cast::<_, ::v512::i32x16>(a);
     simd_shuffle4(cast, cast, [0, 1, 2, 3])
 }
+
+/// Sign extend packed 8-bit integers in the low 8 bytes of `a` to packed 64-bit integers
+/*
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmovsxbq))]
+pub unsafe fn _mm_cvtepi8_epi64(a: i8x16) -> i64x2 {
+    simd_cast::<::v16::i8x2, _>(simd_shuffle2(a, a, [0, 1]))
+}
+*/
 
 /// Returns the dot product of two f64x2 vectors.
 ///
@@ -798,6 +810,20 @@ mod tests {
         let e = i32x4::splat(-10);
         assert_eq!(r, e);
     }
+
+    /*
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_cvtepi8_epi64() {
+        let a = i8x16::splat(10);
+        let r = sse41::_mm_cvtepi8_epi64(a);
+        let e = i64x2::splat(10);
+        assert_eq!(r, e);
+        let a = i8x16::splat(-10);
+        let r = sse41::_mm_cvtepi8_epi64(a);
+        let e = i64x2::splat(-10);
+        assert_eq!(r, e);
+    }
+    */
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_dp_pd() {
