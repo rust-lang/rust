@@ -98,6 +98,7 @@ impl<T: Serialize, U> S<T, U> {
     fn baz(
         &self,
         _u: U,
+        _s: Self,
     ) {
     }
 }
