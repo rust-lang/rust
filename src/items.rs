@@ -1788,13 +1788,7 @@ fn rewrite_fn_base(
     }
 
     // Skip `pub(crate)`.
-    let lo_after_visibility = match fn_sig.visibility {
-        ast::Visibility::Crate(s, CrateSugar::PubCrate) => {
-            context.codemap.span_after(mk_sp(s.hi(), span.hi()), ")")
-        }
-        ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
-        _ => span.lo(),
-    };
+    let lo_after_visibility = get_bytepos_after_visibility(context, &fn_sig.visibility, span, ")");
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = fn_sig
         .generics
