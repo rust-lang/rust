@@ -211,7 +211,7 @@ pub unsafe fn _mm_insert_epi64(a: i64x2, i: i64, imm8: u8) -> i64x2 {
 /// values in dst.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(pmaxsb, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pmaxsb))]
 pub unsafe fn _mm_max_epi8(a: i8x16, b: i8x16) -> i8x16 {
     pmaxsb(a, b)
 }
@@ -220,7 +220,7 @@ pub unsafe fn _mm_max_epi8(a: i8x16, b: i8x16) -> i8x16 {
 /// maximum.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(pmaxuw, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pmaxuw))]
 pub unsafe fn _mm_max_epu16(a: u16x8, b: u16x8) -> u16x8 {
     pmaxuw(a, b)
 }
@@ -229,7 +229,7 @@ pub unsafe fn _mm_max_epu16(a: u16x8, b: u16x8) -> u16x8 {
 /// values.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(pmaxsd, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pmaxsd))]
 pub unsafe fn _mm_max_epi32(a: i32x4, b: i32x4) -> i32x4 {
     pmaxsd(a, b)
 }
@@ -238,10 +238,27 @@ pub unsafe fn _mm_max_epi32(a: i32x4, b: i32x4) -> i32x4 {
 /// maximum values.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(pmaxud, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pmaxud))]
 pub unsafe fn _mm_max_epu32(a: u32x4, b: u32x4) -> u32x4 {
     pmaxud(a, b)
 }
+
+/// Convert packed 32-bit integers from `a` and `b` to packed 16-bit integers using unsigned saturation
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(packusdw))]
+pub unsafe fn _mm_packus_epi32(a: i32x4, b: i32x4) -> u16x8 {
+    packusdw(a, b)
+}
+
+/// Compare packed 64-bit integers in `a` and `b` for equality
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pcmpeqq))]
+pub unsafe fn _mm_cmpeq_epi64(a: i64x2, b: i64x2) -> i64x2 {
+    a.eq(b)
+}
+
 
 /// Returns the dot product of two f64x2 vectors.
 ///
@@ -510,6 +527,8 @@ extern "C" {
     fn pmaxsd(a: i32x4, b: i32x4) -> i32x4;
     #[link_name = "llvm.x86.sse41.pmaxud"]
     fn pmaxud(a: u32x4, b: u32x4) -> u32x4;
+    #[link_name = "llvm.x86.sse41.packusdw"]
+    fn packusdw(a: i32x4, b: i32x4) -> u16x8;
     #[link_name = "llvm.x86.sse41.dppd"]
     fn dppd(a: f64x2, b: f64x2, imm8: u8) -> f64x2;
     #[link_name = "llvm.x86.sse41.dpps"]
@@ -720,6 +739,24 @@ mod tests {
         let b = u32x4::new(2, 3, 6, 7);
         let r = sse41::_mm_max_epu32(a, b);
         let e = u32x4::new(2, 4, 6, 8);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_packus_epi32() {
+        let a = i32x4::new(1, 2, 3, 4);
+        let b = i32x4::new(-1, -2, -3, -4);
+        let r = sse41::_mm_packus_epi32(a, b);
+        let e = u16x8::new(1, 2, 3, 4, 0, 0, 0, 0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_cmpeq_epi64() {
+        let a = i64x2::new(0, 1);
+        let b = i64x2::new(0, 0);
+        let r = sse41::_mm_cmpeq_epi64(a, b);
+        let e = i64x2::new(0xFFFFFFFFFFFFFFFF, 0x0);
         assert_eq!(r, e);
     }
 
