@@ -1476,8 +1476,8 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let debugging_opts = build_debugging_options(matches, error_format);
 
     if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
-        early_error(ErrorOutputType::Json(false), "--error-format=pretty-json is unstable \
-                                                   (use -Zpretty-json-error-format)");
+        early_error(ErrorOutputType::Json(false),
+                    "--error-format=pretty-json is unstable");
     }
 
     let mut output_types = BTreeMap::new();
