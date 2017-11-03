@@ -1565,7 +1565,7 @@ actual:\n\
     fn aux_output_dir_name(&self) -> PathBuf {
         let f = self.output_base_name();
         let mut fname = f.file_name().unwrap().to_os_string();
-        fname.push(&format!(".{}.libaux", self.config.mode));
+        fname.push(&format!("{}.aux", self.config.mode.disambiguator()));
         f.with_file_name(&fname)
     }
 

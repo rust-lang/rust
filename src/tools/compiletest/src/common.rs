@@ -34,6 +34,20 @@ pub enum Mode {
     MirOpt,
 }
 
+impl Mode {
+    pub fn disambiguator(self) -> &'static str {
+        // Run-pass and pretty run-pass tests could run concurrently, and if they do,
+        // they need to keep their output segregated. Same is true for debuginfo tests that
+        // can be run both on gdb and lldb.
+        match self {
+            Pretty => ".pretty",
+            DebugInfoGdb => ".gdb",
+            DebugInfoLldb => ".lldb",
+            _ => "",
+        }
+    }
+}
+
 impl FromStr for Mode {
     type Err = ();
     fn from_str(s: &str) -> Result<Mode, ()> {
