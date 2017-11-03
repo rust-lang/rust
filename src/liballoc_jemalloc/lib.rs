@@ -203,7 +203,8 @@ mod contents {
                                             err: *mut u8) -> *mut u8 {
         let p = __rde_alloc(size, align, err);
         if !p.is_null() {
-            *excess = size;
+            let flags = align_to_flags(align);
+            *excess = nallocx(size, flags) as usize;
         }
         return p
     }
