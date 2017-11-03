@@ -300,3 +300,8 @@ struct Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 {
     x: i32,
 }
+
+// structs with visibility, do not duplicate visibility (#2110).
+pub(in self) struct Foo();
+pub(super) struct Foo();
+pub(crate) struct Foo();
