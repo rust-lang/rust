@@ -1104,8 +1104,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable ThinLTO when possible"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether #[inline] functions are in all cgus"),
-    pretty_json_error_format: bool = (false, parse_bool, [UNTRACKED],
-          "allow `--error-format=pretty-json` (used for compiletest)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1477,7 +1475,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let debugging_opts = build_debugging_options(matches, error_format);
 
-    if !debugging_opts.pretty_json_error_format && error_format == ErrorOutputType::Json(true) {
+    if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
         early_error(ErrorOutputType::Json(false), "--error-format=pretty-json is unstable \
                                                    (use -Zpretty-json-error-format)");
     }
@@ -2262,46 +2260,46 @@ mod tests {
         let mut v5 = super::basic_options();
 
         // Reference
-        v1.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v1.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
         // Native changed
-        v2.search_paths.add_path("native=XXX", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v2.search_paths.add_path("native=XXX", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
         // Crate changed
-        v2.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("crate=XXX", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v2.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("crate=XXX", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
         // Dependency changed
-        v3.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("dependency=XXX", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v3.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("dependency=XXX", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
         // Framework changed
-        v4.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("framework=XXX", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v4.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("framework=XXX", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
         // All changed
-        v5.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v5.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v5.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v5.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v5.search_paths.add_path("all=XXX", super::ErrorOutputType::Json);
+        v5.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v5.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v5.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v5.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v5.search_paths.add_path("all=XXX", super::ErrorOutputType::Json(false));
 
         assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
@@ -2324,29 +2322,29 @@ mod tests {
         let mut v4 = super::basic_options();
 
         // Reference
-        v1.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v1.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v1.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v1.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
-        v2.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v2.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
-        v3.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v3.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
+        v3.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v3.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
 
-        v4.search_paths.add_path("all=mno", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("native=abc", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("crate=def", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json);
-        v4.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json);
+        v4.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v4.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
