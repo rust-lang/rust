@@ -23,9 +23,9 @@ SYSROOT=/usr/local/$TARGET/sysroot
 mkdir -p $SYSROOT
 pushd $SYSROOT
 
-centos_base=http://mirror.centos.org/altarch/7/os/ppc64le/Packages
-glibc_v=2.17-196.el7
-kernel_v=3.10.0-693.el7
+centos_base=http://vault.centos.org/altarch/7.3.1611/os/ppc64le/Packages/
+glibc_v=2.17-157.el7
+kernel_v=3.10.0-514.el7
 for package in glibc{,-devel,-headers}-$glibc_v kernel-headers-$kernel_v; do
   curl $centos_base/$package.ppc64le.rpm | \
     rpm2cpio - | cpio -idm
