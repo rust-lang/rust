@@ -31,7 +31,7 @@
 /// A quick overview of attributes supported right now are:
 ///
 /// * `use_c_shim_if` - takes a #[cfg] directive and falls back to the
-///   C-compiled version if `feature = "c"` is specified.
+///   C-compiled version if `use_c` is specified.
 /// * `aapcs_on_arm` - forces the ABI of the function to be `"aapcs"` on ARM and
 ///   the specified ABI everywhere else.
 /// * `unadjusted_on_win64` - like `aapcs_on_arm` this switches to the
@@ -68,7 +68,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
 
-        #[cfg(all(feature = "c", $($cfg_clause)*))]
+        #[cfg(all(use_c, $($cfg_clause)*))]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             extern $abi {
                 fn $name($($argname: $ty),*) -> $ret;
@@ -78,7 +78,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(not(all(feature = "c", $($cfg_clause)*)))]
+        #[cfg(not(all(use_c, $($cfg_clause)*)))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
