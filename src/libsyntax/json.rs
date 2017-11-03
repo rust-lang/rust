@@ -85,9 +85,7 @@ struct Diagnostic {
     spans: Vec<DiagnosticSpan>,
     /// Associated diagnostic messages.
     children: Vec<Diagnostic>,
-    /// The message as rustc would render it. Currently this is only
-    /// `Some` for "suggestions", but eventually it will include all
-    /// snippets.
+    /// The message as rustc would render it. Currently this is always `None`
     rendered: Option<String>,
 }
 
@@ -110,9 +108,7 @@ struct DiagnosticSpan {
     /// Label that should be placed at this location (if any)
     label: Option<String>,
     /// If we are suggesting a replacement, this will contain text
-    /// that should be sliced in atop this span. You may prefer to
-    /// load the fully rendered version from the parent `Diagnostic`,
-    /// however.
+    /// that should be sliced in atop this span.
     suggested_replacement: Option<String>,
     /// Macro invocations that created the code at this span, if any.
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
