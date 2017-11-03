@@ -90,9 +90,8 @@ use middle::mem_categorization::Categorization;
 use middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
-use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::infer::{self, GenericKind, SubregionOrigin};
+use rustc::infer::{self, InferOk, GenericKind};
 use rustc::ty::adjustment;
 use rustc::ty::outlives::Component;
 use rustc::ty::wf;
@@ -104,8 +103,6 @@ use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, PatKind};
-
-use super::regionck_outlives::RegionckOutlives;
 
 // a variation on try that just returns unit
 macro_rules! ignore_err {
@@ -360,28 +357,21 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // obligations. So make sure we process those.
         self.select_all_obligations_or_error();
 
-        // Make a copy of the region obligations vec because we'll need
-        // to be able to borrow the fulfillment-cx below when projecting.
-        let region_obligations = self.infcx.take_region_obligations(node_id);
+        let InferOk { value: (), obligations }  =
+            self.infcx.process_registered_region_obligations(
+                &self.region_bound_pairs,
+                self.implicit_region_bound,
+                self.param_env,
+                self.body_id);
 
-        for r_o in &region_obligations {
-            debug!("visit_region_obligations: r_o={:?} cause={:?}",
-                   r_o, r_o.cause);
-            let sup_type = self.resolve_type(r_o.sup_type);
-            let origin = self.code_to_origin(&r_o.cause, sup_type);
-            self.type_must_outlive(origin, sup_type, r_o.sub_region);
-        }
-
-        // Processing the region obligations should not cause the list to grow further:
-        assert!(self.infcx.take_region_obligations(node_id).is_empty());
-    }
-
-    fn code_to_origin(&self,
-                      cause: &traits::ObligationCause<'tcx>,
-                      sup_type: Ty<'tcx>)
-                      -> SubregionOrigin<'tcx> {
-        SubregionOrigin::from_obligation_cause(cause,
-                                               || infer::RelateParamBound(cause.span, sup_type))
+        // TODO -- It feels like we ought to loop here; these new
+        // obligations, when selected, could cause the list of region
+        // obligations to grow further. Fortunately, I believe that if
+        // that happens it will at least lead to an ICE today, because
+        // `resolve_regions_and_report_errors` (which runs after *all*
+        // obligations have been selected) will assert that there are
+        // no unsolved region obligations.
+        self.register_predicates(obligations);
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed
@@ -1147,12 +1137,14 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                              ty: Ty<'tcx>,
                              region: ty::Region<'tcx>)
     {
-        let outlives = RegionckOutlives::new(&self.infcx,
-                                             &self.region_bound_pairs,
-                                             self.implicit_region_bound,
-                                             self.param_env,
-                                             self.body_id);
-        self.register_infer_ok_obligations(outlives.type_must_outlive(origin, ty, region));
+        let infer_ok = self.infcx.type_must_outlive(&self.region_bound_pairs,
+                                                    self.implicit_region_bound,
+                                                    self.param_env,
+                                                    self.body_id,
+                                                    origin,
+                                                    ty,
+                                                    region);
+        self.register_infer_ok_obligations(infer_ok)
     }
 
     /// Computes the guarantor for an expression `&base` and then ensures that the lifetime of the

@@ -543,7 +543,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // it, and it would take some refactoring to stop doing so.
         // (In particular, the needed methods currently live in
         // regionck.) -nmatsakis
-        let _ = infcx.take_region_obligations(body_id);
+        let _ = infcx.ignore_region_obligations(body_id);
 
         infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {
