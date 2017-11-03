@@ -630,8 +630,7 @@ fn rewrite_closure(
         }
 
         // Figure out if the block is necessary.
-        let needs_block = block.rules != ast::BlockCheckMode::Default || block.stmts.len() > 1
-            || context.inside_macro
+        let needs_block = is_unsafe_block(block) || block.stmts.len() > 1 || context.inside_macro
             || block_contains_comment(block, context.codemap)
             || prefix.contains('\n');
 
@@ -642,8 +641,12 @@ fn rewrite_closure(
         };
         if no_return_type && !needs_block {
             // block.stmts.len() == 1
-            if let Some(expr) = stmt_expr(&block.stmts[0]) {
-                if let Some(rw) = rewrite_closure_expr(expr, &prefix, context, body_shape) {
+            if let Some(ref expr) = stmt_expr(&block.stmts[0]) {
+                if let Some(rw) = if is_block_closure_forced(expr) {
+                    rewrite_closure_with_block(context, shape, &prefix, expr)
+                } else {
+                    rewrite_closure_expr(expr, &prefix, context, body_shape)
+                } {
                     return Some(rw);
                 }
             }
@@ -1195,12 +1198,13 @@ impl<'a> ControlFlow<'a> {
             context
                 .codemap
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
-            self.pat
-                .map_or(cond_span.lo(), |p| if self.matcher.is_empty() {
+            self.pat.map_or(cond_span.lo(), |p| {
+                if self.matcher.is_empty() {
                     p.span.lo()
                 } else {
                     context.codemap.span_before(self.span, self.matcher.trim())
-                }),
+                }
+            }),
         );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -2248,7 +2252,34 @@ fn rewrite_last_closure(
         if prefix.contains('\n') {
             return None;
         }
+        // If we are inside macro, we do not want to add or remove block from closure body.
+        if context.inside_macro {
+            return expr.rewrite(context, shape);
+        }
+
         let body_shape = shape.offset_left(extra_offset)?;
+
+        // We force to use block for the body of the closure for certain kinds of expressions.
+        if is_block_closure_forced(body) {
+            return rewrite_closure_with_block(context, body_shape, &prefix, body).and_then(
+                |body_str| {
+                    // If the expression can fit in a single line, we need not force block closure.
+                    if body_str.lines().count() <= 7 {
+                        match rewrite_closure_expr(body, &prefix, context, shape) {
+                            Some(ref single_line_body_str)
+                                if !single_line_body_str.contains('\n') =>
+                            {
+                                Some(single_line_body_str.clone())
+                            }
+                            _ => Some(body_str),
+                        }
+                    } else {
+                        Some(body_str)
+                    }
+                },
+            );
+        }
+
         // When overflowing the closure which consists of a single control flow expression,
         // force to use block if its condition uses multi line.
         let is_multi_lined_cond = rewrite_cond(context, body, body_shape)
@@ -2262,6 +2293,23 @@ fn rewrite_last_closure(
         return expr.rewrite(context, shape);
     }
     None
+}
+
+fn is_block_closure_forced(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprKind::If(..) |
+        ast::ExprKind::IfLet(..) |
+        ast::ExprKind::Loop(..) |
+        ast::ExprKind::While(..) |
+        ast::ExprKind::WhileLet(..) |
+        ast::ExprKind::ForLoop(..) => true,
+        ast::ExprKind::AddrOf(_, ref expr) |
+        ast::ExprKind::Box(ref expr) |
+        ast::ExprKind::Try(ref expr) |
+        ast::ExprKind::Unary(_, ref expr) |
+        ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced(expr),
+        _ => false,
+    }
 }
 
 fn rewrite_last_arg_with_overflow<'a, T>(
@@ -2281,15 +2329,7 @@ where
             ast::ExprKind::Closure(..) => {
                 // If the argument consists of multiple closures, we do not overflow
                 // the last closure.
-                if args.len() > 1
-                    && args.iter()
-                        .rev()
-                        .skip(1)
-                        .filter_map(|arg| arg.to_expr())
-                        .any(|expr| match expr.node {
-                            ast::ExprKind::Closure(..) => true,
-                            _ => false,
-                        }) {
+                if args_have_many_closure(args) {
                     None
                 } else {
                     rewrite_last_closure(context, expr, shape)
@@ -2308,6 +2348,23 @@ where
     } else {
         None
     }
+}
+
+/// Returns true if the given vector of arguments has more than one `ast::ExprKind::Closure`.
+fn args_have_many_closure<T>(args: &[&T]) -> bool
+where
+    T: ToExpr,
+{
+    args.iter()
+        .filter(|arg| {
+            arg.to_expr()
+                .map(|e| match e.node {
+                    ast::ExprKind::Closure(..) => true,
+                    _ => false,
+                })
+                .unwrap_or(false)
+        })
+        .count() > 1
 }
 
 fn can_be_overflowed<'a, T>(context: &RewriteContext, args: &[&T]) -> bool
@@ -2698,13 +2755,17 @@ where
     if items.len() == 1 {
         // 3 = "(" + ",)"
         let nested_shape = shape.sub_width(3)?.visual_indent(1);
-        return items.next().unwrap().rewrite(context, nested_shape).map(
-            |s| if context.config.spaces_within_parens() {
-                format!("( {}, )", s)
-            } else {
-                format!("({},)", s)
-            },
-        );
+        return items
+            .next()
+            .unwrap()
+            .rewrite(context, nested_shape)
+            .map(|s| {
+                if context.config.spaces_within_parens() {
+                    format!("( {}, )", s)
+                } else {
+                    format!("({},)", s)
+                }
+            });
     }
 
     let list_lo = context.codemap.span_after(span, "(");

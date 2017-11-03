@@ -21,10 +21,12 @@ fn main() {
         false => (),
     });
 
-    loong_func().quux(move || if true {
-        1
-    } else {
-        2
+    loong_func().quux(move || {
+        if true {
+            1
+        } else {
+            2
+        }
     });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {

@@ -311,10 +311,12 @@ fn rewrite_comment_inner(
             line
         })
         .map(|s| left_trim_comment_line(s, &style))
-        .map(|line| if orig.starts_with("/*") && line_breaks == 0 {
-            line.trim_left()
-        } else {
-            line
+        .map(|line| {
+            if orig.starts_with("/*") && line_breaks == 0 {
+                line.trim_left()
+            } else {
+                line
+            }
         });
 
     let mut result = opener.to_owned();

@@ -670,10 +670,12 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Paren(ref ty) => {
                 let budget = shape.width.checked_sub(2)?;
                 ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
-                    .map(|ty_str| if context.config.spaces_within_parens() {
-                        format!("( {} )", ty_str)
-                    } else {
-                        format!("({})", ty_str)
+                    .map(|ty_str| {
+                        if context.config.spaces_within_parens() {
+                            format!("( {} )", ty_str)
+                        } else {
+                            format!("({})", ty_str)
+                        }
                     })
             }
             ast::TyKind::Slice(ref ty) => {
@@ -683,10 +685,12 @@ impl Rewrite for ast::Ty {
                     shape.width.checked_sub(2)?
                 };
                 ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
-                    .map(|ty_str| if context.config.spaces_within_square_brackets() {
-                        format!("[ {} ]", ty_str)
-                    } else {
-                        format!("[{}]", ty_str)
+                    .map(|ty_str| {
+                        if context.config.spaces_within_square_brackets() {
+                            format!("[ {} ]", ty_str)
+                        } else {
+                            format!("[{}]", ty_str)
+                        }
                     })
             }
             ast::TyKind::Tup(ref items) => rewrite_tuple(
