@@ -34,9 +34,9 @@ impl<T: ConstDefault, const N: usize> ConstDefault for [T; N] {
 }
 ```
 
-[`std::mem::uninitialized()`]: https://doc.rust-lang.org/nightly/std/mem/fn.uninitialized.html
+[`mem::uninitialized()`]: https://doc.rust-lang.org/nightly/std/mem/fn.uninitialized.html
 
-In the example given by [`std::mem::uninitialized()`], a value of type
+In the example given by [`mem::uninitialized()`], a value of type
 `[Vec<u32>; 1000]` is created and filled. With this RFC, and when `Vec::new()`
 becomes const, the user can simply write:
 
@@ -93,7 +93,18 @@ fn main() {
 }
 ```
 
-Thus, the compiler may rewrite this internally as:
+Thus, the compiler may rewrite the following:
+
+```rust
+fn main() {
+    type T = Option<Box<u32>>;
+    const X: T = None;
+    let mut arr = [X; 2];
+    arr[0] = Some(Box::new(1));
+}
+```
+
+internally as:
 
 ```rust
 // This is the value to be repeated and typeof(X) the type it has.
@@ -134,7 +145,7 @@ argues that the change is quite intuitive.
 [`ptr::write(..)`]: https://doc.rust-lang.org/nightly/std/ptr/fn.write.html
 
 The alternative, in addition to simply not doing this, is to modify a host of
-other constructs such as [`std::mem::uninitialized()`], for loops over iterators,
+other constructs such as [`mem::uninitialized()`], for loops over iterators,
 [`ptr::write`] to be `const`, which is is a larger change. The design offered by
 this RFC is therefore the simplest and most non-intrusive design. It is also
 the most consistent.
