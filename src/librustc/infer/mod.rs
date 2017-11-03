@@ -55,6 +55,7 @@ mod higher_ranked;
 pub mod lattice;
 mod lub;
 pub mod region_inference;
+mod region_obligations;
 pub mod resolve;
 mod freshen;
 mod sub;
@@ -160,6 +161,13 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // regionck to be sure that it has found *all* the region
     // obligations (otherwise, it's easy to fail to walk to a
     // particular node-id).
+    //
+    // Before running `resolve_regions_and_report_errors`, the creator
+    // of the inference context is expected to invoke
+    // `process_region_obligations` (defined in `self::region_obligations`)
+    // for each body-id in this map, which will process the
+    // obligations within. This is expected to be done 'late enough'
+    // that all type inference variables have been bound and so forth.
     region_obligations: RefCell<NodeMap<Vec<RegionObligation<'tcx>>>>,
 }
 
@@ -982,33 +990,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             self.leak_check(false, cause.span, &skol_map, snapshot)?;
             Ok(self.pop_skolemized(skol_map, snapshot))
         })
-    }
-
-    /// Registers that the given region obligation must be resolved
-    /// from within the scope of `body_id`. These regions are enqueued
-    /// and later processed by regionck, when full type information is
-    /// available (see `region_obligations` field for more
-    /// information).
-    pub fn register_region_obligation(&self,
-                                      body_id: ast::NodeId,
-                                      obligation: RegionObligation<'tcx>)
-    {
-        self.region_obligations.borrow_mut().entry(body_id)
-                                            .or_insert(vec![])
-                                            .push(obligation);
-    }
-
-    /// Get the region obligations that must be proven (during
-    /// `regionck`) for the given `body_id` (removing them from the
-    /// map as a side-effect).
-    pub fn take_region_obligations(&self,
-                                   body_id: ast::NodeId)
-                                   -> Vec<RegionObligation<'tcx>>
-    {
-        match self.region_obligations.borrow_mut().remove(&body_id) {
-            None => vec![],
-            Some(vec) => vec,
-        }
     }
 
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
