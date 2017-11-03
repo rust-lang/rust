@@ -52,6 +52,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_overflow: bool,
     use_dll_storage_attrs: bool,
+    tls_model: llvm::ThreadLocalMode,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -166,7 +167,7 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     }
 }
 
-pub fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
+fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
     let tls_model_arg = match sess.opts.cg.tls_model {
         Some(ref s) => &s[..],
         None => &sess.target.target.options.tls_model[..],
@@ -299,10 +300,13 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
         let check_overflow = tcx.sess.overflow_checks();
 
+        let tls_model = get_tls_model(&tcx.sess);
+
         SharedCrateContext {
             tcx,
             check_overflow,
             use_dll_storage_attrs,
+            tls_model,
         }
     }
 
@@ -542,6 +546,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
+    }
+
+    pub fn tls_model(&self) -> llvm::ThreadLocalMode {
+        self.shared.tls_model
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
