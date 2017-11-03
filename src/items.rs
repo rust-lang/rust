@@ -1154,6 +1154,25 @@ pub fn format_struct_struct(
     }
 }
 
+/// Returns a bytepos that is after that of `(` in `pub(..)`. If the given visibility does not
+/// contain `pub(..)`, then return the `lo` of the `defualt_span`. Yeah, but for what? Well, we need
+/// to bypass the `(` in the visibility when creating a span of tuple's body or fn's args.
+fn get_bytepos_after_visibility(
+    context: &RewriteContext,
+    vis: &ast::Visibility,
+    default_span: Span,
+    terminator: &str,
+) -> BytePos {
+    match *vis {
+        ast::Visibility::Crate(s, CrateSugar::PubCrate) => context
+            .codemap
+            .span_after(mk_sp(s.hi(), default_span.hi()), terminator),
+        ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
+        ast::Visibility::Restricted { ref path, .. } => path.span.hi(),
+        _ => default_span.lo(),
+    }
+}
+
 fn format_tuple_struct(
     context: &RewriteContext,
     item_name: &str,
