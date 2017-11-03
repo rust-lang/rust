@@ -137,6 +137,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  PluginAsLibrary,
                  MutableTransmutes,
                  UnionsWithDropFields,
+                 UnreachablePub,
                  );
 
     add_builtin_with_new!(sess,

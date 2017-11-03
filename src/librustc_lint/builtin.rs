@@ -1301,3 +1301,60 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
         }
     }
 }
+
+/// Lint for items marked `pub` that aren't reachable from other crates
+pub struct UnreachablePub;
+
+declare_lint! {
+    UNREACHABLE_PUB,
+    Allow,
+    "`pub` items not reachable from crate root"
+}
+
+impl LintPass for UnreachablePub {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNREACHABLE_PUB)
+    }
+}
+
+impl UnreachablePub {
+    fn perform_lint(&self, cx: &LateContext, what: &str, id: ast::NodeId,
+                    vis: &hir::Visibility, span: Span, exportable: bool) {
+        if !cx.access_levels.is_reachable(id) && *vis == hir::Visibility::Public {
+            let def_span = cx.tcx.sess.codemap().def_span(span);
+            let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
+                                              &format!("unreachable `pub` {}", what));
+            // visibility is token at start of declaration (can be macro
+            // variable rather than literal `pub`)
+            let pub_span = cx.tcx.sess.codemap().span_until_char(def_span, ' ');
+            let replacement = if cx.tcx.sess.features.borrow().crate_visibility_modifier {
+                "crate"
+            } else {
+                "pub(crate)"
+            }.to_owned();
+            err.span_suggestion(pub_span, "consider restricting its visibility", replacement);
+            if exportable {
+                err.help("or consider exporting it for use by other crates");
+            }
+            err.emit();
+        }
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
+    fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
+        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true);
+    }
+
+    fn check_foreign_item(&mut self, cx: &LateContext, foreign_item: &hir::ForeignItem) {
+        self.perform_lint(cx, "item", foreign_item.id, &foreign_item.vis, foreign_item.span, true);
+    }
+
+    fn check_struct_field(&mut self, cx: &LateContext, field: &hir::StructField) {
+        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false);
+    }
+
+    fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
+        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false);
+    }
+}
