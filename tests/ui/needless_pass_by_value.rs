@@ -65,7 +65,7 @@ fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
 
 trait Foo {}
 
-// `S: Serialize` can be passed by value
+// `S: Serialize` is allowed to be passed by value, since a caller can pass `&S` instead
 trait Serialize {}
 impl<'a, T> Serialize for &'a T where T: Serialize {}
 impl Serialize for i32 {}
@@ -77,6 +77,30 @@ fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
     let _ = t.clone();
     u.capacity();
     let _ = v.clone();
+}
+
+struct S<T, U>(T, U);
+
+impl<T: Serialize, U> S<T, U> {
+    fn foo(
+        self, // taking `self` by value is always allowed
+        s: String,
+        t: String,
+    ) -> usize {
+        s.len() + t.capacity()
+    }
+
+    fn bar(
+        _t: T, // Ok, since `&T: Serialize` too
+    ) {
+    }
+
+    fn baz(
+        &self,
+        _u: U,
+        _s: Self,
+    ) {
+    }
 }
 
 fn main() {}

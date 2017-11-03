@@ -136,8 +136,8 @@ impl<'a> Sugg<'a> {
     }
 
     /// Convenience method to create the `<lhs> && <rhs>` suggestion.
-    pub fn and(self, rhs: Self) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::And, &self, &rhs)
+    pub fn and(self, rhs: &Self) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::And, &self, rhs)
     }
 
     /// Convenience method to create the `<lhs> as <rhs>` suggestion.
@@ -162,10 +162,10 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
-    pub fn range(self, end: Self, limit: ast::RangeLimits) -> Sugg<'static> {
+    pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {
-            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, &end),
-            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, &end),
+            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end),
+            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, end),
         }
     }
 

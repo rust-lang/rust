@@ -104,3 +104,27 @@ help: change `v.clone()` to
 79 |     let _ = v.to_owned();
    |             ^^^^^^^^^^^^
 
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:87:12
+   |
+87 |         s: String,
+   |            ^^^^^^ help: consider changing the type to: `&str`
+
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:88:12
+   |
+88 |         t: String,
+   |            ^^^^^^ help: consider taking a reference instead: `&String`
+
+error: this argument is passed by value, but not consumed in the function body
+   --> $DIR/needless_pass_by_value.rs:100:13
+    |
+100 |         _u: U,
+    |             ^ help: consider taking a reference instead: `&U`
+
+error: this argument is passed by value, but not consumed in the function body
+   --> $DIR/needless_pass_by_value.rs:101:13
+    |
+101 |         _s: Self,
+    |             ^^^^ help: consider taking a reference instead: `&Self`
+
