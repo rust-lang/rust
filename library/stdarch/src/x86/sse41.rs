@@ -265,7 +265,7 @@ pub unsafe fn _mm_cmpeq_epi64(a: i64x2, b: i64x2) -> i64x2 {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovsxbw))]
 pub unsafe fn _mm_cvtepi8_epi16(a: i8x16) -> i16x8 {
-    simd_cast::<::v64::i8x8, _>(simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]))
+    simd_shuffle8::<_, ::v64::i8x8>(a, a, [0, 1, 2, 3, 4, 5, 6, 7]).as_i16x8()
 }
 
 /// Sign extend packed 8-bit integers in `a` to packed 32-bit integers
