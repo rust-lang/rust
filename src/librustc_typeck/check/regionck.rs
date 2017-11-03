@@ -91,7 +91,7 @@ use middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::infer::{self, InferOk, GenericKind};
+use rustc::infer::{self, GenericKind};
 use rustc::ty::adjustment;
 use rustc::ty::outlives::Component;
 use rustc::ty::wf;
@@ -357,21 +357,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // obligations. So make sure we process those.
         self.select_all_obligations_or_error();
 
-        let InferOk { value: (), obligations }  =
-            self.infcx.process_registered_region_obligations(
-                &self.region_bound_pairs,
-                self.implicit_region_bound,
-                self.param_env,
-                self.body_id);
-
-        // TODO -- It feels like we ought to loop here; these new
-        // obligations, when selected, could cause the list of region
-        // obligations to grow further. Fortunately, I believe that if
-        // that happens it will at least lead to an ICE today, because
-        // `resolve_regions_and_report_errors` (which runs after *all*
-        // obligations have been selected) will assert that there are
-        // no unsolved region obligations.
-        self.register_predicates(obligations);
+        self.infcx.process_registered_region_obligations(
+            &self.region_bound_pairs,
+            self.implicit_region_bound,
+            self.param_env,
+            self.body_id);
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed
@@ -1137,14 +1127,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                              ty: Ty<'tcx>,
                              region: ty::Region<'tcx>)
     {
-        let infer_ok = self.infcx.type_must_outlive(&self.region_bound_pairs,
-                                                    self.implicit_region_bound,
-                                                    self.param_env,
-                                                    self.body_id,
-                                                    origin,
-                                                    ty,
-                                                    region);
-        self.register_infer_ok_obligations(infer_ok)
+        self.infcx.type_must_outlive(&self.region_bound_pairs,
+                                     self.implicit_region_bound,
+                                     self.param_env,
+                                     origin,
+                                     ty,
+                                     region);
     }
 
     /// Computes the guarantor for an expression `&base` and then ensures that the lifetime of the

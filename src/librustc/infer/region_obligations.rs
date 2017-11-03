@@ -55,13 +55,13 @@
 //!   *may* be able to sidestep this. Regardless, once the NLL
 //!   transition is complete, this concern will be gone. -nmatsakis
 
-use infer::{self, GenericKind, InferCtxt, InferOk, RegionObligation, SubregionOrigin, VerifyBound};
-use traits::{self, ObligationCause, ObligationCauseCode, PredicateObligations};
+use hir::def_id::DefId;
+use infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
+use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::subst::Subst;
+use ty::subst::{Subst, Substs};
 use ty::outlives::Component;
 use syntax::ast;
-use syntax_pos::Span;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -120,19 +120,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: ast::NodeId,
-    ) -> InferOk<'tcx, ()> {
+    ) {
         let region_obligations = match self.region_obligations.borrow_mut().remove(&body_id) {
             None => vec![],
             Some(vec) => vec,
         };
 
-        let mut outlives = TypeOutlives::new(
-            self,
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-            body_id,
-        );
+        let outlives =
+            TypeOutlives::new(self, region_bound_pairs, implicit_region_bound, param_env);
 
         for RegionObligation {
             sup_type,
@@ -147,11 +142,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
             outlives.type_must_outlive(origin, sup_type, sub_region);
         }
-
-        InferOk {
-            value: (),
-            obligations: outlives.into_accrued_obligations(),
-        }
     }
 
     /// Processes a single ad-hoc region obligation that was not
@@ -161,23 +151,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: ast::NodeId,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
-    ) -> InferOk<'tcx, ()> {
-        let mut outlives = TypeOutlives::new(
-            self,
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-            body_id,
-        );
+    ) {
+        let outlives =
+            TypeOutlives::new(self, region_bound_pairs, implicit_region_bound, param_env);
         outlives.type_must_outlive(origin, ty, region);
-        InferOk {
-            value: (),
-            obligations: outlives.into_accrued_obligations(),
-        }
     }
 
     /// Ignore the region obligations for a given `body_id`, not bothering to
@@ -196,11 +176,6 @@ struct TypeOutlives<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: ast::NodeId,
-
-    /// These are sub-obligations that we accrue as we go; they result
-    /// from any normalizations we had to do.
-    obligations: PredicateObligations<'tcx>,
 }
 
 impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
@@ -209,22 +184,13 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: ast::NodeId,
     ) -> Self {
         Self {
             infcx,
             region_bound_pairs,
             implicit_region_bound,
             param_env,
-            body_id,
-            obligations: vec![],
         }
-    }
-
-    /// Returns the obligations that accrued as a result of the
-    /// `type_must_outlive` calls.
-    fn into_accrued_obligations(self) -> PredicateObligations<'tcx> {
-        self.obligations
     }
 
     /// Adds constraints to inference such that `T: 'a` holds (or
@@ -236,7 +202,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     /// - `ty`, the type `T`
     /// - `region`, the region `'a`
     fn type_must_outlive(
-        &mut self,
+        &self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
@@ -261,7 +227,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     }
 
     fn components_must_outlive(
-        &mut self,
+        &self,
         origin: infer::SubregionOrigin<'tcx>,
         components: Vec<Component<'tcx>>,
         region: ty::Region<'tcx>,
@@ -295,7 +261,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     }
 
     fn param_ty_must_outlive(
-        &mut self,
+        &self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         param_ty: ty::ParamTy,
@@ -314,7 +280,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     }
 
     fn projection_must_outlive(
-        &mut self,
+        &self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         projection_ty: ty::ProjectionTy<'tcx>,
@@ -343,7 +309,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         // Compute the bounds we can derive from the environment or trait
         // definition.  We know that the projection outlives all the
         // regions in this list.
-        let env_bounds = self.projection_declared_bounds(origin.span(), projection_ty);
+        let env_bounds = self.projection_declared_bounds(projection_ty);
 
         debug!("projection_must_outlive: env_bounds={:?}", env_bounds);
 
@@ -413,24 +379,24 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         // projection outlive; in some cases, this may add insufficient
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
-        let verify_bound = self.projection_bound(origin.span(), env_bounds, projection_ty);
+        let verify_bound = self.projection_bound(env_bounds, projection_ty);
         let generic = GenericKind::Projection(projection_ty);
         self.infcx
             .verify_generic_bound(origin, generic.clone(), region, verify_bound);
     }
 
-    fn type_bound(&mut self, span: Span, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
+    fn type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
         match ty.sty {
             ty::TyParam(p) => self.param_bound(p),
             ty::TyProjection(data) => {
-                let declared_bounds = self.projection_declared_bounds(span, data);
-                self.projection_bound(span, declared_bounds, data)
+                let declared_bounds = self.projection_declared_bounds(data);
+                self.projection_bound(declared_bounds, data)
             }
-            _ => self.recursive_type_bound(span, ty),
+            _ => self.recursive_type_bound(ty),
         }
     }
 
-    fn param_bound(&mut self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
+    fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
         debug!("param_bound(param_ty={:?})", param_ty);
 
         let mut param_bounds = self.declared_generic_bounds_from_env(GenericKind::Param(param_ty));
@@ -443,8 +409,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     }
 
     fn projection_declared_bounds(
-        &mut self,
-        span: Span,
+        &self,
         projection_ty: ty::ProjectionTy<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
         // First assemble bounds from where clauses and traits.
@@ -453,14 +418,13 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
             self.declared_generic_bounds_from_env(GenericKind::Projection(projection_ty));
 
         declared_bounds
-            .extend_from_slice(&mut self.declared_projection_bounds_from_trait(span, projection_ty));
+            .extend_from_slice(&self.declared_projection_bounds_from_trait(projection_ty));
 
         declared_bounds
     }
 
     fn projection_bound(
-        &mut self,
-        span: Span,
+        &self,
         declared_bounds: Vec<ty::Region<'tcx>>,
         projection_ty: ty::ProjectionTy<'tcx>,
     ) -> VerifyBound<'tcx> {
@@ -474,16 +438,16 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         let ty = self.infcx
             .tcx
             .mk_projection(projection_ty.item_def_id, projection_ty.substs);
-        let recursive_bound = self.recursive_type_bound(span, ty);
+        let recursive_bound = self.recursive_type_bound(ty);
 
         VerifyBound::AnyRegion(declared_bounds).or(recursive_bound)
     }
 
-    fn recursive_type_bound(&mut self, span: Span, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
+    fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
         let mut bounds = vec![];
 
         for subty in ty.walk_shallow() {
-            bounds.push(self.type_bound(span, subty));
+            bounds.push(self.type_bound(subty));
         }
 
         let mut regions = ty.regions();
@@ -501,7 +465,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     }
 
     fn declared_generic_bounds_from_env(
-        &mut self,
+        &self,
         generic: GenericKind<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
         let tcx = self.tcx();
@@ -531,89 +495,75 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         param_bounds
     }
 
+    /// Given a projection like `<T as Foo<'x>>::Bar`, returns any bounds
+    /// declared in the trait definition. For example, if the trait were
+    ///
+    /// ```rust
+    /// trait Foo<'a> {
+    ///     type Bar: 'a;
+    /// }
+    /// ```
+    ///
+    /// then this function would return `'x`. This is subject to the
+    /// limitations around higher-ranked bounds described in
+    /// `region_bounds_declared_on_associated_item`.
     fn declared_projection_bounds_from_trait(
-        &mut self,
-        span: Span,
+        &self,
         projection_ty: ty::ProjectionTy<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
         debug!("projection_bounds(projection_ty={:?})", projection_ty);
-        let ty = self.tcx()
-            .mk_projection(projection_ty.item_def_id, projection_ty.substs);
-
-        // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
-        // in looking for a trait definition like:
-        //
-        // ```
-        // trait SomeTrait<'a> {
-        //     type SomeType : 'a;
-        // }
-        // ```
-        //
-        // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
-        let trait_predicates = self.tcx()
-            .predicates_of(projection_ty.trait_ref(self.tcx()).def_id);
-        assert_eq!(trait_predicates.parent, None);
-        let predicates = trait_predicates.predicates.as_slice().to_vec();
-        traits::elaborate_predicates(self.tcx(), predicates)
-            .filter_map(|predicate| {
-                // we're only interesting in `T : 'a` style predicates:
-                let outlives = match predicate {
-                    ty::Predicate::TypeOutlives(data) => data,
-                    _ => {
-                        return None;
-                    }
-                };
-
-                debug!("projection_bounds: outlives={:?} (1)", outlives);
-
-                // apply the substitutions (and normalize any projected types)
-                let outlives = outlives.subst(self.tcx(), projection_ty.substs);
-                let outlives = self.infcx.partially_normalize_associated_types_in(
-                    span,
-                    self.body_id,
-                    self.param_env,
-                    &outlives,
-                );
-                let outlives = self.register_infer_ok_obligations(outlives);
-
-                debug!("projection_bounds: outlives={:?} (2)", outlives);
-
-                let region_result = self.infcx
-                    .commit_if_ok(|_| {
-                        let (outlives, _) = self.infcx.replace_late_bound_regions_with_fresh_var(
-                            span,
-                            infer::AssocTypeProjection(projection_ty.item_def_id),
-                            &outlives,
-                        );
-
-                        debug!("projection_bounds: outlives={:?} (3)", outlives);
-
-                        // check whether this predicate applies to our current projection
-                        let cause = ObligationCause::new(
-                            span,
-                            self.body_id,
-                            ObligationCauseCode::MiscObligation,
-                        );
-                        match self.infcx.at(&cause, self.param_env).eq(outlives.0, ty) {
-                            Ok(ok) => Ok((ok, outlives.1)),
-                            Err(_) => Err(()),
-                        }
-                    })
-                    .map(|(ok, result)| {
-                        self.register_infer_ok_obligations(ok);
-                        result
-                    });
-
-                debug!("projection_bounds: region_result={:?}", region_result);
-
-                region_result.ok()
-            })
-            .collect()
+        let mut bounds = self.region_bounds_declared_on_associated_item(projection_ty.item_def_id);
+        for r in &mut bounds {
+            *r = r.subst(self.tcx(), projection_ty.substs);
+        }
+        bounds
     }
 
-    fn register_infer_ok_obligations<T>(&mut self, infer_ok: InferOk<'tcx, T>) -> T {
-        let InferOk { value, obligations } = infer_ok;
-        self.obligations.extend(obligations);
-        value
+    /// Given the def-id of an associated item, returns any region
+    /// bounds attached to that associated item from the trait definition.
+    ///
+    /// For example:
+    ///
+    /// ```rust
+    /// trait Foo<'a> {
+    ///     type Bar: 'a;
+    /// }
+    /// ```
+    ///
+    /// If we were given the def-id of `Foo::Bar`, we would return
+    /// `'a`. You could then apply the substitutions from the
+    /// projection to convert this into your namespace. This also
+    /// works if the user writes `where <Self as Foo<'a>>::Bar: 'a` on
+    /// the trait. In fact, it works by searching for just such a
+    /// where-clause.
+    ///
+    /// It will not, however, work for higher-ranked bounds like:
+    ///
+    /// ```rust
+    /// trait Foo<'a, 'b>
+    /// where for<'x> <Self as Foo<'x, 'b>>::Bar: 'x
+    /// {
+    ///     type Bar;
+    /// }
+    /// ```
+    ///
+    /// This is for simplicity, and because we are not really smart
+    /// enough to cope with such bounds anywhere.
+    fn region_bounds_declared_on_associated_item(
+        &self,
+        assoc_item_def_id: DefId,
+    ) -> Vec<ty::Region<'tcx>> {
+        let tcx = self.tcx();
+        let assoc_item = tcx.associated_item(assoc_item_def_id);
+        let trait_def_id = assoc_item.container.assert_trait();
+        let trait_predicates = tcx.predicates_of(trait_def_id);
+        let identity_substs = Substs::identity_for_item(tcx, assoc_item_def_id);
+        let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
+        traits::elaborate_predicates(tcx, trait_predicates.predicates)
+            .filter_map(|p| p.to_opt_type_outlives())
+            .filter_map(|p| tcx.no_late_bound_regions(&p))
+            .filter(|p| p.0 == identity_proj)
+            .map(|p| p.1)
+            .collect()
     }
 }
