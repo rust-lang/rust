@@ -386,6 +386,9 @@ declare_features! (
     // allow '|' at beginning of match arms (RFC 1925)
     (active, match_beginning_vert, "1.21.0", Some(44101)),
 
+    // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
+    (active, non_exhaustive, "1.22.0", Some(44109)),
+
     // Copy/Clone closures (RFC 2132)
     (active, clone_closures, "1.22.0", Some(44490)),
     (active, copy_closures, "1.22.0", Some(44490)),
@@ -613,6 +616,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                             "the semantics of constant patterns is \
                                              not yet settled",
                                             cfg_fn!(structural_match))),
+
+    // RFC #2008
+    ("non_exhaustive", Whitelisted, Gated(Stability::Unstable,
+                                          "non_exhaustive",
+                                          "non exhaustive is an experimental feature",
+                                          cfg_fn!(non_exhaustive))),
 
     ("plugin", CrateLevel, Gated(Stability::Unstable,
                                  "plugin",
