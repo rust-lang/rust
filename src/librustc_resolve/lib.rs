@@ -59,7 +59,7 @@ use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -223,7 +223,11 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             let target_sp = binding_error.target.iter().map(|x| *x).collect::<Vec<_>>();
             let msp = MultiSpan::from_spans(target_sp.clone());
             let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
-            let mut err = resolver.session.struct_span_err_with_code(msp, &msg, "E0408");
+            let mut err = resolver.session.struct_span_err_with_code(
+                msp,
+                &msg,
+                DiagnosticId::Error("E0408".into()),
+            );
             for sp in target_sp {
                 err.span_label(sp, format!("pattern doesn't bind `{}`", binding_error.name));
             }
@@ -2490,18 +2494,19 @@ impl<'a> Resolver<'a> {
                 (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
                  format!("not found in {}", mod_str), item_span)
             };
+            let code = DiagnosticId::Error(code.into());
             let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
 
             // Emit special messages for unresolved `Self` and `self`.
             if is_self_type(path, ns) {
                 __diagnostic_used!(E0411);
-                err.code("E0411".into());
+                err.code(DiagnosticId::Error("E0411".into()));
                 err.span_label(span, "`Self` is only available in traits and impls");
                 return (err, Vec::new());
             }
             if is_self_value(path, ns) {
                 __diagnostic_used!(E0424);
-                err.code("E0424".into());
+                err.code(DiagnosticId::Error("E0424".into()));
                 err.span_label(span, format!("`self` value is only available in \
                                                methods with `self` parameter"));
                 return (err, Vec::new());

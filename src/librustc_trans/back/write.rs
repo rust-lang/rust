@@ -32,7 +32,7 @@ use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
 use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
-use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
+use errors::{self, Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use errors::emitter::{Emitter};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
@@ -1262,7 +1262,7 @@ enum Message {
 
 struct Diagnostic {
     msg: String,
-    code: Option<String>,
+    code: Option<DiagnosticId>,
     lvl: Level,
 }
 
@@ -2015,7 +2015,7 @@ impl SharedEmitterMain {
                         Some(ref code) => {
                             handler.emit_with_code(&MultiSpan::new(),
                                                    &diag.msg,
-                                                   &code,
+                                                   code.clone(),
                                                    diag.lvl);
                         }
                         None => {

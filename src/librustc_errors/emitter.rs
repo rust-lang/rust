@@ -12,7 +12,7 @@ use self::Destination::*;
 
 use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
+use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper, DiagnosticId};
 use RenderSpan::*;
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
@@ -886,7 +886,7 @@ impl EmitterWriter {
     fn emit_message_default(&mut self,
                             msp: &MultiSpan,
                             msg: &Vec<(String, Style)>,
-                            code: &Option<String>,
+                            code: &Option<DiagnosticId>,
                             level: &Level,
                             max_line_num_len: usize,
                             is_secondary: bool)
@@ -905,13 +905,11 @@ impl EmitterWriter {
             self.msg_to_buffer(&mut buffer, msg, max_line_num_len, "note", None);
         } else {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
-            match code {
-                &Some(ref code) => {
-                    buffer.append(0, "[", Style::Level(level.clone()));
-                    buffer.append(0, &code, Style::Level(level.clone()));
-                    buffer.append(0, "]", Style::Level(level.clone()));
-                }
-                _ => {}
+            // only render error codes, not lint codes
+            if let Some(DiagnosticId::Error(ref code)) = *code {
+                buffer.append(0, "[", Style::Level(level.clone()));
+                buffer.append(0, &code, Style::Level(level.clone()));
+                buffer.append(0, "]", Style::Level(level.clone()));
             }
             buffer.append(0, ": ", Style::HeaderMsg);
             for &(ref text, _) in msg.iter() {
@@ -1174,7 +1172,7 @@ impl EmitterWriter {
     fn emit_messages_default(&mut self,
                              level: &Level,
                              message: &Vec<(String, Style)>,
-                             code: &Option<String>,
+                             code: &Option<DiagnosticId>,
                              span: &MultiSpan,
                              children: &Vec<SubDiagnostic>) {
         let max_line_num = self.get_max_line_num(span, children);

@@ -262,7 +262,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString};
+pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, DiagnosticId};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors; certain errors
@@ -337,11 +337,11 @@ impl Handler {
     pub fn struct_span_warn_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                               sp: S,
                                                               msg: &str,
-                                                              code: &str)
+                                                              code: DiagnosticId)
                                                               -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
         result.set_span(sp);
-        result.code(code.to_owned());
+        result.code(code);
         if !self.can_emit_warnings {
             result.cancel();
         }
@@ -365,20 +365,24 @@ impl Handler {
     pub fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                              sp: S,
                                                              msg: &str,
-                                                             code: &str)
+                                                             code: DiagnosticId)
                                                              -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
         result.set_span(sp);
-        result.code(code.to_owned());
+        result.code(code);
         result
     }
     // FIXME: This method should be removed (every error should have an associated error code).
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new(self, Level::Error, msg)
     }
-    pub fn struct_err_with_code<'a>(&'a self, msg: &str, code: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_err_with_code<'a>(
+        &'a self,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
-        result.code(code.to_owned());
+        result.code(code);
         result
     }
     pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(&'a self,
@@ -392,11 +396,11 @@ impl Handler {
     pub fn struct_span_fatal_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                                sp: S,
                                                                msg: &str,
-                                                               code: &str)
+                                                               code: DiagnosticId)
                                                                -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Fatal, msg);
         result.set_span(sp);
-        result.code(code.to_owned());
+        result.code(code);
         result
     }
     pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
@@ -420,7 +424,7 @@ impl Handler {
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(&self,
                                                     sp: S,
                                                     msg: &str,
-                                                    code: &str)
+                                                    code: DiagnosticId)
                                                     -> FatalError {
         self.emit_with_code(&sp.into(), msg, code, Fatal);
         FatalError
@@ -436,13 +440,13 @@ impl Handler {
         result.set_span(sp);
         result
     }
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
+    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.emit_with_code(&sp.into(), msg, code, Error);
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Warning);
     }
-    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
+    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.emit_with_code(&sp.into(), msg, code, Warning);
     }
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
@@ -546,11 +550,11 @@ impl Handler {
             self.abort_if_errors();
         }
     }
-    pub fn emit_with_code(&self, msp: &MultiSpan, msg: &str, code: &str, lvl: Level) {
+    pub fn emit_with_code(&self, msp: &MultiSpan, msg: &str, code: DiagnosticId, lvl: Level) {
         if lvl == Warning && !self.can_emit_warnings {
             return;
         }
-        let mut db = DiagnosticBuilder::new_with_code(self, lvl, Some(code.to_owned()), msg);
+        let mut db = DiagnosticBuilder::new_with_code(self, lvl, Some(code), msg);
         db.set_span(msp.clone());
         db.emit();
         if !self.continue_after_error.get() {

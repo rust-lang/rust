@@ -33,7 +33,7 @@ pub use self::LintSource::*;
 
 use std::rc::Rc;
 
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
@@ -462,6 +462,8 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             }
         }
     }
+
+    err.code(DiagnosticId::Lint(name));
 
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();

@@ -100,7 +100,7 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 use require_c_abi_if_variadic;
 use session::{CompileIncomplete, Session};
 use TypeAndSubsts;
@@ -2467,7 +2467,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if expected_count == 1 {""} else {"s"},
                     arg_count,
                     if arg_count == 1 {" was"} else {"s were"}),
-                error_code);
+                DiagnosticId::Error(error_code.to_owned()));
 
             if let Some(def_s) = def_span {
                 err.span_label(def_s, "defined here");
