@@ -627,6 +627,16 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
                                 ctor_vis = field_vis;
                             }
                         }
+
+                        // If the structure is marked as non_exhaustive then lower the
+                        // visibility to within the crate.
+                        let struct_def_id = self.tcx.hir.get_parent_did(node_id);
+                        let adt_def = self.tcx.adt_def(struct_def_id);
+                        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+                            ctor_vis = ty::Visibility::Restricted(
+                                DefId::local(CRATE_DEF_INDEX));
+                        }
+
                         return ctor_vis;
                     }
                     node => bug!("unexpected node kind: {:?}", node)

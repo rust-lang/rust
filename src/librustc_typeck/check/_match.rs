@@ -825,10 +825,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                def_bm: ty::BindingMode) {
         let tcx = self.tcx;
 
-        let (substs, kind_name) = match adt_ty.sty {
-            ty::TyAdt(adt, substs) => (substs, adt.variant_descr()),
+        let (substs, adt) = match adt_ty.sty {
+            ty::TyAdt(adt, substs) => (substs, adt),
             _ => span_bug!(span, "struct pattern is not an ADT")
         };
+        let kind_name = adt.variant_descr();
 
         // Index the struct fields' types.
         let field_map = variant.fields
@@ -880,6 +881,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             self.check_pat_walk(&field.pat, field_ty, def_bm, true);
+        }
+
+        // Require `..` if struct has non_exhaustive attribute.
+        if adt.is_struct() && adt.is_non_exhaustive() && !adt.did.is_local() && !etc {
+            span_err!(tcx.sess, span, E0638,
+                      "`..` required with {} marked as non-exhaustive",
+                      kind_name);
         }
 
         // Report an error if incorrect number of the fields were specified.

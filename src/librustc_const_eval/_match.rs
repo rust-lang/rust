@@ -208,6 +208,20 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
+    fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
+        match ty.sty {
+            ty::TyAdt(adt_def, ..) => adt_def.is_enum() && adt_def.is_non_exhaustive(),
+            _ => false,
+        }
+    }
+
+    fn is_local(&self, ty: Ty<'tcx>) -> bool {
+        match ty.sty {
+            ty::TyAdt(adt_def, ..) => adt_def.did.is_local(),
+            _ => false,
+        }
+    }
+
     fn is_variant_uninhabited(&self,
                               variant: &'tcx ty::VariantDef,
                               substs: &'tcx ty::subst::Substs<'tcx>)
@@ -628,9 +642,16 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
         let is_privately_empty =
             all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-        debug!("missing_ctors={:?} is_privately_empty={:?}", missing_ctors,
-               is_privately_empty);
-        if missing_ctors.is_empty() && !is_privately_empty {
+        let is_declared_nonexhaustive =
+            cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
+        debug!("missing_ctors={:?} is_privately_empty={:?} is_declared_nonexhaustive={:?}",
+               missing_ctors, is_privately_empty, is_declared_nonexhaustive);
+
+        // For privately empty and non-exhaustive enums, we work as if there were an "extra"
+        // `_` constructor for the type, so we can never match over all constructors.
+        let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
+
+        if missing_ctors.is_empty() && !is_non_exhaustive {
             all_ctors.into_iter().map(|c| {
                 is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
             }).find(|result| result.is_useful()).unwrap_or(NotUseful)
@@ -645,7 +666,51 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             match is_useful(cx, &matrix, &v[1..], witness) {
                 UsefulWithWitness(pats) => {
                     let cx = &*cx;
-                    let new_witnesses = if used_ctors.is_empty() {
+                    // In this case, there's at least one "free"
+                    // constructor that is only matched against by
+                    // wildcard patterns.
+                    //
+                    // There are 2 ways we can report a witness here.
+                    // Commonly, we can report all the "free"
+                    // constructors as witnesses, e.g. if we have:
+                    //
+                    // ```
+                    //     enum Direction { N, S, E, W }
+                    //     let Direction::N = ...;
+                    // ```
+                    //
+                    // we can report 3 witnesses: `S`, `E`, and `W`.
+                    //
+                    // However, there are 2 cases where we don't want
+                    // to do this and instead report a single `_` witness:
+                    //
+                    // 1) If the user is matching against a non-exhaustive
+                    // enum, there is no point in enumerating all possible
+                    // variants, because the user can't actually match
+                    // against them himself, e.g. in an example like:
+                    // ```
+                    //     let err: io::ErrorKind = ...;
+                    //     match err {
+                    //         io::ErrorKind::NotFound => {},
+                    //     }
+                    // ```
+                    // we don't want to show every possible IO error,
+                    // but instead have `_` as the witness (this is
+                    // actually *required* if the user specified *all*
+                    // IO errors, but is probably what we want in every
+                    // case).
+                    //
+                    // 2) If the user didn't actually specify a constructor
+                    // in this arm, e.g. in
+                    // ```
+                    //     let x: (Direction, Direction, bool) = ...;
+                    //     let (_, _, false) = x;
+                    // ```
+                    // we don't want to show all 16 possible witnesses
+                    // `(<direction-1>, <direction-2>, true)` - we are
+                    // satisfied with `(_, _, true)`. In this case,
+                    // `used_ctors` is empty.
+                    let new_witnesses = if is_non_exhaustive || used_ctors.is_empty() {
                         // All constructors are unused. Add wild patterns
                         // rather than each individual constructor
                         pats.into_iter().map(|mut witness| {

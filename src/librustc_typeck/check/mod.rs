@@ -3448,6 +3448,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::QPath::TypeRelative(ref qself, _) => qself.span
         };
 
+        // Prohibit struct expressions when non exhaustive flag is set.
+        if let ty::TyAdt(adt, _) = struct_ty.sty {
+            if !adt.did.is_local() && adt.is_non_exhaustive() {
+                span_err!(self.tcx.sess, expr.span, E0639,
+                          "cannot create non-exhaustive {} using struct expression",
+                          adt.variant_descr());
+            }
+        }
+
         self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
