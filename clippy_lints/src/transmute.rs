@@ -80,20 +80,56 @@ declare_lint! {
 
 /// **What it does:** Checks for transmutes from an integer to a `char`.
 ///
-/// **Why is this bad?** Not every integer is a unicode scalar value.
+/// **Why is this bad?** Not every integer is a Unicode scalar value.
 ///
-/// **Known problems:** None.
+/// **Known problems:**
+/// - [`from_u32`] which this lint suggests using is slower than `transmute`
+/// as it needs to validate the input.
+/// If you are certain that the input is always a valid Unicode scalar value,
+/// use [`from_u32_unchecked`] which is as fast as `transmute`
+/// but has a semantically meaningful name.
+/// - You might want to handle `None` returned from [`from_u32`] instead of calling `unwrap`.
+///
+/// [`from_u32`]: https://doc.rust-lang.org/std/char/fn.from_u32.html
+/// [`from_u32_unchecked`]: https://doc.rust-lang.org/std/char/fn.from_u32_unchecked.html
 ///
 /// **Example:**
 /// ```rust
 /// let _: char = std::mem::transmute(x); // where x: u32
 /// // should be:
-/// let _: Option<char> = std::char::from_u32(x);
+/// let _ = std::char::from_u32(x).unwrap();
 /// ```
 declare_lint! {
     pub TRANSMUTE_INT_TO_CHAR,
     Warn,
     "transmutes from an integer to a `char`"
+}
+
+/// **What it does:** Checks for transmutes from a `&[u8]` to a `&str`.
+///
+/// **Why is this bad?** Not every byte slice is a valid UTF-8 string.
+///
+/// **Known problems:**
+/// - [`from_utf8`] which this lint suggests using is slower than `transmute`
+/// as it needs to validate the input.
+/// If you are certain that the input is always a valid UTF-8,
+/// use [`from_utf8_unchecked`] which is as fast as `transmute`
+/// but has a semantically meaningful name.
+/// - You might want to handle errors returned from [`from_utf8`] instead of calling `unwrap`.
+///
+/// [`from_utf8`]: https://doc.rust-lang.org/std/str/fn.from_utf8.html
+/// [`from_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_utf8_unchecked.html
+///
+/// **Example:**
+/// ```rust
+/// let _: &str = std::mem::transmute(b); // where b: &[u8]
+/// // should be:
+/// let _ = std::str::from_utf8(b).unwrap();
+/// ```
+declare_lint! {
+    pub TRANSMUTE_BYTES_TO_STR,
+    Warn,
+    "transmutes from a `&[u8]` to a `&str`"
 }
 
 /// **What it does:** Checks for transmutes from an integer to a `bool`.
@@ -142,6 +178,7 @@ impl LintPass for Transmute {
             USELESS_TRANSMUTE,
             WRONG_TRANSMUTE,
             TRANSMUTE_INT_TO_CHAR,
+            TRANSMUTE_BYTES_TO_STR,
             TRANSMUTE_INT_TO_BOOL,
             TRANSMUTE_INT_TO_FLOAT
         )
@@ -254,9 +291,41 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     } else {
                                         arg
                                     };
-                                    db.span_suggestion(e.span, "consider using", format!("std::char::from_u32({})", arg.to_string()));
+                                    db.span_suggestion(e.span, "consider using", format!("std::char::from_u32({}).unwrap()", arg.to_string()));
                                 }
                             ),
+                            (&ty::TyRef(_, ref ref_from), &ty::TyRef(_, ref ref_to)) => {
+                                if_chain! {
+                                    if let (&ty::TySlice(slice_ty), &ty::TyStr) = (&ref_from.ty.sty, &ref_to.ty.sty);
+                                    if let ty::TyUint(ast::UintTy::U8) = slice_ty.sty;
+                                    if ref_from.mutbl == ref_to.mutbl;
+                                    then {
+                                        let postfix = if ref_from.mutbl == Mutability::MutMutable {
+                                            "_mut"
+                                        } else {
+                                            ""
+                                        };
+
+                                        span_lint_and_then(
+                                            cx,
+                                            TRANSMUTE_BYTES_TO_STR,
+                                            e.span,
+                                            &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
+                                            |db| {
+                                                db.span_suggestion(
+                                                    e.span,
+                                                    "consider using",
+                                                    format!(
+                                                        "std::str::from_utf8{}({}).unwrap()",
+                                                        postfix,
+                                                        snippet(cx, args[0].span, ".."),
+                                                    ),
+                                                );
+                                            }
+                                        )
+                                    }
+                                }
+                            },
                             (&ty::TyInt(ast::IntTy::I8), &ty::TyBool) |
                             (&ty::TyUint(ast::UintTy::U8), &ty::TyBool) => span_lint_and_then(
                                 cx,

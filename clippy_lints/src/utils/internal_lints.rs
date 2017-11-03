@@ -161,16 +161,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
 
 fn is_lint_ref_type(ty: &Ty) -> bool {
     if let TyRptr(
-        ref lt,
+        _,
         MutTy {
             ty: ref inner,
             mutbl: MutImmutable,
         },
     ) = ty.node
     {
-        if lt.is_elided() {
-            return false;
-        }
         if let TyPath(ref path) = inner.node {
             return match_qpath(path, &paths::LINT);
         }

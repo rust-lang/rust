@@ -1,6 +1,6 @@
 
 #![feature(rustc_private)]
-
+#![feature(macro_vis_matcher)]
 
 #![warn(lint_without_lint_pass)]
 

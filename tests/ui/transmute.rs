@@ -135,4 +135,9 @@ fn int_to_float() {
     let _: f32 = unsafe { std::mem::transmute(0_i32) };
 }
 
+fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
+    let _: &str = unsafe { std::mem::transmute(b) };
+    let _: &mut str = unsafe { std::mem::transmute(mb) };
+}
+
 fn main() { }
