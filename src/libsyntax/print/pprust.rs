@@ -1341,8 +1341,8 @@ impl<'a> State<'a> {
             ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
-                self.print_is_auto(is_auto)?;
                 self.print_unsafety(unsafety)?;
+                self.print_is_auto(is_auto)?;
                 self.word_nbsp("trait")?;
                 self.print_ident(item.ident)?;
                 self.print_generics(generics)?;

@@ -14,4 +14,6 @@
 
 auto trait MyTrait { }
 
+unsafe auto trait UnsafeMyTrait { }
+
 pub fn main() { }
