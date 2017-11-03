@@ -45,6 +45,7 @@ impl LintPass for IntPlusOne {
 // x + 1 <= y
 // x <= y - 1
 
+#[derive(Copy, Clone)]
 enum Side {
     LHS,
     RHS,

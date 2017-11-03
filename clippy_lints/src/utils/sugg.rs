@@ -6,7 +6,7 @@
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
 use rustc_errors;
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::fmt::Display;
 use std;
 use syntax::codemap::{CharPos, Span};
@@ -136,8 +136,8 @@ impl<'a> Sugg<'a> {
     }
 
     /// Convenience method to create the `<lhs> && <rhs>` suggestion.
-    pub fn and(self, rhs: Self) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::And, &self, &rhs)
+    pub fn and<R: Borrow<Self>>(self, rhs: R) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::And, &self, rhs.borrow())
     }
 
     /// Convenience method to create the `<lhs> as <rhs>` suggestion.
@@ -162,10 +162,10 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
-    pub fn range(self, end: Self, limit: ast::RangeLimits) -> Sugg<'static> {
+    pub fn range<E: Borrow<Self>>(self, end: E, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {
-            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, &end),
-            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, &end),
+            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end.borrow()),
+            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, end.borrow()),
         }
     }
 
