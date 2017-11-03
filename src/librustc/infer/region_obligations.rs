@@ -1,27 +1,210 @@
-//! Temporary holding spot for some code I want to factor out.
+//! Code that handles "type-outlives" constraints like `T: 'a`. This
+//! is based on the `outlives_components` function defined on the tcx,
+//! but it adds a bit of heuristics on top, in particular to deal with
+//! associated types and projections.
+//!
+//! When we process a given `T: 'a` obligation, we may produce two
+//! kinds of constraints for the region inferencer:
+//!
+//! - Relationships between inference variables and other regions.
+//!   For example, if we have `&'?0 u32: 'a`, then we would produce
+//!   a constraint that `'a <= '?0`.
+//! - "Verifys" that must be checked after inferencing is done.
+//!   For example, if we know that, for some type parameter `T`,
+//!   `T: 'a + 'b`, and we have a requirement that `T: '?1`,
+//!   then we add a "verify" that checks that `'?1 <= 'a || '?1 <= 'b`.
+//!   - Note the difference with the previous case: here, the region
+//!     variable must be less than something else, so this doesn't
+//!     affect how inference works (it finds the smallest region that
+//!     will do); it's just a post-condition that we have to check.
+//!
+//! **The key point is that once this function is done, we have
+//! reduced all of our "type-region outlives" obligations into relationships
+//! between individual regions.**
+//!
+//! One key input to this function is the set of "region-bound pairs".
+//! These are basically the relationships between type parameters and
+//! regions that are in scope at the point where the outlives
+//! obligation was incurred. **When type-checking a function,
+//! particularly in the face of closures, this is not known until
+//! regionck runs!** This is because some of those bounds come
+//! from things we have yet to infer.
+//!
+//! Consider:
+//!
+//! ```
+//! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T));
+//! fn foo<T>(x: T) {
+//!     bar(x, |y| { ... })
+//!          // ^ closure arg
+//! }
+//! ```
+//!
+//! Here, the type of `y` may involve inference variables and the
+//! like, and it may also contain implied bounds that are needed to
+//! type-check the closure body (e.g., here it informs us that `T`
+//! outlives the late-bound region `'a`).
+//!
+//! > That said, in writing this, I have come to wonder: this
+//!   inference dependency, I think, is only interesting for
+//!   late-bound regions in the closure -- if the region appears free
+//!   in the closure signature, then the relationship must be known to
+//!   the caller (here, `foo`), and hence could be verified earlier
+//!   up. Moreover, we infer late-bound regions quite early on right
+//!   now, i.e., only when the expected signature is known.  So we
+//!   *may* be able to sidestep this. Regardless, once the NLL
+//!   transition is complete, this concern will be gone. -nmatsakis
 
-use rustc::traits::{self, ObligationCause, ObligationCauseCode, PredicateObligations};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::infer::{self, GenericKind, InferCtxt, InferOk, VerifyBound};
-use rustc::ty::subst::Subst;
-use rustc::ty::outlives::Component;
+use infer::{self, GenericKind, InferCtxt, InferOk, RegionObligation, SubregionOrigin, VerifyBound};
+use traits::{self, ObligationCause, ObligationCauseCode, PredicateObligations};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::subst::Subst;
+use ty::outlives::Component;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub struct RegionckOutlives<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    // Context provided by the caller:
+impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+    /// Registers that the given region obligation must be resolved
+    /// from within the scope of `body_id`. These regions are enqueued
+    /// and later processed by regionck, when full type information is
+    /// available (see `region_obligations` field for more
+    /// information).
+    pub fn register_region_obligation(
+        &self,
+        body_id: ast::NodeId,
+        obligation: RegionObligation<'tcx>,
+    ) {
+        self.region_obligations
+            .borrow_mut()
+            .entry(body_id)
+            .or_insert(vec![])
+            .push(obligation);
+    }
+
+    /// Process the region obligations that must be proven (during
+    /// `regionck`) for the given `body_id`, given information about
+    /// the region bounds in scope and so forth. This function must be
+    /// invoked for all relevant body-ids before region inference is
+    /// done (or else an assert will fire).
+    ///
+    /// See the `region_obligations` field of `InferCtxt` for some
+    /// comments about how this funtion fits into the overall expected
+    /// flow of the the inferencer. The key point is that it is
+    /// invoked after all type-inference variables have been bound --
+    /// towards the end of regionck. This also ensures that the
+    /// region-bound-pairs are available (see comments above regarding
+    /// closures).
+    ///
+    /// # Parameters
+    ///
+    /// - `region_bound_pairs`: the set of region bounds implied by
+    ///   the parameters and where-clauses. In particular, each pair
+    ///   `('a, K)` in this list tells us that the bounds in scope
+    ///   indicate that `K: 'a`, where `K` is either a generic
+    ///   parameter like `T` or a projection like `T::Item`.
+    /// - `implicit_region_bound`: if some, this is a region bound
+    ///   that is considered to hold for all type parameters (the
+    ///   function body).
+    /// - `param_env` is the parameter environment for the enclosing function.
+    /// - `body_id` is the body-id whose region obligations are being
+    ///   processed.
+    ///
+    /// # Returns
+    ///
+    /// This function may have to perform normalizations, and hence it
+    /// returns an `InferOk` with subobligations that must be
+    /// processed.
+    pub fn process_registered_region_obligations(
+        &self,
+        region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
+        implicit_region_bound: Option<ty::Region<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        body_id: ast::NodeId,
+    ) -> InferOk<'tcx, ()> {
+        let region_obligations = match self.region_obligations.borrow_mut().remove(&body_id) {
+            None => vec![],
+            Some(vec) => vec,
+        };
+
+        let mut outlives = TypeOutlives::new(
+            self,
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+            body_id,
+        );
+
+        for RegionObligation {
+            sup_type,
+            sub_region,
+            cause,
+        } in region_obligations
+        {
+            let origin = SubregionOrigin::from_obligation_cause(
+                &cause,
+                || infer::RelateParamBound(cause.span, sup_type),
+            );
+
+            outlives.type_must_outlive(origin, sup_type, sub_region);
+        }
+
+        InferOk {
+            value: (),
+            obligations: outlives.into_accrued_obligations(),
+        }
+    }
+
+    /// Processes a single ad-hoc region obligation that was not
+    /// registered in advance.
+    pub fn type_must_outlive(
+        &self,
+        region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
+        implicit_region_bound: Option<ty::Region<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        body_id: ast::NodeId,
+        origin: infer::SubregionOrigin<'tcx>,
+        ty: Ty<'tcx>,
+        region: ty::Region<'tcx>,
+    ) -> InferOk<'tcx, ()> {
+        let mut outlives = TypeOutlives::new(
+            self,
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+            body_id,
+        );
+        outlives.type_must_outlive(origin, ty, region);
+        InferOk {
+            value: (),
+            obligations: outlives.into_accrued_obligations(),
+        }
+    }
+
+    /// Ignore the region obligations for a given `body_id`, not bothering to
+    /// prove them. This function should not really exist; it is used to accommodate some older
+    /// code for the time being.
+    pub fn ignore_region_obligations(&self, body_id: ast::NodeId) {
+        self.region_obligations.borrow_mut().remove(&body_id);
+    }
+}
+
+#[must_use] // you ought to invoke `into_accrued_obligations` when you are done =)
+struct TypeOutlives<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+    // See the comments on `process_registered_region_obligations` for the meaning
+    // of these fields.
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: ast::NodeId,
 
-    // Obligations that we accrue as we go:
+    /// These are sub-obligations that we accrue as we go; they result
+    /// from any normalizations we had to do.
     obligations: PredicateObligations<'tcx>,
 }
 
-impl<'cx, 'gcx, 'tcx> RegionckOutlives<'cx, 'gcx, 'tcx> {
-    pub fn new(
+impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
+    fn new(
         infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
         region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -38,6 +221,12 @@ impl<'cx, 'gcx, 'tcx> RegionckOutlives<'cx, 'gcx, 'tcx> {
         }
     }
 
+    /// Returns the obligations that accrued as a result of the
+    /// `type_must_outlive` calls.
+    fn into_accrued_obligations(self) -> PredicateObligations<'tcx> {
+        self.obligations
+    }
+
     /// Adds constraints to inference such that `T: 'a` holds (or
     /// reports an error if it cannot).
     ///
@@ -46,22 +235,7 @@ impl<'cx, 'gcx, 'tcx> RegionckOutlives<'cx, 'gcx, 'tcx> {
     /// - `origin`, the reason we need this constraint
     /// - `ty`, the type `T`
     /// - `region`, the region `'a`
-    pub fn type_must_outlive(
-        mut self,
-        origin: infer::SubregionOrigin<'tcx>,
-        ty: Ty<'tcx>,
-        region: ty::Region<'tcx>,
-    ) -> InferOk<'tcx, ()> {
-        self.type_must_outlive_pushing_obligations(origin, ty, region);
-        InferOk {
-            value: (),
-            obligations: self.obligations,
-        }
-    }
-
-    /// Internal helper: ensure that `ty_must_outlive` and push obligations onto
-    /// our internal vector.
-    fn type_must_outlive_pushing_obligations(
+    fn type_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
@@ -199,7 +373,7 @@ impl<'cx, 'gcx, 'tcx> RegionckOutlives<'cx, 'gcx, 'tcx> {
             debug!("projection_must_outlive: no declared bounds");
 
             for component_ty in projection_ty.substs.types() {
-                self.type_must_outlive_pushing_obligations(origin.clone(), component_ty, region);
+                self.type_must_outlive(origin.clone(), component_ty, region);
             }
 
             for r in projection_ty.substs.regions() {
