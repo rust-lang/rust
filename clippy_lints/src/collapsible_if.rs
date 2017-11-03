@@ -134,7 +134,7 @@ fn check_collapsible_no_if_let(cx: &EarlyContext, expr: &ast::Expr, check: &ast:
                 db.span_suggestion(expr.span,
                                    "try",
                                    format!("if {} {}",
-                                           lhs.and(rhs),
+                                           lhs.and(&rhs),
                                            snippet_block(cx, content.span, "..")));
             });
         }
