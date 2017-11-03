@@ -129,21 +129,21 @@ error: 5th binding whose name is just one char
 129 |             e => panic!(),
     |             ^
 
-error: binding whose name is just underscores and digits
+error: consider choosing a more descriptive name
    --> $DIR/non_expressive_names.rs:139:9
     |
 139 |     let _1 = 1; //~ERROR Consider a more descriptive name
     |         ^^
     |
-    = note: `-D just-underscores-and-numbers` implied by `-D warnings`
+    = note: `-D just-underscores-and-digits` implied by `-D warnings`
 
-error: binding whose name is just underscores and digits
+error: consider choosing a more descriptive name
    --> $DIR/non_expressive_names.rs:140:9
     |
 140 |     let ____1 = 1; //~ERROR Consider a more descriptive name
     |         ^^^^^
 
-error: binding whose name is just underscores and digits
+error: consider choosing a more descriptive name
    --> $DIR/non_expressive_names.rs:141:9
     |
 141 |     let __1___2 = 12; //~ERROR Consider a more descriptive name

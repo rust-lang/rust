@@ -156,9 +156,9 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         if interned_name.chars().all(|c| c.is_digit(10) || c == '_') {
             span_lint(
                 self.0.cx,
-                JUST_UNDERSCORES_AND_NUMBERS,
+                JUST_UNDERSCORES_AND_DIGITS,
                 span,
-                "binding whose name is just underscores and digits",
+                "consider choosing a more descriptive name",
             );
             return;
         }
