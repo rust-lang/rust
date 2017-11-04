@@ -904,6 +904,12 @@ pub enum Predicate<'tcx> {
     ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
 }
 
+impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
+    fn as_ref(&self) -> &Predicate<'tcx> {
+        self
+    }
+}
+
 impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
     /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
