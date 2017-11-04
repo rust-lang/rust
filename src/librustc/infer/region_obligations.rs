@@ -470,9 +470,16 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     ) -> Vec<ty::Region<'tcx>> {
         let tcx = self.tcx();
 
-        // To start, collect bounds from user:
+        // To start, collect bounds from user environment. Note that
+        // parameter environments are already elaborated, so we don't
+        // have to worry about that. Comparing using `==` is a bit
+        // dubious for projections, but it will work for simple cases
+        // like `T` and `T::Item`. It may not work as well for things
+        // like `<T as Foo<'a>>::Item`.
         let mut param_bounds =
-            tcx.required_region_bounds(generic.to_ty(tcx), self.param_env.caller_bounds.to_vec());
+            self.collect_outlives_from_predicate_list(
+                generic.to_ty(tcx),
+                self.param_env.caller_bounds);
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -559,10 +566,31 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         let trait_predicates = tcx.predicates_of(trait_def_id);
         let identity_substs = Substs::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
-        traits::elaborate_predicates(tcx, trait_predicates.predicates)
-            .filter_map(|p| p.to_opt_type_outlives())
-            .filter_map(|p| tcx.no_late_bound_regions(&p))
-            .filter(|p| p.0 == identity_proj)
+        self.collect_outlives_from_predicate_list(
+            identity_proj,
+            traits::elaborate_predicates(tcx, trait_predicates.predicates))
+    }
+
+    /// Searches through a predicate list for a predicate `T: 'a`.
+    ///
+    /// Careful: does not elaborate predicates, and just uses `==`
+    /// when comparing `ty` for equality, so `ty` must be something
+    /// that does not involve inference variables and where you
+    /// otherwise want a precise match.
+    fn collect_outlives_from_predicate_list<I, P>(
+        &self,
+        ty: Ty<'tcx>,
+        predicates: I,
+    ) -> Vec<ty::Region<'tcx>>
+    where
+        I: IntoIterator<Item = P>,
+        P: AsRef<ty::Predicate<'tcx>>,
+    {
+        predicates
+            .into_iter()
+            .filter_map(|p| p.as_ref().to_opt_type_outlives())
+            .filter_map(|p| self.tcx().no_late_bound_regions(&p))
+            .filter(|p| p.0 == ty)
             .map(|p| p.1)
             .collect()
     }
