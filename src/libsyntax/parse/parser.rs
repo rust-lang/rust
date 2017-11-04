@@ -3154,7 +3154,13 @@ impl<'a> Parser<'a> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
         let pat = self.parse_pat()?;
-        self.expect_keyword(keywords::In)?;
+        if !self.eat_keyword(keywords::In) {
+            let in_span = self.prev_span.between(self.span);
+            let mut err = self.sess.span_diagnostic
+                .struct_span_err(in_span, "missing `in` in `for` loop");
+            err.span_suggestion_short(in_span, "try adding `in` here", " in ".into());
+            err.emit();
+        }
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
         let (iattrs, loop_block) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
