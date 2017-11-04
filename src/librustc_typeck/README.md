@@ -12,7 +12,7 @@ The `rustc_typeck` crate contains the source for "type collection" and
 
 ## Type collection
 
-Type "collection" is the process of convering the types found in the
+Type "collection" is the process of converting the types found in the
 HIR (`hir::Ty`), which represent the syntactic things that the user
 wrote, into the **internal representation** used by the compiler
 (`Ty<'tcx>`) -- we also do similar conversions for where-clauses and
