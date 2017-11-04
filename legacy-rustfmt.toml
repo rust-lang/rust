@@ -1,5 +1,5 @@
 fn_args_layout = "Visual"
-array_layout = "Visual"
+array_indent = "Visual"
 control_style = "Legacy"
 where_style = "Legacy"
 generics_indent = "Visual"

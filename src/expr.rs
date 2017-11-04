@@ -419,7 +419,7 @@ where
         1 // "["
     };
 
-    let nested_shape = match context.config.array_layout() {
+    let nested_shape = match context.config.array_indent() {
         IndentStyle::Block => shape
             .block()
             .block_indent(context.config.tab_spaces())
@@ -454,7 +454,7 @@ where
         .iter()
         .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
 
-    let mut tactic = match context.config.array_layout() {
+    let mut tactic = match context.config.array_indent() {
         IndentStyle::Block => {
             // FIXME wrong shape in one-line case
             match shape.width.checked_sub(2 * bracket_size) {
@@ -477,7 +477,7 @@ where
             DefinitiveListTactic::Mixed
         },
     };
-    let ends_with_newline = tactic.ends_with_newline(context.config.array_layout());
+    let ends_with_newline = tactic.ends_with_newline(context.config.array_indent());
     if context.config.array_horizontal_layout_threshold() > 0
         && items.len() > context.config.array_horizontal_layout_threshold()
     {
@@ -489,7 +489,7 @@ where
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
-        } else if context.inside_macro || context.config.array_layout() == IndentStyle::Visual {
+        } else if context.inside_macro || context.config.array_indent() == IndentStyle::Visual {
             SeparatorTactic::Never
         } else {
             SeparatorTactic::Vertical
@@ -502,7 +502,7 @@ where
     };
     let list_str = write_list(&items, &fmt)?;
 
-    let result = if context.config.array_layout() == IndentStyle::Visual
+    let result = if context.config.array_indent() == IndentStyle::Visual
         || tactic == DefinitiveListTactic::Horizontal
     {
         if context.config.spaces_within_square_brackets() && !list_str.is_empty() {

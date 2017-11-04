@@ -5,7 +5,7 @@ Rustfmt is designed to be very configurable. You can create a TOML file called `
 A possible content of `rustfmt.toml` or `.rustfmt.toml` might look like this:
 
 ```toml
-array_layout = "Block"
+array_indent = "Block"
 array_width = 80
 reorder_imported_names = true
 ```
@@ -22,7 +22,7 @@ Use this option to prevent a huge array from being vertically formatted.
 - **Default value**: `0`
 - **Possible values**: any positive integer
 
-**Note:** A value of `0` results in [`array_layout`](#array_layout) being applied regardless of a line's width.
+**Note:** A value of `0` results in [`array_indent`](#array_indent) being applied regardless of a line's width.
 
 #### `0` (default):
 
@@ -50,7 +50,7 @@ let a = vec![
 ];
 ```
 
-## `array_layout`
+## `array_indent`
 
 Indent on arrays
 
@@ -90,7 +90,7 @@ Maximum width of an array literal before falling back to vertical formatting
 - **Default value**: `60`
 - **Possible values**: any positive integer
 
-**Note:** A value of `0` results in [`array_layout`](#array_layout) being applied regardless of a line's width.
+**Note:** A value of `0` results in [`array_indent`](#array_indent) being applied regardless of a line's width.
 
 #### Lines shorter than `array_width`:
 ```rust
@@ -98,7 +98,7 @@ let lorem = vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "
 ```
 
 #### Lines longer than `array_width`:
-See [`array_layout`](#array_layout).
+See [`array_indent`](#array_indent).
 
 ## `attributes_on_same_line_as_field`
 

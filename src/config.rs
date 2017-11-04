@@ -561,7 +561,7 @@ create_config! {
     fn_args_density: Density, Density::Tall, false, "Argument density in functions";
     fn_args_layout: IndentStyle, IndentStyle::Block, false,
         "Layout of function arguments and tuple structs";
-    array_layout: IndentStyle, IndentStyle::Block, false, "Indent on arrays";
+    array_indent: IndentStyle, IndentStyle::Block, false, "Indent on arrays";
     array_width: usize, 60, false,
         "Maximum width of an array literal before falling back to vertical formatting";
     array_horizontal_layout_threshold: usize, 0, false,
