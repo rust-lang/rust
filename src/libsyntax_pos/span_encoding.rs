@@ -56,14 +56,13 @@ const TAG_MASK: u32 = 1;
 // Fields indexes
 const BASE_INDEX: usize = 0;
 const LEN_INDEX: usize = 1;
-const CTXT_INDEX: usize = 2;
 
 // Tag = 0, inline format.
 // -----------------------------------
 // | base 31:8  | len 7:1  | tag 0:0 |
 // -----------------------------------
-const INLINE_SIZES: [u32; 3] = [24, 7, 0];
-const INLINE_OFFSETS: [u32; 3] = [8, 1, 1];
+const INLINE_SIZES: [u32; 2] = [24, 7];
+const INLINE_OFFSETS: [u32; 2] = [8, 1];
 
 // Tag = 1, interned format.
 // ------------------------
@@ -78,9 +77,10 @@ fn encode(sd: &SpanData) -> Span {
 
     let val = if (base >> INLINE_SIZES[BASE_INDEX]) == 0 &&
                  (len >> INLINE_SIZES[LEN_INDEX]) == 0 &&
-                 (ctxt >> INLINE_SIZES[CTXT_INDEX]) == 0 {
-        (base << INLINE_OFFSETS[BASE_INDEX]) | (len << INLINE_OFFSETS[LEN_INDEX]) |
-        (ctxt << INLINE_OFFSETS[CTXT_INDEX]) | TAG_INLINE
+                 ctxt == 0 {
+        (base << INLINE_OFFSETS[BASE_INDEX]) |
+        (len << INLINE_OFFSETS[LEN_INDEX]) |
+        TAG_INLINE
     } else {
         let index = with_span_interner(|interner| interner.intern(sd));
         (index << INTERNED_INDEX_OFFSET) | TAG_INTERNED
@@ -101,7 +101,7 @@ fn decode(span: Span) -> SpanData {
     let (base, len, ctxt) = if val & TAG_MASK == TAG_INLINE {(
         extract(INLINE_OFFSETS[BASE_INDEX], INLINE_SIZES[BASE_INDEX]),
         extract(INLINE_OFFSETS[LEN_INDEX], INLINE_SIZES[LEN_INDEX]),
-        extract(INLINE_OFFSETS[CTXT_INDEX], INLINE_SIZES[CTXT_INDEX]),
+        0,
     )} else {
         let index = extract(INTERNED_INDEX_OFFSET, INTERNED_INDEX_SIZE);
         return with_span_interner(|interner| *interner.get(index));
