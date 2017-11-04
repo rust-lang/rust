@@ -10,13 +10,13 @@
 
 - Use getters to access `Span` fields (#1899).
 
-## [0.2.4] 2018-08-30
+## [0.2.4] 2017-08-30
 
 ### Added
 
 - Add support for `Yield` (#1928).
 
-## [0.2.3] 2018-08-30
+## [0.2.3] 2017-08-30
 
 ### Added
 
