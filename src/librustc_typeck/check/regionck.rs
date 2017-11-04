@@ -144,6 +144,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         rcx.resolve_regions_and_report_errors();
     }
 
+    /// Region check a function body. Not invoked on closures, but
+    /// only on the "root" fn item (in which closures may be
+    /// embedded). Walks the function body and adds various add'l
+    /// constraints that are needed for region inference. This is
+    /// separated both to isolate "pure" region constraints from the
+    /// rest of type check and because sometimes we need type
+    /// inference to have completed before we can determine which
+    /// constraints to add.
     pub fn regionck_fn(&self,
                        fn_id: ast::NodeId,
                        body: &'gcx hir::Body) {
@@ -414,7 +422,16 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                         // system to be more general and to make use
                         // of *every* relationship that arises here,
                         // but presently we do not.)
-                        self.free_region_map.relate_regions(r_a, r_b);
+                        if body_id == self.fcx.body_id {
+                            // Only modify `free_region_map` if these
+                            // are parameters from the root
+                            // function. That's because this data
+                            // struture is shared across all functions
+                            // and hence we don't want to take implied
+                            // bounds from one closure and use them
+                            // outside.
+                            self.free_region_map.relate_regions(r_a, r_b);
+                        }
                     }
                 }
             }
