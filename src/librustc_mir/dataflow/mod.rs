@@ -721,6 +721,12 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                     self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
                 }
             }
+            mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
+                self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
+                for target in imaginary_targets {
+                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                }
+            }
         }
     }
 

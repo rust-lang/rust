@@ -121,6 +121,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             TerminatorKind::Assert { .. } => "TerminatorKind::Assert",
             TerminatorKind::GeneratorDrop => "TerminatorKind::GeneratorDrop",
             TerminatorKind::Yield { .. } => "TerminatorKind::Yield",
+            TerminatorKind::FalseEdges { .. } => "TerminatorKind::FalseEdges",
         }, kind);
         self.super_terminator_kind(block, kind, location);
     }

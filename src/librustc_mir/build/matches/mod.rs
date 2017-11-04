@@ -21,7 +21,7 @@ use rustc::mir::*;
 use rustc::hir;
 use hair::*;
 use syntax::ast::{Name, NodeId};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 // helper functions, broken out by category:
 mod simplify;
@@ -54,11 +54,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             (body, scope.unwrap_or(self.visibility_scope))
         }).collect();
 
+        // create binding start block for link them by false edges
+        let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
+        let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
+            .map(|_| self.cfg.start_new_block()).collect();
+
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
         // *per arm*. These candidates are kept sorted such that the
         // highest priority candidate comes first in the list.
         // (i.e. same order as in source)
+
         let candidates: Vec<_> =
             arms.iter()
                 .enumerate()
@@ -66,16 +72,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     arm.patterns.iter()
                                 .map(move |pat| (arm_index, pat, arm.guard.clone()))
                 })
-                .map(|(arm_index, pattern, guard)| {
+                .zip(pre_binding_blocks.iter().zip(pre_binding_blocks.iter().skip(1)))
+                .map(|((arm_index, pattern, guard),
+                       (pre_binding_block, next_candidate_pre_binding_block))| {
                     Candidate {
                         span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard,
                         arm_index,
+                        pre_binding_block: *pre_binding_block,
+                        next_candidate_pre_binding_block: *next_candidate_pre_binding_block,
                     }
                 })
                 .collect();
+
+        let outer_source_info = self.source_info(span);
+        self.cfg.terminate(*pre_binding_blocks.last().unwrap(),
+                           outer_source_info, TerminatorKind::Unreachable);
 
         // this will generate code to test discriminant_lvalue and
         // branch to the appropriate arm block
@@ -148,7 +162,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
             guard: None,
-            arm_index: 0, // since we don't call `match_candidates`, this field is unused
+
+            // since we don't call `match_candidates`, next fields is unused
+            arm_index: 0,
+            pre_binding_block: block,
+            next_candidate_pre_binding_block: block
         };
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
@@ -278,6 +296,10 @@ pub struct Candidate<'pat, 'tcx:'pat> {
 
     // ...and then we branch to arm with this index.
     arm_index: usize,
+
+    // ...and the blocks for add false edges between candidates
+    pre_binding_block: BasicBlock,
+    next_candidate_pre_binding_block: BasicBlock,
 }
 
 #[derive(Clone, Debug)]
@@ -398,17 +420,43 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             candidates.iter().take_while(|c| c.match_pairs.is_empty()).count();
         debug!("match_candidates: {:?} candidates fully matched", fully_matched);
         let mut unmatched_candidates = candidates.split_off(fully_matched);
-        for (index, candidate) in candidates.into_iter().enumerate() {
+
+        let fully_matched_with_guard =
+            candidates.iter().take_while(|c| c.guard.is_some()).count();
+
+        let unreachable_candidates = if fully_matched_with_guard + 1 < candidates.len() {
+            candidates.split_off(fully_matched_with_guard + 1)
+        } else {
+            vec![]
+        };
+
+        for candidate in candidates {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
-            let is_last = index == fully_matched - 1;
-            if let Some(b) = self.bind_and_guard_matched_candidate(block, arm_blocks,
-                                                                   candidate, is_last) {
+            if let Some(b) = self.bind_and_guard_matched_candidate(block, arm_blocks, candidate) {
                 block = b;
             } else {
                 // if None is returned, then any remaining candidates
                 // are unreachable (at least not through this path).
-                return vec![];
+                // Link them with false edges.
+                debug!("match_candidates: add false edges for unreachable {:?} and unmatched {:?}",
+                       unreachable_candidates, unmatched_candidates);
+                for candidate in unreachable_candidates {
+                    let source_info = self.source_info(candidate.span);
+                    let target = self.cfg.start_new_block();
+                    if let Some(otherwise) = self.bind_and_guard_matched_candidate(target,
+                                                                                   arm_blocks,
+                                                                                   candidate) {
+                        self.cfg.terminate(otherwise, source_info, TerminatorKind::Unreachable);
+                    }
+                }
+
+                if unmatched_candidates.is_empty() {
+                    return vec![]
+                } else {
+                    let target = self.cfg.start_new_block();
+                    return self.match_candidates(span, arm_blocks, unmatched_candidates, target);
+                }
             }
         }
 
@@ -423,9 +471,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.test_candidates(span, arm_blocks, &unmatched_candidates, block);
 
         // If the target candidates were exhaustive, then we are done.
-        if otherwise.is_empty() {
-            return vec![];
-        }
+        // But for borrowck continue build decision tree.
 
         // If all candidates were sorted into `target_candidates` somewhere, then
         // the initial set was inexhaustive.
@@ -666,17 +712,27 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn bind_and_guard_matched_candidate<'pat>(&mut self,
                                               mut block: BasicBlock,
                                               arm_blocks: &mut ArmBlocks,
-                                              candidate: Candidate<'pat, 'tcx>,
-                                              is_last_arm: bool)
+                                              candidate: Candidate<'pat, 'tcx>)
                                               -> Option<BasicBlock> {
         debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
                block, candidate);
 
         debug_assert!(candidate.match_pairs.is_empty());
 
-        self.bind_matched_candidate(block, candidate.bindings);
-
         let arm_block = arm_blocks.blocks[candidate.arm_index];
+        let candidate_source_info = self.source_info(candidate.span);
+
+        self.cfg.terminate(block, candidate_source_info,
+                               TerminatorKind::Goto { target: candidate.pre_binding_block });
+
+        block = self.cfg.start_new_block();
+        self.cfg.terminate(candidate.pre_binding_block, candidate_source_info,
+                               TerminatorKind::FalseEdges {
+                                   real_target: block,
+                                   imaginary_targets:
+                                       vec![candidate.next_candidate_pre_binding_block]});
+
+        self.bind_matched_candidate(block, candidate.bindings);
 
         if let Some(guard) = candidate.guard {
             // the block to branch to if the guard fails; if there is no
@@ -684,30 +740,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let guard = self.hir.mirror(guard);
             let source_info = self.source_info(guard.span);
             let cond = unpack!(block = self.as_local_operand(block, guard));
-            let otherwise = self.cfg.start_new_block();
+
+            let false_edge_block = self.cfg.start_new_block();
             self.cfg.terminate(block, source_info,
-                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
-            Some(otherwise)
-        } else if !is_last_arm {
-            // Add always true guard in case of more than one arm
-            // it creates false edges and allow MIR borrowck detects errors
-            // FIXME(#45184) -- permit "false edges"
-            let source_info = self.source_info(candidate.span);
-            let true_expr = Expr {
-                temp_lifetime: None,
-                ty: self.hir.tcx().types.bool,
-                span: DUMMY_SP,
-                kind: ExprKind::Literal{literal: self.hir.true_literal()},
-            };
-            let cond = unpack!(block = self.as_local_operand(block, true_expr));
+                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block,
+                                   false_edge_block));
+
             let otherwise = self.cfg.start_new_block();
-            self.cfg.terminate(block, source_info,
-                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
+            self.cfg.terminate(false_edge_block, source_info,
+                               TerminatorKind::FalseEdges {
+                                   real_target: otherwise,
+                                   imaginary_targets:
+                                       vec![candidate.next_candidate_pre_binding_block] });
             Some(otherwise)
         } else {
-            let source_info = self.source_info(candidate.span);
-            self.cfg.terminate(block, source_info,
-                               TerminatorKind::Goto { target: arm_block  });
+            self.cfg.terminate(block, candidate_source_info,
+                               TerminatorKind::Goto { target: arm_block });
             None
         }
     }

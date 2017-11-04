@@ -486,8 +486,15 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, source_location);
                         self.visit_branch(block, resume);
                         drop.map(|t| self.visit_branch(block, t));
+
                     }
 
+                    TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
+                        self.visit_branch(block, real_target);
+                        for target in imaginary_targets {
+                            self.visit_branch(block, *target);
+                        }
+                    }
                 }
             }
 
