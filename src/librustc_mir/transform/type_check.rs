@@ -139,8 +139,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Lvalue::Static(box Static { def_id, ty: sty }) => {
                 let sty = self.sanitize_type(lvalue, sty);
                 let ty = self.tcx().type_of(def_id);
-                let ty = self.cx.normalize(&ty);
-                if let Err(terr) = self.cx.eq_types(self.last_span, ty, sty) {
+                let ty = self.cx.normalize(&ty, location);
+                if let Err(terr) = self.cx.eq_types(self.last_span, ty, sty, location) {
                     span_mirbug!(
                         self, lvalue, "bad static type ({:?}: {:?}): {:?}",
                         ty, sty, terr);
@@ -165,7 +165,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                            base: LvalueTy<'tcx>,
                            pi: &LvalueElem<'tcx>,
                            lvalue: &Lvalue<'tcx>,
-                           _: Location)
+                           location: Location)
                            -> LvalueTy<'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
         let tcx = self.tcx();
@@ -254,9 +254,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 },
             ProjectionElem::Field(field, fty) => {
                 let fty = self.sanitize_type(lvalue, fty);
-                match self.field_ty(lvalue, base, field) {
+                match self.field_ty(lvalue, base, field, location) {
                     Ok(ty) => {
-                        if let Err(terr) = self.cx.eq_types(span, ty, fty) {
+                        if let Err(terr) = self.cx.eq_types(span, ty, fty, location) {
                             span_mirbug!(
                                 self, lvalue, "bad field access ({:?}: {:?}): {:?}",
                                 ty, fty, terr);
@@ -281,7 +281,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn field_ty(&mut self,
                 parent: &fmt::Debug,
                 base_ty: LvalueTy<'tcx>,
-                field: Field)
+                field: Field,
+                location: Location)
                 -> Result<Ty<'tcx>, FieldAccessError>
     {
         let tcx = self.tcx();
@@ -329,7 +330,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         };
 
         if let Some(field) = variant.fields.get(field.index()) {
-            Ok(self.cx.normalize(&field.ty(tcx, substs)))
+            Ok(self.cx.normalize(&field.ty(tcx, substs), location))
         } else {
             Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
@@ -371,7 +372,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         infer_ok.value
     }
 
-    fn sub_types(&mut self, sub: Ty<'tcx>, sup: Ty<'tcx>)
+    fn sub_types(&mut self, sub: Ty<'tcx>, sup: Ty<'tcx>, _at_location: Location)
                  -> infer::UnitResult<'tcx>
     {
         self.infcx.at(&self.misc(self.last_span), self.param_env)
@@ -379,7 +380,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                   .map(|ok| self.register_infer_ok_obligations(ok))
     }
 
-    fn eq_types(&mut self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
+    fn eq_types(&mut self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>, _at_location: Location)
                 -> infer::UnitResult<'tcx>
     {
         self.infcx.at(&self.misc(span), self.param_env)
@@ -391,14 +392,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn check_stmt(&mut self, mir: &Mir<'tcx>, stmt: &Statement<'tcx>) {
+    fn check_stmt(&mut self,
+                  mir: &Mir<'tcx>,
+                  stmt: &Statement<'tcx>,
+                  location: Location) {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
             StatementKind::Assign(ref lv, ref rv) => {
                 let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
-                if let Err(terr) = self.sub_types(rv_ty, lv_ty) {
+                if let Err(terr) = self.sub_types(rv_ty, lv_ty, location.successor_within_block()) {
                     span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
                                  lv_ty, rv_ty, terr);
                 }
@@ -432,7 +436,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn check_terminator(&mut self,
                         mir: &Mir<'tcx>,
-                        term: &Terminator<'tcx>) {
+                        term: &Terminator<'tcx>,
+                        location: Location) {
         debug!("check_terminator: {:?}", term);
         let tcx = self.tcx();
         match term.kind {
@@ -450,18 +455,30 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::DropAndReplace {
                 ref location,
                 ref value,
-                ..
+                target,
+                unwind,
             } => {
                 let lv_ty = location.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = value.ty(mir, tcx);
-                if let Err(terr) = self.sub_types(rv_ty, lv_ty) {
+
+                if let Err(terr) = self.sub_types(rv_ty, lv_ty, target.start_location()) {
                     span_mirbug!(self, term, "bad DropAndReplace ({:?} = {:?}): {:?}",
                                  lv_ty, rv_ty, terr);
+                }
+
+                // Subtle: this assignment occurs at the start of
+                // *both* blocks, so we need to ensure that it holds
+                // at both locations.
+                if let Some(unwind) = unwind {
+                    if let Err(terr) = self.sub_types(rv_ty, lv_ty, unwind.start_location()) {
+                        span_mirbug!(self, term, "bad DropAndReplace ({:?} = {:?}): {:?}",
+                                     lv_ty, rv_ty, terr);
+                    }
                 }
             }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
                 let discr_ty = discr.ty(mir, tcx);
-                if let Err(terr) = self.sub_types(discr_ty, switch_ty) {
+                if let Err(terr) = self.sub_types(discr_ty, switch_ty, location) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
                 }
@@ -483,13 +500,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 };
                 let sig = tcx.erase_late_bound_regions(&sig);
-                let sig = self.normalize(&sig);
+                let sig = self.normalize(&sig, location);
                 self.check_call_dest(mir, term, &sig, destination);
 
                 if self.is_box_free(func) {
-                    self.check_box_free_inputs(mir, term, &sig, args);
+                    self.check_box_free_inputs(mir, term, &sig, args, location);
                 } else {
-                    self.check_call_inputs(mir, term, &sig, args);
+                    self.check_call_inputs(mir, term, &sig, args, location);
                 }
             }
             TerminatorKind::Assert { ref cond, ref msg, .. } => {
@@ -512,7 +529,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 match mir.yield_ty {
                     None => span_mirbug!(self, term, "yield in non-generator"),
                     Some(ty) => {
-                        if let Err(terr) = self.sub_types(value_ty, ty) {
+                        if let Err(terr) = self.sub_types(value_ty, ty, location) {
                             span_mirbug!(self,
                                 term,
                                 "type of yield value is {:?}, but the yield type is {:?}: {:?}",
@@ -533,9 +550,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                        destination: &Option<(Lvalue<'tcx>, BasicBlock)>) {
         let tcx = self.tcx();
         match *destination {
-            Some((ref dest, _)) => {
+            Some((ref dest, target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
-                if let Err(terr) = self.sub_types(sig.output(), dest_ty) {
+                if let Err(terr) = self.sub_types(sig.output(),
+                                                  dest_ty,
+                                                  target_block.start_location()) {
                     span_mirbug!(self, term,
                                  "call dest mismatch ({:?} <- {:?}): {:?}",
                                  dest_ty, sig.output(), terr);
@@ -554,7 +573,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                          mir: &Mir<'tcx>,
                          term: &Terminator<'tcx>,
                          sig: &ty::FnSig<'tcx>,
-                         args: &[Operand<'tcx>])
+                         args: &[Operand<'tcx>],
+                         location: Location)
     {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
         if args.len() < sig.inputs().len() ||
@@ -563,7 +583,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
         for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
             let op_arg_ty = op_arg.ty(mir, self.tcx());
-            if let Err(terr) = self.sub_types(op_arg_ty, fn_arg) {
+            if let Err(terr) = self.sub_types(op_arg_ty, fn_arg, location) {
                 span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
                              n, fn_arg, op_arg_ty, terr);
             }
@@ -587,7 +607,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                              mir: &Mir<'tcx>,
                              term: &Terminator<'tcx>,
                              sig: &ty::FnSig<'tcx>,
-                             args: &[Operand<'tcx>])
+                             args: &[Operand<'tcx>],
+                             location: Location)
     {
         debug!("check_box_free_inputs");
 
@@ -621,69 +642,69 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
         };
 
-        if let Err(terr) = self.sub_types(arg_ty, pointee_ty) {
+        if let Err(terr) = self.sub_types(arg_ty, pointee_ty, location) {
             span_mirbug!(self, term, "bad box_free arg ({:?} <- {:?}): {:?}",
                          pointee_ty, arg_ty, terr);
         }
     }
 
-    fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block: &BasicBlockData<'tcx>)
+    fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block_data: &BasicBlockData<'tcx>)
     {
-        let is_cleanup = block.is_cleanup;
-        self.last_span = block.terminator().source_info.span;
-        match block.terminator().kind {
+        let is_cleanup = block_data.is_cleanup;
+        self.last_span = block_data.terminator().source_info.span;
+        match block_data.terminator().kind {
             TerminatorKind::Goto { target } =>
-                self.assert_iscleanup(mir, block, target, is_cleanup),
+                self.assert_iscleanup(mir, block_data, target, is_cleanup),
             TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
-                    self.assert_iscleanup(mir, block, *target, is_cleanup);
+                    self.assert_iscleanup(mir, block_data, *target, is_cleanup);
                 }
             }
             TerminatorKind::Resume => {
                 if !is_cleanup {
-                    span_mirbug!(self, block, "resume on non-cleanup block!")
+                    span_mirbug!(self, block_data, "resume on non-cleanup block!")
                 }
             }
             TerminatorKind::Return => {
                 if is_cleanup {
-                    span_mirbug!(self, block, "return on cleanup block")
+                    span_mirbug!(self, block_data, "return on cleanup block")
                 }
             }
             TerminatorKind::GeneratorDrop { .. } => {
                 if is_cleanup {
-                    span_mirbug!(self, block, "generator_drop in cleanup block")
+                    span_mirbug!(self, block_data, "generator_drop in cleanup block")
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
                 if is_cleanup {
-                    span_mirbug!(self, block, "yield in cleanup block")
+                    span_mirbug!(self, block_data, "yield in cleanup block")
                 }
-                self.assert_iscleanup(mir, block, resume, is_cleanup);
+                self.assert_iscleanup(mir, block_data, resume, is_cleanup);
                 if let Some(drop) = drop {
-                    self.assert_iscleanup(mir, block, drop, is_cleanup);
+                    self.assert_iscleanup(mir, block_data, drop, is_cleanup);
                 }
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. } |
             TerminatorKind::DropAndReplace { target, unwind, .. } |
             TerminatorKind::Assert { target, cleanup: unwind, .. } => {
-                self.assert_iscleanup(mir, block, target, is_cleanup);
+                self.assert_iscleanup(mir, block_data, target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {
-                        span_mirbug!(self, block, "unwind on cleanup block")
+                        span_mirbug!(self, block_data, "unwind on cleanup block")
                     }
-                    self.assert_iscleanup(mir, block, unwind, true);
+                    self.assert_iscleanup(mir, block_data, unwind, true);
                 }
             }
             TerminatorKind::Call { ref destination, cleanup, .. } => {
                 if let &Some((_, target)) = destination {
-                    self.assert_iscleanup(mir, block, target, is_cleanup);
+                    self.assert_iscleanup(mir, block_data, target, is_cleanup);
                 }
                 if let Some(cleanup) = cleanup {
                     if is_cleanup {
-                        span_mirbug!(self, block, "cleanup on cleanup block")
+                        span_mirbug!(self, block_data, "cleanup on cleanup block")
                     }
-                    self.assert_iscleanup(mir, block, cleanup, true);
+                    self.assert_iscleanup(mir, block_data, cleanup, true);
                 }
             }
             TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
@@ -744,21 +765,23 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.check_local(mir, local, local_decl);
         }
 
-        for block in mir.basic_blocks() {
-            for stmt in &block.statements {
+        for (block, block_data) in mir.basic_blocks().iter_enumerated() {
+            let mut location = Location { block, statement_index: 0 };
+            for stmt in &block_data.statements {
                 if stmt.source_info.span != DUMMY_SP {
                     self.last_span = stmt.source_info.span;
                 }
-                self.check_stmt(mir, stmt);
+                self.check_stmt(mir, stmt, location);
+                location.statement_index += 1;
             }
 
-            self.check_terminator(mir, block.terminator());
-            self.check_iscleanup(mir, block);
+            self.check_terminator(mir, block_data.terminator(), location);
+            self.check_iscleanup(mir, block_data);
         }
     }
 
 
-    fn normalize<T>(&mut self, value: &T) -> T
+    fn normalize<T>(&mut self, value: &T, _location: Location) -> T
         where T: fmt::Debug + TypeFoldable<'tcx>
     {
         let mut selcx = traits::SelectionContext::new(self.infcx);
