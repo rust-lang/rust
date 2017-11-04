@@ -70,7 +70,7 @@ fn all_ones(v: &ConstInt) -> bool {
         ConstInt::U32(i) => i == !0,
         ConstInt::U64(i) => i == !0,
         ConstInt::U128(i) => i == !0,
-        _ => false
+        _ => false,
     }
 }
 

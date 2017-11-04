@@ -120,13 +120,19 @@ fn to_const_range(
     array_size: ConstInt,
 ) -> Option<(ConstInt, ConstInt)> {
     let start = match *start {
-        Some(Some(&ty::Const { val: ConstVal::Integral(x), .. })) => x,
+        Some(Some(&ty::Const {
+            val: ConstVal::Integral(x),
+            ..
+        })) => x,
         Some(_) => return None,
         None => ConstInt::U8(0),
     };
 
     let end = match *end {
-        Some(Some(&ty::Const { val: ConstVal::Integral(x), .. })) => if limits == RangeLimits::Closed {
+        Some(Some(&ty::Const {
+            val: ConstVal::Integral(x),
+            ..
+        })) => if limits == RangeLimits::Closed {
             match x {
                 ConstInt::U8(_) => (x + ConstInt::U8(1)),
                 ConstInt::U16(_) => (x + ConstInt::U16(1)),

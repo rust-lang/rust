@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use syntax::ast::LitKind;
-use utils::{is_direct_expn_of, match_def_path, paths, resolve_node, span_lint, opt_def_id};
+use utils::{is_direct_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
 
 /// **What it does:** Checks for missing parameters in `panic!`.
 ///

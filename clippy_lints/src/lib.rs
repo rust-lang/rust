@@ -11,8 +11,7 @@
 #![feature(inclusive_range_syntax, range_contains)]
 #![feature(macro_vis_matcher)]
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
-
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc;

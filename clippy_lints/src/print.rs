@@ -6,7 +6,7 @@ use syntax::ast::LitKind;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
 use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint};
-use utils::{paths, opt_def_id};
+use utils::{opt_def_id, paths};
 
 /// **What it does:** This lint warns when you using `println!("")` to
 /// print a newline.
@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let ExprPath(ref qpath) = fun.node;
             if let Some(fun_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
             then {
-    
+
                 // Search for `std::io::_print(..)` which is unique in a
                 // `print!` expansion.
                 if match_def_path(cx.tcx, fun_id, &paths::IO_PRINT) {
@@ -104,9 +104,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             Some(span) => (span, "println"),
                             None => (span, "print"),
                         };
-    
+
                         span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
-    
+
                         if_chain! {
                             // ensure we're calling Arguments::new_v1
                             if args.len() == 1;

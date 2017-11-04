@@ -245,7 +245,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     // FIXME: also check int type
                     LitKind::Int(i, _) => println!("    if let LitKind::Int({}, _) = {}.node;", i, lit_pat),
                     LitKind::Float(..) => println!("    if let LitKind::Float(..) = {}.node;", lit_pat),
-                    LitKind::FloatUnsuffixed(_) => println!("    if let LitKind::FloatUnsuffixed(_) = {}.node;", lit_pat),
+                    LitKind::FloatUnsuffixed(_) => {
+                        println!("    if let LitKind::FloatUnsuffixed(_) = {}.node;", lit_pat)
+                    },
                     LitKind::ByteStr(ref vec) => {
                         let vec_pat = self.next("vec");
                         println!("    if let LitKind::ByteStr(ref {}) = {}.node;", vec_pat, lit_pat);

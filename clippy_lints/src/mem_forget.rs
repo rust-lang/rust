@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::{Expr, ExprCall, ExprPath};
-use utils::{match_def_path, paths, span_lint, opt_def_id};
+use utils::{match_def_path, opt_def_id, paths, span_lint};
 
 /// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is
 /// `Drop`.

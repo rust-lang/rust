@@ -2,7 +2,7 @@ use consts::{constant_simple, Constant};
 use rustc::lint::*;
 use rustc::hir::*;
 use std::cmp::{Ordering, PartialOrd};
-use utils::{match_def_path, paths, span_lint, opt_def_id};
+use utils::{match_def_path, opt_def_id, paths, span_lint};
 
 /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
 /// used to clamp values, but switched so that the result is constant.

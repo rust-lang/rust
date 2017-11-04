@@ -253,7 +253,9 @@ fn lint_shadow<'a, 'tcx: 'a>(
                     snippet(cx, pattern_span, "_"),
                     snippet(cx, expr.span, "..")
                 ),
-                |db| { db.span_note(prev_span, "previous binding is here"); },
+                |db| {
+                    db.span_note(prev_span, "previous binding is here");
+                },
             );
         } else if contains_name(name, expr) {
             span_lint_and_then(
@@ -292,7 +294,9 @@ fn lint_shadow<'a, 'tcx: 'a>(
             SHADOW_UNRELATED,
             span,
             &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
-            |db| { db.span_note(prev_span, "previous binding is here"); },
+            |db| {
+                db.span_note(prev_span, "previous binding is here");
+            },
         );
     }
 }
@@ -361,8 +365,8 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
     match expr.node {
         ExprBox(ref inner) | ExprAddrOf(_, ref inner) => is_self_shadow(name, inner),
         ExprBlock(ref block) => {
-            block.stmts.is_empty() &&
-                block
+            block.stmts.is_empty()
+                && block
                     .expr
                     .as_ref()
                     .map_or(false, |e| is_self_shadow(name, e))

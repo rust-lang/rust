@@ -1,7 +1,7 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::def::Def;
 use rustc::hir::{BiAnd, BiOr, BlockCheckMode, Expr, Expr_, Stmt, StmtSemi, UnsafeSource};
-use utils::{in_macro, snippet_opt, span_lint, span_lint_and_sugg, has_drop};
+use utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};
 use std::ops::Deref;
 
 /// **What it does:** Checks for statements which have no effect.
@@ -146,23 +146,24 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprTupField(ref inner, _) |
         Expr_::ExprAddrOf(_, ref inner) |
         Expr_::ExprBox(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
-        Expr_::ExprStruct(_, ref fields, ref base) => {
-            if has_drop(cx, expr) {
-                None
-            } else {
-                Some(
-                    fields
-                        .iter()
-                        .map(|f| &f.expr)
-                        .chain(base)
-                        .map(Deref::deref)
-                        .collect())
-            }
+        Expr_::ExprStruct(_, ref fields, ref base) => if has_drop(cx, expr) {
+            None
+        } else {
+            Some(
+                fields
+                    .iter()
+                    .map(|f| &f.expr)
+                    .chain(base)
+                    .map(Deref::deref)
+                    .collect(),
+            )
         },
         Expr_::ExprCall(ref callee, ref args) => if let Expr_::ExprPath(ref qpath) = callee.node {
             let def = cx.tables.qpath_def(qpath, callee.hir_id);
             match def {
-                Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) if !has_drop(cx, expr) => {
+                Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..)
+                    if !has_drop(cx, expr) =>
+                {
                     Some(args.iter().collect())
                 },
                 _ => None,

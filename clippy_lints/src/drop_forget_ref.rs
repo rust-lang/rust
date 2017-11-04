@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
-use utils::{is_copy, match_def_path, paths, span_note_and_lint, opt_def_id};
+use utils::{is_copy, match_def_path, opt_def_id, paths, span_note_and_lint};
 
 /// **What it does:** Checks for calls to `std::mem::drop` with a reference
 /// instead of an owned value.
@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let msg;
                 let arg = &args[0];
                 let arg_ty = cx.tables.expr_ty(arg);
-    
+
                 if let ty::TyRef(..) = arg_ty.sty {
                     if match_def_path(cx.tcx, def_id, &paths::DROP) {
                         lint = DROP_REF;

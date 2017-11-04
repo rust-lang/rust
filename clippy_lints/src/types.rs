@@ -241,7 +241,7 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
                         // Ignore `Box<Any>` types, see #1884 for details.
                         return;
                     }
-    
+
                     let ltopt = if lt.is_elided() {
                         "".to_owned()
                     } else {
@@ -1730,7 +1730,7 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
                 if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
                     return;
                 }
-    
+
                 if match_path(ty_path, &paths::HASHMAP) {
                     if method.name == "new" {
                         self.suggestions

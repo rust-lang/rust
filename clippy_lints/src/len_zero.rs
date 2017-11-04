@@ -119,8 +119,8 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
             .iter()
             .flat_map(|&i| cx.tcx.associated_items(i))
             .any(|i| {
-                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.name == "is_empty" &&
-                    cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
+                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.name == "is_empty"
+                    && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
 
         if !is_empty_method_found {

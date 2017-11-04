@@ -187,8 +187,8 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                         let second_last_e = existing_chars
                             .next_back()
                             .expect("we know we have at least three chars");
-                        if !eq_or_numeric((second_last_i, second_last_e)) || second_last_i == '_' ||
-                            !interned_chars.zip(existing_chars).all(eq_or_numeric)
+                        if !eq_or_numeric((second_last_i, second_last_e)) || second_last_i == '_'
+                            || !interned_chars.zip(existing_chars).all(eq_or_numeric)
                         {
                             // allowed similarity foo_x, foo_y
                             // or too many chars differ (foo_x, boo_y) or (foox, booy)
@@ -203,8 +203,8 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                     let second_e = existing_chars
                         .next()
                         .expect("we know we have at least two chars");
-                    if !eq_or_numeric((second_i, second_e)) || second_i == '_' ||
-                        !interned_chars.zip(existing_chars).all(eq_or_numeric)
+                    if !eq_or_numeric((second_i, second_e)) || second_i == '_'
+                        || !interned_chars.zip(existing_chars).all(eq_or_numeric)
                     {
                         // allowed similarity x_foo, y_foo
                         // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)

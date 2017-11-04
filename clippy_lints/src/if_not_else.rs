@@ -4,7 +4,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 
-use utils::{span_help_and_lint, in_external_macro};
+use utils::{in_external_macro, span_help_and_lint};
 
 /// **What it does:** Checks for usage of `!` or `!=` in an if condition with an
 /// else branch.

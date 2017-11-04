@@ -10,7 +10,7 @@ use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::{BytePos, Span};
 use syntax::symbol::InternedString;
-use utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint, opt_def_id};
+use utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
 
 /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
 /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
@@ -151,7 +151,10 @@ fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) -> Option<Inte
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
     match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(e) {
-        Ok(&ty::Const { val: ConstVal::Str(r), .. }) => Some(r),
+        Ok(&ty::Const {
+            val: ConstVal::Str(r),
+            ..
+        }) => Some(r),
         _ => None,
     }
 }

@@ -49,7 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let ExprMethodCall(_, _, ref result_types) = op.node; //check is expr.ok() has type Result<T,E>.ok()
             if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pats[0].node; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
-    
+
             then {
                 let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
                 let some_expr_string = snippet(cx, y[0].span, "");

@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::LitKind;
 use utils::paths;
-use utils::{is_expn_of, match_def_path, match_type, resolve_node, span_lint, walk_ptrs_ty, opt_def_id};
+use utils::{is_expn_of, match_def_path, match_type, opt_def_id, resolve_node, span_lint, walk_ptrs_ty};
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
@@ -109,7 +109,7 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
-    
+
             return ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING);
         }
     }
