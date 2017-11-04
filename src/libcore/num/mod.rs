@@ -2222,6 +2222,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
+        #[rustc_inherit_overflow_checks]
         pub fn next_power_of_two(self) -> Self {
             self.one_less_than_next_power_of_two() + 1
         }
