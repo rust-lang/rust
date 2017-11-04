@@ -118,43 +118,45 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                 let self_ty = cx.tcx
                     .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
                 if_chain! {
-                                    if same_tys(cx, self_ty, return_ty(cx, id));
-                                    if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
-                                    if !implements_trait(cx, self_ty, default_trait_id, &[]);
-                                    then {
-                                        if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
-                                            span_lint_and_then(cx,
-                                                               NEW_WITHOUT_DEFAULT_DERIVE, span,
-                                                               &format!("you should consider deriving a \
-                                                                         `Default` implementation for `{}`",
-                                                                        self_ty),
-                                                               |db| {
-                                                db.suggest_item_with_attr(cx, sp, "try this", "#[derive(Default)]");
-                                            });
-                                        } else {
-                                            span_lint_and_then(cx,
-                                                               NEW_WITHOUT_DEFAULT, span,
-                                                               &format!("you should consider adding a \
-                                                                        `Default` implementation for `{}`",
-                                                                        self_ty),
-                                                               |db| {
-                                            db.suggest_prepend_item(cx,
-                                                                      span,
-                                                                      "try this",
-                                                                      &format!(
-"impl Default for {} {{
-    fn default() -> Self {{
-        Self::new()
-    }}
-}}",
-                                                                               self_ty));
-                                            });
-                                        }
-                                    }
+                    if same_tys(cx, self_ty, return_ty(cx, id));
+                    if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
+                    if !implements_trait(cx, self_ty, default_trait_id, &[]);
+                    then {
+                        if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
+                            span_lint_and_then(
+                                cx,
+                                NEW_WITHOUT_DEFAULT_DERIVE,
+                                span,
+                                &format!("you should consider deriving a `Default` implementation for `{}`", self_ty),
+                                |db| {
+                                    db.suggest_item_with_attr(cx, sp, "try this", "#[derive(Default)]");
+                                });
+                        } else {
+                            span_lint_and_then(
+                                cx,
+                                NEW_WITHOUT_DEFAULT,
+                                span,
+                                &format!("you should consider adding a `Default` implementation for `{}`", self_ty),
+                                |db| {
+                                    db.suggest_prepend_item(cx, span, "try this", &create_new_without_default_suggest_msg(self_ty));
+                                },
+                            );
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+fn create_new_without_default_suggest_msg(ty: Ty) -> String {
+    #[rustfmt_skip]
+    format!(
+"impl Default for {} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}", ty)
 }
 
 fn can_derive_default<'t, 'c>(ty: Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> Option<Span> {
