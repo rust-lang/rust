@@ -671,11 +671,12 @@ fn link_natively(sess: &Session,
             break
         }
 
-        sess.struct_warn("looks like the linker segfaulted when we tried to \
-                          call it, automatically retrying again")
-            .note(&format!("{:?}", cmd))
-            .note(&out)
-            .emit();
+        warn!(
+            "looks like the linker segfaulted when we tried to call it, \
+             automatically retrying again. cmd = {:?}, out = {}.",
+            cmd,
+            out,
+        );
     }
 
     match prog {
