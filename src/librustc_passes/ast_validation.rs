@@ -21,7 +21,6 @@ use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Spanned;
-use syntax::parse::token;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -180,18 +179,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_ty(self, ty)
-    }
-
-    fn visit_path(&mut self, path: &'a Path, _: NodeId) {
-        if path.segments.len() >= 2 && path.is_global() {
-            let ident = path.segments[1].identifier;
-            if token::Ident(ident).is_path_segment_keyword() {
-                self.err_handler()
-                    .span_err(path.span, &format!("global paths cannot start with `{}`", ident));
-            }
-        }
-
-        visit::walk_path(self, path)
     }
 
     fn visit_item(&mut self, item: &'a Item) {

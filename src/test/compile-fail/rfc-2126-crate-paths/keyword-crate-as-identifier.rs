@@ -8,18 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused)]
+#![feature(crate_in_paths)]
 
-struct S;
-struct Z;
-
-mod foo {
-    use ::super::{S, Z}; //~ ERROR unresolved import `super`
-
-    pub fn g() {
-        use ::super::main; //~ ERROR unresolved import `super`
-        main();
-    }
+fn main() {
+    let crate = 0; //~ ERROR cannot find unit struct/variant or constant `crate` in this scope
 }
-
-fn main() { foo::g(); }

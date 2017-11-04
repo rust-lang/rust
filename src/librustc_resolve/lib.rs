@@ -2886,12 +2886,18 @@ impl<'a> Resolver<'a> {
             }
             allow_super = false;
 
-            if i == 0 && ns == TypeNS && ident.node.name == keywords::CrateRoot.name() {
-                module = Some(self.resolve_crate_root(ident.node.ctxt.modern()));
-                continue
-            } else if i == 0 && ns == TypeNS && ident.node.name == keywords::DollarCrate.name() {
-                module = Some(self.resolve_crate_root(ident.node.ctxt));
-                continue
+            if ns == TypeNS {
+                if (i == 0 && ident.node.name == keywords::CrateRoot.name()) ||
+                   (i == 1 && ident.node.name == keywords::Crate.name() &&
+                              path[0].node.name == keywords::CrateRoot.name()) {
+                    // `::a::b` or `::crate::a::b`
+                    module = Some(self.resolve_crate_root(ident.node.ctxt.modern()));
+                    continue
+                } else if i == 0 && ident.node.name == keywords::DollarCrate.name() {
+                    // `$crate::a::b`
+                    module = Some(self.resolve_crate_root(ident.node.ctxt));
+                    continue
+                }
             }
 
             let binding = if let Some(module) = module {

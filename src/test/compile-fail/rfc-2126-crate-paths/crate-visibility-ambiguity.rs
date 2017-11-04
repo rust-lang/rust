@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused)]
+#![feature(crate_in_paths)]
+#![feature(crate_visibility_modifier)]
 
-struct S;
-struct Z;
-
-mod foo {
-    use ::super::{S, Z}; //~ ERROR unresolved import `super`
-
-    pub fn g() {
-        use ::super::main; //~ ERROR unresolved import `super`
-        main();
-    }
+mod m {
+    pub struct Z;
+    pub struct S1(crate (::m::Z)); // OK
+    pub struct S2(::crate ::m::Z); // OK
+    pub struct S3(crate ::m::Z); //~ ERROR undeclared type or module `crate`
 }
 
-fn main() { foo::g(); }
+fn main() {
+    crate struct S; // OK (item in statement position)
+}

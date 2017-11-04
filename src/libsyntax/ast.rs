@@ -96,10 +96,15 @@ impl Path {
         }
     }
 
+    // Add starting "crate root" segment to all paths except those that
+    // already have it or start with `self`, `super`, `Self` or `$crate`.
     pub fn default_to_global(mut self) -> Path {
-        if !self.is_global() &&
-           !::parse::token::Ident(self.segments[0].identifier).is_path_segment_keyword() {
-            self.segments.insert(0, PathSegment::crate_root(self.span));
+        if !self.is_global() {
+            let ident = self.segments[0].identifier;
+            if !::parse::token::Ident(ident).is_path_segment_keyword() ||
+               ident.name == keywords::Crate.name() {
+                self.segments.insert(0, PathSegment::crate_root(self.span));
+            }
         }
         self
     }
