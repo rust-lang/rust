@@ -33,4 +33,7 @@ fn main() {
     take_auto(AutoBool(true));
     take_auto_unsafe(0);
     take_auto_unsafe(AutoBool(true));
+
+    /// Auto traits are allowed in trait object bounds.
+    let _: &(Send + Auto) = &0;
 }

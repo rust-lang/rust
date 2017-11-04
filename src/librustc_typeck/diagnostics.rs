@@ -2455,9 +2455,9 @@ fn main() {
 }
 ```
 
-Send and Sync are an exception to this rule: it's possible to have bounds of
-one non-builtin trait, plus either or both of Send and Sync. For example, the
-following compiles correctly:
+Auto traits such as Send and Sync are an exception to this rule:
+It's possible to have bounds of one non-builtin trait, plus any number of
+auto traits. For example, the following compiles correctly:
 
 ```
 fn main() {
