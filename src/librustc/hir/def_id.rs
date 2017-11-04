@@ -16,30 +16,23 @@ use serialize::{self, Encoder, Decoder};
 use std::fmt;
 use std::u32;
 
-#[derive(Clone, Copy, Eq, Ord, PartialOrd, PartialEq, Hash, Debug)]
-pub struct CrateNum(u32);
+newtype_index!(CrateNum
+    {
+        derive[Debug]
+        ENCODABLE = custom
 
-impl Idx for CrateNum {
-    fn new(value: usize) -> Self {
-        assert!(value < (u32::MAX) as usize);
-        CrateNum(value as u32)
-    }
+        /// Item definitions in the currently-compiled crate would have the CrateNum
+        /// LOCAL_CRATE in their DefId.
+        const LOCAL_CRATE = 0,
 
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+        /// Virtual crate for builtin macros
+        // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
+        // `CrateNum`s.
+        const BUILTIN_MACROS_CRATE = u32::MAX,
 
-/// Item definitions in the currently-compiled crate would have the CrateNum
-/// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: CrateNum = CrateNum(0);
-
-/// Virtual crate for builtin macros
-// FIXME(jseyfried): this is also used for custom derives until proc-macro crates get `CrateNum`s.
-pub const BUILTIN_MACROS_CRATE: CrateNum = CrateNum(u32::MAX);
-
-/// A CrateNum value that indicates that something is wrong.
-pub const INVALID_CRATE: CrateNum = CrateNum(u32::MAX - 1);
+        /// A CrateNum value that indicates that something is wrong.
+        const INVALID_CRATE = u32::MAX - 1,
+    });
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {

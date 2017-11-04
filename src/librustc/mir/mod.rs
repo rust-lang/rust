@@ -1552,6 +1552,7 @@ pub struct Constant<'tcx> {
 
 newtype_index!(Promoted { DEBUG_FORMAT = "promoted[{}]" });
 
+
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Value {
