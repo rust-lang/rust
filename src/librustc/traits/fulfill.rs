@@ -139,9 +139,10 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         });
     }
 
-    pub fn register_predicate_obligations(&mut self,
-                                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                          obligations: Vec<PredicateObligation<'tcx>>)
+    pub fn register_predicate_obligations<I>(&mut self,
+                                             infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                             obligations: I)
+        where I: IntoIterator<Item = PredicateObligation<'tcx>>
     {
         for obligation in obligations {
             self.register_predicate_obligation(infcx, obligation);
