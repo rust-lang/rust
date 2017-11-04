@@ -298,7 +298,7 @@ lorem_ipsum(|| {
 });
 ```
 
-**Note**: This option only takes effect when `fn_call_style` is set to `"Visual"`.
+**Note**: This option only takes effect when `fn_call_indent` is set to `"Visual"`.
 
 ## `combine_control_expr`
 
@@ -758,7 +758,7 @@ where
 }
 ```
 
-## `fn_call_style`
+## `fn_call_indent`
 
 Indentation for function calls, etc.
 
@@ -809,7 +809,7 @@ lorem("lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "el
 
 #### Function call longer than `fn_call_width`:
 
-See [`fn_call_style`](#fn_call_style).
+See [`fn_call_indent`](#fn_call_indent).
 
 ## `fn_empty_single_line`
 
@@ -874,7 +874,7 @@ fn lorem(ipsum: Ipsum,
 
 ```
 
-**Note**: This option only takes effect when `fn_call_style` is set to `"Visual"`.
+**Note**: This option only takes effect when `fn_call_indent` is set to `"Visual"`.
 
 ## `fn_single_line`
 

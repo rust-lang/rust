@@ -357,7 +357,7 @@ where
         },
         separator_place: SeparatorPlace::Back,
         shape: list_shape,
-        ends_with_newline: tactic.ends_with_newline(context.config.fn_call_style()),
+        ends_with_newline: tactic.ends_with_newline(context.config.fn_call_indent()),
         preserve_newline: true,
         config: context.config,
     };

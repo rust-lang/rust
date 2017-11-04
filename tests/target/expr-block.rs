@@ -1,5 +1,5 @@
 // rustfmt-array_indent: Block
-// rustfmt-fn_call_style: Block
+// rustfmt-fn_call_indent: Block
 // rustfmt-control_style: Rfc
 // Test expressions with block formatting.
 

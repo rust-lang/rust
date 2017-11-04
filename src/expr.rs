@@ -2033,7 +2033,7 @@ where
     let used_width = extra_offset(callee_str, shape);
     let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
 
-    let nested_shape = shape_from_fn_call_style(
+    let nested_shape = shape_from_fn_call_indent(
         context,
         shape,
         used_width + 2 * paren_overhead,
@@ -2379,7 +2379,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
     match expr.node {
         ast::ExprKind::Match(..) => {
             (context.use_block_indent() && args_len == 1)
-                || (context.config.fn_call_style() == IndentStyle::Visual && args_len > 1)
+                || (context.config.fn_call_indent() == IndentStyle::Visual && args_len > 1)
         }
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
@@ -2391,7 +2391,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         }
         ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
             context.use_block_indent()
-                || context.config.fn_call_style() == IndentStyle::Visual && args_len > 1
+                || context.config.fn_call_indent() == IndentStyle::Visual && args_len > 1
         }
         ast::ExprKind::Array(..) |
         ast::ExprKind::Call(..) |
@@ -2722,7 +2722,7 @@ pub fn rewrite_field(
     }
 }
 
-fn shape_from_fn_call_style(
+fn shape_from_fn_call_indent(
     context: &RewriteContext,
     shape: Shape,
     overhead: usize,

@@ -1,5 +1,5 @@
 // rustfmt-error_on_line_overflow: false
-// rustfmt-fn_call_style: Visual
+// rustfmt-fn_call_indent: Visual
 
 // rustfmt should not add trailing comma when rewriting macro. See #1528.
 fn a() {

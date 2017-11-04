@@ -1,4 +1,4 @@
-// rustfmt-fn_call_style: Block
+// rustfmt-fn_call_indent: Block
 // rustfmt-max_width: 80
 // rustfmt-tab_spaces: 2
 
