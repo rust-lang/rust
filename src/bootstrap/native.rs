@@ -323,9 +323,9 @@ impl Step for TestHelpers {
     }
 }
 
-const OPENSSL_VERS: &'static str = "1.0.2k";
+const OPENSSL_VERS: &'static str = "1.0.2m";
 const OPENSSL_SHA256: &'static str =
-    "6b3977c61f2aedf0f96367dcfb5c6e578cf37e7b8d913b4ecb6643c3cb88d8c0";
+    "8c6ff15ec6b319b50788f42c7abc2890c08ba5a1cdcd3810eb9092deada37b0f";
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Openssl {
