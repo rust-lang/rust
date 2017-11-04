@@ -1070,6 +1070,7 @@ pub fn format_struct_struct(
     let header_str = format_header(item_name, ident, vis);
     result.push_str(&header_str);
 
+    let header_hi = span.lo() + BytePos(header_str.len() as u32);
     let body_lo = context.codemap.span_after(span, "{");
 
     let generics_str = match generics {
@@ -1081,7 +1082,7 @@ pub fn format_struct_struct(
             context.config.item_brace_style(),
             fields.is_empty(),
             offset,
-            mk_sp(span.lo(), body_lo),
+            mk_sp(header_hi, body_lo),
             last_line_width(&result),
         )?,
         None => {
@@ -2663,6 +2664,13 @@ fn format_generics(
     let same_line_brace = if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
         let budget = context.budget(last_line_used_width(&result, offset.width()));
         let option = WhereClauseOption::snuggled(&result);
+        // If the generics are not parameterized then generics.span.hi() == 0,
+        // so we use span.lo(), which is the position after `struct Foo`.
+        let span_end_before_where = if generics.is_parameterized() {
+            generics.span.hi()
+        } else {
+            span.lo()
+        };
         let where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -2671,7 +2679,7 @@ fn format_generics(
             Density::Tall,
             terminator,
             Some(span.hi()),
-            generics.span.hi(),
+            span_end_before_where,
             option,
         )?;
         result.push_str(&where_clause_str);
