@@ -1228,7 +1228,7 @@ compat_fn! {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", feature = "backtrace"))]
 mod gnu {
     use super::*;
 
@@ -1256,5 +1256,5 @@ mod gnu {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", feature = "backtrace"))]
 pub use self::gnu::*;
