@@ -1,4 +1,4 @@
-// rustfmt-fn_args_layout: Block
+// rustfmt-fn_args_indent: Block
 // rustfmt-fn_call_style: Block
 // rustfmt-generics_indent: Block
 // rustfmt-where_style: Rfc

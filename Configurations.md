@@ -614,7 +614,7 @@ trait Lorem {
 }
 ```
 
-## `fn_args_layout`
+## `fn_args_indent`
 
 Layout of function arguments and tuple structs
 

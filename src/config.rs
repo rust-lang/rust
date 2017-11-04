@@ -559,7 +559,7 @@ create_config! {
         "Location of return type in function declaration";
     fn_args_paren_newline: bool, false, false, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, false, "Argument density in functions";
-    fn_args_layout: IndentStyle, IndentStyle::Block, false,
+    fn_args_indent: IndentStyle, IndentStyle::Block, false,
         "Layout of function arguments and tuple structs";
     array_indent: IndentStyle, IndentStyle::Block, false, "Indent on arrays";
     array_width: usize, 60, false,

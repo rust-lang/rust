@@ -1,5 +1,5 @@
 // rustfmt-normalize_comments: true
-// rustfmt-fn_args_layout: Block
+// rustfmt-fn_args_indent: Block
 // rustfmt-fn_args_density: Vertical
 // rustfmt-fn_brace_style: AlwaysNextLine
 

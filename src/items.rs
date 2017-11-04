@@ -933,8 +933,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let has_body = !trait_items.is_empty();
 
         let where_density = if (context.config.where_density() == Density::Compressed
-            && (!result.contains('\n') || context.config.fn_args_layout() == IndentStyle::Block))
-            || (context.config.fn_args_layout() == IndentStyle::Block && result.is_empty())
+            && (!result.contains('\n') || context.config.fn_args_indent() == IndentStyle::Block))
+            || (context.config.fn_args_indent() == IndentStyle::Block && result.is_empty())
             || (context.config.where_density() == Density::CompressedIfEmpty && !has_body
                 && !result.contains('\n'))
         {
@@ -1746,13 +1746,13 @@ fn rewrite_fn_base(
         } else if context.config.fn_args_paren_newline() {
             result.push('\n');
             result.push_str(&arg_indent.to_string(context.config));
-            if context.config.fn_args_layout() == IndentStyle::Visual {
+            if context.config.fn_args_indent() == IndentStyle::Visual {
                 arg_indent = arg_indent + 1; // extra space for `(`
             }
             result.push('(');
         } else {
             result.push_str("(");
-            if context.config.fn_args_layout() == IndentStyle::Visual {
+            if context.config.fn_args_indent() == IndentStyle::Visual {
                 result.push('\n');
                 result.push_str(&arg_indent.to_string(context.config));
             }
@@ -1805,7 +1805,7 @@ fn rewrite_fn_base(
         generics_str.contains('\n'),
     )?;
 
-    let put_args_in_block = match context.config.fn_args_layout() {
+    let put_args_in_block = match context.config.fn_args_indent() {
         IndentStyle::Block => arg_str.contains('\n') || arg_str.len() > one_line_budget,
         _ => false,
     } && !fd.inputs.is_empty();
@@ -1846,7 +1846,7 @@ fn rewrite_fn_base(
 
     // Return type.
     if let ast::FunctionRetTy::Ty(..) = fd.output {
-        let ret_should_indent = match context.config.fn_args_layout() {
+        let ret_should_indent = match context.config.fn_args_indent() {
             // If our args are block layout then we surely must have space.
             IndentStyle::Block if put_args_in_block || fd.inputs.is_empty() => false,
             _ if args_last_line_contains_comment => false,
@@ -2131,7 +2131,7 @@ fn rewrite_args(
         .and_then(|item| item.post_comment.as_ref())
         .map_or(false, |s| s.trim().starts_with("//"));
 
-    let (indent, trailing_comma) = match context.config.fn_args_layout() {
+    let (indent, trailing_comma) = match context.config.fn_args_indent() {
         IndentStyle::Block if fits_in_one_line => {
             (indent.block_indent(context.config), SeparatorTactic::Never)
         }
@@ -2168,7 +2168,7 @@ fn rewrite_args(
         },
         separator_place: SeparatorPlace::Back,
         shape: Shape::legacy(budget, indent),
-        ends_with_newline: tactic.ends_with_newline(context.config.fn_args_layout()),
+        ends_with_newline: tactic.ends_with_newline(context.config.fn_args_indent()),
         preserve_newline: true,
         config: context.config,
     };
@@ -2218,7 +2218,7 @@ fn compute_budgets_for_args(
 
         if one_line_budget > 0 {
             // 4 = "() {".len()
-            let (indent, multi_line_budget) = match context.config.fn_args_layout() {
+            let (indent, multi_line_budget) = match context.config.fn_args_indent() {
                 IndentStyle::Block => {
                     let indent = indent.block_indent(context.config);
                     (indent, context.budget(indent.width() + 1))
@@ -2236,7 +2236,7 @@ fn compute_budgets_for_args(
 
     // Didn't work. we must force vertical layout and put args on a newline.
     let new_indent = indent.block_indent(context.config);
-    let used_space = match context.config.fn_args_layout() {
+    let used_space = match context.config.fn_args_indent() {
         // 1 = `,`
         IndentStyle::Block => new_indent.width() + 1,
         // Account for `)` and possibly ` {`.
