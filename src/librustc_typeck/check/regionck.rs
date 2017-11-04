@@ -90,7 +90,7 @@ use middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
-use rustc::infer;
+use rustc::infer::{self, OutlivesEnvironment};
 use rustc::ty::adjustment;
 
 use std::mem;
@@ -100,8 +100,6 @@ use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, PatKind};
-
-use super::regionck_implied_bounds::OutlivesEnvironment;
 
 // a variation on try that just returns unit
 macro_rules! ignore_err {
