@@ -221,6 +221,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => false,
                 }
             }
+            ty::ReEarlyBound(_) => true,
             _ => false,
         }
     }
