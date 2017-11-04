@@ -222,8 +222,8 @@ impl Token {
             BinOp(Or) | OrOr                  | // closure
             BinOp(And)                        | // reference
             AndAnd                            | // double reference
+            // DotDotDot is no longer supported, but we need some way to display the error
             DotDot | DotDotDot | DotDotEq     | // range notation
-                // SNAP remove DotDotDot
             Lt | BinOp(Shl)                   | // associated path
             ModSep                            | // global path
             Pound                             => true, // expression attributes
