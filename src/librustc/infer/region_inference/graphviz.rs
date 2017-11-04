@@ -19,6 +19,7 @@
 use graphviz as dot;
 
 use hir::def_id::DefIndex;
+use rustc_data_structures::indexed_vec::Idx;
 use ty;
 use middle::free_region::RegionRelations;
 use middle::region;

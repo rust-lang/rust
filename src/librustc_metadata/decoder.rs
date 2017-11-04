@@ -41,6 +41,7 @@ use std::str;
 use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
+use rustc_data_structures::indexed_vec::Idx;
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::codemap;
