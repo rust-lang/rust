@@ -2286,6 +2286,10 @@ actual:\n\
         output_file.push(test_name);
         debug!("comparing the contests of: {:?}", output_file);
         debug!("with: {:?}", expected_content);
+        if !output_file.exists() {
+            panic!("Output file `{}` from test does not exist",
+                   output_file.into_os_string().to_string_lossy());
+        }
         self.check_mir_test_timestamp(test_name, &output_file);
 
         let mut dumped_file = fs::File::open(output_file.clone()).unwrap();
@@ -2334,13 +2338,22 @@ actual:\n\
 
         // We expect each non-empty line to appear consecutively, non-consecutive lines
         // must be separated by at least one Elision
+        let mut start_block_line = None;
         while let Some(dumped_line) = dumped_lines.next() {
             match expected_lines.next() {
-                Some(&ExpectedLine::Text(expected_line)) =>
+                Some(&ExpectedLine::Text(expected_line)) => {
+                    let normalized_expected_line = normalize_mir_line(expected_line);
+                    if normalized_expected_line.contains(":{") {
+                        start_block_line = Some(expected_line);
+                    }
+
                     if !compare(expected_line, dumped_line) {
+                        error!("{:?}", start_block_line);
                         error(expected_line,
-                              format!("Mismatch in lines\nExpected Line: {:?}", dumped_line));
-                    },
+                              format!("Mismatch in lines\nCurrnt block: {}\nExpected Line: {:?}",
+                                      start_block_line.unwrap_or("None"), dumped_line));
+                    }
+                },
                 Some(&ExpectedLine::Elision) => {
                     // skip any number of elisions in a row.
                     while let Some(&&ExpectedLine::Elision) = expected_lines.peek() {
