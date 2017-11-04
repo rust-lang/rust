@@ -584,7 +584,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId)) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_struct_ctor({:?})", def_id);
         let tcx = self.tcx;
-        let variant = tcx.adt_def(adt_def_id).struct_variant();
+        let adt_def = tcx.adt_def(adt_def_id);
+        let variant = adt_def.struct_variant();
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
@@ -604,6 +605,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             if ctor_vis.is_at_least(field.vis, tcx) {
                 ctor_vis = field.vis;
             }
+        }
+
+        // If the structure is marked as non_exhaustive then lower the visibility
+        // to within the crate.
+        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
 
         let repr_options = get_repr_options(&tcx, adt_def_id);

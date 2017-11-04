@@ -1326,6 +1326,12 @@ bitflags! {
         const IS_FUNDAMENTAL      = 1 << 2;
         const IS_UNION            = 1 << 3;
         const IS_BOX              = 1 << 4;
+        /// Indicates whether this abstract data type will be expanded on in future (new
+        /// fields/variants) and as such, whether downstream crates must match exhaustively on the
+        /// fields/variants of this data type.
+        ///
+        /// See RFC 2008 (https://github.com/rust-lang/rfcs/pull/2008).
+        const IS_NON_EXHAUSTIVE   = 1 << 5;
     }
 }
 
@@ -1526,6 +1532,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         if Some(did) == tcx.lang_items().owned_box() {
             flags = flags | AdtFlags::IS_BOX;
         }
+        if tcx.has_attr(did, "non_exhaustive") {
+            flags = flags | AdtFlags::IS_NON_EXHAUSTIVE;
+        }
         match kind {
             AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
             AdtKind::Union => flags = flags | AdtFlags::IS_UNION,
@@ -1552,6 +1561,11 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn is_enum(&self) -> bool {
         self.flags.intersects(AdtFlags::IS_ENUM)
+    }
+
+    #[inline]
+    pub fn is_non_exhaustive(&self) -> bool {
+        self.flags.intersects(AdtFlags::IS_NON_EXHAUSTIVE)
     }
 
     /// Returns the kind of the ADT - Struct or Enum.

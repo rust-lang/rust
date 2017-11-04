@@ -338,11 +338,22 @@ impl<'a> Resolver<'a> {
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref struct_def, _) => {
                 // Define a name in the type namespace.
-                let def = Def::Struct(self.definitions.local_def_id(item.id));
+                let def_id = self.definitions.local_def_id(item.id);
+                let def = Def::Struct(def_id);
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
-                // Record field names for error reporting.
                 let mut ctor_vis = vis;
+
+                let has_non_exhaustive = item.attrs.iter()
+                    .any(|item| item.check_name("non_exhaustive"));
+
+                // If the structure is marked as non_exhaustive then lower the visibility
+                // to within the crate.
+                if has_non_exhaustive && vis == ty::Visibility::Public {
+                    ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+                }
+
+                // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().filter_map(|field| {
                     let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self) {
@@ -414,6 +425,7 @@ impl<'a> Resolver<'a> {
         // value namespace, they are reserved for possible future use.
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
         let ctor_def = Def::VariantCtor(def_id, ctor_kind);
+
         self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
     }
 

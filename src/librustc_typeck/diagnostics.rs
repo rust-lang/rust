@@ -4606,6 +4606,65 @@ foo.method(); // Ok!
 ```
 "##,
 
+E0638: r##"
+This error indicates that the struct or enum must be matched non-exhaustively
+as it has been marked as `non_exhaustive`.
+
+When applied within a crate, downstream users of the crate will need to use the
+`_` pattern when matching enums and use the `..` pattern when matching structs.
+
+For example, in the below example, since the enum is marked as
+`non_exhaustive`, it is required that downstream crates match non-exhaustively
+on it.
+
+```rust,ignore (pseudo-Rust)
+use std::error::Error as StdError;
+
+#[non_exhaustive] pub enum Error {
+   Message(String),
+   Other,
+}
+
+impl StdError for Error {
+   fn description(&self) -> &str {
+        // This will not error, despite being marked as non_exhaustive, as this
+        // enum is defined within the current crate, it can be matched
+        // exhaustively.
+        match *self {
+           Message(ref s) => s,
+           Other => "other or unknown error",
+        }
+   }
+}
+```
+
+An example of matching non-exhaustively on the above enum is provided below:
+
+```rust,ignore (pseudo-Rust)
+use mycrate::Error;
+
+// This will not error as the non_exhaustive Error enum has been matched with a
+// wildcard.
+match error {
+   Message(ref s) => ...,
+   Other => ...,
+   _ => ...,
+}
+```
+
+Similarly, for structs, match with `..` to avoid this error.
+"##,
+
+E0639: r##"
+This error indicates that the struct or enum cannot be instantiated from
+outside of the defining crate as it has been marked as `non_exhaustive` and as
+such more fields/variants may be added in future that could cause adverse side
+effects for this code.
+
+It is recommended that you look for a `new` function or equivalent in the
+crate's documentation.
+"##,
+
 }
 
 register_diagnostics! {
