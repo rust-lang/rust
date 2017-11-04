@@ -11,6 +11,8 @@
 // aux-build:enums.rs
 extern crate enums;
 
+// ignore-pretty issue #37199
+
 use enums::NonExhaustiveEnum;
 
 fn main() {
