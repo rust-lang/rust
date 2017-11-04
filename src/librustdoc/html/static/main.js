@@ -349,7 +349,7 @@
             var valLower = query.query.toLowerCase(),
                 val = valLower,
                 typeFilter = itemTypeFromName(query.type),
-                results = [],
+                results = {},
                 split = valLower.split("::");
 
             // remove empty keywords
@@ -360,15 +360,52 @@
                 }
             }
 
+            function min(a, b) {
+                if (a < b) {
+                    return a;
+                }
+                return b;
+            }
+
+            function nbElements(obj) {
+                var size = 0, key;
+                for (key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        size += 1;
+                    }
+                }
+                return size;
+            }
+
             function findArg(obj, val) {
+                var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (obj && obj.type && obj.type.inputs.length > 0) {
                     for (var i = 0; i < obj.type.inputs.length; i++) {
                         if (obj.type.inputs[i].name === val) {
-                            return true;
+                            // No need to check anything else: we found it. Let's just move on.
+                            return 0;
+                        }
+                        lev_distance = min(levenshtein(obj.type.inputs[i].name, val), lev_distance);
+                        if (lev_distance === 0) {
+                            return 0;
                         }
                     }
                 }
-                return false;
+                return lev_distance;
+            }
+
+            function checkReturned(obj, val) {
+                var lev_distance = MAX_LEV_DISTANCE + 1;
+                if (obj && obj.type && obj.type.output) {
+                    if (obj.type.output.name.toLowerCase() === val) {
+                        return 0;
+                    }
+                    lev_distance = min(levenshtein(obj.type.output.name, val));
+                    if (lev_distance === 0) {
+                        return 0;
+                    }
+                }
+                return lev_distance;
             }
 
             function typePassesFilter(filter, type) {
@@ -398,22 +435,27 @@
             if ((val.charAt(0) === "\"" || val.charAt(0) === "'") &&
                 val.charAt(val.length - 1) === val.charAt(0))
             {
-                val = val.substr(1, val.length - 2);
+                val = val.substr(1, val.length - 2).toLowerCase();
                 for (var i = 0; i < nSearchWords; ++i) {
+                    var ty = searchIndex[i];
                     if (searchWords[i] === val) {
                         // filter type: ... queries
                         if (typePassesFilter(typeFilter, searchIndex[i].ty)) {
-                            results.push({id: i, index: -1});
+                            results[ty.path + ty.name] = {id: i, index: -1};
                         }
-                    } else if (findArg(searchIndex[i], val.toLowerCase()) ||
-                               (searchIndex[i].type &&
-                                searchIndex[i].type.output &&
-                                searchIndex[i].type.output.name === val.toLowerCase())) {
+                    } else if (findArg(searchIndex[i], val) ||
+                               (ty.type &&
+                                ty.type.output &&
+                                ty.type.output.name === val)) {
                         if (typePassesFilter(typeFilter, searchIndex[i].ty)) {
-                            results.push({id: i, index: -1, dontValidate: true});
+                            results[ty.path + ty.name] = {
+                                id: i,
+                                index: -1,
+                                dontValidate: true,
+                            };
                         }
                     }
-                    if (results.length === max) {
+                    if (nbElements(results) === max) {
                         break;
                     }
                 }
@@ -431,6 +473,7 @@
 
                 for (var i = 0; i < nSearchWords; ++i) {
                     var type = searchIndex[i].type;
+                    var ty = searchIndex[i];
                     if (!type) {
                         continue;
                     }
@@ -444,7 +487,7 @@
                     var typeOutput = type.output ? type.output.name : "";
                     if (output === "*" || output == typeOutput) {
                         if (input === "*") {
-                            results.push({id: i, index: -1, dontValidate: true});
+                            results[ty.path + ty.name] = {id: i, index: -1, dontValidate: true};
                         } else {
                             var allFound = true;
                             for (var it = 0; allFound === true && it < inputs.length; it++) {
@@ -455,7 +498,11 @@
                                 allFound = found;
                             }
                             if (allFound === true) {
-                                results.push({id: i, index: -1, dontValidate: true});
+                                results[ty.path + ty.name] = {
+                                    id: i,
+                                    index: -1,
+                                    dontValidate: true,
+                                };
                             }
                         }
                     }
@@ -471,46 +518,77 @@
                 for (var i = 0; i < split.length; ++i) {
                     for (var j = 0; j < nSearchWords; ++j) {
                         var lev_distance;
+                        var ty = searchIndex[j];
+                        if (!ty) {
+                            continue;
+                        }
                         if (searchWords[j].indexOf(split[i]) > -1 ||
                             searchWords[j].indexOf(val) > -1 ||
                             searchWords[j].replace(/_/g, "").indexOf(val) > -1)
                         {
                             // filter type: ... queries
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
-                                results.push({
+                                results[ty.path + ty.name] = {
                                     id: j,
                                     index: searchWords[j].replace(/_/g, "").indexOf(val),
                                     lev: 0,
-                                });
+                                };
                             }
                         } else if (
-                            (lev_distance = levenshtein(searchWords[j], val)) <=
-                                MAX_LEV_DISTANCE) {
+                            (lev_distance = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
-                                results.push({
-                                    id: j,
-                                    index: 0,
-                                    // we want lev results to go lower than others
-                                    lev: lev_distance,
-                                });
+                                if (results[ty.path + ty.name] === undefined ||
+                                    results[ty.path + ty.name].lev > lev_distance) {
+                                    results[ty.path + ty.name] = {
+                                        id: j,
+                                        index: 0,
+                                        // we want lev results to go lower than others
+                                        lev: lev_distance,
+                                    };
+                                }
                             }
-                        } else if (findArg(searchIndex[j], val)) {
+                        } else if (
+                            (lev_distance = findArg(searchIndex[j], val)) <= MAX_LEV_DISTANCE) {
                             if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
-                                results.push({
-                                    id: j,
-                                    index: 0,
-                                    // we want lev results to go lower than others
-                                    lev: lev_distance,
-                                });
+                                if (results[ty.path + ty.name] === undefined ||
+                                    results[ty.path + ty.name].lev > lev_distance) {
+                                    results[ty.path + ty.name] = {
+                                        id: j,
+                                        index: 0,
+                                        // we want lev results to go lower than others
+                                        lev: lev_distance,
+                                    };
+                                }
+                            }
+                        } else if (
+                            (lev_distance = checkReturned(searchIndex[j], val)) <=
+                            MAX_LEV_DISTANCE) {
+                            if (typePassesFilter(typeFilter, searchIndex[j].ty)) {
+                                if (results[ty.path + ty.name] === undefined ||
+                                    results[ty.path + ty.name].lev > lev_distance) {
+                                    results[ty.path + ty.name] = {
+                                        id: j,
+                                        index: 0,
+                                        // we want lev results to go lower than others
+                                        lev: lev_distance,
+                                    };
+                                }
                             }
                         }
-                        if (results.length === max) {
+                        if (nbElements(results) === max) {
                             break;
                         }
                     }
                 }
             }
 
+            var ar = [];
+            for (var entry in results) {
+                if (results.hasOwnProperty(entry)) {
+                    ar.push(results[entry]);
+                }
+            }
+            results = ar;
             var nresults = results.length;
             for (var i = 0; i < nresults; ++i) {
                 results[i].word = searchWords[results[i].id];
@@ -586,16 +664,6 @@
                 return 0;
             });
 
-            // remove duplicates, according to the data provided
-            for (var i = results.length - 1; i > 0; i -= 1) {
-                if (results[i].word === results[i - 1].word &&
-                    results[i].item.ty === results[i - 1].item.ty &&
-                    results[i].item.path === results[i - 1].item.path &&
-                    (results[i].item.parent || {}).name === (results[i - 1].item.parent || {}).name)
-                {
-                    results[i].id = -1;
-                }
-            }
             for (var i = 0; i < results.length; ++i) {
                 var result = results[i],
                     name = result.item.name.toLowerCase(),
@@ -884,6 +952,7 @@
             elems[0].onclick = function() { printTab(0); };
             elems[1].onclick = function() { printTab(1); };
             elems[2].onclick = function() { printTab(2); };
+            printTab(currentTab);
         }
 
         function search(e) {
@@ -951,7 +1020,8 @@
                         }
                     }
                     if (results['others'].length < maxResults &&
-                        ((query.search && obj.name.indexOf(query.search)) || added === false)) {
+                        ((query.search && obj.name.indexOf(query.search) !== -1) ||
+                          added === false)) {
                         results['others'].push(obj);
                     }
                 }
