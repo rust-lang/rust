@@ -24,7 +24,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
 //     let _2: bool;
@@ -69,4 +69,4 @@ fn main() {
 //         StorageDead(_2);
 //         goto -> bb1;
 //     }
-// END rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// END rustc.main.SimplifyCfg-qualify-consts.after.mir

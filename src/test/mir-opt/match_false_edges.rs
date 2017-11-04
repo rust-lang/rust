@@ -49,7 +49,7 @@ fn main() {
 
 // END RUST SOURCE
 //
-// START rustc.node17.SimplifyBranches-initial.before.mir
+// START rustc.full_tested_match.SimplifyBranches-initial.before.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
@@ -104,9 +104,9 @@ fn main() {
 //      ...
 //      return;
 //  }
-// END rustc.node17.SimplifyBranches-initial.before.mir
+// END rustc.full_tested_match.SimplifyBranches-initial.before.mir
 //
-// START rustc.node42.SimplifyBranches-initial.before.mir
+// START rustc.full_tested_match2.SimplifyBranches-initial.before.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
@@ -161,9 +161,9 @@ fn main() {
 //      ...
 //      return;
 //  }
-// END rustc.node42.SimplifyBranches-initial.before.mir
+// END rustc.full_tested_match2.SimplifyBranches-initial.before.mir
 //
-// START rustc.node67.SimplifyBranches-initial.before.mir
+// START rustc.main.SimplifyBranches-initial.before.mir
 // bb0: {
 //     ...
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
@@ -237,4 +237,4 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node67.SimplifyBranches-initial.before.mir
+// END rustc.main.SimplifyBranches-initial.before.mir

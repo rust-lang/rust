@@ -28,7 +28,7 @@ impl Drop for S {
 }
 
 // END RUST SOURCE
-// START rustc.node4.ElaborateDrops.before.mir
+// START rustc.main.ElaborateDrops.before.mir
 //     let mut _0: ();
 //     scope 1 {
 //         let _1: std::boxed::Box<S>;
@@ -88,4 +88,4 @@ impl Drop for S {
 //         return;
 //     }
 // }
-// END rustc.node4.ElaborateDrops.before.mir
+// END rustc.main.ElaborateDrops.before.mir

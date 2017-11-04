@@ -30,21 +30,21 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node12.nll.0.mir
+// START rustc.main.nll.0.mir
 // | '_#0r: {bb1[1], bb2[0], bb2[1]}
 // | '_#1r: {bb1[1], bb2[0], bb2[1]}
 // ...
 //             let _2: &'_#1r usize;
-// END rustc.node12.nll.0.mir
-// START rustc.node12.nll.0.mir
+// END rustc.main.nll.0.mir
+// START rustc.main.nll.0.mir
 //    bb1: {
 //            | Live variables at bb1[0]: [_1, _3]
 //        _2 = &'_#0r _1[_3];
 //            | Live variables at bb1[1]: [_2]
 //        switchInt(const true) -> [0u8: bb3, otherwise: bb2];
 //    }
-// END rustc.node12.nll.0.mir
-// START rustc.node12.nll.0.mir
+// END rustc.main.nll.0.mir
+// START rustc.main.nll.0.mir
 //    bb2: {
 //            | Live variables at bb2[0]: [_2]
 //        StorageLive(_7);
@@ -53,4 +53,4 @@ fn main() {
 //            | Live variables at bb2[2]: [_7]
 //        _6 = const use_x(_7) -> bb4;
 //    }
-// END rustc.node12.nll.0.mir
+// END rustc.main.nll.0.mir

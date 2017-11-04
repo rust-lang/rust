@@ -16,7 +16,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.EraseRegions.after.mir
+// START rustc.main.EraseRegions.after.mir
 // fn main() -> () {
 //     ...
 //     bb1: {
@@ -32,4 +32,4 @@ fn main() {
 //     }
 //     ...
 // }
-// END rustc.node4.EraseRegions.after.mir
+// END rustc.main.EraseRegions.after.mir

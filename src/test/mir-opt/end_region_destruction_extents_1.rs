@@ -60,11 +60,11 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //        transformation encoding the effects of rvalue-promotion.
 //        This may be the simplest and most-likely option; note in
 //        particular that `StorageDead(_6)` goes away below in
-//        rustc.node4.QualifyAndPromoteConstants.after.mir
+//        rustc.main.QualifyAndPromoteConstants.after.mir
 
 // END RUST SOURCE
 
-// START rustc.node4.QualifyAndPromoteConstants.before.mir
+// START rustc.main.QualifyAndPromoteConstants.before.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     let mut _1: &'12ds S1;
@@ -113,9 +113,9 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         return;
 //     }
 // }
-// END rustc.node4.QualifyAndPromoteConstants.before.mir
+// END rustc.main.QualifyAndPromoteConstants.before.mir
 
-// START rustc.node4.QualifyAndPromoteConstants.after.mir
+// START rustc.main.QualifyAndPromoteConstants.after.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     let mut _1: &'12ds S1;
@@ -158,4 +158,4 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         return;
 //     }
 // }
-// END rustc.node4.QualifyAndPromoteConstants.after.mir
+// END rustc.main.QualifyAndPromoteConstants.after.mir

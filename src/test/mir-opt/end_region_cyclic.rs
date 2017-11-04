@@ -39,7 +39,7 @@ fn main() {
 fn query() -> bool { true }
 
 // END RUST SOURCE
-// START rustc.node16.SimplifyCfg-qualify-consts.after.mir
+// START rustc.main.SimplifyCfg-qualify-consts.after.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     scope 1 {
@@ -130,4 +130,4 @@ fn query() -> bool { true }
 //         goto -> bb1;
 //     }
 // }
-// END rustc.node16.SimplifyCfg-qualify-consts.after.mir
+// END rustc.main.SimplifyCfg-qualify-consts.after.mir

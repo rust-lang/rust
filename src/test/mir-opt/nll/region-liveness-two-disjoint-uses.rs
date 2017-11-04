@@ -35,7 +35,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node12.nll.0.mir
+// START rustc.main.nll.0.mir
 // | '_#0r: {bb1[1], bb2[0], bb2[1]}
 // ...
 // | '_#2r: {bb7[2], bb7[3], bb7[4]}
@@ -46,4 +46,4 @@ fn main() {
 // _2 = &'_#0r _1[_3];
 // ...
 // _2 = &'_#2r (*_11);
-// END rustc.node12.nll.0.mir
+// END rustc.main.nll.0.mir

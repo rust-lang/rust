@@ -25,7 +25,7 @@ fn main() {
 // - `_1` is live when `can_panic` is called (because it may be dropped)
 //
 // END RUST SOURCE
-// START rustc.node12.nll.0.mir
+// START rustc.main.nll.0.mir
 //    | Live variables on entry to bb0: []
 //    bb0: {
 //            | Live variables at bb0[0]: []
@@ -37,8 +37,8 @@ fn main() {
 //            | Live variables at bb0[3]: [_2]
 //        _1 = const <std::boxed::Box<T>>::new(_2) -> bb1;
 //    }
-// END rustc.node12.nll.0.mir
-// START rustc.node12.nll.0.mir
+// END rustc.main.nll.0.mir
+// START rustc.main.nll.0.mir
 //    | Live variables on entry to bb1: [_1 (drop)]
 //    bb1: {
 //            | Live variables at bb1[0]: [_1 (drop)]
@@ -48,4 +48,4 @@ fn main() {
 //            | Live variables at bb1[2]: [_1 (drop)]
 //        _3 = const can_panic() -> [return: bb2, unwind: bb4];
 //    }
-// END rustc.node12.nll.0.mir
+// END rustc.main.nll.0.mir

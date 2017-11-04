@@ -28,7 +28,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node16.EraseRegions.after.mir
+// START rustc.main.EraseRegions.after.mir
 // fn main() -> () {
 //     ...
 //     let mut _5: &ReErased i32;
@@ -62,4 +62,4 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.node16.EraseRegions.after.mir
+// END rustc.main.EraseRegions.after.mir
