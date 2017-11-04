@@ -49,9 +49,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     | (_, FloatWidth::F64) => "f64",
                     _ => "f32"
                 };
-                span_help_and_lint(cx, ZERO_DIVIDED_BY_ZERO, expr.span,
+                span_help_and_lint(
+                    cx,
+                    ZERO_DIVIDED_BY_ZERO,
+                    expr.span,
                     "constant division of 0.0 with 0.0 will always result in NaN",
-                    &format!("Consider using `std::{}::NAN` if you would like a constant representing NaN", float_type));
+                    &format!(
+                        "Consider using `std::{}::NAN` if you would like a constant representing NaN",
+                        float_type,
+                    ),
+                );
             }
         }
     }

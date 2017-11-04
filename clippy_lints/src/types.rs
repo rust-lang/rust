@@ -166,11 +166,13 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id)));
                         if match_def_path(cx.tcx, did, &paths::VEC);
                         then {
-                            span_help_and_lint(cx,
-                                               BOX_VEC,
-                                               ast_ty.span,
-                                               "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                                               "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                            span_help_and_lint(
+                                cx,
+                                BOX_VEC,
+                                ast_ty.span,
+                                "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
+                            );
                             return; // don't recurse into the type
                         }
                     }

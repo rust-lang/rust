@@ -142,7 +142,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                 span,
                                 &format!("you should consider adding a `Default` implementation for `{}`", self_ty),
                                 |db| {
-                                    db.suggest_prepend_item(cx, span, "try this", &create_new_without_default_suggest_msg(self_ty));
+                                    db.suggest_prepend_item(
+                                        cx,
+                                        span,
+                                        "try this",
+                                        &create_new_without_default_suggest_msg(self_ty),
+                                    );
                                 },
                             );
                         }

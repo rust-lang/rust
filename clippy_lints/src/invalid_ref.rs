@@ -22,8 +22,8 @@ declare_lint! {
 
 const ZERO_REF_SUMMARY: &str = "reference to zeroed memory";
 const UNINIT_REF_SUMMARY: &str = "reference to uninitialized memory";
-const HELP: &str =
-    "Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html";
+const HELP: &str = "Creation of a null reference is undefined behavior; \
+                    see https://doc.rust-lang.org/reference/behavior-considered-undefined.html";
 
 pub struct InvalidRef;
 
@@ -42,9 +42,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
             if let ty::TyRef(..) = cx.tables.expr_ty(expr).sty;
             if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));
             then {
-                let msg = if match_def_path(cx.tcx, def_id, &paths::MEM_ZEROED) | match_def_path(cx.tcx, def_id, &paths::INIT) {
+                let msg = if match_def_path(cx.tcx, def_id, &paths::MEM_ZEROED) |
+                             match_def_path(cx.tcx, def_id, &paths::INIT)
+                {
                     ZERO_REF_SUMMARY
-                } else if match_def_path(cx.tcx, def_id, &paths::MEM_UNINIT) | match_def_path(cx.tcx, def_id, &paths::UNINIT) {
+                } else if match_def_path(cx.tcx, def_id, &paths::MEM_UNINIT) |
+                          match_def_path(cx.tcx, def_id, &paths::UNINIT)
+                {
                     UNINIT_REF_SUMMARY
                 } else {
                     return;

@@ -782,7 +782,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 for &(ref conv, self_kinds) in &CONVENTIONS {
                     if_chain! {
                         if conv.check(&name.as_str());
-                        if !self_kinds.iter().any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics));
+                        if !self_kinds
+                            .iter()
+                            .any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics));
                         then {
                             let lint = if item.vis == hir::Visibility::Public {
                                 WRONG_PUB_SELF_CONVENTION
@@ -1039,12 +1041,15 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
         if let Def::Method(did) = cx.tables.qpath_def(path, fun.hir_id);
         if match_def_path(cx.tcx, did, &paths::CSTRING_NEW);
         then {
-            span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
-                               "you are getting the inner pointer of a temporary `CString`",
-                               |db| {
-                                   db.note("that pointer will be invalid outside this expression");
-                                   db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
-                               });
+            span_lint_and_then(
+                cx,
+                TEMPORARY_CSTRING_AS_PTR,
+                expr.span,
+                "you are getting the inner pointer of a temporary `CString`",
+                |db| {
+                    db.note("that pointer will be invalid outside this expression");
+                    db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
+                });
         }
     }
 }

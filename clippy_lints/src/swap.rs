@@ -156,7 +156,11 @@ fn check_suspicious_swap(cx: &LateContext, block: &Block) {
                 let lhs0 = Sugg::hir_opt(cx, lhs0);
                 let rhs0 = Sugg::hir_opt(cx, rhs0);
                 let (what, lhs, rhs) = if let (Some(first), Some(second)) = (lhs0, rhs0) {
-                    (format!(" `{}` and `{}`", first, second), first.mut_addr().to_string(), second.mut_addr().to_string())
+                    (
+                        format!(" `{}` and `{}`", first, second),
+                        first.mut_addr().to_string(),
+                        second.mut_addr().to_string(),
+                    )
                 } else {
                     ("".to_owned(), "".to_owned(), "".to_owned())
                 };
