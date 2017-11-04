@@ -1868,9 +1868,9 @@ let lorem = Lorem {
 };
 ```
 
-See also: [`struct_lit_style`](#struct_lit_style), [`struct_lit_width`](#struct_lit_width).
+See also: [`struct_lit_indent`](#struct_lit_indent), [`struct_lit_width`](#struct_lit_width).
 
-## `struct_lit_style`
+## `struct_lit_indent`
 
 Style of struct definition
 
@@ -1893,7 +1893,7 @@ let lorem = Lorem { ipsum: dolor,
                     sit: amet, };
 ```
 
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_style`](#struct_lit_style).
+See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_indent`](#struct_lit_indent).
 
 ## `struct_lit_width`
 
@@ -1910,9 +1910,9 @@ let lorem = Lorem { ipsum: dolor, sit: amet };
 ```
 
 #### Lines longer than `struct_lit_width`:
-See [`struct_lit_style`](#struct_lit_style).
+See [`struct_lit_indent`](#struct_lit_indent).
 
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_style`](#struct_lit_style).
+See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_indent`](#struct_lit_indent).
 
 ## `struct_variant_width`
 

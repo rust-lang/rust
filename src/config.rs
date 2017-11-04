@@ -578,7 +578,7 @@ create_config! {
     where_pred_indent: IndentStyle, IndentStyle::Visual, false,
         "Indentation style of a where predicate";
     generics_indent: IndentStyle, IndentStyle::Block, false, "Indentation of generics";
-    struct_lit_style: IndentStyle, IndentStyle::Block, false, "Style of struct definition";
+    struct_lit_indent: IndentStyle, IndentStyle::Block, false, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle, false,
         "Multiline style on literal structs";
     fn_call_indent: IndentStyle, IndentStyle::Block, false, "Indentation for function calls, etc.";

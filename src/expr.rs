@@ -2640,7 +2640,7 @@ fn rewrite_struct_lit<'a>(
     let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
     Some(format!("{} {{{}}}", path_str, fields_str))
 
-    // FIXME if context.config.struct_lit_style() == Visual, but we run out
+    // FIXME if context.config.struct_lit_indent() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
 
@@ -2651,7 +2651,7 @@ pub fn wrap_struct_field(
     nested_shape: Shape,
     one_line_width: usize,
 ) -> String {
-    if context.config.struct_lit_style() == IndentStyle::Block
+    if context.config.struct_lit_indent() == IndentStyle::Block
         && (fields_str.contains('\n')
             || context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti
             || fields_str.len() > one_line_width)

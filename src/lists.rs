@@ -737,7 +737,7 @@ pub fn struct_lit_shape(
     prefix_width: usize,
     suffix_width: usize,
 ) -> Option<(Option<Shape>, Shape)> {
-    let v_shape = match context.config.struct_lit_style() {
+    let v_shape = match context.config.struct_lit_indent() {
         IndentStyle::Visual => shape
             .visual_indent(0)
             .shrink_left(prefix_width)?
@@ -766,7 +766,7 @@ pub fn struct_lit_tactic(
     items: &[ListItem],
 ) -> DefinitiveListTactic {
     if let Some(h_shape) = h_shape {
-        let prelim_tactic = match (context.config.struct_lit_style(), items.len()) {
+        let prelim_tactic = match (context.config.struct_lit_indent(), items.len()) {
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
             _ => context.config.struct_lit_multiline_style().to_list_tactic(),
         };
@@ -797,7 +797,7 @@ pub fn struct_lit_formatting<'a>(
     context: &'a RewriteContext,
     force_no_trailing_comma: bool,
 ) -> ListFormatting<'a> {
-    let ends_with_newline = context.config.struct_lit_style() != IndentStyle::Visual
+    let ends_with_newline = context.config.struct_lit_indent() != IndentStyle::Visual
         && tactic == DefinitiveListTactic::Vertical;
     ListFormatting {
         tactic: tactic,
