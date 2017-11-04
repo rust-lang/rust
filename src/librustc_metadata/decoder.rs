@@ -1189,6 +1189,7 @@ impl<'a, 'tcx> CrateMetadata {
                                       end_pos,
                                       lines,
                                       multibyte_chars,
+                                      non_narrow_chars,
                                       .. } = filemap_to_import;
 
             let source_length = (end_pos - start_pos).to_usize();
@@ -1206,6 +1207,10 @@ impl<'a, 'tcx> CrateMetadata {
             for mbc in &mut multibyte_chars {
                 mbc.pos = mbc.pos - start_pos;
             }
+            let mut non_narrow_chars = non_narrow_chars.into_inner();
+            for swc in &mut non_narrow_chars {
+                *swc = *swc - start_pos;
+            }
 
             let local_version = local_codemap.new_imported_filemap(name,
                                                                    name_was_remapped,
@@ -1213,7 +1218,8 @@ impl<'a, 'tcx> CrateMetadata {
                                                                    src_hash,
                                                                    source_length,
                                                                    lines,
-                                                                   multibyte_chars);
+                                                                   multibyte_chars,
+                                                                   non_narrow_chars);
             debug!("CrateMetaData::imported_filemaps alloc \
                     filemap {:?} original (start_pos {:?} end_pos {:?}) \
                     translated (start_pos {:?} end_pos {:?})",

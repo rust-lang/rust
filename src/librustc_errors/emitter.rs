@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
+use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan};
 
 use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper, DiagnosticId};
 use RenderSpan::*;
@@ -201,8 +201,8 @@ impl EmitterWriter {
                 // 6..7. This is degenerate input, but it's best to degrade
                 // gracefully -- and the parser likes to supply a span like
                 // that for EOF, in particular.
-                if lo.col == hi.col && lo.line == hi.line {
-                    hi.col = CharPos(lo.col.0 + 1);
+                if lo.col_display == hi.col_display && lo.line == hi.line {
+                    hi.col_display += 1;
                 }
 
                 let ann_type = if lo.line != hi.line {
@@ -210,8 +210,8 @@ impl EmitterWriter {
                         depth: 1,
                         line_start: lo.line,
                         line_end: hi.line,
-                        start_col: lo.col.0,
-                        end_col: hi.col.0,
+                        start_col: lo.col_display,
+                        end_col: hi.col_display,
                         is_primary: span_label.is_primary,
                         label: span_label.label.clone(),
                     };
@@ -221,8 +221,8 @@ impl EmitterWriter {
                     AnnotationType::Singleline
                 };
                 let ann = Annotation {
-                    start_col: lo.col.0,
-                    end_col: hi.col.0,
+                    start_col: lo.col_display,
+                    end_col: hi.col_display,
                     is_primary: span_label.is_primary,
                     label: span_label.label.clone(),
                     annotation_type: ann_type,

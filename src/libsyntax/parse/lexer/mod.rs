@@ -433,6 +433,7 @@ impl<'a> StringReader<'a> {
                     self.filemap.record_multibyte_char(self.pos, new_ch_len);
                 }
             }
+            self.filemap.record_width(self.pos, new_ch);
         } else {
             self.ch = None;
             self.pos = new_pos;

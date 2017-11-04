@@ -2230,6 +2230,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
+ "unicode-width 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
