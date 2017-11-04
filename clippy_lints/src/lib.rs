@@ -357,6 +357,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         arithmetic::INTEGER_ARITHMETIC,
         array_indexing::INDEXING_SLICING,
         assign_ops::ASSIGN_OPS,
+        misc::FLOAT_CMP_CONST,
     ]);
 
     reg.register_lint_group("clippy_pedantic", vec![
