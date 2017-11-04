@@ -137,7 +137,6 @@ pub mod dropck;
 pub mod _match;
 pub mod writeback;
 mod regionck;
-mod regionck_implied_bounds;
 pub mod coercion;
 pub mod demand;
 pub mod method;

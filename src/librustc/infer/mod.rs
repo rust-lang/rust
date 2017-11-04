@@ -62,6 +62,8 @@ mod sub;
 pub mod type_variable;
 pub mod unify_key;
 
+pub use self::outlives::env::OutlivesEnvironment;
+
 #[must_use]
 pub struct InferOk<'tcx, T> {
     pub value: T,
