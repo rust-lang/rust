@@ -16,7 +16,7 @@ pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
-pub use self::region_constraints::{GenericKind, VerifyBound};
+pub use self::region_constraints::{GenericKind, VerifyBound, RegionConstraintData};
 
 use hir::def_id::DefId;
 use middle::free_region::{FreeRegionMap, RegionRelations};
@@ -1150,6 +1150,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // errors from silly ones.
             self.report_region_errors(region_map, &errors); // see error_reporting module
         }
+    }
+
+    /// Obtains (and clears) the current set of region
+    /// constraints. The inference context is still usable: further
+    /// unifications will simply add new constraints.
+    ///
+    /// This method is not meant to be used with normal lexical region
+    /// resolution. Rather, it is used in the NLL mode as a kind of
+    /// interim hack: basically we run normal type-check and generate
+    /// region constraints as normal, but then we take them and
+    /// translate them into the form that the NLL solver
+    /// understands. See the NLL module for mode details.
+    pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
+        self.borrow_region_constraints().take_and_reset_data()
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
