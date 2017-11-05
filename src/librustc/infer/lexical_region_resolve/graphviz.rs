@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! This module provides linkage between libgraphviz traits and
-//! `rustc::middle::typeck::infer::region_inference`, generating a
+//! `rustc::middle::typeck::infer::region_constraints`, generating a
 //! rendering of the graph represented by the list of `Constraint`
 //! instances (which make up the edges of the graph), as well as the
 //! origin for each constraint (which are attached to the labels on
@@ -25,7 +25,7 @@ use middle::free_region::RegionRelations;
 use middle::region;
 use super::Constraint;
 use infer::SubregionOrigin;
-use infer::region_inference::RegionVarBindings;
+use infer::region_constraints::RegionVarBindings;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
