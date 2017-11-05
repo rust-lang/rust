@@ -216,6 +216,11 @@ impl Step for StdLink {
         let libdir = builder.sysroot_libdir(target_compiler, target);
         add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
 
+        if target.contains("windows") {
+            copy(&build.src.join("src/etc/longPathAware.manifest"),
+                 &libdir.join("longPathAware.manifest"));
+        }
+
         if build.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
             // The sanitizers are only built in stage1 or above, so the dylibs will
             // be missing in stage0 and causes panic. See the `std()` function above
