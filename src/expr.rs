@@ -641,7 +641,7 @@ fn rewrite_closure(
         };
         if no_return_type && !needs_block {
             // block.stmts.len() == 1
-            if let Some(ref expr) = stmt_expr(&block.stmts[0]) {
+            if let Some(expr) = stmt_expr(&block.stmts[0]) {
                 if let Some(rw) = if is_block_closure_forced(expr) {
                     rewrite_closure_with_block(context, shape, &prefix, expr)
                 } else {

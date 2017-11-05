@@ -254,7 +254,7 @@ fn extract_target_from_package(package: &Value) -> Option<Vec<Target>> {
     let jtargets = get_json_array_with(package, "targets")?;
     let mut targets: Vec<Target> = vec![];
     for jtarget in jtargets {
-        targets.push(Target::from_json(&jtarget)?);
+        targets.push(Target::from_json(jtarget)?);
     }
     Some(targets)
 }
