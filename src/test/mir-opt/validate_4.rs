@@ -78,8 +78,8 @@ fn main() {
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(60)], _2: &ReErased mut i32) -> bool {
 //     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
-//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrAnon(0)) mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:10) => validate_4[317d]::main[0]::{{closure}}[0] }, BrAnon(0)) mut i32]);
 //         StorageLive(_3);
 //         ...
 //         _0 = const write_42(_3) -> bb1;

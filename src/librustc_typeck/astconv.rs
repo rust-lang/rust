@@ -1206,60 +1206,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         bare_fn_ty
     }
 
-    pub fn ty_of_closure(&self,
-        unsafety: hir::Unsafety,
-        decl: &hir::FnDecl,
-        abi: abi::Abi,
-        expected_sig: Option<ty::FnSig<'tcx>>)
-        -> ty::PolyFnSig<'tcx>
-    {
-        debug!("ty_of_closure(expected_sig={:?})",
-               expected_sig);
-
-        let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
-            let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
-                // no guarantee that the correct number of expected args
-                // were supplied
-                if i < e.inputs().len() {
-                    Some(e.inputs()[i])
-                } else {
-                    None
-                }
-            });
-            self.ty_of_arg(a, expected_arg_ty)
-        });
-
-        let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
-
-        let output_ty = match decl.output {
-            hir::Return(ref output) => {
-                if let (&hir::TyInfer, Some(expected_ret_ty)) = (&output.node, expected_ret_ty) {
-                    self.record_ty(output.hir_id, expected_ret_ty, output.span);
-                    expected_ret_ty
-                } else {
-                    self.ast_ty_to_ty(&output)
-                }
-            }
-            hir::DefaultReturn(span) => {
-                if let Some(expected_ret_ty) = expected_ret_ty {
-                    expected_ret_ty
-                } else {
-                    self.ty_infer(span)
-                }
-            }
-        };
-
-        debug!("ty_of_closure: output_ty={:?}", output_ty);
-
-        ty::Binder(self.tcx().mk_fn_sig(
-            input_tys,
-            output_ty,
-            decl.variadic,
-            unsafety,
-            abi
-        ))
-    }
-
     /// Given the bounds on an object, determines what single region bound (if any) we can
     /// use to summarize this type. The basic idea is that we will use the bound the user
     /// provided, if they provided one, and otherwise search the supertypes of trait bounds

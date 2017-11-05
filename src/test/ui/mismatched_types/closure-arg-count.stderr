@@ -14,23 +14,6 @@ error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
    |               |
    |               expected closure that takes 2 arguments
 
-error: non-reference pattern used to match a reference (see issue #42640)
-  --> $DIR/closure-arg-count.rs:17:24
-   |
-17 |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
-   |                        ^^^^^^^^^^^^^^^ help: consider using: `&(tuple, tuple2)`
-   |
-   = help: add #![feature(match_default_bindings)] to the crate attributes to enable
-
-error[E0308]: mismatched types
-  --> $DIR/closure-arg-count.rs:17:24
-   |
-17 |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
-   |                        ^^^^^^^^^^^^^^^ expected integral variable, found tuple
-   |
-   = note: expected type `{integer}`
-              found type `(_, _)`
-
 error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:17:15
    |
@@ -73,5 +56,5 @@ error[E0593]: closure is expected to take a single 2-tuple as argument, but it t
    |                                                     |
    |                                                     expected closure that takes a single 2-tuple as argument
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
