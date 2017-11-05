@@ -32,10 +32,26 @@ use std::u32;
 mod taint;
 
 pub struct RegionConstraintCollector<'tcx> {
+    /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
+    pub var_origins: IndexVec<RegionVid, RegionVariableOrigin>,
+
     data: RegionConstraintData<'tcx>,
+
+    /// For a given pair of regions (R1, R2), maps to a region R3 that
+    /// is designated as their LUB (edges R1 <= R3 and R2 <= R3
+    /// exist). This prevents us from making many such regions.
     lubs: CombineMap<'tcx>,
+
+    /// For a given pair of regions (R1, R2), maps to a region R3 that
+    /// is designated as their GLB (edges R3 <= R1 and R3 <= R2
+    /// exist). This prevents us from making many such regions.
     glbs: CombineMap<'tcx>,
+
+    /// Number of skolemized variables currently active.
     skolemization_count: u32,
+
+    /// Global counter used during the GLB algorithm to create unique
+    /// names for fresh bound regions
     bound_count: u32,
 
     /// The undo log records actions that might later be undone.
@@ -49,20 +65,25 @@ pub struct RegionConstraintCollector<'tcx> {
     /// back.
     undo_log: Vec<UndoLogEntry<'tcx>>,
 
+    /// When we add a R1 == R2 constriant, we currently add (a) edges
+    /// R1 <= R2 and R2 <= R1 and (b) we unify the two regions in this
+    /// table. You can then call `opportunistic_resolve_var` early
+    /// which will map R1 and R2 to some common region (i.e., either
+    /// R1 or R2). This is important when dropck and other such code
+    /// is iterating to a fixed point, because otherwise we sometimes
+    /// would wind up with a fresh stream of region variables that
+    /// have been equated but appear distinct.
     unification_table: UnificationTable<ty::RegionVid>,
 }
 
 pub type VarOrigins = IndexVec<RegionVid, RegionVariableOrigin>;
 
 /// The full set of region constraints gathered up by the collector.
-/// Describes a set of region variables ranging from 0..N (where N is
-/// the length of the `var_origins` vector), and various constraints
-/// between them.
+/// Describes constraints between the region variables and other
+/// regions, as well as other conditions that must be verified, or
+/// assumptions that can be made.
 #[derive(Default)]
 pub struct RegionConstraintData<'tcx> {
-    /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
-    pub var_origins: IndexVec<RegionVid, RegionVariableOrigin>,
-
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
     pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
@@ -252,6 +273,7 @@ impl TaintDirections {
 impl<'tcx> RegionConstraintCollector<'tcx> {
     pub fn new() -> RegionConstraintCollector<'tcx> {
         RegionConstraintCollector {
+            var_origins: VarOrigins::default(),
             data: RegionConstraintData::default(),
             lubs: FxHashMap(),
             glbs: FxHashMap(),
@@ -263,8 +285,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     /// Once all the constraints have been gathered, extract out the final data.
-    pub fn into_data(self) -> RegionConstraintData<'tcx> {
-        self.data
+    pub fn into_origins_and_data(self) -> (VarOrigins, RegionConstraintData<'tcx>) {
+        (self.var_origins, self.data)
     }
 
     fn in_snapshot(&self) -> bool {
@@ -324,8 +346,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 // nothing to do here
             }
             AddVar(vid) => {
-                self.data.var_origins.pop().unwrap();
-                assert_eq!(self.data.var_origins.len(), vid.index as usize);
+                self.var_origins.pop().unwrap();
+                assert_eq!(self.var_origins.len(), vid.index as usize);
             }
             AddConstraint(ref constraint) => {
                 self.data.constraints.remove(constraint);
@@ -347,7 +369,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
-        let vid = self.data.var_origins.push(origin.clone());
+        let vid = self.var_origins.push(origin.clone());
 
         let u_vid = self.unification_table
             .new_key(unify_key::RegionVidKey { min_vid: vid });
@@ -363,8 +385,9 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         return vid;
     }
 
+    /// Returns the origin for the given variable.
     pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.data.var_origins[vid].clone()
+        self.var_origins[vid].clone()
     }
 
     /// Creates a new skolemized region. Skolemized regions are fresh
@@ -860,11 +883,5 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
         } else {
             VerifyBound::AllBounds(vec![self, vb])
         }
-    }
-}
-
-impl<'tcx> RegionConstraintData<'tcx> {
-    pub fn num_vars(&self) -> usize {
-        self.var_origins.len()
     }
 }
