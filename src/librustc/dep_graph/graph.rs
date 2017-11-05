@@ -45,25 +45,10 @@ pub struct DepGraph {
 }
 
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DepNodeIndex {
-    index: u32,
-}
-
-impl Idx for DepNodeIndex {
-    fn new(idx: usize) -> Self {
-        debug_assert!((idx & 0xFFFF_FFFF) == idx);
-        DepNodeIndex { index: idx as u32 }
-    }
-    fn index(self) -> usize {
-        self.index as usize
-    }
-}
+newtype_index!(DepNodeIndex);
 
 impl DepNodeIndex {
-    const INVALID: DepNodeIndex = DepNodeIndex {
-        index: ::std::u32::MAX,
-    };
+    const INVALID: DepNodeIndex = DepNodeIndex(::std::u32::MAX);
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

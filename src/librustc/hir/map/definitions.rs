@@ -19,7 +19,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace,
                   CRATE_DEF_INDEX};
 use ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use session::CrateDisambiguator;

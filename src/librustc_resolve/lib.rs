@@ -24,6 +24,7 @@ extern crate rustc_errors as errors;
 extern crate arena;
 #[macro_use]
 extern crate rustc;
+extern crate rustc_data_structures;
 
 use self::Namespace::*;
 use self::TypeParameters::*;

@@ -68,7 +68,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]) => (
+     @debug_format [$debug_format:tt]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         pub struct $type($($pub)* u32);
 
@@ -100,7 +100,7 @@ macro_rules! newtype_index {
     (@handle_debug
      @derives      []
      @type         [$type:ident]
-     @debug_format [$debug_format:expr]) => (
+     @debug_format [$debug_format:tt]) => (
         impl ::std::fmt::Debug for $type {
             fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 write!(fmt, $debug_format, self.0)
@@ -112,13 +112,13 @@ macro_rules! newtype_index {
     (@handle_debug
      @derives      [Debug, $($derives:ident,)*]
      @type         [$type:ident]
-     @debug_format [$debug_format:expr]) => ();
+     @debug_format [$debug_format:tt]) => ();
 
     // It's not Debug, so just pop it off the front of the derives stack and check the rest.
     (@handle_debug
      @derives      [$_derive:ident, $($derives:ident,)*]
      @type         [$type:ident]
-     @debug_format [$debug_format:expr]) => (
+     @debug_format [$debug_format:tt]) => (
         newtype_index!(
             @handle_debug
             @derives      [$($derives,)*]
@@ -129,7 +129,7 @@ macro_rules! newtype_index {
     // Handle the case where someone wants to make the internal field public
     (@type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    pub idx
                    $($tokens:tt)*) => (
         newtype_index!(
@@ -143,7 +143,7 @@ macro_rules! newtype_index {
     // The default case is that the internal field is private
     (@type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    $($tokens:tt)*) => (
         newtype_index!(
             @pub          []
@@ -157,7 +157,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    derive [$($derives:ident),*]
                    $($tokens:tt)*) => (
         newtype_index!(
@@ -174,7 +174,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    derive [$($derives:ident,)+]
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
@@ -192,7 +192,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    derive [$($derives:ident,)+]
                    $($tokens:tt)*) => (
         newtype_index!(
@@ -209,7 +209,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
         newtype_index!(
@@ -225,7 +225,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [RustcDecodable, RustcEncodable,]
@@ -241,7 +241,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    $name:ident = $constant:expr) => (
         newtype_index!(
             @derives      [$($derives,)*]
@@ -257,7 +257,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$_max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    $(#[doc = $doc:expr])*
                    const $name:ident = $constant:expr) => (
         newtype_index!(
@@ -274,7 +274,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$_max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    MAX = $max:expr,
                    $($tokens:tt)*) => (
         newtype_index!(
@@ -291,8 +291,8 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$_debug_format:expr]
-                   DEBUG_FORMAT = $debug_format:expr,
+     @debug_format [$_debug_format:tt]
+                   DEBUG_FORMAT = $debug_format:tt,
                    $($tokens:tt)*) => (
         newtype_index!(
             @derives      [$($derives,)*]
@@ -308,7 +308,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
-     @debug_format [$debug_format:expr]
+     @debug_format [$debug_format:tt]
                    $(#[doc = $doc:expr])*
                    const $name:ident = $constant:expr,
                    $($tokens:tt)*) => (

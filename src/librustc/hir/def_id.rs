@@ -86,20 +86,17 @@ impl serialize::UseSpecializedDecodable for CrateNum {
 ///
 /// Since the DefIndex is mostly treated as an opaque ID, you probably
 /// don't have to care about these ranges.
-#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
-           RustcDecodable, Hash, Copy)]
-pub struct DefIndex(u32);
+newtype_index!(DefIndex
+    {
+        DEBUG_FORMAT = custom,
 
-impl Idx for DefIndex {
-    fn new(value: usize) -> Self {
-        assert!(value < (u32::MAX) as usize);
-        DefIndex(value as u32)
-    }
+        /// The start of the "high" range of DefIndexes.
+        const DEF_INDEX_HI_START = 1 << 31,
 
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+        /// The crate root is always assigned index 0 by the AST Map code,
+        /// thanks to `NodeCollector::new`.
+        const CRATE_DEF_INDEX = 0,
+    });
 
 impl fmt::Debug for DefIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -111,12 +108,6 @@ impl fmt::Debug for DefIndex {
 }
 
 impl DefIndex {
-    #[inline]
-    pub fn new(x: usize) -> DefIndex {
-        assert!(x < (u32::MAX as usize));
-        DefIndex(x as u32)
-    }
-
     #[inline]
     pub fn from_u32(x: u32) -> DefIndex {
         DefIndex(x)
@@ -154,13 +145,6 @@ impl DefIndex {
         DefIndex::new(address_space.start() + i)
     }
 }
-
-/// The start of the "high" range of DefIndexes.
-const DEF_INDEX_HI_START: DefIndex = DefIndex(1 << 31);
-
-/// The crate root is always assigned index 0 by the AST Map code,
-/// thanks to `NodeCollector::new`.
-pub const CRATE_DEF_INDEX: DefIndex = DefIndex(0);
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum DefIndexAddressSpace {
