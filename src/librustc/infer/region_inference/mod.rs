@@ -24,7 +24,6 @@ use ty::ReStatic;
 use ty::{BrFresh, ReLateBound, ReSkolemized, ReVar};
 
 use std::collections::BTreeMap;
-use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::mem;
 use std::u32;
@@ -145,7 +144,7 @@ enum CombineMapType {
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
 pub struct RegionVarBindings<'tcx> {
-    pub(in infer) var_origins: RefCell<Vec<RegionVariableOrigin>>,
+    pub(in infer) var_origins: Vec<RegionVariableOrigin>,
 
     /// Constraints of the form `A <= B` introduced by the region
     /// checker.  Here at least one of `A` and `B` must be a region
@@ -156,14 +155,14 @@ pub struct RegionVarBindings<'tcx> {
     /// which in turn affects the way that region errors are reported,
     /// leading to small variations in error output across runs and
     /// platforms.
-    pub(in infer) constraints: RefCell<BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
+    pub(in infer) constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
 
     /// A "verify" is something that we need to verify after inference is
     /// done, but which does not directly affect inference in any way.
     ///
     /// An example is a `A <= B` where neither `A` nor `B` are
     /// inference variables.
-    pub(in infer) verifys: RefCell<Vec<Verify<'tcx>>>,
+    pub(in infer) verifys: Vec<Verify<'tcx>>,
 
     /// A "given" is a relationship that is known to hold. In particular,
     /// we often know from closure fn signatures that a particular free
@@ -182,12 +181,12 @@ pub struct RegionVarBindings<'tcx> {
     /// record the fact that `'a <= 'b` is implied by the fn signature,
     /// and then ignore the constraint when solving equations. This is
     /// a bit of a hack but seems to work.
-    pub(in infer) givens: RefCell<FxHashSet<(Region<'tcx>, ty::RegionVid)>>,
+    pub(in infer) givens: FxHashSet<(Region<'tcx>, ty::RegionVid)>,
 
-    lubs: RefCell<CombineMap<'tcx>>,
-    glbs: RefCell<CombineMap<'tcx>>,
-    skolemization_count: Cell<u32>,
-    bound_count: Cell<u32>,
+    lubs: CombineMap<'tcx>,
+    glbs: CombineMap<'tcx>,
+    skolemization_count: u32,
+    bound_count: u32,
 
     /// The undo log records actions that might later be undone.
     ///
@@ -198,9 +197,9 @@ pub struct RegionVarBindings<'tcx> {
     /// otherwise we end up adding entries for things like the lower
     /// bound on a variable and so forth, which can never be rolled
     /// back.
-    undo_log: RefCell<Vec<UndoLogEntry<'tcx>>>,
+    undo_log: Vec<UndoLogEntry<'tcx>>,
 
-    unification_table: RefCell<UnificationTable<ty::RegionVid>>,
+    unification_table: UnificationTable<ty::RegionVid>,
 }
 
 pub struct RegionSnapshot {
@@ -246,73 +245,70 @@ impl TaintDirections {
 impl<'tcx> RegionVarBindings<'tcx> {
     pub fn new() -> RegionVarBindings<'tcx> {
         RegionVarBindings {
-            var_origins: RefCell::new(Vec::new()),
-            constraints: RefCell::new(BTreeMap::new()),
-            verifys: RefCell::new(Vec::new()),
-            givens: RefCell::new(FxHashSet()),
-            lubs: RefCell::new(FxHashMap()),
-            glbs: RefCell::new(FxHashMap()),
-            skolemization_count: Cell::new(0),
-            bound_count: Cell::new(0),
-            undo_log: RefCell::new(Vec::new()),
-            unification_table: RefCell::new(UnificationTable::new()),
+            var_origins: Vec::new(),
+            constraints: BTreeMap::new(),
+            verifys: Vec::new(),
+            givens: FxHashSet(),
+            lubs: FxHashMap(),
+            glbs: FxHashMap(),
+            skolemization_count: 0,
+            bound_count: 0,
+            undo_log: Vec::new(),
+            unification_table: UnificationTable::new(),
         }
     }
 
     fn in_snapshot(&self) -> bool {
-        !self.undo_log.borrow().is_empty()
+        !self.undo_log.is_empty()
     }
 
-    pub fn start_snapshot(&self) -> RegionSnapshot {
-        let length = self.undo_log.borrow().len();
+    pub fn start_snapshot(&mut self) -> RegionSnapshot {
+        let length = self.undo_log.len();
         debug!("RegionVarBindings: start_snapshot({})", length);
-        self.undo_log.borrow_mut().push(OpenSnapshot);
+        self.undo_log.push(OpenSnapshot);
         RegionSnapshot {
             length,
-            region_snapshot: self.unification_table.borrow_mut().snapshot(),
-            skolemization_count: self.skolemization_count.get(),
+            region_snapshot: self.unification_table.snapshot(),
+            skolemization_count: self.skolemization_count,
         }
     }
 
-    pub fn commit(&self, snapshot: RegionSnapshot) {
+    pub fn commit(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionVarBindings: commit({})", snapshot.length);
-        assert!(self.undo_log.borrow().len() > snapshot.length);
-        assert!((*self.undo_log.borrow())[snapshot.length] == OpenSnapshot);
+        assert!(self.undo_log.len() > snapshot.length);
+        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         assert!(
-            self.skolemization_count.get() == snapshot.skolemization_count,
+            self.skolemization_count == snapshot.skolemization_count,
             "failed to pop skolemized regions: {} now vs {} at start",
-            self.skolemization_count.get(),
+            self.skolemization_count,
             snapshot.skolemization_count
         );
 
-        let mut undo_log = self.undo_log.borrow_mut();
         if snapshot.length == 0 {
-            undo_log.truncate(0);
+            self.undo_log.truncate(0);
         } else {
-            (*undo_log)[snapshot.length] = CommitedSnapshot;
+            (*self.undo_log)[snapshot.length] = CommitedSnapshot;
         }
         self.unification_table
-            .borrow_mut()
             .commit(snapshot.region_snapshot);
     }
 
-    pub fn rollback_to(&self, snapshot: RegionSnapshot) {
+    pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionVarBindings: rollback_to({:?})", snapshot);
-        let mut undo_log = self.undo_log.borrow_mut();
-        assert!(undo_log.len() > snapshot.length);
-        assert!((*undo_log)[snapshot.length] == OpenSnapshot);
-        while undo_log.len() > snapshot.length + 1 {
-            self.rollback_undo_entry(undo_log.pop().unwrap());
+        assert!(self.undo_log.len() > snapshot.length);
+        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
+        while self.undo_log.len() > snapshot.length + 1 {
+            let undo_entry = self.undo_log.pop().unwrap();
+            self.rollback_undo_entry(undo_entry);
         }
-        let c = undo_log.pop().unwrap();
+        let c = self.undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
-        self.skolemization_count.set(snapshot.skolemization_count);
+        self.skolemization_count = snapshot.skolemization_count;
         self.unification_table
-            .borrow_mut()
             .rollback_to(snapshot.region_snapshot);
     }
 
-    fn rollback_undo_entry(&self, undo_entry: UndoLogEntry<'tcx>) {
+    fn rollback_undo_entry(&mut self, undo_entry: UndoLogEntry<'tcx>) {
         match undo_entry {
             OpenSnapshot => {
                 panic!("Failure to observe stack discipline");
@@ -321,48 +317,46 @@ impl<'tcx> RegionVarBindings<'tcx> {
                 // nothing to do here
             }
             AddVar(vid) => {
-                let mut var_origins = self.var_origins.borrow_mut();
-                var_origins.pop().unwrap();
-                assert_eq!(var_origins.len(), vid.index as usize);
+                self.var_origins.pop().unwrap();
+                assert_eq!(self.var_origins.len(), vid.index as usize);
             }
             AddConstraint(ref constraint) => {
-                self.constraints.borrow_mut().remove(constraint);
+                self.constraints.remove(constraint);
             }
             AddVerify(index) => {
-                self.verifys.borrow_mut().pop();
-                assert_eq!(self.verifys.borrow().len(), index);
+                self.verifys.pop();
+                assert_eq!(self.verifys.len(), index);
             }
             AddGiven(sub, sup) => {
-                self.givens.borrow_mut().remove(&(sub, sup));
+                self.givens.remove(&(sub, sup));
             }
             AddCombination(Glb, ref regions) => {
-                self.glbs.borrow_mut().remove(regions);
+                self.glbs.remove(regions);
             }
             AddCombination(Lub, ref regions) => {
-                self.lubs.borrow_mut().remove(regions);
+                self.lubs.remove(regions);
             }
         }
     }
 
     pub fn num_vars(&self) -> u32 {
-        let len = self.var_origins.borrow().len();
+        let len = self.var_origins.len();
         // enforce no overflow
         assert!(len as u32 as usize == len);
         len as u32
     }
 
-    pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
+    pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
         let vid = RegionVid {
             index: self.num_vars(),
         };
-        self.var_origins.borrow_mut().push(origin.clone());
+        self.var_origins.push(origin.clone());
 
         let u_vid = self.unification_table
-            .borrow_mut()
             .new_key(unify_key::RegionVidKey { min_vid: vid });
         assert_eq!(vid, u_vid);
         if self.in_snapshot() {
-            self.undo_log.borrow_mut().push(AddVar(vid));
+            self.undo_log.push(AddVar(vid));
         }
         debug!(
             "created new region variable {:?} with origin {:?}",
@@ -373,7 +367,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.var_origins.borrow()[vid.index as usize].clone()
+        self.var_origins[vid.index as usize].clone()
     }
 
     /// Creates a new skolemized region. Skolemized regions are fresh
@@ -396,16 +390,16 @@ impl<'tcx> RegionVarBindings<'tcx> {
     /// it's just there to make it explicit which snapshot bounds the
     /// skolemized region that results. It should always be the top-most snapshot.
     pub fn push_skolemized(
-        &self,
+        &mut self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         br: ty::BoundRegion,
         snapshot: &RegionSnapshot,
     ) -> Region<'tcx> {
         assert!(self.in_snapshot());
-        assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
+        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
 
-        let sc = self.skolemization_count.get();
-        self.skolemization_count.set(sc + 1);
+        let sc = self.skolemization_count;
+        self.skolemization_count = sc + 1;
         tcx.mk_region(ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br))
     }
 
@@ -414,7 +408,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     /// completes to remove all trace of the skolemized regions
     /// created in that time.
     pub fn pop_skolemized(
-        &self,
+        &mut self,
         _tcx: TyCtxt<'_, '_, 'tcx>,
         skols: &FxHashSet<ty::Region<'tcx>>,
         snapshot: &RegionSnapshot,
@@ -422,23 +416,23 @@ impl<'tcx> RegionVarBindings<'tcx> {
         debug!("pop_skolemized_regions(skols={:?})", skols);
 
         assert!(self.in_snapshot());
-        assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
+        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         assert!(
-            self.skolemization_count.get() as usize >= skols.len(),
+            self.skolemization_count as usize >= skols.len(),
             "popping more skolemized variables than actually exist, \
              sc now = {}, skols.len = {}",
-            self.skolemization_count.get(),
+            self.skolemization_count,
             skols.len()
         );
 
-        let last_to_pop = self.skolemization_count.get();
+        let last_to_pop = self.skolemization_count;
         let first_to_pop = last_to_pop - (skols.len() as u32);
 
         assert!(
             first_to_pop >= snapshot.skolemization_count,
             "popping more regions than snapshot contains, \
              sc now = {}, sc then = {}, skols.len = {}",
-            self.skolemization_count.get(),
+            self.skolemization_count,
             snapshot.skolemization_count,
             skols.len()
         );
@@ -453,13 +447,11 @@ impl<'tcx> RegionVarBindings<'tcx> {
                  }),
             "invalid skolemization keys or keys out of range ({}..{}): {:?}",
             snapshot.skolemization_count,
-            self.skolemization_count.get(),
+            self.skolemization_count,
             skols
         }
 
-        let mut undo_log = self.undo_log.borrow_mut();
-
-        let constraints_to_kill: Vec<usize> = undo_log
+        let constraints_to_kill: Vec<usize> = self.undo_log
             .iter()
             .enumerate()
             .rev()
@@ -468,11 +460,11 @@ impl<'tcx> RegionVarBindings<'tcx> {
             .collect();
 
         for index in constraints_to_kill {
-            let undo_entry = mem::replace(&mut undo_log[index], Purged);
+            let undo_entry = mem::replace(&mut self.undo_log[index], Purged);
             self.rollback_undo_entry(undo_entry);
         }
 
-        self.skolemization_count.set(snapshot.skolemization_count);
+        self.skolemization_count = snapshot.skolemization_count;
         return;
 
         fn kill_constraint<'tcx>(
@@ -497,7 +489,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn new_bound(
-        &self,
+        &mut self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         debruijn: ty::DebruijnIndex,
     ) -> Region<'tcx> {
@@ -519,35 +511,36 @@ impl<'tcx> RegionVarBindings<'tcx> {
         // changing the representation of bound regions in a fn
         // declaration
 
-        let sc = self.bound_count.get();
-        self.bound_count.set(sc + 1);
+        let sc = self.bound_count;
+        self.bound_count = sc + 1;
 
-        if sc >= self.bound_count.get() {
+        if sc >= self.bound_count {
             bug!("rollover in RegionInference new_bound()");
         }
 
         tcx.mk_region(ReLateBound(debruijn, BrFresh(sc)))
     }
 
-    fn add_constraint(&self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
+    fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
         // present in the map yet. This prevents origins from outside the snapshot being
         // replaced with "less informative" origins e.g. during calls to `can_eq`
+        let in_snapshot = self.in_snapshot();
+        let undo_log = &mut self.undo_log;
         self.constraints
-            .borrow_mut()
             .entry(constraint)
             .or_insert_with(|| {
-                if self.in_snapshot() {
-                    self.undo_log.borrow_mut().push(AddConstraint(constraint));
+                if in_snapshot {
+                    undo_log.push(AddConstraint(constraint));
                 }
                 origin
             });
     }
 
-    fn add_verify(&self, verify: Verify<'tcx>) {
+    fn add_verify(&mut self, verify: Verify<'tcx>) {
         // cannot add verifys once regions are resolved
         debug!("RegionVarBindings: add_verify({:?})", verify);
 
@@ -559,26 +552,24 @@ impl<'tcx> RegionVarBindings<'tcx> {
             _ => {}
         }
 
-        let mut verifys = self.verifys.borrow_mut();
-        let index = verifys.len();
-        verifys.push(verify);
+        let index = self.verifys.len();
+        self.verifys.push(verify);
         if self.in_snapshot() {
-            self.undo_log.borrow_mut().push(AddVerify(index));
+            self.undo_log.push(AddVerify(index));
         }
     }
 
-    pub fn add_given(&self, sub: Region<'tcx>, sup: ty::RegionVid) {
+    pub fn add_given(&mut self, sub: Region<'tcx>, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
-        let mut givens = self.givens.borrow_mut();
-        if givens.insert((sub, sup)) {
+        if self.givens.insert((sub, sup)) {
             debug!("add_given({:?} <= {:?})", sub, sup);
 
-            self.undo_log.borrow_mut().push(AddGiven(sub, sup));
+            self.undo_log.push(AddGiven(sub, sup));
         }
     }
 
     pub fn make_eqregion(
-        &self,
+        &mut self,
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
@@ -590,13 +581,13 @@ impl<'tcx> RegionVarBindings<'tcx> {
             self.make_subregion(origin, sup, sub);
 
             if let (ty::ReVar(sub), ty::ReVar(sup)) = (*sub, *sup) {
-                self.unification_table.borrow_mut().union(sub, sup);
+                self.unification_table.union(sub, sup);
             }
         }
     }
 
     pub fn make_subregion(
-        &self,
+        &mut self,
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
@@ -638,7 +629,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
 
     /// See `Verify::VerifyGenericBound`
     pub fn verify_generic_bound(
-        &self,
+        &mut self,
         origin: SubregionOrigin<'tcx>,
         kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
@@ -653,7 +644,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn lub_regions(
-        &self,
+        &mut self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
@@ -675,7 +666,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn glb_regions(
-        &self,
+        &mut self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
@@ -697,23 +688,23 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn opportunistic_resolve_var(
-        &self,
+        &mut self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         rid: RegionVid,
     ) -> ty::Region<'tcx> {
-        let vid = self.unification_table.borrow_mut().find_value(rid).min_vid;
+        let vid = self.unification_table.find_value(rid).min_vid;
         tcx.mk_region(ty::ReVar(vid))
     }
 
-    fn combine_map(&self, t: CombineMapType) -> &RefCell<CombineMap<'tcx>> {
+    fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {
         match t {
-            Glb => &self.glbs,
-            Lub => &self.lubs,
+            Glb => &mut self.glbs,
+            Lub => &mut self.lubs,
         }
     }
 
     fn combine_vars(
-        &self,
+        &mut self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         t: CombineMapType,
         a: Region<'tcx>,
@@ -721,13 +712,13 @@ impl<'tcx> RegionVarBindings<'tcx> {
         origin: SubregionOrigin<'tcx>,
     ) -> Region<'tcx> {
         let vars = TwoRegions { a: a, b: b };
-        if let Some(&c) = self.combine_map(t).borrow().get(&vars) {
+        if let Some(&c) = self.combine_map(t).get(&vars) {
             return tcx.mk_region(ReVar(c));
         }
         let c = self.new_region_var(MiscVariable(origin.span()));
-        self.combine_map(t).borrow_mut().insert(vars, c);
+        self.combine_map(t).insert(vars, c);
         if self.in_snapshot() {
-            self.undo_log.borrow_mut().push(AddCombination(t, vars));
+            self.undo_log.push(AddCombination(t, vars));
         }
         let new_r = tcx.mk_region(ReVar(c));
         for &old_r in &[a, b] {
@@ -741,7 +732,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
-        self.undo_log.borrow()[mark.length..]
+        self.undo_log[mark.length..]
             .iter()
             .filter_map(|&elt| match elt {
                 AddVar(vid) => Some(vid),
@@ -778,8 +769,8 @@ impl<'tcx> RegionVarBindings<'tcx> {
         let mut taint_set = taint::TaintSet::new(directions, r0);
         taint_set.fixed_point(
             tcx,
-            &self.undo_log.borrow()[mark.length..],
-            &self.verifys.borrow(),
+            &self.undo_log[mark.length..],
+            &self.verifys,
         );
         debug!("tainted: result={:?}", taint_set);
         return taint_set.into_set();
