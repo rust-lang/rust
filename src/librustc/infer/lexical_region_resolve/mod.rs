@@ -80,7 +80,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     /// constraints, assuming such values can be found; if they cannot,
     /// errors are reported.
     pub fn resolve_regions(
-        &self,
+        &mut self,
         region_rels: &RegionRelations<'_, '_, 'tcx>,
     ) -> (
         LexicalRegionResolutions<'tcx>,
@@ -114,7 +114,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
 
             (&ReVar(v_id), _) | (_, &ReVar(v_id)) => {
                 span_bug!(
-                    (*self.var_origins.borrow())[v_id.index as usize].span(),
+                    self.var_origins[v_id.index as usize].span(),
                     "lub_concrete_regions invoked with non-concrete \
                      regions: {:?}, {:?}",
                     a,
@@ -183,7 +183,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     fn infer_variable_values(
-        &self,
+        &mut self,
         region_rels: &RegionRelations<'_, '_, 'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) -> LexicalRegionResolutions<'tcx> {
@@ -222,12 +222,12 @@ impl<'tcx> RegionVarBindings<'tcx> {
             "----() Start constraint listing (context={:?}) ()----",
             free_regions.context
         );
-        for (idx, (constraint, _)) in self.constraints.borrow().iter().enumerate() {
+        for (idx, (constraint, _)) in self.constraints.iter().enumerate() {
             debug!("Constraint {} => {:?}", idx, constraint);
         }
     }
 
-    fn expand_givens(&self, graph: &RegionGraph) {
+    fn expand_givens(&mut self, graph: &RegionGraph) {
         // Givens are a kind of horrible hack to account for
         // constraints like 'c <= '0 that are known to hold due to
         // closure signatures (see the comment above on the `givens`
@@ -238,15 +238,14 @@ impl<'tcx> RegionVarBindings<'tcx> {
         //     and   '0 <= '1
         //     then  'c <= '1
 
-        let mut givens = self.givens.borrow_mut();
-        let seeds: Vec<_> = givens.iter().cloned().collect();
+        let seeds: Vec<_> = self.givens.iter().cloned().collect();
         for (r, vid) in seeds {
             let seed_index = NodeIndex(vid.index as usize);
             for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
                 let succ_index = succ_index.0 as u32;
                 if succ_index < self.num_vars() {
                     let succ_vid = RegionVid { index: succ_index };
-                    givens.insert((r, succ_vid));
+                    self.givens.insert((r, succ_vid));
                 }
             }
         }
@@ -292,7 +291,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
         // Check if this relationship is implied by a given.
         match *a_region {
             ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                if self.givens.borrow().contains(&(a_region, b_vid)) {
+                if self.givens.contains(&(a_region, b_vid)) {
                     debug!("given");
                     return false;
                 }
@@ -333,8 +332,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
         var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
-        let constraints = self.constraints.borrow();
-        for (constraint, origin) in constraints.iter() {
+        for (constraint, origin) in &self.constraints {
             debug!(
                 "collect_errors: constraint={:?} origin={:?}",
                 constraint,
@@ -392,7 +390,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
             }
         }
 
-        for verify in self.verifys.borrow().iter() {
+        for verify in &self.verifys {
             debug!("collect_errors: verify={:?}", verify);
             let sub = var_data.normalize(verify.region);
 
@@ -488,8 +486,6 @@ impl<'tcx> RegionVarBindings<'tcx> {
     fn construct_graph(&self) -> RegionGraph<'tcx> {
         let num_vars = self.num_vars();
 
-        let constraints = self.constraints.borrow();
-
         let mut graph = graph::Graph::new();
 
         for _ in 0..num_vars {
@@ -504,7 +500,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
         let dummy_source = graph.add_node(());
         let dummy_sink = graph.add_node(());
 
-        for (constraint, _) in constraints.iter() {
+        for (constraint, _) in &self.constraints {
             match *constraint {
                 Constraint::VarSubVar(a_id, b_id) => {
                     graph.add_edge(
@@ -564,7 +560,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
         for lower_bound in &lower_bounds {
             for upper_bound in &upper_bounds {
                 if !region_rels.is_subregion_of(lower_bound.region, upper_bound.region) {
-                    let origin = (*self.var_origins.borrow())[node_idx.index as usize].clone();
+                    let origin = self.var_origins[node_idx.index as usize].clone();
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
                          sup: {:?}",
@@ -586,7 +582,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
         }
 
         span_bug!(
-            (*self.var_origins.borrow())[node_idx.index as usize].span(),
+            self.var_origins[node_idx.index as usize].span(),
             "collect_error_for_expanding_node() could not find \
              error for var {:?}, lower_bounds={:?}, \
              upper_bounds={:?}",
@@ -671,7 +667,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
                     Constraint::RegSubVar(region, _) | Constraint::VarSubReg(_, region) => {
                         state.result.push(RegionAndOrigin {
                             region,
-                            origin: this.constraints.borrow().get(&edge.data).unwrap().clone(),
+                            origin: this.constraints.get(&edge.data).unwrap().clone(),
                         });
                     }
 
@@ -694,7 +690,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            for (constraint, origin) in self.constraints.borrow().iter() {
+            for (constraint, origin) in &self.constraints {
                 let edge_changed = body(constraint, origin);
                 if edge_changed {
                     debug!("Updated due to constraint {:?}", constraint);
