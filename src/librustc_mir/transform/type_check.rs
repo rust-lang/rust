@@ -11,8 +11,9 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
-use rustc::infer::{self, InferCtxt, InferOk};
-use rustc::traits;
+use rustc::infer::{InferCtxt, InferOk, InferResult, UnitResult};
+use rustc::traits::{self, FulfillmentContext};
+use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
@@ -366,7 +367,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 pub struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
-    fulfillment_cx: traits::FulfillmentContext<'tcx>,
     last_span: Span,
     body_id: ast::NodeId,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
@@ -380,7 +380,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     ) -> Self {
         TypeChecker {
             infcx,
-            fulfillment_cx: traits::FulfillmentContext::new(),
             last_span: DUMMY_SP,
             body_id,
             param_env,
@@ -392,37 +391,45 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         traits::ObligationCause::misc(span, self.body_id)
     }
 
-    pub fn register_infer_ok_obligations<T>(&mut self, infer_ok: InferOk<'tcx, T>) -> T {
-        for obligation in infer_ok.obligations {
-            self.fulfillment_cx
-                .register_predicate_obligation(self.infcx, obligation);
-        }
-        infer_ok.value
+    fn fully_perform_op<OP, R>(&self,
+                               op: OP)
+                               -> Result<R, TypeError<'tcx>>
+        where OP: FnOnce() -> InferResult<'tcx, R>
+    {
+        let mut fulfill_cx = FulfillmentContext::new();
+        let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op())?;
+        fulfill_cx.register_predicate_obligations(self.infcx, obligations);
+        if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
+            span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
+        } // FIXME propagate
+        Ok(value)
     }
 
     fn sub_types(
-        &mut self,
+        &self,
         sub: Ty<'tcx>,
         sup: Ty<'tcx>,
         _at_location: Location,
-    ) -> infer::UnitResult<'tcx> {
-        self.infcx
-            .at(&self.misc(self.last_span), self.param_env)
-            .sup(sup, sub)
-            .map(|ok| self.register_infer_ok_obligations(ok))
+    ) -> UnitResult<'tcx> {
+        self.fully_perform_op(|| {
+            self.infcx
+                .at(&self.misc(self.last_span), self.param_env)
+                .sup(sup, sub)
+        })
     }
 
     fn eq_types(
-        &mut self,
-        span: Span,
+        &self,
+        _span: Span,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
         _at_location: Location,
-    ) -> infer::UnitResult<'tcx> {
-        self.infcx
-            .at(&self.misc(span), self.param_env)
-            .eq(b, a)
-            .map(|ok| self.register_infer_ok_obligations(ok))
+    ) -> UnitResult<'tcx> {
+        self.fully_perform_op(|| {
+            self.infcx
+                .at(&self.misc(self.last_span), self.param_env)
+                .eq(b, a)
+        })
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -895,26 +902,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
-        let mut selcx = traits::SelectionContext::new(self.infcx);
-        let cause = traits::ObligationCause::misc(self.last_span, ast::CRATE_NODE_ID);
-        let traits::Normalized { value, obligations } =
-            traits::normalize(&mut selcx, self.param_env, cause, value);
-
-        debug!("normalize: value={:?} obligations={:?}", value, obligations);
-
-        let fulfill_cx = &mut self.fulfillment_cx;
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(self.infcx, obligation);
-        }
-
-        value
-    }
-
-    fn verify_obligations(&mut self, mir: &Mir<'tcx>) {
-        self.last_span = mir.span;
-        if let Err(e) = self.fulfillment_cx.select_all_or_error(self.infcx) {
-            span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
-        }
+        self.fully_perform_op(|| {
+            let mut selcx = traits::SelectionContext::new(self.infcx);
+            let cause = traits::ObligationCause::misc(self.last_span, ast::CRATE_NODE_ID);
+            let traits::Normalized { value, obligations } =
+                traits::normalize(&mut selcx, self.param_env, cause, value);
+            Ok(InferOk { value, obligations })
+        }).unwrap()
     }
 }
 
@@ -943,7 +937,6 @@ impl MirPass for TypeckMir {
                 }
             }
             checker.typeck_mir(mir);
-            checker.verify_obligations(mir);
         });
     }
 }
