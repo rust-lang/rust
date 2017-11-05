@@ -23,9 +23,8 @@ use comment::{contains_comment, recover_missing_comment_in_span, remove_trailing
               CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
-use items::{format_impl, format_struct, format_struct_struct, format_trait,
-            rewrite_associated_impl_type, rewrite_associated_type, rewrite_static,
-            rewrite_type_alias, FnSig, StaticParts};
+use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
+            rewrite_static, rewrite_type_alias, FnSig, StaticParts, StructParts};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
@@ -345,22 +344,8 @@ impl<'a> FmtVisitor<'a> {
                 let rw = rewrite_extern_crate(&self.get_context(), item);
                 self.push_rewrite(item.span, rw);
             }
-            ast::ItemKind::Struct(ref def, ref generics) => {
-                let rewrite = format_struct(
-                    &self.get_context(),
-                    "struct ",
-                    item.ident,
-                    &item.vis,
-                    def,
-                    Some(generics),
-                    item.span,
-                    self.block_indent,
-                    None,
-                ).map(|s| match *def {
-                    ast::VariantData::Tuple(..) => s + ";",
-                    _ => s,
-                });
-                self.push_rewrite(item.span, rewrite);
+            ast::ItemKind::Struct(..) | ast::ItemKind::Union(..) => {
+                self.visit_struct(&StructParts::from_item(item));
             }
             ast::ItemKind::Enum(ref def, ref generics) => {
                 self.format_missing_with_indent(source!(self, item.span).lo());
@@ -426,20 +411,6 @@ impl<'a> FmtVisitor<'a> {
                     generics,
                     &item.vis,
                     item.span,
-                );
-                self.push_rewrite(item.span, rewrite);
-            }
-            ast::ItemKind::Union(ref def, ref generics) => {
-                let rewrite = format_struct_struct(
-                    &self.get_context(),
-                    "union ",
-                    item.ident,
-                    &item.vis,
-                    def.fields(),
-                    Some(generics),
-                    item.span,
-                    self.block_indent,
-                    None,
                 );
                 self.push_rewrite(item.span, rewrite);
             }

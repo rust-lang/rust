@@ -411,6 +411,13 @@ impl<'a> FmtVisitor<'a> {
         None
     }
 
+    pub fn visit_struct(&mut self, struct_parts: &StructParts) {
+        let is_tuple = struct_parts.def.is_tuple();
+        let rewrite = format_struct(&self.get_context(), struct_parts, self.block_indent, None)
+            .map(|s| if is_tuple { s + ";" } else { s });
+        self.push_rewrite(struct_parts.span, rewrite);
+    }
+
     pub fn visit_enum(
         &mut self,
         ident: ast::Ident,
@@ -529,12 +536,7 @@ impl<'a> FmtVisitor<'a> {
                 // FIXME: Should limit the width, as we have a trailing comma
                 format_struct(
                     &context,
-                    "",
-                    field.node.name,
-                    &ast::Visibility::Inherited,
-                    &field.node.data,
-                    None,
-                    field.span,
+                    &StructParts::from_variant(field),
                     indent,
                     Some(self.config.struct_variant_width()),
                 )?
@@ -855,40 +857,62 @@ fn rewrite_trait_ref(
     }
 }
 
-pub fn format_struct(
-    context: &RewriteContext,
-    item_name: &str,
+pub struct StructParts<'a> {
+    prefix: &'a str,
     ident: ast::Ident,
-    vis: &ast::Visibility,
-    struct_def: &ast::VariantData,
-    generics: Option<&ast::Generics>,
+    vis: &'a ast::Visibility,
+    def: &'a ast::VariantData,
+    generics: Option<&'a ast::Generics>,
     span: Span,
+}
+
+impl<'a> StructParts<'a> {
+    fn format_header(&self) -> String {
+        format_header(self.prefix, self.ident, self.vis)
+    }
+
+    fn from_variant(variant: &'a ast::Variant) -> Self {
+        StructParts {
+            prefix: "",
+            ident: variant.node.name,
+            vis: &ast::Visibility::Inherited,
+            def: &variant.node.data,
+            generics: None,
+            span: variant.span,
+        }
+    }
+
+    pub fn from_item(item: &'a ast::Item) -> Self {
+        let (prefix, def, generics) = match item.node {
+            ast::ItemKind::Struct(ref def, ref generics) => ("struct ", def, generics),
+            ast::ItemKind::Union(ref def, ref generics) => ("union ", def, generics),
+            _ => unreachable!(),
+        };
+        StructParts {
+            prefix: prefix,
+            ident: item.ident,
+            vis: &item.vis,
+            def: def,
+            generics: Some(generics),
+            span: item.span,
+        }
+    }
+}
+
+fn format_struct(
+    context: &RewriteContext,
+    struct_parts: &StructParts,
     offset: Indent,
     one_line_width: Option<usize>,
 ) -> Option<String> {
-    match *struct_def {
-        ast::VariantData::Unit(..) => Some(format_unit_struct(item_name, ident, vis)),
-        ast::VariantData::Tuple(ref fields, _) => format_tuple_struct(
-            context,
-            item_name,
-            ident,
-            vis,
-            fields,
-            generics,
-            span,
-            offset,
-        ),
-        ast::VariantData::Struct(ref fields, _) => format_struct_struct(
-            context,
-            item_name,
-            ident,
-            vis,
-            fields,
-            generics,
-            span,
-            offset,
-            one_line_width,
-        ),
+    match *struct_parts.def {
+        ast::VariantData::Unit(..) => Some(format_unit_struct(struct_parts)),
+        ast::VariantData::Tuple(ref fields, _) => {
+            format_tuple_struct(context, struct_parts, fields, offset)
+        }
+        ast::VariantData::Struct(ref fields, _) => {
+            format_struct_struct(context, struct_parts, fields, offset, one_line_width)
+        }
     }
 }
 
@@ -1050,30 +1074,27 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
     }
 }
 
-fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> String {
-    format!("{};", format_header(item_name, ident, vis))
+fn format_unit_struct(p: &StructParts) -> String {
+    format!("{};", format_header(p.prefix, p.ident, p.vis))
 }
 
 pub fn format_struct_struct(
     context: &RewriteContext,
-    item_name: &str,
-    ident: ast::Ident,
-    vis: &ast::Visibility,
+    struct_parts: &StructParts,
     fields: &[ast::StructField],
-    generics: Option<&ast::Generics>,
-    span: Span,
     offset: Indent,
     one_line_width: Option<usize>,
 ) -> Option<String> {
     let mut result = String::with_capacity(1024);
+    let span = struct_parts.span;
 
-    let header_str = format_header(item_name, ident, vis);
+    let header_str = struct_parts.format_header();
     result.push_str(&header_str);
 
     let header_hi = span.lo() + BytePos(header_str.len() as u32);
     let body_lo = context.codemap.span_after(span, "{");
 
-    let generics_str = match generics {
+    let generics_str = match struct_parts.generics {
         Some(g) => format_generics(
             context,
             g,
@@ -1174,17 +1195,14 @@ fn get_bytepos_after_visibility(
 
 fn format_tuple_struct(
     context: &RewriteContext,
-    item_name: &str,
-    ident: ast::Ident,
-    vis: &ast::Visibility,
+    struct_parts: &StructParts,
     fields: &[ast::StructField],
-    generics: Option<&ast::Generics>,
-    span: Span,
     offset: Indent,
 ) -> Option<String> {
     let mut result = String::with_capacity(1024);
+    let span = struct_parts.span;
 
-    let header_str = format_header(item_name, ident, vis);
+    let header_str = struct_parts.format_header();
     result.push_str(&header_str);
 
     let body_lo = if fields.is_empty() {
@@ -1207,7 +1225,7 @@ fn format_tuple_struct(
         }
     };
 
-    let where_clause_str = match generics {
+    let where_clause_str = match struct_parts.generics {
         Some(generics) => {
             let budget = context.budget(last_line_width(&header_str));
             let shape = Shape::legacy(budget, offset);
