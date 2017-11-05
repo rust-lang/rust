@@ -242,7 +242,6 @@ impl<'a> FmtVisitor<'a> {
         generics: &ast::Generics,
         fd: &ast::FnDecl,
         s: Span,
-        _: ast::NodeId,
         defaultness: ast::Defaultness,
         inner_attrs: Option<&[ast::Attribute]>,
     ) {
@@ -416,7 +415,6 @@ impl<'a> FmtVisitor<'a> {
                     generics,
                     decl,
                     item.span,
-                    item.id,
                     ast::Defaultness::Final,
                     Some(&item.attrs),
                 )
@@ -494,7 +492,6 @@ impl<'a> FmtVisitor<'a> {
                     &ti.generics,
                     &sig.decl,
                     ti.span,
-                    ti.id,
                     ast::Defaultness::Final,
                     Some(&ti.attrs),
                 );
@@ -530,7 +527,6 @@ impl<'a> FmtVisitor<'a> {
                     &ii.generics,
                     &sig.decl,
                     ii.span,
-                    ii.id,
                     ii.defaultness,
                     Some(&ii.attrs),
                 );
