@@ -428,8 +428,6 @@ impl<'a> FmtVisitor<'a> {
         let generics_str = format_generics(
             &self.get_context(),
             generics,
-            "{",
-            "{",
             self.config.item_brace_style(),
             enum_def.variants.is_empty(),
             self.block_indent,
@@ -1079,8 +1077,6 @@ pub fn format_struct_struct(
         Some(g) => format_generics(
             context,
             g,
-            "{",
-            "{",
             context.config.item_brace_style(),
             fields.is_empty(),
             offset,
@@ -2693,8 +2689,6 @@ fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> S
 fn format_generics(
     context: &RewriteContext,
     generics: &ast::Generics,
-    opener: &str,
-    terminator: &str,
     brace_style: BraceStyle,
     force_same_line_brace: bool,
     offset: Indent,
@@ -2720,7 +2714,7 @@ fn format_generics(
             brace_style,
             Shape::legacy(budget, offset.block_only()),
             Density::Tall,
-            terminator,
+            "{",
             Some(span.hi()),
             span_end_before_where,
             option,
@@ -2740,9 +2734,11 @@ fn format_generics(
     // and hence we take the closer into account as well for one line budget.
     // We assume that the closer has the same length as the opener.
     let overhead = if force_same_line_brace {
-        1 + opener.len() + opener.len()
+        // 3 = ` {}`
+        3
     } else {
-        1 + opener.len()
+        // 2 = ` {`
+        2
     };
     let forbid_same_line_brace = overhead > remaining_budget;
     if !forbid_same_line_brace && same_line_brace {
@@ -2751,7 +2747,7 @@ fn format_generics(
         result.push('\n');
         result.push_str(&offset.block_only().to_string(context.config));
     }
-    result.push_str(opener);
+    result.push('{');
 
     Some(result)
 }
