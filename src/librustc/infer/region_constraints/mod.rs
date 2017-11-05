@@ -896,3 +896,11 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
         }
     }
 }
+
+impl<'tcx> RegionConstraintData<'tcx> {
+    /// True if this region constraint data contains no constraints.
+    pub fn is_empty(&self) -> bool {
+        let RegionConstraintData { constraints, verifys, givens } = self;
+        constraints.is_empty() && verifys.is_empty() && givens.is_empty()
+    }
+}
