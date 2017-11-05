@@ -83,9 +83,7 @@ pub fn format_expr(
             rewrite_pair(
                 &**lhs,
                 &**rhs,
-                "",
-                &format!(" {} ", context.snippet(op.span)),
-                "",
+                &PairParts("", &format!(" {} ", context.snippet(op.span)), ""),
                 context,
                 shape,
                 context.config.binop_separator(),
@@ -186,9 +184,7 @@ pub fn format_expr(
         ast::ExprKind::Cast(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            "",
-            " as ",
-            "",
+            &PairParts("", " as ", ""),
             context,
             shape,
             SeparatorPlace::Front,
@@ -196,9 +192,7 @@ pub fn format_expr(
         ast::ExprKind::Type(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            "",
-            ": ",
-            "",
+            &PairParts("", ": ", ""),
             context,
             shape,
             SeparatorPlace::Back,
@@ -215,9 +209,7 @@ pub fn format_expr(
             rewrite_pair(
                 &**expr,
                 &**repeats,
-                lbr,
-                "; ",
-                rbr,
+                &PairParts(lbr, "; ", rbr),
                 context,
                 shape,
                 SeparatorPlace::Back,
@@ -253,9 +245,7 @@ pub fn format_expr(
                     rewrite_pair(
                         &*lhs,
                         &*rhs,
-                        "",
-                        &sp_delim,
-                        "",
+                        &PairParts("", &sp_delim, ""),
                         context,
                         shape,
                         SeparatorPlace::Front,
@@ -315,12 +305,12 @@ pub fn format_expr(
         })
 }
 
+pub struct PairParts<'a>(pub &'a str, pub &'a str, pub &'a str);
+
 pub fn rewrite_pair<LHS, RHS>(
     lhs: &LHS,
     rhs: &RHS,
-    prefix: &str,
-    infix: &str,
-    suffix: &str,
+    pp: &PairParts,
     context: &RewriteContext,
     shape: Shape,
     separator_place: SeparatorPlace,
@@ -329,6 +319,7 @@ where
     LHS: Rewrite,
     RHS: Rewrite,
 {
+    let &PairParts(prefix, infix, suffix) = pp;
     let lhs_overhead = match separator_place {
         SeparatorPlace::Back => shape.used_width() + prefix.len() + infix.trim_right().len(),
         SeparatorPlace::Front => shape.used_width(),

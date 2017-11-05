@@ -19,7 +19,7 @@ use syntax::symbol::keywords;
 use spanned::Spanned;
 use codemap::SpanUtils;
 use config::{IndentStyle, Style, TypeDensity};
-use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens};
+use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens, PairParts};
 use items::{format_generics_item_list, generics_shape_from_config};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
             SeparatorPlace, SeparatorTactic};
@@ -709,9 +709,7 @@ impl Rewrite for ast::Ty {
                 rewrite_pair(
                     &**ty,
                     &**repeats,
-                    lbr,
-                    "; ",
-                    rbr,
+                    &PairParts(lbr, "; ", rbr),
                     context,
                     shape,
                     SeparatorPlace::Back,
