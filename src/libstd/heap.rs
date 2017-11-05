@@ -17,6 +17,7 @@ pub use alloc_system::System;
 
 #[cfg(not(test))]
 #[doc(hidden)]
+#[allow(unused_attributes)]
 pub mod __default_lib_allocator {
     use super::{System, Layout, Alloc, AllocErr};
     use ptr;
@@ -28,6 +29,7 @@ pub mod __default_lib_allocator {
     // ABI
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_alloc(size: usize,
                                      align: usize,
                                      err: *mut u8) -> *mut u8 {
@@ -42,11 +44,13 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_oom(err: *const u8) -> ! {
         System.oom((*(err as *const AllocErr)).clone())
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
@@ -54,6 +58,7 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_usable_size(layout: *const u8,
                                            min: *mut usize,
                                            max: *mut usize) {
@@ -63,6 +68,7 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_realloc(ptr: *mut u8,
                                        old_size: usize,
                                        old_align: usize,
@@ -81,6 +87,7 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_alloc_zeroed(size: usize,
                                             align: usize,
                                             err: *mut u8) -> *mut u8 {
@@ -95,6 +102,7 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_alloc_excess(size: usize,
                                             align: usize,
                                             excess: *mut usize,
@@ -113,6 +121,7 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_realloc_excess(ptr: *mut u8,
                                               old_size: usize,
                                               old_align: usize,
@@ -135,6 +144,7 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_grow_in_place(ptr: *mut u8,
                                              old_size: usize,
                                              old_align: usize,
@@ -149,6 +159,7 @@ pub mod __default_lib_allocator {
     }
 
     #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_shrink_in_place(ptr: *mut u8,
                                                old_size: usize,
                                                old_align: usize,
