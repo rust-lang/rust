@@ -22,7 +22,7 @@ Some things that might be helpful to you though:
 # Reference
 
 * [The Rust official site](https://www.rust-lang.org)
-* [The Rust reference](https://doc.rust-lang.org/reference.html)
+* [The Rust reference](https://doc.rust-lang.org/reference/index.html)
 
 # Docs
 
