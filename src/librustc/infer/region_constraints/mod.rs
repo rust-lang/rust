@@ -30,6 +30,69 @@ use std::u32;
 
 mod taint;
 
+pub struct RegionConstraintCollector<'tcx> {
+    data: RegionConstraintData<'tcx>,
+    lubs: CombineMap<'tcx>,
+    glbs: CombineMap<'tcx>,
+    skolemization_count: u32,
+    bound_count: u32,
+
+    /// The undo log records actions that might later be undone.
+    ///
+    /// Note: when the undo_log is empty, we are not actively
+    /// snapshotting. When the `start_snapshot()` method is called, we
+    /// push an OpenSnapshot entry onto the list to indicate that we
+    /// are now actively snapshotting. The reason for this is that
+    /// otherwise we end up adding entries for things like the lower
+    /// bound on a variable and so forth, which can never be rolled
+    /// back.
+    undo_log: Vec<UndoLogEntry<'tcx>>,
+
+    unification_table: UnificationTable<ty::RegionVid>,
+}
+
+/// The full set of region constraints gathered up by the collector.
+/// Describes a set of region variables ranging from 0..N (where N is
+/// the length of the `var_origins` vector), and various constraints
+/// between them.
+#[derive(Default)]
+pub struct RegionConstraintData<'tcx> {
+    /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
+    pub var_origins: Vec<RegionVariableOrigin>,
+
+    /// Constraints of the form `A <= B`, where either `A` or `B` can
+    /// be a region variable (or neither, as it happens).
+    pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
+
+    /// A "verify" is something that we need to verify after inference
+    /// is done, but which does not directly affect inference in any
+    /// way.
+    ///
+    /// An example is a `A <= B` where neither `A` nor `B` are
+    /// inference variables.
+    pub verifys: Vec<Verify<'tcx>>,
+
+    /// A "given" is a relationship that is known to hold. In
+    /// particular, we often know from closure fn signatures that a
+    /// particular free region must be a subregion of a region
+    /// variable:
+    ///
+    ///    foo.iter().filter(<'a> |x: &'a &'b T| ...)
+    ///
+    /// In situations like this, `'b` is in fact a region variable
+    /// introduced by the call to `iter()`, and `'a` is a bound region
+    /// on the closure (as indicated by the `<'a>` prefix). If we are
+    /// naive, we wind up inferring that `'b` must be `'static`,
+    /// because we require that it be greater than `'a` and we do not
+    /// know what `'a` is precisely.
+    ///
+    /// This hashmap is used to avoid that naive scenario. Basically
+    /// we record the fact that `'a <= 'b` is implied by the fn
+    /// signature, and then ignore the constraint when solving
+    /// equations. This is a bit of a hack but seems to work.
+    pub givens: FxHashSet<(Region<'tcx>, ty::RegionVid)>,
+}
+
 /// A constraint that influences the inference process.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Constraint<'tcx> {
@@ -143,65 +206,6 @@ enum CombineMapType {
 
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
-pub struct RegionConstraintCollector<'tcx> {
-    pub(in infer) var_origins: Vec<RegionVariableOrigin>,
-
-    /// Constraints of the form `A <= B` introduced by the region
-    /// checker.  Here at least one of `A` and `B` must be a region
-    /// variable.
-    ///
-    /// Using `BTreeMap` because the order in which we iterate over
-    /// these constraints can affect the way we build the region graph,
-    /// which in turn affects the way that region errors are reported,
-    /// leading to small variations in error output across runs and
-    /// platforms.
-    pub(in infer) constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
-
-    /// A "verify" is something that we need to verify after inference is
-    /// done, but which does not directly affect inference in any way.
-    ///
-    /// An example is a `A <= B` where neither `A` nor `B` are
-    /// inference variables.
-    pub(in infer) verifys: Vec<Verify<'tcx>>,
-
-    /// A "given" is a relationship that is known to hold. In particular,
-    /// we often know from closure fn signatures that a particular free
-    /// region must be a subregion of a region variable:
-    ///
-    ///    foo.iter().filter(<'a> |x: &'a &'b T| ...)
-    ///
-    /// In situations like this, `'b` is in fact a region variable
-    /// introduced by the call to `iter()`, and `'a` is a bound region
-    /// on the closure (as indicated by the `<'a>` prefix). If we are
-    /// naive, we wind up inferring that `'b` must be `'static`,
-    /// because we require that it be greater than `'a` and we do not
-    /// know what `'a` is precisely.
-    ///
-    /// This hashmap is used to avoid that naive scenario. Basically we
-    /// record the fact that `'a <= 'b` is implied by the fn signature,
-    /// and then ignore the constraint when solving equations. This is
-    /// a bit of a hack but seems to work.
-    pub(in infer) givens: FxHashSet<(Region<'tcx>, ty::RegionVid)>,
-
-    lubs: CombineMap<'tcx>,
-    glbs: CombineMap<'tcx>,
-    skolemization_count: u32,
-    bound_count: u32,
-
-    /// The undo log records actions that might later be undone.
-    ///
-    /// Note: when the undo_log is empty, we are not actively
-    /// snapshotting. When the `start_snapshot()` method is called, we
-    /// push an OpenSnapshot entry onto the list to indicate that we
-    /// are now actively snapshotting. The reason for this is that
-    /// otherwise we end up adding entries for things like the lower
-    /// bound on a variable and so forth, which can never be rolled
-    /// back.
-    undo_log: Vec<UndoLogEntry<'tcx>>,
-
-    unification_table: UnificationTable<ty::RegionVid>,
-}
-
 pub struct RegionSnapshot {
     length: usize,
     region_snapshot: unify::Snapshot<ty::RegionVid>,
@@ -245,10 +249,7 @@ impl TaintDirections {
 impl<'tcx> RegionConstraintCollector<'tcx> {
     pub fn new() -> RegionConstraintCollector<'tcx> {
         RegionConstraintCollector {
-            var_origins: Vec::new(),
-            constraints: BTreeMap::new(),
-            verifys: Vec::new(),
-            givens: FxHashSet(),
+            data: RegionConstraintData::default(),
             lubs: FxHashMap(),
             glbs: FxHashMap(),
             skolemization_count: 0,
@@ -256,6 +257,11 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             undo_log: Vec::new(),
             unification_table: UnificationTable::new(),
         }
+    }
+
+    /// Once all the constraints have been gathered, extract out the final data.
+    pub fn into_data(self) -> RegionConstraintData<'tcx> {
+        self.data
     }
 
     fn in_snapshot(&self) -> bool {
@@ -289,8 +295,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         } else {
             (*self.undo_log)[snapshot.length] = CommitedSnapshot;
         }
-        self.unification_table
-            .commit(snapshot.region_snapshot);
+        self.unification_table.commit(snapshot.region_snapshot);
     }
 
     pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
@@ -304,8 +309,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         let c = self.undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
         self.skolemization_count = snapshot.skolemization_count;
-        self.unification_table
-            .rollback_to(snapshot.region_snapshot);
+        self.unification_table.rollback_to(snapshot.region_snapshot);
     }
 
     fn rollback_undo_entry(&mut self, undo_entry: UndoLogEntry<'tcx>) {
@@ -317,18 +321,18 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 // nothing to do here
             }
             AddVar(vid) => {
-                self.var_origins.pop().unwrap();
-                assert_eq!(self.var_origins.len(), vid.index as usize);
+                self.data.var_origins.pop().unwrap();
+                assert_eq!(self.data.var_origins.len(), vid.index as usize);
             }
             AddConstraint(ref constraint) => {
-                self.constraints.remove(constraint);
+                self.data.constraints.remove(constraint);
             }
             AddVerify(index) => {
-                self.verifys.pop();
-                assert_eq!(self.verifys.len(), index);
+                self.data.verifys.pop();
+                assert_eq!(self.data.verifys.len(), index);
             }
             AddGiven(sub, sup) => {
-                self.givens.remove(&(sub, sup));
+                self.data.givens.remove(&(sub, sup));
             }
             AddCombination(Glb, ref regions) => {
                 self.glbs.remove(regions);
@@ -339,18 +343,11 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn num_vars(&self) -> u32 {
-        let len = self.var_origins.len();
-        // enforce no overflow
-        assert!(len as u32 as usize == len);
-        len as u32
-    }
-
     pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
         let vid = RegionVid {
-            index: self.num_vars(),
+            index: self.data.num_vars(),
         };
-        self.var_origins.push(origin.clone());
+        self.data.var_origins.push(origin.clone());
 
         let u_vid = self.unification_table
             .new_key(unify_key::RegionVidKey { min_vid: vid });
@@ -367,7 +364,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.var_origins[vid.index as usize].clone()
+        self.data.var_origins[vid.index as usize].clone()
     }
 
     /// Creates a new skolemized region. Skolemized regions are fresh
@@ -523,21 +520,22 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
-        debug!("RegionConstraintCollector: add_constraint({:?})", constraint);
+        debug!(
+            "RegionConstraintCollector: add_constraint({:?})",
+            constraint
+        );
 
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
         // present in the map yet. This prevents origins from outside the snapshot being
         // replaced with "less informative" origins e.g. during calls to `can_eq`
         let in_snapshot = self.in_snapshot();
         let undo_log = &mut self.undo_log;
-        self.constraints
-            .entry(constraint)
-            .or_insert_with(|| {
-                if in_snapshot {
-                    undo_log.push(AddConstraint(constraint));
-                }
-                origin
-            });
+        self.data.constraints.entry(constraint).or_insert_with(|| {
+            if in_snapshot {
+                undo_log.push(AddConstraint(constraint));
+            }
+            origin
+        });
     }
 
     fn add_verify(&mut self, verify: Verify<'tcx>) {
@@ -552,8 +550,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             _ => {}
         }
 
-        let index = self.verifys.len();
-        self.verifys.push(verify);
+        let index = self.data.verifys.len();
+        self.data.verifys.push(verify);
         if self.in_snapshot() {
             self.undo_log.push(AddVerify(index));
         }
@@ -561,7 +559,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn add_given(&mut self, sub: Region<'tcx>, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
-        if self.givens.insert((sub, sup)) {
+        if self.data.givens.insert((sub, sup)) {
             debug!("add_given({:?} <= {:?})", sub, sup);
 
             self.undo_log.push(AddGiven(sub, sup));
@@ -767,11 +765,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // edges and add any new regions we find to result_set.  This
         // is not a terribly efficient implementation.
         let mut taint_set = taint::TaintSet::new(directions, r0);
-        taint_set.fixed_point(
-            tcx,
-            &self.undo_log[mark.length..],
-            &self.verifys,
-        );
+        taint_set.fixed_point(tcx, &self.undo_log[mark.length..], &self.data.verifys);
         debug!("tainted: result={:?}", taint_set);
         return taint_set.into_set();
     }
@@ -864,5 +858,14 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
         } else {
             VerifyBound::AllBounds(vec![self, vb])
         }
+    }
+}
+
+impl<'tcx> RegionConstraintData<'tcx> {
+    pub fn num_vars(&self) -> u32 {
+        let len = self.var_origins.len();
+        // enforce no overflow
+        assert!(len as u32 as usize == len);
+        len as u32
     }
 }
