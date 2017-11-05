@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemGlobalAsm(..) => "an assembly blob",
             hir::ItemTy(..) => "a type alias",
             hir::ItemUnion(..) => "a union",
-            hir::ItemDefaultImpl(..) |
+            hir::ItemAutoImpl(..) |
             hir::ItemExternCrate(..) |
             hir::ItemForeignMod(..) |
             hir::ItemImpl(..) |

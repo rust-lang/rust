@@ -397,14 +397,14 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         },
         hir::ItemTrait(..) => {
             println!("trait decl");
-            if cx.tcx.trait_has_default_impl(did) {
-                println!("trait has a default impl");
+            if cx.tcx.trait_is_auto(did) {
+                println!("trait is auto");
             } else {
-                println!("trait has no default impl");
+                println!("trait is not auto");
             }
         },
-        hir::ItemDefaultImpl(_, ref _trait_ref) => {
-            println!("default impl");
+        hir::ItemAutoImpl(_, ref _trait_ref) => {
+            println!("auto impl");
         },
         hir::ItemImpl(_, _, _, _, Some(ref _trait_ref), _, _) => {
             println!("trait impl");
