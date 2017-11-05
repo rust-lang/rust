@@ -176,7 +176,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                      .filter(|&r| r != representative)
                 {
                     let origin = SubregionOrigin::Subtype(self.trace.clone());
-                    self.infcx.region_vars.borrow_mut().make_eqregion(origin,
+                    self.infcx.region_constraints.borrow_mut().make_eqregion(origin,
                                                                       *representative,
                                                                       *region);
                 }
@@ -427,7 +427,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         fn fresh_bound_variable<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                                 debruijn: ty::DebruijnIndex)
                                                 -> ty::Region<'tcx> {
-            infcx.region_vars.borrow_mut().new_bound(infcx.tcx, debruijn)
+            infcx.region_constraints.borrow_mut().new_bound(infcx.tcx, debruijn)
         }
     }
 }
@@ -481,7 +481,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        r: ty::Region<'tcx>,
                        directions: TaintDirections)
                        -> FxHashSet<ty::Region<'tcx>> {
-        self.region_vars.borrow().tainted(self.tcx, &snapshot.region_vars_snapshot, r, directions)
+        self.region_constraints.borrow().tainted(
+            self.tcx,
+            &snapshot.region_constraints_snapshot,
+            r,
+            directions)
     }
 
     fn region_vars_confined_to_snapshot(&self,
@@ -539,7 +543,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
          */
 
         let mut region_vars =
-            self.region_vars.borrow().vars_created_since_snapshot(&snapshot.region_vars_snapshot);
+            self.region_constraints.borrow().vars_created_since_snapshot(
+                &snapshot.region_constraints_snapshot);
 
         let escaping_types =
             self.type_variables.borrow_mut().types_escaping_snapshot(&snapshot.type_snapshot);
@@ -581,9 +586,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         where T : TypeFoldable<'tcx>
     {
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.region_vars.borrow_mut().push_skolemized(self.tcx,
+            self.region_constraints.borrow_mut().push_skolemized(self.tcx,
                                                           br,
-                                                          &snapshot.region_vars_snapshot)
+                                                          &snapshot.region_constraints_snapshot)
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -768,9 +773,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FxHashSet<_> = skol_map.values().cloned().collect();
-        self.region_vars.borrow_mut().pop_skolemized(self.tcx,
-                                                     &skol_regions,
-                                                     &snapshot.region_vars_snapshot);
+        self.region_constraints.borrow_mut().pop_skolemized(
+            self.tcx,
+            &skol_regions,
+            &snapshot.region_constraints_snapshot);
         if !skol_map.is_empty() {
             self.projection_cache.borrow_mut().rollback_skolemized(
                 &snapshot.projection_cache_snapshot);
