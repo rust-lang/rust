@@ -418,7 +418,7 @@ impl<'a> FmtVisitor<'a> {
                 );
                 self.push_rewrite(item.span, rewrite);
             }
-            ast::ItemKind::DefaultImpl(..) => {
+            ast::ItemKind::AutoImpl(..) => {
                 // FIXME(#78): format impl definitions.
             }
             ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
