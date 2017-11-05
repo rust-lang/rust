@@ -99,6 +99,13 @@ impl MirPass for CopyPropagation {
                                dest_local);
                         continue
                     }
+                    // Conservatively gives up if the dest is an argument,
+                    // because there may be uses of the original argument value.
+                    if mir.local_kind(dest_local) == LocalKind::Arg {
+                        debug!("  Can't copy-propagate local: dest {:?} (argument)",
+                            dest_local);
+                        continue;
+                    }
                     let dest_lvalue_def = dest_use_info.defs_and_uses.iter().filter(|lvalue_def| {
                         lvalue_def.context.is_mutating_use() && !lvalue_def.context.is_drop()
                     }).next().unwrap();
