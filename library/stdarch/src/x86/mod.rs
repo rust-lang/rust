@@ -1,5 +1,7 @@
 //! `x86` and `x86_64` intrinsics.
 
+pub use self::xsave::*;
+
 pub use self::sse::*;
 pub use self::sse2::*;
 pub use self::sse3::*;
@@ -27,6 +29,8 @@ pub type __m256i = ::v256::i8x32;
 mod macros;
 #[macro_use]
 mod runtime;
+
+mod xsave;
 
 mod sse;
 mod sse2;
