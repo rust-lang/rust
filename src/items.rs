@@ -411,6 +411,11 @@ impl<'a> FmtVisitor<'a> {
         None
     }
 
+    pub fn visit_static(&mut self, static_parts: &StaticParts) {
+        let rewrite = rewrite_static(&self.get_context(), static_parts, self.block_indent);
+        self.push_rewrite(static_parts.span, rewrite);
+    }
+
     pub fn visit_struct(&mut self, struct_parts: &StructParts) {
         let is_tuple = struct_parts.def.is_tuple();
         let rewrite = format_struct(&self.get_context(), struct_parts, self.block_indent, None)
@@ -1480,44 +1485,81 @@ pub fn rewrite_struct_field(
 }
 
 pub struct StaticParts<'a> {
+    prefix: &'a str,
     vis: &'a ast::Visibility,
     ident: ast::Ident,
     ty: &'a ast::Ty,
     mutability: ast::Mutability,
     expr_opt: Option<&'a ptr::P<ast::Expr>>,
+    span: Span,
 }
 
 impl<'a> StaticParts<'a> {
-    pub fn new(
-        vis: &'a ast::Visibility,
-        ident: ast::Ident,
-        ty: &'a ast::Ty,
-        mutability: ast::Mutability,
-        expr_opt: Option<&'a ptr::P<ast::Expr>>,
-    ) -> StaticParts<'a> {
+    pub fn from_item(item: &'a ast::Item) -> Self {
+        let (prefix, ty, mutability, expr) = match item.node {
+            ast::ItemKind::Static(ref ty, mutability, ref expr) => ("static", ty, mutability, expr),
+            ast::ItemKind::Const(ref ty, ref expr) => {
+                ("const", ty, ast::Mutability::Immutable, expr)
+            }
+            _ => unreachable!(),
+        };
         StaticParts {
-            vis,
-            ident,
-            ty,
-            mutability,
-            expr_opt,
+            prefix: prefix,
+            vis: &item.vis,
+            ident: item.ident,
+            ty: ty,
+            mutability: mutability,
+            expr_opt: Some(expr),
+            span: item.span,
+        }
+    }
+
+    pub fn from_trait_item(ti: &'a ast::TraitItem) -> Self {
+        let (ty, expr_opt) = match ti.node {
+            ast::TraitItemKind::Const(ref ty, ref expr_opt) => (ty, expr_opt),
+            _ => unreachable!(),
+        };
+        StaticParts {
+            prefix: "const",
+            vis: &ast::Visibility::Inherited,
+            ident: ti.ident,
+            ty: ty,
+            mutability: ast::Mutability::Immutable,
+            expr_opt: expr_opt.as_ref(),
+            span: ti.span,
+        }
+    }
+
+    pub fn from_impl_item(ii: &'a ast::ImplItem) -> Self {
+        let (ty, expr) = match ii.node {
+            ast::ImplItemKind::Const(ref ty, ref expr) => (ty, expr),
+            _ => unreachable!(),
+        };
+        StaticParts {
+            prefix: "const",
+            vis: &ii.vis,
+            ident: ii.ident,
+            ty: ty,
+            mutability: ast::Mutability::Immutable,
+            expr_opt: Some(expr),
+            span: ii.span,
         }
     }
 }
 
-pub fn rewrite_static(
-    prefix: &str,
+fn rewrite_static(
+    context: &RewriteContext,
     static_parts: &StaticParts,
     offset: Indent,
-    span: Span,
-    context: &RewriteContext,
 ) -> Option<String> {
     let StaticParts {
+        prefix,
         vis,
         ident,
         ty,
         mutability,
         expr_opt,
+        span,
     } = *static_parts;
     let colon = colon_spaces(
         context.config.space_before_type_annotation(),
