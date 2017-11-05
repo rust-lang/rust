@@ -1,5 +1,5 @@
 // rustfmt-normalize_comments: true
-// rustfmt-fn_args_layout: Block
+// rustfmt-fn_args_indent: Block
 
 fn foo() {
     foo();

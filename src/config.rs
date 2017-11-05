@@ -559,9 +559,9 @@ create_config! {
         "Location of return type in function declaration";
     fn_args_paren_newline: bool, false, false, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, false, "Argument density in functions";
-    fn_args_layout: IndentStyle, IndentStyle::Block, false,
+    fn_args_indent: IndentStyle, IndentStyle::Block, false,
         "Layout of function arguments and tuple structs";
-    array_layout: IndentStyle, IndentStyle::Block, false, "Indent on arrays";
+    array_indent: IndentStyle, IndentStyle::Block, false, "Indent on arrays";
     array_width: usize, 60, false,
         "Maximum width of an array literal before falling back to vertical formatting";
     array_horizontal_layout_threshold: usize, 0, false,
@@ -578,10 +578,10 @@ create_config! {
     where_pred_indent: IndentStyle, IndentStyle::Visual, false,
         "Indentation style of a where predicate";
     generics_indent: IndentStyle, IndentStyle::Block, false, "Indentation of generics";
-    struct_lit_style: IndentStyle, IndentStyle::Block, false, "Style of struct definition";
+    struct_lit_indent: IndentStyle, IndentStyle::Block, false, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle, false,
         "Multiline style on literal structs";
-    fn_call_style: IndentStyle, IndentStyle::Block, false, "Indentation for function calls, etc.";
+    fn_call_indent: IndentStyle, IndentStyle::Block, false, "Indentation for function calls, etc.";
     report_todo: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never, false,

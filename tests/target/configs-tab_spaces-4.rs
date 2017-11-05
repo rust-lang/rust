@@ -1,6 +1,6 @@
 // rustfmt-tab_spaces: 4
 // rustfmt-max_width: 30
-// rustfmt-array_layout: Block
+// rustfmt-array_indent: Block
 // Tab spaces
 
 fn lorem() {

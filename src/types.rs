@@ -302,7 +302,7 @@ where
     // 2 for ()
     let budget = shape.width.checked_sub(2)?;
     // 1 for (
-    let offset = match context.config.fn_args_layout() {
+    let offset = match context.config.fn_args_indent() {
         IndentStyle::Block => {
             shape
                 .block()
@@ -357,14 +357,14 @@ where
         },
         separator_place: SeparatorPlace::Back,
         shape: list_shape,
-        ends_with_newline: tactic.ends_with_newline(context.config.fn_call_style()),
+        ends_with_newline: tactic.ends_with_newline(context.config.fn_call_indent()),
         preserve_newline: true,
         config: context.config,
     };
 
     let list_str = write_list(&item_vec, &fmt)?;
 
-    let ty_shape = match context.config.fn_args_layout() {
+    let ty_shape = match context.config.fn_args_indent() {
         IndentStyle::Block => shape.block().block_indent(context.config.tab_spaces()),
         IndentStyle::Visual => shape.block_left(4)?,
     };

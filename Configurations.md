@@ -5,7 +5,7 @@ Rustfmt is designed to be very configurable. You can create a TOML file called `
 A possible content of `rustfmt.toml` or `.rustfmt.toml` might look like this:
 
 ```toml
-array_layout = "Block"
+array_indent = "Block"
 array_width = 80
 reorder_imported_names = true
 ```
@@ -22,7 +22,7 @@ Use this option to prevent a huge array from being vertically formatted.
 - **Default value**: `0`
 - **Possible values**: any positive integer
 
-**Note:** A value of `0` results in [`array_layout`](#array_layout) being applied regardless of a line's width.
+**Note:** A value of `0` results in [`array_indent`](#array_indent) being applied regardless of a line's width.
 
 #### `0` (default):
 
@@ -50,7 +50,7 @@ let a = vec![
 ];
 ```
 
-## `array_layout`
+## `array_indent`
 
 Indent on arrays
 
@@ -90,7 +90,7 @@ Maximum width of an array literal before falling back to vertical formatting
 - **Default value**: `60`
 - **Possible values**: any positive integer
 
-**Note:** A value of `0` results in [`array_layout`](#array_layout) being applied regardless of a line's width.
+**Note:** A value of `0` results in [`array_indent`](#array_indent) being applied regardless of a line's width.
 
 #### Lines shorter than `array_width`:
 ```rust
@@ -98,7 +98,7 @@ let lorem = vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "
 ```
 
 #### Lines longer than `array_width`:
-See [`array_layout`](#array_layout).
+See [`array_indent`](#array_indent).
 
 ## `attributes_on_same_line_as_field`
 
@@ -298,7 +298,7 @@ lorem_ipsum(|| {
 });
 ```
 
-**Note**: This option only takes effect when `fn_call_style` is set to `"Visual"`.
+**Note**: This option only takes effect when `fn_call_indent` is set to `"Visual"`.
 
 ## `combine_control_expr`
 
@@ -614,7 +614,7 @@ trait Lorem {
 }
 ```
 
-## `fn_args_layout`
+## `fn_args_indent`
 
 Layout of function arguments and tuple structs
 
@@ -758,7 +758,7 @@ where
 }
 ```
 
-## `fn_call_style`
+## `fn_call_indent`
 
 Indentation for function calls, etc.
 
@@ -809,7 +809,7 @@ lorem("lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "el
 
 #### Function call longer than `fn_call_width`:
 
-See [`fn_call_style`](#fn_call_style).
+See [`fn_call_indent`](#fn_call_indent).
 
 ## `fn_empty_single_line`
 
@@ -874,7 +874,7 @@ fn lorem(ipsum: Ipsum,
 
 ```
 
-**Note**: This option only takes effect when `fn_call_style` is set to `"Visual"`.
+**Note**: This option only takes effect when `fn_call_indent` is set to `"Visual"`.
 
 ## `fn_single_line`
 
@@ -1868,9 +1868,9 @@ let lorem = Lorem {
 };
 ```
 
-See also: [`struct_lit_style`](#struct_lit_style), [`struct_lit_width`](#struct_lit_width).
+See also: [`struct_lit_indent`](#struct_lit_indent), [`struct_lit_width`](#struct_lit_width).
 
-## `struct_lit_style`
+## `struct_lit_indent`
 
 Style of struct definition
 
@@ -1893,7 +1893,7 @@ let lorem = Lorem { ipsum: dolor,
                     sit: amet, };
 ```
 
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_style`](#struct_lit_style).
+See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_indent`](#struct_lit_indent).
 
 ## `struct_lit_width`
 
@@ -1910,9 +1910,9 @@ let lorem = Lorem { ipsum: dolor, sit: amet };
 ```
 
 #### Lines longer than `struct_lit_width`:
-See [`struct_lit_style`](#struct_lit_style).
+See [`struct_lit_indent`](#struct_lit_indent).
 
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_style`](#struct_lit_style).
+See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_indent`](#struct_lit_indent).
 
 ## `struct_variant_width`
 

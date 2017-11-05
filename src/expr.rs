@@ -419,7 +419,7 @@ where
         1 // "["
     };
 
-    let nested_shape = match context.config.array_layout() {
+    let nested_shape = match context.config.array_indent() {
         IndentStyle::Block => shape
             .block()
             .block_indent(context.config.tab_spaces())
@@ -454,7 +454,7 @@ where
         .iter()
         .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
 
-    let mut tactic = match context.config.array_layout() {
+    let mut tactic = match context.config.array_indent() {
         IndentStyle::Block => {
             // FIXME wrong shape in one-line case
             match shape.width.checked_sub(2 * bracket_size) {
@@ -477,7 +477,7 @@ where
             DefinitiveListTactic::Mixed
         },
     };
-    let ends_with_newline = tactic.ends_with_newline(context.config.array_layout());
+    let ends_with_newline = tactic.ends_with_newline(context.config.array_indent());
     if context.config.array_horizontal_layout_threshold() > 0
         && items.len() > context.config.array_horizontal_layout_threshold()
     {
@@ -489,7 +489,7 @@ where
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
-        } else if context.inside_macro || context.config.array_layout() == IndentStyle::Visual {
+        } else if context.inside_macro || context.config.array_indent() == IndentStyle::Visual {
             SeparatorTactic::Never
         } else {
             SeparatorTactic::Vertical
@@ -502,7 +502,7 @@ where
     };
     let list_str = write_list(&items, &fmt)?;
 
-    let result = if context.config.array_layout() == IndentStyle::Visual
+    let result = if context.config.array_indent() == IndentStyle::Visual
         || tactic == DefinitiveListTactic::Horizontal
     {
         if context.config.spaces_within_square_brackets() && !list_str.is_empty() {
@@ -2033,7 +2033,7 @@ where
     let used_width = extra_offset(callee_str, shape);
     let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
 
-    let nested_shape = shape_from_fn_call_style(
+    let nested_shape = shape_from_fn_call_indent(
         context,
         shape,
         used_width + 2 * paren_overhead,
@@ -2379,7 +2379,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
     match expr.node {
         ast::ExprKind::Match(..) => {
             (context.use_block_indent() && args_len == 1)
-                || (context.config.fn_call_style() == IndentStyle::Visual && args_len > 1)
+                || (context.config.fn_call_indent() == IndentStyle::Visual && args_len > 1)
         }
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
@@ -2391,7 +2391,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         }
         ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
             context.use_block_indent()
-                || context.config.fn_call_style() == IndentStyle::Visual && args_len > 1
+                || context.config.fn_call_indent() == IndentStyle::Visual && args_len > 1
         }
         ast::ExprKind::Array(..) |
         ast::ExprKind::Call(..) |
@@ -2640,7 +2640,7 @@ fn rewrite_struct_lit<'a>(
     let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
     Some(format!("{} {{{}}}", path_str, fields_str))
 
-    // FIXME if context.config.struct_lit_style() == Visual, but we run out
+    // FIXME if context.config.struct_lit_indent() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
 
@@ -2651,7 +2651,7 @@ pub fn wrap_struct_field(
     nested_shape: Shape,
     one_line_width: usize,
 ) -> String {
-    if context.config.struct_lit_style() == IndentStyle::Block
+    if context.config.struct_lit_indent() == IndentStyle::Block
         && (fields_str.contains('\n')
             || context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti
             || fields_str.len() > one_line_width)
@@ -2722,7 +2722,7 @@ pub fn rewrite_field(
     }
 }
 
-fn shape_from_fn_call_style(
+fn shape_from_fn_call_indent(
     context: &RewriteContext,
     shape: Shape,
     overhead: usize,

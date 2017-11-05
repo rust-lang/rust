@@ -1,4 +1,4 @@
-// rustfmt-struct_lit_style: Visual
+// rustfmt-struct_lit_indent: Block
 // Struct literal-style
 
 fn main() {
