@@ -496,8 +496,8 @@ enum NeverLoopResult {
     Otherwise,
 }
 
-fn absorb_break(arg: NeverLoopResult) -> NeverLoopResult {
-    match arg {
+fn absorb_break(arg: &NeverLoopResult) -> NeverLoopResult {
+    match *arg {
         NeverLoopResult::AlwaysBreak |
         NeverLoopResult::Otherwise => NeverLoopResult::Otherwise,
         NeverLoopResult::MayContinueMainLoop => NeverLoopResult::MayContinueMainLoop,
@@ -580,18 +580,22 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
         ExprIf(ref e, ref e2, ref e3) => {
             let e1 = never_loop_expr(e, main_loop_id);
             let e2 = never_loop_expr(e2, main_loop_id);
-            let e3 = e3.as_ref().map(|ref e| never_loop_expr(e, main_loop_id)).unwrap_or(NeverLoopResult::Otherwise);
+            let e3 =
+                match *e3 {
+                    Some(ref e3) => never_loop_expr(e3, main_loop_id),
+                    None => NeverLoopResult::Otherwise,
+                };
             combine_seq(e1, combine_branches(e2, e3))
         },
         ExprLoop(ref b, _, _) => {
             // Break can come from the inner loop so remove them.
-            absorb_break(never_loop_block(b, main_loop_id))
+            absorb_break(&never_loop_block(b, main_loop_id))
         },
         ExprWhile(ref e, ref b, _) => {
             let e = never_loop_expr(e, main_loop_id);
             let result = never_loop_block(b, main_loop_id);
             // Break can come from the inner loop so remove them.
-            combine_seq(e, absorb_break(result))
+            combine_seq(e, absorb_break(&result))
         },
         ExprMatch(ref e, ref arms, _) => {
             let e = never_loop_expr(e, main_loop_id);
