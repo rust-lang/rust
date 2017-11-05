@@ -111,7 +111,7 @@ fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
 
 fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
     // Unsafety check uses the raw mir, so make sure it is run
-    let _ = tcx.unsafety_violations(def_id);
+    let _ = tcx.unsafety_check_result(def_id);
 
     let source = MirSource::from_local_def_id(tcx, def_id);
     let mut mir = tcx.mir_built(def_id).steal();

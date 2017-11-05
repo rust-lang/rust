@@ -34,6 +34,7 @@ impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
 impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref });
 impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator, is_cleanup });
 impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, lint_node_id });
+impl_stable_hash_for!(struct mir::UnsafetyCheckResult { violations, unsafe_blocks });
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for mir::Terminator<'gcx> {

@@ -33,6 +33,7 @@ use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
+use std::rc::Rc;
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax_pos::Span;
@@ -1681,6 +1682,15 @@ pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub description: &'static str,
     pub lint_node_id: Option<ast::NodeId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnsafetyCheckResult {
+    /// Violations that are propagated *upwards* from this function
+    pub violations: Rc<[UnsafetyViolation]>,
+    /// unsafe blocks in this function, along with whether they are used. This is
+    /// used for the "unused_unsafe" lint.
+    pub unsafe_blocks: Rc<[(ast::NodeId, bool)]>,
 }
 
 /// The layout of generator state
