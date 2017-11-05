@@ -20,6 +20,7 @@ use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 
 use syntax::ast;
+use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
@@ -481,18 +482,26 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 if let Ok(InferOk { obligations, value: () }) = eq(self_ty, potential_self_ty) {
                     fcx.register_predicates(obligations);
                     autoderef.finalize();
-                    break;
+                    break
                 }
 
             } else {
-                span_err!(fcx.tcx.sess, span, E0307, "invalid `self` type: {:?}", self_arg_ty);
-                return;
+                fcx.tcx.sess.diagnostic().mut_span_err(span, &format!("invalid `self` type: {:?}", self_arg_ty))
+                .note(&format!("type must be `{:?}` or a type that dereferences to it`", self_ty))
+                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .code("E0307".into())
+                .emit();
+                return
             }
         }
 
         if let ExplicitSelf::Other = ExplicitSelf::determine(fcx, fcx.param_env, self_ty, self_arg_ty) {
             if !fcx.tcx.sess.features.borrow().arbitrary_self_types {
-                fcx.tcx.sess.span_err(span, "Arbitrary `self` types are experimental");
+                feature_gate::feature_err(&fcx.tcx.sess.parse_sess, "arbitrary_self_types", span,
+                    GateIssue::Language, "arbitrary `self` types are unstable")
+                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .emit();
+                return
             }
         }
     }
