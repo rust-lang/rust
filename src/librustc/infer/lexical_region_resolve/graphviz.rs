@@ -112,8 +112,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         }
     };
 
-    let constraints = &*region_vars.constraints.borrow();
-    match dump_region_constraints_to(region_rels, constraints, &output_path) {
+    match dump_region_constraints_to(region_rels, &region_vars.constraints, &output_path) {
         Ok(()) => {}
         Err(e) => {
             let msg = format!("io error dumping region constraints: {}", e);

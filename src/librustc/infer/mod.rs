@@ -104,7 +104,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
     // For region variables.
-    region_vars: RegionVarBindings<'tcx>,
+    region_vars: RefCell<RegionVarBindings<'tcx>>,
 
     // Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
-            region_vars: RegionVarBindings::new(),
+            region_vars: RefCell::new(RegionVarBindings::new()),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
@@ -767,7 +767,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             type_snapshot: self.type_variables.borrow_mut().snapshot(),
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
-            region_vars_snapshot: self.region_vars.start_snapshot(),
+            region_vars_snapshot: self.region_vars.borrow_mut().start_snapshot(),
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e. during typeck)
             // to ban writes from within a snapshot to them.
@@ -802,6 +802,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .borrow_mut()
             .rollback_to(float_snapshot);
         self.region_vars
+            .borrow_mut()
             .rollback_to(region_vars_snapshot);
     }
 
@@ -830,6 +831,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .borrow_mut()
             .commit(float_snapshot);
         self.region_vars
+            .borrow_mut()
             .commit(region_vars_snapshot);
     }
 
@@ -885,7 +887,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                      sub: ty::Region<'tcx>,
                      sup: ty::RegionVid)
     {
-        self.region_vars.add_given(sub, sup);
+        self.region_vars.borrow_mut().add_given(sub, sup);
     }
 
     pub fn can_sub<T>(&self,
@@ -925,7 +927,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        a: ty::Region<'tcx>,
                        b: ty::Region<'tcx>) {
         debug!("sub_regions({:?} <: {:?})", a, b);
-        self.region_vars.make_subregion(origin, a, b);
+        self.region_vars.borrow_mut().make_subregion(origin, a, b);
     }
 
     pub fn equality_predicate(&self,
@@ -1028,7 +1030,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn next_region_var(&self, origin: RegionVariableOrigin)
                            -> ty::Region<'tcx> {
-        self.tcx.mk_region(ty::ReVar(self.region_vars.new_region_var(origin)))
+        self.tcx.mk_region(ty::ReVar(self.region_vars.borrow_mut().new_region_var(origin)))
     }
 
     /// Create a region inference variable for the given
@@ -1124,7 +1126,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                region_context,
                                                region_map,
                                                free_regions);
-        let (lexical_region_resolutions, errors) = self.region_vars.resolve_regions(&region_rels);
+        let (lexical_region_resolutions, errors) =
+            self.region_vars.borrow_mut().resolve_regions(&region_rels);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -1362,7 +1365,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                a,
                bound);
 
-        self.region_vars.verify_generic_bound(origin, kind, a, bound);
+        self.region_vars.borrow_mut().verify_generic_bound(origin, kind, a, bound);
     }
 
     pub fn type_moves_by_default(&self,
