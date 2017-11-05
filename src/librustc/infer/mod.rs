@@ -1128,15 +1128,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 "region_obligations not empty: {:#?}",
                 self.region_obligations.borrow());
 
-        let region_rels = RegionRelations::new(self.tcx,
-                                               region_context,
-                                               region_map,
-                                               free_regions);
-        let region_data = self.region_constraints.borrow_mut()
-                                                 .take()
-                                                 .expect("regions already resolved")
-                                                 .into_data();
-        let (lexical_region_resolutions, errors) = region_data.resolve_regions(&region_rels);
+        let region_rels = &RegionRelations::new(self.tcx,
+                                                region_context,
+                                                region_map,
+                                                free_regions);
+        let (var_origins, data) = self.region_constraints.borrow_mut()
+                                                         .take()
+                                                         .expect("regions already resolved")
+                                                         .into_origins_and_data();
+        let (lexical_region_resolutions, errors) =
+            lexical_region_resolve::resolve(region_rels, var_origins, data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());

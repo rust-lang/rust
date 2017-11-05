@@ -15,6 +15,7 @@ use infer::RegionVariableOrigin;
 use infer::region_constraints::Constraint;
 use infer::region_constraints::GenericKind;
 use infer::region_constraints::RegionConstraintData;
+use infer::region_constraints::VarOrigins;
 use infer::region_constraints::VerifyBound;
 use middle::free_region::RegionRelations;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -29,6 +30,28 @@ use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
 
 mod graphviz;
 
+/// This function performs lexical region resolution given a complete
+/// set of constraints and variable origins. It performs a fixed-point
+/// iteration to find region values which satisfy all constraints,
+/// assuming such values can be found. It returns the final values of
+/// all the variables as well as a set of errors that must be reported.
+pub fn resolve<'tcx>(
+    region_rels: &RegionRelations<'_, '_, 'tcx>,
+    var_origins: VarOrigins,
+    data: RegionConstraintData<'tcx>
+) -> (
+    LexicalRegionResolutions<'tcx>,
+    Vec<RegionResolutionError<'tcx>>,
+) {
+    debug!("RegionConstraintData: resolve_regions()");
+    let mut errors = vec![];
+    let mut resolver = LexicalResolver { region_rels, var_origins, data };
+    let values = resolver.infer_variable_values(&mut errors);
+    (values, errors)
+}
+
+/// Contains the result of lexical region resolution. Offers methods
+/// to lookup up the final value of a region variable.
 pub struct LexicalRegionResolutions<'tcx> {
     values: IndexVec<RegionVid, VarValue<'tcx>>,
     error_region: ty::Region<'tcx>,
@@ -74,32 +97,171 @@ struct RegionAndOrigin<'tcx> {
 
 type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
 
-impl<'tcx> RegionConstraintData<'tcx> {
-    /// This function performs the actual region resolution.  It must be
-    /// called after all constraints have been added.  It performs a
-    /// fixed-point iteration to find region values which satisfy all
-    /// constraints, assuming such values can be found; if they cannot,
-    /// errors are reported.
-    pub fn resolve_regions(
-        mut self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
-    ) -> (
-        LexicalRegionResolutions<'tcx>,
-        Vec<RegionResolutionError<'tcx>>,
-    ) {
-        debug!("RegionConstraintData: resolve_regions()");
-        let mut errors = vec![];
-        let values = self.infer_variable_values(region_rels, &mut errors);
-        (values, errors)
+struct LexicalResolver<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+    region_rels: &'cx RegionRelations<'cx, 'gcx, 'tcx>,
+    var_origins: VarOrigins,
+    data: RegionConstraintData<'tcx>
+}
+
+impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
+    fn infer_variable_values(
+        &mut self,
+        errors: &mut Vec<RegionResolutionError<'tcx>>,
+    ) -> LexicalRegionResolutions<'tcx> {
+        let mut var_data = self.construct_var_data(self.region_rels.tcx);
+
+        // Dorky hack to cause `dump_constraints` to only get called
+        // if debug mode is enabled:
+        debug!(
+            "----() End constraint listing (context={:?}) {:?}---",
+            self.region_rels.context,
+            self.dump_constraints(self.region_rels)
+        );
+        graphviz::maybe_print_constraints_for(&self.data, self.region_rels);
+
+        let graph = self.construct_graph();
+        self.expand_givens(&graph);
+        self.expansion(&mut var_data);
+        self.collect_errors(&mut var_data, errors);
+        self.collect_var_errors(&var_data, &graph, errors);
+        var_data
     }
+
+    fn num_vars(&self) -> usize {
+        self.var_origins.len()
+    }
+
+    /// Initially, the value for all variables is set to `'empty`, the
+    /// empty region. The `expansion` phase will grow this larger.
+    fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
+        LexicalRegionResolutions {
+            error_region: tcx.types.re_static,
+            values: (0..self.num_vars())
+                .map(|_| VarValue::Value(tcx.types.re_empty))
+                .collect(),
+        }
+    }
+
+    fn dump_constraints(&self, free_regions: &RegionRelations<'_, '_, 'tcx>) {
+        debug!(
+            "----() Start constraint listing (context={:?}) ()----",
+            free_regions.context
+        );
+        for (idx, (constraint, _)) in self.data.constraints.iter().enumerate() {
+            debug!("Constraint {} => {:?}", idx, constraint);
+        }
+    }
+
+    fn expand_givens(&mut self, graph: &RegionGraph) {
+        // Givens are a kind of horrible hack to account for
+        // constraints like 'c <= '0 that are known to hold due to
+        // closure signatures (see the comment above on the `givens`
+        // field). They should go away. But until they do, the role
+        // of this fn is to account for the transitive nature:
+        //
+        //     Given 'c <= '0
+        //     and   '0 <= '1
+        //     then  'c <= '1
+
+        let seeds: Vec<_> = self.data.givens.iter().cloned().collect();
+        for (r, vid) in seeds {
+
+            // While all things transitively reachable in the graph
+            // from the variable (`'0` in the example above).
+            let seed_index = NodeIndex(vid.index as usize);
+            for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
+                let succ_index = succ_index.0;
+
+                // The first N nodes correspond to the region
+                // variables. Other nodes correspond to constant
+                // regions.
+                if succ_index < self.num_vars() {
+                    let succ_vid = RegionVid::new(succ_index);
+
+                    // Add `'c <= '1`.
+                    self.data.givens.insert((r, succ_vid));
+                }
+            }
+        }
+    }
+
+    fn expansion(
+        &self,
+        var_values: &mut LexicalRegionResolutions<'tcx>,
+    ) {
+        self.iterate_until_fixed_point("Expansion", |constraint, origin| {
+            debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
+            match *constraint {
+                Constraint::RegSubVar(a_region, b_vid) => {
+                    let b_data = var_values.value_mut(b_vid);
+                    self.expand_node(a_region, b_vid, b_data)
+                }
+                Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
+                    VarValue::ErrorValue => false,
+                    VarValue::Value(a_region) => {
+                        let b_node = var_values.value_mut(b_vid);
+                        self.expand_node(a_region, b_vid, b_node)
+                    }
+                },
+                Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
+                    // These constraints are checked after expansion
+                    // is done, in `collect_errors`.
+                    false
+                }
+            }
+        })
+    }
+
+    fn expand_node(
+        &self,
+        a_region: Region<'tcx>,
+        b_vid: RegionVid,
+        b_data: &mut VarValue<'tcx>,
+    ) -> bool {
+        debug!("expand_node({:?}, {:?} == {:?})", a_region, b_vid, b_data);
+
+        // Check if this relationship is implied by a given.
+        match *a_region {
+            ty::ReEarlyBound(_) | ty::ReFree(_) => {
+                if self.data.givens.contains(&(a_region, b_vid)) {
+                    debug!("given");
+                    return false;
+                }
+            }
+            _ => {}
+        }
+
+        match *b_data {
+            VarValue::Value(cur_region) => {
+                let lub = self.lub_concrete_regions(a_region, cur_region);
+                if lub == cur_region {
+                    return false;
+                }
+
+                debug!(
+                    "Expanding value of {:?} from {:?} to {:?}",
+                    b_vid,
+                    cur_region,
+                    lub
+                );
+
+                *b_data = VarValue::Value(lub);
+                return true;
+            }
+
+            VarValue::ErrorValue => {
+                return false;
+            }
+        }
+    }
+
 
     fn lub_concrete_regions(
         &self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
     ) -> Region<'tcx> {
-        let tcx = region_rels.tcx;
+        let tcx = self.region_rels.tcx;
         match (a, b) {
             (&ReLateBound(..), _) | (_, &ReLateBound(..)) | (&ReErased, _) | (_, &ReErased) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
@@ -132,14 +294,14 @@ impl<'tcx> RegionConstraintData<'tcx> {
                 // reasonably compare free regions and scopes:
                 let fr_scope = match (a, b) {
                     (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => {
-                        region_rels.region_scope_tree.early_free_scope(region_rels.tcx, br)
+                        self.region_rels.region_scope_tree.early_free_scope(self.region_rels.tcx, br)
                     }
                     (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => {
-                        region_rels.region_scope_tree.free_scope(region_rels.tcx, fr)
+                        self.region_rels.region_scope_tree.free_scope(self.region_rels.tcx, fr)
                     }
                     _ => bug!(),
                 };
-                let r_id = region_rels
+                let r_id = self.region_rels
                     .region_scope_tree
                     .nearest_common_ancestor(fr_scope, s_id);
                 if r_id == fr_scope {
@@ -162,7 +324,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
                 // The region corresponding to an outer block is a
                 // subtype of the region corresponding to an inner
                 // block.
-                let lub = region_rels
+                let lub = self.region_rels
                     .region_scope_tree
                     .nearest_common_ancestor(a_id, b_id);
                 tcx.mk_region(ReScope(lub))
@@ -171,7 +333,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
             (&ReEarlyBound(_), &ReEarlyBound(_)) |
             (&ReFree(_), &ReEarlyBound(_)) |
             (&ReEarlyBound(_), &ReFree(_)) |
-            (&ReFree(_), &ReFree(_)) => region_rels.lub_free_regions(a, b),
+            (&ReFree(_), &ReFree(_)) => self.region_rels.lub_free_regions(a, b),
 
             // For these types, we cannot define any additional
             // relationship:
@@ -183,166 +345,15 @@ impl<'tcx> RegionConstraintData<'tcx> {
         }
     }
 
-    fn infer_variable_values(
-        &mut self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
-        errors: &mut Vec<RegionResolutionError<'tcx>>,
-    ) -> LexicalRegionResolutions<'tcx> {
-        let mut var_data = self.construct_var_data(region_rels.tcx);
-
-        // Dorky hack to cause `dump_constraints` to only get called
-        // if debug mode is enabled:
-        debug!(
-            "----() End constraint listing (context={:?}) {:?}---",
-            region_rels.context,
-            self.dump_constraints(region_rels)
-        );
-        graphviz::maybe_print_constraints_for(self, region_rels);
-
-        let graph = self.construct_graph();
-        self.expand_givens(&graph);
-        self.expansion(region_rels, &mut var_data);
-        self.collect_errors(region_rels, &mut var_data, errors);
-        self.collect_var_errors(region_rels, &var_data, &graph, errors);
-        var_data
-    }
-
-    /// Initially, the value for all variables is set to `'empty`, the
-    /// empty region. The `expansion` phase will grow this larger.
-    fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
-        LexicalRegionResolutions {
-            error_region: tcx.types.re_static,
-            values: (0..self.num_vars())
-                .map(|_| VarValue::Value(tcx.types.re_empty))
-                .collect(),
-        }
-    }
-
-    fn dump_constraints(&self, free_regions: &RegionRelations<'_, '_, 'tcx>) {
-        debug!(
-            "----() Start constraint listing (context={:?}) ()----",
-            free_regions.context
-        );
-        for (idx, (constraint, _)) in self.constraints.iter().enumerate() {
-            debug!("Constraint {} => {:?}", idx, constraint);
-        }
-    }
-
-    fn expand_givens(&mut self, graph: &RegionGraph) {
-        // Givens are a kind of horrible hack to account for
-        // constraints like 'c <= '0 that are known to hold due to
-        // closure signatures (see the comment above on the `givens`
-        // field). They should go away. But until they do, the role
-        // of this fn is to account for the transitive nature:
-        //
-        //     Given 'c <= '0
-        //     and   '0 <= '1
-        //     then  'c <= '1
-
-        let seeds: Vec<_> = self.givens.iter().cloned().collect();
-        for (r, vid) in seeds {
-
-            // While all things transitively reachable in the graph
-            // from the variable (`'0` in the example above).
-            let seed_index = NodeIndex(vid.index as usize);
-            for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
-                let succ_index = succ_index.0;
-
-                // The first N nodes correspond to the region
-                // variables. Other nodes correspond to constant
-                // regions.
-                if succ_index < self.num_vars() {
-                    let succ_vid = RegionVid::new(succ_index);
-
-                    // Add `'c <= '1`.
-                    self.givens.insert((r, succ_vid));
-                }
-            }
-        }
-    }
-
-    fn expansion(
-        &self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
-        var_values: &mut LexicalRegionResolutions<'tcx>,
-    ) {
-        self.iterate_until_fixed_point("Expansion", |constraint, origin| {
-            debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
-            match *constraint {
-                Constraint::RegSubVar(a_region, b_vid) => {
-                    let b_data = var_values.value_mut(b_vid);
-                    self.expand_node(region_rels, a_region, b_vid, b_data)
-                }
-                Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => false,
-                    VarValue::Value(a_region) => {
-                        let b_node = var_values.value_mut(b_vid);
-                        self.expand_node(region_rels, a_region, b_vid, b_node)
-                    }
-                },
-                Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
-                    // These constraints are checked after expansion
-                    // is done, in `collect_errors`.
-                    false
-                }
-            }
-        })
-    }
-
-    fn expand_node(
-        &self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
-        a_region: Region<'tcx>,
-        b_vid: RegionVid,
-        b_data: &mut VarValue<'tcx>,
-    ) -> bool {
-        debug!("expand_node({:?}, {:?} == {:?})", a_region, b_vid, b_data);
-
-        // Check if this relationship is implied by a given.
-        match *a_region {
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                if self.givens.contains(&(a_region, b_vid)) {
-                    debug!("given");
-                    return false;
-                }
-            }
-            _ => {}
-        }
-
-        match *b_data {
-            VarValue::Value(cur_region) => {
-                let lub = self.lub_concrete_regions(region_rels, a_region, cur_region);
-                if lub == cur_region {
-                    return false;
-                }
-
-                debug!(
-                    "Expanding value of {:?} from {:?} to {:?}",
-                    b_vid,
-                    cur_region,
-                    lub
-                );
-
-                *b_data = VarValue::Value(lub);
-                return true;
-            }
-
-            VarValue::ErrorValue => {
-                return false;
-            }
-        }
-    }
-
     /// After expansion is complete, go and check upper bounds (i.e.,
     /// cases where the region cannot grow larger than a fixed point)
     /// and check that they are satisfied.
     fn collect_errors(
         &self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
         var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
-        for (constraint, origin) in &self.constraints {
+        for (constraint, origin) in &self.data.constraints {
             debug!(
                 "collect_errors: constraint={:?} origin={:?}",
                 constraint,
@@ -354,7 +365,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
                 }
 
                 Constraint::RegSubReg(sub, sup) => {
-                    if region_rels.is_subregion_of(sub, sup) {
+                    if self.region_rels.is_subregion_of(sub, sup) {
                         continue;
                     }
 
@@ -385,7 +396,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
                     // Do not report these errors immediately:
                     // instead, set the variable value to error and
                     // collect them later.
-                    if !region_rels.is_subregion_of(a_region, b_region) {
+                    if !self.region_rels.is_subregion_of(a_region, b_region) {
                         debug!(
                             "collect_errors: region error at {:?}: \
                              cannot verify that {:?}={:?} <= {:?}",
@@ -400,7 +411,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
             }
         }
 
-        for verify in &self.verifys {
+        for verify in &self.data.verifys {
             debug!("collect_errors: verify={:?}", verify);
             let sub = var_data.normalize(verify.region);
 
@@ -410,7 +421,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
                 continue;
             }
 
-            if verify.bound.is_met(region_rels, var_data, sub) {
+            if self.bound_is_met(&verify.bound, var_data, sub) {
                 continue;
             }
 
@@ -434,7 +445,6 @@ impl<'tcx> RegionConstraintData<'tcx> {
     /// and create a `RegionResolutionError` for each of them.
     fn collect_var_errors(
         &self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
         var_data: &LexicalRegionResolutions<'tcx>,
         graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
@@ -481,7 +491,6 @@ impl<'tcx> RegionConstraintData<'tcx> {
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
                     self.collect_error_for_expanding_node(
-                        region_rels,
                         graph,
                         &mut dup_vec,
                         node_vid,
@@ -509,7 +518,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
         let dummy_source = graph.add_node(());
         let dummy_sink = graph.add_node(());
 
-        for (constraint, _) in &self.constraints {
+        for (constraint, _) in &self.data.constraints {
             match *constraint {
                 Constraint::VarSubVar(a_id, b_id) => {
                     graph.add_edge(
@@ -536,7 +545,6 @@ impl<'tcx> RegionConstraintData<'tcx> {
 
     fn collect_error_for_expanding_node(
         &self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
         graph: &RegionGraph<'tcx>,
         dup_vec: &mut [u32],
         node_idx: RegionVid,
@@ -568,7 +576,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
 
         for lower_bound in &lower_bounds {
             for upper_bound in &upper_bounds {
-                if !region_rels.is_subregion_of(lower_bound.region, upper_bound.region) {
+                if !self.region_rels.is_subregion_of(lower_bound.region, upper_bound.region) {
                     let origin = self.var_origins[node_idx].clone();
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
@@ -624,7 +632,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
 
         // to start off the process, walk the source node in the
         // direction specified
-        process_edges(self, &mut state, graph, orig_node_idx, dir);
+        process_edges(&self.data, &mut state, graph, orig_node_idx, dir);
 
         while !state.stack.is_empty() {
             let node_idx = state.stack.pop().unwrap();
@@ -642,7 +650,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
                 node_idx
             );
 
-            process_edges(self, &mut state, graph, node_idx, dir);
+            process_edges(&self.data, &mut state, graph, node_idx, dir);
         }
 
         let WalkState {
@@ -699,7 +707,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            for (constraint, origin) in &self.constraints {
+            for (constraint, origin) in &self.data.constraints {
                 let edge_changed = body(constraint, origin);
                 if edge_changed {
                     debug!("Updated due to constraint {:?}", constraint);
@@ -709,6 +717,27 @@ impl<'tcx> RegionConstraintData<'tcx> {
         }
         debug!("---- {} Complete after {} iteration(s)", tag, iteration);
     }
+
+    fn bound_is_met(
+        &self,
+        bound: &VerifyBound<'tcx>,
+        var_values: &LexicalRegionResolutions<'tcx>,
+        min: ty::Region<'tcx>,
+    ) -> bool {
+        match bound {
+            VerifyBound::AnyRegion(rs) => rs.iter()
+                .map(|&r| var_values.normalize(r))
+                .any(|r| self.region_rels.is_subregion_of(min, r)),
+
+            VerifyBound::AllRegions(rs) => rs.iter()
+                .map(|&r| var_values.normalize(r))
+                .all(|r| self.region_rels.is_subregion_of(min, r)),
+
+            VerifyBound::AnyBound(bs) => bs.iter().any(|b| self.bound_is_met(b, var_values, min)),
+
+            VerifyBound::AllBounds(bs) => bs.iter().all(|b| self.bound_is_met(b, var_values, min)),
+        }
+    }
 }
 
 impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
@@ -717,29 +746,6 @@ impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
     }
 }
 
-
-impl<'tcx> VerifyBound<'tcx> {
-    fn is_met(
-        &self,
-        region_rels: &RegionRelations<'_, '_, 'tcx>,
-        var_values: &LexicalRegionResolutions<'tcx>,
-        min: ty::Region<'tcx>,
-    ) -> bool {
-        match self {
-            VerifyBound::AnyRegion(rs) => rs.iter()
-                .map(|&r| var_values.normalize(r))
-                .any(|r| region_rels.is_subregion_of(min, r)),
-
-            VerifyBound::AllRegions(rs) => rs.iter()
-                .map(|&r| var_values.normalize(r))
-                .all(|r| region_rels.is_subregion_of(min, r)),
-
-            VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.is_met(region_rels, var_values, min)),
-
-            VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.is_met(region_rels, var_values, min)),
-        }
-    }
-}
 
 impl<'tcx> LexicalRegionResolutions<'tcx> {
     fn normalize(&self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
