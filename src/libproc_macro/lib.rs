@@ -728,7 +728,7 @@ impl TokenTree {
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 pub mod __internal {
-    pub use quote::{Quoter, __rt};
+    pub use quote::{LiteralKind, Quoter, unquote};
 
     use std::cell::Cell;
 
