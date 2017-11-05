@@ -72,7 +72,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode8.3
-      if: branch = auto
+      # if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
     # just produce a bunch of artifacts.
@@ -92,7 +92,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      # if: branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -106,11 +106,11 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      # if: branch = auto
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
-      if: branch = auto
+      # if: branch = auto
     - env: IMAGE=armhf-gnu
       if: branch = auto
     - env: IMAGE=cross DEPLOY=1
@@ -148,7 +148,7 @@ matrix:
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-s390x-linux DEPLOY=1
-      if: branch = auto
+      # if: branch = auto
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
@@ -166,7 +166,7 @@ matrix:
     - env: IMAGE=x86_64-gnu
       if: branch = auto
     - env: IMAGE=x86_64-gnu-full-bootstrap
-      if: branch = auto
+      # if: branch = auto
     - env: IMAGE=x86_64-gnu-aux
       if: branch = auto
     - env: IMAGE=x86_64-gnu-cargotest

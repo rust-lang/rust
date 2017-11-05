@@ -25,71 +25,71 @@ environment:
     RUST_CHECK_TARGET: check-aux
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
-  # MSVC cargotest
-  - MSYS_BITS: 64
-    SCRIPT: python x.py test src/tools/cargotest
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+  # # MSVC cargotest
+  # - MSYS_BITS: 64
+  #   SCRIPT: python x.py test src/tools/cargotest
+  #   RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
-  # 32/64-bit MinGW builds.
-  #
-  # We are using MinGW with posix threads since LLVM does not compile with
-  # the win32 threads version due to missing support for C++'s std::thread.
-  #
-  # Instead of relying on the MinGW version installed on appveryor we download
-  # and install one ourselves so we won't be surprised by changes to appveyor's
-  # build image.
-  #
-  # Finally, note that the downloads below are all in the `rust-lang-ci` S3
-  # bucket, but they cleraly didn't originate there! The downloads originally
-  # came from the mingw-w64 SourceForge download site. Unfortunately
-  # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
-  - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-    SCRIPT: python x.py test
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
-    MINGW_DIR: mingw32
-  - MSYS_BITS: 64
-    SCRIPT: python x.py test
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
-    MINGW_DIR: mingw64
+  # # 32/64-bit MinGW builds.
+  # #
+  # # We are using MinGW with posix threads since LLVM does not compile with
+  # # the win32 threads version due to missing support for C++'s std::thread.
+  # #
+  # # Instead of relying on the MinGW version installed on appveryor we download
+  # # and install one ourselves so we won't be surprised by changes to appveyor's
+  # # build image.
+  # #
+  # # Finally, note that the downloads below are all in the `rust-lang-ci` S3
+  # # bucket, but they cleraly didn't originate there! The downloads originally
+  # # came from the mingw-w64 SourceForge download site. Unfortunately
+  # # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
+  # - MSYS_BITS: 32
+  #   RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+  #   SCRIPT: python x.py test
+  #   MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+  #   MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+  #   MINGW_DIR: mingw32
+  # - MSYS_BITS: 64
+  #   SCRIPT: python x.py test
+  #   RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+  #   MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+  #   MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+  #   MINGW_DIR: mingw64
 
-  # 32/64 bit MSVC and GNU deployment
-  - RUST_CONFIGURE_ARGS: >
-      --build=x86_64-pc-windows-msvc
-      --enable-extended
-      --enable-profiler
-    SCRIPT: python x.py dist
-    DEPLOY: 1
-  - RUST_CONFIGURE_ARGS: >
-      --build=i686-pc-windows-msvc
-      --target=i586-pc-windows-msvc
-      --enable-extended
-      --enable-profiler
-    SCRIPT: python x.py dist
-    DEPLOY: 1
-  - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
-    SCRIPT: python x.py dist
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
-    MINGW_DIR: mingw32
-    DEPLOY: 1
-  - MSYS_BITS: 64
-    SCRIPT: python x.py dist
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
-    MINGW_DIR: mingw64
-    DEPLOY: 1
+  # # 32/64 bit MSVC and GNU deployment
+  # - RUST_CONFIGURE_ARGS: >
+  #     --build=x86_64-pc-windows-msvc
+  #     --enable-extended
+  #     --enable-profiler
+  #   SCRIPT: python x.py dist
+  #   DEPLOY: 1
+  # - RUST_CONFIGURE_ARGS: >
+  #     --build=i686-pc-windows-msvc
+  #     --target=i586-pc-windows-msvc
+  #     --enable-extended
+  #     --enable-profiler
+  #   SCRIPT: python x.py dist
+  #   DEPLOY: 1
+  # - MSYS_BITS: 32
+  #   RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
+  #   SCRIPT: python x.py dist
+  #   MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+  #   MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+  #   MINGW_DIR: mingw32
+  #   DEPLOY: 1
+  # - MSYS_BITS: 64
+  #   SCRIPT: python x.py dist
+  #   RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
+  #   MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+  #   MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+  #   MINGW_DIR: mingw64
+  #   DEPLOY: 1
 
-  # "alternate" deployment, see .travis.yml for more info
-  - MSYS_BITS: 64
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
-    SCRIPT: python x.py dist
-    DEPLOY_ALT: 1
+  # # "alternate" deployment, see .travis.yml for more info
+  # - MSYS_BITS: 64
+  #   RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+  #   SCRIPT: python x.py dist
+  #   DEPLOY_ALT: 1
 
 matrix:
   fast_finish: true
@@ -175,9 +175,9 @@ test_script:
 on_failure:
   - cat %CD%\sccache.log || exit 0
 
-branches:
-  only:
-    - auto
+# branches:
+#   only:
+#     - auto
 
 before_deploy:
   - ps: |

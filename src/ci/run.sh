@@ -65,6 +65,13 @@ else
   fi
 fi
 
+if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+    ncpus=$(sysctl -n hw.ncpu)
+else
+    ncpus=$(grep processor /proc/cpuinfo | wc -l)
+    export RUST_BACKTRACE=1
+fi
+
 travis_fold start configure
 travis_time_start
 $SRC/configure $RUST_CONFIGURE_ARGS
@@ -82,12 +89,6 @@ travis_time_start
 make check-bootstrap
 travis_fold end check-bootstrap
 travis_time_finish
-
-if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-    ncpus=$(sysctl -n hw.ncpu)
-else
-    ncpus=$(grep processor /proc/cpuinfo | wc -l)
-fi
 
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
