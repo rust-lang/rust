@@ -1,6 +1,7 @@
 //! `x86` and `x86_64` intrinsics.
 
 pub use self::ia32::*;
+pub use self::cpuid::*;
 pub use self::xsave::*;
 
 pub use self::sse::*;
@@ -31,8 +32,9 @@ mod macros;
 #[macro_use]
 mod runtime;
 
-mod xsave;
 mod ia32;
+mod cpuid;
+mod xsave;
 
 mod sse;
 mod sse2;
