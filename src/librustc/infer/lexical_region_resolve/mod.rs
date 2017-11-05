@@ -38,14 +38,18 @@ mod graphviz;
 pub fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, '_, 'tcx>,
     var_origins: VarOrigins,
-    data: RegionConstraintData<'tcx>
+    data: RegionConstraintData<'tcx>,
 ) -> (
     LexicalRegionResolutions<'tcx>,
     Vec<RegionResolutionError<'tcx>>,
 ) {
     debug!("RegionConstraintData: resolve_regions()");
     let mut errors = vec![];
-    let mut resolver = LexicalResolver { region_rels, var_origins, data };
+    let mut resolver = LexicalResolver {
+        region_rels,
+        var_origins,
+        data,
+    };
     let values = resolver.infer_variable_values(&mut errors);
     (values, errors)
 }
@@ -100,7 +104,7 @@ type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
 struct LexicalResolver<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     region_rels: &'cx RegionRelations<'cx, 'gcx, 'tcx>,
     var_origins: VarOrigins,
-    data: RegionConstraintData<'tcx>
+    data: RegionConstraintData<'tcx>,
 }
 
 impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
@@ -165,7 +169,6 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         let seeds: Vec<_> = self.data.givens.iter().cloned().collect();
         for (r, vid) in seeds {
-
             // While all things transitively reachable in the graph
             // from the variable (`'0` in the example above).
             let seed_index = NodeIndex(vid.index as usize);
@@ -185,10 +188,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn expansion(
-        &self,
-        var_values: &mut LexicalRegionResolutions<'tcx>,
-    ) {
+    fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
         self.iterate_until_fixed_point("Expansion", |constraint, origin| {
             debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
             match *constraint {
@@ -222,12 +222,11 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         // Check if this relationship is implied by a given.
         match *a_region {
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {
-                if self.data.givens.contains(&(a_region, b_vid)) {
-                    debug!("given");
-                    return false;
-                }
-            }
+            ty::ReEarlyBound(_) | ty::ReFree(_) => if self.data.givens.contains(&(a_region, b_vid))
+            {
+                debug!("given");
+                return false;
+            },
             _ => {}
         }
 
@@ -256,11 +255,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
 
-    fn lub_concrete_regions(
-        &self,
-        a: Region<'tcx>,
-        b: Region<'tcx>,
-    ) -> Region<'tcx> {
+    fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let tcx = self.region_rels.tcx;
         match (a, b) {
             (&ReLateBound(..), _) | (_, &ReLateBound(..)) | (&ReErased, _) | (_, &ReErased) => {
@@ -293,12 +288,12 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 // at least as big as fr.scope".  So, we can
                 // reasonably compare free regions and scopes:
                 let fr_scope = match (a, b) {
-                    (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => {
-                        self.region_rels.region_scope_tree.early_free_scope(self.region_rels.tcx, br)
-                    }
-                    (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => {
-                        self.region_rels.region_scope_tree.free_scope(self.region_rels.tcx, fr)
-                    }
+                    (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => self.region_rels
+                        .region_scope_tree
+                        .early_free_scope(self.region_rels.tcx, br),
+                    (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => self.region_rels
+                        .region_scope_tree
+                        .free_scope(self.region_rels.tcx, fr),
                     _ => bug!(),
                 };
                 let r_id = self.region_rels
@@ -490,12 +485,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                        that is not used is not a problem, so if this rule
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
-                    self.collect_error_for_expanding_node(
-                        graph,
-                        &mut dup_vec,
-                        node_vid,
-                        errors,
-                    );
+                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
                 }
             }
         }
@@ -576,7 +566,9 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         for lower_bound in &lower_bounds {
             for upper_bound in &upper_bounds {
-                if !self.region_rels.is_subregion_of(lower_bound.region, upper_bound.region) {
+                if !self.region_rels
+                    .is_subregion_of(lower_bound.region, upper_bound.region)
+                {
                     let origin = self.var_origins[node_idx].clone();
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
