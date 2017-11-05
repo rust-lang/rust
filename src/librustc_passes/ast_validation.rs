@@ -67,12 +67,14 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_decl_no_pat<ReportFn: Fn(Span)>(&self, decl: &FnDecl, report_err: ReportFn) {
+    fn check_decl_no_pat<ReportFn: Fn(Span, bool)>(&self, decl: &FnDecl, report_err: ReportFn) {
         for arg in &decl.inputs {
             match arg.pat.node {
                 PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), _, None) |
                 PatKind::Wild => {}
-                _ => report_err(arg.pat.span),
+                PatKind::Ident(BindingMode::ByValue(Mutability::Mutable), _, None) =>
+                    report_err(arg.pat.span, true),
+                _ => report_err(arg.pat.span, false),
             }
         }
     }
@@ -149,7 +151,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::BareFn(ref bfty) => {
-                self.check_decl_no_pat(&bfty.decl, |span| {
+                self.check_decl_no_pat(&bfty.decl, |span, _| {
                     struct_span_err!(self.session, span, E0561,
                                      "patterns aren't allowed in function pointer types").emit();
                 });
@@ -253,12 +255,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
                         self.check_trait_fn_not_const(sig.constness);
                         if block.is_none() {
-                            self.check_decl_no_pat(&sig.decl, |span| {
-                                self.session.buffer_lint(
-                                    lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
-                                    trait_item.id, span,
-                                    "patterns aren't allowed in methods \
-                                     without bodies");
+                            self.check_decl_no_pat(&sig.decl, |span, mut_ident| {
+                                if mut_ident {
+                                    self.session.buffer_lint(
+                                        lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                                        trait_item.id, span,
+                                        "patterns aren't allowed in methods without bodies");
+                                } else {
+                                    struct_span_err!(self.session, span, E0642,
+                                        "patterns aren't allowed in methods without bodies").emit();
+                                }
                             });
                         }
                     }
@@ -292,7 +298,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match fi.node {
             ForeignItemKind::Fn(ref decl, _) => {
-                self.check_decl_no_pat(decl, |span| {
+                self.check_decl_no_pat(decl, |span, _| {
                     struct_span_err!(self.session, span, E0130,
                                      "patterns aren't allowed in foreign function declarations")
                         .span_label(span, "pattern not allowed in foreign function").emit();

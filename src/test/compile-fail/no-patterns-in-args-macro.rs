@@ -30,8 +30,7 @@ mod bad_pat {
     m!((bad, pat));
     //~^ ERROR patterns aren't allowed in function pointer types
     //~| ERROR patterns aren't allowed in foreign function declarations
-    //~| WARN patterns aren't allowed in methods without bodies
-    //~| WARN this was previously accepted
+    //~| ERROR patterns aren't allowed in methods without bodies
 }
 
 fn main() {}
