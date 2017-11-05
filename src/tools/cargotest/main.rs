@@ -165,6 +165,8 @@ fn run_cargo_test(cargo_path: &Path, crate_path: &Path, packages: &[&str]) -> bo
     let status = command
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
+        // Relax #![deny(warnings)] in some crates
+        .env("RUSTFLAGS", "--cap-lints warn")
         .current_dir(crate_path)
         .status()
         .expect("");
