@@ -57,7 +57,7 @@
 
 use infer;
 use super::{InferCtxt, TypeTrace, SubregionOrigin, RegionVariableOrigin, ValuePairs};
-use super::region_inference::GenericKind;
+use super::region_constraints::GenericKind;
 use super::lexical_region_resolve::RegionResolutionError;
 
 use std::fmt;
