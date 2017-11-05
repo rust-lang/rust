@@ -152,6 +152,15 @@ pub fn test14() {
     }
 }
 
+// Issue #1991: the outter loop should not warn.
+pub fn test15() {
+    'label: loop {
+        while false {
+            break 'label;
+        }
+    }
+}
+
 fn main() {
     test1();
     test2();
