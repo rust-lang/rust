@@ -12,7 +12,6 @@
 
 use infer::SubregionOrigin;
 use infer::region_inference::Constraint;
-use infer::region_inference::Constraint::*;
 use infer::region_inference::RegionVarBindings;
 use infer::region_inference::RegionResolutionError;
 use infer::region_inference::VarValue;
@@ -230,18 +229,18 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         self.iterate_until_fixed_point("Expansion", |constraint, origin| {
             debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
             match *constraint {
-                ConstrainRegSubVar(a_region, b_vid) => {
+                Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = &mut var_values[b_vid.index as usize];
                     self.expand_node(region_rels, a_region, b_vid, b_data)
                 }
-                ConstrainVarSubVar(a_vid, b_vid) => match var_values[a_vid.index as usize] {
+                Constraint::VarSubVar(a_vid, b_vid) => match var_values[a_vid.index as usize] {
                     VarValue::ErrorValue => false,
                     VarValue::Value(a_region) => {
                         let b_node = &mut var_values[b_vid.index as usize];
                         self.expand_node(region_rels, a_region, b_vid, b_node)
                     }
                 },
-                ConstrainRegSubReg(..) | ConstrainVarSubReg(..) => {
+                Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
                     false
@@ -311,11 +310,11 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 origin
             );
             match *constraint {
-                ConstrainRegSubVar(..) | ConstrainVarSubVar(..) => {
+                Constraint::RegSubVar(..) | Constraint::VarSubVar(..) => {
                     // Expansion will ensure that these constraints hold. Ignore.
                 }
 
-                ConstrainRegSubReg(sub, sup) => {
+                Constraint::RegSubReg(sub, sup) => {
                     if region_rels.is_subregion_of(sub, sup) {
                         continue;
                     }
@@ -331,7 +330,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                     errors.push(RegionResolutionError::ConcreteFailure((*origin).clone(), sub, sup));
                 }
 
-                ConstrainVarSubReg(a_vid, b_region) => {
+                Constraint::VarSubReg(a_vid, b_region) => {
                     let a_data = &mut var_data[a_vid.index as usize];
                     debug!("contraction: {:?} == {:?}, {:?}", a_vid, a_data, b_region);
 
@@ -473,20 +472,20 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         for (constraint, _) in constraints.iter() {
             match *constraint {
-                ConstrainVarSubVar(a_id, b_id) => {
+                Constraint::VarSubVar(a_id, b_id) => {
                     graph.add_edge(
                         NodeIndex(a_id.index as usize),
                         NodeIndex(b_id.index as usize),
                         *constraint,
                     );
                 }
-                ConstrainRegSubVar(_, b_id) => {
+                Constraint::RegSubVar(_, b_id) => {
                     graph.add_edge(dummy_source, NodeIndex(b_id.index as usize), *constraint);
                 }
-                ConstrainVarSubReg(a_id, _) => {
+                Constraint::VarSubReg(a_id, _) => {
                     graph.add_edge(NodeIndex(a_id.index as usize), dummy_sink, *constraint);
                 }
-                ConstrainRegSubReg(..) => {
+                Constraint::RegSubReg(..) => {
                     // this would be an edge from `dummy_source` to
                     // `dummy_sink`; just ignore it.
                 }
@@ -624,7 +623,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             let source_node_index = NodeIndex(source_vid.index as usize);
             for (_, edge) in graph.adjacent_edges(source_node_index, dir) {
                 match edge.data {
-                    ConstrainVarSubVar(from_vid, to_vid) => {
+                    Constraint::VarSubVar(from_vid, to_vid) => {
                         let opp_vid = if from_vid == source_vid {
                             to_vid
                         } else {
@@ -635,14 +634,14 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    ConstrainRegSubVar(region, _) | ConstrainVarSubReg(_, region) => {
+                    Constraint::RegSubVar(region, _) | Constraint::VarSubReg(_, region) => {
                         state.result.push(RegionAndOrigin {
                             region,
                             origin: this.constraints.borrow().get(&edge.data).unwrap().clone(),
                         });
                     }
 
-                    ConstrainRegSubReg(..) => panic!(
+                    Constraint::RegSubReg(..) => panic!(
                         "cannot reach reg-sub-reg edge in region inference \
                          post-processing"
                     ),

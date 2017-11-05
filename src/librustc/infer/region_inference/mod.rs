@@ -10,11 +10,8 @@
 
 //! See README.md
 
-pub use self::Constraint::*;
-pub use self::UndoLogEntry::*;
-pub use self::CombineMapType::*;
-pub use self::RegionResolutionError::*;
-pub use self::VarValue::*;
+use self::UndoLogEntry::*;
+use self::CombineMapType::*;
 
 use super::{RegionVariableOrigin, SubregionOrigin, MiscVariable};
 use super::unify_key;
@@ -36,20 +33,20 @@ use std::u32;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Constraint<'tcx> {
     /// One region variable is subregion of another
-    ConstrainVarSubVar(RegionVid, RegionVid),
+    VarSubVar(RegionVid, RegionVid),
 
     /// Concrete region is subregion of region variable
-    ConstrainRegSubVar(Region<'tcx>, RegionVid),
+    RegSubVar(Region<'tcx>, RegionVid),
 
     /// Region variable is subregion of concrete region. This does not
     /// directly affect inference, but instead is checked after
     /// inference is complete.
-    ConstrainVarSubReg(RegionVid, Region<'tcx>),
+    VarSubReg(RegionVid, Region<'tcx>),
 
     /// A constraint where neither side is a variable. This does not
     /// directly affect inference, but instead is checked after
     /// inference is complete.
-    ConstrainRegSubReg(Region<'tcx>, Region<'tcx>),
+    RegSubReg(Region<'tcx>, Region<'tcx>),
 }
 
 /// VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
@@ -98,13 +95,13 @@ pub enum VerifyBound<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TwoRegions<'tcx> {
+struct TwoRegions<'tcx> {
     a: Region<'tcx>,
     b: Region<'tcx>,
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum UndoLogEntry<'tcx> {
+enum UndoLogEntry<'tcx> {
     /// Pushed when we start a snapshot.
     OpenSnapshot,
 
@@ -138,7 +135,7 @@ pub enum UndoLogEntry<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum CombineMapType {
+enum CombineMapType {
     Lub,
     Glb,
 }
@@ -168,19 +165,13 @@ pub enum RegionResolutionError<'tcx> {
                    Region<'tcx>),
 }
 
-#[derive(Clone, Debug)]
-pub enum ProcessedErrorOrigin<'tcx> {
-    ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
-    VariableFailure(RegionVariableOrigin),
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum VarValue<'tcx> {
     Value(Region<'tcx>),
     ErrorValue,
 }
 
-pub type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
+type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub(in infer) tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -426,7 +417,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             .rollback_to(snapshot.region_snapshot);
     }
 
-    pub fn rollback_undo_entry(&self, undo_entry: UndoLogEntry<'tcx>) {
+    fn rollback_undo_entry(&self, undo_entry: UndoLogEntry<'tcx>) {
         match undo_entry {
             OpenSnapshot => {
                 panic!("Failure to observe stack discipline");
@@ -578,13 +569,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                                  undo_entry: &UndoLogEntry<'tcx>)
                                  -> bool {
             match undo_entry {
-                &AddConstraint(ConstrainVarSubVar(..)) =>
+                &AddConstraint(Constraint::VarSubVar(..)) =>
                     false,
-                &AddConstraint(ConstrainRegSubVar(a, _)) =>
+                &AddConstraint(Constraint::RegSubVar(a, _)) =>
                     skols.contains(&a),
-                &AddConstraint(ConstrainVarSubReg(_, b)) =>
+                &AddConstraint(Constraint::VarSubReg(_, b)) =>
                     skols.contains(&b),
-                &AddConstraint(ConstrainRegSubReg(a, b)) =>
+                &AddConstraint(Constraint::RegSubReg(a, b)) =>
                     skols.contains(&a) || skols.contains(&b),
                 &AddGiven(..) =>
                     false,
@@ -725,16 +716,16 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 // all regions are subregions of static, so we can ignore this
             }
             (&ReVar(sub_id), &ReVar(sup_id)) => {
-                self.add_constraint(ConstrainVarSubVar(sub_id, sup_id), origin);
+                self.add_constraint(Constraint::VarSubVar(sub_id, sup_id), origin);
             }
             (_, &ReVar(sup_id)) => {
-                self.add_constraint(ConstrainRegSubVar(sub, sup_id), origin);
+                self.add_constraint(Constraint::RegSubVar(sub, sup_id), origin);
             }
             (&ReVar(sub_id), _) => {
-                self.add_constraint(ConstrainVarSubReg(sub_id, sup), origin);
+                self.add_constraint(Constraint::VarSubReg(sub_id, sup), origin);
             }
             _ => {
-                self.add_constraint(ConstrainRegSubReg(sub, sup), origin);
+                self.add_constraint(Constraint::RegSubReg(sub, sup), origin);
             }
         }
     }
@@ -817,13 +808,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn combine_vars<F>(&self,
-                           t: CombineMapType,
-                           a: Region<'tcx>,
-                           b: Region<'tcx>,
-                           origin: SubregionOrigin<'tcx>,
-                           mut relate: F)
-                           -> Region<'tcx>
+    fn combine_vars<F>(&self,
+                       t: CombineMapType,
+                       a: Region<'tcx>,
+                       b: Region<'tcx>,
+                       origin: SubregionOrigin<'tcx>,
+                       mut relate: F)
+                       -> Region<'tcx>
         where F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, Region<'tcx>, Region<'tcx>)
     {
         let vars = TwoRegions { a: a, b: b };
