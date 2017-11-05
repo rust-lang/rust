@@ -505,12 +505,14 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let self_arg_ty = *tcx.fn_sig(method.def_id).input(0).skip_binder();
         let param_env = ty::ParamEnv::empty(Reveal::All);
 
-        match ExplicitSelf::determine(tcx, param_env, untransformed_self_ty, self_arg_ty) {
-            ExplicitSelf::ByValue => "self".to_string(),
-            ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_string(),
-            ExplicitSelf::ByReference(_, hir::MutMutable) => "&mut self".to_string(),
-            _ => format!("self: {}", self_arg_ty)
-        }
+        tcx.infer_ctxt().enter(|infcx| {
+            match ExplicitSelf::determine(&infcx, param_env, untransformed_self_ty, self_arg_ty) {
+                ExplicitSelf::ByValue => "self".to_string(),
+                ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_string(),
+                ExplicitSelf::ByReference(_, hir::MutMutable) => "&mut self".to_string(),
+                _ => format!("self: {}", self_arg_ty)
+            }
+        })
     };
 
     match (trait_m.method_has_self_argument, impl_m.method_has_self_argument) {

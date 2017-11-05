@@ -471,25 +471,26 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let self_arg_ty = sig.inputs()[0];
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-        let at = fcx.at(&cause, fcx.param_env);
+        let eq = |expected, actual| fcx.at(&cause, fcx.param_env).eq(expected, actual);
         let mut autoderef = fcx.autoderef(span, self_arg_ty);
 
         loop {
             if let Some((potential_self_ty, _)) = autoderef.next() {
                 debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`", potential_self_ty, self_ty);
 
-                if let Ok(InferOk { obligations, value: () }) = at.eq(self_ty, potential_self_ty) {
+                if let Ok(InferOk { obligations, value: () }) = eq(self_ty, potential_self_ty) {
                     fcx.register_predicates(obligations);
                     autoderef.finalize();
                     break;
                 }
 
             } else {
-                span_err!(fcx.tcx.sess, span, E0307, "invalid self type: {:?}", self_arg_ty);
+                span_err!(fcx.tcx.sess, span, E0307, "invalid `self` type: {:?}", self_arg_ty);
+                return;
             }
         }
 
-        if let ExplicitSelf::Other = ExplicitSelf::determine(fcx.tcx, fcx.param_env, self_ty, self_arg_ty) {
+        if let ExplicitSelf::Other = ExplicitSelf::determine(fcx, fcx.param_env, self_ty, self_arg_ty) {
             if !fcx.tcx.sess.features.borrow().arbitrary_self_types {
                 fcx.tcx.sess.span_err(span, "Arbitrary `self` types are experimental");
             }

@@ -19,6 +19,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
+use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
@@ -1433,26 +1434,21 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// ```
     ///
     pub fn determine<'a, 'gcx>(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        self_ty: Ty<'a>,
-        self_arg_ty: Ty<'a>
+        self_ty: Ty<'tcx>,
+        self_arg_ty: Ty<'tcx>
     ) -> ExplicitSelf<'tcx>
     {
         use self::ExplicitSelf::*;
 
-        tcx.infer_ctxt().enter(|infcx| {
-            let can_eq = |expected, actual| {
-                let cause = traits::ObligationCause::dummy();
-                infcx.at(&cause, param_env).eq(expected, actual).is_ok()
-            };
+        let can_eq = |expected, actual| infcx.can_eq(param_env, expected, actual).is_ok();
 
-            match self_arg_ty.sty {
-                _ if can_eq(self_arg_ty, self_ty) => ByValue,
-                ty::TyRef(region, ty::TypeAndMut { ty, mutbl}) if can_eq(ty, self_ty) => ByReference(region, mutbl),
-                ty::TyAdt(def, _) if def.is_box() && can_eq(self_arg_ty.boxed_ty(), self_ty) => ByBox,
-                _ => Other
-            }
-        })
+        match self_arg_ty.sty {
+            _ if can_eq(self_arg_ty, self_ty) => ByValue,
+            ty::TyRef(region, ty::TypeAndMut { ty, mutbl}) if can_eq(ty, self_ty) => ByReference(region, mutbl),
+            ty::TyAdt(def, _) if def.is_box() && can_eq(self_arg_ty.boxed_ty(), self_ty) => ByBox,
+            _ => Other
+        }
     }
 }
