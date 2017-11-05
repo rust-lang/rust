@@ -104,7 +104,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
     // For region variables.
-    region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
+    region_vars: RegionVarBindings<'tcx>,
 
     // Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
-            region_vars: RegionVarBindings::new(tcx),
+            region_vars: RegionVarBindings::new(),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
@@ -1085,10 +1085,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }, |def, substs| {
             self.type_var_for_def(span, def, substs)
         })
-    }
-
-    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region<'tcx> {
-        self.region_vars.new_bound(debruijn)
     }
 
     /// True if errors have been reported since this infcx was
