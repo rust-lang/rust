@@ -11,7 +11,6 @@
 //! The code to do lexical region resolution.
 
 use infer::SubregionOrigin;
-use infer::region_inference::graphviz;
 use infer::region_inference::Constraint;
 use infer::region_inference::Constraint::*;
 use infer::region_inference::RegionVarBindings;
@@ -27,6 +26,8 @@ use ty::{self, TyCtxt};
 use ty::{Region, RegionVid};
 use ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound, ReErased};
 use ty::{ReLateBound, ReScope, ReVar, ReSkolemized};
+
+mod graphviz;
 
 struct RegionAndOrigin<'tcx> {
     region: Region<'tcx>,
