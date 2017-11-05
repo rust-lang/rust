@@ -75,8 +75,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReVar(rid) =>
-                self.infcx.region_constraints.borrow_mut()
-                                             .opportunistic_resolve_var(self.tcx(), rid),
+                self.infcx.borrow_region_constraints()
+                          .opportunistic_resolve_var(self.tcx(), rid),
             _ =>
                 r,
         }

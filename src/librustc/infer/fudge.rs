@@ -78,7 +78,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         self.type_variables.borrow_mut().types_created_since_snapshot(
                             &snapshot.type_snapshot);
                     let region_vars =
-                        self.region_constraints.borrow().vars_created_since_snapshot(
+                        self.borrow_region_constraints().vars_created_since_snapshot(
                             &snapshot.region_constraints_snapshot);
 
                     Ok((type_variables, region_vars, value))
