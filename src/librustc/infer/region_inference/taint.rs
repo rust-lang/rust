@@ -16,7 +16,7 @@ pub(super) struct TaintSet<'tcx> {
     regions: FxHashSet<ty::Region<'tcx>>
 }
 
-impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
+impl<'tcx> TaintSet<'tcx> {
     pub(super) fn new(directions: TaintDirections,
                       initial_region: ty::Region<'tcx>)
                       -> Self {
@@ -26,7 +26,7 @@ impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
     }
 
     pub(super) fn fixed_point(&mut self,
-                              tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                              tcx: TyCtxt<'_, '_, 'tcx>,
                               undo_log: &[UndoLogEntry<'tcx>],
                               verifys: &[Verify<'tcx>]) {
         let mut prev_len = 0;

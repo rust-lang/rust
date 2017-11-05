@@ -144,8 +144,7 @@ enum CombineMapType {
 
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
-pub struct RegionVarBindings<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    pub(in infer) tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub struct RegionVarBindings<'tcx> {
     pub(in infer) var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
     /// Constraints of the form `A <= B` introduced by the region
@@ -244,10 +243,9 @@ impl TaintDirections {
     }
 }
 
-impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> RegionVarBindings<'a, 'gcx, 'tcx> {
+impl<'tcx> RegionVarBindings<'tcx> {
+    pub fn new() -> RegionVarBindings<'tcx> {
         RegionVarBindings {
-            tcx,
             var_origins: RefCell::new(Vec::new()),
             constraints: RefCell::new(BTreeMap::new()),
             verifys: RefCell::new(Vec::new()),
@@ -397,21 +395,30 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// The `snapshot` argument to this function is not really used;
     /// it's just there to make it explicit which snapshot bounds the
     /// skolemized region that results. It should always be the top-most snapshot.
-    pub fn push_skolemized(&self, br: ty::BoundRegion, snapshot: &RegionSnapshot) -> Region<'tcx> {
+    pub fn push_skolemized(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        br: ty::BoundRegion,
+        snapshot: &RegionSnapshot,
+    ) -> Region<'tcx> {
         assert!(self.in_snapshot());
         assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
 
         let sc = self.skolemization_count.get();
         self.skolemization_count.set(sc + 1);
-        self.tcx
-            .mk_region(ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br))
+        tcx.mk_region(ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br))
     }
 
     /// Removes all the edges to/from the skolemized regions that are
     /// in `skols`. This is used after a higher-ranked operation
     /// completes to remove all trace of the skolemized regions
     /// created in that time.
-    pub fn pop_skolemized(&self, skols: &FxHashSet<ty::Region<'tcx>>, snapshot: &RegionSnapshot) {
+    pub fn pop_skolemized(
+        &self,
+        _tcx: TyCtxt<'_, '_, 'tcx>,
+        skols: &FxHashSet<ty::Region<'tcx>>,
+        snapshot: &RegionSnapshot,
+    ) {
         debug!("pop_skolemized_regions(skols={:?})", skols);
 
         assert!(self.in_snapshot());
@@ -489,7 +496,11 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn new_bound(&self, debruijn: ty::DebruijnIndex) -> Region<'tcx> {
+    pub fn new_bound(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        debruijn: ty::DebruijnIndex,
+    ) -> Region<'tcx> {
         // Creates a fresh bound variable for use in GLB computations.
         // See discussion of GLB computation in the large comment at
         // the top of this file for more details.
@@ -515,7 +526,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             bug!("rollover in RegionInference new_bound()");
         }
 
-        self.tcx.mk_region(ReLateBound(debruijn, BrFresh(sc)))
+        tcx.mk_region(ReLateBound(debruijn, BrFresh(sc)))
     }
 
     fn add_constraint(&self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
@@ -643,6 +654,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     pub fn lub_regions(
         &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -658,18 +670,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 a // LUB(a,a) = a
             }
 
-            _ => self.combine_vars(
-                Lub,
-                a,
-                b,
-                origin.clone(),
-                |this, old_r, new_r| this.make_subregion(origin.clone(), old_r, new_r),
-            ),
+            _ => self.combine_vars(tcx, Lub, a, b, origin.clone()),
         }
     }
 
     pub fn glb_regions(
         &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -685,19 +692,17 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 a // GLB(a,a) = a
             }
 
-            _ => self.combine_vars(
-                Glb,
-                a,
-                b,
-                origin.clone(),
-                |this, old_r, new_r| this.make_subregion(origin.clone(), new_r, old_r),
-            ),
+            _ => self.combine_vars(tcx, Glb, a, b, origin.clone()),
         }
     }
 
-    pub fn opportunistic_resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
+    pub fn opportunistic_resolve_var(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        rid: RegionVid,
+    ) -> ty::Region<'tcx> {
         let vid = self.unification_table.borrow_mut().find_value(rid).min_vid;
-        self.tcx.mk_region(ty::ReVar(vid))
+        tcx.mk_region(ty::ReVar(vid))
     }
 
     fn combine_map(&self, t: CombineMapType) -> &RefCell<CombineMap<'tcx>> {
@@ -707,30 +712,32 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn combine_vars<F>(
+    fn combine_vars(
         &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         t: CombineMapType,
         a: Region<'tcx>,
         b: Region<'tcx>,
         origin: SubregionOrigin<'tcx>,
-        mut relate: F,
-    ) -> Region<'tcx>
-    where
-        F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, Region<'tcx>, Region<'tcx>),
-    {
+    ) -> Region<'tcx> {
         let vars = TwoRegions { a: a, b: b };
         if let Some(&c) = self.combine_map(t).borrow().get(&vars) {
-            return self.tcx.mk_region(ReVar(c));
+            return tcx.mk_region(ReVar(c));
         }
         let c = self.new_region_var(MiscVariable(origin.span()));
         self.combine_map(t).borrow_mut().insert(vars, c);
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddCombination(t, vars));
         }
-        relate(self, a, self.tcx.mk_region(ReVar(c)));
-        relate(self, b, self.tcx.mk_region(ReVar(c)));
+        let new_r = tcx.mk_region(ReVar(c));
+        for &old_r in &[a, b] {
+            match t {
+                Glb => self.make_subregion(origin.clone(), new_r, old_r),
+                Lub => self.make_subregion(origin.clone(), old_r, new_r),
+            }
+        }
         debug!("combine_vars() c={:?}", c);
-        self.tcx.mk_region(ReVar(c))
+        new_r
     }
 
     pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
@@ -753,6 +760,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// related to other regions.
     pub fn tainted(
         &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         mark: &RegionSnapshot,
         r0: Region<'tcx>,
         directions: TaintDirections,
@@ -769,7 +777,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         // is not a terribly efficient implementation.
         let mut taint_set = taint::TaintSet::new(directions, r0);
         taint_set.fixed_point(
-            self.tcx,
+            tcx,
             &self.undo_log.borrow()[mark.length..],
             &self.verifys.borrow(),
         );
