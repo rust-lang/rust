@@ -31,9 +31,6 @@ use std::fmt;
 use std::mem;
 use std::u32;
 
-mod lexical_resolve;
-mod graphviz;
-
 /// A constraint that influences the inference process.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Constraint<'tcx> {
@@ -185,20 +182,20 @@ pub enum VarValue<'tcx> {
 pub type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    var_origins: RefCell<Vec<RegionVariableOrigin>>,
+    pub(in infer) tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub(in infer) var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
     /// Constraints of the form `A <= B` introduced by the region
     /// checker.  Here at least one of `A` and `B` must be a region
     /// variable.
-    constraints: RefCell<FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
+    pub(in infer) constraints: RefCell<FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
 
     /// A "verify" is something that we need to verify after inference is
     /// done, but which does not directly affect inference in any way.
     ///
     /// An example is a `A <= B` where neither `A` nor `B` are
     /// inference variables.
-    verifys: RefCell<Vec<Verify<'tcx>>>,
+    pub(in infer) verifys: RefCell<Vec<Verify<'tcx>>>,
 
     /// A "given" is a relationship that is known to hold. In particular,
     /// we often know from closure fn signatures that a particular free
@@ -217,7 +214,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// record the fact that `'a <= 'b` is implied by the fn signature,
     /// and then ignore the constraint when solving equations. This is
     /// a bit of a hack but seems to work.
-    givens: RefCell<FxHashSet<(Region<'tcx>, ty::RegionVid)>>,
+    pub(in infer) givens: RefCell<FxHashSet<(Region<'tcx>, ty::RegionVid)>>,
 
     lubs: RefCell<CombineMap<'tcx>>,
     glbs: RefCell<CombineMap<'tcx>>,
@@ -239,7 +236,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// This contains the results of inference.  It begins as an empty
     /// option and only acquires a value after inference is complete.
-    values: RefCell<Option<Vec<VarValue<'tcx>>>>,
+    pub(in infer) values: RefCell<Option<Vec<VarValue<'tcx>>>>,
 }
 
 pub struct RegionSnapshot {
