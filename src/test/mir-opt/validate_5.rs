@@ -45,7 +45,7 @@ fn main() {
 //     ...
 // }
 // END rustc.test.EraseRegions.after.mir
-// START rustc.main.{{closure}}.EraseRegions.after.mir
+// START rustc.main-{{closure}}.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(46)], _2: &ReErased mut i32) -> bool {
 //     ...
 //     bb0: {
@@ -63,4 +63,4 @@ fn main() {
 //     }
 //     ...
 // }
-// END rustc.main.{{closure}}.EraseRegions.after.mir
+// END rustc.main-{{closure}}.EraseRegions.after.mir

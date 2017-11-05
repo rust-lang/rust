@@ -66,7 +66,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // }
 // END rustc.main.SimplifyCfg-qualify-consts.after.mir
 
-// START rustc.main.{{closure}}.SimplifyCfg-qualify-consts.after.mir
+// START rustc.main-{{closure}}.SimplifyCfg-qualify-consts.after.mir
 // fn main::{{closure}}(_1: [closure@NodeId(18) d:&'14s D]) -> i32 {
 //    let mut _0: i32;
 //    let mut _2: i32;
@@ -78,4 +78,4 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //        StorageDead(_2);
 //        return;
 //    }
-// END rustc.main.{{closure}}.SimplifyCfg-qualify-consts.after.mir
+// END rustc.main-{{closure}}.SimplifyCfg-qualify-consts.after.mir
