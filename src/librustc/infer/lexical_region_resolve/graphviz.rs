@@ -56,12 +56,13 @@ graphs will be printed.                                                     \n\
 }
 
 pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
-    region_vars: &RegionVarBindings<'a, 'gcx, 'tcx>,
+    region_vars: &RegionVarBindings<'tcx>,
     region_rels: &RegionRelations<'a, 'gcx, 'tcx>)
 {
+    let tcx = region_rels.tcx;
     let context = region_rels.context;
 
-    if !region_vars.tcx.sess.opts.debugging_opts.print_region_graph {
+    if !tcx.sess.opts.debugging_opts.print_region_graph {
         return;
     }
 
@@ -116,7 +117,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         Ok(()) => {}
         Err(e) => {
             let msg = format!("io error dumping region constraints: {}", e);
-            region_vars.tcx.sess.err(&msg)
+            tcx.sess.err(&msg)
         }
     }
 }

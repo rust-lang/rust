@@ -21,7 +21,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
 use std::fmt;
 use std::u32;
-use ty;
+use ty::{self, TyCtxt};
 use ty::{Region, RegionVid};
 use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
 use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
@@ -73,7 +73,7 @@ struct RegionAndOrigin<'tcx> {
 
 type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
 
-impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
+impl<'tcx> RegionVarBindings<'tcx> {
     /// This function performs the actual region resolution.  It must be
     /// called after all constraints have been added.  It performs a
     /// fixed-point iteration to find region values which satisfy all
@@ -81,7 +81,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// errors are reported.
     pub fn resolve_regions(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
     ) -> (
         LexicalRegionResolutions<'tcx>,
         Vec<RegionResolutionError<'tcx>>,
@@ -94,10 +94,11 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     fn lub_concrete_regions(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
     ) -> Region<'tcx> {
+        let tcx = region_rels.tcx;
         match (a, b) {
             (&ReLateBound(..), _) | (_, &ReLateBound(..)) | (&ReErased, _) | (_, &ReErased) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
@@ -130,10 +131,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 // reasonably compare free regions and scopes:
                 let fr_scope = match (a, b) {
                     (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => {
-                        region_rels.region_scope_tree.early_free_scope(self.tcx, br)
+                        region_rels.region_scope_tree.early_free_scope(region_rels.tcx, br)
                     }
                     (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => {
-                        region_rels.region_scope_tree.free_scope(self.tcx, fr)
+                        region_rels.region_scope_tree.free_scope(region_rels.tcx, fr)
                     }
                     _ => bug!(),
                 };
@@ -153,7 +154,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
                 // otherwise, we don't know what the free region is,
                 // so we must conservatively say the LUB is static:
-                self.tcx.types.re_static
+                tcx.types.re_static
             }
 
             (&ReScope(a_id), &ReScope(b_id)) => {
@@ -163,7 +164,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 let lub = region_rels
                     .region_scope_tree
                     .nearest_common_ancestor(a_id, b_id);
-                self.tcx.mk_region(ReScope(lub))
+                tcx.mk_region(ReScope(lub))
             }
 
             (&ReEarlyBound(_), &ReEarlyBound(_)) |
@@ -176,17 +177,17 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             (&ReSkolemized(..), _) | (_, &ReSkolemized(..)) => if a == b {
                 a
             } else {
-                self.tcx.types.re_static
+                tcx.types.re_static
             },
         }
     }
 
     fn infer_variable_values(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) -> LexicalRegionResolutions<'tcx> {
-        let mut var_data = self.construct_var_data();
+        let mut var_data = self.construct_var_data(region_rels.tcx);
 
         // Dorky hack to cause `dump_constraints` to only get called
         // if debug mode is enabled:
@@ -205,16 +206,18 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         var_data
     }
 
-    fn construct_var_data(&self) -> LexicalRegionResolutions<'tcx> {
+    /// Initially, the value for all variables is set to `'empty`, the
+    /// empty region. The `expansion` phase will grow this larger.
+    fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
-            error_region: self.tcx.types.re_static,
+            error_region: tcx.types.re_static,
             values: (0..self.num_vars() as usize)
-                .map(|_| VarValue::Value(self.tcx.types.re_empty))
+                .map(|_| VarValue::Value(tcx.types.re_empty))
                 .collect(),
         }
     }
 
-    fn dump_constraints(&self, free_regions: &RegionRelations<'a, 'gcx, 'tcx>) {
+    fn dump_constraints(&self, free_regions: &RegionRelations<'_, '_, 'tcx>) {
         debug!(
             "----() Start constraint listing (context={:?}) ()----",
             free_regions.context
@@ -251,7 +254,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     fn expansion(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         var_values: &mut LexicalRegionResolutions<'tcx>,
     ) {
         self.iterate_until_fixed_point("Expansion", |constraint, origin| {
@@ -279,7 +282,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     fn expand_node(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         a_region: Region<'tcx>,
         b_vid: RegionVid,
         b_data: &mut VarValue<'tcx>,
@@ -326,7 +329,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// and check that they are satisfied.
     fn collect_errors(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
@@ -423,7 +426,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// and create a `RegionResolutionError` for each of them.
     fn collect_var_errors(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         var_data: &LexicalRegionResolutions<'tcx>,
         graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
@@ -528,7 +531,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     fn collect_error_for_expanding_node(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         graph: &RegionGraph<'tcx>,
         dup_vec: &mut [u32],
         node_idx: RegionVid,
@@ -642,8 +645,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         } = state;
         return (result, dup_found);
 
-        fn process_edges<'a, 'gcx, 'tcx>(
-            this: &RegionVarBindings<'a, 'gcx, 'tcx>,
+        fn process_edges<'tcx>(
+            this: &RegionVarBindings<'tcx>,
             state: &mut WalkState<'tcx>,
             graph: &RegionGraph<'tcx>,
             source_vid: RegionVid,
@@ -710,10 +713,10 @@ impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
 }
 
 
-impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
+impl<'tcx> VerifyBound<'tcx> {
     fn is_met(
         &self,
-        region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+        region_rels: &RegionRelations<'_, '_, 'tcx>,
         var_values: &LexicalRegionResolutions<'tcx>,
         min: ty::Region<'tcx>,
     ) -> bool {

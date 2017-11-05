@@ -58,6 +58,7 @@
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
+#![feature(underscore_lifetimes)]
 #![feature(trace_macros)]
 #![feature(test)]
 #![feature(const_atomic_bool_new)]
