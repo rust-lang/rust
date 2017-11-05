@@ -31,7 +31,7 @@ use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::RelateResult;
 use traits::{self, ObligationCause, PredicateObligations, Reveal};
 use rustc_data_structures::unify::{self, UnificationTable};
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
@@ -103,8 +103,12 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // Map from floating variable to the kind of float it represents
     float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
-    // For region variables.
-    region_constraints: RefCell<RegionConstraintCollector<'tcx>>,
+    // Tracks the set of region variables and the constraints between
+    // them.  This is initially `Some(_)` but when
+    // `resolve_regions_and_report_errors` is invoked, this gets set
+    // to `None` -- further attempts to perform unification etc may
+    // fail if new region constraints would've been added.
+    region_constraints: RefCell<Option<RegionConstraintCollector<'tcx>>>,
 
     // Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
@@ -424,7 +428,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
-            region_constraints: RefCell::new(RegionConstraintCollector::new()),
+            region_constraints: RefCell::new(Some(RegionConstraintCollector::new())),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
@@ -767,7 +771,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             type_snapshot: self.type_variables.borrow_mut().snapshot(),
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
-            region_constraints_snapshot: self.region_constraints.borrow_mut().start_snapshot(),
+            region_constraints_snapshot: self.borrow_region_constraints().start_snapshot(),
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e. during typeck)
             // to ban writes from within a snapshot to them.
@@ -801,8 +805,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.float_unification_table
             .borrow_mut()
             .rollback_to(float_snapshot);
-        self.region_constraints
-            .borrow_mut()
+        self.borrow_region_constraints()
             .rollback_to(region_constraints_snapshot);
     }
 
@@ -830,8 +833,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.float_unification_table
             .borrow_mut()
             .commit(float_snapshot);
-        self.region_constraints
-            .borrow_mut()
+        self.borrow_region_constraints()
             .commit(region_constraints_snapshot);
     }
 
@@ -887,7 +889,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                      sub: ty::Region<'tcx>,
                      sup: ty::RegionVid)
     {
-        self.region_constraints.borrow_mut().add_given(sub, sup);
+        self.borrow_region_constraints().add_given(sub, sup);
     }
 
     pub fn can_sub<T>(&self,
@@ -927,7 +929,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        a: ty::Region<'tcx>,
                        b: ty::Region<'tcx>) {
         debug!("sub_regions({:?} <: {:?})", a, b);
-        self.region_constraints.borrow_mut().make_subregion(origin, a, b);
+        self.borrow_region_constraints().make_subregion(origin, a, b);
     }
 
     pub fn equality_predicate(&self,
@@ -1030,7 +1032,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn next_region_var(&self, origin: RegionVariableOrigin)
                            -> ty::Region<'tcx> {
-        self.tcx.mk_region(ty::ReVar(self.region_constraints.borrow_mut().new_region_var(origin)))
+        self.tcx.mk_region(ty::ReVar(self.borrow_region_constraints().new_region_var(origin)))
     }
 
     /// Create a region inference variable for the given
@@ -1114,6 +1116,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tainted_by_errors_flag.set(true)
     }
 
+    /// Process the region constraints and report any errors that
+    /// result. After this, no more unification operations should be
+    /// done -- or the compiler will panic -- but it is legal to use
+    /// `resolve_type_vars_if_possible` as well as `fully_resolve`.
     pub fn resolve_regions_and_report_errors(&self,
                                              region_context: DefId,
                                              region_map: &region::ScopeTree,
@@ -1126,8 +1132,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                region_context,
                                                region_map,
                                                free_regions);
-        let (lexical_region_resolutions, errors) =
-            self.region_constraints.borrow_mut().resolve_regions(&region_rels);
+        let mut region_constraints = self.region_constraints.borrow_mut()
+                                                            .take()
+                                                            .expect("regions already resolved");
+        let (lexical_region_resolutions, errors) = region_constraints.resolve_regions(&region_rels);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -1365,7 +1373,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                a,
                bound);
 
-        self.region_constraints.borrow_mut().verify_generic_bound(origin, kind, a, bound);
+        self.borrow_region_constraints().verify_generic_bound(origin, kind, a, bound);
     }
 
     pub fn type_moves_by_default(&self,
@@ -1446,11 +1454,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Normalizes associated types in `value`, potentially returning
     /// new obligations that must further be processed.
     pub fn partially_normalize_associated_types_in<T>(&self,
-                                                  span: Span,
-                                                  body_id: ast::NodeId,
-                                                  param_env: ty::ParamEnv<'tcx>,
-                                                  value: &T)
-                                                  -> InferOk<'tcx, T>
+                                                      span: Span,
+                                                      body_id: ast::NodeId,
+                                                      param_env: ty::ParamEnv<'tcx>,
+                                                      value: &T)
+                                                      -> InferOk<'tcx, T>
         where T : TypeFoldable<'tcx>
     {
         debug!("partially_normalize_associated_types_in(value={:?})", value);
@@ -1462,6 +1470,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             value,
             obligations);
         InferOk { value, obligations }
+    }
+
+    fn borrow_region_constraints(&self) -> RefMut<'_, RegionConstraintCollector<'tcx>> {
+        RefMut::map(
+            self.region_constraints.borrow_mut(),
+            |c| c.as_mut().expect("region constraints already solved"))
     }
 }
 
