@@ -14,6 +14,7 @@ use hir::def_id::DefId;
 
 use middle::const_val::ConstVal;
 use middle::region;
+use rustc_data_structures::indexed_vec::Idx;
 use ty::subst::{Substs, Subst};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
@@ -896,6 +897,18 @@ pub struct FloatVid {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
     pub index: u32,
+}
+
+// TODO after rebasing, should be able to use `newtype_index!`
+impl Idx for RegionVid {
+    fn new(value: usize) -> Self {
+        assert!(value < ::std::u32::MAX as usize);
+        RegionVid { index: value as u32 }
+    }
+
+    fn index(self) -> usize {
+        self.index as usize
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]

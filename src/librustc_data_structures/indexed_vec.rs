@@ -385,6 +385,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn pop(&mut self) -> Option<T> {
+        self.raw.pop()
+    }
+
+    #[inline]
     pub fn len(&self) -> usize {
         self.raw.len()
     }
