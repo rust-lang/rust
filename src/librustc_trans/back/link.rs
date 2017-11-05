@@ -1222,7 +1222,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 let canonical = f.replace("-", "_");
                 let canonical_name = name.replace("-", "_");
 
-                // Look for `.rust-cgu.o` at the end of the filename to conclude
+                // Look for `.rcgu.o` at the end of the filename to conclude
                 // that this is a Rust-related object file.
                 fn looks_like_rust(s: &str) -> bool {
                     let path = Path::new(s);

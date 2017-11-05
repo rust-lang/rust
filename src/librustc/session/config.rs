@@ -410,7 +410,7 @@ impl_stable_hash_for!(struct self::OutputFilenames {
     outputs
 });
 
-pub const RUST_CGU_EXT: &str = "rust-cgu";
+pub const RUST_CGU_EXT: &str = "rcgu";
 
 impl OutputFilenames {
     pub fn path(&self, flavor: OutputType) -> PathBuf {
