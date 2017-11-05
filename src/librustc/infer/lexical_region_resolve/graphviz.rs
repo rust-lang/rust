@@ -25,7 +25,7 @@ use middle::free_region::RegionRelations;
 use middle::region;
 use super::Constraint;
 use infer::SubregionOrigin;
-use infer::region_constraints::RegionVarBindings;
+use infer::region_constraints::RegionConstraintCollector;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
@@ -56,7 +56,7 @@ graphs will be printed.                                                     \n\
 }
 
 pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
-    region_vars: &RegionVarBindings<'tcx>,
+    region_constraints: &RegionConstraintCollector<'tcx>,
     region_rels: &RegionRelations<'a, 'gcx, 'tcx>)
 {
     let tcx = region_rels.tcx;
@@ -112,7 +112,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         }
     };
 
-    match dump_region_constraints_to(region_rels, &region_vars.constraints, &output_path) {
+    match dump_region_constraints_to(region_rels, &region_constraints.constraints, &output_path) {
         Ok(()) => {}
         Err(e) => {
             let msg = format!("io error dumping region constraints: {}", e);
