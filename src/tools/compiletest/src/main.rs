@@ -11,10 +11,11 @@
 #![crate_name = "compiletest"]
 
 #![feature(test)]
+#![feature(slice_rotate)]
 
 #![deny(warnings)]
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(unix)]
 extern crate libc;
 extern crate test;
 extern crate getopts;
@@ -47,6 +48,7 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 mod raise_fd_limit;
+mod read2;
 
 fn main() {
     env_logger::init().unwrap();
