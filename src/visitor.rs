@@ -25,7 +25,7 @@ use comment::rewrite_comment;
 use config::{BraceStyle, Config};
 use items::{format_impl, format_struct, format_struct_struct, format_trait,
             rewrite_associated_impl_type, rewrite_associated_type, rewrite_static,
-            rewrite_type_alias, FnSig};
+            rewrite_type_alias, FnSig, StaticParts};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
@@ -381,11 +381,7 @@ impl<'a> FmtVisitor<'a> {
             ast::ItemKind::Static(ref ty, mutability, ref expr) => {
                 let rewrite = rewrite_static(
                     "static",
-                    &item.vis,
-                    item.ident,
-                    ty,
-                    mutability,
-                    Some(expr),
+                    &StaticParts::new(&item.vis, item.ident, ty, mutability, Some(expr)),
                     self.block_indent,
                     item.span,
                     &self.get_context(),
@@ -395,11 +391,13 @@ impl<'a> FmtVisitor<'a> {
             ast::ItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_static(
                     "const",
-                    &item.vis,
-                    item.ident,
-                    ty,
-                    ast::Mutability::Immutable,
-                    Some(expr),
+                    &StaticParts::new(
+                        &item.vis,
+                        item.ident,
+                        ty,
+                        ast::Mutability::Immutable,
+                        Some(expr),
+                    ),
                     self.block_indent,
                     item.span,
                     &self.get_context(),
@@ -469,11 +467,13 @@ impl<'a> FmtVisitor<'a> {
             ast::TraitItemKind::Const(ref ty, ref expr_opt) => {
                 let rewrite = rewrite_static(
                     "const",
-                    &ast::Visibility::Inherited,
-                    ti.ident,
-                    ty,
-                    ast::Mutability::Immutable,
-                    expr_opt.as_ref(),
+                    &StaticParts::new(
+                        &ast::Visibility::Inherited,
+                        ti.ident,
+                        ty,
+                        ast::Mutability::Immutable,
+                        expr_opt.as_ref(),
+                    ),
                     self.block_indent,
                     ti.span,
                     &self.get_context(),
@@ -534,11 +534,13 @@ impl<'a> FmtVisitor<'a> {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_static(
                     "const",
-                    &ii.vis,
-                    ii.ident,
-                    ty,
-                    ast::Mutability::Immutable,
-                    Some(expr),
+                    &StaticParts::new(
+                        &ii.vis,
+                        ii.ident,
+                        ty,
+                        ast::Mutability::Immutable,
+                        Some(expr),
+                    ),
                     self.block_indent,
                     ii.span,
                     &self.get_context(),

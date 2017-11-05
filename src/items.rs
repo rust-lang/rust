@@ -1461,17 +1461,46 @@ pub fn rewrite_struct_field(
     )
 }
 
+pub struct StaticParts<'a> {
+    vis: &'a ast::Visibility,
+    ident: ast::Ident,
+    ty: &'a ast::Ty,
+    mutability: ast::Mutability,
+    expr_opt: Option<&'a ptr::P<ast::Expr>>,
+}
+
+impl<'a> StaticParts<'a> {
+    pub fn new(
+        vis: &'a ast::Visibility,
+        ident: ast::Ident,
+        ty: &'a ast::Ty,
+        mutability: ast::Mutability,
+        expr_opt: Option<&'a ptr::P<ast::Expr>>,
+    ) -> StaticParts<'a> {
+        StaticParts {
+            vis,
+            ident,
+            ty,
+            mutability,
+            expr_opt,
+        }
+    }
+}
+
 pub fn rewrite_static(
     prefix: &str,
-    vis: &ast::Visibility,
-    ident: ast::Ident,
-    ty: &ast::Ty,
-    mutability: ast::Mutability,
-    expr_opt: Option<&ptr::P<ast::Expr>>,
+    static_parts: &StaticParts,
     offset: Indent,
     span: Span,
     context: &RewriteContext,
 ) -> Option<String> {
+    let StaticParts {
+        vis,
+        ident,
+        ty,
+        mutability,
+        expr_opt,
+    } = *static_parts;
     let colon = colon_spaces(
         context.config.space_before_type_annotation(),
         context.config.space_after_type_annotation_colon(),
