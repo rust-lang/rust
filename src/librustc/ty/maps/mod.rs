@@ -151,6 +151,10 @@ define_maps! { <'tcx>
     /// the value isn't known except to the pass itself.
     [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Rc<IdxSetBuf<mir::Local>>),
 
+    /// Fetch the MIR for a given def-id right after it's built - this includes
+    /// unreachable code.
+    [] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+
     /// Fetch the MIR for a given def-id up till the point where it is
     /// ready for const evaluation.
     ///

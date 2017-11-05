@@ -344,8 +344,8 @@ fn unsafety_violations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) ->
     debug!("unsafety_violations({:?})", def_id);
 
     // NB: this borrow is valid because all the consumers of
-    // `mir_const` force this.
-    let mir = &tcx.mir_const(def_id).borrow();
+    // `mir_built` force this.
+    let mir = &tcx.mir_built(def_id).borrow();
 
     let visibility_scope_info = match mir.visibility_scope_info {
         ClearOnDecode::Set(ref data) => data,
