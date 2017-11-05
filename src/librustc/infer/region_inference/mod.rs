@@ -142,12 +142,6 @@ enum CombineMapType {
     Glb,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum VarValue<'tcx> {
-    Value(Region<'tcx>),
-    ErrorValue,
-}
-
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -208,10 +202,6 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     undo_log: RefCell<Vec<UndoLogEntry<'tcx>>>,
 
     unification_table: RefCell<UnificationTable<ty::RegionVid>>,
-
-    /// This contains the results of inference.  It begins as an empty
-    /// option and only acquires a value after inference is complete.
-    pub(in infer) values: RefCell<Option<Vec<VarValue<'tcx>>>>,
 }
 
 pub struct RegionSnapshot {
@@ -250,7 +240,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         RegionVarBindings {
             tcx,
             var_origins: RefCell::new(Vec::new()),
-            values: RefCell::new(None),
             constraints: RefCell::new(BTreeMap::new()),
             verifys: RefCell::new(Vec::new()),
             givens: RefCell::new(FxHashSet()),
@@ -517,14 +506,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         self.tcx.mk_region(ReLateBound(debruijn, BrFresh(sc)))
     }
 
-    fn values_are_none(&self) -> bool {
-        self.values.borrow().is_none()
-    }
-
     fn add_constraint(&self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
-
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
@@ -540,8 +523,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     fn add_verify(&self, verify: Verify<'tcx>) {
         // cannot add verifys once regions are resolved
-        assert!(self.values_are_none());
-
         debug!("RegionVarBindings: add_verify({:?})", verify);
 
         // skip no-op cases known to be satisfied
@@ -560,8 +541,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     pub fn add_given(&self, sub: Region<'tcx>, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
-        assert!(self.values_are_none());
-
         let mut givens = self.givens.borrow_mut();
         if givens.insert((sub, sup)) {
             debug!("add_given({:?} <= {:?})", sub, sup);
@@ -591,8 +570,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                           sub: Region<'tcx>,
                           sup: Region<'tcx>) {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
-
         debug!("RegionVarBindings: make_subregion({:?}, {:?}) due to {:?}",
                sub,
                sup,
@@ -644,8 +621,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                        b: Region<'tcx>)
                        -> Region<'tcx> {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
-
         debug!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
         match (a, b) {
             (r @ &ReStatic, _) | (_, r @ &ReStatic) => {
@@ -670,8 +645,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                        b: Region<'tcx>)
                        -> Region<'tcx> {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
-
         debug!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
         match (a, b) {
             (&ReStatic, r) | (r, &ReStatic) => {
