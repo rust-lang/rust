@@ -894,7 +894,7 @@ pub fn format_struct(
 }
 
 pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
-    if let ast::ItemKind::Trait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
+    if let ast::ItemKind::Trait(_, unsafety, ref generics, ref type_param_bounds, ref trait_items) =
         item.node
     {
         let mut result = String::with_capacity(128);
