@@ -13,7 +13,7 @@
 use self::UndoLogEntry::*;
 use self::CombineMapType::*;
 
-use super::{RegionVariableOrigin, SubregionOrigin, MiscVariable};
+use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 use super::unify_key;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -21,7 +21,7 @@ use rustc_data_structures::unify::{self, UnificationTable};
 use ty::{self, Ty, TyCtxt};
 use ty::{Region, RegionVid};
 use ty::ReStatic;
-use ty::{ReLateBound, ReVar, ReSkolemized, BrFresh};
+use ty::{BrFresh, ReLateBound, ReSkolemized, ReVar};
 
 use std::collections::BTreeMap;
 use std::cell::{Cell, RefCell};
@@ -144,7 +144,7 @@ enum CombineMapType {
 
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
-pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct RegionVarBindings<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     pub(in infer) tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub(in infer) var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
@@ -223,15 +223,24 @@ pub struct TaintDirections {
 
 impl TaintDirections {
     pub fn incoming() -> Self {
-        TaintDirections { incoming: true, outgoing: false }
+        TaintDirections {
+            incoming: true,
+            outgoing: false,
+        }
     }
 
     pub fn outgoing() -> Self {
-        TaintDirections { incoming: false, outgoing: true }
+        TaintDirections {
+            incoming: false,
+            outgoing: true,
+        }
     }
 
     pub fn both() -> Self {
-        TaintDirections { incoming: true, outgoing: true }
+        TaintDirections {
+            incoming: true,
+            outgoing: true,
+        }
     }
 }
 
@@ -271,10 +280,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         debug!("RegionVarBindings: commit({})", snapshot.length);
         assert!(self.undo_log.borrow().len() > snapshot.length);
         assert!((*self.undo_log.borrow())[snapshot.length] == OpenSnapshot);
-        assert!(self.skolemization_count.get() == snapshot.skolemization_count,
-                "failed to pop skolemized regions: {} now vs {} at start",
-                self.skolemization_count.get(),
-                snapshot.skolemization_count);
+        assert!(
+            self.skolemization_count.get() == snapshot.skolemization_count,
+            "failed to pop skolemized regions: {} now vs {} at start",
+            self.skolemization_count.get(),
+            snapshot.skolemization_count
+        );
 
         let mut undo_log = self.undo_log.borrow_mut();
         if snapshot.length == 0 {
@@ -282,7 +293,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         } else {
             (*undo_log)[snapshot.length] = CommitedSnapshot;
         }
-        self.unification_table.borrow_mut().commit(snapshot.region_snapshot);
+        self.unification_table
+            .borrow_mut()
+            .commit(snapshot.region_snapshot);
     }
 
     pub fn rollback_to(&self, snapshot: RegionSnapshot) {
@@ -296,7 +309,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         let c = undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
         self.skolemization_count.set(snapshot.skolemization_count);
-        self.unification_table.borrow_mut()
+        self.unification_table
+            .borrow_mut()
             .rollback_to(snapshot.region_snapshot);
     }
 
@@ -340,19 +354,23 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 
     pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
-        let vid = RegionVid { index: self.num_vars() };
+        let vid = RegionVid {
+            index: self.num_vars(),
+        };
         self.var_origins.borrow_mut().push(origin.clone());
 
-        let u_vid = self.unification_table.borrow_mut().new_key(
-            unify_key::RegionVidKey { min_vid: vid }
-            );
+        let u_vid = self.unification_table
+            .borrow_mut()
+            .new_key(unify_key::RegionVidKey { min_vid: vid });
         assert_eq!(vid, u_vid);
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddVar(vid));
         }
-        debug!("created new region variable {:?} with origin {:?}",
-               vid,
-               origin);
+        debug!(
+            "created new region variable {:?} with origin {:?}",
+            vid,
+            origin
+        );
         return vid;
     }
 
@@ -379,42 +397,44 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// The `snapshot` argument to this function is not really used;
     /// it's just there to make it explicit which snapshot bounds the
     /// skolemized region that results. It should always be the top-most snapshot.
-    pub fn push_skolemized(&self, br: ty::BoundRegion, snapshot: &RegionSnapshot)
-                           -> Region<'tcx> {
+    pub fn push_skolemized(&self, br: ty::BoundRegion, snapshot: &RegionSnapshot) -> Region<'tcx> {
         assert!(self.in_snapshot());
         assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
 
         let sc = self.skolemization_count.get();
         self.skolemization_count.set(sc + 1);
-        self.tcx.mk_region(ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br))
+        self.tcx
+            .mk_region(ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br))
     }
 
     /// Removes all the edges to/from the skolemized regions that are
     /// in `skols`. This is used after a higher-ranked operation
     /// completes to remove all trace of the skolemized regions
     /// created in that time.
-    pub fn pop_skolemized(&self,
-                          skols: &FxHashSet<ty::Region<'tcx>>,
-                          snapshot: &RegionSnapshot) {
+    pub fn pop_skolemized(&self, skols: &FxHashSet<ty::Region<'tcx>>, snapshot: &RegionSnapshot) {
         debug!("pop_skolemized_regions(skols={:?})", skols);
 
         assert!(self.in_snapshot());
         assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
-        assert!(self.skolemization_count.get() as usize >= skols.len(),
-                "popping more skolemized variables than actually exist, \
-                 sc now = {}, skols.len = {}",
-                self.skolemization_count.get(),
-                skols.len());
+        assert!(
+            self.skolemization_count.get() as usize >= skols.len(),
+            "popping more skolemized variables than actually exist, \
+             sc now = {}, skols.len = {}",
+            self.skolemization_count.get(),
+            skols.len()
+        );
 
         let last_to_pop = self.skolemization_count.get();
         let first_to_pop = last_to_pop - (skols.len() as u32);
 
-        assert!(first_to_pop >= snapshot.skolemization_count,
-                "popping more regions than snapshot contains, \
-                 sc now = {}, sc then = {}, skols.len = {}",
-                self.skolemization_count.get(),
-                snapshot.skolemization_count,
-                skols.len());
+        assert!(
+            first_to_pop >= snapshot.skolemization_count,
+            "popping more regions than snapshot contains, \
+             sc now = {}, sc then = {}, skols.len = {}",
+            self.skolemization_count.get(),
+            snapshot.skolemization_count,
+            skols.len()
+        );
         debug_assert! {
             skols.iter()
                  .all(|&k| match *k {
@@ -432,13 +452,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         let mut undo_log = self.undo_log.borrow_mut();
 
-        let constraints_to_kill: Vec<usize> =
-            undo_log.iter()
-                    .enumerate()
-                    .rev()
-                    .filter(|&(_, undo_entry)| kill_constraint(skols, undo_entry))
-                    .map(|(index, _)| index)
-                    .collect();
+        let constraints_to_kill: Vec<usize> = undo_log
+            .iter()
+            .enumerate()
+            .rev()
+            .filter(|&(_, undo_entry)| kill_constraint(skols, undo_entry))
+            .map(|(index, _)| index)
+            .collect();
 
         for index in constraints_to_kill {
             let undo_entry = mem::replace(&mut undo_log[index], Purged);
@@ -448,33 +468,25 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         self.skolemization_count.set(snapshot.skolemization_count);
         return;
 
-        fn kill_constraint<'tcx>(skols: &FxHashSet<ty::Region<'tcx>>,
-                                 undo_entry: &UndoLogEntry<'tcx>)
-                                 -> bool {
+        fn kill_constraint<'tcx>(
+            skols: &FxHashSet<ty::Region<'tcx>>,
+            undo_entry: &UndoLogEntry<'tcx>,
+        ) -> bool {
             match undo_entry {
-                &AddConstraint(Constraint::VarSubVar(..)) =>
-                    false,
-                &AddConstraint(Constraint::RegSubVar(a, _)) =>
-                    skols.contains(&a),
-                &AddConstraint(Constraint::VarSubReg(_, b)) =>
-                    skols.contains(&b),
-                &AddConstraint(Constraint::RegSubReg(a, b)) =>
-                    skols.contains(&a) || skols.contains(&b),
-                &AddGiven(..) =>
-                    false,
-                &AddVerify(_) =>
-                    false,
-                &AddCombination(_, ref two_regions) =>
-                    skols.contains(&two_regions.a) ||
-                    skols.contains(&two_regions.b),
-                &AddVar(..) |
-                &OpenSnapshot |
-                &Purged |
-                &CommitedSnapshot =>
-                    false,
+                &AddConstraint(Constraint::VarSubVar(..)) => false,
+                &AddConstraint(Constraint::RegSubVar(a, _)) => skols.contains(&a),
+                &AddConstraint(Constraint::VarSubReg(_, b)) => skols.contains(&b),
+                &AddConstraint(Constraint::RegSubReg(a, b)) => {
+                    skols.contains(&a) || skols.contains(&b)
+                }
+                &AddGiven(..) => false,
+                &AddVerify(_) => false,
+                &AddCombination(_, ref two_regions) => {
+                    skols.contains(&two_regions.a) || skols.contains(&two_regions.b)
+                }
+                &AddVar(..) | &OpenSnapshot | &Purged | &CommitedSnapshot => false,
             }
         }
-
     }
 
     pub fn new_bound(&self, debruijn: ty::DebruijnIndex) -> Region<'tcx> {
@@ -513,12 +525,15 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
         // present in the map yet. This prevents origins from outside the snapshot being
         // replaced with "less informative" origins e.g. during calls to `can_eq`
-        self.constraints.borrow_mut().entry(constraint).or_insert_with(|| {
-            if self.in_snapshot() {
-                self.undo_log.borrow_mut().push(AddConstraint(constraint));
-            }
-            origin
-        });
+        self.constraints
+            .borrow_mut()
+            .entry(constraint)
+            .or_insert_with(|| {
+                if self.in_snapshot() {
+                    self.undo_log.borrow_mut().push(AddConstraint(constraint));
+                }
+                origin
+            });
     }
 
     fn add_verify(&self, verify: Verify<'tcx>) {
@@ -527,8 +542,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         // skip no-op cases known to be satisfied
         match verify.bound {
-            VerifyBound::AllBounds(ref bs) if bs.len() == 0 => { return; }
-            _ => { }
+            VerifyBound::AllBounds(ref bs) if bs.len() == 0 => {
+                return;
+            }
+            _ => {}
         }
 
         let mut verifys = self.verifys.borrow_mut();
@@ -549,10 +566,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn make_eqregion(&self,
-                         origin: SubregionOrigin<'tcx>,
-                         sub: Region<'tcx>,
-                         sup: Region<'tcx>) {
+    pub fn make_eqregion(
+        &self,
+        origin: SubregionOrigin<'tcx>,
+        sub: Region<'tcx>,
+        sup: Region<'tcx>,
+    ) {
         if sub != sup {
             // Eventually, it would be nice to add direct support for
             // equating regions.
@@ -565,23 +584,28 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn make_subregion(&self,
-                          origin: SubregionOrigin<'tcx>,
-                          sub: Region<'tcx>,
-                          sup: Region<'tcx>) {
+    pub fn make_subregion(
+        &self,
+        origin: SubregionOrigin<'tcx>,
+        sub: Region<'tcx>,
+        sup: Region<'tcx>,
+    ) {
         // cannot add constraints once regions are resolved
-        debug!("RegionVarBindings: make_subregion({:?}, {:?}) due to {:?}",
-               sub,
-               sup,
-               origin);
+        debug!(
+            "RegionVarBindings: make_subregion({:?}, {:?}) due to {:?}",
+            sub,
+            sup,
+            origin
+        );
 
         match (sub, sup) {
-            (&ReLateBound(..), _) |
-            (_, &ReLateBound(..)) => {
-                span_bug!(origin.span(),
-                          "cannot relate bound region: {:?} <= {:?}",
-                          sub,
-                          sup);
+            (&ReLateBound(..), _) | (_, &ReLateBound(..)) => {
+                span_bug!(
+                    origin.span(),
+                    "cannot relate bound region: {:?} <= {:?}",
+                    sub,
+                    sup
+                );
             }
             (_, &ReStatic) => {
                 // all regions are subregions of static, so we can ignore this
@@ -602,11 +626,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 
     /// See `Verify::VerifyGenericBound`
-    pub fn verify_generic_bound(&self,
-                                origin: SubregionOrigin<'tcx>,
-                                kind: GenericKind<'tcx>,
-                                sub: Region<'tcx>,
-                                bound: VerifyBound<'tcx>) {
+    pub fn verify_generic_bound(
+        &self,
+        origin: SubregionOrigin<'tcx>,
+        kind: GenericKind<'tcx>,
+        sub: Region<'tcx>,
+        bound: VerifyBound<'tcx>,
+    ) {
         self.add_verify(Verify {
             kind,
             origin,
@@ -615,11 +641,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         });
     }
 
-    pub fn lub_regions(&self,
-                       origin: SubregionOrigin<'tcx>,
-                       a: Region<'tcx>,
-                       b: Region<'tcx>)
-                       -> Region<'tcx> {
+    pub fn lub_regions(
+        &self,
+        origin: SubregionOrigin<'tcx>,
+        a: Region<'tcx>,
+        b: Region<'tcx>,
+    ) -> Region<'tcx> {
         // cannot add constraints once regions are resolved
         debug!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -631,19 +658,22 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 a // LUB(a,a) = a
             }
 
-            _ => {
-                self.combine_vars(Lub, a, b, origin.clone(), |this, old_r, new_r| {
-                    this.make_subregion(origin.clone(), old_r, new_r)
-                })
-            }
+            _ => self.combine_vars(
+                Lub,
+                a,
+                b,
+                origin.clone(),
+                |this, old_r, new_r| this.make_subregion(origin.clone(), old_r, new_r),
+            ),
         }
     }
 
-    pub fn glb_regions(&self,
-                       origin: SubregionOrigin<'tcx>,
-                       a: Region<'tcx>,
-                       b: Region<'tcx>)
-                       -> Region<'tcx> {
+    pub fn glb_regions(
+        &self,
+        origin: SubregionOrigin<'tcx>,
+        a: Region<'tcx>,
+        b: Region<'tcx>,
+    ) -> Region<'tcx> {
         // cannot add constraints once regions are resolved
         debug!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -655,11 +685,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 a // GLB(a,a) = a
             }
 
-            _ => {
-                self.combine_vars(Glb, a, b, origin.clone(), |this, old_r, new_r| {
-                    this.make_subregion(origin.clone(), new_r, old_r)
-                })
-            }
+            _ => self.combine_vars(
+                Glb,
+                a,
+                b,
+                origin.clone(),
+                |this, old_r, new_r| this.make_subregion(origin.clone(), new_r, old_r),
+            ),
         }
     }
 
@@ -675,14 +707,16 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn combine_vars<F>(&self,
-                       t: CombineMapType,
-                       a: Region<'tcx>,
-                       b: Region<'tcx>,
-                       origin: SubregionOrigin<'tcx>,
-                       mut relate: F)
-                       -> Region<'tcx>
-        where F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, Region<'tcx>, Region<'tcx>)
+    fn combine_vars<F>(
+        &self,
+        t: CombineMapType,
+        a: Region<'tcx>,
+        b: Region<'tcx>,
+        origin: SubregionOrigin<'tcx>,
+        mut relate: F,
+    ) -> Region<'tcx>
+    where
+        F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, Region<'tcx>, Region<'tcx>),
     {
         let vars = TwoRegions { a: a, b: b };
         if let Some(&c) = self.combine_map(t).borrow().get(&vars) {
@@ -702,11 +736,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
         self.undo_log.borrow()[mark.length..]
             .iter()
-            .filter_map(|&elt| {
-                match elt {
-                    AddVar(vid) => Some(vid),
-                    _ => None,
-                }
+            .filter_map(|&elt| match elt {
+                AddVar(vid) => Some(vid),
+                _ => None,
             })
             .collect()
     }
@@ -719,21 +751,28 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// get the set of regions `{r|r <= r0}`. This is used when
     /// checking whether skolemized regions are being improperly
     /// related to other regions.
-    pub fn tainted(&self,
-                   mark: &RegionSnapshot,
-                   r0: Region<'tcx>,
-                   directions: TaintDirections)
-                   -> FxHashSet<ty::Region<'tcx>> {
-        debug!("tainted(mark={:?}, r0={:?}, directions={:?})",
-               mark, r0, directions);
+    pub fn tainted(
+        &self,
+        mark: &RegionSnapshot,
+        r0: Region<'tcx>,
+        directions: TaintDirections,
+    ) -> FxHashSet<ty::Region<'tcx>> {
+        debug!(
+            "tainted(mark={:?}, r0={:?}, directions={:?})",
+            mark,
+            r0,
+            directions
+        );
 
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
         // is not a terribly efficient implementation.
         let mut taint_set = taint::TaintSet::new(directions, r0);
-        taint_set.fixed_point(self.tcx,
-                              &self.undo_log.borrow()[mark.length..],
-                              &self.verifys.borrow());
+        taint_set.fixed_point(
+            self.tcx,
+            &self.undo_log.borrow()[mark.length..],
+            &self.verifys.borrow(),
+        );
         debug!("tainted: result={:?}", taint_set);
         return taint_set.into_set();
     }
@@ -741,8 +780,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
 impl fmt::Debug for RegionSnapshot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionSnapshot(length={},skolemization={})",
-               self.length, self.skolemization_count)
+        write!(
+            f,
+            "RegionSnapshot(length={},skolemization={})",
+            self.length,
+            self.skolemization_count
+        )
     }
 }
 
@@ -776,13 +819,11 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
 impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
     fn for_each_region(&self, f: &mut FnMut(ty::Region<'tcx>)) {
         match self {
-            &VerifyBound::AnyRegion(ref rs) |
-            &VerifyBound::AllRegions(ref rs) => for &r in rs {
+            &VerifyBound::AnyRegion(ref rs) | &VerifyBound::AllRegions(ref rs) => for &r in rs {
                 f(r);
             },
 
-            &VerifyBound::AnyBound(ref bs) |
-            &VerifyBound::AllBounds(ref bs) => for b in bs {
+            &VerifyBound::AnyBound(ref bs) | &VerifyBound::AllBounds(ref bs) => for b in bs {
                 b.for_each_region(f);
             },
         }
