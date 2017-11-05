@@ -387,7 +387,7 @@ fn format_files(
         for f in files {
             print!(" {}", f.display());
         }
-        println!("");
+        println!();
     }
     let mut command = Command::new("rustfmt")
         .stdout(stdout)

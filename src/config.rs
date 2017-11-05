@@ -478,7 +478,7 @@ macro_rules! create_config {
                     $(
                         println!("{}{}", space_str, $dstring);
                     )+
-                    println!("");
+                    println!();
                 )+
             }
         }
