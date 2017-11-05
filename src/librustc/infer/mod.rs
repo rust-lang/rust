@@ -42,6 +42,7 @@ use arena::DroplessArena;
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
+use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
@@ -104,6 +105,9 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     // For region variables.
     region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
+
+    // Once region inference is done, the values for each variable.
+    lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
@@ -421,6 +425,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(tcx),
+            lexical_region_resolutions: RefCell::new(None),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FxHashMap()),
@@ -1123,7 +1128,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                region_context,
                                                region_map,
                                                free_regions);
-        let errors = self.region_vars.resolve_regions(&region_rels);
+        let (lexical_region_resolutions, errors) = self.region_vars.resolve_regions(&region_rels);
+
+        let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
+        assert!(old_value.is_none());
 
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors

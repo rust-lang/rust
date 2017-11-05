@@ -15,19 +15,29 @@ use infer::RegionVariableOrigin;
 use infer::region_inference::Constraint;
 use infer::region_inference::GenericKind;
 use infer::region_inference::RegionVarBindings;
-use infer::region_inference::VarValue;
 use infer::region_inference::VerifyBound;
 use middle::free_region::RegionRelations;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
 use std::fmt;
 use std::u32;
-use ty::{self, TyCtxt};
+use ty;
 use ty::{Region, RegionVid};
 use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
 use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
 
 mod graphviz;
+
+pub struct LexicalRegionResolutions<'tcx> {
+    values: Vec<VarValue<'tcx>>,
+    error_region: ty::Region<'tcx>,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum VarValue<'tcx> {
+    Value(Region<'tcx>),
+    ErrorValue,
+}
 
 #[derive(Clone, Debug)]
 pub enum RegionResolutionError<'tcx> {
@@ -72,27 +82,14 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     pub fn resolve_regions(
         &self,
         region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-    ) -> Vec<RegionResolutionError<'tcx>> {
+    ) -> (
+        LexicalRegionResolutions<'tcx>,
+        Vec<RegionResolutionError<'tcx>>,
+    ) {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec![];
-        let v = self.infer_variable_values(region_rels, &mut errors);
-        *self.values.borrow_mut() = Some(v);
-        errors
-    }
-
-    pub fn resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
-        match *self.values.borrow() {
-            None => span_bug!(
-                (*self.var_origins.borrow())[rid.index as usize].span(),
-                "attempt to resolve region variable before values have \
-                 been computed!"
-            ),
-            Some(ref values) => {
-                let r = lookup(self.tcx, values, rid);
-                debug!("resolve_var({:?}) = {:?}", rid, r);
-                r
-            }
-        }
+        let values = self.infer_variable_values(region_rels, &mut errors);
+        (values, errors)
     }
 
     fn lub_concrete_regions(
@@ -188,7 +185,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         &self,
         region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-    ) -> Vec<VarValue<'tcx>> {
+    ) -> LexicalRegionResolutions<'tcx> {
         let mut var_data = self.construct_var_data();
 
         // Dorky hack to cause `dump_constraints` to only get called
@@ -208,10 +205,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         var_data
     }
 
-    fn construct_var_data(&self) -> Vec<VarValue<'tcx>> {
-        (0..self.num_vars() as usize)
-            .map(|_| VarValue::Value(self.tcx.types.re_empty))
-            .collect()
+    fn construct_var_data(&self) -> LexicalRegionResolutions<'tcx> {
+        LexicalRegionResolutions {
+            error_region: self.tcx.types.re_static,
+            values: (0..self.num_vars() as usize)
+                .map(|_| VarValue::Value(self.tcx.types.re_empty))
+                .collect(),
+        }
     }
 
     fn dump_constraints(&self, free_regions: &RegionRelations<'a, 'gcx, 'tcx>) {
@@ -252,19 +252,19 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     fn expansion(
         &self,
         region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-        var_values: &mut [VarValue<'tcx>],
+        var_values: &mut LexicalRegionResolutions<'tcx>,
     ) {
         self.iterate_until_fixed_point("Expansion", |constraint, origin| {
             debug!("expansion: constraint={:?} origin={:?}", constraint, origin);
             match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
-                    let b_data = &mut var_values[b_vid.index as usize];
+                    let b_data = var_values.value_mut(b_vid);
                     self.expand_node(region_rels, a_region, b_vid, b_data)
                 }
-                Constraint::VarSubVar(a_vid, b_vid) => match var_values[a_vid.index as usize] {
+                Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
                     VarValue::ErrorValue => false,
                     VarValue::Value(a_region) => {
-                        let b_node = &mut var_values[b_vid.index as usize];
+                        let b_node = var_values.value_mut(b_vid);
                         self.expand_node(region_rels, a_region, b_vid, b_node)
                     }
                 },
@@ -327,7 +327,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     fn collect_errors(
         &self,
         region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-        var_data: &mut Vec<VarValue<'tcx>>,
+        var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
         let constraints = self.constraints.borrow();
@@ -363,7 +363,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 }
 
                 Constraint::VarSubReg(a_vid, b_region) => {
-                    let a_data = &mut var_data[a_vid.index as usize];
+                    let a_data = var_data.value_mut(a_vid);
                     debug!("contraction: {:?} == {:?}, {:?}", a_vid, a_data, b_region);
 
                     let a_region = match *a_data {
@@ -391,7 +391,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         for verify in self.verifys.borrow().iter() {
             debug!("collect_errors: verify={:?}", verify);
-            let sub = normalize(self.tcx, var_data, verify.region);
+            let sub = var_data.normalize(verify.region);
 
             // This was an inference variable which didn't get
             // constrained, therefore it can be assume to hold.
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     fn collect_var_errors(
         &self,
         region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-        var_data: &[VarValue<'tcx>],
+        var_data: &LexicalRegionResolutions<'tcx>,
         graph: &RegionGraph<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
@@ -443,8 +443,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         // overlapping locations.
         let mut dup_vec = vec![u32::MAX; self.num_vars() as usize];
 
-        for idx in 0..self.num_vars() as usize {
-            match var_data[idx] {
+        for index in 0..self.num_vars() {
+            let node_vid = RegionVid { index };
+            match var_data.value(node_vid) {
                 VarValue::Value(_) => { /* Inference successful */ }
                 VarValue::ErrorValue => {
                     /* Inference impossible, this value contains
@@ -469,8 +470,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                        that is not used is not a problem, so if this rule
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
-
-                    let node_vid = RegionVid { index: idx as u32 };
                     self.collect_error_for_expanding_node(
                         region_rels,
                         graph,
@@ -704,28 +703,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 }
 
-fn normalize<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    values: &Vec<VarValue<'tcx>>,
-    r: ty::Region<'tcx>,
-) -> ty::Region<'tcx> {
-    match *r {
-        ty::ReVar(rid) => lookup(tcx, values, rid),
-        _ => r,
-    }
-}
-
-fn lookup<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    values: &Vec<VarValue<'tcx>>,
-    rid: ty::RegionVid,
-) -> ty::Region<'tcx> {
-    match values[rid.index as usize] {
-        VarValue::Value(r) => r,
-        VarValue::ErrorValue => tcx.types.re_static, // Previously reported error.
-    }
-}
-
 impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "RegionAndOrigin({:?},{:?})", self.region, self.origin)
@@ -737,26 +714,47 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
     fn is_met(
         &self,
         region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-        var_values: &Vec<VarValue<'tcx>>,
+        var_values: &LexicalRegionResolutions<'tcx>,
         min: ty::Region<'tcx>,
     ) -> bool {
-        let tcx = region_rels.tcx;
         match self {
-            &VerifyBound::AnyRegion(ref rs) => rs.iter()
-                .map(|&r| normalize(tcx, var_values, r))
+            VerifyBound::AnyRegion(rs) => rs.iter()
+                .map(|&r| var_values.normalize(r))
                 .any(|r| region_rels.is_subregion_of(min, r)),
 
-            &VerifyBound::AllRegions(ref rs) => rs.iter()
-                .map(|&r| normalize(tcx, var_values, r))
+            VerifyBound::AllRegions(rs) => rs.iter()
+                .map(|&r| var_values.normalize(r))
                 .all(|r| region_rels.is_subregion_of(min, r)),
 
-            &VerifyBound::AnyBound(ref bs) => {
-                bs.iter().any(|b| b.is_met(region_rels, var_values, min))
-            }
+            VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.is_met(region_rels, var_values, min)),
 
-            &VerifyBound::AllBounds(ref bs) => {
-                bs.iter().all(|b| b.is_met(region_rels, var_values, min))
-            }
+            VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.is_met(region_rels, var_values, min)),
         }
+    }
+}
+
+impl<'tcx> LexicalRegionResolutions<'tcx> {
+    fn normalize(&self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReVar(rid) => self.resolve_var(rid),
+            _ => r,
+        }
+    }
+
+    fn value(&self, rid: RegionVid) -> &VarValue<'tcx> {
+        &self.values[rid.index as usize]
+    }
+
+    fn value_mut(&mut self, rid: RegionVid) -> &mut VarValue<'tcx> {
+        &mut self.values[rid.index as usize]
+    }
+
+    pub fn resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
+        let result = match self.values[rid.index as usize] {
+            VarValue::Value(r) => r,
+            VarValue::ErrorValue => self.error_region,
+        };
+        debug!("resolve_var({:?}) = {:?}", rid, result);
+        result
     }
 }
