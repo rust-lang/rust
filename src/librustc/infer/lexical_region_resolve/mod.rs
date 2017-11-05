@@ -14,7 +14,7 @@ use infer::SubregionOrigin;
 use infer::RegionVariableOrigin;
 use infer::region_constraints::Constraint;
 use infer::region_constraints::GenericKind;
-use infer::region_constraints::RegionConstraintCollector;
+use infer::region_constraints::RegionConstraintData;
 use infer::region_constraints::VerifyBound;
 use middle::free_region::RegionRelations;
 use rustc_data_structures::fx::FxHashSet;
@@ -73,20 +73,20 @@ struct RegionAndOrigin<'tcx> {
 
 type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
 
-impl<'tcx> RegionConstraintCollector<'tcx> {
+impl<'tcx> RegionConstraintData<'tcx> {
     /// This function performs the actual region resolution.  It must be
     /// called after all constraints have been added.  It performs a
     /// fixed-point iteration to find region values which satisfy all
     /// constraints, assuming such values can be found; if they cannot,
     /// errors are reported.
     pub fn resolve_regions(
-        &mut self,
+        mut self,
         region_rels: &RegionRelations<'_, '_, 'tcx>,
     ) -> (
         LexicalRegionResolutions<'tcx>,
         Vec<RegionResolutionError<'tcx>>,
     ) {
-        debug!("RegionConstraintCollector: resolve_regions()");
+        debug!("RegionConstraintData: resolve_regions()");
         let mut errors = vec![];
         let values = self.infer_variable_values(region_rels, &mut errors);
         (values, errors)
@@ -642,7 +642,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         return (result, dup_found);
 
         fn process_edges<'tcx>(
-            this: &RegionConstraintCollector<'tcx>,
+            this: &RegionConstraintData<'tcx>,
             state: &mut WalkState<'tcx>,
             graph: &RegionGraph<'tcx>,
             source_vid: RegionVid,
