@@ -26,11 +26,30 @@ use self::mir_util::PassWhere;
 mod constraint_generation;
 mod subtype_constraint_generation;
 mod free_regions;
+use self::free_regions::FreeRegions;
 
 pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
 
-pub(super) mod renumber;
+mod renumber;
+
+/// Rewrites the regions in the MIR to use NLL variables, also
+/// scraping out the set of free regions (e.g., region parameters)
+/// declared on the function. That set will need to be given to
+/// `compute_regions`.
+pub(super) fn replace_regions_in_mir<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    source: MirSource,
+    mir: &mut Mir<'tcx>
+) -> FreeRegions<'tcx> {
+    // Compute named region information.
+    let free_regions = free_regions::free_regions(infcx, source);
+
+    // Replace all regions with fresh inference variables.
+    renumber::renumber_mir(infcx, &free_regions, mir);
+
+    free_regions
+}
 
 /// Computes the (non-lexical) regions from the input MIR.
 ///
@@ -38,12 +57,22 @@ pub(super) mod renumber;
 pub(super) fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource,
+    free_regions: &FreeRegions<'tcx>,
     mir: &Mir<'tcx>,
     param_env: ty::ParamEnv<'gcx>,
-    num_region_variables: usize,
     flow_inits: &FlowInProgress<MaybeInitializedLvals<'a, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
-) -> RegionInferenceContext {
+) -> RegionInferenceContext<'tcx> {
+    // Run the MIR type-checker.
+    let body_id = source.item_id();
+    let constraint_sets = &type_check::type_check(infcx, body_id, param_env, mir);
+
+    // Create the region inference context, taking ownership of the region inference
+    // data that was contained in `infcx`.
+    let var_origins = infcx.take_region_var_origins();
+    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
+    subtype_constraint_generation::generate(&mut regioncx, free_regions, mir, constraint_sets);
+
     // Compute what is live where.
     let liveness = &LivenessResults {
         regular: liveness::liveness_of_locals(

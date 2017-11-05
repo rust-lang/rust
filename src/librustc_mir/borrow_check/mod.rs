@@ -84,7 +84,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let mir = &mut mir;
 
     // Replace all regions with fresh inference variables.
-    let num_region_variables = nll::renumber::renumber_mir(infcx, mir);
+    let free_regions = nll::replace_regions_in_mir(infcx, src, mir);
 
     let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx, param_env) {
         Ok(move_data) => move_data,
@@ -127,7 +127,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let opt_regioncx = if !tcx.sess.opts.debugging_opts.nll {
         None
     } else {
-        Some(nll::compute_regions(infcx, src, param_env, mir, num_region_variables, &flow_inits, &mdpe.move_data))
+        Some(nll::compute_regions(infcx,
+                                  src,
+                                  &free_regions,
+                                  mir,
+                                  param_env,
+                                  &flow_inits,
+                                  &mdpe.move_data))
     };
 
     let mut mbcx = MirBorrowckCtxt {
@@ -139,7 +145,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     };
 
     let flow_borrows = FlowInProgress::new(do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                                   Borrows::new(tcx, mir, opt_regioncx.as_ref()),
+                                   Borrows::new(tcx, mir, opt_regioncx),
                                    |bd, i| bd.location(i)));
 
     let mut state = InProgress::new(flow_borrows,
