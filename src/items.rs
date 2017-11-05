@@ -1155,6 +1155,25 @@ pub fn format_struct_struct(
     }
 }
 
+/// Returns a bytepos that is after that of `(` in `pub(..)`. If the given visibility does not
+/// contain `pub(..)`, then return the `lo` of the `defualt_span`. Yeah, but for what? Well, we need
+/// to bypass the `(` in the visibility when creating a span of tuple's body or fn's args.
+fn get_bytepos_after_visibility(
+    context: &RewriteContext,
+    vis: &ast::Visibility,
+    default_span: Span,
+    terminator: &str,
+) -> BytePos {
+    match *vis {
+        ast::Visibility::Crate(s, CrateSugar::PubCrate) => context
+            .codemap
+            .span_after(mk_sp(s.hi(), default_span.hi()), terminator),
+        ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
+        ast::Visibility::Restricted { ref path, .. } => path.span.hi(),
+        _ => default_span.lo(),
+    }
+}
+
 fn format_tuple_struct(
     context: &RewriteContext,
     item_name: &str,
@@ -1171,12 +1190,13 @@ fn format_tuple_struct(
     result.push_str(&header_str);
 
     let body_lo = if fields.is_empty() {
-        context.codemap.span_after(span, "(")
+        let lo = get_bytepos_after_visibility(context, vis, span, ")");
+        context.codemap.span_after(mk_sp(lo, span.hi()), "(")
     } else {
         fields[0].span.lo()
     };
     let body_hi = if fields.is_empty() {
-        context.codemap.span_after(span, ")")
+        context.codemap.span_after(mk_sp(body_lo, span.hi()), ")")
     } else {
         // This is a dirty hack to work around a missing `)` from the span of the last field.
         let last_arg_span = fields[fields.len() - 1].span;
@@ -1224,7 +1244,10 @@ fn format_tuple_struct(
                 .to_string(context.config))
         }
         result.push('(');
-        let snippet = context.snippet(mk_sp(body_lo, context.codemap.span_before(span, ")")));
+        let snippet = context.snippet(mk_sp(
+            body_lo,
+            context.codemap.span_before(mk_sp(body_lo, span.hi()), ")"),
+        ));
         if snippet.is_empty() {
             // `struct S ()`
         } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
@@ -1766,13 +1789,7 @@ fn rewrite_fn_base(
     }
 
     // Skip `pub(crate)`.
-    let lo_after_visibility = match fn_sig.visibility {
-        ast::Visibility::Crate(s, CrateSugar::PubCrate) => {
-            context.codemap.span_after(mk_sp(s.hi(), span.hi()), ")")
-        }
-        ast::Visibility::Crate(s, CrateSugar::JustCrate) => s.hi(),
-        _ => span.lo(),
-    };
+    let lo_after_visibility = get_bytepos_after_visibility(context, &fn_sig.visibility, span, ")");
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = fn_sig
         .generics
