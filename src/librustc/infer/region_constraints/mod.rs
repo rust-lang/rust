@@ -143,7 +143,7 @@ enum CombineMapType {
 
 type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 
-pub struct RegionVarBindings<'tcx> {
+pub struct RegionConstraintCollector<'tcx> {
     pub(in infer) var_origins: Vec<RegionVariableOrigin>,
 
     /// Constraints of the form `A <= B` introduced by the region
@@ -242,9 +242,9 @@ impl TaintDirections {
     }
 }
 
-impl<'tcx> RegionVarBindings<'tcx> {
-    pub fn new() -> RegionVarBindings<'tcx> {
-        RegionVarBindings {
+impl<'tcx> RegionConstraintCollector<'tcx> {
+    pub fn new() -> RegionConstraintCollector<'tcx> {
+        RegionConstraintCollector {
             var_origins: Vec::new(),
             constraints: BTreeMap::new(),
             verifys: Vec::new(),
@@ -264,7 +264,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
 
     pub fn start_snapshot(&mut self) -> RegionSnapshot {
         let length = self.undo_log.len();
-        debug!("RegionVarBindings: start_snapshot({})", length);
+        debug!("RegionConstraintCollector: start_snapshot({})", length);
         self.undo_log.push(OpenSnapshot);
         RegionSnapshot {
             length,
@@ -274,7 +274,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn commit(&mut self, snapshot: RegionSnapshot) {
-        debug!("RegionVarBindings: commit({})", snapshot.length);
+        debug!("RegionConstraintCollector: commit({})", snapshot.length);
         assert!(self.undo_log.len() > snapshot.length);
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         assert!(
@@ -294,7 +294,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     }
 
     pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
-        debug!("RegionVarBindings: rollback_to({:?})", snapshot);
+        debug!("RegionConstraintCollector: rollback_to({:?})", snapshot);
         assert!(self.undo_log.len() > snapshot.length);
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         while self.undo_log.len() > snapshot.length + 1 {
@@ -523,7 +523,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
 
     fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
-        debug!("RegionVarBindings: add_constraint({:?})", constraint);
+        debug!("RegionConstraintCollector: add_constraint({:?})", constraint);
 
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
         // present in the map yet. This prevents origins from outside the snapshot being
@@ -542,7 +542,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
 
     fn add_verify(&mut self, verify: Verify<'tcx>) {
         // cannot add verifys once regions are resolved
-        debug!("RegionVarBindings: add_verify({:?})", verify);
+        debug!("RegionConstraintCollector: add_verify({:?})", verify);
 
         // skip no-op cases known to be satisfied
         match verify.bound {
@@ -594,7 +594,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
     ) {
         // cannot add constraints once regions are resolved
         debug!(
-            "RegionVarBindings: make_subregion({:?}, {:?}) due to {:?}",
+            "RegionConstraintCollector: make_subregion({:?}, {:?}) due to {:?}",
             sub,
             sup,
             origin
@@ -651,7 +651,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
         b: Region<'tcx>,
     ) -> Region<'tcx> {
         // cannot add constraints once regions are resolved
-        debug!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
+        debug!("RegionConstraintCollector: lub_regions({:?}, {:?})", a, b);
         match (a, b) {
             (r @ &ReStatic, _) | (_, r @ &ReStatic) => {
                 r // nothing lives longer than static
@@ -673,7 +673,7 @@ impl<'tcx> RegionVarBindings<'tcx> {
         b: Region<'tcx>,
     ) -> Region<'tcx> {
         // cannot add constraints once regions are resolved
-        debug!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
+        debug!("RegionConstraintCollector: glb_regions({:?}, {:?})", a, b);
         match (a, b) {
             (&ReStatic, r) | (r, &ReStatic) => {
                 r // static lives longer than everything else
