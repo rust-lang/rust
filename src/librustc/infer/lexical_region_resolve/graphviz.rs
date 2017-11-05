@@ -25,7 +25,7 @@ use middle::free_region::RegionRelations;
 use middle::region;
 use super::Constraint;
 use infer::SubregionOrigin;
-use infer::region_constraints::RegionConstraintCollector;
+use infer::region_constraints::RegionConstraintData;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
@@ -56,7 +56,7 @@ graphs will be printed.                                                     \n\
 }
 
 pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
-    region_constraints: &RegionConstraintCollector<'tcx>,
+    region_data: &RegionConstraintData<'tcx>,
     region_rels: &RegionRelations<'a, 'gcx, 'tcx>)
 {
     let tcx = region_rels.tcx;
@@ -112,7 +112,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         }
     };
 
-    match dump_region_constraints_to(region_rels, &region_constraints.constraints, &output_path) {
+    match dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
         Ok(()) => {}
         Err(e) => {
             let msg = format!("io error dumping region constraints: {}", e);
@@ -266,15 +266,15 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 
 pub type ConstraintMap<'tcx> = FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
-fn dump_region_constraints_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-                                              map: &ConstraintMap<'tcx>,
-                                              path: &str)
-                                              -> io::Result<()> {
-    debug!("dump_region_constraints map (len: {}) path: {}",
+fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+                                       map: &ConstraintMap<'tcx>,
+                                       path: &str)
+                                       -> io::Result<()> {
+    debug!("dump_region_data map (len: {}) path: {}",
            map.len(),
            path);
-    let g = ConstraintGraph::new(format!("region_constraints"), region_rels, map);
-    debug!("dump_region_constraints calling render");
+    let g = ConstraintGraph::new(format!("region_data"), region_rels, map);
+    debug!("dump_region_data calling render");
     let mut v = Vec::new();
     dot::render(&g, &mut v).unwrap();
     File::create(path).and_then(|mut f| f.write_all(&v))
