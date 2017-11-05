@@ -75,7 +75,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             TerminatorKind::Return |
             TerminatorKind::Unreachable |
             TerminatorKind::FalseEdges { .. } => {
-                                // safe (at least as emitted during MIR construction)
+                // safe (at least as emitted during MIR construction)
             }
 
             TerminatorKind::Call { ref func, .. } => {
@@ -117,12 +117,17 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     rvalue: &Rvalue<'tcx>,
                     location: Location)
     {
-        if let &Rvalue::Aggregate(
-            box AggregateKind::Closure(def_id, _),
-            _
-        ) = rvalue {
-            let unsafety_violations = self.tcx.unsafety_violations(def_id);
-            self.register_violations(&unsafety_violations);
+        if let &Rvalue::Aggregate(box ref aggregate, _) = rvalue {
+            match aggregate {
+                &AggregateKind::Array(..) |
+                &AggregateKind::Tuple |
+                &AggregateKind::Adt(..) => {}
+                &AggregateKind::Closure(def_id, _) |
+                &AggregateKind::Generator(def_id, _, _) => {
+                    let unsafety_violations = self.tcx.unsafety_violations(def_id);
+                    self.register_violations(&unsafety_violations);
+                }
+            }
         }
         self.super_rvalue(rvalue, location);
     }
