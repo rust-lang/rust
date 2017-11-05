@@ -41,7 +41,7 @@ use arena::DroplessArena;
 
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
-use self::region_constraints::{RegionVarBindings, RegionSnapshot};
+use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
@@ -104,7 +104,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
     // For region variables.
-    region_constraints: RefCell<RegionVarBindings<'tcx>>,
+    region_constraints: RefCell<RegionConstraintCollector<'tcx>>,
 
     // Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
-            region_constraints: RefCell::new(RegionVarBindings::new()),
+            region_constraints: RefCell::new(RegionConstraintCollector::new()),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
