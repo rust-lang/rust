@@ -554,9 +554,9 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
 /// run panic hooks, and then delegate to the actual implementation of panics.
 #[inline(never)]
 #[cold]
-pub(crate) fn rust_panic_with_hook(msg: Box<Any + Send>,
-                                   file_line_col: &(&'static str, u32, u32),
-                                   entry_point: &usize) -> ! {
+fn rust_panic_with_hook(msg: Box<Any + Send>,
+                        file_line_col: &(&'static str, u32, u32),
+                        entry_point: &usize) -> ! {
     let (file, line, col) = *file_line_col;
 
     let panics = update_panic_count(1);

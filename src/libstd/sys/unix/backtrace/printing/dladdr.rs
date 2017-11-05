@@ -22,7 +22,7 @@ pub fn resolve_symname<F>(frame: Frame,
 {
     unsafe {
         let mut info: Dl_info = intrinsics::init();
-        let symninfo = if dladdr(frame.exact_position as *mut _, &mut info) == 0 ||
+        let syminfo = if dladdr(frame.exact_position as *mut _, &mut info) == 0 ||
                          info.dli_sname.is_null() {
             None
         } else {
