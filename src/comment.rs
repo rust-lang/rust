@@ -327,12 +327,10 @@ fn rewrite_comment_inner(
             if line.is_empty() {
                 continue;
             }
+        } else if is_prev_line_multi_line && !line.is_empty() {
+            result.push(' ')
         } else {
-            if is_prev_line_multi_line && !line.is_empty() {
-                result.push(' ')
-            } else {
-                result.push_str(&comment_line_separator);
-            }
+            result.push_str(&comment_line_separator);
         }
 
         if config.wrap_comments() && line.len() > fmt.shape.width && !has_url(line) {

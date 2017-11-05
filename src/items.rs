@@ -313,10 +313,10 @@ impl<'a> FmtVisitor<'a> {
         let (mut result, force_newline_brace) =
             rewrite_fn_base(&context, indent, ident, fn_sig, span, newline_brace, true)?;
 
-        if self.config.fn_brace_style() == BraceStyle::AlwaysNextLine || force_newline_brace {
-            newline_brace = true;
-        } else if last_line_width(&result) + 2 > self.shape().width {
-            // 2 = ` {`
+        // 2 = ` {`
+        if self.config.fn_brace_style() == BraceStyle::AlwaysNextLine || force_newline_brace
+            || last_line_width(&result) + 2 > self.shape().width
+        {
             newline_brace = true;
         } else if !result.contains('\n') {
             newline_brace = false;
