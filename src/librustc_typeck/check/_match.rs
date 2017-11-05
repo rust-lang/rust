@@ -471,7 +471,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // 2. Things go horribly wrong if we use subtype. The reason for
         // THIS is a fairly subtle case involving bound regions. See the
-        // `givens` field in `region_inference`, as well as the test
+        // `givens` field in `region_constraints`, as well as the test
         // `regions-relate-bound-regions-on-closures-to-inference-variables.rs`,
         // for details. Short version is that we must sometimes detect
         // relationships between specific region variables and regions

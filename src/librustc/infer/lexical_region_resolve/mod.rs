@@ -12,10 +12,10 @@
 
 use infer::SubregionOrigin;
 use infer::RegionVariableOrigin;
-use infer::region_inference::Constraint;
-use infer::region_inference::GenericKind;
-use infer::region_inference::RegionVarBindings;
-use infer::region_inference::VerifyBound;
+use infer::region_constraints::Constraint;
+use infer::region_constraints::GenericKind;
+use infer::region_constraints::RegionVarBindings;
+use infer::region_constraints::VerifyBound;
 use middle::free_region::RegionRelations;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};

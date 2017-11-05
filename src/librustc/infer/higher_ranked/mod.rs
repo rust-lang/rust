@@ -17,7 +17,7 @@ use super::{CombinedSnapshot,
             SubregionOrigin,
             SkolemizationMap};
 use super::combine::CombineFields;
-use super::region_inference::{TaintDirections};
+use super::region_constraints::{TaintDirections};
 
 use ty::{self, TyCtxt, Binder, TypeFoldable};
 use ty::error::TypeError;

@@ -16,7 +16,7 @@ pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
-pub use self::region_inference::{GenericKind, VerifyBound};
+pub use self::region_constraints::{GenericKind, VerifyBound};
 
 use hir::def_id::DefId;
 use middle::free_region::{FreeRegionMap, RegionRelations};
@@ -41,7 +41,7 @@ use arena::DroplessArena;
 
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
-use self::region_inference::{RegionVarBindings, RegionSnapshot};
+use self::region_constraints::{RegionVarBindings, RegionSnapshot};
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
@@ -55,7 +55,7 @@ mod glb;
 mod higher_ranked;
 pub mod lattice;
 mod lub;
-pub mod region_inference;
+pub mod region_constraints;
 mod lexical_region_resolve;
 mod outlives;
 pub mod resolve;
@@ -104,7 +104,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
     // For region variables.
-    region_vars: RefCell<RegionVarBindings<'tcx>>,
+    region_constraints: RefCell<RegionConstraints<'tcx>>,
 
     // Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
@@ -1354,7 +1354,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Ok(InferOk { value: result, obligations: combine.obligations })
     }
 
-    /// See `verify_generic_bound` method in `region_inference`
+    /// See `verify_generic_bound` method in `region_constraints`
     pub fn verify_generic_bound(&self,
                                 origin: SubregionOrigin<'tcx>,
                                 kind: GenericKind<'tcx>,
