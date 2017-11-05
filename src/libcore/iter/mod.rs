@@ -786,11 +786,8 @@ impl<A, B> Iterator for Chain<A, B> where
             }
             _ => { }
         }
-        match self.state {
-            ChainState::Both | ChainState::Back => {
-                accum = self.b.try_fold(accum, &mut f)?;
-            }
-            _ => { }
+        if let ChainState::Back = self.state {
+            accum = self.b.try_fold(accum, &mut f)?;
         }
         Try::from_ok(accum)
     }
@@ -917,11 +914,8 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
             }
             _ => { }
         }
-        match self.state {
-            ChainState::Both | ChainState::Front => {
-                accum = self.a.try_rfold(accum, &mut f)?;
-            }
-            _ => { }
+        if let ChainState::Front = self.state {
+            accum = self.a.try_rfold(accum, &mut f)?;
         }
         Try::from_ok(accum)
     }

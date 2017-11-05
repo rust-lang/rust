@@ -1372,7 +1372,7 @@ pub trait Iterator {
     /// #![feature(iterator_try_fold)]
     /// let a = [1, 2, 3];
     ///
-    /// // the checked sum of all of the elements of a
+    /// // the checked sum of all of the elements of the array
     /// let sum = a.iter()
     ///            .try_fold(0i8, |acc, &x| acc.checked_add(x));
     ///
@@ -1431,7 +1431,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// // the sum of all of the elements of a
+    /// // the sum of all of the elements of the array
     /// let sum = a.iter()
     ///            .fold(0, |acc, &x| acc + x);
     ///
