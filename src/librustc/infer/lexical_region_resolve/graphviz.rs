@@ -211,13 +211,13 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 
 fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
     match *c {
-        Constraint::ConstrainVarSubVar(rv_1, rv_2) =>
+        Constraint::VarSubVar(rv_1, rv_2) =>
             (Node::RegionVid(rv_1), Node::RegionVid(rv_2)),
-        Constraint::ConstrainRegSubVar(r_1, rv_2) =>
+        Constraint::RegSubVar(r_1, rv_2) =>
             (Node::Region(*r_1), Node::RegionVid(rv_2)),
-        Constraint::ConstrainVarSubReg(rv_1, r_2) =>
+        Constraint::VarSubReg(rv_1, r_2) =>
             (Node::RegionVid(rv_1), Node::Region(*r_2)),
-        Constraint::ConstrainRegSubReg(r_1, r_2) =>
+        Constraint::RegSubReg(r_1, r_2) =>
             (Node::Region(*r_1), Node::Region(*r_2)),
     }
 }
