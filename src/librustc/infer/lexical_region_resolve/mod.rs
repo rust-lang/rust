@@ -11,9 +11,10 @@
 //! The code to do lexical region resolution.
 
 use infer::SubregionOrigin;
+use infer::RegionVariableOrigin;
 use infer::region_inference::Constraint;
+use infer::region_inference::GenericKind;
 use infer::region_inference::RegionVarBindings;
-use infer::region_inference::RegionResolutionError;
 use infer::region_inference::VarValue;
 use infer::region_inference::VerifyBound;
 use middle::free_region::RegionRelations;
@@ -23,10 +24,37 @@ use std::fmt;
 use std::u32;
 use ty::{self, TyCtxt};
 use ty::{Region, RegionVid};
-use ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound, ReErased};
-use ty::{ReLateBound, ReScope, ReVar, ReSkolemized};
+use ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
+use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
 
 mod graphviz;
+
+#[derive(Clone, Debug)]
+pub enum RegionResolutionError<'tcx> {
+    /// `ConcreteFailure(o, a, b)`:
+    ///
+    /// `o` requires that `a <= b`, but this does not hold
+    ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
+
+    /// `GenericBoundFailure(p, s, a)
+    ///
+    /// The parameter/associated-type `p` must be known to outlive the lifetime
+    /// `a` (but none of the known bounds are sufficient).
+    GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region<'tcx>),
+
+    /// `SubSupConflict(v, sub_origin, sub_r, sup_origin, sup_r)`:
+    ///
+    /// Could not infer a value for `v` because `sub_r <= v` (due to
+    /// `sub_origin`) but `v <= sup_r` (due to `sup_origin`) and
+    /// `sub_r <= sup_r` does not hold.
+    SubSupConflict(
+        RegionVariableOrigin,
+        SubregionOrigin<'tcx>,
+        Region<'tcx>,
+        SubregionOrigin<'tcx>,
+        Region<'tcx>,
+    ),
+}
 
 struct RegionAndOrigin<'tcx> {
     region: Region<'tcx>,
@@ -327,7 +355,11 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                         sup
                     );
 
-                    errors.push(RegionResolutionError::ConcreteFailure((*origin).clone(), sub, sup));
+                    errors.push(RegionResolutionError::ConcreteFailure(
+                        (*origin).clone(),
+                        sub,
+                        sup,
+                    ));
                 }
 
                 Constraint::VarSubReg(a_vid, b_region) => {
