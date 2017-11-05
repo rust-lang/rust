@@ -562,7 +562,9 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         if self.data.givens.insert((sub, sup)) {
             debug!("add_given({:?} <= {:?})", sub, sup);
 
-            self.undo_log.push(AddGiven(sub, sup));
+            if self.in_snapshot() {
+                self.undo_log.push(AddGiven(sub, sup));
+            }
         }
     }
 
