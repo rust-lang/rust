@@ -284,8 +284,19 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     /// Once all the constraints have been gathered, extract out the final data.
+    ///
+    /// Not legal during a snapshot.
     pub fn into_origins_and_data(self) -> (VarOrigins, RegionConstraintData<'tcx>) {
+        assert!(!self.in_snapshot());
         (self.var_origins, self.data)
+    }
+
+    /// Takes (and clears) the current set of constraints. Note that the set of
+    /// variables remains intact.
+    ///
+    /// Not legal during a snapshot.
+    pub fn take_and_reset_data(&mut self) -> RegionConstraintData<'tcx> {
+        mem::replace(&mut self.data, RegionConstraintData::default())
     }
 
     fn in_snapshot(&self) -> bool {
