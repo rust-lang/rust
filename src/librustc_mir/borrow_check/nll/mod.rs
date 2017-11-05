@@ -16,6 +16,9 @@ use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
 use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
+use borrow_check::FlowInProgress;
+use dataflow::MaybeInitializedLvals;
+use dataflow::move_paths::MoveData;
 
 use util as mir_util;
 use self::mir_util::PassWhere;
@@ -27,33 +30,20 @@ mod free_regions;
 pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
 
-mod renumber;
+pub(super) mod renumber;
 
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub fn compute_regions<'a, 'gcx, 'tcx>(
+pub(super) fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource,
+    mir: &Mir<'tcx>,
     param_env: ty::ParamEnv<'gcx>,
-    mir: &mut Mir<'tcx>,
-) -> RegionInferenceContext<'tcx> {
-    // Compute named region information.
-    let free_regions = &free_regions::free_regions(infcx, source);
-
-    // Replace all regions with fresh inference variables.
-    renumber::renumber_mir(infcx, free_regions, mir);
-
-    // Run the MIR type-checker.
-    let body_id = source.item_id();
-    let constraint_sets = &type_check::type_check(infcx, body_id, param_env, mir);
-
-    // Create the region inference context, taking ownership of the region inference
-    // data that was contained in `infcx`.
-    let var_origins = infcx.take_region_var_origins();
-    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
-    subtype_constraint_generation::generate(&mut regioncx, free_regions, mir, constraint_sets);
-
+    num_region_variables: usize,
+    flow_inits: &FlowInProgress<MaybeInitializedLvals<'a, 'gcx, 'tcx>>,
+    move_data: &MoveData<'tcx>,
+) -> RegionInferenceContext {
     // Compute what is live where.
     let liveness = &LivenessResults {
         regular: liveness::liveness_of_locals(
@@ -74,7 +64,8 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
     };
 
     // Generate non-subtyping constraints.
-    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
+    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness,
+                                                flow_inits, move_data);
 
     // Solve the region constraints.
     regioncx.solve(infcx, &mir);

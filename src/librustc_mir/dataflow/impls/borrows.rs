@@ -21,8 +21,8 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
 pub use dataflow::indexes::BorrowIndex;
-use transform::nll::region_infer::RegionInferenceContext;
-use transform::nll::ToRegionVid;
+use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::ToRegionVid;
 
 use syntax_pos::Span;
 
