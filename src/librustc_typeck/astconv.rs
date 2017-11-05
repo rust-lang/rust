@@ -1407,7 +1407,8 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
 pub enum ExplicitSelf<'tcx> {
     ByValue,
     ByReference(ty::Region<'tcx>, hir::Mutability),
-    ByBox
+    ByBox,
+    Other
 }
 
 impl<'tcx> ExplicitSelf<'tcx> {
@@ -1431,36 +1432,27 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// }
     /// ```
     ///
-    /// To do the check we just count the number of "modifiers"
-    /// on each type and compare them. If they are the same or
-    /// the impl has more, we call it "by value". Otherwise, we
-    /// look at the outermost modifier on the method decl and
-    /// call it by-ref, by-box as appropriate. For method1, for
-    /// example, the impl type has one modifier, but the method
-    /// type has two, so we end up with
-    /// ExplicitSelf::ByReference.
-    pub fn determine(untransformed_self_ty: Ty<'tcx>,
-                     self_arg_ty: Ty<'tcx>)
-                     -> ExplicitSelf<'tcx> {
-        fn count_modifiers(ty: Ty) -> usize {
-            match ty.sty {
-                ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,
-                ty::TyAdt(def, _) if def.is_box() => count_modifiers(ty.boxed_ty()) + 1,
-                _ => 0,
-            }
-        }
+    pub fn determine<'a, 'gcx>(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        self_ty: Ty<'a>,
+        self_arg_ty: Ty<'a>
+    ) -> ExplicitSelf<'tcx>
+    {
+        use self::ExplicitSelf::*;
 
-        let impl_modifiers = count_modifiers(untransformed_self_ty);
-        let method_modifiers = count_modifiers(self_arg_ty);
+        tcx.infer_ctxt().enter(|infcx| {
+            let can_eq = |expected, actual| {
+                let cause = traits::ObligationCause::dummy();
+                infcx.at(&cause, param_env).eq(expected, actual).is_ok()
+            };
 
-        if impl_modifiers >= method_modifiers {
-            ExplicitSelf::ByValue
-        } else {
             match self_arg_ty.sty {
-                ty::TyRef(r, mt) => ExplicitSelf::ByReference(r, mt.mutbl),
-                ty::TyAdt(def, _) if def.is_box() => ExplicitSelf::ByBox,
-                _ => ExplicitSelf::ByValue,
+                _ if can_eq(self_arg_ty, self_ty) => ByValue,
+                ty::TyRef(region, ty::TypeAndMut { ty, mutbl}) if can_eq(ty, self_ty) => ByReference(region, mutbl),
+                ty::TyAdt(def, _) if def.is_box() && can_eq(self_arg_ty.boxed_ty(), self_ty) => ByBox,
+                _ => Other
             }
-        }
+        })
     }
 }

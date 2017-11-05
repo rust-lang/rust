@@ -503,7 +503,9 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ty::TraitContainer(_) => tcx.mk_self_type()
         };
         let self_arg_ty = *tcx.fn_sig(method.def_id).input(0).skip_binder();
-        match ExplicitSelf::determine(untransformed_self_ty, self_arg_ty) {
+        let param_env = ty::ParamEnv::empty(Reveal::All);
+
+        match ExplicitSelf::determine(tcx, param_env, untransformed_self_ty, self_arg_ty) {
             ExplicitSelf::ByValue => "self".to_string(),
             ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_string(),
             ExplicitSelf::ByReference(_, hir::MutMutable) => "&mut self".to_string(),

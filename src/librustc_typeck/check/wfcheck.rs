@@ -13,6 +13,7 @@ use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
+use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
@@ -451,8 +452,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                          method: &ty::AssociatedItem,
                                          self_ty: Ty<'tcx>)
     {
-        // check that the type of the method's receiver matches the
-        // method's first parameter.
+        // check that the method has a valid receiver type, given the type `Self`
         debug!("check_method_receiver({:?}, self_ty={:?})",
                method, self_ty);
 
@@ -470,47 +470,29 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         let self_arg_ty = sig.inputs()[0];
 
-        if fcx.tcx.sess.features.borrow().arbitrary_self_types {
-            let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
+        let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
+        let at = fcx.at(&cause, fcx.param_env);
+        let mut autoderef = fcx.autoderef(span, self_arg_ty);
 
-            let mut autoderef = fcx.autoderef(span, self_arg_ty);
-            while let Some((potential_self_ty, _)) = autoderef.next() {
+        loop {
+            if let Some((potential_self_ty, _)) = autoderef.next() {
                 debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`", potential_self_ty, self_ty);
 
-                // there's gotta be a more idiomatic way of checking if types are equal than this
-                if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, self_ty, potential_self_ty) {
-                    err.cancel();
-                    continue;
-                } else {
-                    // we found a type that matches `self_ty`
+                if let Ok(InferOk { obligations, value: () }) = at.eq(self_ty, potential_self_ty) {
+                    fcx.register_predicates(obligations);
                     autoderef.finalize();
-                    return;
+                    break;
                 }
-            }
 
-            span_err!(fcx.tcx.sess, span, E0307, "invalid `self` type: {:?}", self_arg_ty);
-            return;
+            } else {
+                span_err!(fcx.tcx.sess, span, E0307, "invalid self type: {:?}", self_arg_ty);
+            }
         }
 
-        let rcvr_ty = match ExplicitSelf::determine(self_ty, self_arg_ty) {
-            ExplicitSelf::ByValue => self_ty,
-            ExplicitSelf::ByReference(region, mutbl) => {
-                fcx.tcx.mk_ref(region, ty::TypeAndMut {
-                    ty: self_ty,
-                    mutbl,
-                })
+        if let ExplicitSelf::Other = ExplicitSelf::determine(fcx.tcx, fcx.param_env, self_ty, self_arg_ty) {
+            if !fcx.tcx.sess.features.borrow().arbitrary_self_types {
+                fcx.tcx.sess.span_err(span, "Arbitrary `self` types are experimental");
             }
-            ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty)
-        };
-        let rcvr_ty = fcx.normalize_associated_types_in(span, &rcvr_ty);
-        let rcvr_ty = fcx.liberate_late_bound_regions(method.def_id,
-                                                      &ty::Binder(rcvr_ty));
-
-        debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
-
-        let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-        if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty) {
-            err.emit();
         }
     }
 
