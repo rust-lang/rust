@@ -593,6 +593,7 @@ pub fn format_impl(
             where_span_end,
             self_ty.span.hi(),
             option,
+            false,
         )?;
 
         // If there is no where clause, we may have missing comments between the trait name and
@@ -960,6 +961,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             None,
             pos_before_where,
             option,
+            false,
         )?;
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
@@ -1229,6 +1231,7 @@ fn format_tuple_struct(
                 None,
                 body_hi,
                 option,
+                false,
             )?
         }
         None => "".to_owned(),
@@ -1321,6 +1324,7 @@ pub fn rewrite_type_alias(
         Some(span.hi()),
         generics.span.hi(),
         option,
+        false,
     )?;
     result.push_str(&where_clause_str);
     if where_clause_str.is_empty() {
@@ -1954,6 +1958,8 @@ fn rewrite_fn_base(
         ast::FunctionRetTy::Ty(ref ty) => ty.span.hi(),
     };
 
+    let is_args_multi_lined = arg_str.contains('\n');
+
     if where_clause.predicates.len() == 1 && should_compress_where {
         let budget = context.budget(last_line_used_width(&result, indent.width()));
         if let Some(where_clause_str) = rewrite_where_clause(
@@ -1966,6 +1972,7 @@ fn rewrite_fn_base(
             Some(span.hi()),
             pos_before_where,
             WhereClauseOption::compressed(),
+            is_args_multi_lined,
         ) {
             result.push_str(&where_clause_str);
             force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
@@ -1984,6 +1991,7 @@ fn rewrite_fn_base(
         Some(span.hi()),
         pos_before_where,
         option,
+        is_args_multi_lined,
     )?;
     // If there are neither where clause nor return type, we may be missing comments between
     // args and `{`.
@@ -2007,6 +2015,7 @@ fn rewrite_fn_base(
     result.push_str(&where_clause_str);
 
     force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
+    force_new_line_for_brace |= is_args_multi_lined && context.config.where_single_line();
     Some((result, force_new_line_for_brace))
 }
 
@@ -2264,11 +2273,16 @@ fn compute_budgets_for_args(
 }
 
 fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause, has_body: bool) -> bool {
+    let predicate_count = where_clause.predicates.len();
+
+    if config.where_single_line() && predicate_count == 1 {
+        return false;
+    }
     match (config.fn_brace_style(), config.where_density()) {
         (BraceStyle::AlwaysNextLine, _) => true,
-        (_, Density::Compressed) if where_clause.predicates.len() == 1 => false,
-        (_, Density::CompressedIfEmpty) if where_clause.predicates.len() == 1 && !has_body => false,
-        (BraceStyle::SameLineWhere, _) if !where_clause.predicates.is_empty() => true,
+        (_, Density::Compressed) if predicate_count == 1 => false,
+        (_, Density::CompressedIfEmpty) if predicate_count == 1 && !has_body => false,
+        (BraceStyle::SameLineWhere, _) if predicate_count > 0 => true,
         _ => false,
     }
 }
@@ -2444,6 +2458,7 @@ fn rewrite_where_clause_rfc_style(
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
+    is_args_multi_line: bool,
 ) -> Option<String> {
     let block_shape = shape.block().with_max_width(context.config);
 
@@ -2479,14 +2494,23 @@ fn rewrite_where_clause_rfc_style(
         span_end,
         false,
     );
-    let comma_tactic = if where_clause_option.suppress_comma {
+    let where_single_line = context.config.where_single_line() && len == 1 && !is_args_multi_line;
+    let comma_tactic = if where_clause_option.suppress_comma || where_single_line {
         SeparatorTactic::Never
     } else {
         context.config.trailing_comma()
     };
 
+    // shape should be vertical only and only if we have `where_single_line` option enabled
+    // and the number of items of the where clause is equal to 1
+    let shape_tactic = if where_single_line {
+        DefinitiveListTactic::Horizontal
+    } else {
+        DefinitiveListTactic::Vertical
+    };
+
     let fmt = ListFormatting {
-        tactic: DefinitiveListTactic::Vertical,
+        tactic: shape_tactic,
         separator: ",",
         trailing_separator: comma_tactic,
         separator_place: SeparatorPlace::Back,
@@ -2508,7 +2532,7 @@ fn rewrite_where_clause_rfc_style(
     // 6 = `where `
     let clause_sep = if where_clause_option.compress_where && comment_before.is_empty()
         && comment_after.is_empty() && !preds_str.contains('\n')
-        && 6 + preds_str.len() <= shape.width
+        && 6 + preds_str.len() <= shape.width || where_single_line
     {
         String::from(" ")
     } else {
@@ -2536,6 +2560,7 @@ fn rewrite_where_clause(
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
+    is_args_multi_line: bool,
 ) -> Option<String> {
     if where_clause.predicates.is_empty() {
         return Some(String::new());
@@ -2550,6 +2575,7 @@ fn rewrite_where_clause(
             span_end,
             span_end_before_where,
             where_clause_option,
+            is_args_multi_line,
         );
     }
 
@@ -2698,6 +2724,7 @@ fn format_generics(
             Some(span.hi()),
             span_end_before_where,
             option,
+            false,
         )?;
         result.push_str(&where_clause_str);
         force_same_line_brace || brace_style == BraceStyle::PreferSameLine
