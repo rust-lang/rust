@@ -141,31 +141,6 @@ enum CombineMapType {
     Glb,
 }
 
-#[derive(Clone, Debug)]
-pub enum RegionResolutionError<'tcx> {
-    /// `ConcreteFailure(o, a, b)`:
-    ///
-    /// `o` requires that `a <= b`, but this does not hold
-    ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
-
-    /// `GenericBoundFailure(p, s, a)
-    ///
-    /// The parameter/associated-type `p` must be known to outlive the lifetime
-    /// `a` (but none of the known bounds are sufficient).
-    GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region<'tcx>),
-
-    /// `SubSupConflict(v, sub_origin, sub_r, sup_origin, sup_r)`:
-    ///
-    /// Could not infer a value for `v` because `sub_r <= v` (due to
-    /// `sub_origin`) but `v <= sup_r` (due to `sup_origin`) and
-    /// `sub_r <= sup_r` does not hold.
-    SubSupConflict(RegionVariableOrigin,
-                   SubregionOrigin<'tcx>,
-                   Region<'tcx>,
-                   SubregionOrigin<'tcx>,
-                   Region<'tcx>),
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum VarValue<'tcx> {
     Value(Region<'tcx>),

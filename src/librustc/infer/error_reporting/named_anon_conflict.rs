@@ -11,8 +11,8 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
 use infer::InferCtxt;
-use infer::region_inference::RegionResolutionError::*;
-use infer::region_inference::RegionResolutionError;
+use infer::lexical_region_resolve::RegionResolutionError::*;
+use infer::lexical_region_resolve::RegionResolutionError;
 use ty;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
