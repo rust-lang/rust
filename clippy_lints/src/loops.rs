@@ -600,7 +600,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
         ExprMatch(ref e, ref arms, _) => {
             let e = never_loop_expr(e, main_loop_id);
             if arms.is_empty() {
-                NeverLoopResult::Otherwise
+                e
             } else {
                 let arms = never_loop_expr_branch(&mut arms.iter().map(|a| &*a.body), main_loop_id);
                 combine_seq(e, arms)
