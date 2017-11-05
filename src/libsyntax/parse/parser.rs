@@ -360,10 +360,6 @@ impl TokenType {
     }
 }
 
-fn is_ident_or_underscore(t: &token::Token) -> bool {
-    t.is_ident() || *t == token::Underscore
-}
-
 // Returns true if `IDENT t` can start a type - `IDENT::a::b`, `IDENT<u8, u8>`,
 // `IDENT<<u8 as Trait>::AssocTy>`, `IDENT(u8, u8) -> u8`.
 fn can_continue_type_after_ident(t: &token::Token) -> bool {
@@ -1625,23 +1621,19 @@ impl<'a> Parser<'a> {
         Ok(MutTy { ty: t, mutbl: mutbl })
     }
 
-    pub fn is_named_argument(&mut self) -> bool {
+    fn is_named_argument(&mut self) -> bool {
         let offset = match self.token {
-            token::BinOp(token::And) |
-            token::AndAnd => 1,
+            token::Interpolated(ref nt) => match nt.0 {
+                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
+                _ => 0,
+            }
+            token::BinOp(token::And) | token::AndAnd => 1,
             _ if self.token.is_keyword(keywords::Mut) => 1,
-            _ => 0
+            _ => 0,
         };
 
-        debug!("parser is_named_argument offset:{}", offset);
-
-        if offset == 0 {
-            is_ident_or_underscore(&self.token)
-                && self.look_ahead(1, |t| *t == token::Colon)
-        } else {
-            self.look_ahead(offset, |t| is_ident_or_underscore(t))
-                && self.look_ahead(offset + 1, |t| *t == token::Colon)
-        }
+        self.look_ahead(offset, |t| t.is_ident() || t == &token::Underscore) &&
+        self.look_ahead(offset + 1, |t| t == &token::Colon)
     }
 
     /// This version of parse arg doesn't necessarily require
