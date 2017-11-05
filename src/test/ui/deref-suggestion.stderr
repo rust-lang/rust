@@ -10,8 +10,8 @@ error[E0308]: mismatched types
            - .escape_debug()
            - .escape_default()
            - .escape_unicode()
-           - .to_lowercase()
-           - .to_uppercase()
+           - .to_ascii_lowercase()
+           - .to_ascii_uppercase()
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:23:10

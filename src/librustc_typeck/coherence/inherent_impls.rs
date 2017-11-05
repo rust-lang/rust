@@ -137,6 +137,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "str",
                                           item.span);
             }
+            ty::TySlice(slice_item) if slice_item == self.tcx.types.u8 => {
+                self.check_primitive_impl(def_id,
+                                          lang_items.slice_u8_impl(),
+                                          "slice_u8",
+                                          "[u8]",
+                                          item.span);
+            }
             ty::TySlice(_) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.slice_impl(),

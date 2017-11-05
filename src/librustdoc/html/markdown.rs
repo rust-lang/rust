@@ -30,7 +30,6 @@
 use libc;
 use std::slice;
 
-use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;

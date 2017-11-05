@@ -77,7 +77,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use ascii::*;
 use borrow::{Borrow, Cow};
 use cmp;
 use error::Error;

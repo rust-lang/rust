@@ -1533,6 +1533,215 @@ impl<T> [T] {
     }
 }
 
+// FIXME(LukasKalbertodt): the `not(stage0)` constraint can be removed in the
+// future once the stage0 compiler is new enough to know about the `slice_u8`
+// lang item.
+#[lang = "slice_u8"]
+#[cfg(all(not(stage0), not(test)))]
+impl [u8] {
+    /// Checks if all bytes in this slice are within the ASCII range.
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        self.iter().all(|b| b.is_ascii())
+    }
+
+    /// Returns a vector containing a copy of this slice where each byte
+    /// is mapped to its ASCII upper case equivalent.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
+    ///
+    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn to_ascii_uppercase(&self) -> Vec<u8> {
+        let mut me = self.to_vec();
+        me.make_ascii_uppercase();
+        me
+    }
+
+    /// Returns a vector containing a copy of this slice where each byte
+    /// is mapped to its ASCII lower case equivalent.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
+    ///
+    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn to_ascii_lowercase(&self) -> Vec<u8> {
+        let mut me = self.to_vec();
+        me.make_ascii_lowercase();
+        me
+    }
+
+    /// Checks that two slices are an ASCII case-insensitive match.
+    ///
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
+    /// but without allocating and copying temporaries.
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
+        self.len() == other.len() &&
+            self.iter().zip(other).all(|(a, b)| {
+                a.eq_ignore_ascii_case(b)
+            })
+    }
+
+    /// Converts this slice to its ASCII upper case equivalent in-place.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new uppercased value without modifying the existing one, use
+    /// [`to_ascii_uppercase`].
+    ///
+    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn make_ascii_uppercase(&mut self) {
+        for byte in self {
+            byte.make_ascii_uppercase();
+        }
+    }
+
+    /// Converts this slice to its ASCII lower case equivalent in-place.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new lowercased value without modifying the existing one, use
+    /// [`to_ascii_lowercase`].
+    ///
+    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn make_ascii_lowercase(&mut self) {
+        for byte in self {
+            byte.make_ascii_lowercase();
+        }
+    }
+
+    /// Checks if all bytes of this slice are ASCII alphabetic characters:
+    ///
+    /// - U+0041 'A' ... U+005A 'Z', or
+    /// - U+0061 'a' ... U+007A 'z'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_alphabetic(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_alphabetic())
+    }
+
+    /// Checks if all bytes of this slice are ASCII uppercase characters:
+    /// U+0041 'A' ... U+005A 'Z'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_uppercase(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_uppercase())
+    }
+
+    /// Checks if all bytes of this slice are ASCII lowercase characters:
+    /// U+0061 'a' ... U+007A 'z'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_lowercase(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_lowercase())
+    }
+
+    /// Checks if all bytes of this slice are ASCII alphanumeric characters:
+    ///
+    /// - U+0041 'A' ... U+005A 'Z', or
+    /// - U+0061 'a' ... U+007A 'z', or
+    /// - U+0030 '0' ... U+0039 '9'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_alphanumeric(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_alphanumeric())
+    }
+
+    /// Checks if all bytes of this slice are ASCII decimal digit:
+    /// U+0030 '0' ... U+0039 '9'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_digit(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_digit())
+    }
+
+    /// Checks if all bytes of this slice are ASCII hexadecimal digits:
+    ///
+    /// - U+0030 '0' ... U+0039 '9', or
+    /// - U+0041 'A' ... U+0046 'F', or
+    /// - U+0061 'a' ... U+0066 'f'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_hexdigit(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_hexdigit())
+    }
+
+    /// Checks if all bytes of this slice are ASCII punctuation characters:
+    ///
+    /// - U+0021 ... U+002F `! " # $ % & ' ( ) * + , - . /`, or
+    /// - U+003A ... U+0040 `: ; < = > ? @`, or
+    /// - U+005B ... U+0060 `[ \\ ] ^ _ \``, or
+    /// - U+007B ... U+007E `{ | } ~`
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_punctuation(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_punctuation())
+    }
+
+    /// Checks if all bytes of this slice are ASCII graphic characters:
+    /// U+0021 '@' ... U+007E '~'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_graphic(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_graphic())
+    }
+
+    /// Checks if all bytes of this slice are ASCII whitespace characters:
+    /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
+    /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
+    ///
+    /// Rust uses the WhatWG Infra Standard's [definition of ASCII
+    /// whitespace][infra-aw]. There are several other definitions in
+    /// wide use. For instance, [the POSIX locale][pct] includes
+    /// U+000B VERTICAL TAB as well as all the above characters,
+    /// but—from the very same specification—[the default rule for
+    /// "field splitting" in the Bourne shell][bfs] considers *only*
+    /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
+    ///
+    /// If you are writing a program that will process an existing
+    /// file format, check what that format's definition of whitespace is
+    /// before using this function.
+    ///
+    /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
+    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_whitespace(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_whitespace())
+    }
+
+    /// Checks if all bytes of this slice are ASCII control characters:
+    ///
+    /// - U+0000 NUL ... U+001F UNIT SEPARATOR, or
+    /// - U+007F DELETE.
+    ///
+    /// Note that most ASCII whitespace characters are control
+    /// characters, but SPACE is not.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_control(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_control())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////

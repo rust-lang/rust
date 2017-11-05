@@ -244,6 +244,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(align_offset)]
 #![feature(array_error_internals)]
+#![feature(ascii_ctype)]
 #![feature(asm)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]

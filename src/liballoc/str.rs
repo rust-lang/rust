@@ -390,8 +390,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut v = String::from("hello");
     /// // correct length
     /// assert!(v.get_mut(0..5).is_some());
@@ -617,8 +615,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut s = "Per Martin-Löf".to_string();
     /// {
     ///     let (first, last) = s.split_at_mut(3);
@@ -2069,6 +2065,286 @@ impl str {
         let mut s = String::with_capacity(self.len() * n);
         s.extend((0..n).map(|_| self));
         s
+    }
+
+    /// Checks if all characters in this string are within the ASCII range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let ascii = "hello!\n";
+    /// let non_ascii = "Grüße, Jürgen ❤";
+    ///
+    /// assert!(ascii.is_ascii());
+    /// assert!(!non_ascii.is_ascii());
+    /// ```
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        // We can treat each byte as character here: all multibyte characters
+        // start with a byte that is not in the ascii range, so we will stop
+        // there already.
+        self.bytes().all(|b| b.is_ascii())
+    }
+
+    /// Returns a copy of this string where each character is mapped to its
+    /// ASCII upper case equivalent.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
+    ///
+    /// To uppercase ASCII characters in addition to non-ASCII characters, use
+    /// [`to_uppercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = "Grüße, Jürgen ❤";
+    ///
+    /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
+    /// ```
+    ///
+    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    /// [`to_uppercase`]: #method.to_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn to_ascii_uppercase(&self) -> String {
+        let mut bytes = self.as_bytes().to_vec();
+        bytes.make_ascii_uppercase();
+        // make_ascii_uppercase() preserves the UTF-8 invariant.
+        unsafe { String::from_utf8_unchecked(bytes) }
+    }
+
+    /// Returns a copy of this string where each character is mapped to its
+    /// ASCII lower case equivalent.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
+    ///
+    /// To lowercase ASCII characters in addition to non-ASCII characters, use
+    /// [`to_lowercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = "Grüße, Jürgen ❤";
+    ///
+    /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
+    /// ```
+    ///
+    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    /// [`to_lowercase`]: #method.to_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn to_ascii_lowercase(&self) -> String {
+        let mut bytes = self.as_bytes().to_vec();
+        bytes.make_ascii_lowercase();
+        // make_ascii_lowercase() preserves the UTF-8 invariant.
+        unsafe { String::from_utf8_unchecked(bytes) }
+    }
+
+    /// Checks that two strings are an ASCII case-insensitive match.
+    ///
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
+    /// but without allocating and copying temporaries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!("Ferris".eq_ignore_ascii_case("FERRIS"));
+    /// assert!("Ferrös".eq_ignore_ascii_case("FERRöS"));
+    /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
+    /// ```
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
+        self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
+    }
+
+    /// Converts this string to its ASCII upper case equivalent in-place.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new uppercased value without modifying the existing one, use
+    /// [`to_ascii_uppercase`].
+    ///
+    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[cfg(not(stage0))]
+    pub fn make_ascii_uppercase(&mut self) {
+        let me = unsafe { self.as_bytes_mut() };
+        me.make_ascii_uppercase()
+    }
+
+    /// Converts this string to its ASCII lower case equivalent in-place.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new lowercased value without modifying the existing one, use
+    /// [`to_ascii_lowercase`].
+    ///
+    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[cfg(not(stage0))]
+    pub fn make_ascii_lowercase(&mut self) {
+        let me = unsafe { self.as_bytes_mut() };
+        me.make_ascii_lowercase()
+    }
+
+    /// Checks if all characters of this string are ASCII alphabetic
+    /// characters:
+    ///
+    /// - U+0041 'A' ... U+005A 'Z', or
+    /// - U+0061 'a' ... U+007A 'z'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_alphabetic(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_alphabetic())
+    }
+
+    /// Checks if all characters of this string are ASCII uppercase characters:
+    /// U+0041 'A' ... U+005A 'Z'.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(ascii_ctype)]
+    ///
+    /// // Only ascii uppercase characters
+    /// assert!("HELLO".is_ascii_uppercase());
+    ///
+    /// // While all characters are ascii, 'y' and 'e' are not uppercase
+    /// assert!(!"Bye".is_ascii_uppercase());
+    ///
+    /// // While all characters are uppercase, 'Ü' is not ascii
+    /// assert!(!"TSCHÜSS".is_ascii_uppercase());
+    /// ```
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_uppercase(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_uppercase())
+    }
+
+    /// Checks if all characters of this string are ASCII lowercase characters:
+    /// U+0061 'a' ... U+007A 'z'.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(ascii_ctype)]
+    ///
+    /// // Only ascii uppercase characters
+    /// assert!("hello".is_ascii_lowercase());
+    ///
+    /// // While all characters are ascii, 'B' is not lowercase
+    /// assert!(!"Bye".is_ascii_lowercase());
+    ///
+    /// // While all characters are lowercase, 'Ü' is not ascii
+    /// assert!(!"tschüss".is_ascii_lowercase());
+    /// ```
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_lowercase(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_lowercase())
+    }
+
+    /// Checks if all characters of this string are ASCII alphanumeric
+    /// characters:
+    ///
+    /// - U+0041 'A' ... U+005A 'Z', or
+    /// - U+0061 'a' ... U+007A 'z', or
+    /// - U+0030 '0' ... U+0039 '9'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_alphanumeric(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_alphanumeric())
+    }
+
+    /// Checks if all characters of this string are ASCII decimal digit:
+    /// U+0030 '0' ... U+0039 '9'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_digit(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_digit())
+    }
+
+    /// Checks if all characters of this string are ASCII hexadecimal digits:
+    ///
+    /// - U+0030 '0' ... U+0039 '9', or
+    /// - U+0041 'A' ... U+0046 'F', or
+    /// - U+0061 'a' ... U+0066 'f'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_hexdigit(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_hexdigit())
+    }
+
+    /// Checks if all characters of this string are ASCII punctuation
+    /// characters:
+    ///
+    /// - U+0021 ... U+002F `! " # $ % & ' ( ) * + , - . /`, or
+    /// - U+003A ... U+0040 `: ; < = > ? @`, or
+    /// - U+005B ... U+0060 `[ \\ ] ^ _ \``, or
+    /// - U+007B ... U+007E `{ | } ~`
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_punctuation(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_punctuation())
+    }
+
+    /// Checks if all characters of this string are ASCII graphic characters:
+    /// U+0021 '@' ... U+007E '~'.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_graphic(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_graphic())
+    }
+
+    /// Checks if all characters of this string are ASCII whitespace characters:
+    /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
+    /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
+    ///
+    /// Rust uses the WhatWG Infra Standard's [definition of ASCII
+    /// whitespace][infra-aw]. There are several other definitions in
+    /// wide use. For instance, [the POSIX locale][pct] includes
+    /// U+000B VERTICAL TAB as well as all the above characters,
+    /// but—from the very same specification—[the default rule for
+    /// "field splitting" in the Bourne shell][bfs] considers *only*
+    /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
+    ///
+    /// If you are writing a program that will process an existing
+    /// file format, check what that format's definition of whitespace is
+    /// before using this function.
+    ///
+    /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
+    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_whitespace(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_whitespace())
+    }
+
+    /// Checks if all characters of this string are ASCII control characters:
+    ///
+    /// - U+0000 NUL ... U+001F UNIT SEPARATOR, or
+    /// - U+007F DELETE.
+    ///
+    /// Note that most ASCII whitespace characters are control
+    /// characters, but SPACE is not.
+    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[inline]
+    pub fn is_ascii_control(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_control())
     }
 }
 

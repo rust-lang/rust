@@ -191,7 +191,6 @@ impl<'a, B: ?Sized> Cow<'a, B>
     /// # Examples
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
     /// use std::borrow::Cow;
     ///
     /// let mut cow = Cow::Borrowed("foo");

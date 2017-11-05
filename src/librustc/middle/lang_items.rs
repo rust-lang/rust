@@ -211,6 +211,7 @@ language_item_table! {
     CharImplItem,                    "char",                    char_impl;
     StrImplItem,                     "str",                     str_impl;
     SliceImplItem,                   "slice",                   slice_impl;
+    SliceU8ImplItem,                 "slice_u8",                slice_u8_impl;
     ConstPtrImplItem,                "const_ptr",               const_ptr_impl;
     MutPtrImplItem,                  "mut_ptr",                 mut_ptr_impl;
     I8ImplItem,                      "i8",                      i8_impl;
