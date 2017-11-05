@@ -1293,9 +1293,10 @@ impl<'a> Parser<'a> {
         let lo = self.span;
 
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
-            let TyParam {ident, bounds, default, ..} = self.parse_ty_param(vec![])?;
+            let (generics, TyParam {ident, bounds, default, ..}) =
+                self.parse_trait_item_assoc_ty(vec![])?;
             self.expect(&token::Semi)?;
-            (ident, TraitItemKind::Type(bounds, default), ast::Generics::default())
+            (ident, TraitItemKind::Type(bounds, default), generics)
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
@@ -4442,6 +4443,36 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
+        -> PResult<'a, (Generics, TyParam)> {
+        let span = self.span;
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+
+        // Parse optional colon and param bounds.
+        let bounds = if self.eat(&token::Colon) {
+            self.parse_ty_param_bounds()?
+        } else {
+            Vec::new()
+        };
+
+        let default = if self.eat(&token::Eq) {
+            Some(self.parse_ty()?)
+        } else {
+            None
+        };
+        generics.where_clause = self.parse_where_clause()?;
+
+        Ok((Generics, TyParam {
+            attrs: preceding_attrs.into(),
+            ident,
+            id: ast::DUMMY_NODE_ID,
+            bounds,
+            default,
+            span,
+        }))
+    }
+
     /// Parses (possibly empty) list of lifetime and type parameters, possibly including
     /// trailing comma and erroneous trailing attributes.
     pub fn parse_generic_params(&mut self) -> PResult<'a, (Vec<LifetimeDef>, Vec<TyParam>)> {
@@ -4984,10 +5015,12 @@ impl<'a> Parser<'a> {
         let defaultness = self.parse_defaultness()?;
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             let name = self.parse_ident()?;
+            let mut generics = self.parse_generics()?;
             self.expect(&token::Eq)?;
             let typ = self.parse_ty()?;
+            generics.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
-            (name, ast::ImplItemKind::Type(typ), ast::Generics::default())
+            (name, ast::ImplItemKind::Type(typ), generics)
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let name = self.parse_ident()?;
