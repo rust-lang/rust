@@ -49,6 +49,10 @@ macro_rules! __unstable_detect_feature {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::sse4_2{})
     };
+    ("sse4a") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::sse4a{})
+    };
     ("avx") => {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::avx{})
@@ -56,6 +60,46 @@ macro_rules! __unstable_detect_feature {
     ("avx2") => {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::avx2{})
+    };
+    ("avx512f") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512f{})
+    };
+    ("avx512cd") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512cd{})
+    };
+    ("avx512er") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512er{})
+    };
+    ("avx512pf") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512pf{})
+    };
+    ("avx512bw") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512bw{})
+    };
+    ("avx512dq") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512dq{})
+    };
+    ("avx512vl") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512vl{})
+    };
+    ("avx512ifma") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512_ifma{})
+    };
+    ("avx512vbmi") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512_vbmi{})
+    };
+    ("avx512vpopcntdq") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::avx512_vpopcntdq{})
     };
     ("fma") => {
         $crate::vendor::__unstable_detect_feature(
@@ -85,6 +129,30 @@ macro_rules! __unstable_detect_feature {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::popcnt{})
     };
+    ("xsave") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::xsave{})
+    };
+    ("xsaveopt") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::xsaveopt{})
+    };
+    ("xsave") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::xsave{})
+    };
+    ("xsaveopt") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::xsaveopt{})
+    };
+    ("xsaves") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::xsaves{})
+    };
+    ("xsavec") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::xsavec{})
+    };
     ($t:tt) => {
         compile_error!(concat!("unknown target feature: ", $t))
     };
@@ -110,10 +178,32 @@ pub enum __Feature {
     sse4_1,
     /// SSE4.2 (Streaming SIMD Extensions 4.2)
     sse4_2,
+    /// SSE4a (Streaming SIMD Extensions 4a)
+    sse4a,
     /// AVX (Advanced Vector Extensions)
     avx,
     /// AVX2 (Advanced Vector Extensions 2)
     avx2,
+    /// AVX-512 F (Foundation)
+    avx512f,
+    /// AVX-512 CD (Conflict Detection Instructions)
+    avx512cd,
+    /// AVX-512 ER (Exponential and Reciprocal Instructions)
+    avx512er,
+    /// AVX-512 PF (Prefetch Instructions)
+    avx512pf,
+    /// AVX-512 BW (Byte and Word Instructions)
+    avx512bw,
+    /// AVX-512 DQ (Doubleword and Quadword)
+    avx512dq,
+    /// AVX-512 VL (Vector Length Extensions)
+    avx512vl,
+    /// AVX-512 IFMA (Integer Fused Multiply Add)
+    avx512_ifma,
+    /// AVX-512 VBMI (Vector Byte Manipulation Instructions)
+    avx512_vbmi,
+    /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and Quadword)
+    avx512_vpopcntdq,
     /// FMA (Fused Multiply Add)
     fma,
     /// BMI1 (Bit Manipulation Instructions 1)
@@ -127,7 +217,14 @@ pub enum __Feature {
     tbm,
     /// POPCNT (Population Count)
     popcnt,
-
+    /// XSAVE (Save Processor Extended States)
+    xsave,
+    /// XSAVEOPT (Save Processor Extended States Optimized)
+    xsaveopt,
+    /// XSAVES (Save Processor Extended States Supervisor)
+    xsaves,
+    /// XSAVEC (Save Processor Extended States Compacted)
+    xsavec,
     #[doc(hidden)] __NonExhaustive,
 }
 
@@ -159,101 +256,175 @@ fn test_bit(x: usize, bit: u32) -> bool {
 /// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 fn detect_features() -> usize {
-    let extended_features_ebx;
-    let proc_info_ecx;
-    let proc_info_edx;
-
-    unsafe {
-        /// To obtain all feature flags we need two CPUID queries:
-
-        /// 1. EAX=1, ECX=0: Queries "Processor Info and Feature Bits"
-        /// This gives us most of the CPU features in ECX and EDX (see
-        /// below).
-        asm!("cpuid"
-             : "={ecx}"(proc_info_ecx), "={edx}"(proc_info_edx)
-             : "{eax}"(0x0000_0001_u32), "{ecx}"(0 as u32)
-             : :);
-
-        /// 2. EAX=7, ECX=0: Queries "Extended Features"
-        /// This gives us information about bmi,bmi2, and avx2 support
-        /// (see below); the result in ECX is not currently needed.
-        asm!("cpuid"
-             : "={ebx}"(extended_features_ebx)
-             : "{eax}"(0x0000_0007_u32), "{ecx}"(0 as u32)
-             : :);
-    }
-
+    use super::cpuid::{__cpuid, __cpuid_count, has_cpuid, CpuidResult};
+    use super::xsave::_xgetbv;
     let mut value: usize = 0;
 
-    if test_bit(extended_features_ebx, 3) {
-        value = set_bit(value, __Feature::bmi as u32);
-    }
-    if test_bit(extended_features_ebx, 8) {
-        value = set_bit(value, __Feature::bmi2 as u32);
-    }
-
-    if test_bit(proc_info_ecx, 0) {
-        value = set_bit(value, __Feature::sse3 as u32);
-    }
-    if test_bit(proc_info_ecx, 5) {
-        value = set_bit(value, __Feature::abm as u32);
-    }
-    if test_bit(proc_info_ecx, 9) {
-        value = set_bit(value, __Feature::ssse3 as u32);
-    }
-    if test_bit(proc_info_ecx, 12) {
-        value = set_bit(value, __Feature::fma as u32);
-    }
-    if test_bit(proc_info_ecx, 19) {
-        value = set_bit(value, __Feature::sse4_1 as u32);
-    }
-    if test_bit(proc_info_ecx, 20) {
-        value = set_bit(value, __Feature::sse4_2 as u32);
-    }
-    if test_bit(proc_info_ecx, 21) {
-        value = set_bit(value, __Feature::tbm as u32);
-    }
-    if test_bit(proc_info_ecx, 23) {
-        value = set_bit(value, __Feature::popcnt as u32);
+    // If the x86 CPU does not support the CPUID instruction then it is too
+    // old to support any of the currently-detectable features.
+    if !has_cpuid() {
+        return value;
     }
 
-    if test_bit(proc_info_edx, 25) {
-        value = set_bit(value, __Feature::sse as u32);
-    }
-    if test_bit(proc_info_edx, 26) {
-        value = set_bit(value, __Feature::sse2 as u32);
+    // Calling `__cpuid`/`__cpuid_count` from here on is safe because the CPU
+    // has `cpuid` support.
+
+    // 0. EAX = 0: Basic Information:
+    // - EAX returns the "Highest Function Parameter", that is, the maximum
+    // leaf value for subsequent calls of `cpuinfo` in range [0,
+    // 0x8000_0000]. - The vendor ID is stored in 12 u8 ascii chars,
+    // returned in EBX, EDX, and   ECX (in that order):
+    let (max_leaf, vendor_id) = unsafe {
+        let CpuidResult {
+            eax: max_leaf,
+            ebx,
+            ecx,
+            edx,
+        } = __cpuid(0);
+        let vendor_id: [[u8; 4]; 3] = [
+            ::std::mem::transmute(ebx),
+            ::std::mem::transmute(edx),
+            ::std::mem::transmute(ecx),
+        ];
+        let vendor_id: [u8; 12] = ::std::mem::transmute(vendor_id);
+        (max_leaf, vendor_id)
+    };
+
+    if max_leaf < 1 {
+        // Earlier Intel 486, CPUID not implemented
+        return value;
     }
 
-    // ECX[26] detects XSAVE and ECX[27] detects OSXSAVE, that is, whether the
-    // OS is AVX enabled and supports saving the state of the AVX/AVX2 vector
-    // registers on context-switches, see:
-    //
-    // - https://software.intel.com/en-us/blogs/2011/04/14/is-avx-enabled
-    // - https://hg.mozilla.
-    // org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
-    //
-    if test_bit(proc_info_ecx, 26) && test_bit(proc_info_ecx, 27) {
-        /// XGETBV: reads the contents of the extended control
-        /// register (XCR).
-        unsafe fn xgetbv(xcr_no: u32) -> u64 {
-            let eax: u32;
-            let edx: u32;
-            // xgetbv
-            asm!("xgetbv"
-                 : "={eax}"(eax),  "={edx}"(edx)
-                 : "{ecx}"(xcr_no)
-                 : :);
-            ((edx as u64) << 32) | (eax as u64)
+    // EAX = 1, ECX = 0: Queries "Processor Info and Feature Bits";
+    // Contains information about most x86 features.
+    let CpuidResult {
+        ecx: proc_info_ecx,
+        edx: proc_info_edx,
+        ..
+    } = unsafe { __cpuid(0x0000_0001_u32) };
+
+    // EAX = 7, ECX = 0: Queries "Extended Features";
+    // Contains information about bmi,bmi2, and avx2 support.
+    let (extended_features_ebx, extended_features_ecx) = if max_leaf >= 7 {
+        let CpuidResult { ebx, ecx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
+        (ebx, ecx)
+    } else {
+        (0, 0) // CPUID does not support "Extended Features"
+    };
+
+    // EAX = 0x8000_0000, ECX = 0: Get Highest Extended Function Supported
+    // - EAX returns the max leaf value for extended information, that is,
+    // `cpuid` calls in range [0x8000_0000; u32::MAX]:
+    let CpuidResult {
+        eax: extended_max_leaf,
+        ..
+    } = unsafe { __cpuid(0x8000_0000_u32) };
+
+    // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
+    // Bits"
+    let extended_proc_info_ecx = if extended_max_leaf >= 1 {
+        let CpuidResult { ecx, .. } = unsafe { __cpuid(0x8000_0001_u32) };
+        ecx
+    } else {
+        0
+    };
+
+    {
+        // borrows value till the end of this scope:
+        let mut enable = |r, rb, f| if test_bit(r as usize, rb) {
+            value = set_bit(value, f as u32);
+        };
+
+        enable(proc_info_ecx, 0, __Feature::sse3);
+        enable(proc_info_ecx, 9, __Feature::ssse3);
+        enable(proc_info_ecx, 12, __Feature::fma);
+        enable(proc_info_ecx, 19, __Feature::sse4_1);
+        enable(proc_info_ecx, 20, __Feature::sse4_2);
+        enable(proc_info_ecx, 23, __Feature::popcnt);
+        enable(proc_info_edx, 25, __Feature::sse);
+        enable(proc_info_edx, 26, __Feature::sse2);
+
+        enable(extended_features_ebx, 3, __Feature::bmi);
+        enable(extended_features_ebx, 8, __Feature::bmi2);
+
+        // `XSAVE` and `AVX` support:
+        if test_bit(proc_info_ecx as usize, 26) {
+            // 0. Here the CPU supports `XSAVE`.
+
+            // 1. Detect `OSXSAVE`, that is, whether the OS is AVX enabled and
+            // supports saving the state of the AVX/AVX2 vector registers on
+            // context-switches, see:
+            //
+            // - https://software.intel.
+            // com/en-us/blogs/2011/04/14/is-avx-enabled
+            // - https://hg.mozilla.
+            // org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
+            let cpu_osxsave = test_bit(proc_info_ecx as usize, 27);
+
+            // 2. The OS must have signaled the CPU that it supports saving and
+            // restoring the SSE and AVX registers by setting `XCR0.SSE[1]` and
+            // `XCR0.AVX[2]` to `1`.
+            //
+            // This is safe because the CPU supports `xsave`
+            let xcr0 = unsafe { _xgetbv(0) };
+            let os_avx_support = xcr0 & 6 == 6;
+            let os_avx512_support = xcr0 & 224 == 224;
+
+            if cpu_osxsave && os_avx_support {
+                // Only if the OS and the CPU support saving/restoring the AVX
+                // registers we enable `xsave` support:
+                enable(proc_info_ecx, 26, __Feature::xsave);
+
+                // And AVX/AVX2:
+                enable(proc_info_ecx, 28, __Feature::avx);
+                enable(extended_features_ebx, 5, __Feature::avx2);
+
+                // For AVX-512 the OS also needs to support saving/restoring
+                // the
+                // extended state, only then we enable AVX-512 support:
+                if os_avx512_support {
+                    enable(extended_features_ebx, 16, __Feature::avx512f);
+                    enable(extended_features_ebx, 17, __Feature::avx512dq);
+                    enable(extended_features_ebx, 21, __Feature::avx512_ifma);
+                    enable(extended_features_ebx, 26, __Feature::avx512pf);
+                    enable(extended_features_ebx, 27, __Feature::avx512er);
+                    enable(extended_features_ebx, 28, __Feature::avx512cd);
+                    enable(extended_features_ebx, 30, __Feature::avx512bw);
+                    enable(extended_features_ebx, 31, __Feature::avx512vl);
+                    enable(extended_features_ecx, 1, __Feature::avx512_vbmi);
+                    enable(
+                        extended_features_ecx,
+                        14,
+                        __Feature::avx512_vpopcntdq,
+                    );
+                }
+            }
+
+            // Processor Extended State Enumeration Sub-leaf (EAX = 0DH, ECX =
+            // 1)
+            if max_leaf >= 0xd {
+                let CpuidResult {
+                    eax: proc_extended_state1_eax,
+                    ..
+                } = unsafe { __cpuid_count(0xd_u32, 1) };
+                enable(proc_extended_state1_eax, 0, __Feature::xsaveopt);
+                enable(proc_extended_state1_eax, 1, __Feature::xsavec);
+                enable(proc_extended_state1_eax, 3, __Feature::xsaves);
+            }
         }
 
-        // This is safe because on x86 `xgetbv` is always available.
-        if unsafe { xgetbv(0) } & 6 == 6 {
-            if test_bit(proc_info_ecx, 28) {
-                value = set_bit(value, __Feature::avx as u32);
-            }
-            if test_bit(extended_features_ebx, 5) {
-                value = set_bit(value, __Feature::avx2 as u32);
-            }
+        // This detects ABM on AMD CPUs and LZCNT on Intel CPUs.
+        // On intel CPUs with popcnt, lzcnt implements the
+        // "missing part" of ABM, so we map both to the same
+        // internal feature.
+        //
+        // The `cfg_feature_enabled!("lzcnt")` macro then
+        // internally maps to __Feature::abm.
+        enable(extended_proc_info_ecx, 5, __Feature::abm);
+        if vendor_id == *b"AuthenticAMD" {
+            // These features are only available on AMD CPUs:
+            enable(extended_proc_info_ecx, 6, __Feature::sse4a);
+            enable(extended_proc_info_ecx, 21, __Feature::tbm);
         }
     }
 
@@ -294,12 +465,29 @@ mod tests {
         println!("sse4.2: {:?}", cfg_feature_enabled!("sse4.2"));
         println!("avx: {:?}", cfg_feature_enabled!("avx"));
         println!("avx2: {:?}", cfg_feature_enabled!("avx2"));
+        println!("avx512f {:?}", cfg_feature_enabled!("avx512f"));
+        println!("avx512cd {:?}", cfg_feature_enabled!("avx512cd"));
+        println!("avx512er {:?}", cfg_feature_enabled!("avx512er"));
+        println!("avx512pf {:?}", cfg_feature_enabled!("avx512pf"));
+        println!("avx512bw {:?}", cfg_feature_enabled!("avx512bw"));
+        println!("avx512dq {:?}", cfg_feature_enabled!("avx512dq"));
+        println!("avx512vl {:?}", cfg_feature_enabled!("avx512vl"));
+        println!("avx512ifma {:?}", cfg_feature_enabled!("avx512ifma"));
+        println!("avx512vbmi {:?}", cfg_feature_enabled!("avx512vbmi"));
+        println!(
+            "avx512vpopcntdq {:?}",
+            cfg_feature_enabled!("avx512vpopcntdq")
+        );
+        println!("fma: {:?}", cfg_feature_enabled!("fma"));
         println!("abm: {:?}", cfg_feature_enabled!("abm"));
         println!("bmi: {:?}", cfg_feature_enabled!("bmi"));
         println!("bmi2: {:?}", cfg_feature_enabled!("bmi2"));
         println!("tbm: {:?}", cfg_feature_enabled!("tbm"));
         println!("popcnt: {:?}", cfg_feature_enabled!("popcnt"));
         println!("lzcnt: {:?}", cfg_feature_enabled!("lzcnt"));
-        println!("fma: {:?}", cfg_feature_enabled!("fma"));
+        println!("xsave {:?}", cfg_feature_enabled!("xsave"));
+        println!("xsaveopt {:?}", cfg_feature_enabled!("xsaveopt"));
+        println!("xsaves {:?}", cfg_feature_enabled!("xsaves"));
+        println!("xsavec {:?}", cfg_feature_enabled!("xsavec"));
     }
 }

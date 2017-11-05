@@ -28,7 +28,7 @@ opt-level = 3
 
 [dev-dependencies]
 stdsimd-test = { version = "0.*", path = "stdsimd-test" }
-cupid = "0.3"
+cupid = "0.4.0"
 
 [features]
 strict = []
