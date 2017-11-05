@@ -144,7 +144,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
             resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
         } else {
             let ty = tcx.type_of(def_id);
-            let item_type = tcx.trans_apply_param_substs(substs, &ty);
+            let item_type = tcx.trans_apply_param_substs_env(substs, param_env, &ty);
 
             let def = match item_type.sty {
                 ty::TyFnDef(..) if {
