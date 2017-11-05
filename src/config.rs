@@ -587,9 +587,9 @@ create_config! {
     report_fixme: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
     chain_indent: IndentStyle, IndentStyle::Block, false, "Indentation of chain";
-    chain_one_line_max: usize, 60, false, "Maximum length of a chain to fit on a single line";
+    chain_width: usize, 60, false, "Maximum length of a chain to fit on a single line";
     chain_split_single_child: bool, false, false, "Split a chain with a single child if its length \
-                                            exceeds `chain_one_line_max`";
+                                            exceeds `chain_width`";
     imports_indent: IndentStyle, IndentStyle::Visual, false, "Indent of imports";
     imports_layout: ListTactic, ListTactic::Mixed, false, "Item layout inside a import block";
     reorder_extern_crates: bool, true, false, "Reorder extern crate statements alphabetically";

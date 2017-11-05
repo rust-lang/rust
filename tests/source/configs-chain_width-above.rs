@@ -1,4 +1,4 @@
-// rustfmt-chain_one_line_max: 10
+// rustfmt-chain_width: 10
 // Chain one line max
 
 fn main() {

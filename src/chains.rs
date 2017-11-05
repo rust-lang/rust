@@ -161,7 +161,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let one_line_budget = if rewrites.is_empty() && !context.config.chain_split_single_child() {
         shape.width
     } else {
-        min(shape.width, context.config.chain_one_line_max())
+        min(shape.width, context.config.chain_width())
     };
     let all_in_one_line = !parent_rewrite_contains_newline
         && rewrites.iter().all(|s| !s.contains('\n'))

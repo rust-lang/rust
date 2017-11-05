@@ -227,26 +227,26 @@ let lorem = ipsum.dolor()
                  .elit();
 ```
 
-See also [`chain_one_line_max`](#chain_one_line_max).
+See also [`chain_width`](#chain_width).
 
-## `chain_one_line_max`
+## `chain_width`
 
 Maximum length of a chain to fit on a single line
 
 - **Default value**: `60`
 - **Possible values**: any positive integer
 
-#### Lines shorter than `chain_one_line_max`:
+#### Lines shorter than `chain_width`:
 ```rust
 let lorem = ipsum.dolor().sit().amet().consectetur().adipiscing().elit();
 ```
 
-#### Lines longer than `chain_one_line_max`:
+#### Lines longer than `chain_width`:
 See [`chain_indent`](#chain_indent).
 
 ## `chain_split_single_child`
 
-Split a chain with a single child if its length exceeds [`chain_one_line_max`](#chain_one_line_max).
+Split a chain with a single child if its length exceeds [`chain_width`](#chain_width).
 
 - **Default value**: `false`
 - **Possible values**: `false`, `true`
@@ -264,7 +264,7 @@ let files = fs::read_dir("tests/coverage/source")
     .expect("Couldn't read source dir");
 ```
 
-See also [`chain_one_line_max`](#chain_one_line_max).
+See also [`chain_width`](#chain_width).
 
 ## `closure_block_indent_threshold`
 
