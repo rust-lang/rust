@@ -15,6 +15,7 @@
 use convert::{Infallible, TryFrom};
 use fmt;
 use intrinsics;
+use ops;
 use str::FromStr;
 
 /// Provides intentionally-wrapped arithmetic on `T`.
@@ -2222,9 +2223,9 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        #[rustc_inherit_overflow_checks]
         pub fn next_power_of_two(self) -> Self {
-            self.one_less_than_next_power_of_two() + 1
+            // Call the trait to get overflow checks
+            ops::Add::add(self.one_less_than_next_power_of_two(), 1)
         }
 
         /// Returns the smallest power of two greater than or equal to `n`. If
