@@ -99,6 +99,26 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let substituted = self.erase_regions(&substituted);
         AssociatedTypeNormalizer::new(self).fold(&substituted)
     }
+
+    pub fn trans_apply_param_substs_env<T>(
+        self,
+        param_substs: &Substs<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: &T,
+    ) -> T
+    where
+        T: TransNormalize<'tcx>,
+    {
+        debug!(
+            "apply_param_substs_env(param_substs={:?}, value={:?}, param_env={:?})",
+            param_substs,
+            value,
+            param_env,
+        );
+        let substituted = value.subst(self, param_substs);
+        let substituted = self.erase_regions(&substituted);
+        AssociatedTypeNormalizerEnv::new(self, param_env).fold(&substituted)
+    }
 }
 
 struct AssociatedTypeNormalizer<'a, 'gcx: 'a> {
@@ -130,6 +150,40 @@ impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
         } else {
             debug!("AssociatedTypeNormalizer: ty={:?}", ty);
             self.tcx.fully_normalize_monormophic_ty(ty)
+        }
+    }
+}
+
+struct AssociatedTypeNormalizerEnv<'a, 'gcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    param_env: ty::ParamEnv<'gcx>,
+}
+
+impl<'a, 'gcx> AssociatedTypeNormalizerEnv<'a, 'gcx> {
+    fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>, param_env: ty::ParamEnv<'gcx>) -> Self {
+        Self { tcx, param_env }
+    }
+
+    fn fold<T: TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
+        if !value.has_projections() {
+            value.clone()
+        } else {
+            value.fold_with(self)
+        }
+    }
+}
+
+impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizerEnv<'a, 'gcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
+        if !ty.has_projections() {
+            ty
+        } else {
+            debug!("AssociatedTypeNormalizerEnv: ty={:?}", ty);
+            self.tcx.normalize_associated_type_in_env(&ty, self.param_env)
         }
     }
 }
