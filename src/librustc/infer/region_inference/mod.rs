@@ -29,6 +29,8 @@ use std::fmt;
 use std::mem;
 use std::u32;
 
+mod taint;
+
 /// A constraint that influences the inference process.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Constraint<'tcx> {
@@ -265,89 +267,6 @@ impl TaintDirections {
 
     pub fn both() -> Self {
         TaintDirections { incoming: true, outgoing: true }
-    }
-}
-
-struct TaintSet<'tcx> {
-    directions: TaintDirections,
-    regions: FxHashSet<ty::Region<'tcx>>
-}
-
-impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
-    fn new(directions: TaintDirections,
-           initial_region: ty::Region<'tcx>)
-           -> Self {
-        let mut regions = FxHashSet();
-        regions.insert(initial_region);
-        TaintSet { directions: directions, regions: regions }
-    }
-
-    fn fixed_point(&mut self,
-                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                   undo_log: &[UndoLogEntry<'tcx>],
-                   verifys: &[Verify<'tcx>]) {
-        let mut prev_len = 0;
-        while prev_len < self.len() {
-            debug!("tainted: prev_len = {:?} new_len = {:?}",
-                   prev_len, self.len());
-
-            prev_len = self.len();
-
-            for undo_entry in undo_log {
-                match undo_entry {
-                    &AddConstraint(ConstrainVarSubVar(a, b)) => {
-                        self.add_edge(tcx.mk_region(ReVar(a)),
-                                      tcx.mk_region(ReVar(b)));
-                    }
-                    &AddConstraint(ConstrainRegSubVar(a, b)) => {
-                        self.add_edge(a, tcx.mk_region(ReVar(b)));
-                    }
-                    &AddConstraint(ConstrainVarSubReg(a, b)) => {
-                        self.add_edge(tcx.mk_region(ReVar(a)), b);
-                    }
-                    &AddConstraint(ConstrainRegSubReg(a, b)) => {
-                        self.add_edge(a, b);
-                    }
-                    &AddGiven(a, b) => {
-                        self.add_edge(a, tcx.mk_region(ReVar(b)));
-                    }
-                    &AddVerify(i) => {
-                        verifys[i].bound.for_each_region(&mut |b| {
-                            self.add_edge(verifys[i].region, b);
-                        });
-                    }
-                    &Purged |
-                    &AddCombination(..) |
-                    &AddVar(..) |
-                    &OpenSnapshot |
-                    &CommitedSnapshot => {}
-                }
-            }
-        }
-    }
-
-    fn into_set(self) -> FxHashSet<ty::Region<'tcx>> {
-        self.regions
-    }
-
-    fn len(&self) -> usize {
-        self.regions.len()
-    }
-
-    fn add_edge(&mut self,
-                source: ty::Region<'tcx>,
-                target: ty::Region<'tcx>) {
-        if self.directions.incoming {
-            if self.regions.contains(&target) {
-                self.regions.insert(source);
-            }
-        }
-
-        if self.directions.outgoing {
-            if self.regions.contains(&source) {
-                self.regions.insert(target);
-            }
-        }
     }
 }
 
@@ -863,11 +782,11 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
         // is not a terribly efficient implementation.
-        let mut taint_set = TaintSet::new(directions, r0);
+        let mut taint_set = taint::TaintSet::new(directions, r0);
         taint_set.fixed_point(self.tcx,
                               &self.undo_log.borrow()[mark.length..],
                               &self.verifys.borrow());
-        debug!("tainted: result={:?}", taint_set.regions);
+        debug!("tainted: result={:?}", taint_set);
         return taint_set.into_set();
     }
 }
