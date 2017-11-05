@@ -17,6 +17,7 @@ use infer::region_constraints::GenericKind;
 use infer::region_constraints::RegionConstraintData;
 use infer::region_constraints::VerifyBound;
 use middle::free_region::RegionRelations;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
 use std::fmt;
@@ -29,7 +30,7 @@ use ty::{ReLateBound, ReScope, ReSkolemized, ReVar};
 mod graphviz;
 
 pub struct LexicalRegionResolutions<'tcx> {
-    values: Vec<VarValue<'tcx>>,
+    values: IndexVec<RegionVid, VarValue<'tcx>>,
     error_region: ty::Region<'tcx>,
 }
 
@@ -114,7 +115,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
 
             (&ReVar(v_id), _) | (_, &ReVar(v_id)) => {
                 span_bug!(
-                    self.var_origins[v_id.index as usize].span(),
+                    self.var_origins[v_id].span(),
                     "lub_concrete_regions invoked with non-concrete \
                      regions: {:?}, {:?}",
                     a,
@@ -211,7 +212,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
     fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
             error_region: tcx.types.re_static,
-            values: (0..self.num_vars() as usize)
+            values: (0..self.num_vars())
                 .map(|_| VarValue::Value(tcx.types.re_empty))
                 .collect(),
         }
@@ -240,11 +241,20 @@ impl<'tcx> RegionConstraintData<'tcx> {
 
         let seeds: Vec<_> = self.givens.iter().cloned().collect();
         for (r, vid) in seeds {
+
+            // While all things transitively reachable in the graph
+            // from the variable (`'0` in the example above).
             let seed_index = NodeIndex(vid.index as usize);
             for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
-                let succ_index = succ_index.0 as u32;
+                let succ_index = succ_index.0;
+
+                // The first N nodes correspond to the region
+                // variables. Other nodes correspond to constant
+                // regions.
                 if succ_index < self.num_vars() {
-                    let succ_vid = RegionVid { index: succ_index };
+                    let succ_vid = RegionVid::new(succ_index);
+
+                    // Add `'c <= '1`.
                     self.givens.insert((r, succ_vid));
                 }
             }
@@ -442,11 +452,10 @@ impl<'tcx> RegionConstraintData<'tcx> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = vec![u32::MAX; self.num_vars() as usize];
+        let mut dup_vec = vec![u32::MAX; self.num_vars()];
 
-        for index in 0..self.num_vars() {
-            let node_vid = RegionVid { index };
-            match var_data.value(node_vid) {
+        for (node_vid, value) in var_data.values.iter_enumerated() {
+            match *value {
                 VarValue::Value(_) => { /* Inference successful */ }
                 VarValue::ErrorValue => {
                     /* Inference impossible, this value contains
@@ -560,7 +569,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
         for lower_bound in &lower_bounds {
             for upper_bound in &upper_bounds {
                 if !region_rels.is_subregion_of(lower_bound.region, upper_bound.region) {
-                    let origin = self.var_origins[node_idx.index as usize].clone();
+                    let origin = self.var_origins[node_idx].clone();
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
                          sup: {:?}",
@@ -582,7 +591,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
         }
 
         span_bug!(
-            self.var_origins[node_idx.index as usize].span(),
+            self.var_origins[node_idx].span(),
             "collect_error_for_expanding_node() could not find \
              error for var {:?}, lower_bounds={:?}, \
              upper_bounds={:?}",
@@ -741,15 +750,15 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
     }
 
     fn value(&self, rid: RegionVid) -> &VarValue<'tcx> {
-        &self.values[rid.index as usize]
+        &self.values[rid]
     }
 
     fn value_mut(&mut self, rid: RegionVid) -> &mut VarValue<'tcx> {
-        &mut self.values[rid.index as usize]
+        &mut self.values[rid]
     }
 
     pub fn resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
-        let result = match self.values[rid.index as usize] {
+        let result = match self.values[rid] {
             VarValue::Value(r) => r,
             VarValue::ErrorValue => self.error_region,
         };

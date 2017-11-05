@@ -16,6 +16,7 @@ use self::CombineMapType::*;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 use super::unify_key;
 
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unify::{self, UnificationTable};
 use ty::{self, Ty, TyCtxt};
@@ -51,6 +52,8 @@ pub struct RegionConstraintCollector<'tcx> {
     unification_table: UnificationTable<ty::RegionVid>,
 }
 
+pub type VarOrigins = IndexVec<RegionVid, RegionVariableOrigin>;
+
 /// The full set of region constraints gathered up by the collector.
 /// Describes a set of region variables ranging from 0..N (where N is
 /// the length of the `var_origins` vector), and various constraints
@@ -58,7 +61,7 @@ pub struct RegionConstraintCollector<'tcx> {
 #[derive(Default)]
 pub struct RegionConstraintData<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
-    pub var_origins: Vec<RegionVariableOrigin>,
+    pub var_origins: IndexVec<RegionVid, RegionVariableOrigin>,
 
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
@@ -344,10 +347,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
-        let vid = RegionVid {
-            index: self.data.num_vars(),
-        };
-        self.data.var_origins.push(origin.clone());
+        let vid = self.data.var_origins.push(origin.clone());
 
         let u_vid = self.unification_table
             .new_key(unify_key::RegionVidKey { min_vid: vid });
@@ -364,7 +364,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.data.var_origins[vid.index as usize].clone()
+        self.data.var_origins[vid].clone()
     }
 
     /// Creates a new skolemized region. Skolemized regions are fresh
@@ -862,10 +862,7 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
 }
 
 impl<'tcx> RegionConstraintData<'tcx> {
-    pub fn num_vars(&self) -> u32 {
-        let len = self.var_origins.len();
-        // enforce no overflow
-        assert!(len as u32 as usize == len);
-        len as u32
+    pub fn num_vars(&self) -> usize {
+        self.var_origins.len()
     }
 }
