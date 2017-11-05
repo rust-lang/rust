@@ -500,7 +500,7 @@ macro_rules! create_config {
 ///
 /// Return the path if a config file exists, empty if no file exists, and Error for IO errors
 pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
-    const CONFIG_FILE_NAMES: [&'static str; 2] = [".rustfmt.toml", "rustfmt.toml"];
+    const CONFIG_FILE_NAMES: [&str; 2] = [".rustfmt.toml", "rustfmt.toml"];
     for config_file_name in &CONFIG_FILE_NAMES {
         let config_file = dir.join(config_file_name);
         match fs::metadata(&config_file) {

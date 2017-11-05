@@ -19,7 +19,7 @@ use rewrite::RewriteContext;
 use shape::Shape;
 
 // When we get scoped annotations, we should have rustfmt::skip.
-const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
+const SKIP_ANNOTATION: &str = "rustfmt_skip";
 
 // Computes the length of a string's last line, minus offset.
 pub fn extra_offset(text: &str, shape: Shape) -> usize {

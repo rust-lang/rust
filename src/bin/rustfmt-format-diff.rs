@@ -33,7 +33,7 @@ use regex::Regex;
 /// The default pattern of files to format.
 ///
 /// We only want to format rust files by default.
-const DEFAULT_PATTERN: &'static str = r".*\.rs";
+const DEFAULT_PATTERN: &str = r".*\.rs";
 
 #[derive(Debug)]
 enum FormatDiffError {
