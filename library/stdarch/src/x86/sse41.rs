@@ -346,6 +346,30 @@ pub unsafe fn _mm_cvtepi32_epi64(a: i32x4) -> i64x2 {
     simd_shuffle2::<_, ::v64::i32x2>(a, a, [0, 1]).as_i64x2()
 }
 
+/// Zero extend packed unsigned 8-bit integers in `a` to packed 16-bit integers
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmovzxbw))]
+pub unsafe fn _mm_cvtepu8_epi16(a: u8x16) -> i16x8 {
+    simd_shuffle8::<_, ::v64::u8x8>(a, a, [0, 1, 2, 3, 4, 5, 6, 7]).as_i16x8()
+}
+
+/// Zero extend packed unsigned 8-bit integers in `a` to packed 16-bit integers
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmovzxbd))]
+pub unsafe fn _mm_cvtepu8_epi32(a: u8x16) -> i32x4 {
+    simd_shuffle4::<_, ::v32::u8x4>(a, a, [0, 1, 2, 3]).as_i32x4()
+}
+
+/// Zero extend packed unsigned 8-bit integers in `a` to packed 16-bit integers
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmovzxbq))]
+pub unsafe fn _mm_cvtepu8_epi64(a: u8x16) -> i64x2 {
+    simd_shuffle2::<_, ::v16::u8x2>(a, a, [0, 1]).as_i64x2()
+}
+
 /// Returns the dot product of two f64x2 vectors.
 ///
 /// `imm8[1:0]` is the broadcast mask, and `imm8[5:4]` is the condition mask.
@@ -1040,6 +1064,32 @@ mod tests {
         let e = i64x2::splat(-10);
         assert_eq!(r, e);
     }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_cvtepu8_epi16() {
+        let a = u8x16::splat(10);
+        let r = sse41::_mm_cvtepu8_epi16(a);
+        let e = i16x8::splat(10);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_cvtepu8_epi32() {
+        let a = u8x16::splat(10);
+        let r = sse41::_mm_cvtepu8_epi32(a);
+        let e = i32x4::splat(10);
+        assert_eq!(r, e);
+    }
+
+        #[simd_test = "sse4.1"]
+    unsafe fn _mm_cvtepu8_epi64() {
+        let a = u8x16::splat(10);
+        let r = sse41::_mm_cvtepu8_epi64(a);
+        let e = i64x2::splat(10);
+        assert_eq!(r, e);
+    }
+
+
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_dp_pd() {
