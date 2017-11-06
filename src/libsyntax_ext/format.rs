@@ -110,6 +110,8 @@ struct Context<'a, 'b: 'a> {
     /// still existed in this phase of processing.
     /// Used only for `all_pieces_simple` tracking in `trans_piece`.
     curarg: usize,
+    /// Keep track of invalid references to positional arguments
+    invalid_refs: Vec<usize>,
 }
 
 /// Parses the arguments from the given list of tokens, returning None
@@ -251,10 +253,40 @@ impl<'a, 'b> Context<'a, 'b> {
 
     fn describe_num_args(&self) -> String {
         match self.args.len() {
-            0 => "no arguments given".to_string(),
-            1 => "there is 1 argument".to_string(),
-            x => format!("there are {} arguments", x),
+            0 => "no arguments were given".to_string(),
+            1 => "there is only 1 argument".to_string(),
+            x => format!("there are only {} arguments", x),
         }
+    }
+
+    /// Handle invalid references to positional arguments. Output different
+    /// errors for the case where all arguments are positional and for when
+    /// there are named arguments in the format string.
+    fn report_invalid_references(&self) {
+        let mut refs: Vec<String> = self.invalid_refs
+                                        .iter()
+                                        .map(|r| r.to_string())
+                                        .collect();
+
+        let msg = if self.names.is_empty() {
+            format!("{} positional argument{} in format string, but {}",
+                    self.pieces.len(),
+                    if self.pieces.len() > 1 { "s" } else { "" },
+                    self.describe_num_args())
+        } else {
+            let arg_list = match refs.len() {
+                1 => format!("argument {}", refs.pop().unwrap()),
+                _ => format!("arguments {head} and {tail}",
+                             tail=refs.pop().unwrap(),
+                             head=refs.join(", "))
+            };
+
+            format!("invalid reference to positional {} ({})",
+                    arg_list,
+                    self.describe_num_args())
+        };
+
+        self.ecx.span_err(self.fmtsp, &msg[..]);
     }
 
     /// Actually verifies and tracks a given format placeholder
@@ -263,11 +295,7 @@ impl<'a, 'b> Context<'a, 'b> {
         match arg {
             Exact(arg) => {
                 if self.args.len() <= arg {
-                    let msg = format!("invalid reference to argument `{}` ({})",
-                                      arg,
-                                      self.describe_num_args());
-
-                    self.ecx.span_err(self.fmtsp, &msg[..]);
+                    self.invalid_refs.push(arg);
                     return;
                 }
                 match ty {
@@ -691,6 +719,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         all_pieces_simple: true,
         macsp,
         fmtsp: fmt.span,
+        invalid_refs: Vec::new(),
     };
 
     let fmt_str = &*fmt.node.0.as_str();
@@ -734,6 +763,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     if !cx.literal.is_empty() {
         let s = cx.trans_literal_string();
         cx.str_pieces.push(s);
+    }
+
+    if cx.invalid_refs.len() >= 1 {
+        cx.report_invalid_references();
     }
 
     // Make sure that all arguments were used and all arguments have types.
