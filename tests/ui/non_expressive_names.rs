@@ -134,3 +134,10 @@ fn bla() {
         }
     }
 }
+
+fn underscores_and_numbers() {
+    let _1 = 1; //~ERROR Consider a more descriptive name
+    let ____1 = 1; //~ERROR Consider a more descriptive name
+    let __1___2 = 12; //~ERROR Consider a more descriptive name
+    let _1_ok= 1;
+}
