@@ -27,10 +27,8 @@ pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "docs", "rust-docs", stage, Some(host));
 }
 
-pub fn install_std(builder: &Builder, stage: u32) {
-    for target in &builder.build.targets {
-        install_sh(builder, "std", "rust-std", stage, Some(*target));
-    }
+pub fn install_std(builder: &Builder, stage: u32, target: Interned<String>) {
+    install_sh(builder, "std", "rust-std", stage, Some(target));
 }
 
 pub fn install_cargo(builder: &Builder, stage: u32, host: Interned<String>) {
@@ -175,11 +173,13 @@ install!((self, builder, _config),
         install_docs(builder, self.stage, self.target);
     };
     Std, "src/libstd", true, only_hosts: true, {
-        builder.ensure(dist::Std {
-            compiler: builder.compiler(self.stage, self.host),
-            target: self.target
-        });
-        install_std(builder, self.stage);
+        for target in &builder.build.targets {
+            builder.ensure(dist::Std {
+                compiler: builder.compiler(self.stage, self.host),
+                target: *target
+            });
+            install_std(builder, self.stage, *target);
+        }
     };
     Cargo, "cargo", _config.extended, only_hosts: true, {
         builder.ensure(dist::Cargo { stage: self.stage, target: self.target });
