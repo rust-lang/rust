@@ -22,7 +22,7 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
 pub use dataflow::indexes::BorrowIndex;
 use transform::nll::region_infer::RegionInferenceContext;
-use transform::nll::ToRegionIndex;
+use transform::nll::ToRegionVid;
 
 use syntax_pos::Span;
 
@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                                            location: Location) {
         if let Some(regioncx) = self.nonlexical_regioncx {
             for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
-                let borrow_region = borrow_data.region.to_region_index();
+                let borrow_region = borrow_data.region.to_region_vid();
                 if !regioncx.region_contains_point(borrow_region, location) {
                     // The region checker really considers the borrow
                     // to start at the point **after** the location of
