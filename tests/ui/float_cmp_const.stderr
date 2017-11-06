@@ -83,3 +83,52 @@ note: std::f32::EPSILON and std::f64::EPSILON are available.
 24 |     v != ONE;
    |     ^^^^^^^^
 
+error: strict comparison of f32 or f64
+  --> $DIR/float_cmp_const.rs:34:5
+   |
+34 |     v == w;
+   |     ^^^^^^ help: consider comparing them within some error: `(v - w).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> $DIR/float_cmp_const.rs:34:5
+   |
+34 |     v == w;
+   |     ^^^^^^
+
+error: strict comparison of f32 or f64
+  --> $DIR/float_cmp_const.rs:35:5
+   |
+35 |     v != w;
+   |     ^^^^^^ help: consider comparing them within some error: `(v - w).abs() < error`
+   |
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> $DIR/float_cmp_const.rs:35:5
+   |
+35 |     v != w;
+   |     ^^^^^^
+
+error: strict comparison of f32 or f64
+  --> $DIR/float_cmp_const.rs:36:5
+   |
+36 |     v == 1.0;
+   |     ^^^^^^^^ help: consider comparing them within some error: `(v - 1.0).abs() < error`
+   |
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> $DIR/float_cmp_const.rs:36:5
+   |
+36 |     v == 1.0;
+   |     ^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> $DIR/float_cmp_const.rs:37:5
+   |
+37 |     v != 1.0;
+   |     ^^^^^^^^ help: consider comparing them within some error: `(v - 1.0).abs() < error`
+   |
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> $DIR/float_cmp_const.rs:37:5
+   |
+37 |     v != 1.0;
+   |     ^^^^^^^^
+

@@ -28,4 +28,17 @@ fn main() {
     v > ONE;
     v <= ONE;
     v >= ONE;
+
+    // has float_cmp warns (as expected), no float constants
+    let w = 1.1;
+    v == w;
+    v != w;
+    v == 1.0;
+    v != 1.0;
+
+    // no errors, zero and infinity values
+    ONE != 0f32;
+    TWO == 0f32;
+    ONE != ::std::f32::INFINITY;
+    ONE == ::std::f32::NEG_INFINITY;
 }
