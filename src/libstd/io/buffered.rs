@@ -147,6 +147,31 @@ impl<R: Read> BufReader<R> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
 
+    /// Returns `true` if there are no bytes in the internal buffer.
+    ///
+    /// # Examples
+    /// ```
+    /// # #![feature(bufreader_is_empty)]
+    /// use std::io::BufReader;
+    /// use std::io::BufRead;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let f1 = File::open("log.txt")?;
+    /// let mut reader = BufReader::new(f1);
+    /// assert!(reader.is_empty());
+    ///
+    /// if reader.fill_buf()?.len() > 0 {
+    ///     assert!(!reader.is_empty());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "bufreader_is_empty", issue = "45323", reason = "recently added")]
+    pub fn is_empty(&self) -> bool {
+        self.pos == self.cap
+    }
+
     /// Unwraps this `BufReader`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost.
