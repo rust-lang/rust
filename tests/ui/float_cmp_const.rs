@@ -2,6 +2,7 @@
 
 
 #![warn(float_cmp_const)]
+#![allow(float_cmp)]
 #![allow(unused, no_effect, unnecessary_operation)]
 
 const ONE: f32 = 1.0;
@@ -35,6 +36,10 @@ fn main() {
     ONE != ::std::f32::INFINITY;
     ONE == ::std::f32::NEG_INFINITY;
 
-    // Note: float_cmp will warn as expected on cases where there are no float constants
-    //       e.g. v == 1.0
+    // no errors, but will warn float_cmp if '#![allow(float_cmp)]' above is removed
+    let w = 1.1;
+    v == w;
+    v != w;
+    v == 1.0;
+    v != 1.0;
 }

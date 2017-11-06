@@ -1,85 +1,85 @@
 error: strict comparison of f32 or f64 constant
-  --> $DIR/float_cmp_const.rs:16:5
+  --> $DIR/float_cmp_const.rs:17:5
    |
-16 |     1f32 == ONE;
+17 |     1f32 == ONE;
    |     ^^^^^^^^^^^ help: consider comparing them within some error: `(1f32 - ONE).abs() < error`
    |
    = note: `-D float-cmp-const` implied by `-D warnings`
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp_const.rs:16:5
+  --> $DIR/float_cmp_const.rs:17:5
    |
-16 |     1f32 == ONE;
+17 |     1f32 == ONE;
    |     ^^^^^^^^^^^
 
 error: strict comparison of f32 or f64 constant
-  --> $DIR/float_cmp_const.rs:17:5
-   |
-17 |     TWO == ONE;
-   |     ^^^^^^^^^^ help: consider comparing them within some error: `(TWO - ONE).abs() < error`
-   |
-note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp_const.rs:17:5
-   |
-17 |     TWO == ONE;
-   |     ^^^^^^^^^^
-
-error: strict comparison of f32 or f64 constant
   --> $DIR/float_cmp_const.rs:18:5
    |
-18 |     TWO != ONE;
+18 |     TWO == ONE;
    |     ^^^^^^^^^^ help: consider comparing them within some error: `(TWO - ONE).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
   --> $DIR/float_cmp_const.rs:18:5
    |
-18 |     TWO != ONE;
+18 |     TWO == ONE;
    |     ^^^^^^^^^^
 
 error: strict comparison of f32 or f64 constant
   --> $DIR/float_cmp_const.rs:19:5
    |
-19 |     ONE + ONE == TWO;
+19 |     TWO != ONE;
+   |     ^^^^^^^^^^ help: consider comparing them within some error: `(TWO - ONE).abs() < error`
+   |
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> $DIR/float_cmp_const.rs:19:5
+   |
+19 |     TWO != ONE;
+   |     ^^^^^^^^^^
+
+error: strict comparison of f32 or f64 constant
+  --> $DIR/float_cmp_const.rs:20:5
+   |
+20 |     ONE + ONE == TWO;
    |     ^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(ONE + ONE - TWO).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp_const.rs:19:5
+  --> $DIR/float_cmp_const.rs:20:5
    |
-19 |     ONE + ONE == TWO;
+20 |     ONE + ONE == TWO;
    |     ^^^^^^^^^^^^^^^^
 
 error: strict comparison of f32 or f64 constant
-  --> $DIR/float_cmp_const.rs:20:5
+  --> $DIR/float_cmp_const.rs:21:5
    |
-20 |     1 as f32 == ONE;
+21 |     1 as f32 == ONE;
    |     ^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(1 as f32 - ONE).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp_const.rs:20:5
+  --> $DIR/float_cmp_const.rs:21:5
    |
-20 |     1 as f32 == ONE;
+21 |     1 as f32 == ONE;
    |     ^^^^^^^^^^^^^^^
 
 error: strict comparison of f32 or f64 constant
-  --> $DIR/float_cmp_const.rs:23:5
+  --> $DIR/float_cmp_const.rs:24:5
    |
-23 |     v == ONE;
+24 |     v == ONE;
    |     ^^^^^^^^ help: consider comparing them within some error: `(v - ONE).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp_const.rs:23:5
+  --> $DIR/float_cmp_const.rs:24:5
    |
-23 |     v == ONE;
+24 |     v == ONE;
    |     ^^^^^^^^
 
 error: strict comparison of f32 or f64 constant
-  --> $DIR/float_cmp_const.rs:24:5
+  --> $DIR/float_cmp_const.rs:25:5
    |
-24 |     v != ONE;
+25 |     v != ONE;
    |     ^^^^^^^^ help: consider comparing them within some error: `(v - ONE).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp_const.rs:24:5
+  --> $DIR/float_cmp_const.rs:25:5
    |
-24 |     v != ONE;
+25 |     v != ONE;
    |     ^^^^^^^^
 
