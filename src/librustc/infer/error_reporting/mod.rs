@@ -1029,6 +1029,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let var_name = self.tcx.hir.name(var_node_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
+            infer::NLL(..) => bug!("NLL variable found in lexical phase"),
         };
 
         struct_span_err!(self.tcx.sess, var_origin.span(), E0495,

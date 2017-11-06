@@ -64,7 +64,8 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
 
     // Create the region inference context, generate the constraints,
     // and then solve them.
-    let mut regioncx = RegionInferenceContext::new(infcx, free_regions, mir);
+    let var_origins = infcx.take_region_var_origins();
+    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
     let param_env = infcx.tcx.param_env(def_id);
     constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, param_env, liveness);
     regioncx.solve(infcx, &mir);

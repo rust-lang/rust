@@ -16,7 +16,6 @@ pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 pub use ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
-pub use self::region_constraints::{GenericKind, VerifyBound, RegionConstraintData};
 
 use hir::def_id::DefId;
 use middle::free_region::{FreeRegionMap, RegionRelations};
@@ -25,7 +24,7 @@ use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
 use ty::{TyVid, IntVid, FloatVid};
-use ty::{self, RegionVid, Ty, TyCtxt};
+use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::RelateResult;
@@ -42,6 +41,7 @@ use arena::DroplessArena;
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
+use self::region_constraints::{GenericKind, VerifyBound, RegionConstraintData, VarOrigins};
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
@@ -321,7 +321,7 @@ pub enum LateBoundRegionConversionTime {
 /// Reasons to create a region inference variable
 ///
 /// See `error_reporting` module for more details
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
     // mostly indicates places in need of refactoring
@@ -349,6 +349,20 @@ pub enum RegionVariableOrigin {
     UpvarRegion(ty::UpvarId, Span),
 
     BoundRegionInCoherence(ast::Name),
+
+    // This origin is used for the inference variables that we create
+    // during NLL region processing.
+    NLL(NLLRegionVariableOrigin),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum NLLRegionVariableOrigin {
+    // During NLL region processing, we create variables for free
+    // regions that we encounter in the function signature and
+    // elsewhere. This origin indices we've got one of those.
+    FreeRegion,
+
+    Inferred(::mir::visit::TyContext),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -1030,9 +1044,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .new_key(None)
     }
 
+    /// Create a fresh region variable with the next available index.
+    ///
+    /// # Parameters
+    ///
+    /// - `origin`: information about why we created this variable, for use
+    ///   during diagnostics / error-reporting.
     pub fn next_region_var(&self, origin: RegionVariableOrigin)
                            -> ty::Region<'tcx> {
         self.tcx.mk_region(ty::ReVar(self.borrow_region_constraints().new_region_var(origin)))
+    }
+
+    /// Just a convenient wrapper of `next_region_var` for using during NLL.
+    pub fn next_nll_region_var(&self, origin: NLLRegionVariableOrigin)
+                               -> ty::Region<'tcx> {
+        self.next_region_var(RegionVariableOrigin::NLL(origin))
     }
 
     /// Create a region inference variable for the given
@@ -1166,19 +1192,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.borrow_region_constraints().take_and_reset_data()
     }
 
-    /// Returns the number of region variables created thus far.
-    pub fn num_region_vars(&self) -> usize {
-        self.borrow_region_constraints().var_origins().len()
-    }
-
-    /// Returns an iterator over all region variables created thus far.
-    pub fn all_region_vars(&self) -> impl Iterator<Item = RegionVid> {
-        self.borrow_region_constraints().var_origins().indices()
-    }
-
-    /// Returns the origin of a given region variable.
-    pub fn region_var_origin(&self, var: RegionVid) -> RegionVariableOrigin {
-        self.borrow_region_constraints().var_origins()[var].clone()
+    /// Takes ownership of the list of variable regions. This implies
+    /// that all the region constriants have already been taken, and
+    /// hence that `resolve_regions_and_report_errors` can never be
+    /// called. This is used only during NLL processing to "hand off" ownership
+    /// of the set of region vairables into the NLL region context.
+    pub fn take_region_var_origins(&self) -> VarOrigins {
+        let (var_origins, data) = self.region_constraints.borrow_mut()
+                                                         .take()
+                                                         .expect("regions already resolved")
+                                                         .into_origins_and_data();
+        assert!(data.is_empty());
+        var_origins
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
@@ -1609,7 +1634,8 @@ impl RegionVariableOrigin {
             EarlyBoundRegion(a, ..) => a,
             LateBoundRegion(a, ..) => a,
             BoundRegionInCoherence(_) => syntax_pos::DUMMY_SP,
-            UpvarRegion(_, a) => a
+            UpvarRegion(_, a) => a,
+            NLL(..) => bug!("NLL variable used with `span`"),
         }
     }
 }
