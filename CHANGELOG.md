@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.169
+* Rustup to *rustc 1.23.0-nightly (3b82e4c74 2017-11-05)*
+* New lints: [`just_underscores_and_digits`], [`result_map_unwrap_or_else`], [`transmute_bytes_to_str`]
+
 ## 0.0.168
 * Rustup to *rustc 1.23.0-nightly (f0fe716db 2017-10-30)*
 
@@ -555,6 +559,7 @@ All notable changes to this project will be documented in this file.
 [`iter_nth`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#iter_nth
 [`iter_skip_next`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#iter_skip_next
 [`iterator_step_by_zero`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#iterator_step_by_zero
+[`just_underscores_and_digits`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#just_underscores_and_digits
 [`large_digit_groups`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#large_digit_groups
 [`large_enum_variant`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#large_enum_variant
 [`len_without_is_empty`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#len_without_is_empty
@@ -632,6 +637,7 @@ All notable changes to this project will be documented in this file.
 [`redundant_closure_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure_call
 [`redundant_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_pattern
 [`regex_macro`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#regex_macro
+[`result_map_unwrap_or_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_map_unwrap_or_else
 [`result_unwrap_used`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_unwrap_used
 [`reverse_range_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#reverse_range_loop
 [`search_is_some`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#search_is_some
@@ -659,6 +665,7 @@ All notable changes to this project will be documented in this file.
 [`temporary_cstring_as_ptr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#temporary_cstring_as_ptr
 [`too_many_arguments`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#too_many_arguments
 [`toplevel_ref_arg`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#toplevel_ref_arg
+[`transmute_bytes_to_str`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_bytes_to_str
 [`transmute_int_to_bool`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_int_to_bool
 [`transmute_int_to_char`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_int_to_char
 [`transmute_int_to_float`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_int_to_float
