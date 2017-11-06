@@ -88,7 +88,10 @@ initial implementation, Cargo can generate and cache that `build.rs` in the
 `target` directory when needed, alongside the built version of the script.
 
 For Cargo schema versioning, using the `metabuild` key will result in the crate
-requiring a sufficiently new version of Cargo to understand `metabuild`.
+requiring a sufficiently new version of Cargo to understand `metabuild`. This
+should start out as an unstable Cargo feature; in the course of experimentation
+and stabilization, the implementation of this feature may change, requiring
+adaptation of experimental build scripts.
 
 If any of the strings mentioned in `metabuild` do not match one of the
 build-dependencies, Cargo should produce an error (*before* attempting to
