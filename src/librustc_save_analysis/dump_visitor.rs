@@ -878,6 +878,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                            ex: &'l ast::Expr,
                            seg: &'l ast::PathSegment,
                            args: &'l [P<ast::Expr>]) {
+        debug!("process_method_call {:?} {:?}", ex, ex.span);
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(mcd, RefData, ex.span);
             if !generated_code(ex.span) {

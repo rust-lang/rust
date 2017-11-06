@@ -103,47 +103,6 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    // Return the span for the last ident before a `(` or `<` or '::<' and outside any
-    // any brackets, or the last span.
-    pub fn sub_span_for_meth_name(&self, span: Span) -> Option<Span> {
-        let mut toks = self.retokenise_span(span);
-        let mut prev = toks.real_token();
-        let mut result = None;
-        let mut bracket_count = 0;
-        let mut prev_span = None;
-        while prev.tok != token::Eof {
-            prev_span = None;
-            let mut next = toks.real_token();
-
-            if (next.tok == token::OpenDelim(token::Paren) || next.tok == token::Lt) &&
-               bracket_count == 0 && prev.tok.is_ident() {
-                result = Some(prev.sp);
-            }
-
-            if bracket_count == 0 && next.tok == token::ModSep {
-                let old = prev;
-                prev = next;
-                next = toks.real_token();
-                if next.tok == token::Lt && old.tok.is_ident() {
-                    result = Some(old.sp);
-                }
-            }
-
-            bracket_count += match prev.tok {
-                token::OpenDelim(token::Paren) | token::Lt => 1,
-                token::CloseDelim(token::Paren) | token::Gt => -1,
-                token::BinOp(token::Shr) => -2,
-                _ => 0,
-            };
-
-            if prev.tok.is_ident() && bracket_count == 0 {
-                prev_span = Some(prev.sp);
-            }
-            prev = next;
-        }
-        result.or(prev_span)
-    }
-
     // Return the span for the last ident before a `<` and outside any
     // angle brackets, or the last span.
     pub fn sub_span_for_type_name(&self, span: Span) -> Option<Span> {
@@ -330,7 +289,7 @@ impl<'a> SpanUtils<'a> {
 }
 
 macro_rules! filter {
-    ($util: expr, $span: ident, $parent: expr, None) => {
+    ($util: expr, $span: expr, $parent: expr, None) => {
         if $util.filter_generated($span, $parent) {
             return None;
         }

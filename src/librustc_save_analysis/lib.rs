@@ -546,16 +546,16 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprKind::MethodCall(..) => {
+            ast::ExprKind::MethodCall(ref seg, ..) => {
                 let expr_hir_id = self.tcx.hir.definitions().node_to_hir_id(expr.id);
                 let method_id = self.tables.type_dependent_defs()[expr_hir_id].def_id();
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),
                 };
-                let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
-                filter!(self.span_utils, sub_span, expr.span, None);
-                let span = self.span_from_span(sub_span.unwrap());
+                let sub_span = seg.span;
+                filter!(self.span_utils, Some(sub_span), expr.span, None);
+                let span = self.span_from_span(sub_span);
                 Some(Data::RefData(Ref {
                     kind: RefKind::Function,
                     span,
@@ -627,13 +627,18 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             false
         }
 
+        if path.segments.is_empty() {
+            return None;
+        }
+
         let def = self.get_path_def(id);
-        let sub_span = self.span_utils.span_for_last_ident(path.span);
-        filter!(self.span_utils, sub_span, path.span, None);
+        let last_seg = &path.segments[path.segments.len() - 1];
+        let sub_span = last_seg.span;
+        filter!(self.span_utils, Some(sub_span), path.span, None);
         match def {
             HirDef::Upvar(id, ..) |
             HirDef::Local(id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
@@ -644,7 +649,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Const(..) |
             HirDef::AssociatedConst(..) |
             HirDef::VariantCtor(..) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
@@ -670,7 +675,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::AssociatedTy(def_id) |
             HirDef::Trait(def_id) |
             HirDef::TyParam(def_id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Type,
                     span,
@@ -681,7 +686,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct itself.
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
                 Some(Ref {
                     kind: RefKind::Type,
@@ -690,8 +695,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Method(decl_id) => {
-                let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
-                filter!(self.span_utils, sub_span, path.span, None);
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx.associated_items(ti.container.id())
@@ -700,7 +703,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 } else {
                     None
                 };
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Function,
                     span,
@@ -708,7 +711,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Fn(def_id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Function,
                     span,
@@ -716,7 +719,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Mod(def_id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Mod,
                     span,
