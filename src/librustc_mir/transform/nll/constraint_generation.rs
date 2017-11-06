@@ -24,7 +24,7 @@ use syntax::codemap::DUMMY_SP;
 
 use super::subtype;
 use super::LivenessResults;
-use super::ToRegionIndex;
+use super::ToRegionVid;
 use super::region_infer::RegionInferenceContext;
 
 pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
@@ -103,7 +103,7 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
         self.infcx
             .tcx
             .for_each_free_region(&live_ty, |live_region| {
-                let vid = live_region.to_region_index();
+                let vid = live_region.to_region_vid();
                 self.regioncx.add_live_point(vid, location);
             });
     }
@@ -200,8 +200,8 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
         };
 
         self.regioncx.add_outlives(span,
-                                   borrow_region.to_region_index(),
-                                   destination_region.to_region_index(),
+                                   borrow_region.to_region_vid(),
+                                   destination_region.to_region_vid(),
                                    location.successor_within_block());
     }
 
@@ -230,8 +230,8 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
 
                     let span = self.mir.source_info(location).span;
                     self.regioncx.add_outlives(span,
-                                               base_region.to_region_index(),
-                                               borrow_region.to_region_index(),
+                                               base_region.to_region_vid(),
+                                               borrow_region.to_region_vid(),
                                                location.successor_within_block());
                 }
             }

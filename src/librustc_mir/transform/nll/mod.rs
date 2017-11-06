@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::{self, RegionKind};
+use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::infer::InferCtxt;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
@@ -150,23 +149,19 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     });
 }
 
-newtype_index!(RegionIndex {
-    DEBUG_FORMAT = "'_#{}r",
-});
-
 /// Right now, we piggy back on the `ReVar` to store our NLL inference
-/// regions. These are indexed with `RegionIndex`. This method will
-/// assert that the region is a `ReVar` and convert the internal index
-/// into a `RegionIndex`. This is reasonable because in our MIR we
-/// replace all free regions with inference variables.
-pub trait ToRegionIndex {
-    fn to_region_index(&self) -> RegionIndex;
+/// regions. These are indexed with `RegionVid`. This method will
+/// assert that the region is a `ReVar` and extract its interal index.
+/// This is reasonable because in our MIR we replace all free regions
+/// with inference variables.
+pub trait ToRegionVid {
+    fn to_region_vid(&self) -> RegionVid;
 }
 
-impl ToRegionIndex for RegionKind {
-    fn to_region_index(&self) -> RegionIndex {
+impl ToRegionVid for RegionKind {
+    fn to_region_vid(&self) -> RegionVid {
         if let &ty::ReVar(vid) = self {
-            RegionIndex::new(vid.index as usize)
+            vid
         } else {
             bug!("region is not an ReVar: {:?}", self)
         }
