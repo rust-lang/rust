@@ -25,7 +25,7 @@ use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
 use ty::{TyVid, IntVid, FloatVid};
-use ty::{self, Ty, TyCtxt};
+use ty::{self, RegionVid, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::RelateResult;
@@ -1164,6 +1164,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// understands. See the NLL module for mode details.
     pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
         self.borrow_region_constraints().take_and_reset_data()
+    }
+
+    /// Returns the number of region variables created thus far.
+    pub fn num_region_vars(&self) -> usize {
+        self.borrow_region_constraints().var_origins().len()
+    }
+
+    /// Returns an iterator over all region variables created thus far.
+    pub fn all_region_vars(&self) -> impl Iterator<Item = RegionVid> {
+        self.borrow_region_constraints().var_origins().indices()
+    }
+
+    /// Returns the origin of a given region variable.
+    pub fn region_var_origin(&self, var: RegionVid) -> RegionVariableOrigin {
+        self.borrow_region_constraints().var_origins()[var].clone()
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
