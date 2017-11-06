@@ -122,6 +122,7 @@
     }
 
     function highlightSourceLines(ev) {
+        var search = document.getElementById("search");
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
             from = parseInt(match[1], 10);
@@ -144,6 +145,14 @@
             })
             for (i = from; i <= to; ++i) {
                 addClass(document.getElementById(i), 'line-highlighted');
+            }
+        } else if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+            addClass(search, "hidden");
+            removeClass(document.getElementById("main"), "hidden");
+            var hash = ev.newURL.slice(ev.newURL.indexOf('#') + 1);
+            var elem = document.getElementById(hash);
+            if (elem) {
+                elem.scrollIntoView();
             }
         }
     }
