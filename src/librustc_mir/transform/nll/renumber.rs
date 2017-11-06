@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::{self, ClosureSubsts, RegionKind, RegionVid, Ty, TypeFoldable};
 use rustc::mir::{BasicBlock, Local, Location, Mir, Rvalue, Statement, StatementKind};
@@ -17,6 +17,7 @@ use rustc::infer::{self as rustc_infer, InferCtxt};
 use syntax_pos::DUMMY_SP;
 use std::collections::HashMap;
 
+use super::RegionIndex;
 use super::free_regions::FreeRegions;
 
 /// Replaces all free regions appearing in the MIR with fresh
@@ -51,7 +52,7 @@ struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     num_region_variables: usize,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     free_regions: &'a FreeRegions<'tcx>,
-    free_region_inference_vars: Vec<ty::Region<'tcx>>,
+    free_region_inference_vars: IndexVec<RegionIndex, ty::Region<'tcx>>,
     arg_count: usize,
 }
 

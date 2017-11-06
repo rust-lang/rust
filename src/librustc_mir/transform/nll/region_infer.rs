@@ -13,7 +13,7 @@ use super::free_regions::FreeRegions;
 use rustc::infer::InferCtxt;
 use rustc::mir::{Location, Mir};
 use rustc::ty;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use std::collections::BTreeSet;
 use std::fmt;
@@ -151,15 +151,13 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// is just itself. R1 (`'b`) in contrast also outlives `'a` and
     /// hence contains R0 and R1.
     fn init_free_regions(&mut self, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) {
-        let &FreeRegions {
-            ref indices,
-            ref free_region_map,
+        let FreeRegions {
+            indices,
+            free_region_map,
         } = free_regions;
 
         // For each free region X:
-        for (free_region, index) in indices {
-            let variable = RegionIndex::new(*index);
-
+        for (free_region, &variable) in indices {
             self.free_regions.push(variable);
 
             // Initialize the name and a few other details.
@@ -184,7 +182,7 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
             // Go through each region Y that outlives X (i.e., where
             // Y: X is true). Add `end(X)` into the set for `Y`.
             for superregion in free_region_map.regions_that_outlive(&free_region) {
-                let superregion_index = RegionIndex::new(indices[superregion]);
+                let superregion_index = indices[superregion];
                 self.definitions[superregion_index]
                     .value
                     .add_free_region(variable);
