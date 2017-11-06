@@ -35,6 +35,7 @@ extern "platform-intrinsic" {
     fn simd_sub<T>(x: T, y: T) -> T;
     fn simd_mul<T>(x: T, y: T) -> T;
     fn simd_div<T>(x: T, y: T) -> T;
+    fn simd_rem<T>(x: T, y: T) -> T;
     fn simd_shl<T>(x: T, y: T) -> T;
     fn simd_shr<T>(x: T, y: T) -> T;
     fn simd_and<T>(x: T, y: T) -> T;
@@ -72,8 +73,21 @@ fn main() {
         all_eq!(simd_sub(z2, z1), f32x4(1.0, 1.0, 1.0, 1.0));
         all_eq!(simd_sub(z1, z2), f32x4(-1.0, -1.0, -1.0, -1.0));
 
+        all_eq!(simd_div(x1, x1), i32x4(1, 1, 1, 1));
+        all_eq!(simd_div(i32x4(2, 4, 6, 8), i32x4(2, 2, 2, 2)), x1);
+        all_eq!(simd_div(y1, y1), u32x4(1, 1, 1, 1));
+        all_eq!(simd_div(u32x4(2, 4, 6, 8), u32x4(2, 2, 2, 2)), y1);
+        all_eq!(simd_div(z1, z1), f32x4(1.0, 1.0, 1.0, 1.0));
         all_eq!(simd_div(z1, z2), f32x4(1.0/2.0, 2.0/3.0, 3.0/4.0, 4.0/5.0));
         all_eq!(simd_div(z2, z1), f32x4(2.0/1.0, 3.0/2.0, 4.0/3.0, 5.0/4.0));
+
+        all_eq!(simd_rem(x1, x1), i32x4(0, 0, 0, 0));
+        all_eq!(simd_rem(x2, x1), i32x4(0, 1, 1, 1));
+        all_eq!(simd_rem(y1, y1), u32x4(0, 0, 0, 0));
+        all_eq!(simd_rem(y2, y1), u32x4(0, 1, 1, 1));
+        all_eq!(simd_rem(z1, z1), f32x4(0.0, 0.0, 0.0, 0.0));
+        all_eq!(simd_rem(z1, z2), z1);
+        all_eq!(simd_rem(z2, z1), f32x4(0.0, 1.0, 1.0, 1.0));
 
         all_eq!(simd_shl(x1, x2), i32x4(1 << 2, 2 << 3, 3 << 4, 4 << 5));
         all_eq!(simd_shl(x2, x1), i32x4(2 << 1, 3 << 2, 4 << 3, 5 << 4));
