@@ -13,7 +13,7 @@ help: try adding a semicolon
 help: try adding a return type
    |
 18 | fn bar() -> usize {
-   |          ^^^^^^^^^
+   |          ^^^^^^^^
 
 error: aborting due to previous error
 

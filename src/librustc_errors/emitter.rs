@@ -1105,10 +1105,10 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
             self.msg_to_buffer(&mut buffer,
-                            &[(suggestion.msg.to_owned(), Style::NoStyle)],
-                            max_line_num_len,
-                            "suggestion",
-                            Some(Style::HeaderMsg));
+                               &[(suggestion.msg.to_owned(), Style::NoStyle)],
+                               max_line_num_len,
+                               "suggestion",
+                               Some(Style::HeaderMsg));
 
             // Render the replacements for each suggestion
             let suggestions = suggestion.splice_lines(cm.borrow());
@@ -1145,8 +1145,9 @@ impl EmitterWriter {
                 // entirety of the code being shown and the displayed code is not multiline.
                 if show_underline {
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
-                    let sub_len = parts[0].snippet.len();
-                    let underline_start = span_start_pos.col.0;
+                    let start = parts[0].snippet.len() - parts[0].snippet.trim_left().len();
+                    let sub_len = parts[0].snippet.trim().len();
+                    let underline_start = span_start_pos.col.0 + start;
                     let underline_end = span_start_pos.col.0 + sub_len;
                     for p in underline_start..underline_end {
                         buffer.putc(row_num,
