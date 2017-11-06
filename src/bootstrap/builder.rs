@@ -625,8 +625,7 @@ impl<'a> Builder<'a> {
 
             if mode != Mode::Libstd && // FIXME(#45320)
                self.config.rust_codegen_units.is_none() &&
-               self.build.is_rust_llvm(compiler.host) &&
-               !target.contains("mips") // FIXME(#45654)
+               self.build.is_rust_llvm(compiler.host)
             {
                 cargo.env("RUSTC_THINLTO", "1");
             }
