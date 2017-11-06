@@ -40,7 +40,7 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
     let free_regions = &free_regions::free_regions(infcx, source);
 
     // Replace all regions with fresh inference variables.
-    let num_region_variables = renumber::renumber_mir(infcx, free_regions, mir);
+    renumber::renumber_mir(infcx, free_regions, mir);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -63,7 +63,7 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
 
     // Create the region inference context, generate the constraints,
     // and then solve them.
-    let mut regioncx = RegionInferenceContext::new(free_regions, num_region_variables, mir);
+    let mut regioncx = RegionInferenceContext::new(infcx, free_regions, mir);
     constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
     regioncx.solve(infcx, &mir);
 

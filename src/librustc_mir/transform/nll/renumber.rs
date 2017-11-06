@@ -25,7 +25,7 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     free_regions: &FreeRegions<'tcx>,
     mir: &mut Mir<'tcx>,
-) -> usize {
+) {
     // Create inference variables for each of the free regions
     // declared on the function signature.
     let free_region_inference_vars = (0..free_regions.indices.len())
@@ -37,18 +37,15 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
     let mut visitor = NLLVisitor {
         infcx,
         lookup_map: HashMap::new(),
-        num_region_variables: free_regions.indices.len(),
         free_regions,
         free_region_inference_vars,
         arg_count: mir.arg_count,
     };
     visitor.visit_mir(mir);
-    visitor.num_region_variables
 }
 
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     lookup_map: HashMap<RegionVid, TyContext>,
-    num_region_variables: usize,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     free_regions: &'a FreeRegions<'tcx>,
     free_region_inference_vars: IndexVec<RegionVid, ty::Region<'tcx>>,
@@ -66,9 +63,7 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
         self.infcx
             .tcx
             .fold_regions(value, &mut false, |_region, _depth| {
-                self.num_region_variables += 1;
-                self.infcx
-                    .next_region_var(rustc_infer::MiscVariable(DUMMY_SP))
+                self.infcx.next_region_var(rustc_infer::MiscVariable(DUMMY_SP))
             })
     }
 
