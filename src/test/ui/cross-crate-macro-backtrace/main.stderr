@@ -1,4 +1,4 @@
-error: invalid reference to argument `0` (no arguments given)
+error: 1 positional argument in format string, but no arguments were given
   --> $DIR/main.rs:16:5
    |
 16 |     myprintln!("{}"); //~ ERROR in this macro
