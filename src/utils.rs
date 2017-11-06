@@ -298,7 +298,6 @@ macro_rules! impl_enum_serialize_and_deserialize {
         impl<'de> ::serde::de::Deserialize<'de> for $e {
             fn deserialize<D>(d: D) -> Result<Self, D::Error>
                     where D: ::serde::Deserializer<'de> {
-                use std::ascii::AsciiExt;
                 use serde::de::{Error, Visitor};
                 use std::marker::PhantomData;
                 use std::fmt;
@@ -328,7 +327,6 @@ macro_rules! impl_enum_serialize_and_deserialize {
             type Err = &'static str;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                use std::ascii::AsciiExt;
                 $(
                     if stringify!($x).eq_ignore_ascii_case(s) {
                         return Ok($e::$x);
