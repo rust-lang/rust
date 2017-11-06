@@ -93,8 +93,15 @@ pub(super) fn compute_regions<'a, 'gcx, 'tcx>(
     };
 
     // Generate non-subtyping constraints.
-    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness,
-                                                flow_inits, move_data);
+    constraint_generation::generate_constraints(
+        infcx,
+        &mut regioncx,
+        &mir,
+        source,
+        liveness,
+        flow_inits,
+        move_data
+    );
 
     // Solve the region constraints.
     regioncx.solve(infcx, &mir);

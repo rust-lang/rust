@@ -127,13 +127,15 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let opt_regioncx = if !tcx.sess.opts.debugging_opts.nll {
         None
     } else {
-        Some(nll::compute_regions(infcx,
-                                  src,
-                                  &free_regions,
-                                  mir,
-                                  param_env,
-                                  &flow_inits,
-                                  &mdpe.move_data))
+        Some(nll::compute_regions(
+            infcx,
+            src,
+            &free_regions,
+            mir,
+            param_env,
+            &flow_inits,
+            &mdpe.move_data
+        ))
     };
 
     let mut mbcx = MirBorrowckCtxt {

@@ -83,18 +83,22 @@ impl<'a, 'cx, 'gcx, 'tcx> ConstraintGeneration<'a, 'cx, 'gcx, 'tcx> {
                     }
                 });
 
-            self.liveness
-                .drop
-                .simulate_block(self.mir, bb, |location, live_locals| {
+            self.liveness.drop.simulate_block(
+                self.mir,
+                bb,
+                |location, live_locals| {
                     for live_local in live_locals.iter() {
-                        if let LookupResult::Exact(mpi) = self.move_data.rev_lookup.find(&Lvalue::Local(live_local)) {
+                        if let LookupResult::Exact(mpi) =
+                            self.move_data.rev_lookup.find(&Lvalue::Local(live_local))
+                        {
                             if self.flow_inits.has_any_child_of(mpi).is_some() {
                                 let live_local_ty = self.mir.local_decls[live_local].ty;
                                 self.add_drop_live_constraint(live_local_ty, location);
                             }
                         }
                     }
-                });
+                },
+            );
         }
     }
 
