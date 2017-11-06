@@ -402,7 +402,6 @@ pub unsafe fn _mm_mul_epi32(a: i32x4, b:i32x4) -> i64x2 {
     pmuldq(a, b)
 }
 
-
 /// Multiply the packed 32-bit integers in `a` and `b`, producing intermediate 64-bit integers,
 /// and return the low 32 bits of the intermediate integers.
 #[inline(always)]
@@ -410,6 +409,27 @@ pub unsafe fn _mm_mul_epi32(a: i32x4, b:i32x4) -> i64x2 {
 #[cfg_attr(test, assert_instr(pmulld))]
 pub unsafe fn _mm_mullo_epi32 (a: i32x4, b:i32x4) -> i32x4 {
     a * b
+}
+
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_testz_si128(a: i64x2, mask: i64x2) -> i32 {
+    ptestz(a, mask)
+}
+
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_testc_si128(a: i64x2, mask: i64x2) -> i32 {
+    ptestc(a, mask)
+}
+
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(ptest))]
+pub unsafe fn _mm_testnzc_si128(a: i64x2, mask: i64x2) -> i32 {
+    ptestnzc(a, mask)
 }
 
 /// Returns the dot product of two f64x2 vectors.
@@ -724,6 +744,12 @@ extern "C" {
     fn packusdw(a: i32x4, b: i32x4) -> u16x8;
     #[link_name = "llvm.x86.sse41.pmuldq"]
     fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
+    #[link_name = "llvm.x86.sse41.ptestz"]
+    fn ptestz(a: i64x2, mask: i64x2) -> i32;
+    #[link_name = "llvm.x86.sse41.ptestc"]
+    fn ptestc(a: i64x2, mask: i64x2) -> i32;
+    #[link_name = "llvm.x86.sse41.ptestnzc"]
+    fn ptestnzc(a: i64x2, mask: i64x2) -> i32;
     #[link_name = "llvm.x86.sse41.dppd"]
     fn dppd(a: f64x2, b: f64x2, imm8: u8) -> f64x2;
     #[link_name = "llvm.x86.sse41.dpps"]
@@ -1173,6 +1199,58 @@ mod tests {
         let r = sse41::_mm_mullo_epi32(a, b);
         let e = i32x4::new(1, 2, 3, 4);
         assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_testz_si128() {
+        let a    = i64x2::splat(1);
+        let mask = i64x2::splat(0);
+        let r    = sse41::_mm_testz_si128(a, mask);
+        assert_eq!(r, 1);
+        let a    = i64x2::splat(0b101);
+        let mask = i64x2::splat(0b110);
+        let r    = sse41::_mm_testz_si128(a, mask);
+        assert_eq!(r, 0);
+        let a    = i64x2::splat(0b011);
+        let mask = i64x2::splat(0b100);
+        let r    = sse41::_mm_testz_si128(a, mask);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_testc_si128() {
+        let a    = i64x2::splat(-1);
+        let mask = i64x2::splat(0);
+        let r    = sse41::_mm_testc_si128(a, mask);
+        assert_eq!(r, 1);
+        let a    = i64x2::splat(0b101);
+        let mask = i64x2::splat(0b110);
+        let r    = sse41::_mm_testc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a    = i64x2::splat(0b101);
+        let mask = i64x2::splat(0b100);
+        let r    = sse41::_mm_testc_si128(a, mask);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_testnzc_si128() {
+        let a    = i64x2::splat(0);
+        let mask = i64x2::splat(1);
+        let r    = sse41::_mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a    = i64x2::splat(-1);
+        let mask = i64x2::splat(0);
+        let r    = sse41::_mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a    = i64x2::splat(0b101);
+        let mask = i64x2::splat(0b110);
+        let r    = sse41::_mm_testnzc_si128(a, mask);
+        assert_eq!(r, 1);
+        let a    = i64x2::splat(0b101);
+        let mask = i64x2::splat(0b101);
+        let r    = sse41::_mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
     }
 
     #[simd_test = "sse4.1"]
