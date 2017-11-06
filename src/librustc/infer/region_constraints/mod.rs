@@ -33,7 +33,7 @@ mod taint;
 
 pub struct RegionConstraintCollector<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
-    pub var_origins: IndexVec<RegionVid, RegionVariableOrigin>,
+    var_origins: IndexVec<RegionVid, RegionVariableOrigin>,
 
     data: RegionConstraintData<'tcx>,
 
@@ -282,6 +282,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             undo_log: Vec::new(),
             unification_table: UnificationTable::new(),
         }
+    }
+
+    pub fn var_origins(&self) -> &VarOrigins {
+        &self.var_origins
     }
 
     /// Once all the constraints have been gathered, extract out the final data.
