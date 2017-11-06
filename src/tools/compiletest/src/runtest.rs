@@ -2391,7 +2391,8 @@ actual:\n\
     fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
         let parent_dir = self.testpaths.file.parent().unwrap();
         let cflags = self.props.compile_flags.join(" ");
-        let parent_dir_str = if cflags.contains("--error-format json") {
+        let parent_dir_str = if cflags.contains("--error-format json")
+                             || cflags.contains("--error-format pretty-json") {
             parent_dir.display().to_string().replace("\\", "\\\\")
         } else {
             parent_dir.display().to_string()

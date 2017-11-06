@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --error-format json
+// compile-flags: --error-format pretty-json -Zunstable-options
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
