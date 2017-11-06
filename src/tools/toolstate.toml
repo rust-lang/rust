@@ -29,7 +29,7 @@ miri = "Broken"
 clippy = "Broken"
 
 # ping @nrc
-rls = "Broken"
+rls = "Testing"
 
 # ping @nrc
-rustfmt = "Broken"
+rustfmt = "Testing"
