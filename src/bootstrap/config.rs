@@ -528,7 +528,7 @@ impl Config {
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
 
-        let default = config.channel == "nightly";
+        let default = false;
         config.llvm_assertions = llvm_assertions.unwrap_or(default);
 
         let default = match &config.channel[..] {
