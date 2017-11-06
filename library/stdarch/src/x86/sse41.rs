@@ -297,7 +297,7 @@ pub unsafe fn _mm_cvtepi16_epi32(a: i16x8) -> i32x4 {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovsxwq))]
 pub unsafe fn _mm_cvtepi16_epi64(a: i16x8) -> i64x2 {
-    simd_shuffle2::<_, ::v32::i16x2>(a, a, [0, 1]).as_i64x4()
+    simd_shuffle2::<_, ::v32::i16x2>(a, a, [0, 1]).as_i64x2()
 }
 
 /// Returns the dot product of two f64x2 vectors.

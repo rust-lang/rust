@@ -174,7 +174,7 @@ mod v32 {
 
     define_casts!(
         (i8x4, i32x4, as_i32x4),
-        (i16x2, i64x2, as_i64x4)
+        (i16x2, i64x2, as_i64x2)
     );
 }
 
