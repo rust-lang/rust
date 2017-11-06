@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,6 @@
 // pretty-compare-only
 // pretty-mode:expanded
 // pp-exact:cast-lt.pp
-
-// #4264 fixed-length vector types
 
 macro_rules! negative {
       ($e:expr) => { $e < 0 }
