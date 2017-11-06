@@ -10,6 +10,8 @@
 
 #![feature(rustc_private)]
 
+#[macro_use]
+extern crate derive_new;
 extern crate diff;
 #[macro_use]
 extern crate log;

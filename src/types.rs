@@ -709,7 +709,7 @@ impl Rewrite for ast::Ty {
                 rewrite_pair(
                     &**ty,
                     &**repeats,
-                    &PairParts(lbr, "; ", rbr),
+                    PairParts::new(lbr, "; ", rbr),
                     context,
                     shape,
                     SeparatorPlace::Back,

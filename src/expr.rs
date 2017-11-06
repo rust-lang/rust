@@ -83,7 +83,7 @@ pub fn format_expr(
             rewrite_pair(
                 &**lhs,
                 &**rhs,
-                &PairParts("", &format!(" {} ", context.snippet(op.span)), ""),
+                PairParts::new("", &format!(" {} ", context.snippet(op.span)), ""),
                 context,
                 shape,
                 context.config.binop_separator(),
@@ -184,7 +184,7 @@ pub fn format_expr(
         ast::ExprKind::Cast(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            &PairParts("", " as ", ""),
+            PairParts::new("", " as ", ""),
             context,
             shape,
             SeparatorPlace::Front,
@@ -192,7 +192,7 @@ pub fn format_expr(
         ast::ExprKind::Type(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            &PairParts("", ": ", ""),
+            PairParts::new("", ": ", ""),
             context,
             shape,
             SeparatorPlace::Back,
@@ -209,7 +209,7 @@ pub fn format_expr(
             rewrite_pair(
                 &**expr,
                 &**repeats,
-                &PairParts(lbr, "; ", rbr),
+                PairParts::new(lbr, "; ", rbr),
                 context,
                 shape,
                 SeparatorPlace::Back,
@@ -245,7 +245,7 @@ pub fn format_expr(
                     rewrite_pair(
                         &*lhs,
                         &*rhs,
-                        &PairParts("", &sp_delim, ""),
+                        PairParts::new("", &sp_delim, ""),
                         context,
                         shape,
                         SeparatorPlace::Front,
@@ -305,12 +305,17 @@ pub fn format_expr(
         })
 }
 
-pub struct PairParts<'a>(pub &'a str, pub &'a str, pub &'a str);
+#[derive(new)]
+pub struct PairParts<'a> {
+    prefix: &'a str,
+    infix: &'a str,
+    suffix: &'a str,
+}
 
 pub fn rewrite_pair<LHS, RHS>(
     lhs: &LHS,
     rhs: &RHS,
-    pp: &PairParts,
+    pp: PairParts,
     context: &RewriteContext,
     shape: Shape,
     separator_place: SeparatorPlace,
@@ -319,9 +324,8 @@ where
     LHS: Rewrite,
     RHS: Rewrite,
 {
-    let &PairParts(prefix, infix, suffix) = pp;
     let lhs_overhead = match separator_place {
-        SeparatorPlace::Back => shape.used_width() + prefix.len() + infix.trim_right().len(),
+        SeparatorPlace::Back => shape.used_width() + pp.prefix.len() + pp.infix.trim_right().len(),
         SeparatorPlace::Front => shape.used_width(),
     };
     let lhs_shape = Shape {
@@ -329,12 +333,12 @@ where
         ..shape
     };
     let lhs_result = lhs.rewrite(context, lhs_shape)
-        .map(|lhs_str| format!("{}{}", prefix, lhs_str))?;
+        .map(|lhs_str| format!("{}{}", pp.prefix, lhs_str))?;
 
     // Try to the both lhs and rhs on the same line.
     let rhs_orig_result = shape
-        .offset_left(last_line_width(&lhs_result) + infix.len())
-        .and_then(|s| s.sub_width(suffix.len()))
+        .offset_left(last_line_width(&lhs_result) + pp.infix.len())
+        .and_then(|s| s.sub_width(pp.suffix.len()))
         .and_then(|rhs_shape| rhs.rewrite(context, rhs_shape));
     if let Some(ref rhs_result) = rhs_orig_result {
         // If the rhs looks like block expression, we allow it to stay on the same line
@@ -345,10 +349,16 @@ where
             .map(|first_line| first_line.ends_with('{'))
             .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
-            let one_line_width = last_line_width(&lhs_result) + infix.len()
-                + first_line_width(rhs_result) + suffix.len();
+            let one_line_width = last_line_width(&lhs_result) + pp.infix.len()
+                + first_line_width(rhs_result) + pp.suffix.len();
             if one_line_width <= shape.width {
-                return Some(format!("{}{}{}{}", lhs_result, infix, rhs_result, suffix));
+                return Some(format!(
+                    "{}{}{}{}",
+                    lhs_result,
+                    pp.infix,
+                    rhs_result,
+                    pp.suffix
+                ));
             }
         }
     }
@@ -357,8 +367,8 @@ where
     // Re-evaluate the rhs because we have more space now:
     let mut rhs_shape = match context.config.control_style() {
         Style::Legacy => shape
-            .sub_width(suffix.len() + prefix.len())?
-            .visual_indent(prefix.len()),
+            .sub_width(pp.suffix.len() + pp.prefix.len())?
+            .visual_indent(pp.prefix.len()),
         Style::Rfc => {
             // Try to calculate the initial constraint on the right hand side.
             let rhs_overhead = shape.rhs_overhead(context.config);
@@ -367,31 +377,25 @@ where
         }
     };
     let infix = match separator_place {
-        SeparatorPlace::Back => infix.trim_right(),
-        SeparatorPlace::Front => infix.trim_left(),
+        SeparatorPlace::Back => pp.infix.trim_right(),
+        SeparatorPlace::Front => pp.infix.trim_left(),
     };
     if separator_place == SeparatorPlace::Front {
         rhs_shape = rhs_shape.offset_left(infix.len())?;
     }
     let rhs_result = rhs.rewrite(context, rhs_shape)?;
-    match separator_place {
-        SeparatorPlace::Back => Some(format!(
-            "{}{}\n{}{}{}",
-            lhs_result,
-            infix,
-            rhs_shape.indent.to_string(context.config),
-            rhs_result,
-            suffix
-        )),
-        SeparatorPlace::Front => Some(format!(
-            "{}\n{}{}{}{}",
-            lhs_result,
-            rhs_shape.indent.to_string(context.config),
-            infix,
-            rhs_result,
-            suffix
-        )),
-    }
+    let indent_str = rhs_shape.indent.to_string(context.config);
+    let infix_with_sep = match separator_place {
+        SeparatorPlace::Back => format!("{}\n{}", infix, indent_str),
+        SeparatorPlace::Front => format!("\n{}{}", indent_str, infix),
+    };
+    Some(format!(
+        "{}{}{}{}",
+        lhs_result,
+        infix_with_sep,
+        rhs_result,
+        pp.suffix
+    ))
 }
 
 pub fn rewrite_array<'a, I>(
