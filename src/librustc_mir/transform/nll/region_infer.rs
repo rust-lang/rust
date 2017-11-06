@@ -10,6 +10,9 @@
 
 use super::free_regions::FreeRegions;
 use rustc::infer::InferCtxt;
+use rustc::infer::RegionVariableOrigin;
+use rustc::infer::NLLRegionVariableOrigin;
+use rustc::infer::region_constraints::VarOrigins;
 use rustc::mir::{Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -25,23 +28,17 @@ pub struct RegionInferenceContext<'tcx> {
     /// from as well as its final inferred value.
     definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
-    /// The indices of all "free regions" in scope. These are the
-    /// lifetime parameters (anonymous and named) declared in the
-    /// function signature:
-    ///
-    ///     fn foo<'a, 'b>(x: &Foo<'a, 'b>)
-    ///            ^^  ^^     ^
-    ///
-    /// These indices will be from 0..N, as it happens, but we collect
-    /// them into a vector for convenience.
-    free_regions: Vec<RegionVid>,
-
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
 }
 
-#[derive(Default)]
 struct RegionDefinition<'tcx> {
+    /// Why we created this variable. Mostly these will be
+    /// `RegionVariableOrigin::NLL`, but some variables get created
+    /// elsewhere in the code with other causes (e.g., instantiation
+    /// late-bound-regions).
+    origin: RegionVariableOrigin,
+
     /// If this is a free-region, then this is `Some(X)` where `X` is
     /// the name of the region.
     name: Option<ty::Region<'tcx>>,
@@ -112,15 +109,16 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// `num_region_variables` valid inference variables; the first N
     /// of those will be constant regions representing the free
     /// regions defined in `free_regions`.
-    pub fn new(
-        infcx: &InferCtxt<'_, '_, 'tcx>,
-        free_regions: &FreeRegions<'tcx>,
-        mir: &Mir<'tcx>,
-    ) -> Self {
+    pub fn new(var_origins: VarOrigins, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) -> Self {
+        // Create a RegionDefinition for each inference variable.
+        let definitions = var_origins
+            .into_iter()
+            .map(|origin| RegionDefinition::new(origin))
+            .collect();
+
         let mut result = Self {
-            definitions: infcx.all_region_vars().map(|_| RegionDefinition::default()).collect(),
+            definitions: definitions,
             constraints: Vec::new(),
-            free_regions: Vec::new(),
         };
 
         result.init_free_regions(free_regions, mir);
@@ -155,7 +153,11 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
 
         // For each free region X:
         for (free_region, &variable) in indices {
-            self.free_regions.push(variable);
+            // These should be free-region variables.
+            assert!(match self.definitions[variable].origin {
+                RegionVariableOrigin::NLL(NLLRegionVariableOrigin::FreeRegion) => true,
+                _ => false,
+            });
 
             // Initialize the name and a few other details.
             self.definitions[variable].name = Some(free_region);
@@ -262,10 +264,7 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    fn propagate_constraints(
-        &mut self,
-        mir: &Mir<'tcx>,
-    ) -> Vec<(RegionVid, Span, RegionVid)> {
+    fn propagate_constraints(&mut self, mir: &Mir<'tcx>) -> Vec<(RegionVid, Span, RegionVid)> {
         let mut changed = true;
         let mut dfs = Dfs::new(mir);
         let mut error_regions = FxHashSet();
@@ -391,5 +390,19 @@ impl<'a, 'tcx> Dfs<'a, 'tcx> {
         }
 
         changed
+    }
+}
+
+impl<'tcx> RegionDefinition<'tcx> {
+    fn new(origin: RegionVariableOrigin) -> Self {
+        // Create a new region definition. Note that, for free
+        // regions, these fields get updated later in
+        // `init_free_regions`.
+        Self {
+            origin,
+            name: None,
+            constant: false,
+            value: Region::default(),
+        }
     }
 }

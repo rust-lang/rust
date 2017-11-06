@@ -811,7 +811,7 @@ make_mir_visitor!(MutVisitor,mut);
 
 /// Extra information passed to `visit_ty` and friends to give context
 /// about where the type etc appears.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TyContext {
     LocalDecl {
         /// The index of the local variable we are visiting.
