@@ -113,14 +113,12 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// of those will be constant regions representing the free
     /// regions defined in `free_regions`.
     pub fn new(
+        infcx: &InferCtxt<'_, '_, 'tcx>,
         free_regions: &FreeRegions<'tcx>,
-        num_region_variables: usize,
         mir: &Mir<'tcx>,
     ) -> Self {
         let mut result = Self {
-            definitions: (0..num_region_variables)
-                .map(|_| RegionDefinition::default())
-                .collect(),
+            definitions: infcx.all_region_vars().map(|_| RegionDefinition::default()).collect(),
             constraints: Vec::new(),
             free_regions: Vec::new(),
         };
