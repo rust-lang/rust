@@ -33,7 +33,7 @@ use stdsimd_test::assert_instr;
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpabsd))]
-pub unsafe fn _mm256_abs_epi32(a: i32x8) -> i32x8 {
+pub unsafe fn _mm256_abs_epi32(a: i32x8) -> u32x8 {
     pabsd(a)
 }
 
@@ -41,7 +41,7 @@ pub unsafe fn _mm256_abs_epi32(a: i32x8) -> i32x8 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpabsw))]
-pub unsafe fn _mm256_abs_epi16(a: i16x16) -> i16x16 {
+pub unsafe fn _mm256_abs_epi16(a: i16x16) -> u16x16 {
     pabsw(a)
 }
 
@@ -49,7 +49,7 @@ pub unsafe fn _mm256_abs_epi16(a: i16x16) -> i16x16 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpabsb))]
-pub unsafe fn _mm256_abs_epi8(a: i8x32) -> i8x32 {
+pub unsafe fn _mm256_abs_epi8(a: i8x32) -> u8x32 {
     pabsb(a)
 }
 
@@ -2000,11 +2000,11 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.avx2.pabs.b"]
-    fn pabsb(a: i8x32) -> i8x32;
+    fn pabsb(a: i8x32) -> u8x32;
     #[link_name = "llvm.x86.avx2.pabs.w"]
-    fn pabsw(a: i16x16) -> i16x16;
+    fn pabsw(a: i16x16) -> u16x16;
     #[link_name = "llvm.x86.avx2.pabs.d"]
-    fn pabsd(a: i32x8) -> i32x8;
+    fn pabsd(a: i32x8) -> u32x8;
     #[link_name = "llvm.x86.avx2.padds.b"]
     fn paddsb(a: i8x32, b: i8x32) -> i8x32;
     #[link_name = "llvm.x86.avx2.padds.w"]
@@ -2186,13 +2186,13 @@ mod tests {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i32x8::new(
             0, 1, -1, std::i32::MAX,
-            std::i32::MIN + 1, 100, -100, -32,
+            std::i32::MIN, 100, -100, -32,
         );
         let r = avx2::_mm256_abs_epi32(a);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = i32x8::new(
-            0, 1, 1, std::i32::MAX,
-            (std::i32::MIN + 1).abs(), 100, 100, 32,
+        let e = u32x8::new(
+            0, 1, 1, std::i32::MAX as u32,
+            std::i32::MAX as u32 + 1, 100, 100, 32,
         );
         assert_eq!(r, e);
     }
@@ -2202,13 +2202,13 @@ mod tests {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i16x16::new(
             0,  1, -1, 2, -2, 3, -3, 4,
-            -4, 5, -5, std::i16::MAX, std::i16::MIN + 1, 100, -100, -32,
+            -4, 5, -5, std::i16::MAX, std::i16::MIN, 100, -100, -32,
         );
         let r = avx2::_mm256_abs_epi16(a);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = i16x16::new(
+        let e = u16x16::new(
             0, 1, 1, 2, 2, 3, 3, 4,
-            4, 5, 5, std::i16::MAX, (std::i16::MIN + 1).abs(), 100, 100, 32,
+            4, 5, 5, std::i16::MAX as u16, std::i16::MAX as u16 + 1, 100, 100, 32,
         );
         assert_eq!(r, e);
     }
@@ -2218,17 +2218,17 @@ mod tests {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x32::new(
             0, 1, -1, 2, -2, 3, -3, 4,
-            -4, 5, -5, std::i8::MAX, std::i8::MIN + 1, 100, -100, -32,
+            -4, 5, -5, std::i8::MAX, std::i8::MIN, 100, -100, -32,
             0, 1, -1, 2, -2, 3, -3, 4,
-            -4, 5, -5, std::i8::MAX, std::i8::MIN + 1, 100, -100, -32,
+            -4, 5, -5, std::i8::MAX, std::i8::MIN, 100, -100, -32,
         );
         let r = avx2::_mm256_abs_epi8(a);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = i8x32::new(
+        let e = u8x32::new(
             0, 1, 1, 2, 2, 3, 3, 4,
-            4, 5, 5, std::i8::MAX, (std::i8::MIN + 1).abs(), 100, 100, 32,
+            4, 5, 5, std::i8::MAX as u8, std::i8::MAX as u8 + 1, 100, 100, 32,
             0, 1, 1, 2, 2, 3, 3, 4,
-            4, 5, 5, std::i8::MAX, (std::i8::MIN + 1).abs(), 100, 100, 32,
+            4, 5, 5, std::i8::MAX as u8, std::i8::MAX as u8 + 1, 100, 100, 32,
         );
         assert_eq!(r, e);
     }
