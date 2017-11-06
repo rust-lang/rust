@@ -394,6 +394,24 @@ pub unsafe fn _mm_cvtepu32_epi64(a: u32x4) -> i64x2 {
     simd_shuffle2::<_, ::v64::u32x2>(a, a, [0, 1]).as_i64x2()
 }
 
+/// Multiply the low 32-bit integers from each packed 64-bit element in `a` and `b`
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmuldq))]
+pub unsafe fn _mm_mul_epi32(a: i32x4, b:i32x4) -> i64x2 {
+    pmuldq(a, b)
+}
+
+
+/// Multiply the packed 32-bit integers in `a` and `b`, producing intermediate 64-bit integers,
+/// and return the low 32 bits of the intermediate integers.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmulld))]
+pub unsafe fn _mm_mullo_epi32 (a: i32x4, b:i32x4) -> i32x4 {
+    a * b
+}
+
 /// Returns the dot product of two f64x2 vectors.
 ///
 /// `imm8[1:0]` is the broadcast mask, and `imm8[5:4]` is the condition mask.
@@ -704,6 +722,8 @@ extern "C" {
     fn pminud(a: u32x4, b: u32x4) -> u32x4;
     #[link_name = "llvm.x86.sse41.packusdw"]
     fn packusdw(a: i32x4, b: i32x4) -> u16x8;
+    #[link_name = "llvm.x86.sse41.pmuldq"]
+    fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
     #[link_name = "llvm.x86.sse41.dppd"]
     fn dppd(a: f64x2, b: f64x2, imm8: u8) -> f64x2;
     #[link_name = "llvm.x86.sse41.dpps"]
@@ -1134,6 +1154,24 @@ mod tests {
         let a = u32x4::splat(10);
         let r = sse41::_mm_cvtepu32_epi64(a);
         let e = i64x2::splat(10);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_mul_epi32() {
+        let a = i32x4::new(1, 1, 1, 1);
+        let b = i32x4::new(1, 2, 3, 4);
+        let r = sse41::_mm_mul_epi32(a, b);
+        let e = i64x2::new(1, 3);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_mullo_epi32() {
+        let a = i32x4::new(1, 1, 1, 1);
+        let b = i32x4::new(1, 2, 3, 4);
+        let r = sse41::_mm_mullo_epi32(a, b);
+        let e = i32x4::new(1, 2, 3, 4);
         assert_eq!(r, e);
     }
 
