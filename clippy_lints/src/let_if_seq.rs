@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 if !used_in_expr(cx, canonical_id, value);
                 then {
                     let span = stmt.span.to(if_.span);
-    
+
                     let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
                         if let hir::ExprBlock(ref else_) = else_.node {
                             if let Some(default) = check_assign(cx, canonical_id, else_) {
@@ -94,15 +94,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                     } else {
                         continue;
                     };
-    
+
                     let mutability = match mode {
                         BindingAnnotation::RefMut | BindingAnnotation::Mutable => "<mut> ",
                         _ => "",
                     };
-    
+
                     // FIXME: this should not suggest `mut` if we can detect that the variable is not
                     // use mutably after the `if`
-    
+
                     let sug = format!(
                         "let {mut}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
                         mut=mutability,
@@ -174,15 +174,15 @@ fn check_assign<'a, 'tcx>(
                 id: decl,
                 used: false,
             };
-    
+
             for s in block.stmts.iter().take(block.stmts.len()-1) {
                 hir::intravisit::walk_stmt(&mut v, s);
-    
+
                 if v.used {
                     return None;
                 }
             }
-    
+
             return Some(value);
         }
     }

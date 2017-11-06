@@ -64,7 +64,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                                 if let Some(snippet) = snippet_opt(cx, inner.span) {
                                     db.span_suggestion(e.span, "change this to", snippet);
                                 }
-                            }
+                            },
                         );
                     }
                 }

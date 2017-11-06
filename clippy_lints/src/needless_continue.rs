@@ -255,13 +255,13 @@ struct LintData<'a> {
 const MSG_REDUNDANT_ELSE_BLOCK: &str = "This else block is redundant.\n";
 
 const MSG_ELSE_BLOCK_NOT_NEEDED: &str = "There is no need for an explicit `else` block for this `if` \
-                                                 expression\n";
+                                         expression\n";
 
 const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "Consider dropping the else clause and merging the code that \
-                                                     follows (in the loop) with the if block, like so:\n";
+                                             follows (in the loop) with the if block, like so:\n";
 
 const DROP_ELSE_BLOCK_MSG: &str = "Consider dropping the else clause, and moving out the code in the else \
-                                           block, like so:\n";
+                                   block, like so:\n";
 
 
 fn emit_warning<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str, typ: LintType) {
@@ -332,22 +332,24 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext, data: &'a
 }
 
 fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
-    with_loop_block(expr, |loop_block| for (i, stmt) in loop_block.stmts.iter().enumerate() {
-        with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
-            let data = &LintData {
-                stmt_idx: i,
-                if_expr: if_expr,
-                if_cond: cond,
-                if_block: then_block,
-                else_expr: else_expr,
-                block_stmts: &loop_block.stmts,
-            };
-            if needless_continue_in_else(else_expr) {
-                emit_warning(ctx, data, DROP_ELSE_BLOCK_AND_MERGE_MSG, LintType::ContinueInsideElseBlock);
-            } else if is_first_block_stmt_continue(then_block) {
-                emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
-            }
-        });
+    with_loop_block(expr, |loop_block| {
+        for (i, stmt) in loop_block.stmts.iter().enumerate() {
+            with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
+                let data = &LintData {
+                    stmt_idx: i,
+                    if_expr: if_expr,
+                    if_cond: cond,
+                    if_block: then_block,
+                    else_expr: else_expr,
+                    block_stmts: &loop_block.stmts,
+                };
+                if needless_continue_in_else(else_expr) {
+                    emit_warning(ctx, data, DROP_ELSE_BLOCK_AND_MERGE_MSG, LintType::ContinueInsideElseBlock);
+                } else if is_first_block_stmt_continue(then_block) {
+                    emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
+                }
+            });
+        }
     });
 }
 

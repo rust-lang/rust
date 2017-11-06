@@ -2,8 +2,8 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::{Name, UintTy};
-use utils::{contains_name, get_pat_name, match_type, paths, single_segment_path,
-            snippet, span_lint_and_sugg, walk_ptrs_ty};
+use utils::{contains_name, get_pat_name, match_type, paths, single_segment_path, snippet, span_lint_and_sugg,
+            walk_ptrs_ty};
 
 /// **What it does:** Checks for naive byte counts
 ///

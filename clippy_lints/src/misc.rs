@@ -328,8 +328,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     }
                     if let Some(name) = get_item_name(cx, expr) {
                         let name = name.as_str();
-                        if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
-                            name.ends_with("_eq")
+                        if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_")
+                            || name.ends_with("_eq")
                         {
                             return;
                         }
@@ -410,13 +410,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
     if !in_constant(cx, expr.id) {
-        path.segments.last().map(|seg| if seg.name == "NAN" {
-            span_lint(
-                cx,
-                CMP_NAN,
-                expr.span,
-                "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
-            );
+        path.segments.last().map(|seg| {
+            if seg.name == "NAN" {
+                span_lint(
+                    cx,
+                    CMP_NAN,
+                    expr.span,
+                    "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
+                );
+            }
         });
     }
 }
@@ -426,7 +428,11 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
     let res = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr);
-    if let Ok(&ty::Const { val: ConstVal::Float(val), .. }) = res {
+    if let Ok(&ty::Const {
+        val: ConstVal::Float(val),
+        ..
+    }) = res
+    {
         use std::cmp::Ordering;
         match val.ty {
             FloatTy::F32 => {
@@ -445,8 +451,8 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
                     bits: u128::from(::std::f32::NEG_INFINITY.to_bits()),
                 };
 
-                val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
-                    val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+                val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal)
+                    || val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
             },
             FloatTy::F64 => {
                 let zero = ConstFloat {
@@ -464,8 +470,8 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
                     bits: u128::from(::std::f64::NEG_INFINITY.to_bits()),
                 };
 
-                val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
-                    val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+                val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal)
+                    || val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
             },
         }
     } else {
@@ -576,9 +582,7 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
 /// Test whether `def` is a variable defined outside a macro.
 fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
     match *def {
-        def::Def::Local(id) | def::Def::Upvar(id, _, _) => {
-            !in_macro(cx.tcx.hir.span(id))
-        },
+        def::Def::Local(id) | def::Def::Upvar(id, _, _) => !in_macro(cx.tcx.hir.span(id)),
         _ => false,
     }
 }

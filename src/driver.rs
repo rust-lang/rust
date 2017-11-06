@@ -154,9 +154,7 @@ pub fn main() {
                     .and_then(|out| String::from_utf8(out.stdout).ok())
                     .map(|s| s.trim().to_owned())
             })
-            .expect(
-                "need to specify SYSROOT env var during clippy compilation, or use rustup or multirust",
-            )
+            .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
     };
 
     rustc_driver::in_rustc_thread(|| {
@@ -176,7 +174,9 @@ pub fn main() {
         let mut args: Vec<String> = if orig_args.iter().any(|s| s == "--sysroot") {
             orig_args.clone()
         } else {
-            orig_args.clone().into_iter()
+            orig_args
+                .clone()
+                .into_iter()
                 .chain(Some("--sysroot".to_owned()))
                 .chain(Some(sys_root))
                 .collect()
@@ -185,8 +185,10 @@ pub fn main() {
         // this check ensures that dependencies are built but not linted and the final
         // crate is
         // linted but not built
-        let clippy_enabled = env::var("CLIPPY_TESTS").ok().map_or(false, |val| val == "true") ||
-            orig_args.iter().any(|s| s == "--emit=metadata");
+        let clippy_enabled = env::var("CLIPPY_TESTS")
+            .ok()
+            .map_or(false, |val| val == "true")
+            || orig_args.iter().any(|s| s == "--emit=metadata");
 
         if clippy_enabled {
             args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);

@@ -204,7 +204,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
             End(CodeBlock(_)) | End(Code) => in_code = false,
             Start(Link(link, _)) => in_link = Some(link),
             End(Link(_, _)) => in_link = None,
-            Start(_tag) | End(_tag) => (), // We don't care about other tags
+            Start(_tag) | End(_tag) => (),         // We don't care about other tags
             Html(_html) | InlineHtml(_html) => (), // HTML is weird, just ignore it
             SoftBreak => (),
             HardBreak => (),
@@ -273,8 +273,8 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
             s
         };
 
-        s.chars().all(char::is_alphanumeric) && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1 &&
-            s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
+        s.chars().all(char::is_alphanumeric) && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1
+            && s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
     }
 
     fn has_underscore(s: &str) -> bool {
@@ -284,10 +284,12 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
     if let Ok(url) = Url::parse(word) {
         // try to get around the fact that `foo::bar` parses as a valid URL
         if !url.cannot_be_a_base() {
-            span_lint(cx,
-                      DOC_MARKDOWN,
-                      span,
-                      "you should put bare URLs between `<`/`>` or make a proper Markdown link");
+            span_lint(
+                cx,
+                DOC_MARKDOWN,
+                span,
+                "you should put bare URLs between `<`/`>` or make a proper Markdown link",
+            );
 
             return;
         }

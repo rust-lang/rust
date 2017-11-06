@@ -81,8 +81,8 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
                         }
                     } else {
                         return; // The function is called with a literal
-                        // which is not a boolean literal. This is theoretically
-                        // possible, but not very likely.
+                                // which is not a boolean literal. This is theoretically
+                                // possible, but not very likely.
                     }
                 },
                 _ => Argument::Unknown,

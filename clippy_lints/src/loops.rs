@@ -16,7 +16,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Subst, Substs};
 use rustc_const_eval::ConstContext;
 use std::collections::{HashMap, HashSet};
-use std::iter::{Iterator, once};
+use std::iter::{once, Iterator};
 use syntax::ast;
 use syntax::codemap::Span;
 use utils::sugg;
@@ -377,8 +377,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         // check for never_loop
         match expr.node {
-            ExprWhile(_, ref block, _) |
-            ExprLoop(ref block, _, _) => {
+            ExprWhile(_, ref block, _) | ExprLoop(ref block, _, _) => {
                 match never_loop_block(block, &expr.id) {
                     NeverLoopResult::AlwaysBreak =>
                         span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
@@ -410,11 +409,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if let ExprMatch(ref matchexpr, ref arms, ref source) = inner.node {
                     // ensure "if let" compatible match structure
                     match *source {
-                        MatchSource::Normal |
-                        MatchSource::IfLetDesugar { .. } => {
-                            if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
-                                arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
-                                is_simple_break_expr(&arms[1].body)
+                        MatchSource::Normal | MatchSource::IfLetDesugar { .. } => {
+                            if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none()
+                                && arms[1].pats.len() == 1 && arms[1].guard.is_none()
+                                && is_simple_break_expr(&arms[1].body)
                             {
                                 if in_external_macro(cx, expr.span) {
                                     return;
@@ -446,15 +444,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
             let pat = &arms[0].pats[0].node;
-            if let (&PatKind::TupleStruct(ref qpath, ref pat_args, _),
-                    &ExprMethodCall(ref method_path, _, ref method_args)) = (pat, &match_expr.node)
+            if let (
+                &PatKind::TupleStruct(ref qpath, ref pat_args, _),
+                &ExprMethodCall(ref method_path, _, ref method_args),
+            ) = (pat, &match_expr.node)
             {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if method_path.name == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                    lhs_constructor.name == "Some" && !is_refutable(cx, &pat_args[0]) &&
-                    !is_iterator_used_after_while_let(cx, iter_expr) &&
-                    !is_nested(cx, expr, &method_args[0])
+                if method_path.name == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR)
+                    && lhs_constructor.name == "Some" && !is_refutable(cx, &pat_args[0])
+                    && !is_iterator_used_after_while_let(cx, iter_expr)
+                    && !is_nested(cx, expr, &method_args[0])
                 {
                     let iterator = snippet(cx, method_args[0].span, "_");
                     let loop_var = snippet(cx, pat_args[0].span, "_");
@@ -545,8 +545,7 @@ fn never_loop_block(block: &Block, main_loop_id: &NodeId) -> NeverLoopResult {
 
 fn stmt_to_expr(stmt: &Stmt) -> Option<&Expr> {
     match stmt.node {
-        StmtSemi(ref e, ..) |
-        StmtExpr(ref e, ..) => Some(e),
+        StmtSemi(ref e, ..) | StmtExpr(ref e, ..) => Some(e),
         StmtDecl(ref d, ..) => decl_to_expr(d),
     }
 }
@@ -569,9 +568,9 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
         ExprAddrOf(_, ref e) |
         ExprStruct(_, _, Some(ref e)) |
         ExprRepeat(ref e, _) => never_loop_expr(e, main_loop_id),
-        ExprArray(ref es) |
-        ExprMethodCall(_, _, ref es) |
-        ExprTup(ref es) => never_loop_expr_all(&mut es.iter(), main_loop_id),
+        ExprArray(ref es) | ExprMethodCall(_, _, ref es) | ExprTup(ref es) => {
+            never_loop_expr_all(&mut es.iter(), main_loop_id)
+        },
         ExprCall(ref e, ref es) => never_loop_expr_all(&mut once(&**e).chain(es.iter()), main_loop_id),
         ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
@@ -604,7 +603,9 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
         },
         ExprBlock(ref b) => never_loop_block(b, main_loop_id),
         ExprAgain(d) => {
-            let id = d.target_id.opt_id().expect("target id can only be missing in the presence of compilation errors");
+            let id = d.target_id
+                .opt_id()
+                .expect("target id can only be missing in the presence of compilation errors");
             if id == *main_loop_id {
                 NeverLoopResult::MayContinueMainLoop
             } else {
@@ -631,15 +632,18 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
 }
 
 fn never_loop_expr_seq<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
-    es.map(|e| never_loop_expr(e, main_loop_id)).fold(NeverLoopResult::Otherwise, combine_seq)
+    es.map(|e| never_loop_expr(e, main_loop_id))
+        .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
 fn never_loop_expr_all<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
-    es.map(|e| never_loop_expr(e, main_loop_id)).fold(NeverLoopResult::Otherwise, combine_both)
+    es.map(|e| never_loop_expr(e, main_loop_id))
+        .fold(NeverLoopResult::Otherwise, combine_both)
 }
 
 fn never_loop_expr_branch<'a, T: Iterator<Item=&'a Expr>>(e: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
-    e.map(|e| never_loop_expr(e, main_loop_id)).fold(NeverLoopResult::AlwaysBreak, combine_branches)
+    e.map(|e| never_loop_expr(e, main_loop_id))
+        .fold(NeverLoopResult::AlwaysBreak, combine_branches)
 }
 
 fn check_for_loop<'a, 'tcx>(
@@ -713,11 +717,9 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty) -> bool {
 fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> Option<FixedOffsetVar> {
     fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: ast::NodeId) -> Option<String> {
         match e.node {
-            ExprLit(ref l) => {
-                match l.node {
-                    ast::LitKind::Int(x, _ty) => Some(x.to_string()),
-                    _ => None,
-                }
+            ExprLit(ref l) => match l.node {
+                ast::LitKind::Int(x, _ty) => Some(x.to_string()),
+                _ => None,
             },
             ExprPath(..) if !same_var(cx, e, var) => Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into())),
             _ => None,
@@ -731,29 +733,25 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
         }
 
         let offset = match idx.node {
-            ExprBinary(op, ref lhs, ref rhs) => {
-                match op.node {
-                    BinOp_::BiAdd => {
-                        let offset_opt = if same_var(cx, lhs, var) {
-                            extract_offset(cx, rhs, var)
-                        } else if same_var(cx, rhs, var) {
-                            extract_offset(cx, lhs, var)
-                        } else {
-                            None
-                        };
+            ExprBinary(op, ref lhs, ref rhs) => match op.node {
+                BinOp_::BiAdd => {
+                    let offset_opt = if same_var(cx, lhs, var) {
+                        extract_offset(cx, rhs, var)
+                    } else if same_var(cx, rhs, var) {
+                        extract_offset(cx, lhs, var)
+                    } else {
+                        None
+                    };
 
-                        offset_opt.map(Offset::positive)
-                    },
-                    BinOp_::BiSub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
-                    _ => None,
-                }
+                    offset_opt.map(Offset::positive)
+                },
+                BinOp_::BiSub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
+                _ => None,
             },
-            ExprPath(..) => {
-                if same_var(cx, idx, var) {
-                    Some(Offset::positive("0".into()))
-                } else {
-                    None
-                }
+            ExprPath(..) => if same_var(cx, idx, var) {
+                Some(Offset::positive("0".into()))
+            } else {
+                None
             },
             _ => None,
         };
@@ -825,12 +823,13 @@ fn get_indexed_assignments<'a, 'tcx>(
             .iter()
             .map(|stmt| match stmt.node {
                 Stmt_::StmtDecl(..) => None,
-                Stmt_::StmtExpr(ref e, _node_id) |
-                Stmt_::StmtSemi(ref e, _node_id) => Some(get_assignment(cx, e, var)),
+                Stmt_::StmtExpr(ref e, _node_id) | Stmt_::StmtSemi(ref e, _node_id) => Some(get_assignment(cx, e, var)),
             })
-            .chain(expr.as_ref().into_iter().map(|e| {
-                Some(get_assignment(cx, &*e, var))
-            }))
+            .chain(
+                expr.as_ref()
+                    .into_iter()
+                    .map(|e| Some(get_assignment(cx, &*e, var))),
+            )
             .filter_map(|op| op)
             .collect::<Option<Vec<_>>>()
             .unwrap_or_else(|| vec![])
@@ -849,20 +848,18 @@ fn detect_manual_memcpy<'a, 'tcx>(
     expr: &'tcx Expr,
 ) {
     if let Some(higher::Range {
-                    start: Some(start),
-                    ref end,
-                    limits,
-                }) = higher::range(arg)
+        start: Some(start),
+        ref end,
+        limits,
+    }) = higher::range(arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.node {
             let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
                 match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
                     ("0", _, "0", _) => "".into(),
-                    ("0", _, x, false) |
-                    (x, false, "0", false) => x.into(),
-                    ("0", _, x, true) |
-                    (x, false, "0", true) => format!("-{}", x),
+                    ("0", _, x, false) | (x, false, "0", false) => x.into(),
+                    ("0", _, x, true) | (x, false, "0", true) => format!("-{}", x),
                     (x, false, y, false) => format!("({} + {})", x, y),
                     (x, false, y, true) => format!("({} - {})", x, y),
                     (x, true, y, false) => format!("({} - {})", y, x),
@@ -945,10 +942,10 @@ fn check_for_loop_range<'a, 'tcx>(
     expr: &'tcx Expr,
 ) {
     if let Some(higher::Range {
-                    start: Some(start),
-                    ref end,
-                    limits,
-                }) = higher::range(arg)
+        start: Some(start),
+        ref end,
+        limits,
+    }) = higher::range(arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, ref ident, _) = pat.node {
@@ -965,9 +962,11 @@ fn check_for_loop_range<'a, 'tcx>(
             // linting condition: we only indexed one variable, and indexed it directly
             // (`indexed_directly` is subset of `indexed`)
             if visitor.indexed.len() == 1 && visitor.indexed_directly.len() == 1 {
-                let (indexed, indexed_extent) = visitor.indexed_directly.into_iter().next().expect(
-                    "already checked that we have exactly 1 element",
-                );
+                let (indexed, indexed_extent) = visitor
+                    .indexed_directly
+                    .into_iter()
+                    .next()
+                    .expect("already checked that we have exactly 1 element");
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
@@ -1072,10 +1071,10 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
 fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx Expr, expr: &'tcx Expr) {
     // if this for loop is iterating over a two-sided range...
     if let Some(higher::Range {
-                    start: Some(start),
-                    end: Some(end),
-                    limits,
-                }) = higher::range(arg)
+        start: Some(start),
+        end: Some(end),
+        limits,
+    }) = higher::range(arg)
     {
         // ...and both sides are compile-time constant integers...
         let parent_item = cx.tcx.hir.get_parent(arg.id);
@@ -1089,10 +1088,16 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                 // who think that this will iterate from the larger value to the
                 // smaller value.
                 let (sup, eq) = match (start_idx, end_idx) {
-                    (&ty::Const { val: ConstVal::Integral(start_idx), .. },
-                     &ty::Const { val: ConstVal::Integral(end_idx), .. }) => {
-                        (start_idx > end_idx, start_idx == end_idx)
-                    },
+                    (
+                        &ty::Const {
+                            val: ConstVal::Integral(start_idx),
+                            ..
+                        },
+                        &ty::Const {
+                            val: ConstVal::Integral(end_idx),
+                            ..
+                        },
+                    ) => (start_idx > end_idx, start_idx == end_idx),
                     _ => (false, false),
                 };
 
@@ -1180,7 +1185,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
                         ty::TypeVariants::TyArray(_, size) if const_to_u64(size) > 32 => (),
-                        _ => lint_iter_method(cx, args, arg, method_name)
+                        _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {
                     let object = snippet(cx, args[0].span, "_");
@@ -1267,14 +1272,14 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     let map = &cx.tcx.hir;
-    let parent_scope = map.get_enclosing_scope(expr.id).and_then(|id| {
-        map.get_enclosing_scope(id)
-    });
+    let parent_scope = map.get_enclosing_scope(expr.id)
+        .and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
         if let NodeBlock(block) = map.get(parent_id) {
-            for (id, _) in visitor.states.iter().filter(
-                |&(_, v)| *v == VarState::IncrOnce,
-            )
+            for (id, _) in visitor
+                .states
+                .iter()
+                .filter(|&(_, v)| *v == VarState::IncrOnce)
             {
                 let mut visitor2 = InitializeVisitor {
                     cx: cx,
@@ -1321,12 +1326,10 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
         if pat.len() == 2 {
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).sty {
-                ty::TyRef(_, ref tam) => {
-                    match (&pat[0].node, &pat[1].node) {
-                        (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
-                        (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", tam.ty, MutImmutable),
-                        _ => return,
-                    }
+                ty::TyRef(_, ref tam) => match (&pat[0].node, &pat[1].node) {
+                    (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
+                    (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", tam.ty, MutImmutable),
+                    _ => return,
                 },
                 _ => return,
             };
@@ -1370,14 +1373,11 @@ struct MutateDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutateDelegate {
-    fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {
-    }
+    fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {}
 
-    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {
-    }
+    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
 
-    fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {
-    }
+    fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {}
 
     fn borrow(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
@@ -1403,8 +1403,7 @@ impl<'tcx> Delegate<'tcx> for MutateDelegate {
         }
     }
 
-    fn decl_without_init(&mut self, _: NodeId, _: Span) {
-    }
+    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }
 
 impl<'tcx> MutateDelegate {
@@ -1414,8 +1413,16 @@ impl<'tcx> MutateDelegate {
 }
 
 fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
-    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(arg) {
-        let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
+    if let Some(higher::Range {
+        start: Some(start),
+        end: Some(end),
+        ..
+    }) = higher::range(arg)
+    {
+        let mut_ids = vec![
+            check_for_mutability(cx, start),
+            check_for_mutability(cx, end),
+        ];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {
             let (span_low, span_high) = check_for_mutation(cx, body, &mut_ids);
             mut_warn_with_span(cx, span_low);
@@ -1426,7 +1433,12 @@ fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
 
 fn mut_warn_with_span(cx: &LateContext, span: Option<Span>) {
     if let Some(sp) = span {
-        span_lint(cx, MUT_RANGE_BOUND, sp, "attempt to mutate range bound within loop; note that the range of the loop is unchanged");
+        span_lint(
+            cx,
+            MUT_RANGE_BOUND,
+            sp,
+            "attempt to mutate range bound within loop; note that the range of the loop is unchanged",
+        );
     }
 }
 
@@ -1453,7 +1465,12 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
 }
 
 fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: &[Option<NodeId>]) -> (Option<Span>, Option<Span>) {
-    let mut delegate = MutateDelegate { node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
+    let mut delegate = MutateDelegate {
+        node_id_low: bound_ids[0],
+        node_id_high: bound_ids[1],
+        span_low: None,
+        span_high: None,
+    };
     let def_id = def_id::DefId::local(body.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(body);
@@ -1478,7 +1495,7 @@ fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
 
 struct UsedVisitor {
     var: ast::Name, // var to look for
-    used: bool, // has the var been used otherwise?
+    used: bool,     // has the var been used otherwise?
 }
 
 impl<'tcx> Visitor<'tcx> for UsedVisitor {
@@ -1700,12 +1717,9 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
 fn extract_first_expr(block: &Block) -> Option<&Expr> {
     match block.expr {
         Some(ref expr) if block.stmts.is_empty() => Some(expr),
-        None if !block.stmts.is_empty() => {
-            match block.stmts[0].node {
-                StmtExpr(ref expr, _) |
-                StmtSemi(ref expr, _) => Some(expr),
-                StmtDecl(..) => None,
-            }
+        None if !block.stmts.is_empty() => match block.stmts[0].node {
+            StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => Some(expr),
+            StmtDecl(..) => None,
         },
         _ => None,
     }
@@ -1717,11 +1731,9 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
 fn is_simple_break_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprBreak(dest, ref passed_expr) if dest.ident.is_none() && passed_expr.is_none() => true,
-        ExprBlock(ref b) => {
-            match extract_first_expr(b) {
-                Some(subexpr) => is_simple_break_expr(subexpr),
-                None => false,
-            }
+        ExprBlock(ref b) => match extract_first_expr(b) {
+            Some(subexpr) => is_simple_break_expr(subexpr),
+            None => false,
         },
         _ => false,
     }
@@ -1732,7 +1744,7 @@ fn is_simple_break_expr(expr: &Expr) -> bool {
 // at the start of the loop.
 #[derive(PartialEq)]
 enum VarState {
-    Initial, // Not examined yet
+    Initial,  // Not examined yet
     IncrOnce, // Incremented exactly once, may be a loop counter
     Declared, // Declared but not (yet) initialized to zero
     Warn,
@@ -1741,9 +1753,9 @@ enum VarState {
 
 /// Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>, // context reference
+    cx: &'a LateContext<'a, 'tcx>,     // context reference
     states: HashMap<NodeId, VarState>, // incremented variables
-    depth: u32, // depth of conditional expressions
+    depth: u32,                        // depth of conditional expressions
     done: bool,
 }
 
@@ -1797,7 +1809,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
 /// Check whether a variable is initialized to zero at the start of a loop.
 struct InitializeVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>, // context reference
-    end_expr: &'tcx Expr, // the for loop. Stop scanning here.
+    end_expr: &'tcx Expr,          // the for loop. Stop scanning here.
     var_id: NodeId,
     state: VarState,
     name: Option<Name>,
@@ -1929,13 +1941,11 @@ fn is_loop_nested(cx: &LateContext, loop_expr: &Expr, iter_expr: &Expr) -> bool 
             return false;
         }
         match cx.tcx.hir.find(parent) {
-            Some(NodeExpr(expr)) => {
-                match expr.node {
-                    ExprLoop(..) | ExprWhile(..) => {
-                        return true;
-                    },
-                    _ => (),
-                }
+            Some(NodeExpr(expr)) => match expr.node {
+                ExprLoop(..) | ExprWhile(..) => {
+                    return true;
+                },
+                _ => (),
             },
             Some(NodeBlock(block)) => {
                 let mut block_visitor = LoopNestVisitor {
@@ -1959,8 +1969,8 @@ fn is_loop_nested(cx: &LateContext, loop_expr: &Expr, iter_expr: &Expr) -> bool 
 
 #[derive(PartialEq, Eq)]
 enum Nesting {
-    Unknown, // no nesting detected yet
-    RuledOut, // the iterator is initialized or assigned within scope
+    Unknown,     // no nesting detected yet
+    RuledOut,    // the iterator is initialized or assigned within scope
     LookFurther, // no nesting detected, no further walk required
 }
 
@@ -1990,11 +2000,8 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
             return;
         }
         match expr.node {
-            ExprAssign(ref path, _) |
-            ExprAssignOp(_, ref path, _) => {
-                if match_var(path, self.iterator) {
-                    self.nesting = RuledOut;
-                }
+            ExprAssign(ref path, _) | ExprAssignOp(_, ref path, _) => if match_var(path, self.iterator) {
+                self.nesting = RuledOut;
             },
             _ => walk_expr(self, expr),
         }

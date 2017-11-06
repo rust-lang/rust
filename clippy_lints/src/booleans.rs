@@ -368,9 +368,9 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     }
                     // if the number of occurrences of a terminal decreases or any of the stats
                     // decreases while none increases
-                    improvement |= (stats.terminals[i] > simplified_stats.terminals[i]) ||
-                        (stats.negations > simplified_stats.negations && stats.ops == simplified_stats.ops) ||
-                        (stats.ops > simplified_stats.ops && stats.negations == simplified_stats.negations);
+                    improvement |= (stats.terminals[i] > simplified_stats.terminals[i])
+                        || (stats.negations > simplified_stats.negations && stats.ops == simplified_stats.ops)
+                        || (stats.ops > simplified_stats.ops && stats.negations == simplified_stats.negations);
                 }
                 if improvement {
                     improvements.push(suggestion);

@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
         }
 
         match item.node {
-            ItemTrait(_, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
+            ItemTrait(_, _, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
             ItemImpl(_, _, _, _, None, _, ref impl_items) => check_impl_items(cx, item, impl_items),
             _ => (),
         }
@@ -119,8 +119,8 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
             .iter()
             .flat_map(|&i| cx.tcx.associated_items(i))
             .any(|i| {
-                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.name == "is_empty" &&
-                    cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
+                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.name == "is_empty"
+                    && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
 
         if !is_empty_method_found {

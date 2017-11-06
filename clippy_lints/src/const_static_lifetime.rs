@@ -1,6 +1,6 @@
-use syntax::ast::{Item, ItemKind, TyKind, Ty};
-use rustc::lint::{LintPass, EarlyLintPass, LintArray, EarlyContext};
-use utils::{span_lint_and_then, in_macro};
+use syntax::ast::{Item, ItemKind, Ty, TyKind};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use utils::{in_macro, span_lint_and_then};
 
 /// **What it does:** Checks for constants with an explicit `'static` lifetime.
 ///
@@ -20,7 +20,7 @@ use utils::{span_lint_and_then, in_macro};
 /// ```
 
 declare_lint! {
-    pub CONST_STATIC_LIFETIME, 
+    pub CONST_STATIC_LIFETIME,
     Warn,
     "Using explicit `'static` lifetime for constants when elision rules would allow omitting them."
 }
@@ -41,10 +41,8 @@ impl StaticConst {
             TyKind::Array(ref ty, _) => {
                 self.visit_type(&*ty, cx);
             },
-            TyKind::Tup(ref tup) => {
-                for tup_ty in tup {
-                    self.visit_type(&*tup_ty, cx);
-                }
+            TyKind::Tup(ref tup) => for tup_ty in tup {
+                self.visit_type(&*tup_ty, cx);
             },
             // This is what we are looking for !
             TyKind::Rptr(ref optional_lifetime, ref borrow_type) => {
@@ -54,11 +52,15 @@ impl StaticConst {
                         // Verify that the path is a str
                         if lifetime.ident.name == "'static" {
                             let mut sug: String = String::new();
-                            span_lint_and_then(cx,
-                                               CONST_STATIC_LIFETIME,
-                                               lifetime.span,
-                                               "Constants have by default a `'static` lifetime",
-                                               |db| {db.span_suggestion(lifetime.span,"consider removing `'static`",sug);});
+                            span_lint_and_then(
+                                cx,
+                                CONST_STATIC_LIFETIME,
+                                lifetime.span,
+                                "Constants have by default a `'static` lifetime",
+                                |db| {
+                                    db.span_suggestion(lifetime.span, "consider removing `'static`", sug);
+                                },
+                            );
                         }
                     }
                 }

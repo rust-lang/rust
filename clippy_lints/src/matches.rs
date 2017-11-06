@@ -412,7 +412,11 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 }
 
 /// Get all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm], id: NodeId) -> Vec<SpannedRange<&'tcx ty::Const<'tcx>>> {
+fn all_ranges<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    arms: &'tcx [Arm],
+    id: NodeId,
+) -> Vec<SpannedRange<&'tcx ty::Const<'tcx>>> {
     let parent_item = cx.tcx.hir.get_parent(id);
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
@@ -471,15 +475,39 @@ fn type_ranges(ranges: &[SpannedRange<&ty::Const>]) -> TypedRanges {
     ranges
         .iter()
         .filter_map(|range| match range.node {
-            (&ty::Const { val: ConstVal::Integral(start), .. }, Bound::Included(&ty::Const { val: ConstVal::Integral(end), .. })) => Some(SpannedRange {
+            (
+                &ty::Const {
+                    val: ConstVal::Integral(start),
+                    ..
+                },
+                Bound::Included(&ty::Const {
+                    val: ConstVal::Integral(end),
+                    ..
+                }),
+            ) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Included(end)),
             }),
-            (&ty::Const { val: ConstVal::Integral(start), .. }, Bound::Excluded(&ty::Const { val: ConstVal::Integral(end), .. })) => Some(SpannedRange {
+            (
+                &ty::Const {
+                    val: ConstVal::Integral(start),
+                    ..
+                },
+                Bound::Excluded(&ty::Const {
+                    val: ConstVal::Integral(end),
+                    ..
+                }),
+            ) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Excluded(end)),
             }),
-            (&ty::Const { val: ConstVal::Integral(start), .. }, Bound::Unbounded) => Some(SpannedRange {
+            (
+                &ty::Const {
+                    val: ConstVal::Integral(start),
+                    ..
+                },
+                Bound::Unbounded,
+            ) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Unbounded),
             }),

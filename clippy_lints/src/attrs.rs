@@ -7,7 +7,7 @@ use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, match_def_path, paths, snippet_opt, span_lint, span_lint_and_then, opt_def_id};
+use utils::{in_macro, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.

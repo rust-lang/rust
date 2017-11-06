@@ -6,7 +6,7 @@
 use rustc::hir;
 use rustc::lint::LateContext;
 use syntax::ast;
-use utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node, opt_def_id};
+use utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {
@@ -48,10 +48,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
     /// Find the field named `name` in the field. Always return `Some` for
     /// convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
-        let expr = &fields
-            .iter()
-            .find(|field| field.name.node == name)?
-            .expr;
+        let expr = &fields.iter().find(|field| field.name.node == name)?.expr;
 
         Some(expr)
     }
@@ -72,8 +69,8 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
                 None
             }
         },
-        hir::ExprStruct(ref path, ref fields, None) => if match_qpath(path, &paths::RANGE_FROM_STD) ||
-            match_qpath(path, &paths::RANGE_FROM)
+        hir::ExprStruct(ref path, ref fields, None) => if match_qpath(path, &paths::RANGE_FROM_STD)
+            || match_qpath(path, &paths::RANGE_FROM)
         {
             Some(Range {
                 start: Some(get_field("start", fields)?),
@@ -198,7 +195,7 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
                         return Some(VecArgs::Vec(&*args));
                     }
                 }
-    
+
                 None
             }
             else {

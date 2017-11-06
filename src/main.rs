@@ -69,8 +69,7 @@ pub fn main() {
         .skip(2)
         .find(|val| val.starts_with("--manifest-path="));
 
-    let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref))
-    {
+    let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
         metadata
     } else {
         let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
