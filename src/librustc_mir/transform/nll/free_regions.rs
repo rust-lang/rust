@@ -53,6 +53,9 @@ pub fn free_regions<'a, 'gcx, 'tcx>(
 
     let mut indices = FxHashMap();
 
+    // `'static` is always free.
+    insert_free_region(&mut indices, infcx.tcx.types.re_static);
+
     // Extract the early regions.
     let item_substs = Substs::identity_for_item(infcx.tcx, item_def_id);
     for item_subst in item_substs {

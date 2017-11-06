@@ -14,14 +14,15 @@ use rustc::mir::transform::MirSource;
 use rustc::infer::InferCtxt;
 use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
+use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
 use util as mir_util;
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+mod subtype_constraint_generation;
 mod free_regions;
-mod subtype;
 
 pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
@@ -34,6 +35,7 @@ mod renumber;
 pub fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource,
+    param_env: ty::ParamEnv<'gcx>,
     mir: &mut Mir<'tcx>,
 ) -> RegionInferenceContext<'tcx> {
     // Compute named region information.
@@ -41,6 +43,16 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
 
     // Replace all regions with fresh inference variables.
     renumber::renumber_mir(infcx, free_regions, mir);
+
+    // Run the MIR type-checker.
+    let body_id = source.item_id();
+    let constraint_sets = &type_check::type_check(infcx, body_id, param_env, mir);
+
+    // Create the region inference context, taking ownership of the region inference
+    // data that was contained in `infcx`.
+    let var_origins = infcx.take_region_var_origins();
+    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
+    subtype_constraint_generation::generate(&mut regioncx, free_regions, mir, constraint_sets);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -61,11 +73,10 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
         ),
     };
 
-    // Create the region inference context, generate the constraints,
-    // and then solve them.
-    let var_origins = infcx.take_region_var_origins();
-    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
+    // Generate non-subtyping constraints.
     constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
+
+    // Solve the region constraints.
     regioncx.solve(infcx, &mir);
 
     // Dump MIR results into a file, if that is enabled. This let us
