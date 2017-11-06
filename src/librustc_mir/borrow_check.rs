@@ -136,7 +136,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         node_id: id,
         move_data: &mdpe.move_data,
         param_env: param_env,
-        fake_infer_ctxt: &infcx,
     };
 
     let mut state = InProgress::new(flow_borrows,
@@ -154,7 +153,6 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     node_id: ast::NodeId,
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
-    fake_infer_ctxt: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
@@ -592,9 +590,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                       lvalue_span: (&Lvalue<'tcx>, Span),
                       flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         let lvalue = lvalue_span.0;
+
         let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
-        let moves_by_default =
-            self.fake_infer_ctxt.type_moves_by_default(self.param_env, ty, DUMMY_SP);
+
+        // Erase the regions in type before checking whether it moves by
+        // default. There are a few reasons to do this:
+        //
+        // - They should not affect the result.
+        // - It avoids adding new region constraints into the surrounding context,
+        //   which would trigger an ICE, since the infcx will have been "frozen" by
+        //   the NLL region context.
+        let gcx = self.tcx.global_tcx();
+        let erased_ty = gcx.lift(&self.tcx.erase_regions(&ty)).unwrap();
+        let moves_by_default = erased_ty.moves_by_default(gcx, self.param_env, DUMMY_SP);
+
         if moves_by_default {
             // move of lvalue: check if this is move of already borrowed path
             self.access_lvalue(context, lvalue_span, (Deep, Write(WriteKind::Move)), flow_state);
