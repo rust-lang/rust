@@ -29,7 +29,7 @@ use super::region_infer::RegionInferenceContext;
 
 pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    regioncx: &mut RegionInferenceContext,
+    regioncx: &mut RegionInferenceContext<'tcx>,
     mir: &Mir<'tcx>,
     mir_source: MirSource,
     liveness: &LivenessResults,
@@ -45,7 +45,7 @@ pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
 
 struct ConstraintGeneration<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
-    regioncx: &'cx mut RegionInferenceContext,
+    regioncx: &'cx mut RegionInferenceContext<'tcx>,
     mir: &'cx Mir<'tcx>,
     liveness: &'cx LivenessResults,
     mir_source: MirSource,
@@ -191,6 +191,7 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
         _borrowed_lv: &Lvalue<'tcx>,
     ) {
         let tcx = self.infcx.tcx;
+        let span = self.mir.source_info(location).span;
         let destination_ty = destination_lv.ty(self.mir, tcx).to_ty(tcx);
 
         let destination_region = match destination_ty.sty {
@@ -198,7 +199,8 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
             _ => bug!()
         };
 
-        self.regioncx.add_outlives(borrow_region.to_region_index(),
+        self.regioncx.add_outlives(span,
+                                   borrow_region.to_region_index(),
                                    destination_region.to_region_index(),
                                    location.successor_within_block());
     }
@@ -226,7 +228,9 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
                         },
                     }
 
-                    self.regioncx.add_outlives(base_region.to_region_index(),
+                    let span = self.mir.source_info(location).span;
+                    self.regioncx.add_outlives(span,
+                                               base_region.to_region_index(),
                                                borrow_region.to_region_index(),
                                                location.successor_within_block());
                 }
@@ -259,8 +263,9 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
             let destination_ty = destination_lv.ty(self.mir, tcx).to_ty(tcx);
             let rv_ty = rv.ty(self.mir, tcx);
 
+            let span = self.mir.source_info(location).span;
             for (a, b) in subtype::outlives_pairs(tcx, rv_ty, destination_ty) {
-                self.regioncx.add_outlives(a, b, location.successor_within_block());
+                self.regioncx.add_outlives(span, a, b, location.successor_within_block());
             }
         }
 

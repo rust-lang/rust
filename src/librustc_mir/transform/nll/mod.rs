@@ -9,19 +9,19 @@
 // except according to those terms.
 
 use rustc::ty::{self, RegionKind};
-use rustc::mir::{Location, Mir};
+use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::infer::InferCtxt;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
-use std::fmt;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
 use util as mir_util;
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+mod free_regions;
 mod subtype;
 
 pub(crate) mod region_infer;
@@ -36,9 +36,12 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource,
     mir: &mut Mir<'tcx>,
-) -> RegionInferenceContext {
+) -> RegionInferenceContext<'tcx> {
+    // Compute named region information.
+    let free_regions = &free_regions::free_regions(infcx, source);
+
     // Replace all regions with fresh inference variables.
-    let num_region_variables = renumber::renumber_mir(infcx, mir);
+    let num_region_variables = renumber::renumber_mir(infcx, free_regions, mir);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -61,11 +64,9 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
 
     // Create the region inference context, generate the constraints,
     // and then solve them.
-    let mut regioncx = RegionInferenceContext::new(num_region_variables);
+    let mut regioncx = RegionInferenceContext::new(free_regions, num_region_variables, mir);
     constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
-    let errors = regioncx.solve(infcx, &mir);
-
-    assert!(errors.is_empty(), "FIXME: report region inference failures");
+    regioncx.solve(infcx, &mir);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests.
@@ -147,27 +148,6 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         }
         Ok(())
     });
-}
-
-#[derive(Clone, Default, PartialEq, Eq)]
-pub struct Region {
-    points: BTreeSet<Location>,
-}
-
-impl fmt::Debug for Region {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(formatter, "{:?}", self.points)
-    }
-}
-
-impl Region {
-    pub fn add_point(&mut self, point: Location) -> bool {
-        self.points.insert(point)
-    }
-
-    pub fn may_contain(&self, point: Location) -> bool {
-        self.points.contains(&point)
-    }
 }
 
 newtype_index!(RegionIndex {

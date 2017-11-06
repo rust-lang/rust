@@ -92,8 +92,8 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.sanitize_type(rvalue, rval_ty);
     }
 
-    fn visit_local_decl(&mut self, local_decl: &LocalDecl<'tcx>) {
-        self.super_local_decl(local_decl);
+    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
+        self.super_local_decl(local, local_decl);
         self.sanitize_type(local_decl, local_decl.ty);
     }
 

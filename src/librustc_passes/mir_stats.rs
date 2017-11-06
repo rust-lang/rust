@@ -14,7 +14,7 @@
 
 use rustc_const_math::{ConstUsize};
 use rustc::mir::{AggregateKind, AssertMessage, BasicBlock, BasicBlockData};
-use rustc::mir::{Constant, Literal, Location, LocalDecl};
+use rustc::mir::{Constant, Literal, Location, Local, LocalDecl};
 use rustc::mir::{Lvalue, LvalueElem, LvalueProjection};
 use rustc::mir::{Mir, Operand, ProjectionElem};
 use rustc::mir::{Rvalue, SourceInfo, Statement, StatementKind};
@@ -270,9 +270,10 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_local_decl(&mut self,
+                        local: Local,
                         local_decl: &LocalDecl<'tcx>) {
         self.record("LocalDecl", local_decl);
-        self.super_local_decl(local_decl);
+        self.super_local_decl(local, local_decl);
     }
 
     fn visit_visibility_scope(&mut self,
