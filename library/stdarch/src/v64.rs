@@ -65,7 +65,9 @@ define_casts!(
     (i32x2, i64x2, as_i64x2),
     (u8x8, u16x8, as_u16x8),
     (u16x4, u32x4, as_u32x4),
-    (u32x2, u64x2, as_u64x2)
+    (u16x4, i32x4, as_i32x4),
+    (u32x2, u64x2, as_u64x2),
+    (u32x2, i64x2, as_i64x2)
 );
 
 #[cfg(test)]
