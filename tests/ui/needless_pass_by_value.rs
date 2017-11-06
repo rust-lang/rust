@@ -103,4 +103,11 @@ impl<T: Serialize, U> S<T, U> {
     }
 }
 
+trait FalsePositive {
+    fn visit_str(s: &str);
+    fn visit_string(s: String) {
+        Self::visit_str(&s);
+    }
+}
+
 fn main() {}
