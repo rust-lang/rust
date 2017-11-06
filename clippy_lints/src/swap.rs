@@ -89,7 +89,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                         if let ExprIndex(ref lhs2, ref idx2) = lhs2.node {
                             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
                                 let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
-    
+
                                 if matches!(ty.sty, ty::TySlice(_)) ||
                                     matches!(ty.sty, ty::TyArray(_, _)) ||
                                     match_type(cx, ty, &paths::VEC) ||
@@ -99,10 +99,10 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                             }
                         }
                     }
-    
+
                     None
                 }
-    
+
                 let (replace, what, sugg) = if let Some((slice, idx1, idx2)) = check_for_slice(cx, lhs1, lhs2) {
                     if let Some(slice) = Sugg::hir_opt(cx, slice) {
                         (false,
@@ -120,9 +120,9 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                 } else {
                     (true, "".to_owned(), "".to_owned())
                 };
-    
+
                 let span = w[0].span.to(second.span);
-    
+
                 span_lint_and_then(cx,
                                    MANUAL_SWAP,
                                    span,
@@ -130,7 +130,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                                    |db| {
                                        if !sugg.is_empty() {
                                            db.span_suggestion(span, "try", sugg);
-    
+
                                            if replace {
                                                db.note("or maybe you should use `std::mem::replace`?");
                                            }
@@ -156,13 +156,17 @@ fn check_suspicious_swap(cx: &LateContext, block: &Block) {
                 let lhs0 = Sugg::hir_opt(cx, lhs0);
                 let rhs0 = Sugg::hir_opt(cx, rhs0);
                 let (what, lhs, rhs) = if let (Some(first), Some(second)) = (lhs0, rhs0) {
-                    (format!(" `{}` and `{}`", first, second), first.mut_addr().to_string(), second.mut_addr().to_string())
+                    (
+                        format!(" `{}` and `{}`", first, second),
+                        first.mut_addr().to_string(),
+                        second.mut_addr().to_string(),
+                    )
                 } else {
                     ("".to_owned(), "".to_owned(), "".to_owned())
                 };
-    
+
                 let span = first.span.to(second.span);
-    
+
                 span_lint_and_then(cx,
                                    ALMOST_SWAPPED,
                                    span,

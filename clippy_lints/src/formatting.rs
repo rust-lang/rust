@@ -190,8 +190,8 @@ fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for consecutive ifs.
 fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Expr) {
-    if !differing_macro_contexts(first.span, second.span) && !in_macro(first.span) && unsugar_if(first).is_some() &&
-        unsugar_if(second).is_some()
+    if !differing_macro_contexts(first.span, second.span) && !in_macro(first.span) && unsugar_if(first).is_some()
+        && unsugar_if(second).is_some()
     {
         // where the else would be
         let else_span = first.span.between(second.span);

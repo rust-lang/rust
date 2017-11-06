@@ -52,7 +52,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg)));
             then {
                 // report the error around the `vec!` not inside `<std macros>:`
-                let span = arg.span.ctxt().outer().expn_info().map(|info| info.call_site).expect("unable to get call_site");
+                let span = arg.span
+                    .ctxt()
+                    .outer()
+                    .expn_info()
+                    .map(|info| info.call_site)
+                    .expect("unable to get call_site");
                 check_vec_macro(cx, &vec_args, span);
             }
         }

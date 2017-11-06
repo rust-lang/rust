@@ -270,7 +270,7 @@ impl LiteralDigitGrouping {
                     .digits
                     .split_terminator('.')
                     .collect();
-    
+
                 // Lint integral and fractional parts separately, and then check consistency of digit
                 // groups if both pass.
                 let _ = Self::do_lint(parts[0])

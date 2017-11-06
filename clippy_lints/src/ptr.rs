@@ -8,8 +8,7 @@ use rustc::ty;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use syntax_pos::MultiSpan;
-use utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then,
-            walk_ptrs_hir_ty};
+use utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
 use utils::ptr::get_spans;
 
 /// **What it does:** This lint checks for function arguments of type `&String`
@@ -121,7 +120,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let TraitItemKind::Method(ref sig, ref trait_method) = item.node {
-            let body_id = if let TraitMethod::Provided(b) = *trait_method { Some(b) } else { None };
+            let body_id = if let TraitMethod::Provided(b) = *trait_method {
+                Some(b)
+            } else {
+                None
+            };
             check_fn(cx, &sig.decl, item.id, body_id);
         }
     }
@@ -173,17 +176,19 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                          with non-Vec-based slices.",
                         |db| {
                             if let Some(ref snippet) = ty_snippet {
-                                db.span_suggestion(arg.span,
-                                                   "change this to",
-                                                   format!("&[{}]", snippet));
+                                db.span_suggestion(arg.span, "change this to", format!("&[{}]", snippet));
                             }
                             for (clonespan, suggestion) in spans {
-                                db.span_suggestion(clonespan,
-                                                   &snippet_opt(cx, clonespan).map_or("change the call to".into(),
-                                                        |x| Cow::Owned(format!("change `{}` to", x))),
-                                                   suggestion.into());
+                                db.span_suggestion(
+                                    clonespan,
+                                    &snippet_opt(cx, clonespan).map_or(
+                                        "change the call to".into(),
+                                        |x| Cow::Owned(format!("change `{}` to", x)),
+                                    ),
+                                    suggestion.into(),
+                                );
                             }
-                        }
+                        },
                     );
                 }
             } else if match_type(cx, ty, &paths::STRING) {
@@ -194,16 +199,18 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                         arg.span,
                         "writing `&String` instead of `&str` involves a new object where a slice will do.",
                         |db| {
-                            db.span_suggestion(arg.span,
-                                               "change this to",
-                                               "&str".into());
+                            db.span_suggestion(arg.span, "change this to", "&str".into());
                             for (clonespan, suggestion) in spans {
-                                db.span_suggestion_short(clonespan,
-                                                   &snippet_opt(cx, clonespan).map_or("change the call to".into(),
-                                                        |x| Cow::Owned(format!("change `{}` to", x))),
-                                                   suggestion.into());
+                                db.span_suggestion_short(
+                                    clonespan,
+                                    &snippet_opt(cx, clonespan).map_or(
+                                        "change the call to".into(),
+                                        |x| Cow::Owned(format!("change `{}` to", x)),
+                                    ),
+                                    suggestion.into(),
+                                );
                             }
-                        }
+                        },
                     );
                 }
             }

@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::ty;
 use syntax_pos::Span;
-use utils::{method_chain_args, match_def_path, span_lint_and_then, walk_ptrs_ty};
+use utils::{match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty};
 use utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
 
 /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
@@ -74,9 +74,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                 let reciever_ty = walk_ptrs_ty(self.tables.expr_ty(&arglists[0][0]));
-                if match_type(self.tcx, reciever_ty, &OPTION) ||
-                    match_type(self.tcx, reciever_ty, &RESULT)
-                {
+                if match_type(self.tcx, reciever_ty, &OPTION) || match_type(self.tcx, reciever_ty, &RESULT) {
                     self.result.push(expr.span);
                 }
             }
@@ -105,7 +103,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                     result: Vec::new(),
                 };
                 fpu.visit_expr(&body.value);
-    
+
                 // if we've found one, lint
                 if !fpu.result.is_empty() {
                     span_lint_and_then(

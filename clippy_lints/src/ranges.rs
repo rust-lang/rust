@@ -82,12 +82,7 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(
-            ITERATOR_STEP_BY_ZERO,
-            RANGE_ZIP_WITH_LEN,
-            RANGE_PLUS_ONE,
-            RANGE_MINUS_ONE
-        )
+        lint_array!(ITERATOR_STEP_BY_ZERO, RANGE_ZIP_WITH_LEN, RANGE_PLUS_ONE, RANGE_MINUS_ONE)
     }
 }
 
@@ -192,14 +187,12 @@ fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
 
 fn y_plus_one(expr: &Expr) -> Option<&Expr> {
     match expr.node {
-        ExprBinary(Spanned { node: BiAdd, .. }, ref lhs, ref rhs) => {
-            if is_integer_literal(lhs, 1) {
-                Some(rhs)
-            } else if is_integer_literal(rhs, 1) {
-                Some(lhs)
-            } else {
-                None
-            }
+        ExprBinary(Spanned { node: BiAdd, .. }, ref lhs, ref rhs) => if is_integer_literal(lhs, 1) {
+            Some(rhs)
+        } else if is_integer_literal(rhs, 1) {
+            Some(lhs)
+        } else {
+            None
         },
         _ => None,
     }

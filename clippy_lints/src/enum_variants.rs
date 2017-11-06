@@ -159,8 +159,11 @@ fn check_variant(
     }
     for var in &def.variants {
         let name = var2str(var);
-        if partial_match(item_name, &name) == item_name_chars &&
-           name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase()) {
+        if partial_match(item_name, &name) == item_name_chars
+            && name.chars()
+                .nth(item_name_chars)
+                .map_or(false, |c| !c.is_lowercase())
+        {
             span_lint(cx, lint, var.span, "Variant name starts with the enum's name");
         }
         if partial_rmatch(item_name, &name) == item_name_chars {

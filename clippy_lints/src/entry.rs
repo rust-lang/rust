@@ -95,7 +95,7 @@ fn check_cond<'a, 'tcx, 'b>(
         then {
             let map = &params[0];
             let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(map));
-    
+
             return if match_type(cx, obj_ty, &paths::BTREEMAP) {
                 Some(("BTreeMap", map, key))
             }
@@ -136,14 +136,14 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                                            snippet(self.cx, self.map.span, "map"),
                                            snippet(self.cx, params[1].span, ".."),
                                            snippet(self.cx, params[2].span, ".."));
-    
+
                         db.span_suggestion(self.span, "consider using", help);
                     }
                     else {
                         let help = format!("{}.entry({})",
                                            snippet(self.cx, self.map.span, "map"),
                                            snippet(self.cx, params[1].span, ".."));
-    
+
                         db.span_suggestion(self.span, "consider using", help);
                     }
                 });

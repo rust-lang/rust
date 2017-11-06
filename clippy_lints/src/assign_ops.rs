@@ -143,7 +143,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         if_chain! {
                                             if parent_impl != ast::CRATE_NODE_ID;
                                             if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
-                                            if let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
+                                            if let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) =
+                                                item.node;
                                             if trait_ref.path.def.def_id() == trait_id;
                                             then { return; }
                                         }
