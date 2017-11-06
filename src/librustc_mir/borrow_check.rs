@@ -112,7 +112,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let opt_regioncx = if !tcx.sess.opts.debugging_opts.nll {
         None
     } else {
-        Some(nll::compute_regions(infcx, def_id, mir))
+        Some(nll::compute_regions(infcx, def_id, param_env, mir))
     };
 
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
