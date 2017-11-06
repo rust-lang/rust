@@ -34,6 +34,7 @@ fn main() {
     // Make sure the function actually gets instantiated.
     foo(0);
     bar(0);
+    baz(0);
 }
 
 // END RUST SOURCE

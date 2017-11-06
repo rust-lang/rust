@@ -15,6 +15,8 @@ use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::marker::PhantomData;
 use std::mem;
+use std::slice;
+use std::iter;
 
 pub struct DefUseAnalysis<'tcx> {
     info: IndexVec<Local, Info<'tcx>>,
@@ -39,11 +41,19 @@ impl<'tcx> DefUseAnalysis<'tcx> {
     }
 
     pub fn analyze(&mut self, mir: &Mir<'tcx>) {
+        self.clear();
+
         let mut finder = DefUseFinder {
             info: mem::replace(&mut self.info, IndexVec::new()),
         };
         finder.visit_mir(mir);
         self.info = finder.info
+    }
+
+    fn clear(&mut self) {
+        for info in &mut self.info {
+            info.clear();
+        }
     }
 
     pub fn local_info(&self, local: Local) -> &Info<'tcx> {
@@ -93,14 +103,24 @@ impl<'tcx> Info<'tcx> {
         }
     }
 
+    fn clear(&mut self) {
+        self.defs_and_uses.clear();
+    }
+
     pub fn def_count(&self) -> usize {
         self.defs_and_uses.iter().filter(|lvalue_use| lvalue_use.context.is_mutating_use()).count()
     }
 
     pub fn def_count_not_including_drop(&self) -> usize {
+        self.defs_not_including_drop().count()
+    }
+
+    pub fn defs_not_including_drop(
+        &self,
+    ) -> iter::Filter<slice::Iter<Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
         self.defs_and_uses.iter().filter(|lvalue_use| {
             lvalue_use.context.is_mutating_use() && !lvalue_use.context.is_drop()
-        }).count()
+        })
     }
 
     pub fn use_count(&self) -> usize {
