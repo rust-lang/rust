@@ -183,6 +183,15 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
             // Add `end(X)` into the set for X.
             self.definitions[variable].value.add_free_region(variable);
 
+            // `'static` outlives all other free regions as well.
+            if let ty::ReStatic = free_region {
+                for &other_variable in indices.values() {
+                    self.definitions[variable]
+                        .value
+                        .add_free_region(other_variable);
+                }
+            }
+
             // Go through each region Y that outlives X (i.e., where
             // Y: X is true). Add `end(X)` into the set for `Y`.
             for superregion in free_region_map.regions_that_outlive(&free_region) {
