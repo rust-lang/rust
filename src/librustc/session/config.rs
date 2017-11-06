@@ -911,8 +911,6 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          "choose the relocation model to use (rustc --print relocation-models for details)"),
     code_model: Option<String> = (None, parse_opt_string, [TRACKED],
          "choose the code model to use (rustc --print code-models for details)"),
-    tls_model: Option<String> = (None, parse_opt_string, [TRACKED],
-         "choose the TLS model to use (rustc --print tls-models for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
          "metadata to mangle symbol names with"),
     extra_filename: String = ("".to_string(), parse_string, [UNTRACKED],
@@ -1107,6 +1105,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable ThinLTO when possible"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether #[inline] functions are in all cgus"),
+    tls_model: Option<String> = (None, parse_opt_string, [TRACKED],
+         "choose the TLS model to use (rustc --print tls-models for details)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1475,7 +1475,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         })
     });
 
-    let debugging_opts = build_debugging_options(matches, error_format);
+    let mut debugging_opts = build_debugging_options(matches, error_format);
 
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
@@ -1576,9 +1576,9 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         prints.push(PrintRequest::CodeModels);
         cg.code_model = None;
     }
-    if cg.tls_model.as_ref().map_or(false, |s| s == "help") {
+    if debugging_opts.tls_model.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::TlsModels);
-        cg.tls_model = None;
+        debugging_opts.tls_model = None;
     }
 
     let cg = cg;
@@ -2523,7 +2523,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.cg.tls_model = Some(String::from("tls model"));
+        opts.debugging_opts.tls_model = Some(String::from("tls model"));
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

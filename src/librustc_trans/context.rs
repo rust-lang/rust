@@ -168,7 +168,7 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
 }
 
 fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
-    let tls_model_arg = match sess.opts.cg.tls_model {
+    let tls_model_arg = match sess.opts.debugging_opts.tls_model {
         Some(ref s) => &s[..],
         None => &sess.target.target.options.tls_model[..],
     };
