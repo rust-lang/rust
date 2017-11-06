@@ -1211,7 +1211,7 @@ fn format_tuple_struct(
     result.push_str(&header_str);
 
     let body_lo = if fields.is_empty() {
-        let lo = get_bytepos_after_visibility(context, vis, span, ")");
+        let lo = get_bytepos_after_visibility(context, struct_parts.vis, span, ")");
         context.codemap.span_after(mk_sp(lo, span.hi()), "(")
     } else {
         fields[0].span.lo()
@@ -1552,34 +1552,24 @@ fn rewrite_static(
     static_parts: &StaticParts,
     offset: Indent,
 ) -> Option<String> {
-    let StaticParts {
-        prefix,
-        vis,
-        ident,
-        ty,
-        mutability,
-        expr_opt,
-        span,
-    } = *static_parts;
     let colon = colon_spaces(
         context.config.space_before_type_annotation(),
         context.config.space_after_type_annotation_colon(),
     );
     let prefix = format!(
         "{}{} {}{}{}",
-        format_visibility(vis),
-        prefix,
-        format_mutability(mutability),
-        ident,
+        format_visibility(static_parts.vis),
+        static_parts.prefix,
+        format_mutability(static_parts.mutability),
+        static_parts.ident,
         colon,
     );
     // 2 = " =".len()
-    let ty_str = ty.rewrite(
-        context,
-        Shape::indented(offset.block_only(), context.config).offset_left(prefix.len() + 2)?,
-    )?;
+    let ty_shape =
+        Shape::indented(offset.block_only(), context.config).offset_left(prefix.len() + 2)?;
+    let ty_str = static_parts.ty.rewrite(context, ty_shape)?;
 
-    if let Some(expr) = expr_opt {
+    if let Some(expr) = static_parts.expr_opt {
         let lhs = format!("{}{} =", prefix, ty_str);
         // 1 = ;
         let remaining_width = context.budget(offset.block_indent + 1);
@@ -1588,7 +1578,9 @@ fn rewrite_static(
             lhs,
             expr,
             Shape::legacy(remaining_width, offset.block_only()),
-        ).and_then(|res| recover_comment_removed(res, span, context))
+        ).and_then(|res| {
+            recover_comment_removed(res, static_parts.span, context)
+        })
             .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         Some(format!("{}{};", prefix, ty_str))
