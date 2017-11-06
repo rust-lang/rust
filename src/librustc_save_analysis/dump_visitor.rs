@@ -521,39 +521,41 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                       item: &'l ast::Item,
                       def: &'l ast::VariantData,
                       ty_params: &'l ast::Generics) {
+        debug!("process_struct {:?} {:?}", item, item.span);
         let name = item.ident.to_string();
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
-        let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
-        let (value, fields) =
-            if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) = item.node
-        {
-            let include_priv_fields = !self.save_ctxt.config.pub_only;
-            let fields_str = fields
-                .iter()
-                .enumerate()
-                .filter_map(|(i, f)| {
-                     if include_priv_fields || f.vis == ast::Visibility::Public {
-                         f.ident.map(|i| i.to_string()).or_else(|| Some(i.to_string()))
-                     } else {
-                         None
-                     }
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let value = format!("{} {{ {} }}", name, fields_str);
-            (value, fields.iter().map(|f| ::id_from_node_id(f.id, &self.save_ctxt)).collect())
-        } else {
-            (String::new(), vec![])
+        let (kind, keyword) = match item.node {
+            ast::ItemKind::Struct(_, _) => (DefKind::Struct, keywords::Struct),
+            ast::ItemKind::Union(_, _) => (DefKind::Union, keywords::Union),
+            _ => unreachable!(),
+        };
+
+        let sub_span = self.span.sub_span_after_keyword(item.span, keyword);
+        let (value, fields) = match item.node {
+            ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) |
+            ast::ItemKind::Union(ast::VariantData::Struct(ref fields, _), _) => {
+                let include_priv_fields = !self.save_ctxt.config.pub_only;
+                let fields_str = fields
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, f)| {
+                         if include_priv_fields || f.vis == ast::Visibility::Public {
+                             f.ident.map(|i| i.to_string()).or_else(|| Some(i.to_string()))
+                         } else {
+                             None
+                         }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let value = format!("{} {{ {} }}", name, fields_str);
+                (value, fields.iter().map(|f| ::id_from_node_id(f.id, &self.save_ctxt)).collect())
+            }
+            _ => (String::new(), vec![])
         };
 
         if !self.span.filter_generated(sub_span, item.span) {
             let span = self.span_from_span(sub_span.expect("No span found for struct"));
-            let kind = match item.node {
-                ast::ItemKind::Struct(_, _) => DefKind::Struct,
-                ast::ItemKind::Union(_, _) => DefKind::Union,
-                _ => unreachable!(),
-            };
             self.dumper.dump_def(item.vis == ast::Visibility::Public, Def {
                 kind,
                 id: ::id_from_node_id(item.id, &self.save_ctxt),
@@ -876,6 +878,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                            ex: &'l ast::Expr,
                            seg: &'l ast::PathSegment,
                            args: &'l [P<ast::Expr>]) {
+        debug!("process_method_call {:?} {:?}", ex, ex.span);
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(mcd, RefData, ex.span);
             if !generated_code(ex.span) {
