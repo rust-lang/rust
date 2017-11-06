@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::RegionIndex;
-use transform::nll::ToRegionIndex;
-use rustc::ty::{self, Ty, TyCtxt};
+use transform::nll::ToRegionVid;
+use rustc::ty::{self, Ty, TyCtxt, RegionVid};
 use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
 
 pub fn outlives_pairs<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                       a: Ty<'tcx>,
                       b: Ty<'tcx>)
-                      -> Vec<(RegionIndex, RegionIndex)>
+                      -> Vec<(RegionVid, RegionVid)>
 {
     let mut subtype = Subtype::new(tcx);
     match subtype.relate(&a, &b) {
@@ -28,7 +27,7 @@ pub fn outlives_pairs<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 struct Subtype<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    outlives_pairs: Vec<(RegionIndex, RegionIndex)>,
+    outlives_pairs: Vec<(RegionVid, RegionVid)>,
     ambient_variance: ty::Variance,
 }
 
@@ -67,8 +66,8 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Subtype<'a, 'gcx, 'tcx> {
 
     fn regions(&mut self, r_a: ty::Region<'tcx>, r_b: ty::Region<'tcx>)
                -> RelateResult<'tcx, ty::Region<'tcx>> {
-        let a = r_a.to_region_index();
-        let b = r_b.to_region_index();
+        let a = r_a.to_region_vid();
+        let b = r_b.to_region_vid();
 
         match self.ambient_variance {
             ty::Covariant => {

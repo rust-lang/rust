@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::RegionIndex;
 use super::free_regions::FreeRegions;
 use rustc::infer::InferCtxt;
 use rustc::mir::{Location, Mir};
-use rustc::ty;
+use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use std::collections::BTreeSet;
@@ -21,10 +20,10 @@ use syntax_pos::Span;
 
 pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
-    /// variables are identified by their index (`RegionIndex`). The
+    /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
     /// from as well as its final inferred value.
-    definitions: IndexVec<RegionIndex, RegionDefinition<'tcx>>,
+    definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
     /// The indices of all "free regions" in scope. These are the
     /// lifetime parameters (anonymous and named) declared in the
@@ -35,7 +34,7 @@ pub struct RegionInferenceContext<'tcx> {
     ///
     /// These indices will be from 0..N, as it happens, but we collect
     /// them into a vector for convenience.
-    free_regions: Vec<RegionIndex>,
+    free_regions: Vec<RegionVid>,
 
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
@@ -66,7 +65,7 @@ struct RegionDefinition<'tcx> {
 #[derive(Clone, Default, PartialEq, Eq)]
 struct Region {
     points: BTreeSet<Location>,
-    free_regions: BTreeSet<RegionIndex>,
+    free_regions: BTreeSet<RegionVid>,
 }
 
 impl fmt::Debug for Region {
@@ -84,7 +83,7 @@ impl Region {
         self.points.insert(point)
     }
 
-    fn add_free_region(&mut self, region: RegionIndex) -> bool {
+    fn add_free_region(&mut self, region: RegionVid) -> bool {
         self.free_regions.insert(region)
     }
 
@@ -99,10 +98,10 @@ pub struct Constraint {
     span: Span,
 
     /// The region SUP must outlive SUB...
-    sup: RegionIndex,
+    sup: RegionVid,
 
     /// Region that must be outlived.
-    sub: RegionIndex,
+    sub: RegionVid,
 
     /// At this location.
     point: Location,
@@ -198,24 +197,24 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Returns an iterator over all the region indices.
-    pub fn regions(&self) -> impl Iterator<Item = RegionIndex> {
+    pub fn regions(&self) -> impl Iterator<Item = RegionVid> {
         self.definitions.indices()
     }
 
     /// Returns true if the region `r` contains the point `p`.
     ///
     /// Until `solve()` executes, this value is not particularly meaningful.
-    pub fn region_contains_point(&self, r: RegionIndex, p: Location) -> bool {
+    pub fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
         self.definitions[r].value.contains_point(p)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
-    pub(super) fn region_value(&self, r: RegionIndex) -> &fmt::Debug {
+    pub(super) fn region_value(&self, r: RegionVid) -> &fmt::Debug {
         &self.definitions[r].value
     }
 
     /// Indicates that the region variable `v` is live at the point `point`.
-    pub(super) fn add_live_point(&mut self, v: RegionIndex, point: Location) {
+    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) {
         debug!("add_live_point({:?}, {:?})", v, point);
         let definition = &mut self.definitions[v];
         if !definition.constant {
@@ -231,8 +230,8 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     pub(super) fn add_outlives(
         &mut self,
         span: Span,
-        sup: RegionIndex,
-        sub: RegionIndex,
+        sup: RegionVid,
+        sub: RegionVid,
         point: Location,
     ) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
@@ -268,7 +267,7 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     fn propagate_constraints(
         &mut self,
         mir: &Mir<'tcx>,
-    ) -> Vec<(RegionIndex, Span, RegionIndex)> {
+    ) -> Vec<(RegionVid, Span, RegionVid)> {
         let mut changed = true;
         let mut dfs = Dfs::new(mir);
         let mut error_regions = FxHashSet();

@@ -894,7 +894,7 @@ pub struct FloatVid {
     pub index: u32,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
     pub index: u32,
 }
