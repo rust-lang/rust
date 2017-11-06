@@ -683,11 +683,11 @@ impl RustcDefaultCalls {
     }
 
 
-    fn print_crate_info(sess: &Session,
-                        input: Option<&Input>,
-                        odir: &Option<PathBuf>,
-                        ofile: &Option<PathBuf>)
-                        -> Compilation {
+    pub fn print_crate_info(sess: &Session,
+                            input: Option<&Input>,
+                            odir: &Option<PathBuf>,
+                            ofile: &Option<PathBuf>)
+                            -> Compilation {
         // PrintRequest::NativeStaticLibs is special - printed during linking
         // (empty iterator returns true)
         if sess.opts.prints.iter().all(|&p| p==PrintRequest::NativeStaticLibs) {
