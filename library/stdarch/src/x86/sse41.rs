@@ -330,12 +330,20 @@ pub unsafe fn _mm_cvtepi16_epi32(a: i16x8) -> i32x4 {
     simd_shuffle4::<_, ::v64::i16x4>(a, a, [0, 1, 2, 3]).as_i32x4()
 }
 
-/// Sign extend packed 16-bit integers in a to packed 64-bit integers
+/// Sign extend packed 16-bit integers in `a` to packed 64-bit integers
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovsxwq))]
 pub unsafe fn _mm_cvtepi16_epi64(a: i16x8) -> i64x2 {
     simd_shuffle2::<_, ::v32::i16x2>(a, a, [0, 1]).as_i64x2()
+}
+
+/// Sign extend packed 32-bit integers in `a` to packed 64-bit integers
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmovsxdq))]
+pub unsafe fn _mm_cvtepi32_epi64(a: i32x4) -> i64x2 {
+    simd_shuffle2::<_, ::v64::i32x2>(a, a, [0, 1]).as_i64x2()
 }
 
 /// Returns the dot product of two f64x2 vectors.
@@ -1017,6 +1025,18 @@ mod tests {
         assert_eq!(r, e);
         let a = i16x8::splat(-10);
         let r = sse41::_mm_cvtepi16_epi64(a);
+        let e = i64x2::splat(-10);
+        assert_eq!(r, e);
+    }
+    
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_cvtepi32_epi64() {
+        let a = i32x4::splat(10);
+        let r = sse41::_mm_cvtepi32_epi64(a);
+        let e = i64x2::splat(10);
+        assert_eq!(r, e);
+        let a =  i32x4::splat(-10);
+        let r = sse41::_mm_cvtepi32_epi64(a);
         let e = i64x2::splat(-10);
         assert_eq!(r, e);
     }
