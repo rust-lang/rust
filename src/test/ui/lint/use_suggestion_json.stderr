@@ -8,8 +8,8 @@
   "spans": [
     {
       "file_name": "$DIR/use_suggestion_json.rs",
-      "byte_start": 896,
-      "byte_end": 900,
+      "byte_start": 888,
+      "byte_end": 892,
       "line_start": 20,
       "line_end": 20,
       "column_start": 12,
@@ -35,8 +35,8 @@
       "spans": [
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -55,8 +55,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -75,8 +75,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -95,8 +95,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -115,8 +115,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -135,8 +135,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -155,8 +155,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -175,8 +175,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -195,8 +195,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -215,8 +215,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -235,8 +235,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
@@ -255,8 +255,8 @@
         },
         {
           "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 873,
-          "byte_end": 873,
+          "byte_start": 865,
+          "byte_end": 865,
           "line_start": 19,
           "line_end": 19,
           "column_start": 1,
