@@ -18,7 +18,9 @@ fn guard2(_:i32) -> bool {
     true
 }
 
-fn full_tested_match() {
+// no_mangle to make sure this gets instantiated even in an executable.
+#[no_mangle]
+pub fn full_tested_match() {
     let _ = match Some(42) {
         Some(x) if guard() => (1, x),
         Some(y) => (2, y),
@@ -26,7 +28,9 @@ fn full_tested_match() {
     };
 }
 
-fn full_tested_match2() {
+// no_mangle to make sure this gets instantiated even in an executable.
+#[no_mangle]
+pub fn full_tested_match2() {
     let _ = match Some(42) {
         Some(x) if guard() => (1, x),
         None => (3, 3),
