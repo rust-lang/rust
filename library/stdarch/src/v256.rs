@@ -98,6 +98,7 @@ define_integer_ops!(
     (u8x32, u8),
     (i8x32, i8)
 );
+define_signed_integer_ops!(i64x4, i32x8, i16x16, i8x32);
 define_casts!(
     (f64x4, f32x4, as_f32x4),
     (f64x4, u64x4, as_u64x4),
@@ -117,3 +118,15 @@ define_casts!(
     (u8x32, i8x32, as_i8x32),
     (i8x32, u8x32, as_u8x32)
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn operators() {
+        test_ops_si!(i8x32, i16x16, i32x8, i64x4);
+        test_ops_ui!(u8x32, u16x16, u32x8, u64x4);
+        test_ops_f!(f32x8, f64x4);
+    }
+}

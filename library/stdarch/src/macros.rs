@@ -166,13 +166,7 @@ macro_rules! define_common_ops {
                     unsafe { simd_mul(self, other) }
                 }
             }
-        )+
-    }
-}
 
-macro_rules! define_float_ops {
-    ($($ty:ident),+) => {
-        $(
             impl ::std::ops::Div for $ty {
                 type Output = Self;
                 #[inline(always)]
@@ -180,6 +174,50 @@ macro_rules! define_float_ops {
                     unsafe { simd_div(self, other) }
                 }
             }
+
+            impl ::std::ops::Rem for $ty {
+                type Output = Self;
+                #[inline(always)]
+                fn rem(self, other: Self) -> Self {
+                    unsafe { simd_rem(self, other) }
+                }
+            }
+
+            impl ::std::ops::AddAssign for $ty {
+                #[inline(always)]
+                fn add_assign(&mut self, other: Self) {
+                    *self = *self + other;
+                }
+            }
+
+            impl ::std::ops::SubAssign for $ty {
+                #[inline(always)]
+                fn sub_assign(&mut self, other: Self) {
+                    *self = *self - other;
+                }
+            }
+
+            impl ::std::ops::MulAssign for $ty {
+                #[inline(always)]
+                fn mul_assign(&mut self, other: Self) {
+                    *self = *self * other;
+                }
+            }
+
+            impl ::std::ops::DivAssign for $ty {
+                #[inline(always)]
+                fn div_assign(&mut self, other: Self) {
+                    *self = *self / other;
+                }
+            }
+
+            impl ::std::ops::RemAssign for $ty {
+                #[inline(always)]
+                fn rem_assign(&mut self, other: Self) {
+                    *self = *self % other;
+                }
+            }
+
         )+
     }
 }
@@ -201,13 +239,63 @@ macro_rules! define_shifts {
                     unsafe { simd_shr(self, $ty::splat(other as $elem)) }
                 }
             }
+
+            impl ::std::ops::ShlAssign<$by> for $ty {
+                #[inline(always)]
+                fn shl_assign(&mut self, other: $by) {
+                    *self = *self << other;
+                }
+            }
+            impl ::std::ops::ShrAssign<$by> for $ty {
+                #[inline(always)]
+                fn shr_assign(&mut self, other: $by) {
+                    *self = *self >> other;
+                }
+            }
+
         )+
     }
+}
+
+macro_rules! define_float_ops {
+    ($($ty:ident),+) => {
+        $(
+            impl ::std::ops::Neg for $ty {
+                type Output = Self;
+                #[inline(always)]
+                fn neg(self) -> Self {
+                    Self::splat(-1.0) * self
+                }
+            }
+        )+
+    };
+}
+
+macro_rules! define_signed_integer_ops {
+    ($($ty:ident),+) => {
+        $(
+            impl ::std::ops::Neg for $ty {
+                type Output = Self;
+                #[inline(always)]
+                fn neg(self) -> Self {
+                    Self::splat(-1) * self
+                }
+            }
+        )+
+    };
 }
 
 macro_rules! define_integer_ops {
     ($(($ty:ident, $elem:ident)),+) => {
         $(
+            impl ::std::ops::Not for $ty {
+                type Output = Self;
+                #[inline(always)]
+                fn not(self) -> Self {
+                    $ty::splat(!0) ^ self
+                }
+            }
+
             impl ::std::ops::BitAnd for $ty {
                 type Output = Self;
                 #[inline(always)]
@@ -229,13 +317,25 @@ macro_rules! define_integer_ops {
                     unsafe { simd_xor(self, other) }
                 }
             }
-            impl ::std::ops::Not for $ty {
-                type Output = Self;
+            impl ::std::ops::BitAndAssign for $ty {
                 #[inline(always)]
-                fn not(self) -> Self {
-                    $ty::splat(!0) ^ self
+                fn bitand_assign(&mut self, other: Self) {
+                    *self = *self & other;
                 }
             }
+            impl ::std::ops::BitOrAssign for $ty {
+                #[inline(always)]
+                fn bitor_assign(&mut self, other: Self) {
+                    *self = *self | other;
+                }
+            }
+            impl ::std::ops::BitXorAssign for $ty {
+                #[inline(always)]
+                fn bitxor_assign(&mut self, other: Self) {
+                    *self = *self ^ other;
+                }
+            }
+
             define_shifts!(
                 $ty, $elem,
                 u8, u16, u32, u64, usize,
@@ -321,3 +421,186 @@ mod tests {
         assert!(cfg_feature_enabled!("sse"));
     }
 }
+
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! test_arithmetic_ {
+        ($tn:ident, $zero:expr, $one:expr, $two:expr, $four:expr) => {
+            {
+                 let z = $tn::splat($zero);
+                 let o = $tn::splat($one);
+                 let t = $tn::splat($two);
+                 let f = $tn::splat($four);
+
+                 // add
+                 assert_eq!(z + z, z);
+                 assert_eq!(o + z, o);
+                 assert_eq!(t + z, t);
+                 assert_eq!(t + t, f);
+                 // sub
+                 assert_eq!(z - z, z);
+                 assert_eq!(o - z, o);
+                 assert_eq!(t - z, t);
+                 assert_eq!(f - t, t);
+                 assert_eq!(f - o - o, t);
+                 // mul
+                 assert_eq!(z * z, z);
+                 assert_eq!(z * o, z);
+                 assert_eq!(z * t, z);
+                 assert_eq!(o * t, t);
+                 assert_eq!(t * t, f);
+                 // div
+                 assert_eq!(z / o, z);
+                 assert_eq!(t / o, t);
+                 assert_eq!(f / o, f);
+                 assert_eq!(t / t, o);
+                 assert_eq!(f / t, t);
+                 // rem
+                 assert_eq!(o % o, z);
+                 assert_eq!(f % t, z);
+
+                {
+                    let mut v = z;
+                    assert_eq!(v, z);
+                    v += o;  // add_assign
+                    assert_eq!(v, o);
+                    v -= o; // sub_assign
+                    assert_eq!(v, z);
+                    v = t;
+                    v *= o; // mul_assign
+                    assert_eq!(v, t);
+                    v *= t;
+                    assert_eq!(v, f);
+                    v /= o; // div_assign
+                    assert_eq!(v, f);
+                    v /= t;
+                    assert_eq!(v, t);
+                    v %= t; // rem_assign
+                    assert_eq!(v, z);
+                }
+            }
+        };
+    }
+
+#[cfg(test)]
+#[macro_export]
+    macro_rules! test_neg_ {
+        ($tn:ident, $zero:expr, $one:expr, $two:expr, $four:expr) => {
+            {
+                let z = $tn::splat($zero);
+                let o = $tn::splat($one);
+                let t = $tn::splat($two);
+                let f = $tn::splat($four);
+
+                let nz = $tn::splat(-$zero);
+                let no = $tn::splat(-$one);
+                let nt = $tn::splat(-$two);
+                let nf = $tn::splat(-$four);
+
+                assert_eq!(-z, nz);
+                assert_eq!(-o, no);
+                assert_eq!(-t, nt);
+                assert_eq!(-f, nf);
+            }
+        };
+    }
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! test_bit_arithmetic_ {
+    ($tn:ident) => {
+        {
+            let z = $tn::splat(0);
+            let o = $tn::splat(1);
+            let t = $tn::splat(2);
+            let f = $tn::splat(4);
+            let m = $tn::splat(!z.extract(0));
+
+            // shr
+            assert_eq!(o >> 1, z);
+            assert_eq!(t >> 1, o);
+            assert_eq!(f >> 1, t);
+            // shl
+            assert_eq!(o << 1, t);
+            assert_eq!(o << 2, f);
+            assert_eq!(t << 1, f);
+            // bitand
+            assert_eq!(o & o, o);
+            assert_eq!(t & t, t);
+            assert_eq!(t & o, z);
+            // bitor
+            assert_eq!(o | o, o);
+            assert_eq!(t | t, t);
+            assert_eq!(z | o, o);
+            // bitxor
+            assert_eq!(o ^ o, z);
+            assert_eq!(t ^ t, z);
+            assert_eq!(z ^ o, o);
+            // not
+            assert_eq!(!z, m);
+            assert_eq!(!m, z);
+
+            {  // shr_assign
+                let mut v = o;
+                v >>= 1;
+                assert_eq!(v, z);
+            }
+            {  // shl_assign
+                let mut v = o;
+                v <<= 1;
+                assert_eq!(v, t);
+            }
+            {  // and_assign
+                let mut v = o;
+                v &= t;
+                assert_eq!(v, z);
+            }
+            {  // or_assign
+                let mut v = z;
+                v |= o;
+                assert_eq!(v, o);
+            }
+            {  // xor_assign
+                let mut v = z;
+                v ^= o;
+                assert_eq!(v, o);
+            }
+        }
+    };
+}
+
+
+#[cfg(test)]
+#[macro_export]
+    macro_rules! test_ops_si {
+        ($($tn:ident),+) => {
+            $(
+                test_arithmetic_!($tn, 0, 1, 2, 4);
+                test_neg_!($tn, 0, 1, 2, 4);
+                test_bit_arithmetic_!($tn);
+            )+
+        };
+    }
+
+#[cfg(test)]
+#[macro_export]
+    macro_rules! test_ops_ui {
+        ($($tn:ident),+) => {
+            $(
+                test_arithmetic_!($tn, 0, 1, 2, 4);
+                test_bit_arithmetic_!($tn);
+            )+
+        };
+    }
+
+#[cfg(test)]
+#[macro_export]
+    macro_rules! test_ops_f {
+        ($($tn:ident),+)  => {
+            $(
+                test_arithmetic_!($tn, 0., 1., 2., 4.);
+                test_neg_!($tn, 0., 1., 2., 4.);
+            )+
+        };
+    }
