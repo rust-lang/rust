@@ -11,8 +11,8 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
-use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime,
-                   RegionConstraintData, UnitResult};
+use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
+use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::traits::{self, FulfillmentContext};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
