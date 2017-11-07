@@ -12,3 +12,30 @@ help: consider using an iterator
 8  |     for <item> in ns.iter().take(10).skip(3) {
    |         ^^^^^^
 
+error: the loop variable `i` is only used to index `ms`.
+  --> $DIR/needless_range_loop.rs:29:5
+   |
+29 | /     for i in 0..ms.len() {
+30 | |         ms[i] *= 2;
+31 | |     }
+   | |_____^
+   |
+help: consider using an iterator
+   |
+29 |     for <item> in &mut ms {
+   |         ^^^^^^
+
+error: the loop variable `i` is only used to index `ms`.
+  --> $DIR/needless_range_loop.rs:35:5
+   |
+35 | /     for i in 0..ms.len() {
+36 | |         let x = &mut ms[i];
+37 | |         *x *= 2;
+38 | |     }
+   | |_____^
+   |
+help: consider using an iterator
+   |
+35 |     for <item> in &mut ms {
+   |         ^^^^^^
+

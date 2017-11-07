@@ -952,10 +952,12 @@ fn check_for_loop_range<'a, 'tcx>(
             let mut visitor = VarVisitor {
                 cx: cx,
                 var: canonical_id,
+                indexed_mut: HashSet::new(),
                 indexed: HashMap::new(),
                 indexed_directly: HashMap::new(),
                 referenced: HashSet::new(),
                 nonindex: false,
+                prefer_mutable: false,
             };
             walk_expr(&mut visitor, body);
 
@@ -1009,6 +1011,12 @@ fn check_for_loop_range<'a, 'tcx>(
                     "".to_owned()
                 };
 
+                let (ref_mut, method) = if visitor.indexed_mut.contains(&indexed) {
+                    ("mut ", "iter_mut")
+                } else {
+                    ("", "iter")
+                };
+
                 if visitor.nonindex {
                     span_lint_and_then(
                         cx,
@@ -1021,16 +1029,16 @@ fn check_for_loop_range<'a, 'tcx>(
                                 "consider using an iterator".to_string(),
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.node)),
-                                    (arg.span, format!("{}.iter().enumerate(){}{}", indexed, take, skip)),
+                                    (arg.span, format!("{}.{}().enumerate(){}{}", indexed, method, take, skip)),
                                 ],
                             );
                         },
                     );
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
-                        format!("&{}", indexed)
+                        format!("&{}{}", ref_mut, indexed)
                     } else {
-                        format!("{}.iter(){}{}", indexed, take, skip)
+                        format!("{}.{}(){}{}", indexed, method, take, skip)
                     };
 
                     span_lint_and_then(
@@ -1537,6 +1545,8 @@ struct VarVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     /// var name to look for as index
     var: ast::NodeId,
+    /// indexed variables that are used mutably
+    indexed_mut: HashSet<Name>,
     /// indexed variables, the extend is `None` for global
     indexed: HashMap<Name, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
@@ -1548,6 +1558,9 @@ struct VarVisitor<'a, 'tcx: 'a> {
     /// has the loop variable been used in expressions other than the index of
     /// an index op?
     nonindex: bool,
+    /// Whether we are inside the `$` in `&mut $` or `$ = foo` or `$.bar`, where bar
+    /// takes `&mut self`
+    prefer_mutable: bool,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
@@ -1572,6 +1585,9 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 };
 
                 if index_used {
+                    if self.prefer_mutable {
+                        self.indexed_mut.insert(seqvar.segments[0].name);
+                    }
                     let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
                     match def {
                         Def::Local(node_id) | Def::Upvar(node_id, ..) => {
@@ -1615,8 +1631,47 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 }
             }
         }
-
-        walk_expr(self, expr);
+        let old = self.prefer_mutable;
+        match expr.node {
+            ExprAssignOp(_, ref lhs, ref rhs) |
+            ExprAssign(ref lhs, ref rhs) => {
+                self.prefer_mutable = true;
+                self.visit_expr(lhs);
+                self.prefer_mutable = false;
+                self.visit_expr(rhs);
+            },
+            ExprAddrOf(mutbl, ref expr) => {
+                if mutbl == MutMutable {
+                    self.prefer_mutable = true;
+                }
+                self.visit_expr(expr);
+            },
+            ExprCall(ref f, ref args) => {
+                for (ty, expr) in self.cx.tables.expr_ty(f).fn_sig(self.cx.tcx).inputs().skip_binder().iter().zip(args) {
+                    self.prefer_mutable = false;
+                    if let ty::TyRef(_, mutbl) = ty.sty {
+                        if mutbl.mutbl == MutMutable {
+                            self.prefer_mutable = true;
+                        }
+                    }
+                    self.visit_expr(expr);
+                }
+            },
+            ExprMethodCall(_, _, ref args) => {
+                let def_id = self.cx.tables.type_dependent_defs()[expr.hir_id].def_id();
+                for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
+                    self.prefer_mutable = false;
+                    if let ty::TyRef(_, mutbl) = ty.sty {
+                        if mutbl.mutbl == MutMutable {
+                            self.prefer_mutable = true;
+                        }
+                    }
+                    self.visit_expr(expr);
+                }
+            },
+            _ => walk_expr(self, expr),
+        }
+        self.prefer_mutable = old;
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
