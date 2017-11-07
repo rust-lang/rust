@@ -405,24 +405,26 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     }
 
     fn handle_method_call_in_not(&mut self, e: &'tcx Expr, inner: &'tcx Expr) {
-        if let ExprMethodCall(ref path, _, _) = inner.node {
-            METHODS_WITH_NEGATION.iter().for_each(|&(method, negation_method)| {
-                if method == path.name.as_str() {
-                    span_lint_and_then(
-                        self.cx,
-                        NONMINIMAL_BOOL,
-                        e.span,
-                        "this boolean expression can be simplified",
-                        |db| {
-                            db.span_suggestion(
-                                e.span,
-                                "try",
-                                negation_method.to_owned()
-                            );
-                        }
-                    )
-                }
-            })
+        if let ExprMethodCall(ref path, _, ref args) = inner.node {
+            if args.len() == 1 {
+                METHODS_WITH_NEGATION.iter().for_each(|&(method, negation_method)| {
+                    if method == path.name.as_str() {
+                        span_lint_and_then(
+                            self.cx,
+                            NONMINIMAL_BOOL,
+                            e.span,
+                            "this boolean expression can be simplified",
+                            |db| {
+                                db.span_suggestion(
+                                    e.span,
+                                    "try",
+                                    negation_method.to_owned()
+                                );
+                            }
+                        )
+                    }
+                })
+            }
         }
     }
 }
