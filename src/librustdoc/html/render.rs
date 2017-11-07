@@ -1326,7 +1326,7 @@ impl DocFolder for Cache {
                 // Figure out the id of this impl. This may map to a
                 // primitive rather than always to a struct/enum.
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
-                let mut dids = vec![];
+                let mut dids = FxHashSet();
                 if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
                     let masked_trait = i.trait_.def_id().map_or(false,
                         |d| self.masked_crates.contains(&d.krate));
@@ -1336,7 +1336,7 @@ impl DocFolder for Cache {
                             clean::BorrowedRef {
                                 type_: box clean::ResolvedPath { did, .. }, ..
                             } => {
-                                dids.push(did);
+                                dids.insert(did);
                             }
                             ref t => {
                                 let did = t.primitive_type().and_then(|t| {
@@ -1344,7 +1344,7 @@ impl DocFolder for Cache {
                                 });
 
                                 if let Some(did) = did {
-                                    dids.push(did);
+                                    dids.insert(did);
                                 }
                             }
                         }
@@ -1353,7 +1353,7 @@ impl DocFolder for Cache {
                     if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
                         for bound in generics {
                             if let Some(did) = bound.def_id() {
-                                dids.push(did);
+                                dids.insert(did);
                             }
                         }
                     }
