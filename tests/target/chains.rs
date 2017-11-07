@@ -193,3 +193,25 @@ impl Settings {
             .chain_err(|| ErrorKind::WriteError(settings_path.clone()))?;
     }
 }
+
+fn issue2126() {
+    {
+        {
+            {
+                {
+                    {
+                        let x = self.span_from(
+                            sub_span.expect("No span found for struct arant variant"),
+                        );
+                        self.sspanpan_from_span(
+                            sub_span.expect("No span found for struct variant"),
+                        );
+                        let x = self.spanpan_from_span(
+                            sub_span.expect("No span found for struct variant"),
+                        )?;
+                    }
+                }
+            }
+        }
+    }
+}
