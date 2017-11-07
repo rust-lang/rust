@@ -177,7 +177,7 @@ def main():
     normal1 = compress_normal(normal1)
 
     print("""\
-// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -226,7 +226,7 @@ fn check(x: u16, singletonuppers: &[(u8, u8)], singletonlowers: &[u8],
     current
 }
 
-pub fn is_printable(x: char) -> bool {
+pub(crate) fn is_printable(x: char) -> bool {
     let x = x as u32;
     let lower = x as u16;
     if x < 0x10000 {
