@@ -411,6 +411,18 @@ pub unsafe fn _mm_mullo_epi32 (a: i32x4, b:i32x4) -> i32x4 {
     a * b
 }
 
+/// Tests whether the specified bits in a 128-bit integer vector are all
+/// zeros.
+/// 
+/// Arguments:
+/// 
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// 
+/// Returns:
+/// 
+/// * `1` - if the specified bits are all zeros,
+/// * `0` - otherwise.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
@@ -418,6 +430,19 @@ pub unsafe fn _mm_testz_si128(a: i64x2, mask: i64x2) -> i32 {
     ptestz(a, mask)
 }
 
+
+/// Tests whether the specified bits in a 128-bit integer vector are all
+/// ones.
+///
+/// Arguments:
+/// 
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// 
+/// Returns:
+/// 
+/// * `1` - if the specified bits are all ones,
+/// * `0` - otherwise.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
@@ -425,6 +450,18 @@ pub unsafe fn _mm_testc_si128(a: i64x2, mask: i64x2) -> i32 {
     ptestc(a, mask)
 }
 
+/// Tests whether the specified bits in a 128-bit integer vector are
+/// neither all zeros nor all ones.
+///
+/// Arguments:
+/// 
+/// * `a` - A 128-bit integer vector containing the bits to be tested.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// 
+/// Returns:
+/// 
+/// * `1` - if the specified bits are neither all zeros nor all ones,
+/// * `0` - otherwise.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
