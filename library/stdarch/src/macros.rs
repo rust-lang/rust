@@ -485,7 +485,7 @@ macro_rules! test_arithmetic_ {
 
 #[cfg(test)]
 #[macro_export]
-    macro_rules! test_neg_ {
+macro_rules! test_neg_ {
         ($tn:ident, $zero:expr, $one:expr, $two:expr, $four:expr) => {
             {
                 let z = $tn::splat($zero);
@@ -573,7 +573,7 @@ macro_rules! test_bit_arithmetic_ {
 
 #[cfg(test)]
 #[macro_export]
-    macro_rules! test_ops_si {
+macro_rules! test_ops_si {
         ($($tn:ident),+) => {
             $(
                 test_arithmetic_!($tn, 0, 1, 2, 4);
@@ -585,7 +585,7 @@ macro_rules! test_bit_arithmetic_ {
 
 #[cfg(test)]
 #[macro_export]
-    macro_rules! test_ops_ui {
+macro_rules! test_ops_ui {
         ($($tn:ident),+) => {
             $(
                 test_arithmetic_!($tn, 0, 1, 2, 4);
@@ -596,7 +596,7 @@ macro_rules! test_bit_arithmetic_ {
 
 #[cfg(test)]
 #[macro_export]
-    macro_rules! test_ops_f {
+macro_rules! test_ops_f {
         ($($tn:ident),+)  => {
             $(
                 test_arithmetic_!($tn, 0., 1., 2., 4.);

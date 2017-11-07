@@ -139,7 +139,7 @@ pub unsafe fn _mm_extract_epi32(a: i32x4, imm8: u8) -> i32 {
 }
 
 /// Extract an 64-bit integer from `a` selected with `imm8`
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 // TODO: Add test for Windows
@@ -200,7 +200,7 @@ pub unsafe fn _mm_insert_epi32(a: i32x4, i: i32, imm8: u8) -> i32x4 {
 
 /// Return a copy of `a` with the 64-bit integer from `i` inserted at a
 /// location specified by `imm8`.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pinsrq, imm8 = 0))]
@@ -370,7 +370,8 @@ pub unsafe fn _mm_cvtepu8_epi64(a: u8x16) -> i64x2 {
     simd_shuffle2::<_, ::v16::u8x2>(a, a, [0, 1]).as_i64x2()
 }
 
-/// Zero extend packed unsigned 16-bit integers in `a` to packed 32-bit integers
+/// Zero extend packed unsigned 16-bit integers in `a`
+/// to packed 32-bit integers
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovzxwd))]
@@ -378,7 +379,8 @@ pub unsafe fn _mm_cvtepu16_epi32(a: u16x8) -> i32x4 {
     simd_shuffle4::<_, ::v64::u16x4>(a, a, [0, 1, 2, 3]).as_i32x4()
 }
 
-/// Zero extend packed unsigned 16-bit integers in `a` to packed 64-bit integers
+/// Zero extend packed unsigned 16-bit integers in `a`
+/// to packed 64-bit integers
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovzxwq))]
@@ -386,29 +388,13 @@ pub unsafe fn _mm_cvtepu16_epi64(a: u16x8) -> i64x2 {
     simd_shuffle2::<_, ::v32::u16x2>(a, a, [0, 1]).as_i64x2()
 }
 
-/// Zero extend packed unsigned 32-bit integers in `a` to packed 64-bit integers
+/// Zero extend packed unsigned 32-bit integers in `a`
+/// to packed 64-bit integers
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovzxdq))]
 pub unsafe fn _mm_cvtepu32_epi64(a: u32x4) -> i64x2 {
     simd_shuffle2::<_, ::v64::u32x2>(a, a, [0, 1]).as_i64x2()
-}
-
-/// Multiply the low 32-bit integers from each packed 64-bit element in `a` and `b`
-#[inline(always)]
-#[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(pmuldq))]
-pub unsafe fn _mm_mul_epi32(a: i32x4, b:i32x4) -> i64x2 {
-    pmuldq(a, b)
-}
-
-/// Multiply the packed 32-bit integers in `a` and `b`, producing intermediate 64-bit integers,
-/// and return the low 32 bits of the intermediate integers.
-#[inline(always)]
-#[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(pmulld))]
-pub unsafe fn _mm_mullo_epi32 (a: i32x4, b:i32x4) -> i32x4 {
-    a * b
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -417,7 +403,8 @@ pub unsafe fn _mm_mullo_epi32 (a: i32x4, b:i32x4) -> i32x4 {
 /// Arguments:
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
-/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
 ///
 /// Returns:
 ///
@@ -437,7 +424,8 @@ pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
 /// Arguments:
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
-/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
 ///
 /// Returns:
 ///
@@ -456,7 +444,8 @@ pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
 /// Arguments:
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
-/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
 ///
 /// Returns:
 ///
@@ -475,7 +464,8 @@ pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
 /// Arguments:
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
-/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
 ///
 /// Returns:
 ///
@@ -513,7 +503,8 @@ pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
 /// Arguments:
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
-/// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
+/// * `mask` - A 128-bit integer vector selecting which bits to test in
+///            operand `a`.
 ///
 /// Returns:
 ///
@@ -769,7 +760,8 @@ pub unsafe fn _mm_round_ss(a: f32x4, b: f32x4, rounding: i32) -> f32x4 {
 }
 
 /// Finds the minimum unsigned 16-bit element in the 128-bit u16x8 vector,
-/// returning a vector containing its value in its first position, and its index
+/// returning a vector containing its value in its first position, and its
+/// index
 /// in its second position; all other elements are set to zero.
 ///
 /// This intrinsic corresponds to the <c> VPHMINPOSUW / PHMINPOSUW </c>
@@ -793,8 +785,8 @@ pub unsafe fn _mm_minpos_epu16(a: u16x8) -> u16x8 {
     phminposuw(a)
 }
 
-/// Multiply the low 32-bit integers from each packed 64-bit element
-/// in a and b, and store the signed 64-bit results in dst.
+/// Multiply the low 32-bit integers from each packed 64-bit
+/// element in `a` and `b`, and return the signed 64-bit result.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmuldq))]
@@ -802,12 +794,12 @@ pub unsafe fn _mm_mul_epi32(a: i32x4, b: i32x4) -> i64x2 {
     pmuldq(a, b)
 }
 
-/// Multiply the packed 32-bit integers in a and b, producing intermediate
-/// 64-bit integers, and  returns the lowest 32-bit, whatever they might be,
-/// reinterpreted as a signed integer.
-/// While pmulld i32x4::splat(2), i32x4::splat(2) returns the obvious
-/// i32x4::splat(4), pmulld i32x4::splat(i32::MAX), i32x4::splat(2)
-/// would return a negative number.
+/// Multiply the packed 32-bit integers in `a` and `b`, producing intermediate
+/// 64-bit integers, and returns the lowest 32-bit, whatever they might be,
+/// reinterpreted as a signed integer. While `pmulld i32x4::splat(2),
+/// i32x4::splat(2)` returns the obvious `i32x4::splat(4)`, due to wrapping
+/// arithmetic `pmulld i32x4::splat(i32::MAX), i32x4::splat(2)` would return a
+/// negative number.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmulld))]
@@ -837,8 +829,8 @@ pub unsafe fn _mm_mullo_epi32(a: i32x4, b: i32x4) -> i32x4 {
 ///
 /// * `a` - A 128-bit vector of type `i8x16`.
 /// * `b` - A 128-bit vector of type `i8x16`.
-/// * `imm8` - An 8-bit immediate operand specifying how the absolute differences are to
-///            be calculated
+/// * `imm8` - An 8-bit immediate operand specifying how the absolute
+///            differences are to be calculated
 ///     * Bit `[2]` specify the offset for operand `a`
 ///     * Bits `[1:0]` specify the offset for operand `b`
 ///
@@ -848,7 +840,7 @@ pub unsafe fn _mm_mullo_epi32(a: i32x4, b: i32x4) -> i32x4 {
 ///   absolute differences between both operands.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
-#[cfg_attr(test, assert_instr(mpsadbw, imm8=0))]
+#[cfg_attr(test, assert_instr(mpsadbw, imm8 = 0))]
 pub unsafe fn _mm_mpsadbw_epu8(a: u8x16, b: u8x16, imm8: u8) -> u16x8 {
     macro_rules! call {
         ($imm8:expr) => { mpsadbw(a, b, $imm8) }
@@ -890,8 +882,6 @@ extern "C" {
     fn pminud(a: u32x4, b: u32x4) -> u32x4;
     #[link_name = "llvm.x86.sse41.packusdw"]
     fn packusdw(a: i32x4, b: i32x4) -> u16x8;
-    #[link_name = "llvm.x86.sse41.pmuldq"]
-    fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
     #[link_name = "llvm.x86.sse41.ptestz"]
     fn ptestz(a: i64x2, mask: i64x2) -> i32;
     #[link_name = "llvm.x86.sse41.ptestc"]
@@ -921,12 +911,11 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use std::mem;
-
     use stdsimd_test::simd_test;
-
-    use v128::*;
-    use x86::__m128i;
     use x86::sse41;
+    use v128::*;
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
+    use x86::__m128i;
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_blendv_epi8() {
@@ -1020,7 +1009,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_extract_epi64() {
         let a = i64x2::new(0, 1);
@@ -1059,7 +1048,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_insert_epi64() {
         let a = i64x2::splat(0);
@@ -1280,7 +1269,7 @@ mod tests {
         let r = sse41::_mm_cvtepi32_epi64(a);
         let e = i64x2::splat(10);
         assert_eq!(r, e);
-        let a =  i32x4::splat(-10);
+        let a = i32x4::splat(-10);
         let r = sse41::_mm_cvtepi32_epi64(a);
         let e = i64x2::splat(-10);
         assert_eq!(r, e);
@@ -1334,119 +1323,107 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test = "sse4.1"]
-    unsafe fn _mm_mul_epi32() {
-        let a = i32x4::new(1, 1, 1, 1);
-        let b = i32x4::new(1, 2, 3, 4);
-        let r = sse41::_mm_mul_epi32(a, b);
-        let e = i64x2::new(1, 3);
-        assert_eq!(r, e);
-    }
-
-    #[simd_test = "sse4.1"]
-    unsafe fn _mm_mullo_epi32() {
-        let a = i32x4::new(1, 1, 1, 1);
-        let b = i32x4::new(1, 2, 3, 4);
-        let r = sse41::_mm_mullo_epi32(a, b);
-        let e = i32x4::new(1, 2, 3, 4);
-        assert_eq!(r, e);
-    }
-
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_testz_si128() {
-        let a    = __m128i::splat(1);
+        let a = __m128i::splat(1);
         let mask = __m128i::splat(0);
-        let r    = sse41::_mm_testz_si128(a, mask);
+        let r = sse41::_mm_testz_si128(a, mask);
         assert_eq!(r, 1);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b110);
-        let r    = sse41::_mm_testz_si128(a, mask);
+        let r = sse41::_mm_testz_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = __m128i::splat(0b011);
+        let a = __m128i::splat(0b011);
         let mask = __m128i::splat(0b100);
-        let r    = sse41::_mm_testz_si128(a, mask);
+        let r = sse41::_mm_testz_si128(a, mask);
         assert_eq!(r, 1);
     }
 
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_testc_si128() {
-        let a    = __m128i::splat(-1);
+        let a = __m128i::splat(-1);
         let mask = __m128i::splat(0);
-        let r    = sse41::_mm_testc_si128(a, mask);
+        let r = sse41::_mm_testc_si128(a, mask);
         assert_eq!(r, 1);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b110);
-        let r    = sse41::_mm_testc_si128(a, mask);
+        let r = sse41::_mm_testc_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b100);
-        let r    = sse41::_mm_testc_si128(a, mask);
+        let r = sse41::_mm_testc_si128(a, mask);
         assert_eq!(r, 1);
     }
 
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_testnzc_si128() {
-        let a    = __m128i::splat(0);
+        let a = __m128i::splat(0);
         let mask = __m128i::splat(1);
-        let r    = sse41::_mm_testnzc_si128(a, mask);
+        let r = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = __m128i::splat(-1);
+        let a = __m128i::splat(-1);
         let mask = __m128i::splat(0);
-        let r    = sse41::_mm_testnzc_si128(a, mask);
+        let r = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b110);
-        let r    = sse41::_mm_testnzc_si128(a, mask);
+        let r = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 1);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b101);
-        let r    = sse41::_mm_testnzc_si128(a, mask);
+        let r = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
     }
 
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_test_all_zeros() {
-        let a    = __m128i::splat(1);
+        let a = __m128i::splat(1);
         let mask = __m128i::splat(0);
-        let r    = sse41::_mm_test_all_zeros(a, mask);
+        let r = sse41::_mm_test_all_zeros(a, mask);
         assert_eq!(r, 1);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b110);
-        let r    = sse41::_mm_test_all_zeros(a, mask);
+        let r = sse41::_mm_test_all_zeros(a, mask);
         assert_eq!(r, 0);
-        let a    = __m128i::splat(0b011);
+        let a = __m128i::splat(0b011);
         let mask = __m128i::splat(0b100);
-        let r    = sse41::_mm_test_all_zeros(a, mask);
+        let r = sse41::_mm_test_all_zeros(a, mask);
         assert_eq!(r, 1);
     }
 
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_test_all_ones() {
-        let a    = __m128i::splat(-1);
-        let r    = sse41::_mm_test_all_ones(a);
+        let a = __m128i::splat(-1);
+        let r = sse41::_mm_test_all_ones(a);
         assert_eq!(r, 1);
-        let a    = __m128i::splat(0b101);
-        let r    = sse41::_mm_test_all_ones(a);
+        let a = __m128i::splat(0b101);
+        let r = sse41::_mm_test_all_ones(a);
         assert_eq!(r, 0);
     }
 
+    #[cfg(all(target_arch = "x86_64", not(target_feature = "sse2")))] // i586
     #[simd_test = "sse4.1"]
     unsafe fn _mm_test_mix_ones_zeros() {
-        let a    = __m128i::splat(0);
+        let a = __m128i::splat(0);
         let mask = __m128i::splat(1);
-        let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
+        let r = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 0);
-        let a    = __m128i::splat(-1);
+        let a = __m128i::splat(-1);
         let mask = __m128i::splat(0);
-        let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
+        let r = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 0);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b110);
-        let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
+        let r = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 1);
-        let a    = __m128i::splat(0b101);
+        let a = __m128i::splat(0b101);
         let mask = __m128i::splat(0b101);
-        let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
+        let r = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 0);
     }
 
@@ -1594,27 +1571,52 @@ mod tests {
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_mul_epi32() {
-        let a =
-            i32x4::new(15, 2 /* ignored */, 1234567, 4 /* ignored */);
-        let b = i32x4::new(
-            -20,
-            -256, /* ignored */
-            666666,
-            666666, /* ignored */
-        );
-        let r = sse41::_mm_mul_epi32(a, b);
-        let e = i64x2::new(-300, 823043843622);
-        assert_eq!(r, e);
+        {
+            let a = i32x4::new(1, 1, 1, 1);
+            let b = i32x4::new(1, 2, 3, 4);
+            let r = sse41::_mm_mul_epi32(a, b);
+            let e = i64x2::new(1, 3);
+            assert_eq!(r, e);
+        }
+        {
+            let a = i32x4::new(
+                15,
+                2, /* ignored */
+                1234567,
+                4, /* ignored */
+            );
+            let b = i32x4::new(
+                -20,
+                -256, /* ignored */
+                666666,
+                666666, /* ignored */
+            );
+            let r = sse41::_mm_mul_epi32(a, b);
+            let e = i64x2::new(-300, 823043843622);
+            assert_eq!(r, e);
+        }
     }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_mullo_epi32() {
-        let a = i32x4::new(15, -2, 1234567, 99999);
-        let b = i32x4::new(-20, -256, 666666, -99999);
-        let r = sse41::_mm_mullo_epi32(a, b);
-        // Attention, most significant bit in r[2] is treated as a sign bit!
-        // 1234567 * 666666 = -1589877210
-        let e = i32x4::new(-300, 512, -1589877210, -1409865409);
+        {
+            let a = i32x4::new(1, 1, 1, 1);
+            let b = i32x4::new(1, 2, 3, 4);
+            let r = sse41::_mm_mullo_epi32(a, b);
+            let e = i32x4::new(1, 2, 3, 4);
+            assert_eq!(r, e);
+        }
+        {
+            let a = i32x4::new(15, -2, 1234567, 99999);
+            let b = i32x4::new(-20, -256, 666666, -99999);
+            let r = sse41::_mm_mullo_epi32(a, b);
+            // Attention, most significant bit in r[2] is treated
+            // as a sign bit:
+            // 1234567 * 666666 = -1589877210
+            let e = i32x4::new(-300, 512, -1589877210, -1409865409);
+            assert_eq!(r, e);
+        }
+    }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_minpos_epu16() {
@@ -1626,7 +1628,8 @@ mod tests {
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_mpsadbw_epu8() {
-        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let a =
+            u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
 
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b000);
         let e = u16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
@@ -1635,7 +1638,7 @@ mod tests {
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b001);
         let e = u16x8::new(16, 12, 8, 4, 0, 4, 8, 12);
         assert_eq!(r, e);
-        
+
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b100);
         let e = u16x8::new(16, 20, 24, 28, 32, 36, 40, 44);
         assert_eq!(r, e);

@@ -194,10 +194,7 @@ mod v16 {
     define_ty! { u8x2, u8, u8 }
     define_impl! { u8x2, u8, 2, i8x2, x0, x1 }
 
-    define_casts!(
-        (i8x2, i64x2, as_i64x2),
-        (u8x2, i64x2, as_i64x2)
-    );
+    define_casts!((i8x2, i64x2, as_i64x2), (u8x2, i64x2, as_i64x2));
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
