@@ -548,7 +548,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ExprKind::MethodCall(ref seg, ..) => {
                 let expr_hir_id = self.tcx.hir.definitions().node_to_hir_id(expr.id);
-                let method_id = self.tables.type_dependent_defs()[expr_hir_id].def_id();
+                let method_id = match self.tables.type_dependent_defs().get(expr_hir_id) {
+                    Some(id) => id.def_id(),
+                    None => {
+                        debug!("Could not resolve method id for {:?}", expr);
+                        return None;
+                    }
+                };
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),
