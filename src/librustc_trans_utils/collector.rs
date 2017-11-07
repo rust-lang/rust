@@ -211,6 +211,8 @@ use trans_item::{TransItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
 
+use syntax::attr;
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {
     Eager,
@@ -981,7 +983,9 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
             }
             TransItemCollectionMode::Lazy => {
                 self.entry_fn == Some(def_id) ||
-                self.tcx.is_exported_symbol(def_id)
+                self.tcx.is_exported_symbol(def_id) ||
+                attr::contains_name(&self.tcx.get_attrs(def_id),
+                                    "rustc_std_internal_symbol")
             }
         }
     }
