@@ -1413,23 +1413,26 @@ pub enum ExplicitSelf<'tcx> {
 }
 
 impl<'tcx> ExplicitSelf<'tcx> {
-    /// We wish to (for now) categorize an explicit self
-    /// declaration like `self: SomeType` into either `self`,
-    /// `&self`, `&mut self`, or `Box<self>`. We do this here
-    /// by some simple pattern matching. A more precise check
-    /// is done later in `check_method_receiver()`.
+    /// Categorizes an explicit self declaration like `self: SomeType`
+    /// into either `self`, `&self`, `&mut self`, `Box<self>`, or
+    /// `Other` (meaning the arbitrary_self_types feature is used).
+    /// We do this here via a combination of pattern matching and
+    /// `can_eq`. A more precise check is done in `check_method_receiver()`.
     ///
     /// Examples:
     ///
     /// ```
-    /// impl Foo for &T {
+    /// impl<'a> Foo for &'a T {
     ///     // Legal declarations:
-    ///     fn method1(self: &&T); // ExplicitSelf::ByReference
-    ///     fn method2(self: &T); // ExplicitSelf::ByValue
-    ///     fn method3(self: Box<&T>); // ExplicitSelf::ByBox
+    ///     fn method1(self: &&'a T); // ExplicitSelf::ByReference
+    ///     fn method2(self: &'a T); // ExplicitSelf::ByValue
+    ///     fn method3(self: Box<&'a T>); // ExplicitSelf::ByBox
+    ///     fn method4(self: Rc<&'a T>); // ExplicitSelf::Other
     ///
-    ///     // Invalid cases will be caught later by `check_method_receiver`:
-    ///     fn method_err1(self: &mut T); // ExplicitSelf::ByReference
+    ///     // Invalid cases will be caught by `check_method_receiver`:
+    ///     fn method_err1(self: &'a mut T); // ExplicitSelf::Other
+    ///     fn method_err2(self: &'static T) // ExplicitSelf::ByValue
+    ///     fn method_err3(self: &&T) // ExplicitSelf::ByReference
     /// }
     /// ```
     ///
