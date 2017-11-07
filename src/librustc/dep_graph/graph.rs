@@ -519,6 +519,20 @@ impl DepGraph {
                             current_deps.push(node_index);
                             continue;
                         }
+                    } else if cfg!(debug_assertions) {
+                        match dep_dep_node.kind {
+                            DepKind::Hir |
+                            DepKind::HirBody |
+                            DepKind::CrateMetadata => {
+                                assert!(dep_dep_node.extract_def_id(tcx).is_none(),
+                                    "Input {:?} should have been pre-allocated but wasn't.",
+                                    dep_dep_node);
+                            }
+                            _ => {
+                                // For other kinds of inputs it's OK to be
+                                // forced.
+                            }
+                        }
                     }
 
                     // We failed to mark it green, so we try to force the query.
@@ -549,10 +563,6 @@ impl DepGraph {
                             }
                         }
                     } else {
-                        debug_assert!(!dep_dep_node.kind.is_input() ||
-                            dep_dep_node.extract_def_id(tcx).is_none(),
-                            "Could not force input that should still exist.");
-
                         // The DepNode could not be forced.
                         debug!("try_mark_green({:?}) - END - dependency {:?} \
                                 could not be forced", dep_node, dep_dep_node);
