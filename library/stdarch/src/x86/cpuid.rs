@@ -19,16 +19,21 @@ pub struct CpuidResult {
     pub edx: u32,
 }
 
-/// `cpuid` instruction.
+/// Returns the result of the `cpuid` instruction for a given `leaf` (`EAX`)
+/// and
+/// `sub_leaf` (`ECX`).
+///
+/// The highest-supported leaf value is returned by the first tuple argument of
+/// [`__get_cpuid_max(0)`](fn.__get_cpuid_max.html). For leaves containung
+/// sub-leaves, the second tuple argument returns the highest-supported
+/// sub-leaf
+/// value.
 ///
 /// The [CPUID Wikipedia page][wiki_cpuid] contains how to query which
-/// information using the `eax` and `ecx` registers, and the format in
-/// which this information is returned in `eax...edx`.
+/// information using the `EAX` and `ECX` registers, and the interpretation of
+/// the results returned in `EAX`, `EBX`, `ECX`, and `EDX`.
 ///
-/// The `has_cpuid()` intrinsics can be used to query whether the `cpuid`
-/// instruction is available.
-///
-/// The definitive references are:
+/// The references are:
 /// - [Intel 64 and IA-32 Architectures Software Developer's Manual Volume 2:
 ///   Instruction Set Reference, A-Z][intel64_ref].
 /// - [AMD64 Architecture Programmer's Manual, Volume 3: General-Purpose and
@@ -39,22 +44,28 @@ pub struct CpuidResult {
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 #[inline(always)]
 #[cfg_attr(test, assert_instr(cpuid))]
-pub unsafe fn __cpuid_count(eax: u32, ecx: u32) -> CpuidResult {
+pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     let mut r = ::std::mem::uninitialized::<CpuidResult>();
-    asm!("cpuid"
-         : "={eax}"(r.eax), "={ebx}"(r.ebx), "={ecx}"(r.ecx), "={edx}"(r.edx)
-         : "{eax}"(eax), "{ecx}"(ecx)
-         : :);
+    if cfg!(target_arch = "x86") {
+        asm!("cpuid"
+             : "={eax}"(r.eax), "={ebx}"(r.ebx), "={ecx}"(r.ecx), "={edx}"(r.edx)
+             : "{eax}"(leaf), "{ecx}"(sub_leaf)
+             : :);
+    } else {
+        // x86-64 uses %rbx as the base register, so preserve it.
+        asm!("cpuid\n"
+             : "={eax}"(r.eax), "={ebx}"(r.ebx), "={ecx}"(r.ecx), "={edx}"(r.edx)
+             : "{eax}"(leaf), "{ecx}"(sub_leaf)
+             : "rbx" :);
+    }
     r
 }
 
-/// `cpuid` instruction.
-///
-/// See `__cpuid_count`.
+/// See [`__cpuid_count`](fn.__cpuid_count.html).
 #[inline(always)]
 #[cfg_attr(test, assert_instr(cpuid))]
-pub unsafe fn __cpuid(eax: u32) -> CpuidResult {
-    __cpuid_count(eax, 0)
+pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
+    __cpuid_count(leaf, 0)
 }
 
 /// Does the host support the `cpuid` instruction?
@@ -90,6 +101,22 @@ pub fn has_cpuid() -> bool {
     }
 }
 
+/// Returns the highest-supported `leaf` (`EAX`) and sub-leaf (`ECX`) `cpuid`
+/// values.
+///
+/// If `cpuid` is supported, and `leaf` is zero, then the first tuple argument
+/// contains the highest `leaf` value that `cpuid` supports. For `leaf`s
+/// containing sub-leafs, the second tuple argument contains the
+/// highest-supported sub-leaf value.
+///
+/// See also [`__cpuid`](fn.__cpuid.html) and
+/// [`__cpuid_count`](fn.__cpuid_count.html).
+#[inline(always)]
+pub unsafe fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
+    let CpuidResult { eax, ebx, .. } = __cpuid(leaf);
+    (eax, ebx)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,5 +142,4 @@ mod tests {
             }
         }
     }
-
 }
