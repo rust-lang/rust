@@ -22,6 +22,9 @@ name = "cargo-fmt"
 [[bin]]
 name = "rustfmt-format-diff"
 
+[[bin]]
+name = "git-fmt"
+
 [features]
 default = ["cargo-fmt", "rustfmt-format-diff"]
 cargo-fmt = []
