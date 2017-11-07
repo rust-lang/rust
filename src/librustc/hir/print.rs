@@ -1254,6 +1254,15 @@ impl<'a> State<'a> {
             Fixity::None => (prec + 1, prec + 1),
         };
 
+        let left_prec = match (&lhs.node, op.node) {
+            // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
+            // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
+            // of `(x as i32) < ...`. We need to convince it _not_ to do that.
+            (&hir::ExprCast { .. }, hir::BinOp_::BiLt) |
+            (&hir::ExprCast { .. }, hir::BinOp_::BiShl) => parser::PREC_FORCE_PAREN,
+            _ => left_prec,
+        };
+
         self.print_expr_maybe_paren(lhs, left_prec)?;
         self.s.space()?;
         self.word_space(op.node.as_str())?;
