@@ -1050,6 +1050,35 @@ impl RegionKind {
 
         flags
     }
+
+    /// Given an early-bound or free region, returns the def-id where it was bound.
+    /// For example, consider the regions in this snippet of code:
+    ///
+    /// ```
+    /// impl<'a> Foo {
+    ///      ^^ -- early bound, declared on an impl
+    ///
+    ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
+    ///            ^^  ^^     ^ anonymous, late-bound
+    ///            |   early-bound, appears in where-clauses
+    ///            late-bound, appears only in fn args
+    ///     {..}
+    /// }
+    /// ```
+    ///
+    /// Here, `free_region_binding_scope('a)` would return the def-id
+    /// of the impl, and for all the other highlighted regions, it
+    /// would return the def-id of the function. In other cases (not shown), this
+    /// function might return the def-id of a closure.
+    pub fn free_region_binding_scope(&self, tcx: TyCtxt<'_, '_, '_>) -> DefId {
+        match self {
+            ty::ReEarlyBound(br) => {
+                tcx.parent_def_id(br.def_id).unwrap()
+            }
+            ty::ReFree(fr) => fr.scope,
+            _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
+        }
+    }
 }
 
 /// Type utilities
