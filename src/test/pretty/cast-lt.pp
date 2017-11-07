@@ -4,7 +4,7 @@
 use std::prelude::v1::*;
 #[macro_use]
 extern crate std as std;
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -17,8 +17,6 @@ extern crate std as std;
 // pretty-compare-only
 // pretty-mode:expanded
 // pp-exact:cast-lt.pp
-
-// #4264 fixed-length vector types
 
 macro_rules! negative(( $ e : expr ) => { $ e < 0 });
 
