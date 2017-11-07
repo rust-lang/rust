@@ -151,8 +151,7 @@ pub unsafe fn _mm_extract_epi64(a: i64x2, imm8: u8) -> i64 {
 /// Then zero elements according to `imm8`.
 ///
 /// `imm8` specifies which bits from operand `a` will be copied, which bits in
-/// the
-/// result they will be copied to, and which bits in the result will be
+/// the result they will be copied to, and which bits in the result will be
 /// cleared. The following assignments are made:
 ///
 /// * Bits `[7:6]` specify the bits to copy from operand `a`:
@@ -413,14 +412,14 @@ pub unsafe fn _mm_mullo_epi32 (a: i32x4, b:i32x4) -> i32x4 {
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
 /// zeros.
-/// 
+///
 /// Arguments:
-/// 
+///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
-/// 
+///
 /// Returns:
-/// 
+///
 /// * `1` - if the specified bits are all zeros,
 /// * `0` - otherwise.
 #[inline(always)]
@@ -435,12 +434,12 @@ pub unsafe fn _mm_testz_si128(a: i64x2, mask: i64x2) -> i32 {
 /// ones.
 ///
 /// Arguments:
-/// 
+///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
-/// 
+///
 /// Returns:
-/// 
+///
 /// * `1` - if the specified bits are all ones,
 /// * `0` - otherwise.
 #[inline(always)]
@@ -454,12 +453,12 @@ pub unsafe fn _mm_testc_si128(a: i64x2, mask: i64x2) -> i32 {
 /// neither all zeros nor all ones.
 ///
 /// Arguments:
-/// 
+///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
-/// 
+///
 /// Returns:
-/// 
+///
 /// * `1` - if the specified bits are neither all zeros nor all ones,
 /// * `0` - otherwise.
 #[inline(always)]
@@ -471,14 +470,14 @@ pub unsafe fn _mm_testnzc_si128(a: i64x2, mask: i64x2) -> i32 {
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
 /// zeros.
-/// 
+///
 /// Arguments:
-/// 
+///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
-/// 
+///
 /// Returns:
-/// 
+///
 /// * `1` - if the specified bits are all zeros,
 /// * `0` - otherwise.
 #[inline(always)]
@@ -490,13 +489,13 @@ pub unsafe fn _mm_test_all_zeros(a: i64x2, mask: i64x2) -> i32 {
 
 /// Tests whether the specified bits in `a` 128-bit integer vector are all
 /// ones.
-/// 
+///
 /// Argument:
-/// 
+///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
-/// 
+///
 /// Returns:
-///    
+///
 /// * `1` - if the bits specified in the operand are all set to 1,
 /// * `0` - otherwise.
 #[inline(always)]
@@ -511,12 +510,12 @@ pub unsafe fn _mm_test_all_ones(a: i64x2) -> i32 {
 /// neither all zeros nor all ones.
 ///
 /// Arguments:
-/// 
+///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in operand `a`.
-/// 
+///
 /// Returns:
-/// 
+///
 /// * `1` - if the specified bits are neither all zeros nor all ones,
 /// * `0` - otherwise.
 #[inline(always)]
@@ -768,11 +767,9 @@ pub unsafe fn _mm_round_ss(a: f32x4, b: f32x4, rounding: i32) -> f32x4 {
     constify_imm4!(rounding, call)
 }
 
-/// Finds the minimum u16 in the u16x8 vector, returning it in the first
-/// position of the result vector along with its index in the second position;
-/// all other elements are set to zero.
-///
-/// \headerfile <x86intrin.h>
+/// Finds the minimum unsigned 16-bit element in the 128-bit u16x8 vector,
+/// returning a vector containing its value in its first position, and its index
+/// in its second position; all other elements are set to zero.
 ///
 /// This intrinsic corresponds to the <c> VPHMINPOSUW / PHMINPOSUW </c>
 /// instruction.
@@ -815,6 +812,47 @@ pub unsafe fn _mm_mul_epi32(a: i32x4, b: i32x4) -> i64x2 {
 #[cfg_attr(test, assert_instr(pmulld))]
 pub unsafe fn _mm_mullo_epi32(a: i32x4, b: i32x4) -> i32x4 {
     a * b
+}
+
+/// Subtracts 8-bit unsigned integer values and computes the absolute
+/// values of the differences to the corresponding bits in the destination.
+/// Then sums of the absolute differences are returned according to the bit
+/// fields in the immediate operand.
+///
+/// The following algorithm is performed:
+///
+/// ```ignore
+/// i = imm8[2] * 4
+/// j = imm8[1:0] * 4
+/// for k := 0 to 7
+///     d0 = abs(a[i + k + 0] - b[j + 0])
+///     d1 = abs(a[i + k + 1] - b[j + 1])
+///     d2 = abs(a[i + k + 2] - b[j + 2])
+///     d3 = abs(a[i + k + 3] - b[j + 3])
+///     r[k] = d0 + d1 + d2 + d3
+/// ```
+///
+/// Arguments:
+///
+/// * `a` - A 128-bit vector of type `i8x16`.
+/// * `b` - A 128-bit vector of type `i8x16`.
+/// * `imm8` - An 8-bit immediate operand specifying how the absolute differences are to
+///            be calculated
+///     * Bit `[2]` specify the offset for operand `a`
+///     * Bits `[1:0]` specify the offset for operand `b`
+///
+/// Returns:
+///
+/// * A `i16x8` vector containing the sums of the sets of
+///   absolute differences between both operands.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(mpsadbw, imm8=0))]
+pub unsafe fn _mm_mpsadbw_epu8(a: i8x16, b: i8x16, imm8: u8) -> i16x8 {
+    macro_rules! call {
+        ($imm8:expr) => { mpsadbw(a, b, $imm8) }
+    }
+    constify_imm3!(imm8, call)
 }
 
 #[allow(improper_ctypes)]
@@ -875,6 +913,8 @@ extern "C" {
     fn phminposuw(a: u16x8) -> u16x8;
     #[link_name = "llvm.x86.sse41.pmuldq"]
     fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
+    #[link_name = "llvm.x86.sse41.mpsadbw"]
+    fn mpsadbw(a: i8x16, b: i8x16, imm8: u8) -> i16x8;
 }
 
 #[cfg(test)]
@@ -1579,6 +1619,31 @@ mod tests {
         let a = u16x8::new(8, 7, 6, 5, 4, 1, 2, 3);
         let r = sse41::_mm_minpos_epu16(a);
         let e = u16x8::splat(0).replace(0, 1).replace(1, 5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_mpsadbw_epu8() {
+        let a = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+
+        let r = sse41::_mm_mpsadbw_epu8(a, a, 0b000);
+        let e = i16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
+        assert_eq!(r, e);
+
+        let r = sse41::_mm_mpsadbw_epu8(a, a, 0b001);
+        let e = i16x8::new(16, 12, 8, 4, 0, 4, 8, 12);
+        assert_eq!(r, e);
+        
+        let r = sse41::_mm_mpsadbw_epu8(a, a, 0b100);
+        let e = i16x8::new(16, 20, 24, 28, 32, 36, 40, 44);
+        assert_eq!(r, e);
+
+        let r = sse41::_mm_mpsadbw_epu8(a, a, 0b101);
+        let e = i16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
+        assert_eq!(r, e);
+
+        let r = sse41::_mm_mpsadbw_epu8(a, a, 0b111);
+        let e = i16x8::new(32, 28, 24, 20, 16, 12, 8, 4);
         assert_eq!(r, e);
     }
 }

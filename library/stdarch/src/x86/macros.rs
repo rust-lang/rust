@@ -328,6 +328,22 @@ macro_rules! constify_imm4 {
     }
 }
 
+macro_rules! constify_imm3 {
+    ($imm8:expr, $expand:ident) => {
+        #[allow(overflowing_literals)]
+        match $imm8 & 0b111 {
+            0 => $expand!(0),
+            1 => $expand!(1),
+            2 => $expand!(2),
+            3 => $expand!(3),
+            4 => $expand!(4),
+            5 => $expand!(5),
+            6 => $expand!(6),
+            _ => $expand!(7),
+        }
+    }
+}
+
 macro_rules! constify_imm2 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
