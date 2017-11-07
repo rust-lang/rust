@@ -1,239 +1,227 @@
 # Type inference engine
 
-This is loosely based on standard HM-type inference, but with an
-extension to try and accommodate subtyping.  There is nothing
-principled about this extension; it's sound---I hope!---but it's a
-heuristic, ultimately, and does not guarantee that it finds a valid
-typing even if one exists (in fact, there are known scenarios where it
-fails, some of which may eventually become problematic).
+The type inference is based on standard HM-type inference, but
+extended in various way to accommodate subtyping, region inference,
+and higher-ranked types.
 
-## Key idea
+## A note on terminology
 
-The main change is that each type variable T is associated with a
-lower-bound L and an upper-bound U.  L and U begin as bottom and top,
-respectively, but gradually narrow in response to new constraints
-being introduced.  When a variable is finally resolved to a concrete
-type, it can (theoretically) select any type that is a supertype of L
-and a subtype of U.
+We use the notation `?T` to refer to inference variables, also called
+existential variables.
 
-There are several critical invariants which we maintain:
+We use the term "region" and "lifetime" interchangeably. Both refer to
+the `'a` in `&'a T`.
 
-- the upper-bound of a variable only becomes lower and the lower-bound
-  only becomes higher over time;
-- the lower-bound L is always a subtype of the upper bound U;
-- the lower-bound L and upper-bound U never refer to other type variables,
-  but only to types (though those types may contain type variables).
+The term "bound region" refers to regions bound in a function
+signature, such as the `'a` in `for<'a> fn(&'a u32)`. A region is
+"free" if it is not bound.
 
-> An aside: if the terms upper- and lower-bound confuse you, think of
-> "supertype" and "subtype".  The upper-bound is a "supertype"
-> (super=upper in Latin, or something like that anyway) and the lower-bound
-> is a "subtype" (sub=lower in Latin).  I find it helps to visualize
-> a simple class hierarchy, like Java minus interfaces and
-> primitive types.  The class Object is at the root (top) and other
-> types lie in between.  The bottom type is then the Null type.
-> So the tree looks like:
->
-> ```text
->         Object
->         /    \
->     String   Other
->         \    /
->         (null)
-> ```
->
-> So the upper bound type is the "supertype" and the lower bound is the
-> "subtype" (also, super and sub mean upper and lower in Latin, or something
-> like that anyway).
+## Creating an inference context
 
-## Satisfying constraints
-
-At a primitive level, there is only one form of constraint that the
-inference understands: a subtype relation.  So the outside world can
-say "make type A a subtype of type B".  If there are variables
-involved, the inferencer will adjust their upper- and lower-bounds as
-needed to ensure that this relation is satisfied. (We also allow "make
-type A equal to type B", but this is translated into "A <: B" and "B
-<: A")
-
-As stated above, we always maintain the invariant that type bounds
-never refer to other variables.  This keeps the inference relatively
-simple, avoiding the scenario of having a kind of graph where we have
-to pump constraints along and reach a fixed point, but it does impose
-some heuristics in the case where the user is relating two type
-variables A <: B.
-
-Combining two variables such that variable A will forever be a subtype
-of variable B is the trickiest part of the algorithm because there is
-often no right choice---that is, the right choice will depend on
-future constraints which we do not yet know. The problem comes about
-because both A and B have bounds that can be adjusted in the future.
-Let's look at some of the cases that can come up.
-
-Imagine, to start, the best case, where both A and B have an upper and
-lower bound (that is, the bounds are not top nor bot respectively). In
-that case, if we're lucky, A.ub <: B.lb, and so we know that whatever
-A and B should become, they will forever have the desired subtyping
-relation.  We can just leave things as they are.
-
-### Option 1: Unify
-
-However, suppose that A.ub is *not* a subtype of B.lb.  In
-that case, we must make a decision.  One option is to unify A
-and B so that they are one variable whose bounds are:
-
-    UB = GLB(A.ub, B.ub)
-    LB = LUB(A.lb, B.lb)
-
-(Note that we will have to verify that LB <: UB; if it does not, the
-types are not intersecting and there is an error) In that case, A <: B
-holds trivially because A==B.  However, we have now lost some
-flexibility, because perhaps the user intended for A and B to end up
-as different types and not the same type.
-
-Pictorially, what this does is to take two distinct variables with
-(hopefully not completely) distinct type ranges and produce one with
-the intersection.
-
-```text
-                  B.ub                  B.ub
-                   /\                    /
-           A.ub   /  \           A.ub   /
-           /   \ /    \              \ /
-          /     X      \              UB
-         /     / \      \            / \
-        /     /   /      \          /   /
-        \     \  /       /          \  /
-         \      X       /             LB
-          \    / \     /             / \
-           \  /   \   /             /   \
-           A.lb    B.lb          A.lb    B.lb
-```
-
-
-### Option 2: Relate UB/LB
-
-Another option is to keep A and B as distinct variables but set their
-bounds in such a way that, whatever happens, we know that A <: B will hold.
-This can be achieved by ensuring that A.ub <: B.lb.  In practice there
-are two ways to do that, depicted pictorially here:
-
-```text
-    Before                Option #1            Option #2
-
-             B.ub                B.ub                B.ub
-              /\                 /  \                /  \
-      A.ub   /  \        A.ub   /(B')\       A.ub   /(B')\
-      /   \ /    \           \ /     /           \ /     /
-     /     X      \         __UB____/             UB    /
-    /     / \      \       /  |                   |    /
-   /     /   /      \     /   |                   |   /
-   \     \  /       /    /(A')|                   |  /
-    \      X       /    /     LB            ______LB/
-     \    / \     /    /     / \           / (A')/ \
-      \  /   \   /     \    /   \          \    /   \
-      A.lb    B.lb       A.lb    B.lb        A.lb    B.lb
-```
-
-In these diagrams, UB and LB are defined as before.  As you can see,
-the new ranges `A'` and `B'` are quite different from the range that
-would be produced by unifying the variables.
-
-### What we do now
-
-Our current technique is to *try* (transactionally) to relate the
-existing bounds of A and B, if there are any (i.e., if `UB(A) != top
-&& LB(B) != bot`).  If that succeeds, we're done.  If it fails, then
-we merge A and B into same variable.
-
-This is not clearly the correct course.  For example, if `UB(A) !=
-top` but `LB(B) == bot`, we could conceivably set `LB(B)` to `UB(A)`
-and leave the variables unmerged.  This is sometimes the better
-course, it depends on the program.
-
-The main case which fails today that I would like to support is:
+You create and "enter" an inference context by doing something like
+the following:
 
 ```rust
-fn foo<T>(x: T, y: T) { ... }
-
-fn bar() {
-    let x: @mut int = @mut 3;
-    let y: @int = @3;
-    foo(x, y);
-}
+tcx.infer_ctxt().enter(|infcx| {
+    // use the inference context `infcx` in here
+})
 ```
 
-In principle, the inferencer ought to find that the parameter `T` to
-`foo(x, y)` is `@const int`.  Today, however, it does not; this is
-because the type variable `T` is merged with the type variable for
-`X`, and thus inherits its UB/LB of `@mut int`.  This leaves no
-flexibility for `T` to later adjust to accommodate `@int`.
+Each inference context creates a short-lived type arena to store the
+fresh types and things that it will create, as described in
+[the README in the ty module][ty-readme]. This arena is created by the `enter`
+function and disposed after it returns.
 
-Note: `@` and `@mut` are replaced with `Rc<T>` and `Rc<RefCell<T>>` in current Rust.
+[ty-readme]: src/librustc/ty/README.md
 
-### What to do when not all bounds are present
+Within the closure, the infcx will have the type `InferCtxt<'cx, 'gcx,
+'tcx>` for some fresh `'cx` and `'tcx` -- the latter corresponds to
+the lifetime of this temporary arena, and the `'cx` is the lifetime of
+the `InferCtxt` itself. (Again, see [that ty README][ty-readme] for
+more details on this setup.)
 
-In the prior discussion we assumed that A.ub was not top and B.lb was
-not bot.  Unfortunately this is rarely the case.  Often type variables
-have "lopsided" bounds.  For example, if a variable in the program has
-been initialized but has not been used, then its corresponding type
-variable will have a lower bound but no upper bound.  When that
-variable is then used, we would like to know its upper bound---but we
-don't have one!  In this case we'll do different things depending on
-how the variable is being used.
+The `tcx.infer_ctxt` method actually returns a build, which means
+there are some kinds of configuration you can do before the `infcx` is
+created. See `InferCtxtBuilder` for more information.
 
-## Transactional support
+## Inference variables
 
-Whenever we adjust merge variables or adjust their bounds, we always
-keep a record of the old value.  This allows the changes to be undone.
+The main purpose of the inference context is to house a bunch of
+**inference variables** -- these represent types or regions whose precise
+value is not yet known, but will be uncovered as we perform type-checking.
 
-## Regions
+If you're familiar with the basic ideas of unification from H-M type
+systems, or logic languages like Prolog, this is the same concept. If
+you're not, you might want to read a tutorial on how H-M type
+inference works, or perhaps this blog post on
+[unification in the Chalk project].
 
-I've only talked about type variables here, but region variables
-follow the same principle.  They have upper- and lower-bounds.  A
-region A is a subregion of a region B if A being valid implies that B
-is valid.  This basically corresponds to the block nesting structure:
-the regions for outer block scopes are superregions of those for inner
-block scopes.
+[Unification in the Chalk project]: http://smallcultfollowing.com/babysteps/blog/2017/03/25/unification-in-chalk-part-1/
 
-## Integral and floating-point type variables
+All told, the inference context stores four kinds of inference variables as of this
+writing:
 
-There is a third variety of type variable that we use only for
-inferring the types of unsuffixed integer literals.  Integral type
-variables differ from general-purpose type variables in that there's
-no subtyping relationship among the various integral types, so instead
-of associating each variable with an upper and lower bound, we just
-use simple unification.  Each integer variable is associated with at
-most one integer type.  Floating point types are handled similarly to
-integral types.
+- Type variables, which come in three varieties:
+  - General type variables (the most common). These can be unified with any type.
+  - Integral type variables, which can only be unified with an integral type, and
+    arise from an integer literal expression like `22`.
+  - Float type variables, which can only be unified with a float type, and
+    arise from a float literal expression like `22.0`.
+- Region variables, which represent lifetimes, and arise all over the dang place.
 
-## GLB/LUB
+All the type variables work in much the same way: you can create a new
+type variable, and what you get is `Ty<'tcx>` representing an
+unresolved type `?T`. Then later you can apply the various operations
+that the inferencer supports, such as equality or subtyping, and it
+will possibly **instantiate** (or **bind**) that `?T` to a specific
+value as a result.
 
-Computing the greatest-lower-bound and least-upper-bound of two
-types/regions is generally straightforward except when type variables
-are involved. In that case, we follow a similar "try to use the bounds
-when possible but otherwise merge the variables" strategy.  In other
-words, `GLB(A, B)` where `A` and `B` are variables will often result
-in `A` and `B` being merged and the result being `A`.
+The region variables work somewhat differently, and are described
+below in a separate section.
 
-## Type coercion
+## Enforcing equality / subtyping
 
-We have a notion of assignability which differs somewhat from
-subtyping; in particular it may cause region borrowing to occur.  See
-the big comment later in this file on Type Coercion for specifics.
+The most basic operations you can perform in the type inferencer is
+**equality**, which forces two types `T` and `U` to be the same. The
+recommended way to add an equality constraint is using the `at`
+method, roughly like so:
 
-### In conclusion
+```
+infcx.at(...).eq(t, u);
+```
 
-I showed you three ways to relate `A` and `B`.  There are also more,
-of course, though I'm not sure if there are any more sensible options.
-The main point is that there are various options, each of which
-produce a distinct range of types for `A` and `B`.  Depending on what
-the correct values for A and B are, one of these options will be the
-right choice: but of course we don't know the right values for A and B
-yet, that's what we're trying to find!  In our code, we opt to unify
-(Option #1).
+The first `at()` call provides a bit of context, i.e., why you are
+doing this unification, and in what environment, and the `eq` method
+performs the actual equality constraint.
 
-# Implementation details
+When you equate things, you force them to be precisely equal. Equating
+returns a `InferResult` -- if it returns `Err(err)`, then equating
+failed, and the enclosing `TypeError` will tell you what went wrong.
 
-We make use of a trait-like implementation strategy to consolidate
-duplicated code between subtypes, GLB, and LUB computations.  See the
-section on "Type Combining" in combine.rs for more details.
+The success case is perhaps more interesting. The "primary" return
+type of `eq` is `()` -- that is, when it succeeds, it doesn't return a
+value of any particular interest. Rather, it is executed for its
+side-effects of constraining type variables and so forth. However, the
+actual return type is not `()`, but rather `InferOk<()>`. The
+`InferOk` type is used to carry extra trait obligations -- your job is
+to ensure that these are fulfilled (typically by enrolling them in a
+fulfillment context). See the [trait README] for more background here.
+
+[trait README]: ../traits/README.md
+
+You can also enforce subtyping through `infcx.at(..).sub(..)`. The same
+basic concepts apply as above.
+
+## "Trying" equality
+
+Sometimes you would like to know if it is *possible* to equate two
+types without error.  You can test that with `infcx.can_eq` (or
+`infcx.can_sub` for subtyping). If this returns `Ok`, then equality
+is possible -- but in all cases, any side-effects are reversed.
+
+Be aware though that the success or failure of these methods is always
+**modulo regions**. That is, two types `&'a u32` and `&'b u32` will
+return `Ok` for `can_eq`, even if `'a != 'b`.  This falls out from the
+"two-phase" nature of how we solve region constraints.
+
+## Snapshots
+
+As described in the previous section on `can_eq`, often it is useful
+to be able to do a series of operations and then roll back their
+side-effects. This is done for various reasons: one of them is to be
+able to backtrack, trying out multiple possibilities before settling
+on which path to take. Another is in order to ensure that a series of
+smaller changes take place atomically or not at all.
+
+To allow for this, the inference context supports a `snapshot` method.
+When you call it, it will start recording changes that occur from the
+operations you perform. When you are done, you can either invoke
+`rollback_to`, which will undo those changes, or else `confirm`, which
+will make the permanent. Snapshots can be nested as long as you follow
+a stack-like discipline.
+
+Rather than use snapshots directly, it is often helpful to use the
+methods like `commit_if_ok` or `probe` that encapsulte higher-level
+patterns.
+
+## Subtyping obligations
+
+One thing worth discussing are subtyping obligations. When you force
+two types to be a subtype, like `?T <: i32`, we can often convert those
+into equality constraints. This follows from Rust's rather limited notion
+of subtyping: so, in the above case, `?T <: i32` is equivalent to `?T = i32`.
+
+However, in some cases we have to be more careful. For example, when
+regions are involved. So if you have `?T <: &'a i32`, what we would do
+is to first "generalize" `&'a i32` into a type with a region variable:
+`&'?b i32`, and then unify `?T` with that (`?T = &'?b i32`). We then
+relate this new variable with the original bound:
+
+    &'?b i32 <: &'a i32
+    
+This will result in a region constraint (see below) of `'?b: 'a`.
+
+One final interesting case is relating two unbound type variables,
+like `?T <: ?U`.  In that case, we can't make progress, so we enqueue
+an obligation `Subtype(?T, ?U)` and return it via the `InferOk`
+mechanism. You'll have to try again when more details about `?T` or
+`?U` are known.
+
+## Region constraints
+
+Regions are inferred somewhat differently from types. Rather than
+eagerly unifying things, we simply collect constraints as we go, but
+make (almost) no attempt to solve regions. These constraints have the
+form of an outlives constraint:
+
+    'a: 'b
+    
+Actually the code tends to view them as a subregion relation, but it's the same
+idea:
+
+    'b <= 'a
+
+(There are various other kinds of constriants, such as "verifys"; see
+the `region_constraints` module for details.)
+
+There is one case where we do some amount of eager unification. If you have an equality constraint
+between two regions
+
+    'a = 'b
+    
+we will record that fact in a unification table. You can then use
+`opportunistic_resolve_var` to convert `'b` to `'a` (or vice
+versa). This is sometimes needed to ensure termination of fixed-point
+algorithms.
+
+## Extracting region constraints
+
+Ultimately, region constraints are only solved at the very end of
+type-checking, once all other constraints are known. There are two
+ways to solve region constraints right now: lexical and
+non-lexical. Eventually there will only be one.
+
+To solve **lexical** region constraints, you invoke
+`resolve_regions_and_report_errors`.  This will "close" the region
+constraint process and invoke the `lexical_region_resolve` code. Once
+this is done, any further attempt to equate or create a subtyping
+relationship will yield an ICE.
+
+Non-lexical region constraints are not handled within the inference
+context. Instead, the NLL solver (actually, the MIR type-checker)
+invokes `take_and_reset_region_constraints` periodically. This
+extracts all of the outlives constraints from the region solver, but
+leaves the set of variables intact. This is used to get *just* the
+region constraints that resulted from some particular point in the
+program, since the NLL solver needs to know not just *what* regions
+were subregions but *where*. Finally, the NLL solver invokes
+`take_region_var_origins`, which "closes" the region constraint
+process in the same way as normal solving.
+
+## Lexical region resolution
+
+Lexical region resolution is done by initially assigning each region
+variable to an empty value. We then process each outlives constraint
+repeatedly, growing region variables until a fixed-point is reached.
+Region variables can be grown using a least-upper-bound relation on
+the region lattice in a fairly straight-forward fashion.
