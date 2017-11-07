@@ -327,7 +327,8 @@ macro_rules! define_maps {
                         return Self::load_from_disk_and_cache_in_memory(tcx,
                                                                         key,
                                                                         span,
-                                                                        dep_node_index)
+                                                                        dep_node_index,
+                                                                        &dep_node)
                     }
                 }
 
@@ -372,7 +373,8 @@ macro_rules! define_maps {
             fn load_from_disk_and_cache_in_memory(tcx: TyCtxt<'a, $tcx, 'lcx>,
                                                   key: $K,
                                                   span: Span,
-                                                  dep_node_index: DepNodeIndex)
+                                                  dep_node_index: DepNodeIndex,
+                                                  dep_node: &DepNode)
                                                   -> Result<$V, CycleError<'a, $tcx>>
             {
                 debug_assert!(tcx.dep_graph.is_green(dep_node_index));
@@ -389,6 +391,32 @@ macro_rules! define_maps {
                         })
                     })
                 })?;
+
+                // If -Zincremental-verify-ich is specified, re-hash results from
+                // the cache and make sure that they have the expected fingerprint.
+                if tcx.sess.opts.debugging_opts.incremental_verify_ich {
+                    use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+                    use ich::Fingerprint;
+
+                    assert!(Some(tcx.dep_graph.fingerprint_of(dep_node)) ==
+                            tcx.dep_graph.prev_fingerprint_of(dep_node),
+                            "Fingerprint for green query instance not loaded \
+                             from cache: {:?}", dep_node);
+
+                    debug!("BEGIN verify_ich({:?})", dep_node);
+                    let mut hcx = tcx.create_stable_hashing_context();
+                    let mut hasher = StableHasher::new();
+
+                    result.hash_stable(&mut hcx, &mut hasher);
+
+                    let new_hash: Fingerprint = hasher.finish();
+                    debug!("END verify_ich({:?})", dep_node);
+
+                    let old_hash = tcx.dep_graph.fingerprint_of(dep_node);
+
+                    assert!(new_hash == old_hash, "Found unstable fingerprints \
+                        for {:?}", dep_node);
+                }
 
                 if tcx.sess.opts.debugging_opts.query_dep_graph {
                     tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
