@@ -177,13 +177,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             ty::ReEarlyBound(_) |
             ty::ReFree(_) => {
-                let scope = match *region {
-                    ty::ReEarlyBound(ref br) => {
-                        self.parent_def_id(br.def_id).unwrap()
-                    }
-                    ty::ReFree(ref fr) => fr.scope,
-                    _ => bug!()
-                };
+                let scope = region.free_region_binding_scope(self);
                 let prefix = match *region {
                     ty::ReEarlyBound(ref br) => {
                         format!("the lifetime {} as defined on", br.name)
