@@ -785,21 +785,19 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
     }
 
+    fn dump_path_ref(&mut self, id: NodeId, path: &ast::Path) {
+        let path_data = self.save_ctxt.get_path_data(id, path);
+        if let Some(path_data) = path_data {
+            self.dumper.dump_ref(path_data);
+        }
+    }
+
     fn process_path(&mut self, id: NodeId, path: &'l ast::Path) {
         debug!("process_path {:?}", path);
-        let path_data = self.save_ctxt.get_path_data(id, path);
-        if generated_code(path.span) && path_data.is_none() {
+        if generated_code(path.span) {
             return;
         }
-
-        let path_data = match path_data {
-            Some(pd) => pd,
-            None => {
-                return;
-            }
-        };
-
-        self.dumper.dump_ref(path_data);
+        self.dump_path_ref(id, path);
 
         // Type parameters
         for seg in &path.segments {
@@ -1507,6 +1505,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                             attributes:vec![],
                         });
                     }
+                }
+                HirDef::StructCtor(..) | HirDef::VariantCtor(..) |
+                HirDef::Const(..) | HirDef::AssociatedConst(..) |
+                HirDef::Struct(..) | HirDef::Variant(..) |
+                HirDef::TyAlias(..) | HirDef::AssociatedTy(..) |
+                HirDef::SelfTy(..) => {
+                    self.dump_path_ref(id, &ast::Path::from_ident(sp, i));
                 }
                 def => error!("unexpected definition kind when processing collected idents: {:?}",
                               def),
