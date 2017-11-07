@@ -125,6 +125,12 @@ pub fn provide_local(providers: &mut Providers) {
                               None,
                               SymbolExportLevel::Rust));
         }
+
+        // Sort so we get a stable incr. comp. hash.
+        local_crate.sort_unstable_by(|&(ref name1, ..), &(ref name2, ..)| {
+            name1.cmp(name2)
+        });
+
         Arc::new(local_crate)
     };
 }
@@ -148,7 +154,7 @@ pub fn provide_extern(providers: &mut Providers) {
         let special_runtime_crate =
             tcx.is_panic_runtime(cnum) || tcx.is_compiler_builtins(cnum);
 
-        let crate_exports = tcx
+        let mut crate_exports: Vec<_> = tcx
             .exported_symbol_ids(cnum)
             .iter()
             .map(|&def_id| {
@@ -175,6 +181,11 @@ pub fn provide_extern(providers: &mut Providers) {
                 (str::to_owned(&name), Some(def_id), export_level)
             })
             .collect();
+
+        // Sort so we get a stable incr. comp. hash.
+        crate_exports.sort_unstable_by(|&(ref name1, ..), &(ref name2, ..)| {
+            name1.cmp(name2)
+        });
 
         Arc::new(crate_exports)
     };
