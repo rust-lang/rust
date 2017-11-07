@@ -660,6 +660,11 @@ pub trait Iterator {
     /// current index of iteration and `val` is the value returned by the
     /// iterator.
     ///
+    /// The index of iteration starts at zero.
+    /// To count from a different value, see [`enumerate_from`].
+    ///
+    /// [`enumerate_from`]: ../../std/iter/trait.Iterator.html#method.enumerate_from
+    ///
     /// `enumerate()` keeps its count as a [`usize`]. If you want to count by a
     /// different sized integer, the [`zip`] function provides similar
     /// functionality.
@@ -695,6 +700,49 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn enumerate(self) -> Enumerate<Self> where Self: Sized {
         Enumerate { iter: self, count: 0 }
+    }
+
+    /// Creates an iterator which gives the current iteration count,
+    /// starting with `first`,
+    /// as well as the next value.
+    ///
+    /// When `first` is zero this is equivalent to [`enumerate`].
+    ///
+    /// [`enumerate`]: ../../std/iter/trait.Iterator.html#method.enumerate
+    ///
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so enumerating
+    /// beyond index [`usize::MAX`] either produces the wrong result or panics.
+    /// If debug assertions are enabled, a panic is guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// The returned iterator might panic if the to-be-returned index would
+    /// overflow a [`usize`].
+    ///
+    /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
+    /// [`usize`]: ../../std/primitive.usize.html
+    /// [`zip`]: #method.zip
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(enumerate_from)]
+    ///
+    /// let a = ['a', 'b', 'c'];
+    ///
+    /// let mut iter = a.iter().enumerate_from(1);
+    ///
+    /// assert_eq!(iter.next(), Some((1, &'a')));
+    /// assert_eq!(iter.next(), Some((2, &'b')));
+    /// assert_eq!(iter.next(), Some((3, &'c')));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "enumerate_from", issue = /* FIXME */ "0")]
+    fn enumerate_from(self, first: usize) -> Enumerate<Self> where Self: Sized {
+        Enumerate { iter: self, count: first }
     }
 
     /// Creates an iterator which can use `peek` to look at the next element of
