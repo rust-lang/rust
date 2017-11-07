@@ -517,8 +517,10 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
-        if self.is_null() {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
+        // Check for null via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        if (self as *const u8).is_null() {
             None
         } else {
             Some(&*self)
@@ -1148,8 +1150,10 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
-        if self.is_null() {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
+        // Check for null via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        if (self as *const u8).is_null() {
             None
         } else {
             Some(&*self)
@@ -1272,8 +1276,10 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> where T: Sized {
-        if self.is_null() {
+    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
+        // Check for null via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        if (self as *mut u8).is_null() {
             None
         } else {
             Some(&mut *self)
