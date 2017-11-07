@@ -22,7 +22,7 @@ use rustc::middle::lang_items;
 use syntax::ast;
 use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
@@ -489,7 +489,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 fcx.tcx.sess.diagnostic().mut_span_err(span, &format!("invalid `self` type: {:?}", self_arg_ty))
                 .note(&format!("type must be `{:?}` or a type that dereferences to it`", self_ty))
                 .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
-                .code("E0307".into())
+                .code(DiagnosticId::Error("E0307".into()))
                 .emit();
                 break
             }
