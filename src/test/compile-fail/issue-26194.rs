@@ -13,6 +13,7 @@ struct S(String);
 impl S {
     fn f(self: *mut S) -> String { self.0 }
     //~^ ERROR invalid `self` type
+    //~| ERROR arbitrary `self` types are unstable
 }
 
 fn main() { S("".to_owned()).f(); }
