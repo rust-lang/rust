@@ -391,10 +391,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         traits::ObligationCause::misc(span, self.body_id)
     }
 
-    fn fully_perform_op<OP, R>(&self,
-                               op: OP)
-                               -> Result<R, TypeError<'tcx>>
-        where OP: FnOnce() -> InferResult<'tcx, R>
+    fn fully_perform_op<OP, R>(&self, op: OP) -> Result<R, TypeError<'tcx>>
+    where
+        OP: FnOnce() -> InferResult<'tcx, R>,
     {
         let mut fulfill_cx = FulfillmentContext::new();
         let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op())?;
@@ -405,12 +404,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         Ok(value)
     }
 
-    fn sub_types(
-        &self,
-        sub: Ty<'tcx>,
-        sup: Ty<'tcx>,
-        _at_location: Location,
-    ) -> UnitResult<'tcx> {
+    fn sub_types(&self, sub: Ty<'tcx>, sup: Ty<'tcx>, _at_location: Location) -> UnitResult<'tcx> {
         self.fully_perform_op(|| {
             self.infcx
                 .at(&self.misc(self.last_span), self.param_env)
