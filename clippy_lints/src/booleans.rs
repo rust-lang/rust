@@ -44,6 +44,13 @@ declare_lint! {
     "boolean expressions that contain terminals which can be eliminated"
 }
 
+const METHODS_WITH_NEGATION: [(&str, &str); 4] = [
+    ("is_some", "is_none"),
+    ("is_none", "is_some"),
+    ("is_err", "is_ok"),
+    ("is_ok", "is_err"),
+];
+
 #[derive(Copy, Clone)]
 pub struct NonminimalBool;
 
@@ -396,6 +403,28 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             }
         }
     }
+
+    fn handle_method_call_in_not(&mut self, e: &'tcx Expr, inner: &'tcx Expr) {
+        if let ExprMethodCall(ref path, _, _) = inner.node {
+            METHODS_WITH_NEGATION.iter().for_each(|&(method, negation_method)| {
+                if method == path.name.as_str() {
+                    span_lint_and_then(
+                        self.cx,
+                        NONMINIMAL_BOOL,
+                        e.span,
+                        "this boolean expression can be simplified",
+                        |db| {
+                            db.span_suggestion(
+                                e.span,
+                                "try",
+                                negation_method.to_owned()
+                            );
+                        }
+                    )
+                }
+            })
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
@@ -406,6 +435,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
         match e.node {
             ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
             ExprUnary(UnNot, ref inner) => if self.cx.tables.node_types()[inner.hir_id].is_bool() {
+                self.handle_method_call_in_not(e, inner);
                 self.bool_expr(e);
             } else {
                 walk_expr(self, e);
