@@ -23,9 +23,8 @@ use comment::{contains_comment, recover_missing_comment_in_span, remove_trailing
               CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
-use items::{format_impl, format_struct, format_struct_struct, format_trait,
-            rewrite_associated_impl_type, rewrite_associated_type, rewrite_static,
-            rewrite_type_alias, FnSig};
+use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
+            rewrite_type_alias, FnSig, StaticParts, StructParts};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
@@ -197,12 +196,11 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
-        if unindent_comment {
+        let unindent_comment = (self.is_if_else_block && !b.stmts.is_empty()) && {
             let end_pos = source!(self, b.span).hi() - brace_compensation - remove_len;
             let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
-            unindent_comment = snippet.contains("//") || snippet.contains("/*");
-        }
+            snippet.contains("//") || snippet.contains("/*")
+        };
         // FIXME: we should compress any newlines here to just one
         if unindent_comment {
             self.block_indent = self.block_indent.block_unindent(self.config);
@@ -243,24 +241,13 @@ impl<'a> FmtVisitor<'a> {
         generics: &ast::Generics,
         fd: &ast::FnDecl,
         s: Span,
-        _: ast::NodeId,
         defaultness: ast::Defaultness,
         inner_attrs: Option<&[ast::Attribute]>,
     ) {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, _, _, _, _, b) => {
-                block = b;
-                self.rewrite_fn(
-                    indent,
-                    ident,
-                    &FnSig::from_fn_kind(&fk, generics, fd, defaultness),
-                    mk_sp(s.lo(), b.span.lo()),
-                    b,
-                )
-            }
-            visit::FnKind::Method(ident, _, _, b) => {
+            visit::FnKind::ItemFn(ident, _, _, _, _, b) | visit::FnKind::Method(ident, _, _, b) => {
                 block = b;
                 self.rewrite_fn(
                     indent,
@@ -357,22 +344,8 @@ impl<'a> FmtVisitor<'a> {
                 let rw = rewrite_extern_crate(&self.get_context(), item);
                 self.push_rewrite(item.span, rw);
             }
-            ast::ItemKind::Struct(ref def, ref generics) => {
-                let rewrite = format_struct(
-                    &self.get_context(),
-                    "struct ",
-                    item.ident,
-                    &item.vis,
-                    def,
-                    Some(generics),
-                    item.span,
-                    self.block_indent,
-                    None,
-                ).map(|s| match *def {
-                    ast::VariantData::Tuple(..) => s + ";",
-                    _ => s,
-                });
-                self.push_rewrite(item.span, rewrite);
+            ast::ItemKind::Struct(..) | ast::ItemKind::Union(..) => {
+                self.visit_struct(&StructParts::from_item(item));
             }
             ast::ItemKind::Enum(ref def, ref generics) => {
                 self.format_missing_with_indent(source!(self, item.span).lo());
@@ -390,33 +363,8 @@ impl<'a> FmtVisitor<'a> {
                 self.format_missing_with_indent(source!(self, item.span).lo());
                 self.format_foreign_mod(foreign_mod, item.span);
             }
-            ast::ItemKind::Static(ref ty, mutability, ref expr) => {
-                let rewrite = rewrite_static(
-                    "static",
-                    &item.vis,
-                    item.ident,
-                    ty,
-                    mutability,
-                    Some(expr),
-                    self.block_indent,
-                    item.span,
-                    &self.get_context(),
-                );
-                self.push_rewrite(item.span, rewrite);
-            }
-            ast::ItemKind::Const(ref ty, ref expr) => {
-                let rewrite = rewrite_static(
-                    "const",
-                    &item.vis,
-                    item.ident,
-                    ty,
-                    ast::Mutability::Immutable,
-                    Some(expr),
-                    self.block_indent,
-                    item.span,
-                    &self.get_context(),
-                );
-                self.push_rewrite(item.span, rewrite);
+            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
+                self.visit_static(&StaticParts::from_item(item));
             }
             ast::ItemKind::AutoImpl(..) => {
                 // FIXME(#78): format impl definitions.
@@ -427,7 +375,6 @@ impl<'a> FmtVisitor<'a> {
                     generics,
                     decl,
                     item.span,
-                    item.id,
                     ast::Defaultness::Final,
                     Some(&item.attrs),
                 )
@@ -441,20 +388,6 @@ impl<'a> FmtVisitor<'a> {
                     generics,
                     &item.vis,
                     item.span,
-                );
-                self.push_rewrite(item.span, rewrite);
-            }
-            ast::ItemKind::Union(ref def, ref generics) => {
-                let rewrite = format_struct_struct(
-                    &self.get_context(),
-                    "union ",
-                    item.ident,
-                    &item.vis,
-                    def.fields(),
-                    Some(generics),
-                    item.span,
-                    self.block_indent,
-                    None,
                 );
                 self.push_rewrite(item.span, rewrite);
             }
@@ -479,20 +412,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match ti.node {
-            ast::TraitItemKind::Const(ref ty, ref expr_opt) => {
-                let rewrite = rewrite_static(
-                    "const",
-                    &ast::Visibility::Inherited,
-                    ti.ident,
-                    ty,
-                    ast::Mutability::Immutable,
-                    expr_opt.as_ref(),
-                    self.block_indent,
-                    ti.span,
-                    &self.get_context(),
-                );
-                self.push_rewrite(ti.span, rewrite);
-            }
+            ast::TraitItemKind::Const(..) => self.visit_static(&StaticParts::from_trait_item(ti)),
             ast::TraitItemKind::Method(ref sig, None) => {
                 let indent = self.block_indent;
                 let rewrite =
@@ -505,7 +425,6 @@ impl<'a> FmtVisitor<'a> {
                     &ti.generics,
                     &sig.decl,
                     ti.span,
-                    ti.id,
                     ast::Defaultness::Final,
                     Some(&ti.attrs),
                 );
@@ -541,25 +460,11 @@ impl<'a> FmtVisitor<'a> {
                     &ii.generics,
                     &sig.decl,
                     ii.span,
-                    ii.id,
                     ii.defaultness,
                     Some(&ii.attrs),
                 );
             }
-            ast::ImplItemKind::Const(ref ty, ref expr) => {
-                let rewrite = rewrite_static(
-                    "const",
-                    &ii.vis,
-                    ii.ident,
-                    ty,
-                    ast::Mutability::Immutable,
-                    Some(expr),
-                    self.block_indent,
-                    ii.span,
-                    &self.get_context(),
-                );
-                self.push_rewrite(ii.span, rewrite);
-            }
+            ast::ImplItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
             ast::ImplItemKind::Type(ref ty) => {
                 let rewrite = rewrite_associated_impl_type(
                     ii.ident,

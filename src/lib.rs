@@ -10,6 +10,8 @@
 
 #![feature(rustc_private)]
 
+#[macro_use]
+extern crate derive_new;
 extern crate diff;
 #[macro_use]
 extern crate log;
@@ -307,7 +309,7 @@ where
     // We always skip children for the "Plain" write mode, since there is
     // nothing to distinguish the nested module contents.
     let skip_children = config.skip_children() || config.write_mode() == config::WriteMode::Plain;
-    for (path, module) in modules::list_files(krate, parse_session.codemap()) {
+    for (path, module) in modules::list_files(krate, parse_session.codemap())? {
         if skip_children && path.as_path() != main_file {
             continue;
         }

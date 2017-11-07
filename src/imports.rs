@@ -75,11 +75,11 @@ fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Orde
 }
 
 fn compare_path_list_item_lists(
-    a_items: &Vec<ast::PathListItem>,
-    b_items: &Vec<ast::PathListItem>,
+    a_items: &[ast::PathListItem],
+    b_items: &[ast::PathListItem],
 ) -> Ordering {
-    let mut a = a_items.clone();
-    let mut b = b_items.clone();
+    let mut a = a_items.to_owned();
+    let mut b = b_items.to_owned();
     a.sort_by(|a, b| compare_path_list_items(a, b));
     b.sort_by(|a, b| compare_path_list_items(a, b));
     for comparison_pair in a.iter().zip(b.iter()) {
@@ -94,15 +94,14 @@ fn compare_path_list_item_lists(
 fn compare_view_path_types(a: &ast::ViewPath_, b: &ast::ViewPath_) -> Ordering {
     use syntax::ast::ViewPath_::*;
     match (a, b) {
-        (&ViewPathSimple(..), &ViewPathSimple(..)) => Ordering::Equal,
-        (&ViewPathSimple(..), _) => Ordering::Less,
-        (&ViewPathGlob(_), &ViewPathSimple(..)) => Ordering::Greater,
-        (&ViewPathGlob(_), &ViewPathGlob(_)) => Ordering::Equal,
-        (&ViewPathGlob(_), &ViewPathList(..)) => Ordering::Less,
+        (&ViewPathSimple(..), &ViewPathSimple(..)) | (&ViewPathGlob(_), &ViewPathGlob(_)) => {
+            Ordering::Equal
+        }
+        (&ViewPathSimple(..), _) | (&ViewPathGlob(_), &ViewPathList(..)) => Ordering::Less,
         (&ViewPathList(_, ref a_items), &ViewPathList(_, ref b_items)) => {
             compare_path_list_item_lists(a_items, b_items)
         }
-        (&ViewPathList(..), _) => Ordering::Greater,
+        (&ViewPathGlob(_), &ViewPathSimple(..)) | (&ViewPathList(..), _) => Ordering::Greater,
     }
 }
 
@@ -293,7 +292,7 @@ impl<'a> FmtVisitor<'a> {
             }
             Some(ref s) => {
                 self.format_missing_with_indent(source!(self, span).lo());
-                self.buffer.push_str(&s);
+                self.buffer.push_str(s);
                 self.last_pos = source!(self, span).hi();
             }
             None => {

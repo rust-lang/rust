@@ -254,15 +254,15 @@ fn extract_target_from_package(package: &Value) -> Option<Vec<Target>> {
     let jtargets = get_json_array_with(package, "targets")?;
     let mut targets: Vec<Target> = vec![];
     for jtarget in jtargets {
-        targets.push(Target::from_json(&jtarget)?);
+        targets.push(Target::from_json(jtarget)?);
     }
     Some(targets)
 }
 
-fn filter_packages_with_hitlist<'a>(
+fn filter_packages_with_hitlist(
     packages: Vec<Value>,
-    workspace_hitlist: &'a WorkspaceHitlist,
-) -> Result<Vec<Value>, &'a String> {
+    workspace_hitlist: &WorkspaceHitlist,
+) -> Result<Vec<Value>, &String> {
     let some_hitlist: Option<HashSet<&String>> =
         workspace_hitlist.get_some().map(HashSet::from_iter);
     if some_hitlist.is_none() {
@@ -387,7 +387,7 @@ fn format_files(
         for f in files {
             print!(" {}", f.display());
         }
-        println!("");
+        println!();
     }
     let mut command = Command::new("rustfmt")
         .stdout(stdout)

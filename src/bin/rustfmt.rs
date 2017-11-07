@@ -73,9 +73,9 @@ impl CliOptions {
             .map(|c| c == "nightly")
             .unwrap_or(false);
         if unstable_features && !rust_nightly {
-            return Err(FmtError::from(format!(
-                "Unstable features are only available on Nightly channel"
-            )));
+            return Err(FmtError::from(
+                "Unstable features are only available on Nightly channel",
+            ));
         } else {
             options.unstable_features = unstable_features;
         }
