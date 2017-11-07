@@ -92,8 +92,15 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         let is_arg = match ty_context {
             TyContext::LocalDecl { local, .. } => self.is_argument_or_return_slot(local),
-            _ => false,
+            TyContext::ReturnTy(..) => true,
+            TyContext::Location(..) => false,
         };
+        debug!(
+            "visit_ty(ty={:?}, is_arg={:?}, ty_context={:?})",
+            ty,
+            is_arg,
+            ty_context
+        );
 
         let old_ty = *ty;
         *ty = if is_arg {
@@ -101,6 +108,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         } else {
             self.renumber_regions(ty_context, &old_ty)
         };
+        debug!("visit_ty: ty={:?}", ty);
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
