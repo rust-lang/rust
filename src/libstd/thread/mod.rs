@@ -25,11 +25,15 @@
 //!
 //! Fatal logic errors in Rust cause *thread panic*, during which
 //! a thread will unwind the stack, running destructors and freeing
-//! owned resources. Thread panic is unrecoverable from within
-//! the panicking thread (i.e. there is no 'try/catch' in Rust), but
-//! the panic may optionally be detected from a different thread. If
-//! the main thread panics, the application will exit with a non-zero
-//! exit code.
+//! owned resources. While not meant as a 'try/catch' mechanism, panics
+//! in Rust can nonetheless be caught (unless compiling with `panic=abort`) with
+//! [`catch_unwind`](../../std/panic/fn.catch_unwind.html) and recovered
+//! from, or alternatively be resumed with
+//! [`resume_unwind`](../../std/panic/fn.resume_unwind.html). If the panic
+//! is not caught the thread will exit, but the panic may optionally be
+//! detected from a different thread with [`join`]. If the main thread panics
+//! without the panic being caught, the application will exit with a
+//! non-zero exit code.
 //!
 //! When the main thread of a Rust program terminates, the entire program shuts
 //! down, even if other threads are still running. However, this module provides

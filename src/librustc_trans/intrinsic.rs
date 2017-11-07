@@ -1203,7 +1203,8 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         simd_add: TyUint, TyInt => add, TyFloat => fadd;
         simd_sub: TyUint, TyInt => sub, TyFloat => fsub;
         simd_mul: TyUint, TyInt => mul, TyFloat => fmul;
-        simd_div: TyFloat => fdiv;
+        simd_div: TyUint => udiv, TyInt => sdiv, TyFloat => fdiv;
+        simd_rem: TyUint => urem, TyInt => srem, TyFloat => frem;
         simd_shl: TyUint, TyInt => shl;
         simd_shr: TyUint => lshr, TyInt => ashr;
         simd_and: TyUint, TyInt => and;
