@@ -899,7 +899,7 @@ pub struct RegionVid {
     pub index: u32,
 }
 
-// TODO after rebasing, should be able to use `newtype_index!`
+// FIXME: We could convert this to use `newtype_index!`
 impl Idx for RegionVid {
     fn new(value: usize) -> Self {
         assert!(value < ::std::u32::MAX as usize);
