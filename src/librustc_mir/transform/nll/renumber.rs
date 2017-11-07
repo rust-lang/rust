@@ -11,7 +11,7 @@
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, ClosureSubsts, RegionVid, Ty, TypeFoldable};
-use rustc::mir::{BasicBlock, Local, Location, Mir, Rvalue, Statement, StatementKind};
+use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
@@ -35,6 +35,10 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
             r
         })
         .collect();
+
+    debug!("renumber_mir()");
+    debug!("renumber_mir: free_regions={:#?}", free_regions);
+    debug!("renumber_mir: mir.arg_count={:?}", mir.arg_count);
 
     let mut visitor = NLLVisitor {
         infcx,
@@ -60,6 +64,8 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!("renumber_regions(value={:?})", value);
+
         self.infcx
             .tcx
             .fold_regions(value, &mut false, |_region, _depth| {
@@ -74,6 +80,8 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!("renumber_free_regions(value={:?})", value);
+
         self.infcx
             .tcx
             .fold_regions(value, &mut false, |region, _depth| {
@@ -112,36 +120,35 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
+        debug!("visit_substs(substs={:?}, location={:?})", substs, location);
+
         let ty_context = TyContext::Location(location);
         *substs = self.renumber_regions(ty_context, &{ *substs });
+
+        debug!("visit_substs: substs={:?}", substs);
     }
 
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        match *rvalue {
-            Rvalue::Ref(ref mut r, _, _) => {
-                let old_r = *r;
-                let ty_context = TyContext::Location(location);
-                *r = self.renumber_regions(ty_context, &old_r);
-            }
-            Rvalue::Use(..) |
-            Rvalue::Repeat(..) |
-            Rvalue::Len(..) |
-            Rvalue::Cast(..) |
-            Rvalue::BinaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) |
-            Rvalue::UnaryOp(..) |
-            Rvalue::Discriminant(..) |
-            Rvalue::NullaryOp(..) |
-            Rvalue::Aggregate(..) => {
-                // These variants don't contain regions.
-            }
-        }
-        self.super_rvalue(rvalue, location);
+    fn visit_region(&mut self, region: &mut ty::Region<'tcx>, location: Location) {
+        debug!("visit_region(region={:?}, location={:?})", region, location);
+
+        let old_region = *region;
+        let ty_context = TyContext::Location(location);
+        *region = self.renumber_regions(ty_context, &old_region);
+
+        debug!("visit_region: region={:?}", region);
     }
 
     fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {
+        debug!(
+            "visit_closure_substs(substs={:?}, location={:?})",
+            substs,
+            location
+        );
+
         let ty_context = TyContext::Location(location);
         *substs = self.renumber_regions(ty_context, substs);
+
+        debug!("visit_closure_substs: substs={:?}", substs);
     }
 
     fn visit_statement(
