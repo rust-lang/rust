@@ -506,60 +506,57 @@ impl DepGraph {
                     return None
                 }
                 None => {
-                    if dep_dep_node.kind.is_input() {
-                        // This input does not exist anymore.
-                        debug_assert!(dep_dep_node.extract_def_id(tcx).is_none(),
-                                      "Encountered input {:?} without color",
-                                      dep_dep_node);
-                        debug!("try_mark_green({:?}) - END - dependency {:?} \
-                                was deleted input", dep_node, dep_dep_node);
-                        return None;
+                    // We don't know the state of this dependency. If it isn't
+                    // an input node, let's try to mark it green recursively.
+                    if !dep_dep_node.kind.is_input() {
+                         debug!("try_mark_green({:?}) --- state of dependency {:?} \
+                                 is unknown, trying to mark it green", dep_node,
+                                 dep_dep_node);
+
+                        if let Some(node_index) = self.try_mark_green(tcx, dep_dep_node) {
+                            debug!("try_mark_green({:?}) --- managed to MARK \
+                                    dependency {:?} as green", dep_node, dep_dep_node);
+                            current_deps.push(node_index);
+                            continue;
+                        }
                     }
 
-                    debug!("try_mark_green({:?}) --- state of dependency {:?} \
-                            is unknown, trying to mark it green", dep_node,
-                            dep_dep_node);
-
-                    // We don't know the state of this dependency. Let's try to
-                    // mark it green.
-                    if let Some(node_index) = self.try_mark_green(tcx, dep_dep_node) {
-                        debug!("try_mark_green({:?}) --- managed to MARK \
-                                dependency {:?} as green", dep_node, dep_dep_node);
-                        current_deps.push(node_index);
-                    } else {
-                        // We failed to mark it green, so we try to force the query.
-                        debug!("try_mark_green({:?}) --- trying to force \
-                                dependency {:?}", dep_node, dep_dep_node);
-                        if ::ty::maps::force_from_dep_node(tcx, dep_dep_node) {
-                            let dep_dep_node_color = data.colors
-                                                         .borrow()
-                                                         .get(dep_dep_node)
-                                                         .cloned();
-                            match dep_dep_node_color {
-                                Some(DepNodeColor::Green(node_index)) => {
-                                    debug!("try_mark_green({:?}) --- managed to \
-                                            FORCE dependency {:?} to green",
-                                            dep_node, dep_dep_node);
-                                    current_deps.push(node_index);
-                                }
-                                Some(DepNodeColor::Red) => {
-                                    debug!("try_mark_green({:?}) - END - \
-                                            dependency {:?} was red after forcing",
-                                           dep_node,
-                                           dep_dep_node);
-                                    return None
-                                }
-                                None => {
-                                    bug!("try_mark_green() - Forcing the DepNode \
-                                          should have set its color")
-                                }
+                    // We failed to mark it green, so we try to force the query.
+                    debug!("try_mark_green({:?}) --- trying to force \
+                            dependency {:?}", dep_node, dep_dep_node);
+                    if ::ty::maps::force_from_dep_node(tcx, dep_dep_node) {
+                        let dep_dep_node_color = data.colors
+                                                     .borrow()
+                                                     .get(dep_dep_node)
+                                                     .cloned();
+                        match dep_dep_node_color {
+                            Some(DepNodeColor::Green(node_index)) => {
+                                debug!("try_mark_green({:?}) --- managed to \
+                                        FORCE dependency {:?} to green",
+                                        dep_node, dep_dep_node);
+                                current_deps.push(node_index);
                             }
-                        } else {
-                            // The DepNode could not be forced.
-                            debug!("try_mark_green({:?}) - END - dependency {:?} \
-                                    could not be forced", dep_node, dep_dep_node);
-                            return None
+                            Some(DepNodeColor::Red) => {
+                                debug!("try_mark_green({:?}) - END - \
+                                        dependency {:?} was red after forcing",
+                                       dep_node,
+                                       dep_dep_node);
+                                return None
+                            }
+                            None => {
+                                bug!("try_mark_green() - Forcing the DepNode \
+                                      should have set its color")
+                            }
                         }
+                    } else {
+                        debug_assert!(!dep_dep_node.kind.is_input() ||
+                            dep_dep_node.extract_def_id(tcx).is_none(),
+                            "Could not force input that should still exist.");
+
+                        // The DepNode could not be forced.
+                        debug!("try_mark_green({:?}) - END - dependency {:?} \
+                                could not be forced", dep_node, dep_dep_node);
+                        return None
                     }
                 }
             }
@@ -772,7 +769,27 @@ impl CurrentDepGraph {
             read_set: _,
             reads
         } = popped_node {
-            debug_assert_eq!(node, key);
+            assert_eq!(node, key);
+
+            // If this is an input node, we expect that it either has no
+            // dependencies, or that it just depends on DepKind::CrateMetadata
+            // or DepKind::Krate. This happens for some "thin wrapper queries"
+            // like `crate_disambiguator` which sometimes have zero deps (for
+            // when called for LOCAL_CRATE) or they depend on a CrateMetadata
+            // node.
+            if cfg!(debug_assertions) {
+                if node.kind.is_input() && reads.len() > 0 &&
+                    reads.iter().any(|&i| {
+                        !(self.nodes[i].kind == DepKind::CrateMetadata ||
+                          self.nodes[i].kind == DepKind::Krate)
+                    })
+                {
+                    bug!("Input node {:?} with unexpected reads: {:?}",
+                        node,
+                        reads.iter().map(|&i| self.nodes[i]).collect::<Vec<_>>())
+                }
+            }
+
             self.alloc_node(node, reads)
         } else {
             bug!("pop_task() - Expected regular task to be popped")
@@ -793,6 +810,8 @@ impl CurrentDepGraph {
             read_set: _,
             reads
         } = popped_node {
+            debug_assert!(!kind.is_input());
+
             let mut fingerprint = self.anon_id_seed;
             let mut hasher = StableHasher::new();
 
