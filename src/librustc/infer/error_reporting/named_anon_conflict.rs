@@ -16,8 +16,8 @@ use infer::region_inference::RegionResolutionError;
 use ty;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    /// Generate an error message for when the function arguments consist of a named region and
-    /// an anonymous region and corresponds to `ConcreteFailure(..)`
+    /// When given a `ConcreteFailure` for a function with arguments containing a named region and
+    /// an anonymous region, emit an descriptive diagnostic error.
     pub fn try_report_named_anon_conflict(&self, error: &RegionResolutionError<'tcx>) -> bool {
         let (span, sub, sup) = match *error {
             ConcreteFailure(ref origin, sub, sup) => (origin.span(), sub, sup),
