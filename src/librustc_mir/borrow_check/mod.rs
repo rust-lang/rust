@@ -81,10 +81,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     // contain non-lexical lifetimes. It will have a lifetime tied
     // to the inference context.
     let mut mir: Mir<'tcx> = input_mir.clone();
-    let mir = &mut mir;
+    let free_regions = {
+        let mir = &mut mir;
 
-    // Replace all regions with fresh inference variables.
-    let free_regions = nll::replace_regions_in_mir(infcx, src, mir);
+        // Replace all regions with fresh inference variables.
+        nll::replace_regions_in_mir(infcx, src, mir)
+    };
+    let mir = &mir;
 
     let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx, param_env) {
         Ok(move_data) => move_data,
@@ -1486,41 +1489,34 @@ impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
     }
 }
 
-macro_rules! has_any_child_of_impl {
-    ($MaybeTLvals:ident) => {
-        impl<'b, 'gcx, 'tcx> FlowInProgress<$MaybeTLvals<'b, 'gcx, 'tcx>> {
-            fn has_any_child_of(&self, mpi: MovePathIndex) -> Option<MovePathIndex> {
-                let move_data = self.base_results.operator().move_data();
+impl<'tcx, T> FlowInProgress<T> where T: HasMoveData<'tcx> + BitDenotation<Idx = MovePathIndex> {
+    fn has_any_child_of(&self, mpi: T::Idx) -> Option<T::Idx> {
+        let move_data = self.base_results.operator().move_data();
 
-                let mut todo = vec![mpi];
-                let mut push_siblings = false; // don't look at siblings of original `mpi`.
-                while let Some(mpi) = todo.pop() {
-                    if self.curr_state.contains(&mpi) {
-                        return Some(mpi);
-                    }
-                    let move_path = &move_data.move_paths[mpi];
-                    if let Some(child) = move_path.first_child {
-                        todo.push(child);
-                    }
-                    if push_siblings {
-                        if let Some(sibling) = move_path.next_sibling {
-                            todo.push(sibling);
-                        }
-                    } else {
-                        // after we've processed the original `mpi`, we should
-                        // always traverse the siblings of any of its
-                        // children.
-                        push_siblings = true;
-                    }
+        let mut todo = vec![mpi];
+        let mut push_siblings = false; // don't look at siblings of original `mpi`.
+        while let Some(mpi) = todo.pop() {
+            if self.curr_state.contains(&mpi) {
+                return Some(mpi);
+            }
+            let move_path = &move_data.move_paths[mpi];
+            if let Some(child) = move_path.first_child {
+                todo.push(child);
+            }
+            if push_siblings {
+                if let Some(sibling) = move_path.next_sibling {
+                    todo.push(sibling);
                 }
-                return None;
+            } else {
+                // after we've processed the original `mpi`, we should
+                // always traverse the siblings of any of its
+                // children.
+                push_siblings = true;
             }
         }
-    };
+        return None;
+    }
 }
-
-has_any_child_of_impl!(MaybeInitializedLvals);
-has_any_child_of_impl!(MaybeUninitializedLvals);
 
 impl<BD> FlowInProgress<BD> where BD: BitDenotation {
     fn each_state_bit<F>(&self, f: F) where F: FnMut(BD::Idx) {

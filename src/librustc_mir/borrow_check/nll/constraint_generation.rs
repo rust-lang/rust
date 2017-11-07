@@ -23,19 +23,19 @@ use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::DUMMY_SP;
 use borrow_check::FlowInProgress;
 use dataflow::MaybeInitializedLvals;
-use dataflow::move_paths::{MoveData, LookupResult};
+use dataflow::move_paths::MoveData;
 
 use super::LivenessResults;
 use super::ToRegionVid;
 use super::region_infer::RegionInferenceContext;
 
-pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     regioncx: &mut RegionInferenceContext<'tcx>,
     mir: &Mir<'tcx>,
     mir_source: MirSource,
     liveness: &LivenessResults,
-    flow_inits: &FlowInProgress<MaybeInitializedLvals<'a, 'gcx, 'tcx>>,
+    flow_inits: &FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     ConstraintGeneration {
@@ -49,17 +49,18 @@ pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
     }.add_constraints();
 }
 
-struct ConstraintGeneration<'a, 'cx: 'a, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'a InferCtxt<'cx, 'gcx, 'tcx>,
-    regioncx: &'a mut RegionInferenceContext<'tcx>,
-    mir: &'a Mir<'tcx>,
-    liveness: &'a LivenessResults,
+/// 'cg = the duration of the constraint generation process itself.
+struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
+    infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
+    regioncx: &'cg mut RegionInferenceContext<'tcx>,
+    mir: &'cg Mir<'tcx>,
+    liveness: &'cg LivenessResults,
     mir_source: MirSource,
-    flow_inits: &'a FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
-    move_data: &'a MoveData<'tcx>,
+    flow_inits: &'cg FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    move_data: &'cg MoveData<'tcx>,
 }
 
-impl<'a, 'cx, 'gcx, 'tcx> ConstraintGeneration<'a, 'cx, 'gcx, 'tcx> {
+impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
     fn add_constraints(&mut self) {
         self.add_liveness_constraints();
         self.add_borrow_constraints();
@@ -88,13 +89,10 @@ impl<'a, 'cx, 'gcx, 'tcx> ConstraintGeneration<'a, 'cx, 'gcx, 'tcx> {
                 bb,
                 |location, live_locals| {
                     for live_local in live_locals.iter() {
-                        if let LookupResult::Exact(mpi) =
-                            self.move_data.rev_lookup.find(&Lvalue::Local(live_local))
-                        {
-                            if self.flow_inits.has_any_child_of(mpi).is_some() {
-                                let live_local_ty = self.mir.local_decls[live_local].ty;
-                                self.add_drop_live_constraint(live_local_ty, location);
-                            }
+                        let mpi = self.move_data.rev_lookup.find_local(live_local);
+                        if self.flow_inits.has_any_child_of(mpi).is_some() {
+                            let live_local_ty = self.mir.local_decls[live_local].ty;
+                            self.add_drop_live_constraint(live_local_ty, location);
                         }
                     }
                 },
@@ -232,7 +230,7 @@ impl<'a, 'cx, 'gcx, 'tcx> ConstraintGeneration<'a, 'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'a, 'cx, 'gcx, 'tcx> {
+impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
