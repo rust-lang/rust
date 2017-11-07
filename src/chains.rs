@@ -126,7 +126,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     let first_child_shape = if extend {
         let overhead = last_line_width(&parent_rewrite);
-        let offset = trimmed_last_line_width(&parent_rewrite);
+        let offset = trimmed_last_line_width(&parent_rewrite) + prefix_try_num;
         match context.config.chain_indent() {
             IndentStyle::Visual => parent_shape.offset_left(overhead)?,
             IndentStyle::Block => parent_shape.block().offset_left(offset)?,
@@ -166,9 +166,16 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let all_in_one_line = !parent_rewrite_contains_newline
         && rewrites.iter().all(|s| !s.contains('\n'))
         && almost_total < one_line_budget;
-    let last_shape = match context.config.chain_indent() {
-        IndentStyle::Visual => other_child_shape.sub_width(shape.rhs_overhead(context.config))?,
-        IndentStyle::Block => other_child_shape,
+    let last_shape = {
+        let last_shape = if rewrites.len() == 0 {
+            first_child_shape
+        } else {
+            other_child_shape
+        };
+        match context.config.chain_indent() {
+            IndentStyle::Visual => last_shape.sub_width(shape.rhs_overhead(context.config))?,
+            IndentStyle::Block => last_shape,
+        }
     };
     let last_shape = last_shape.sub_width(suffix_try_num)?;
 
