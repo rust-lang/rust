@@ -12,8 +12,8 @@ use std::io::Write;
 
 use rustc_serialize::json::as_json;
 
-use rls_data::{self, Analysis, Import, Def, DefKind, Ref, RefKind, MacroRef,
-               Relation, CratePreludeData};
+use rls_data::{self, Analysis, CratePreludeData, Def, DefKind, Import, MacroRef, Ref, RefKind,
+               Relation};
 use rls_data::config::Config;
 use rls_span::{Column, Row};
 
@@ -54,15 +54,16 @@ impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
         JsonDumper {
             output: WriteOutput { output: writer },
             config: config.clone(),
-            result: Analysis::new(config)
+            result: Analysis::new(config),
         }
     }
 }
 
 impl<'b> JsonDumper<CallbackOutput<'b>> {
-    pub fn with_callback(callback: &'b mut FnMut(&Analysis),
-                         config: Config)
-                         -> JsonDumper<CallbackOutput<'b>> {
+    pub fn with_callback(
+        callback: &'b mut FnMut(&Analysis),
+        config: Config,
+    ) -> JsonDumper<CallbackOutput<'b>> {
         JsonDumper {
             output: CallbackOutput { callback: callback },
             config: config.clone(),
