@@ -848,7 +848,7 @@ pub unsafe fn _mm_mullo_epi32(a: i32x4, b: i32x4) -> i32x4 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(mpsadbw, imm8=0))]
-pub unsafe fn _mm_mpsadbw_epu8(a: i8x16, b: i8x16, imm8: u8) -> i16x8 {
+pub unsafe fn _mm_mpsadbw_epu8(a: u8x16, b: u8x16, imm8: u8) -> u16x8 {
     macro_rules! call {
         ($imm8:expr) => { mpsadbw(a, b, $imm8) }
     }
@@ -914,7 +914,7 @@ extern "C" {
     #[link_name = "llvm.x86.sse41.pmuldq"]
     fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
     #[link_name = "llvm.x86.sse41.mpsadbw"]
-    fn mpsadbw(a: i8x16, b: i8x16, imm8: u8) -> i16x8;
+    fn mpsadbw(a: u8x16, b: u8x16, imm8: u8) -> u16x8;
 }
 
 #[cfg(test)]
@@ -1624,26 +1624,26 @@ mod tests {
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_mpsadbw_epu8() {
-        let a = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
 
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b000);
-        let e = i16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
+        let e = u16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
         assert_eq!(r, e);
 
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b001);
-        let e = i16x8::new(16, 12, 8, 4, 0, 4, 8, 12);
+        let e = u16x8::new(16, 12, 8, 4, 0, 4, 8, 12);
         assert_eq!(r, e);
         
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b100);
-        let e = i16x8::new(16, 20, 24, 28, 32, 36, 40, 44);
+        let e = u16x8::new(16, 20, 24, 28, 32, 36, 40, 44);
         assert_eq!(r, e);
 
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b101);
-        let e = i16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
+        let e = u16x8::new(0, 4, 8, 12, 16, 20, 24, 28);
         assert_eq!(r, e);
 
         let r = sse41::_mm_mpsadbw_epu8(a, a, 0b111);
-        let e = i16x8::new(32, 28, 24, 20, 16, 12, 8, 4);
+        let e = u16x8::new(32, 28, 24, 20, 16, 12, 8, 4);
         assert_eq!(r, e);
     }
 }
