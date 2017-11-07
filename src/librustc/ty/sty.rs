@@ -760,7 +760,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy, PartialOrd, Ord)]
 pub struct DebruijnIndex {
     /// We maintain the invariant that this is never 0. So 1 indicates
     /// the innermost binder. To ensure this, create with `DebruijnIndex::new`.
@@ -825,7 +825,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// [1] http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2] http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
-#[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
 pub enum RegionKind {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -871,7 +871,7 @@ pub enum RegionKind {
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, PartialOrd, Ord)]
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
@@ -893,12 +893,12 @@ pub struct FloatVid {
     pub index: u32,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy, PartialOrd, Ord)]
 pub struct RegionVid {
     pub index: u32,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
 pub struct SkolemizedRegionVid {
     pub index: u32,
 }
