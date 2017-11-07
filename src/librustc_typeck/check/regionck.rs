@@ -428,17 +428,17 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
         // Save state of current function before invoking
         // `visit_fn_body`.  We will restore afterwards.
-        let outlives_environment = self.outlives_environment.clone();
         let old_body_id = self.body_id;
         let old_call_site_scope = self.call_site_scope;
+        let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
 
         let body = self.tcx.hir.body(body_id);
         self.visit_fn_body(id, body, span);
 
         // Restore state from previous function.
+        self.outlives_environment.pop_snapshot_post_closure(env_snapshot);
         self.call_site_scope = old_call_site_scope;
         self.body_id = old_body_id;
-        self.outlives_environment = outlives_environment;
     }
 
     //visit_pat: visit_pat, // (..) see above

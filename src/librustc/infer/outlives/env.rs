@@ -89,6 +89,52 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
         self.free_region_map
     }
 
+    /// This is a hack to support the old-skool regionck, which
+    /// processes region constraints from the main function and the
+    /// closure together. In that context, when we enter a closure, we
+    /// want to be able to "save" the state of the surrounding a
+    /// function. We can then add implied bounds and the like from the
+    /// closure arguments into the environment -- these should only
+    /// apply in the closure body, so once we exit, we invoke
+    /// `pop_snapshot_post_closure` to remove them.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// fn foo<T>() {
+    ///    callback(for<'a> |x: &'a T| {
+    ///         // ^^^^^^^ not legal syntax, but probably should be
+    ///         // within this closure body, `T: 'a` holds
+    ///    })
+    /// }
+    /// ```
+    ///
+    /// This "containment" of closure's effects only works so well. In
+    /// particular, we (intentionally) leak relationships between free
+    /// regions that are created by the closure's bounds. The case
+    /// where this is useful is when you have (e.g.) a closure with a
+    /// signature like `for<'a, 'b> fn(x: &'a &'b u32)` -- in this
+    /// case, we want to keep the relationship `'b: 'a` in the
+    /// free-region-map, so that later if we have to take `LUB('b,
+    /// 'a)` we can get the result `'b`.
+    ///
+    /// I have opted to keep **all modifications** to the
+    /// free-region-map, however, and not just those that concern free
+    /// variables bound in the closure. The latter seems more correct,
+    /// but it is not the existing behavior, and I could not find a
+    /// case where the existing behavior went wrong. In any case, it
+    /// seems like it'd be readily fixed if we wanted. There are
+    /// similar leaks around givens that seem equally suspicious, to
+    /// be honest. --nmatsakis
+    pub fn push_snapshot_pre_closure(&self) -> usize {
+        self.region_bound_pairs.len()
+    }
+
+    /// See `push_snapshot_pre_closure`.
+    pub fn pop_snapshot_post_closure(&mut self, len: usize) {
+        self.region_bound_pairs.truncate(len);
+    }
+
     /// This method adds "implied bounds" into the outlives environment.
     /// Implied bounds are outlives relationships that we can deduce
     /// on the basis that certain types must be well-formed -- these are
