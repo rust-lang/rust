@@ -89,10 +89,12 @@ impl Region {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Constraint {
-    /// Where did this constraint arise?
-    span: Span,
+    // NB. The ordering here is not significant for correctness, but
+    // it is for conenience. Before we dump the constraints in the
+    // debugging logs, we sort them, and we'd like the "super region"
+    // to be first, etc. (In particular, span should remain last.)
 
     /// The region SUP must outlive SUB...
     sup: RegionVid,
@@ -102,6 +104,9 @@ pub struct Constraint {
 
     /// At this location.
     point: Location,
+
+    /// Where did this constraint arise?
+    span: Span,
 }
 
 impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
@@ -269,15 +274,23 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
         let mut dfs = Dfs::new(mir);
         let mut error_regions = FxHashSet();
         let mut errors = vec![];
+
+        debug!("propagate_constraints()");
+        debug!("propagate_constraints: constraints={:#?}", {
+            let mut constraints: Vec<_> = self.constraints.iter().collect();
+            constraints.sort();
+            constraints
+        });
+
         while changed {
             changed = false;
             for constraint in &self.constraints {
-                debug!("constraint: {:?}", constraint);
+                debug!("propagate_constraints: constraint={:?}", constraint);
                 let sub = &self.definitions[constraint.sub].value.clone();
                 let sup_def = &mut self.definitions[constraint.sup];
 
-                debug!("    sub (before): {:?}", sub);
-                debug!("    sup (before): {:?}", sup_def.value);
+                debug!("propagate_constraints:    sub (before): {:?}", sub);
+                debug!("propagate_constraints:    sup (before): {:?}", sup_def.value);
 
                 if !sup_def.constant {
                     // If this is not a constant, then grow the value as needed to
@@ -287,8 +300,8 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
                         changed = true;
                     }
 
-                    debug!("    sup (after) : {:?}", sup_def.value);
-                    debug!("    changed     : {:?}", changed);
+                    debug!("propagate_constraints:    sup (after) : {:?}", sup_def.value);
+                    debug!("propagate_constraints:    changed     : {:?}", changed);
                 } else {
                     // If this is a constant, check whether it *would
                     // have* to grow in order for the constraint to be
@@ -304,7 +317,7 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
                             .difference(&sup_def.value.free_regions)
                             .next()
                             .unwrap();
-                        debug!("    new_region : {:?}", new_region);
+                        debug!("propagate_constraints:    new_region : {:?}", new_region);
                         if error_regions.insert(constraint.sup) {
                             errors.push((constraint.sup, constraint.span, new_region));
                         }
@@ -404,5 +417,18 @@ impl<'tcx> RegionDefinition<'tcx> {
             constant: false,
             value: Region::default(),
         }
+    }
+}
+
+impl fmt::Debug for Constraint {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            formatter,
+            "({:?}: {:?} @ {:?}) due to {:?}",
+            self.sup,
+            self.sub,
+            self.point,
+            self.span
+        )
     }
 }
