@@ -6,6 +6,7 @@ use std::mem;
 use stdsimd_test::assert_instr;
 use simd_llvm::{simd_shuffle2, simd_shuffle4, simd_shuffle8};
 
+use x86::__m128i;
 use v128::*;
 
 // SSE4 rounding constans
@@ -425,8 +426,8 @@ pub unsafe fn _mm_mullo_epi32 (a: i32x4, b:i32x4) -> i32x4 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
-pub unsafe fn _mm_testz_si128(a: i64x2, mask: i64x2) -> i32 {
-    ptestz(a, mask)
+pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
+    ptestz(a.into(), mask.into())
 }
 
 
@@ -445,8 +446,8 @@ pub unsafe fn _mm_testz_si128(a: i64x2, mask: i64x2) -> i32 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
-pub unsafe fn _mm_testc_si128(a: i64x2, mask: i64x2) -> i32 {
-    ptestc(a, mask)
+pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
+    ptestc(a.into(), mask.into())
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are
@@ -464,8 +465,8 @@ pub unsafe fn _mm_testc_si128(a: i64x2, mask: i64x2) -> i32 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
-pub unsafe fn _mm_testnzc_si128(a: i64x2, mask: i64x2) -> i32 {
-    ptestnzc(a, mask)
+pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
+    ptestnzc(a.into(), mask.into())
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -483,7 +484,7 @@ pub unsafe fn _mm_testnzc_si128(a: i64x2, mask: i64x2) -> i32 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
-pub unsafe fn _mm_test_all_zeros(a: i64x2, mask: i64x2) -> i32 {
+pub unsafe fn _mm_test_all_zeros(a: __m128i, mask: __m128i) -> i32 {
     _mm_testz_si128(a, mask)
 }
 
@@ -502,8 +503,8 @@ pub unsafe fn _mm_test_all_zeros(a: i64x2, mask: i64x2) -> i32 {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pcmpeqd))]
 #[cfg_attr(test, assert_instr(ptest))]
-pub unsafe fn _mm_test_all_ones(a: i64x2) -> i32 {
-    _mm_testc_si128(a, i64x2::splat(-1))
+pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
+    _mm_testc_si128(a, ::x86::sse2::_mm_cmpeq_epi32(a.into(), a.into()).into())
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are
@@ -521,7 +522,7 @@ pub unsafe fn _mm_test_all_ones(a: i64x2) -> i32 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
-pub unsafe fn _mm_test_mix_ones_zeros(a: i64x2, mask: i64x2) -> i32 {
+pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
     _mm_testnzc_si128(a, mask)
 }
 
@@ -924,6 +925,7 @@ mod tests {
     use stdsimd_test::simd_test;
 
     use v128::*;
+    use x86::__m128i;
     use x86::sse41;
 
     #[simd_test = "sse4.1"]
@@ -1352,98 +1354,98 @@ mod tests {
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_testz_si128() {
-        let a    = i64x2::splat(1);
-        let mask = i64x2::splat(0);
+        let a    = __m128i::splat(1);
+        let mask = __m128i::splat(0);
         let r    = sse41::_mm_testz_si128(a, mask);
         assert_eq!(r, 1);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b110);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b110);
         let r    = sse41::_mm_testz_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = i64x2::splat(0b011);
-        let mask = i64x2::splat(0b100);
+        let a    = __m128i::splat(0b011);
+        let mask = __m128i::splat(0b100);
         let r    = sse41::_mm_testz_si128(a, mask);
         assert_eq!(r, 1);
     }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_testc_si128() {
-        let a    = i64x2::splat(-1);
-        let mask = i64x2::splat(0);
+        let a    = __m128i::splat(-1);
+        let mask = __m128i::splat(0);
         let r    = sse41::_mm_testc_si128(a, mask);
         assert_eq!(r, 1);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b110);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b110);
         let r    = sse41::_mm_testc_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b100);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b100);
         let r    = sse41::_mm_testc_si128(a, mask);
         assert_eq!(r, 1);
     }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_testnzc_si128() {
-        let a    = i64x2::splat(0);
-        let mask = i64x2::splat(1);
+        let a    = __m128i::splat(0);
+        let mask = __m128i::splat(1);
         let r    = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = i64x2::splat(-1);
-        let mask = i64x2::splat(0);
+        let a    = __m128i::splat(-1);
+        let mask = __m128i::splat(0);
         let r    = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b110);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b110);
         let r    = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 1);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b101);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b101);
         let r    = sse41::_mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
     }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_test_all_zeros() {
-        let a    = i64x2::splat(1);
-        let mask = i64x2::splat(0);
+        let a    = __m128i::splat(1);
+        let mask = __m128i::splat(0);
         let r    = sse41::_mm_test_all_zeros(a, mask);
         assert_eq!(r, 1);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b110);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b110);
         let r    = sse41::_mm_test_all_zeros(a, mask);
         assert_eq!(r, 0);
-        let a    = i64x2::splat(0b011);
-        let mask = i64x2::splat(0b100);
+        let a    = __m128i::splat(0b011);
+        let mask = __m128i::splat(0b100);
         let r    = sse41::_mm_test_all_zeros(a, mask);
         assert_eq!(r, 1);
     }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_test_all_ones() {
-        let a    = i64x2::splat(-1);
+        let a    = __m128i::splat(-1);
         let r    = sse41::_mm_test_all_ones(a);
         assert_eq!(r, 1);
-        let a    = i64x2::splat(0b101);
+        let a    = __m128i::splat(0b101);
         let r    = sse41::_mm_test_all_ones(a);
         assert_eq!(r, 0);
     }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_test_mix_ones_zeros() {
-        let a    = i64x2::splat(0);
-        let mask = i64x2::splat(1);
+        let a    = __m128i::splat(0);
+        let mask = __m128i::splat(1);
         let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 0);
-        let a    = i64x2::splat(-1);
-        let mask = i64x2::splat(0);
+        let a    = __m128i::splat(-1);
+        let mask = __m128i::splat(0);
         let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 0);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b110);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b110);
         let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 1);
-        let a    = i64x2::splat(0b101);
-        let mask = i64x2::splat(0b101);
+        let a    = __m128i::splat(0b101);
+        let mask = __m128i::splat(0b101);
         let r    = sse41::_mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 0);
     }
