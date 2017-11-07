@@ -148,13 +148,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 #[allow(dead_code)]
-pub struct MirBorrowckCtxt<'c, 'b, 'a: 'b+'c, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'b Mir<'tcx>,
+pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    mir: &'cx Mir<'tcx>,
     node_id: ast::NodeId,
-    move_data: &'b MoveData<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    fake_infer_ctxt: &'c InferCtxt<'c, 'gcx, 'tcx>,
+    move_data: &'cx MoveData<'tcx>,
+    param_env: ParamEnv<'gcx>,
+    fake_infer_ctxt: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
@@ -177,12 +177,10 @@ struct FlowInProgress<BD> where BD: BitDenotation {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'tcx>
-    for MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx>
-{
-    type FlowState = InProgress<'b, 'gcx, 'tcx>;
+impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+    type FlowState = InProgress<'cx, 'gcx, 'tcx>;
 
-    fn mir(&self) -> &'b Mir<'tcx> { self.mir }
+    fn mir(&self) -> &'cx Mir<'tcx> { self.mir }
 
     fn reset_to_entry_of(&mut self, bb: BasicBlock, flow_state: &mut Self::FlowState) {
         flow_state.each_flow(|b| b.reset_to_entry_of(bb),
@@ -437,12 +435,12 @@ enum WriteKind {
     Move,
 }
 
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn access_lvalue(&mut self,
                      context: Context,
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
-                     flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
 
         let (sd, rw) = kind;
 
@@ -501,7 +499,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: ShallowOrDeep,
                      mode: MutateMode,
-                     flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         // Write of P[i] or *P, or WriteAndRead of any P, requires P init'd.
         match mode {
             MutateMode::WriteAndRead => {
@@ -522,7 +520,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                       context: Context,
                       (rvalue, span): (&Rvalue<'tcx>, Span),
                       _location: Location,
-                      flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                      flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         match *rvalue {
             Rvalue::Ref(_/*rgn*/, bk, ref lvalue) => {
                 let access_kind = match bk {
@@ -579,7 +577,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                        context: Context,
                        consume_via_drop: ConsumeKind,
                        (operand, span): (&Operand<'tcx>, Span),
-                       flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                       flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         match *operand {
             Operand::Consume(ref lvalue) => {
                 self.consume_lvalue(context, consume_via_drop, (lvalue, span), flow_state)
@@ -592,7 +590,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                       context: Context,
                       consume_via_drop: ConsumeKind,
                       lvalue_span: (&Lvalue<'tcx>, Span),
-                      flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                      flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         let lvalue = lvalue_span.0;
         let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
         let moves_by_default =
@@ -619,11 +617,11 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     }
 }
 
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn check_if_reassignment_to_immutable_state(&mut self,
                                                 context: Context,
                                                 (lvalue, span): (&Lvalue<'tcx>, Span),
-                                                flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                                                flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         let move_data = self.move_data;
 
         // determine if this path has a non-mut owner (and thus needs checking).
@@ -674,7 +672,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                               context: Context,
                               desired_action: &str,
                               lvalue_span: (&Lvalue<'tcx>, Span),
-                              flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                              flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         // FIXME: analogous code in check_loans first maps `lvalue` to
         // its base_path ... but is that what we want here?
         let lvalue = self.base_path(lvalue_span.0);
@@ -802,7 +800,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn check_if_assigned_path_is_moved(&mut self,
                                        context: Context,
                                        (lvalue, span): (&Lvalue<'tcx>, Span),
-                                       flow_state: &InProgress<'b, 'gcx, 'tcx>) {
+                                       flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         // recur down lvalue; dispatch to check_if_path_is_moved when necessary
         let mut lvalue = lvalue;
         loop {
@@ -1015,11 +1013,11 @@ enum NoMovePathFound {
     ReachedStatic,
 }
 
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn each_borrow_involving_path<F>(&mut self,
                                      _context: Context,
                                      access_lvalue: (ShallowOrDeep, &Lvalue<'tcx>),
-                                     flow_state: &InProgress<'b, 'gcx, 'tcx>,
+                                     flow_state: &InProgress<'cx, 'gcx, 'tcx>,
                                      mut op: F)
         where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>, &Lvalue) -> Control
     {
@@ -1119,11 +1117,11 @@ mod prefixes {
     }
 
 
-    pub(super) struct Prefixes<'c, 'gcx: 'tcx, 'tcx: 'c> {
-        mir: &'c Mir<'tcx>,
-        tcx: TyCtxt<'c, 'gcx, 'tcx>,
+    pub(super) struct Prefixes<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+        mir: &'cx Mir<'tcx>,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         kind: PrefixSet,
-        next: Option<&'c Lvalue<'tcx>>,
+        next: Option<&'cx Lvalue<'tcx>>,
     }
 
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -1137,21 +1135,21 @@ mod prefixes {
         Supporting,
     }
 
-    impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+    impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         /// Returns an iterator over the prefixes of `lvalue`
         /// (inclusive) from longest to smallest, potentially
         /// terminating the iteration early based on `kind`.
-        pub(super) fn prefixes<'d>(&self,
-                                   lvalue: &'d Lvalue<'tcx>,
-                                   kind: PrefixSet)
-                                   -> Prefixes<'d, 'gcx, 'tcx> where 'b: 'd
+        pub(super) fn prefixes(&self,
+                               lvalue: &'cx Lvalue<'tcx>,
+                               kind: PrefixSet)
+                               -> Prefixes<'cx, 'gcx, 'tcx>
         {
             Prefixes { next: Some(lvalue), kind, mir: self.mir, tcx: self.tcx }
         }
     }
 
-    impl<'c, 'gcx, 'tcx> Iterator for Prefixes<'c, 'gcx, 'tcx> {
-        type Item = &'c Lvalue<'tcx>;
+    impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
+        type Item = &'cx Lvalue<'tcx>;
         fn next(&mut self) -> Option<Self::Item> {
             let mut cursor = match self.next {
                 None => return None,
@@ -1244,7 +1242,7 @@ mod prefixes {
     }
 }
 
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_use_of_moved_or_uninitialized(&mut self,
                            _context: Context,
                            desired_action: &str,
@@ -1481,7 +1479,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     }
 }
 
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // End-user visible description of `lvalue`
     fn describe_lvalue(&self, lvalue: &Lvalue) -> String {
         let mut buf = String::new();
@@ -1616,7 +1614,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     }
 }
 
-impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // FIXME (#16118): function intended to allow the borrow checker
     // to be less precise in its handling of Box while still allowing
     // moves out of a Box. They should be removed when/if we stop
