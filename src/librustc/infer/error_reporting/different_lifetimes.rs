@@ -21,25 +21,42 @@ use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use infer::error_reporting::util::AnonymousArgInfo;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    // This method prints the error message for lifetime errors when both the concerned regions
-    // are anonymous.
-    // Consider a case where we have
-    // fn foo(x: &mut Vec<&u8>, y: &u8)
-    //    { x.push(y); }.
-    // The example gives
-    // fn foo(x: &mut Vec<&u8>, y: &u8) {
-    //                    ---      --- these references are declared with different lifetimes...
-    //            x.push(y);
-    //            ^ ...but data from `y` flows into `x` here
-    // It has been extended for the case of structs too.
-    // Consider the example
-    // struct Ref<'a> { x: &'a u32 }
-    // fn foo(mut x: Vec<Ref>, y: Ref) {
-    //                   ---      --- these structs are declared with different lifetimes...
-    //               x.push(y);
-    //               ^ ...but data from `y` flows into `x` here
-    // }
-    // It will later be extended to trait objects.
+    /// Print the error message for lifetime errors when both the concerned regions are anonymous.
+    ///
+    /// Consider a case where we have
+    ///
+    /// ```no_run
+    /// fn foo(x: &mut Vec<&u8>, y: &u8) {
+    ///     x.push(y);
+    /// }
+    /// ```
+    ///
+    /// The example gives
+    ///
+    /// ```text
+    /// fn foo(x: &mut Vec<&u8>, y: &u8) {
+    ///                    ---      --- these references are declared with different lifetimes...
+    ///     x.push(y);
+    ///     ^ ...but data from `y` flows into `x` here
+    /// ```
+    ///
+    /// It has been extended for the case of structs too.
+    ///
+    /// Consider the example
+    ///
+    /// ```no_run
+    /// struct Ref<'a> { x: &'a u32 }
+    /// ```
+    ///
+    /// ```text
+    /// fn foo(mut x: Vec<Ref>, y: Ref) {
+    ///                   ---      --- these structs are declared with different lifetimes...
+    ///     x.push(y);
+    ///     ^ ...but data from `y` flows into `x` here
+    /// }
+    /// ````
+    ///
+    /// It will later be extended to trait objects.
     pub fn try_report_anon_anon_conflict(&self, error: &RegionResolutionError<'tcx>) -> bool {
         let (span, sub, sup) = match *error {
             ConcreteFailure(ref origin, sub, sup) => (origin.span(), sub, sup),
