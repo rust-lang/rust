@@ -227,6 +227,8 @@ impl<'gcx> StableHashingContext<'gcx> {
         match binop {
             hir::BiAdd |
             hir::BiSub |
+            hir::BiShl |
+            hir::BiShr |
             hir::BiMul => self.overflow_checks_enabled,
 
             hir::BiDiv |
@@ -237,8 +239,6 @@ impl<'gcx> StableHashingContext<'gcx> {
             hir::BiBitXor |
             hir::BiBitAnd |
             hir::BiBitOr |
-            hir::BiShl |
-            hir::BiShr |
             hir::BiEq |
             hir::BiLt |
             hir::BiLe |
