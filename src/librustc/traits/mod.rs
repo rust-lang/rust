@@ -538,11 +538,14 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let region_scope_tree = region::ScopeTree::default();
         let free_regions = FreeRegionMap::new();
 
-        // TODO We should really... do something with these. But as of
-        // this writing we were ignoring them, just without knowing
-        // it, and it would take some refactoring to stop doing so.
-        // (In particular, the needed methods currently live in
-        // regionck.) -nmatsakis
+        // FIXME. We should really... do something with these region
+        // obligations. But this call just continues the older
+        // behavior (i.e., doesn't cause any new bugs), and it would
+        // take some further refactoring to actually solve them. In
+        // particular, we would have to handle implied bounds
+        // properly, and that code is currently largely confined to
+        // regionck (though I made some efforts to extract it
+        // out). -nmatsakis
         let _ = infcx.ignore_region_obligations(body_id);
 
         infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
