@@ -1,0 +1,97 @@
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:24:5
+   |
+23 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
+24 |     x += 1; //~ ERROR because of dtor
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:31:5
+   |
+29 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
+30 |     std::mem::drop(wrap);
+31 |     x += 1; // OK, drop is inert
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:24:5
+   |
+23 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+24 |     x += 1; //~ ERROR because of dtor
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0503]: cannot use `x` because it was mutably borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:24:5
+   |
+23 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+24 |     x += 1; //~ ERROR because of dtor
+   |     ^^^^^^ use of borrowed `x`
+
+error[E0506]: cannot assign to `x` because it is borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:25:2
+   |
+23 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+24 |     x += 1; //~ ERROR because of dtor
+25 | }
+   |  ^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:31:5
+   |
+29 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+30 |     std::mem::drop(wrap);
+31 |     x += 1; // OK, drop is inert
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0503]: cannot use `x` because it was mutably borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:31:5
+   |
+29 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+30 |     std::mem::drop(wrap);
+31 |     x += 1; // OK, drop is inert
+   |     ^^^^^^ use of borrowed `x`
+
+error[E0506]: cannot assign to `x` because it is borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:32:2
+   |
+29 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+...
+32 | }
+   |  ^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:46:2
+   |
+42 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+...
+46 | }
+   |  ^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:55:2
+   |
+50 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+...
+55 | }
+   |  ^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Mir)
+  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:63:2
+   |
+59 |     let wrap = Wrap { p: &mut x };
+   |                          ------ borrow of `x` occurs here
+...
+63 | }
+   |  ^ assignment to borrowed `x` occurs here
+
+error: aborting due to 11 previous errors
