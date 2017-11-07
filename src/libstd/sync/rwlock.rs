@@ -10,7 +10,6 @@
 
 use cell::UnsafeCell;
 use fmt;
-use marker;
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
@@ -102,7 +101,10 @@ pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for RwLockReadGuard<'a, T> {}
+
+#[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockReadGuard<'a, T> {}
 
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
@@ -121,7 +123,10 @@ pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for RwLockWriteGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for RwLockWriteGuard<'a, T> {}
+
+#[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockWriteGuard<'a, T> {}
 
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.

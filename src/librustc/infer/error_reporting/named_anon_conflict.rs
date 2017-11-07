@@ -16,18 +16,15 @@ use infer::region_inference::RegionResolutionError;
 use ty;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    // This method generates the error message for the case when
-    // the function arguments consist of a named region and an anonymous
-    // region and corresponds to `ConcreteFailure(..)`
+    /// When given a `ConcreteFailure` for a function with arguments containing a named region and
+    /// an anonymous region, emit an descriptive diagnostic error.
     pub fn try_report_named_anon_conflict(&self, error: &RegionResolutionError<'tcx>) -> bool {
         let (span, sub, sup) = match *error {
             ConcreteFailure(ref origin, sub, sup) => (origin.span(), sub, sup),
             _ => return false, // inapplicable
         };
 
-        debug!("try_report_named_anon_conflict(sub={:?}, sup={:?})",
-               sub,
-               sup);
+        debug!("try_report_named_anon_conflict(sub={:?}, sup={:?})", sub, sup);
 
         // Determine whether the sub and sup consist of one named region ('a)
         // and one anonymous (elided) region. If so, find the parameter arg
@@ -53,10 +50,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             };
 
         debug!("try_report_named_anon_conflict: named = {:?}", named);
-        debug!("try_report_named_anon_conflict: anon_arg_info = {:?}",
-               anon_arg_info);
-        debug!("try_report_named_anon_conflict: region_info = {:?}",
-               region_info);
+        debug!("try_report_named_anon_conflict: anon_arg_info = {:?}", anon_arg_info);
+        debug!("try_report_named_anon_conflict: region_info = {:?}", region_info);
 
         let (arg, new_ty, br, is_first, scope_def_id, is_impl_item) = (anon_arg_info.arg,
                                                                        anon_arg_info.arg_ty,
@@ -101,6 +96,5 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 .span_label(span, format!("lifetime `{}` required", named))
                 .emit();
         return true;
-
     }
 }

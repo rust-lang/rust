@@ -186,8 +186,11 @@ install!((self, builder, _config),
         install_cargo(builder, self.stage, self.target);
     };
     Rls, "rls", _config.extended, only_hosts: true, {
-        builder.ensure(dist::Rls { stage: self.stage, target: self.target });
-        install_rls(builder, self.stage, self.target);
+        if builder.ensure(dist::Rls { stage: self.stage, target: self.target }).is_some() {
+            install_rls(builder, self.stage, self.target);
+        } else {
+            println!("skipping Install RLS stage{} ({})", self.stage, self.target);
+        }
     };
     Analysis, "analysis", _config.extended, only_hosts: false, {
         builder.ensure(dist::Analysis {

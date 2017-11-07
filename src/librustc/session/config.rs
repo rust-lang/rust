@@ -138,6 +138,34 @@ impl OutputType {
         }
     }
 
+    fn from_shorthand(shorthand: &str) -> Option<Self> {
+        Some(match shorthand {
+             "asm" => OutputType::Assembly,
+             "llvm-ir" => OutputType::LlvmAssembly,
+             "mir" => OutputType::Mir,
+             "llvm-bc" => OutputType::Bitcode,
+             "obj" => OutputType::Object,
+             "metadata" => OutputType::Metadata,
+             "link" => OutputType::Exe,
+             "dep-info" => OutputType::DepInfo,
+            _ => return None,
+        })
+    }
+
+    fn shorthands_display() -> String {
+        format!(
+            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
+            OutputType::Bitcode.shorthand(),
+            OutputType::Assembly.shorthand(),
+            OutputType::LlvmAssembly.shorthand(),
+            OutputType::Mir.shorthand(),
+            OutputType::Object.shorthand(),
+            OutputType::Metadata.shorthand(),
+            OutputType::Exe.shorthand(),
+            OutputType::DepInfo.shorthand(),
+        )
+    }
+
     pub fn extension(&self) -> &'static str {
         match *self {
             OutputType::Bitcode => "bc",
@@ -1488,19 +1516,13 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
                 let mut parts = output_type.splitn(2, '=');
-                let output_type = match parts.next().unwrap() {
-                    "asm" => OutputType::Assembly,
-                    "llvm-ir" => OutputType::LlvmAssembly,
-                    "mir" => OutputType::Mir,
-                    "llvm-bc" => OutputType::Bitcode,
-                    "obj" => OutputType::Object,
-                    "metadata" => OutputType::Metadata,
-                    "link" => OutputType::Exe,
-                    "dep-info" => OutputType::DepInfo,
-                    part => {
-                        early_error(error_format, &format!("unknown emission type: `{}`",
-                                                    part))
-                    }
+                let shorthand = parts.next().unwrap();
+                let output_type = match OutputType::from_shorthand(shorthand) {
+                    Some(output_type) => output_type,
+                    None => early_error(error_format, &format!(
+                        "unknown emission type: `{}` - expected one of: {}",
+                        shorthand, OutputType::shorthands_display(),
+                    )),
                 };
                 let path = parts.next().map(PathBuf::from);
                 output_types.insert(output_type, path);
