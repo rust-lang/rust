@@ -163,6 +163,7 @@ mod v256;
 mod v512;
 mod v64;
 
+/// 32-bit wide vector tpyes
 mod v32 {
     use simd_llvm::*;
 
@@ -172,21 +173,17 @@ mod v32 {
     define_ty! { i8x4, i8, i8, i8, i8 }
     define_impl! { i8x4, i8, 4, i8x4, x0, x1, x2, x3 }
 
-    define_casts!(
-        (i8x4, i32x4, as_i32x4),
-        (i16x2, i64x2, as_i64x2)
-    );
+    define_casts!((i8x4, i32x4, as_i32x4), (i16x2, i64x2, as_i64x2));
 }
 
+/// 16-bit wide vector tpyes
 mod v16 {
     use simd_llvm::*;
 
     define_ty! { i8x2, i8, i8 }
     define_impl! { i8x2, i8, 2, i8x2, x0, x1 }
 
-    define_casts!(
-        (i8x2, i64x2, as_i64x2)
-    );
+    define_casts!((i8x2, i64x2, as_i64x2));
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

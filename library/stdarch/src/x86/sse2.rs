@@ -1792,7 +1792,9 @@ pub unsafe fn _mm_cvtsd_si64(a: f64x2) -> i64 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(cvtsd2si))]
-pub unsafe fn _mm_cvtsd_si64x(a: f64x2) -> i64 { _mm_cvtsd_si64(a) }
+pub unsafe fn _mm_cvtsd_si64x(a: f64x2) -> i64 {
+    _mm_cvtsd_si64(a)
+}
 
 /// Convert the lower double-precision (64-bit) floating-point element in `b`
 /// to a single-precision (32-bit) floating-point element, store the result in
@@ -1857,7 +1859,9 @@ pub unsafe fn _mm_cvttsd_si64(a: f64x2) -> i64 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(cvttsd2si))]
-pub unsafe fn _mm_cvttsd_si64x(a: f64x2) -> i64 { _mm_cvttsd_si64(a) }
+pub unsafe fn _mm_cvttsd_si64x(a: f64x2) -> i64 {
+    _mm_cvttsd_si64(a)
+}
 
 /// Convert packed single-precision (32-bit) floating-point elements in `a` to
 /// packed 32-bit integers with truncation.

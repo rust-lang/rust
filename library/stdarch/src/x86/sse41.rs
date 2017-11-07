@@ -244,7 +244,8 @@ pub unsafe fn _mm_max_epu32(a: u32x4, b: u32x4) -> u32x4 {
     pmaxud(a, b)
 }
 
-/// Convert packed 32-bit integers from `a` and `b` to packed 16-bit integers using unsigned saturation
+/// Convert packed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// using unsigned saturation
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(packusdw))]
@@ -276,7 +277,8 @@ pub unsafe fn _mm_cvtepi8_epi32(a: i8x16) -> i32x4 {
     simd_shuffle4::<_, ::v32::i8x4>(a, a, [0, 1, 2, 3]).as_i32x4()
 }
 
-/// Sign extend packed 8-bit integers in the low 8 bytes of `a` to packed 64-bit integers
+/// Sign extend packed 8-bit integers in the low 8 bytes of `a` to packed
+/// 64-bit integers
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovsxbq))]
@@ -800,7 +802,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-     #[simd_test = "sse4.1"]
+    #[simd_test = "sse4.1"]
     unsafe fn _mm_cvtepi8_epi16() {
         let a = i8x16::splat(10);
         let r = sse41::_mm_cvtepi8_epi16(a);
@@ -842,7 +844,7 @@ mod tests {
         let r = sse41::_mm_cvtepi16_epi32(a);
         let e = i32x4::splat(10);
         assert_eq!(r, e);
-        let a =  i16x8::splat(-10);
+        let a = i16x8::splat(-10);
         let r = sse41::_mm_cvtepi16_epi32(a);
         let e = i32x4::splat(-10);
         assert_eq!(r, e);
@@ -854,7 +856,7 @@ mod tests {
         let r = sse41::_mm_cvtepi16_epi64(a);
         let e = i64x2::splat(10);
         assert_eq!(r, e);
-        let a =  i16x8::splat(-10);
+        let a = i16x8::splat(-10);
         let r = sse41::_mm_cvtepi16_epi64(a);
         let e = i64x2::splat(-10);
         assert_eq!(r, e);
