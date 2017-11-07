@@ -953,7 +953,7 @@ fn check_for_loop_range<'a, 'tcx>(
                 cx: cx,
                 var: canonical_id,
                 indexed_mut: HashSet::new(),
-                indexed: HashMap::new(),
+                indexed_indirectly: HashMap::new(),
                 indexed_directly: HashMap::new(),
                 referenced: HashSet::new(),
                 nonindex: false,
@@ -962,8 +962,7 @@ fn check_for_loop_range<'a, 'tcx>(
             walk_expr(&mut visitor, body);
 
             // linting condition: we only indexed one variable, and indexed it directly
-            // (`indexed_directly` is subset of `indexed`)
-            if visitor.indexed.len() == 1 && visitor.indexed_directly.len() == 1 {
+            if visitor.indexed_indirectly.is_empty() && visitor.indexed_directly.len() == 1 {
                 let (indexed, indexed_extent) = visitor
                     .indexed_directly
                     .into_iter()
@@ -1547,8 +1546,8 @@ struct VarVisitor<'a, 'tcx: 'a> {
     var: ast::NodeId,
     /// indexed variables that are used mutably
     indexed_mut: HashSet<Name>,
-    /// indexed variables, the extend is `None` for global
-    indexed: HashMap<Name, Option<region::Scope>>,
+    /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
+    indexed_indirectly: HashMap<Name, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
     indexed_directly: HashMap<Name, Option<region::Scope>>,
@@ -1563,18 +1562,16 @@ struct VarVisitor<'a, 'tcx: 'a> {
     prefer_mutable: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
+    fn check(&mut self, idx: &'tcx Expr, seqexpr: &'tcx Expr, expr: &'tcx Expr) -> bool {
         if_chain! {
-            // an index op
-            if let ExprIndex(ref seqexpr, ref idx) = expr.node;
             // the indexed container is referenced by a name
             if let ExprPath(ref seqpath) = seqexpr.node;
             if let QPath::Resolved(None, ref seqvar) = *seqpath;
             if seqvar.segments.len() == 1;
             then {
                 let index_used_directly = same_var(self.cx, idx, self.var);
-                let index_used = index_used_directly || {
+                let indexed_indirectly = {
                     let mut used_visitor = LocalUsedVisitor {
                         cx: self.cx,
                         local: self.var,
@@ -1584,7 +1581,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     used_visitor.used
                 };
 
-                if index_used {
+                if indexed_indirectly || index_used_directly {
                     if self.prefer_mutable {
                         self.indexed_mut.insert(seqvar.segments[0].name);
                     }
@@ -1596,23 +1593,47 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                             let parent_id = self.cx.tcx.hir.get_parent(expr.id);
                             let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
-                            self.indexed.insert(seqvar.segments[0].name, Some(extent));
+                            if indexed_indirectly {
+                                self.indexed_indirectly.insert(seqvar.segments[0].name, Some(extent));
+                            }
                             if index_used_directly {
                                 self.indexed_directly.insert(seqvar.segments[0].name, Some(extent));
                             }
-                            return;  // no need to walk further *on the variable*
+                            return false;  // no need to walk further *on the variable*
                         }
                         Def::Static(..) | Def::Const(..) => {
-                            self.indexed.insert(seqvar.segments[0].name, None);
+                            if indexed_indirectly {
+                                self.indexed_indirectly.insert(seqvar.segments[0].name, None);
+                            }
                             if index_used_directly {
                                 self.indexed_directly.insert(seqvar.segments[0].name, None);
                             }
-                            return;  // no need to walk further *on the variable*
+                            return false;  // no need to walk further *on the variable*
                         }
                         _ => (),
                     }
                 }
             }
+        }
+        true
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if_chain! {
+            // a range index op
+            if let ExprMethodCall(ref meth, _, ref args) = expr.node;
+            if meth.name == "index" || meth.name == "index_mut";
+            if !self.check(&args[1], &args[0], expr);
+            then { return }
+        }
+
+        if_chain! {
+            // an index op
+            if let ExprIndex(ref seqexpr, ref idx) = expr.node;
+            if !self.check(idx, seqexpr, expr);
+            then { return }
         }
 
         if_chain! {
