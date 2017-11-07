@@ -76,6 +76,13 @@ pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
     ("large", llvm::CodeModel::Large),
 ];
 
+pub const TLS_MODEL_ARGS : [(&'static str, llvm::ThreadLocalMode); 4] = [
+    ("global-dynamic", llvm::ThreadLocalMode::GeneralDynamic),
+    ("local-dynamic", llvm::ThreadLocalMode::LocalDynamic),
+    ("initial-exec", llvm::ThreadLocalMode::InitialExec),
+    ("local-exec", llvm::ThreadLocalMode::LocalExec),
+];
+
 pub fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
     match llvm::last_error() {
         Some(err) => handler.fatal(&format!("{}: {}", msg, err)),
@@ -173,9 +180,7 @@ pub fn target_machine_factory(sess: &Session)
         Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid code model",
-                             sess.opts
-                                 .cg
-                                 .code_model));
+                              code_model_arg));
             sess.abort_if_errors();
             bug!();
         }

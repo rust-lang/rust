@@ -311,6 +311,9 @@ pub struct TargetOptions {
     pub relocation_model: String,
     /// Code model to use. Corresponds to `llc -code-model=$code_model`. Defaults to "default".
     pub code_model: String,
+    /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
+    /// and "local-exec". This is similar to the -ftls-model option in GCC/Clang.
+    pub tls_model: String,
     /// Do not emit code that uses the "red zone", if the ABI has one. Defaults to false.
     pub disable_redzone: bool,
     /// Eliminate frame pointers from stack frames if possible. Defaults to true.
@@ -450,6 +453,7 @@ impl Default for TargetOptions {
             executables: false,
             relocation_model: "pic".to_string(),
             code_model: "default".to_string(),
+            tls_model: "global-dynamic".to_string(),
             disable_redzone: false,
             eliminate_frame_pointer: true,
             function_sections: true,
@@ -696,6 +700,7 @@ impl Target {
         key!(executables, bool);
         key!(relocation_model);
         key!(code_model);
+        key!(tls_model);
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);
         key!(function_sections, bool);
@@ -888,6 +893,7 @@ impl ToJson for Target {
         target_option_val!(executables);
         target_option_val!(relocation_model);
         target_option_val!(code_model);
+        target_option_val!(tls_model);
         target_option_val!(disable_redzone);
         target_option_val!(eliminate_frame_pointer);
         target_option_val!(function_sections);

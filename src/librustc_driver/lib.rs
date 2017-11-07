@@ -177,6 +177,7 @@ mod rustc_trans {
         pub mod write {
             pub const RELOC_MODEL_ARGS: [(&'static str, ()); 0] = [];
             pub const CODE_GEN_MODEL_ARGS: [(&'static str, ()); 0] = [];
+            pub const TLS_MODEL_ARGS: [(&'static str, ()); 0] = [];
         }
     }
 }
@@ -793,6 +794,13 @@ impl RustcDefaultCalls {
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
                     for &(name, _) in rustc_trans::back::write::CODE_GEN_MODEL_ARGS.iter(){
+                        println!("    {}", name);
+                    }
+                    println!("");
+                }
+                PrintRequest::TlsModels => {
+                    println!("Available TLS models:");
+                    for &(name, _) in rustc_trans::back::write::TLS_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }
                     println!("");

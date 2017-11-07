@@ -368,6 +368,7 @@ pub enum PrintRequest {
     TargetFeatures,
     RelocationModels,
     CodeModels,
+    TlsModels,
     TargetSpec,
     NativeStaticLibs,
 }
@@ -1104,6 +1105,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable ThinLTO when possible"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether #[inline] functions are in all cgus"),
+    tls_model: Option<String> = (None, parse_opt_string, [TRACKED],
+         "choose the TLS model to use (rustc --print tls-models for details)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1330,7 +1333,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                                print on stdout",
                      "[crate-name|file-names|sysroot|cfg|target-list|\
                        target-cpus|target-features|relocation-models|\
-                       code-models|target-spec-json|native-static-libs]"),
+                       code-models|tls-models|target-spec-json|native-static-libs]"),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
@@ -1473,7 +1476,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         })
     });
 
-    let debugging_opts = build_debugging_options(matches, error_format);
+    let mut debugging_opts = build_debugging_options(matches, error_format);
 
     if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
         early_error(ErrorOutputType::Json(false),
@@ -1579,6 +1582,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         prints.push(PrintRequest::CodeModels);
         cg.code_model = None;
     }
+    if debugging_opts.tls_model.as_ref().map_or(false, |s| s == "help") {
+        prints.push(PrintRequest::TlsModels);
+        debugging_opts.tls_model = None;
+    }
 
     let cg = cg;
 
@@ -1678,6 +1685,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             "target-features" => PrintRequest::TargetFeatures,
             "relocation-models" => PrintRequest::RelocationModels,
             "code-models" => PrintRequest::CodeModels,
+            "tls-models" => PrintRequest::TlsModels,
             "native-static-libs" => PrintRequest::NativeStaticLibs,
             "target-spec-json" => {
                 if nightly_options::is_unstable_enabled(matches) {
@@ -2518,6 +2526,10 @@ mod tests {
 
         opts = reference.clone();
         opts.cg.code_model = Some(String::from("code model"));
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.tls_model = Some(String::from("tls model"));
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
