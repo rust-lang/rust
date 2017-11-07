@@ -337,14 +337,22 @@ pub fn make_test(s: &str,
 
     let mut prog = String::new();
 
-    // First push any outer attributes from the example, assuming they
-    // are intended to be crate attributes.
-    prog.push_str(&crate_attrs);
+    if opts.attrs.is_empty() {
+        // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
+        // lints that are commonly triggered in doctests. The crate-level test attributes are
+        // commonly used to make tests fail in case they trigger warnings, so having this there in
+        // that case may cause some tests to pass when they shouldn't have.
+        prog.push_str("#![allow(unused)]\n");
+    }
 
-    // Next, any attributes for other aspects such as lints.
+    // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
     for attr in &opts.attrs {
         prog.push_str(&format!("#![{}]\n", attr));
     }
+
+    // Now push any outer attributes from the example, assuming they
+    // are intended to be crate attributes.
+    prog.push_str(&crate_attrs);
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
