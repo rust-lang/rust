@@ -768,10 +768,26 @@ pub unsafe fn _mm_round_ss(a: f32x4, b: f32x4, rounding: i32) -> f32x4 {
     constify_imm4!(rounding, call)
 }
 
-/// Find minimal u16 element in vector.
-/// Place it in the first element of resulting vector and it's index
-/// in second element (formally bits [16..18] inclusive).
-/// All other elements are set to zero.
+/// Finds the minimum u16 in the u16x8 vector, returning it in the first
+/// position of the result vector along with its index in the second position;
+/// all other elements are set to zero.
+///
+/// \headerfile <x86intrin.h>
+///
+/// This intrinsic corresponds to the <c> VPHMINPOSUW / PHMINPOSUW </c>
+/// instruction.
+///
+/// Arguments:
+///
+/// * `a` - A 128-bit vector of type `u16x8`.
+///
+/// Returns:
+///
+/// A 128-bit value where:
+///
+/// * bits `[15:0]` - contain the minimum value found in parameter `a`,
+/// * bits `[18:16]` - contain the index of the minimum value
+/// * remaining bits are set to `0`.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(phminposuw))]
@@ -800,7 +816,6 @@ pub unsafe fn _mm_mul_epi32(a: i32x4, b: i32x4) -> i64x2 {
 pub unsafe fn _mm_mullo_epi32(a: i32x4, b: i32x4) -> i32x4 {
     a * b
 }
-
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -1216,7 +1231,7 @@ mod tests {
         let e = i64x2::splat(-10);
         assert_eq!(r, e);
     }
-    
+
     #[simd_test = "sse4.1"]
     unsafe fn _mm_cvtepi32_epi64() {
         let a = i32x4::splat(10);
@@ -1558,6 +1573,12 @@ mod tests {
         // Attention, most significant bit in r[2] is treated as a sign bit!
         // 1234567 * 666666 = -1589877210
         let e = i32x4::new(-300, 512, -1589877210, -1409865409);
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_minpos_epu16() {
+        let a = u16x8::new(8, 7, 6, 5, 4, 1, 2, 3);
+        let r = sse41::_mm_minpos_epu16(a);
+        let e = u16x8::splat(0).replace(0, 1).replace(1, 5);
         assert_eq!(r, e);
     }
 }
