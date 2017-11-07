@@ -144,7 +144,6 @@ impl LintPass for StringLitAsBytes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        use std::ascii::AsciiExt;
         use syntax::ast::LitKind;
         use utils::{in_macro, snippet};
 

@@ -378,13 +378,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         // check for never_loop
         match expr.node {
             ExprWhile(_, ref block, _) | ExprLoop(ref block, _, _) => {
-                let mut state = NeverLoopState {
-                    breaks: HashSet::new(),
-                    continues: HashSet::new(),
-                };
-                let may_complete = never_loop_block(block, &mut state);
-                if !may_complete && !state.continues.contains(&expr.id) {
-                    span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
+                match never_loop_block(block, &expr.id) {
+                    NeverLoopResult::AlwaysBreak =>
+                        span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
+                    NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
                 }
             },
             _ => (),
@@ -491,16 +488,59 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-struct NeverLoopState {
-    breaks: HashSet<NodeId>,
-    continues: HashSet<NodeId>,
+enum NeverLoopResult {
+    // A break/return always get triggered but not necessarily for the main loop.
+    AlwaysBreak,
+    // A continue may occur for the main loop.
+    MayContinueMainLoop,
+    Otherwise,
 }
 
-fn never_loop_block(block: &Block, state: &mut NeverLoopState) -> bool {
+fn absorb_break(arg: &NeverLoopResult) -> NeverLoopResult {
+    match *arg {
+        NeverLoopResult::AlwaysBreak |
+        NeverLoopResult::Otherwise => NeverLoopResult::Otherwise,
+        NeverLoopResult::MayContinueMainLoop => NeverLoopResult::MayContinueMainLoop,
+    }
+}
+
+// Combine two results for parts that are called in order.
+fn combine_seq(first: NeverLoopResult, second: NeverLoopResult) -> NeverLoopResult {
+    match first {
+        NeverLoopResult::AlwaysBreak | NeverLoopResult::MayContinueMainLoop => first,
+        NeverLoopResult::Otherwise => second,
+    }
+}
+
+// Combine two results where both parts are called but not necessarily in order.
+fn combine_both(left: NeverLoopResult, right: NeverLoopResult) -> NeverLoopResult {
+    match (left, right) {
+        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) =>
+            NeverLoopResult::MayContinueMainLoop,
+        (NeverLoopResult::AlwaysBreak, _) | (_, NeverLoopResult::AlwaysBreak) =>
+            NeverLoopResult::AlwaysBreak,
+        (NeverLoopResult::Otherwise, NeverLoopResult::Otherwise) =>
+            NeverLoopResult::Otherwise,
+    }
+}
+
+// Combine two results where only one of the part may have been executed.
+fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult {
+    match (b1, b2) {
+        (NeverLoopResult::AlwaysBreak, NeverLoopResult::AlwaysBreak) =>
+            NeverLoopResult::AlwaysBreak,
+        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) =>
+            NeverLoopResult::MayContinueMainLoop,
+        (NeverLoopResult::Otherwise, _) | (_, NeverLoopResult::Otherwise) =>
+            NeverLoopResult::Otherwise,
+    }
+}
+
+fn never_loop_block(block: &Block, main_loop_id: &NodeId) -> NeverLoopResult {
     let stmts = block.stmts.iter().map(stmt_to_expr);
     let expr = once(block.expr.as_ref().map(|p| &**p));
     let mut iter = stmts.chain(expr).filter_map(|e| e);
-    never_loop_expr_seq(&mut iter, state)
+    never_loop_expr_seq(&mut iter, main_loop_id)
 }
 
 fn stmt_to_expr(stmt: &Stmt) -> Option<&Expr> {
@@ -517,7 +557,7 @@ fn decl_to_expr(decl: &Decl) -> Option<&Expr> {
     }
 }
 
-fn never_loop_expr(expr: &Expr, state: &mut NeverLoopState) -> bool {
+fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
     match expr.node {
         ExprBox(ref e) |
         ExprUnary(_, ref e) |
@@ -526,77 +566,84 @@ fn never_loop_expr(expr: &Expr, state: &mut NeverLoopState) -> bool {
         ExprField(ref e, _) |
         ExprTupField(ref e, _) |
         ExprAddrOf(_, ref e) |
-        ExprRepeat(ref e, _) => never_loop_expr(e, state),
+        ExprStruct(_, _, Some(ref e)) |
+        ExprRepeat(ref e, _) => never_loop_expr(e, main_loop_id),
         ExprArray(ref es) | ExprMethodCall(_, _, ref es) | ExprTup(ref es) => {
-            never_loop_expr_seq(&mut es.iter(), state)
+            never_loop_expr_all(&mut es.iter(), main_loop_id)
         },
-        ExprCall(ref e, ref es) => never_loop_expr_seq(&mut once(&**e).chain(es.iter()), state),
+        ExprCall(ref e, ref es) => never_loop_expr_all(&mut once(&**e).chain(es.iter()), main_loop_id),
         ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
-        ExprIndex(ref e1, ref e2) => never_loop_expr_seq(&mut [&**e1, &**e2].iter().cloned(), state),
+        ExprIndex(ref e1, ref e2) => never_loop_expr_all(&mut [&**e1, &**e2].iter().cloned(), main_loop_id),
         ExprIf(ref e, ref e2, ref e3) => {
-            let e1 = never_loop_expr(e, state);
-            let e2 = never_loop_expr(e2, state);
-            match *e3 {
-                Some(ref e3) => {
-                    let e3 = never_loop_expr(e3, state);
-                    e1 && (e2 || e3)
-                },
-                None => e1,
-            }
+            let e1 = never_loop_expr(e, main_loop_id);
+            let e2 = never_loop_expr(e2, main_loop_id);
+            let e3 = e3.as_ref().map_or(NeverLoopResult::Otherwise, |e| never_loop_expr(e, main_loop_id));
+            combine_seq(e1, combine_branches(e2, e3))
         },
         ExprLoop(ref b, _, _) => {
-            let block_may_complete = never_loop_block(b, state);
-            let has_break = state.breaks.remove(&expr.id);
-            state.continues.remove(&expr.id);
-            block_may_complete || has_break
+            // Break can come from the inner loop so remove them.
+            absorb_break(&never_loop_block(b, main_loop_id))
         },
         ExprWhile(ref e, ref b, _) => {
-            let e = never_loop_expr(e, state);
-            let block_may_complete = never_loop_block(b, state);
-            let has_break = state.breaks.remove(&expr.id);
-            let has_continue = state.continues.remove(&expr.id);
-            e && (block_may_complete || has_break || has_continue)
+            let e = never_loop_expr(e, main_loop_id);
+            let result = never_loop_block(b, main_loop_id);
+            // Break can come from the inner loop so remove them.
+            combine_seq(e, absorb_break(&result))
         },
         ExprMatch(ref e, ref arms, _) => {
-            let e = never_loop_expr(e, state);
-            let arms = never_loop_expr_branch(&mut arms.iter().map(|a| &*a.body), state);
-            e && arms
+            let e = never_loop_expr(e, main_loop_id);
+            if arms.is_empty() {
+                e
+            } else {
+                let arms = never_loop_expr_branch(&mut arms.iter().map(|a| &*a.body), main_loop_id);
+                combine_seq(e, arms)
+            }
         },
-        ExprBlock(ref b) => never_loop_block(b, state),
+        ExprBlock(ref b) => never_loop_block(b, main_loop_id),
         ExprAgain(d) => {
             let id = d.target_id
                 .opt_id()
                 .expect("target id can only be missing in the presence of compilation errors");
-            state.continues.insert(id);
-            false
+            if id == *main_loop_id {
+                NeverLoopResult::MayContinueMainLoop
+            } else {
+                NeverLoopResult::AlwaysBreak
+            }
         },
-        ExprBreak(d, _) => {
-            let id = d.target_id
-                .opt_id()
-                .expect("target id can only be missing in the presence of compilation errors");
-            state.breaks.insert(id);
-            false
+        ExprBreak(_, _) => {
+            NeverLoopResult::AlwaysBreak
         },
         ExprRet(ref e) => {
             if let Some(ref e) = *e {
-                never_loop_expr(e, state);
+                combine_seq(never_loop_expr(e, main_loop_id), NeverLoopResult::AlwaysBreak)
+            } else {
+                NeverLoopResult::AlwaysBreak
             }
-            false
         },
-        _ => true,
+        ExprStruct(_, _, None) |
+        ExprYield(_) |
+        ExprClosure(_, _, _, _, _) |
+        ExprInlineAsm(_, _, _) |
+        ExprPath(_) |
+        ExprLit(_) => NeverLoopResult::Otherwise,
     }
 }
 
-fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, state: &mut NeverLoopState) -> bool {
-    es.map(|e| never_loop_expr(e, state))
-        .fold(true, |a, b| a && b)
+fn never_loop_expr_seq<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
+    es.map(|e| never_loop_expr(e, main_loop_id))
+        .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
-fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr>>(e: &mut T, state: &mut NeverLoopState) -> bool {
-    e.map(|e| never_loop_expr(e, state))
-        .fold(false, |a, b| a || b)
+fn never_loop_expr_all<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
+    es.map(|e| never_loop_expr(e, main_loop_id))
+        .fold(NeverLoopResult::Otherwise, combine_both)
+}
+
+fn never_loop_expr_branch<'a, T: Iterator<Item=&'a Expr>>(e: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
+    e.map(|e| never_loop_expr(e, main_loop_id))
+        .fold(NeverLoopResult::AlwaysBreak, combine_branches)
 }
 
 fn check_for_loop<'a, 'tcx>(
