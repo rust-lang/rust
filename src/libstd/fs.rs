@@ -211,6 +211,74 @@ pub struct DirBuilder {
     recursive: bool,
 }
 
+/// Read the entire contents of a file into a bytes vector.
+///
+/// This is a convenience function for using [`File::open`] and [`read_to_end`]
+/// with fewer imports and without an intermediate variable.
+///
+/// [`File::open`]: struct.File.html#method.open
+/// [`read_to_end`]: ../io/trait.Read.html#method.read_to_end
+///
+/// # Errors
+///
+/// This function will return an error if `path` does not already exist.
+/// Other errors may also be returned according to [`OpenOptions::open`].
+///
+/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
+///
+/// It will also return an error if it encounters while reading an error
+/// of a kind other than [`ErrorKind::Interrupted`].
+///
+/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(fs_read_write)]
+///
+/// use std::fs;
+/// use std::net::SocketAddr;
+///
+/// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
+/// let foo: SocketAddr = String::from_utf8_lossy(&fs::read("address.txt")?).parse()?;
+/// # Ok(())
+/// # }
+/// ```
+#[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
+pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    File::open(path)?.read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
+/// Write a slice as the entire contents of a file.
+///
+/// This function will create a file if it does not exist,
+/// and will entirely replace its contents if it does.
+///
+/// This is a convenience function for using [`File::create`] and [`write_all`]
+/// with fewer imports.
+///
+/// [`File::create`]: struct.File.html#method.create
+/// [`write_all`]: ../io/trait.Write.html#method.write_all
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(fs_read_write)]
+///
+/// use std::fs;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// fs::write("foo.txt", b"Lorem ipsum")?;
+/// # Ok(())
+/// # }
+/// ```
+#[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
+pub fn write<P: AsRef<Path>>(path: P, contents: &[u8]) -> io::Result<()> {
+    File::create(path)?.write_all(contents)
+}
+
 impl File {
     /// Attempts to open a file in read-only mode.
     ///
@@ -260,73 +328,6 @@ impl File {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
-    }
-
-    /// Read the entire contents of a file into a bytes vector.
-    ///
-    /// This is a convenience function for using [`File::open`] and [`read_to_end`]
-    /// with fewer imports and without an intermediate variable.
-    ///
-    /// [`File::open`]: struct.File.html#method.open
-    /// [`read_to_end`]: ../io/trait.Read.html#method.read_to_end
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if `path` does not already exist.
-    /// Other errors may also be returned according to [`OpenOptions::open`].
-    ///
-    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
-    ///
-    /// It will also return an error if it encounters while reading an error
-    /// of a kind other than [`ErrorKind::Interrupted`].
-    ///
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// #![feature(file_read_write_contents)]
-    ///
-    /// use std::fs::File;
-    ///
-    /// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
-    /// let foo = String::from_utf8(File::read_contents("foo.txt")?)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[unstable(feature = "file_read_write_contents", issue = /* FIXME */ "0")]
-    pub fn read_contents<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
-        let mut bytes = Vec::new();
-        File::open(path)?.read_to_end(&mut bytes)?;
-        Ok(bytes)
-    }
-
-    /// Write the give contents to a file.
-    ///
-    /// This function will create a file if it does not exist,
-    /// and will entirely replace its contents if it does.
-    ///
-    /// This is a convenience function for using [`File::create`] and [`write_all`]
-    /// with fewer imports.
-    ///
-    /// [`File::create`]: struct.File.html#method.create
-    /// [`write_all`]: ../io/trait.Write.html#method.write_all
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// #![feature(file_read_write_contents)]
-    ///
-    /// use std::fs::File;
-    ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// File::write_contents("foo.txt", b"Lorem ipsum")?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[unstable(feature = "file_read_write_contents", issue = /* FIXME */ "0")]
-    pub fn write_contents<P: AsRef<Path>>(path: P, contents: &[u8]) -> io::Result<()> {
-        File::create(path)?.write_all(contents)
     }
 
     /// Attempts to sync all OS-internal metadata to disk.
@@ -2989,14 +2990,14 @@ mod tests {
     }
 
     #[test]
-    fn write_contents_then_read_contents() {
+    fn write_then_read() {
         let mut bytes = [0; 1024];
         StdRng::new().unwrap().fill_bytes(&mut bytes);
 
         let tmpdir = tmpdir();
 
-        check!(File::write_contents(&tmpdir.join("test"), &bytes));
-        let v = check!(File::read_contents(&tmpdir.join("test")));
+        check!(fs::write(&tmpdir.join("test"), &bytes));
+        let v = check!(fs::read(&tmpdir.join("test")));
         assert!(v == &bytes[..]);
     }
 
