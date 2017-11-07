@@ -17,7 +17,7 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
-use rustc::session::CrateDisambiguator;
+use rustc::session::{Session, CrateDisambiguator};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
@@ -176,8 +176,8 @@ impl CrateMetadata {
         self.root.disambiguator
     }
 
-    pub fn needs_allocator(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn needs_allocator(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "needs_allocator")
     }
 
@@ -189,43 +189,43 @@ impl CrateMetadata {
         self.root.has_default_lib_allocator.clone()
     }
 
-    pub fn is_panic_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_panic_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "panic_runtime")
     }
 
-    pub fn needs_panic_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn needs_panic_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "needs_panic_runtime")
     }
 
-    pub fn is_compiler_builtins(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_compiler_builtins(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "compiler_builtins")
     }
 
-    pub fn is_sanitizer_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_sanitizer_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "sanitizer_runtime")
     }
 
-    pub fn is_profiler_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_profiler_runtime(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "profiler_runtime")
     }
 
-    pub fn is_no_builtins(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_no_builtins(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "no_builtins")
     }
 
-     pub fn has_copy_closures(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+     pub fn has_copy_closures(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_feature_attr(&attrs, "copy_closures")
     }
 
-    pub fn has_clone_closures(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn has_clone_closures(&self, sess: &Session) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_feature_attr(&attrs, "clone_closures")
     }
 

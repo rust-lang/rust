@@ -685,14 +685,15 @@ impl<'a> CrateLoader<'a> {
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs,
                                                           "needs_panic_runtime");
 
+        let sess = self.sess;
         self.cstore.iter_crate_data(|cnum, data| {
             needs_panic_runtime = needs_panic_runtime ||
-                                  data.needs_panic_runtime();
-            if data.is_panic_runtime() {
+                                  data.needs_panic_runtime(sess);
+            if data.is_panic_runtime(sess) {
                 // Inject a dependency from all #![needs_panic_runtime] to this
                 // #![panic_runtime] crate.
                 self.inject_dependency_if(cnum, "a panic runtime",
-                                          &|data| data.needs_panic_runtime());
+                                          &|data| data.needs_panic_runtime(sess));
                 runtime_found = runtime_found || data.dep_kind.get() == DepKind::Explicit;
             }
         });
@@ -728,7 +729,7 @@ impl<'a> CrateLoader<'a> {
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
-        if !data.is_panic_runtime() {
+        if !data.is_panic_runtime(self.sess) {
             self.sess.err(&format!("the crate `{}` is not a panic runtime",
                                    name));
         }
@@ -740,7 +741,7 @@ impl<'a> CrateLoader<'a> {
 
         self.sess.injected_panic_runtime.set(Some(cnum));
         self.inject_dependency_if(cnum, "a panic runtime",
-                                  &|data| data.needs_panic_runtime());
+                                  &|data| data.needs_panic_runtime(self.sess));
     }
 
     fn inject_sanitizer_runtime(&mut self) {
@@ -835,7 +836,7 @@ impl<'a> CrateLoader<'a> {
                                        PathKind::Crate, dep_kind);
 
                 // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
-                if !data.is_sanitizer_runtime() {
+                if !data.is_sanitizer_runtime(self.sess) {
                     self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
                                            name));
                 }
@@ -856,7 +857,7 @@ impl<'a> CrateLoader<'a> {
                                    PathKind::Crate, dep_kind);
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-            if !data.is_profiler_runtime() {
+            if !data.is_profiler_runtime(self.sess) {
                 self.sess.err(&format!("the crate `profiler_builtins` is not \
                                         a profiler runtime"));
             }
@@ -875,7 +876,7 @@ impl<'a> CrateLoader<'a> {
         let mut needs_allocator = attr::contains_name(&krate.attrs,
                                                       "needs_allocator");
         self.cstore.iter_crate_data(|_, data| {
-            needs_allocator = needs_allocator || data.needs_allocator();
+            needs_allocator = needs_allocator || data.needs_allocator(self.sess);
         });
         if !needs_allocator {
             return
@@ -997,7 +998,7 @@ impl<'a> CrateLoader<'a> {
             Some(data) => {
                 // We have an allocator. We detect separately what kind it is, to allow for some
                 // flexibility in misconfiguration.
-                let attrs = data.get_item_attrs(CRATE_DEF_INDEX);
+                let attrs = data.get_item_attrs(CRATE_DEF_INDEX, self.sess);
                 let kind_interned = attr::first_attr_value_str_by_name(&attrs, "rustc_alloc_kind")
                     .map(Symbol::as_str);
                 let kind_str = kind_interned
