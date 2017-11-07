@@ -671,6 +671,10 @@ pub struct ArgsOs { inner: sys::args::Args }
 /// set to arbitrary text, and may not even exist. This means this property should
 /// not be relied upon for security purposes.
 ///
+/// On Unix systems shell usually expands unquoted arguments with glob patterns
+/// (such as `*` and `?`). On Windows this is not done, and such arguments are
+/// passed as-is.
+///
 /// # Panics
 ///
 /// The returned iterator will panic during iteration if any argument to the
