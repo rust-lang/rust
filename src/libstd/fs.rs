@@ -251,6 +251,47 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     Ok(bytes)
 }
 
+/// Read the entire contents of a file into a string.
+///
+/// This is a convenience function for using [`File::open`] and [`read_to_string`]
+/// with fewer imports and without an intermediate variable.
+///
+/// [`File::open`]: struct.File.html#method.open
+/// [`read_to_string`]: ../io/trait.Read.html#method.read_to_string
+///
+/// # Errors
+///
+/// This function will return an error if `path` does not already exist.
+/// Other errors may also be returned according to [`OpenOptions::open`].
+///
+/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
+///
+/// It will also return an error if it encounters while reading an error
+/// of a kind other than [`ErrorKind::Interrupted`],
+/// or if the contents of the file are not valid UTF-8.
+///
+/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(fs_read_write)]
+///
+/// use std::fs;
+/// use std::net::SocketAddr;
+///
+/// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
+/// let foo: SocketAddr = fs::read_utf8("address.txt")?.parse()?;
+/// # Ok(())
+/// # }
+/// ```
+#[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
+pub fn read_utf8<P: AsRef<Path>>(path: P) -> io::Result<String> {
+    let mut string = String::new();
+    File::open(path)?.read_to_string(&mut string)?;
+    Ok(string)
+}
+
 /// Write a slice as the entire contents of a file.
 ///
 /// This function will create a file if it does not exist,
@@ -1980,7 +2021,9 @@ mod tests {
     ) }
 
     #[cfg(unix)]
-    macro_rules! error { ($e:expr, $s:expr) => (
+    macro_rules! error { ($e:expr, $s:expr) => ( error_contains!($e, $s) ) }
+
+    macro_rules! error_contains { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
             Err(ref err) => assert!(err.to_string().contains($s),
@@ -2999,6 +3042,15 @@ mod tests {
         check!(fs::write(&tmpdir.join("test"), &bytes));
         let v = check!(fs::read(&tmpdir.join("test")));
         assert!(v == &bytes[..]);
+
+        check!(fs::write(&tmpdir.join("not-utf8"), &[0xFF]));
+        error_contains!(fs::read_utf8(&tmpdir.join("not-utf8")),
+                        "stream did not contain valid UTF-8");
+
+        let s = "𐁁𐀓𐀠𐀴𐀍";
+        check!(fs::write(&tmpdir.join("utf8"), s.as_bytes()));
+        let string = check!(fs::read_utf8(&tmpdir.join("utf8")));
+        assert_eq!(string, s);
     }
 
     #[test]
