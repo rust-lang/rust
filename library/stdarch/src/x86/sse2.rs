@@ -2056,6 +2056,30 @@ pub unsafe fn _mm_undefined_si128() -> __m128i {
     mem::transmute(i32x4::splat(mem::uninitialized()))
 }
 
+/// The resulting `f64x2` element is composed by the low-order values of
+/// the two `f64x2` interleaved input elements, i.e.:
+///
+/// * The [127:64] bits are copied from the [127:64] bits of the second input
+/// * The [63:0] bits are copied from the [127:64] bits of the first input
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(unpckhpd))]
+pub unsafe fn _mm_unpackhi_pd(a: f64x2, b: f64x2) -> f64x2 {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// The resulting `f64x2` element is composed by the high-order values of
+/// the two `f64x2` interleaved input elements, i.e.:
+///
+/// * The [127:64] bits are copied from the [63:0] bits of the second input
+/// * The [63:0] bits are copied from the [63:0] bits of the first input
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(unpcklpd))]
+pub unsafe fn _mm_unpacklo_pd(a: f64x2, b: f64x2) -> f64x2 {
+    simd_shuffle2(a, b, [0, 2])
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.sse2.pause"]
@@ -4173,5 +4197,21 @@ mod tests {
         let d = -5.0;
         let r = sse2::_mm_load_pd1(&d);
         assert_eq!(r, f64x2::new(d, d));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_unpackhi_pd() {
+        let a = f64x2::new(1.0, 2.0);
+        let b = f64x2::new(3.0, 4.0);
+        let r = sse2::_mm_unpackhi_pd(a, b);
+        assert_eq!(r, f64x2::new(2.0, 4.0));
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_unpacklo_pd() {
+        let a = f64x2::new(1.0, 2.0);
+        let b = f64x2::new(3.0, 4.0);
+        let r = sse2::_mm_unpacklo_pd(a, b);
+        assert_eq!(r, f64x2::new(1.0, 3.0));
     }
 }
