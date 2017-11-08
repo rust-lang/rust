@@ -188,10 +188,10 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// checker.  Here at least one of `A` and `B` must be a region
     /// variable.
     ///
-    /// Using `BTreeMap` because the order in which we iterate over 
-    /// these constraints can affect the way we build the region graph, 
-    /// which in turn affects the way that region errors are reported, 
-    /// leading to small variations in error output across runs and 
+    /// Using `BTreeMap` because the order in which we iterate over
+    /// these constraints can affect the way we build the region graph,
+    /// which in turn affects the way that region errors are reported,
+    /// leading to small variations in error output across runs and
     /// platforms.
     constraints: RefCell<BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
 
