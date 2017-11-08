@@ -79,7 +79,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
             hir::ExprClosure(cc, _, body_id, _, is_generator) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
-                self.fcx.analyze_closure((expr.id, expr.hir_id),
+                self.fcx.analyze_closure(expr.id,
+                                         expr.hir_id,
                                          expr.span,
                                          body,
                                          cc,
@@ -95,7 +96,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn analyze_closure(&self,
-                       (closure_node_id, closure_hir_id): (ast::NodeId, hir::HirId),
+                       closure_node_id: ast::NodeId,
+                       closure_hir_id: hir::HirId,
                        span: Span,
                        body: &hir::Body,
                        capture_clause: hir::CaptureClause,
