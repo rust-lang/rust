@@ -1,3 +1,5 @@
+//~  ERROR mismatched types
+//~| ERROR mismatched types
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -14,17 +16,7 @@ struct Foo<'a,'b> {
 }
 
 impl<'a,'b> Foo<'a,'b> {
-    fn bar(self:
-           Foo<'b,'a>
-    //~^ ERROR mismatched method receiver
-    //~| expected type `Foo<'a, 'b>`
-    //~| found type `Foo<'b, 'a>`
-    //~| lifetime mismatch
-    //~| ERROR mismatched method receiver
-    //~| expected type `Foo<'a, 'b>`
-    //~| found type `Foo<'b, 'a>`
-    //~| lifetime mismatch
-           ) {}
+    fn bar(self: Foo<'b,'a>) {}
 }
 
 fn main() {}

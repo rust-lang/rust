@@ -516,28 +516,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
                 .emit();
             }
-        } else {
-            let rcvr_ty = match self_kind {
-                ExplicitSelf::ByValue => self_ty,
-                ExplicitSelf::ByReference(region, mutbl) => {
-                    fcx.tcx.mk_ref(region, ty::TypeAndMut {
-                        ty: self_ty,
-                        mutbl,
-                    })
-                }
-                ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty),
-                ExplicitSelf::Other => unreachable!(),
-            };
-            let rcvr_ty = fcx.normalize_associated_types_in(span, &rcvr_ty);
-            let rcvr_ty = fcx.liberate_late_bound_regions(method.def_id,
-                                                        &ty::Binder(rcvr_ty));
-
-            debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
-
-            let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-            if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty) {
-                err.emit();
-            }
         }
     }
 
