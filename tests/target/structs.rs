@@ -308,3 +308,8 @@ pub(crate) struct Foo {}
 pub(self) struct Foo();
 pub(super) struct Foo();
 pub(crate) struct Foo();
+
+// #2125
+pub struct ReadinessCheckRegistry(
+    Mutex<HashMap<Arc<String>, Box<Fn() -> ReadinessCheck + Sync + Send>>>,
+);
