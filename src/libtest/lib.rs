@@ -84,6 +84,9 @@ pub mod test {
 }
 
 pub mod stats;
+mod formatters;
+
+use formatters::*;
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
@@ -359,7 +362,8 @@ fn optgroups() -> getopts::Options {
                                      in parallel", "n_threads")
         .optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
                                be used multiple times)","FILTER")
-        .optflag("q", "quiet", "Display one character per test instead of one line")
+        .optflag("q", "quiet", "Display one character per test instead of one line.\
+                                Equivalent to --format=terse")
         .optflag("", "exact", "Exactly match filters rather than by substring")
         .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
@@ -507,11 +511,24 @@ enum OutputLocation<T> {
     Raw(T),
 }
 
-struct ConsoleTestState<T> {
+impl<T: Write> Write for OutputLocation<T> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match *self {
+            Pretty(ref mut term) => term.write(buf),
+            Raw(ref mut stdout) => stdout.write(buf)
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match *self {
+            Pretty(ref mut term) => term.flush(),
+            Raw(ref mut stdout) => stdout.flush()
+        }
+    }
+}
+
+struct ConsoleTestState {
     log_out: Option<File>,
-    out: OutputLocation<T>,
-    use_color: bool,
-    quiet: bool,
     total: usize,
     passed: usize,
     failed: usize,
@@ -526,22 +543,15 @@ struct ConsoleTestState<T> {
     options: Options,
 }
 
-impl<T: Write> ConsoleTestState<T> {
-    pub fn new(opts: &TestOpts, _: Option<T>) -> io::Result<ConsoleTestState<io::Stdout>> {
+impl ConsoleTestState {
+    pub fn new(opts: &TestOpts) -> io::Result<ConsoleTestState> {
         let log_out = match opts.logfile {
             Some(ref path) => Some(File::create(path)?),
             None => None,
         };
-        let out = match term::stdout() {
-            None => Raw(io::stdout()),
-            Some(t) => Pretty(t),
-        };
 
         Ok(ConsoleTestState {
-            out,
             log_out,
-            use_color: use_color(opts),
-            quiet: opts.quiet,
             total: 0,
             passed: 0,
             failed: 0,
@@ -555,114 +565,6 @@ impl<T: Write> ConsoleTestState<T> {
             max_name_len: 0,
             options: opts.options,
         })
-    }
-
-    pub fn write_ok(&mut self) -> io::Result<()> {
-        self.write_short_result("ok", ".", term::color::GREEN)
-    }
-
-    pub fn write_failed(&mut self) -> io::Result<()> {
-        self.write_short_result("FAILED", "F", term::color::RED)
-    }
-
-    pub fn write_ignored(&mut self) -> io::Result<()> {
-        self.write_short_result("ignored", "i", term::color::YELLOW)
-    }
-
-    pub fn write_allowed_fail(&mut self) -> io::Result<()> {
-        self.write_short_result("FAILED (allowed)", "a", term::color::YELLOW)
-    }
-
-    pub fn write_bench(&mut self) -> io::Result<()> {
-        self.write_pretty("bench", term::color::CYAN)
-    }
-
-    pub fn write_short_result(&mut self, verbose: &str, quiet: &str, color: term::color::Color)
-                              -> io::Result<()> {
-        if self.quiet {
-            self.write_pretty(quiet, color)?;
-            if self.current_test_count() % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
-                // we insert a new line every 100 dots in order to flush the
-                // screen when dealing with line-buffered output (e.g. piping to
-                // `stamp` in the rust CI).
-                self.write_plain("\n")?;
-            }
-            Ok(())
-        } else {
-            self.write_pretty(verbose, color)?;
-            self.write_plain("\n")
-        }
-    }
-
-    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
-        match self.out {
-            Pretty(ref mut term) => {
-                if self.use_color {
-                    term.fg(color)?;
-                }
-                term.write_all(word.as_bytes())?;
-                if self.use_color {
-                    term.reset()?;
-                }
-                term.flush()
-            }
-            Raw(ref mut stdout) => {
-                stdout.write_all(word.as_bytes())?;
-                stdout.flush()
-            }
-        }
-    }
-
-    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
-        let s = s.as_ref();
-        match self.out {
-            Pretty(ref mut term) => {
-                term.write_all(s.as_bytes())?;
-                term.flush()
-            }
-            Raw(ref mut stdout) => {
-                stdout.write_all(s.as_bytes())?;
-                stdout.flush()
-            }
-        }
-    }
-
-    pub fn write_run_start(&mut self, len: usize) -> io::Result<()> {
-        self.total = len;
-        let noun = if len != 1 {
-            "tests"
-        } else {
-            "test"
-        };
-        self.write_plain(&format!("\nrunning {} {}\n", len, noun))
-    }
-
-    pub fn write_test_start(&mut self, test: &TestDesc, align: NamePadding) -> io::Result<()> {
-        if self.quiet && align != PadOnRight {
-            Ok(())
-        } else {
-            let name = test.padded_name(self.max_name_len, align);
-            self.write_plain(&format!("test {} ... ", name))
-        }
-    }
-
-    pub fn write_result(&mut self, result: &TestResult) -> io::Result<()> {
-        match *result {
-            TrOk => self.write_ok(),
-            TrFailed | TrFailedMsg(_) => self.write_failed(),
-            TrIgnored => self.write_ignored(),
-            TrAllowedFail => self.write_allowed_fail(),
-            TrBench(ref bs) => {
-                self.write_bench()?;
-                self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))
-            }
-        }
-    }
-
-    pub fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.write_plain(&format!("test {} has been running for over {} seconds\n",
-                                  desc.name,
-                                  TEST_WARN_TIMEOUT_S))
     }
 
     pub fn write_log<S: AsRef<str>>(&mut self, msg: S) -> io::Result<()> {
@@ -687,100 +589,8 @@ impl<T: Write> ConsoleTestState<T> {
                     test.name))
     }
 
-    pub fn write_failures(&mut self) -> io::Result<()> {
-        self.write_plain("\nfailures:\n")?;
-        let mut failures = Vec::new();
-        let mut fail_out = String::new();
-        for &(ref f, ref stdout) in &self.failures {
-            failures.push(f.name.to_string());
-            if !stdout.is_empty() {
-                fail_out.push_str(&format!("---- {} stdout ----\n\t", f.name));
-                let output = String::from_utf8_lossy(stdout);
-                fail_out.push_str(&output);
-                fail_out.push_str("\n");
-            }
-        }
-        if !fail_out.is_empty() {
-            self.write_plain("\n")?;
-            self.write_plain(&fail_out)?;
-        }
-
-        self.write_plain("\nfailures:\n")?;
-        failures.sort();
-        for name in &failures {
-            self.write_plain(&format!("    {}\n", name))?;
-        }
-        Ok(())
-    }
-
-    pub fn write_outputs(&mut self) -> io::Result<()> {
-        self.write_plain("\nsuccesses:\n")?;
-        let mut successes = Vec::new();
-        let mut stdouts = String::new();
-        for &(ref f, ref stdout) in &self.not_failures {
-            successes.push(f.name.to_string());
-            if !stdout.is_empty() {
-                stdouts.push_str(&format!("---- {} stdout ----\n\t", f.name));
-                let output = String::from_utf8_lossy(stdout);
-                stdouts.push_str(&output);
-                stdouts.push_str("\n");
-            }
-        }
-        if !stdouts.is_empty() {
-            self.write_plain("\n")?;
-            self.write_plain(&stdouts)?;
-        }
-
-        self.write_plain("\nsuccesses:\n")?;
-        successes.sort();
-        for name in &successes {
-            self.write_plain(&format!("    {}\n", name))?;
-        }
-        Ok(())
-    }
-
     fn current_test_count(&self) -> usize {
         self.passed + self.failed + self.ignored + self.measured + self.allowed_fail
-    }
-
-    pub fn write_run_finish(&mut self) -> io::Result<bool> {
-        assert!(self.current_test_count() == self.total);
-
-        if self.options.display_output {
-            self.write_outputs()?;
-        }
-        let success = self.failed == 0;
-        if !success {
-            self.write_failures()?;
-        }
-
-        self.write_plain("\ntest result: ")?;
-        if success {
-            // There's no parallelism at this point so it's safe to use color
-            self.write_pretty("ok", term::color::GREEN)?;
-        } else {
-            self.write_pretty("FAILED", term::color::RED)?;
-        }
-        let s = if self.allowed_fail > 0 {
-            format!(
-                ". {} passed; {} failed ({} allowed); {} ignored; {} measured; {} filtered out\n\n",
-                self.passed,
-                self.failed + self.allowed_fail,
-                self.allowed_fail,
-                self.ignored,
-                self.measured,
-                self.filtered_out)
-        } else {
-            format!(
-                ". {} passed; {} failed; {} ignored; {} measured; {} filtered out\n\n",
-                self.passed,
-                self.failed,
-                self.ignored,
-                self.measured,
-                self.filtered_out)
-        };
-        self.write_plain(&s)?;
-        return Ok(success);
     }
 }
 
@@ -827,7 +637,12 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let mut st = ConsoleTestState::new(opts, None::<io::Stdout>)?;
+    let output = match term::stdout() {
+        None => Raw(io::stdout()),
+        Some(t) => Pretty(t),
+    };
+    let mut out = HumanFormatter::new(output, use_color(opts), opts.quiet);
+    let mut st = ConsoleTestState::new(opts)?;
 
     let mut ntest = 0;
     let mut nbench = 0;
@@ -842,7 +657,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             StaticBenchFn(..) | DynBenchFn(..) => { nbench += 1; "benchmark" },
         };
 
-        st.write_plain(format!("{}: {}\n", name, fntype))?;
+        out.write_plain(format!("{}: {}\n", name, fntype))?;
         st.write_log(format!("{} {}\n", fntype, name))?;
     }
 
@@ -868,15 +683,21 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
 
-    fn callback<T: Write>(event: &TestEvent, st: &mut ConsoleTestState<T>) -> io::Result<()> {
+    fn callback(event: &TestEvent,
+                st: &mut ConsoleTestState,
+                out: &mut OutputFormatter) -> io::Result<()> {
+
         match (*event).clone() {
-            TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
+            TeFiltered(ref filtered_tests) => {
+                st.total = filtered_tests.len();
+                out.write_run_start(filtered_tests.len())
+            },
             TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
-            TeWait(ref test, padding) => st.write_test_start(test, padding),
-            TeTimeout(ref test) => st.write_timeout(test),
+            TeWait(ref test, padding) => out.write_test_start(test, padding, st.max_name_len),
+            TeTimeout(ref test) => out.write_timeout(test),
             TeResult(test, result, stdout) => {
                 st.write_log_result(&test, &result)?;
-                st.write_result(&result)?;
+                out.write_result(&result)?;
                 match result {
                     TrOk => {
                         st.passed += 1;
@@ -908,7 +729,14 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         }
     }
 
-    let mut st = ConsoleTestState::new(opts, None::<io::Stdout>)?;
+    let output = match term::stdout() {
+        None => Raw(io::stdout()),
+        Some(t) => Pretty(t),
+    };
+
+    let mut out = HumanFormatter::new(output, use_color(opts), opts.quiet);
+
+    let mut st = ConsoleTestState::new(opts)?;
     fn len_if_padded(t: &TestDescAndFn) -> usize {
         match t.testfn.padding() {
             PadNone => 0,
@@ -919,8 +747,11 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         let n = t.desc.name.as_slice();
         st.max_name_len = n.len();
     }
-    run_tests(opts, tests, |x| callback(&x, &mut st))?;
-    return st.write_run_finish();
+    run_tests(opts, tests, |x| callback(&x, &mut st, &mut out))?;
+
+    assert!(st.current_test_count() == st.total);
+
+    return out.write_run_finish(&st);
 }
 
 #[test]
@@ -939,11 +770,10 @@ fn should_sort_failures_before_printing_them() {
         allow_fail: false,
     };
 
-    let mut st = ConsoleTestState {
+    let mut out = HumanFormatter::new(Raw(Vec::new()), false, false);
+
+    let st = ConsoleTestState {
         log_out: None,
-        out: Raw(Vec::new()),
-        use_color: false,
-        quiet: false,
         total: 0,
         passed: 0,
         failed: 0,
@@ -958,10 +788,10 @@ fn should_sort_failures_before_printing_them() {
         not_failures: Vec::new(),
     };
 
-    st.write_failures().unwrap();
-    let s = match st.out {
-        Raw(ref m) => String::from_utf8_lossy(&m[..]),
-        Pretty(_) => unreachable!(),
+    out.write_failures(&st).unwrap();
+    let s = match out.output_location() {
+        &Raw(ref m) => String::from_utf8_lossy(&m[..]),
+        &Pretty(_) => unreachable!(),
     };
 
     let apos = s.find("a").unwrap();
