@@ -46,6 +46,7 @@ use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::TypeFoldable;
 use rustc::infer::UpvarRegion;
 use syntax::ast;
 use syntax_pos::Span;
@@ -215,6 +216,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 );
             }
         };
+
+        // Equate the type variable representing the closure kind.
+        let closure_kind_ty = closure_substs.closure_kind_ty(def_id, self.tcx);
+        if closure_kind_ty.needs_infer() {
+            let final_closure_kind = self.tables.borrow().closure_kinds()[closure_hir_id].0;
+            self.demand_eqtype(span, final_closure_kind.to_ty(self.tcx), closure_kind_ty);
+        }
 
         // Equate the type variables with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_node_id);

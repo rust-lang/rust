@@ -1015,8 +1015,19 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
     if let NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) = node {
+        // add a dummy parameter for the closure kind
+        types.push(ty::TypeParameterDef {
+            index: type_start as u32,
+            name: Symbol::intern("<closure_kind>"),
+            def_id,
+            has_default: false,
+            object_lifetime_default: rl::Set1::Empty,
+            pure_wrt_drop: false,
+            synthetic: None,
+        });
+
         tcx.with_freevars(node_id, |fv| {
-            types.extend(fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
+            types.extend(fv.iter().zip(1..).map(|(_, i)| ty::TypeParameterDef {
                 index: type_start + i as u32,
                 name: Symbol::intern("<upvar>"),
                 def_id,

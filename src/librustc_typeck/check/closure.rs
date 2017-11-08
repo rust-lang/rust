@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             |_, _| span_bug!(expr.span, "closure has region param"),
             |_, _| {
                 self.infcx
-                    .next_ty_var(TypeVariableOrigin::TransformedUpvar(expr.span))
+                    .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span))
             },
         );
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);

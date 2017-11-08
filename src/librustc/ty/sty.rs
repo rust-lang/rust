@@ -174,16 +174,22 @@ pub enum TypeVariants<'tcx> {
 
 /// A closure can be modeled as a struct that looks like:
 ///
-///     struct Closure<'l0...'li, T0...Tj, U0...Uk> {
+///     struct Closure<'l0...'li, T0...Tj, CK, U0...Uk> {
 ///         upvar0: U0,
 ///         ...
 ///         upvark: Uk
 ///     }
 ///
-/// where 'l0...'li and T0...Tj are the lifetime and type parameters
-/// in scope on the function that defined the closure, and U0...Uk are
-/// type parameters representing the types of its upvars (borrowed, if
-/// appropriate).
+/// where:
+///
+/// - 'l0...'li and T0...Tj are the lifetime and type parameters
+///   in scope on the function that defined the closure,
+/// - CK represents the *closure kind* (Fn vs FnMut vs FnOnce). This
+///   is rather hackily encoded via a scalar type. See
+///   `TyS::to_opt_closure_kind` for details.
+/// - U0...Uk are type parameters representing the types of its upvars
+///   (borrowed, if appropriate; that is, if Ui represents a by-ref upvar,
+///    and the up-var has the type `Foo`, then `Ui = &Foo`).
 ///
 /// So, for example, given this function:
 ///
@@ -256,14 +262,54 @@ pub struct ClosureSubsts<'tcx> {
     pub substs: &'tcx Substs<'tcx>,
 }
 
-impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
+/// Struct returned by `split()`. Note that these are subslices of the
+/// parent slice and not canonical substs themselves.
+struct SplitClosureSubsts<'tcx> {
+    closure_kind_ty: Ty<'tcx>,
+    upvar_kinds: &'tcx [Kind<'tcx>],
+}
+
+impl<'tcx> ClosureSubsts<'tcx> {
+    /// Divides the closure substs into their respective
+    /// components. Single source of truth with respect to the
+    /// ordering.
+    fn split(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> SplitClosureSubsts<'tcx> {
+        let generics = tcx.generics_of(def_id);
+        let parent_len = generics.parent_count();
+        SplitClosureSubsts {
+            closure_kind_ty: self.substs[parent_len].as_type().expect("closure-kind should be type"),
+            upvar_kinds: &self.substs[parent_len + 1..],
+        }
+    }
+
     #[inline]
-    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'acx>) ->
+    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) ->
         impl Iterator<Item=Ty<'tcx>> + 'tcx
     {
-        let generics = tcx.generics_of(def_id);
-        self.substs[self.substs.len()-generics.own_count()..].iter().map(
-            |t| t.as_type().expect("unexpected region in upvars"))
+        let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
+        upvar_kinds.iter().map(|t| t.as_type().expect("upvar should be type"))
+    }
+
+    /// Returns the closure kind for this closure; may return `None`
+    /// if inference has not yet completed.
+    pub fn opt_closure_kind(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>)
+                            -> Option<ty::ClosureKind> {
+        let closure_kind_ty = self.closure_kind_ty(def_id, tcx);
+        closure_kind_ty.to_opt_closure_kind()
+    }
+
+    /// Returns the closure kind for this closure; may return `None`
+    /// if inference has not yet completed.
+    pub fn closure_kind_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).closure_kind_ty
+    }
+}
+
+impl<'tcx> ClosureSubsts<'tcx> {
+    /// Returns the closure kind for this closure; only usable outside
+    /// of an inference context.
+    pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::ClosureKind {
+        self.opt_closure_kind(def_id, tcx).unwrap()
     }
 }
 
@@ -1440,6 +1486,35 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyError => {
                 vec![]
             }
+        }
+    }
+
+    /// When we create a closure, we record its kind (i.e., what trait
+    /// it implements) into its `ClosureSubsts` using a type
+    /// parameter. This is kind of a phantom type, except that the
+    /// most convenient thing for us to are the integral types. This
+    /// function converts such a special type into the closure
+    /// kind. To go the other way, use
+    /// `tcx.closure_kind_ty(closure_kind)`.
+    ///
+    /// Note that during type checking, we use an inference variable
+    /// to represent the closure kind, because it has not yet been
+    /// inferred. Once [upvar inference] is complete, that type varibale
+    /// will be unified.
+    ///
+    /// [upvar inference]: src/librustc_typeck/check/upvar.rs
+    pub fn to_opt_closure_kind(&self) -> Option<ty::ClosureKind> {
+        match self.sty {
+            TyInt(int_ty) => match int_ty {
+                ast::IntTy::I8 => Some(ty::ClosureKind::Fn),
+                ast::IntTy::I16 => Some(ty::ClosureKind::FnMut),
+                ast::IntTy::I32 => Some(ty::ClosureKind::FnOnce),
+                _ => bug!("cannot convert type `{:?}` to a closure kind", self),
+            },
+
+            TyInfer(_) => None,
+
+            _ => bug!("cannot convert type `{:?}` to a closure kind", self),
         }
     }
 }

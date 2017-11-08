@@ -253,22 +253,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 self.freshen_closure_like(
                     def_id, substs, t,
                     |this| {
-                        // HACK: use a "random" integer type to mark the kind. Because
-                        // different closure kinds shouldn't get unified during
-                        // selection, the "subtyping" relationship (where any kind is
-                        // better than no kind) shouldn't  matter here, just that the
-                        // types are different.
-                        let closure_kind = this.infcx.closure_kind(def_id);
-                        let closure_kind_marker = match closure_kind {
-                            None => tcx.types.i8,
-                            Some(ty::ClosureKind::Fn) => tcx.types.i16,
-                            Some(ty::ClosureKind::FnMut) => tcx.types.i32,
-                            Some(ty::ClosureKind::FnOnce) => tcx.types.i64,
-                        };
-
                         let closure_sig = this.infcx.fn_sig(def_id);
-                        (tcx.mk_fn_ptr(closure_sig.fold_with(this)),
-                         closure_kind_marker)
+                        (tcx.mk_fn_ptr(closure_sig.fold_with(this)), tcx.types.char)
                     },
                     |substs| tcx.mk_closure(def_id, substs)
                 )

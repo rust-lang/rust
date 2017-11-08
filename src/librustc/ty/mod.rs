@@ -1962,6 +1962,16 @@ impl<'a, 'tcx> ClosureKind {
             _ => false,
         }
     }
+
+    /// Returns the representative scalar type for this closure kind.
+    /// See `TyS::to_opt_closure_kind` for more details.
+    pub fn to_ty(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Ty<'tcx> {
+        match self {
+            ty::ClosureKind::Fn => tcx.types.i8,
+            ty::ClosureKind::FnMut => tcx.types.i16,
+            ty::ClosureKind::FnOnce => tcx.types.i32,
+        }
+    }
 }
 
 impl<'tcx> TyS<'tcx> {
