@@ -438,7 +438,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             }
         }
 
-        ty::Predicate::ClosureKind(closure_def_id, kind) => {
+        ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
             match selcx.infcx().closure_kind(closure_def_id) {
                 Some(closure_kind) => {
                     if closure_kind.extends(kind) {

@@ -718,7 +718,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            ty::Predicate::ClosureKind(closure_def_id, kind) => {
+            ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
                 match self.infcx.closure_kind(closure_def_id) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
@@ -2726,7 +2726,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligations.push(Obligation::new(
             obligation.cause.clone(),
             obligation.param_env,
-            ty::Predicate::ClosureKind(closure_def_id, kind)));
+            ty::Predicate::ClosureKind(closure_def_id, substs, kind)));
 
         Ok(VtableClosureData {
             closure_def_id,

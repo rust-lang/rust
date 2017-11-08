@@ -211,8 +211,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
             ty::Predicate::WellFormed(ty) => {
                 tcx.lift(&ty).map(ty::Predicate::WellFormed)
             }
-            ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                Some(ty::Predicate::ClosureKind(closure_def_id, kind))
+            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                tcx.lift(&closure_substs)
+                   .map(|closure_substs| ty::Predicate::ClosureKind(closure_def_id,
+                                                                    closure_substs,
+                                                                    kind))
             }
             ty::Predicate::ObjectSafe(trait_def_id) => {
                 Some(ty::Predicate::ObjectSafe(trait_def_id))
@@ -966,8 +969,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
                 ty::Predicate::Projection(binder.fold_with(folder)),
             ty::Predicate::WellFormed(data) =>
                 ty::Predicate::WellFormed(data.fold_with(folder)),
-            ty::Predicate::ClosureKind(closure_def_id, kind) =>
-                ty::Predicate::ClosureKind(closure_def_id, kind),
+            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) =>
+                ty::Predicate::ClosureKind(closure_def_id, closure_substs.fold_with(folder), kind),
             ty::Predicate::ObjectSafe(trait_def_id) =>
                 ty::Predicate::ObjectSafe(trait_def_id),
             ty::Predicate::ConstEvaluatable(def_id, substs) =>
@@ -984,7 +987,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
             ty::Predicate::TypeOutlives(ref binder) => binder.visit_with(visitor),
             ty::Predicate::Projection(ref binder) => binder.visit_with(visitor),
             ty::Predicate::WellFormed(data) => data.visit_with(visitor),
-            ty::Predicate::ClosureKind(_closure_def_id, _kind) => false,
+            ty::Predicate::ClosureKind(_closure_def_id, closure_substs, _kind) =>
+                closure_substs.visit_with(visitor),
             ty::Predicate::ObjectSafe(_trait_def_id) => false,
             ty::Predicate::ConstEvaluatable(_def_id, substs) => substs.visit_with(visitor),
         }

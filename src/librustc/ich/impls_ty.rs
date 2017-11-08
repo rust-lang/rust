@@ -236,8 +236,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::Predicate<'gcx> {
             ty::Predicate::ObjectSafe(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            ty::Predicate::ClosureKind(def_id, closure_kind) => {
+            ty::Predicate::ClosureKind(def_id, closure_substs, closure_kind) => {
                 def_id.hash_stable(hcx, hasher);
+                closure_substs.hash_stable(hcx, hasher);
                 closure_kind.hash_stable(hcx, hasher);
             }
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
