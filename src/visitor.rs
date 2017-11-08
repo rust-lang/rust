@@ -19,7 +19,7 @@ use syntax::parse::ParseSess;
 use expr::rewrite_literal;
 use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, recover_missing_comment_in_span, remove_trailing_white_spaces,
+use comment::{combine_strs_with_missing_comments, contains_comment, remove_trailing_white_spaces,
               CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
@@ -791,106 +791,149 @@ impl Rewrite for ast::Attribute {
     }
 }
 
+/// Returns the first group of attributes that fills the given predicate.
+/// We consider two doc comments are in different group if they are separated by normal comments.
+fn take_while_with_pred<'a, P>(
+    context: &RewriteContext,
+    attrs: &'a [ast::Attribute],
+    pred: P,
+) -> Option<&'a [ast::Attribute]>
+where
+    P: Fn(&ast::Attribute) -> bool,
+{
+    let mut last_index = 0;
+    let mut iter = attrs.iter().enumerate().peekable();
+    while let Some((i, attr)) = iter.next() {
+        if !pred(attr) {
+            break;
+        }
+        if let Some(&(_, next_attr)) = iter.peek() {
+            // Extract comments between two attributes.
+            let span_between_attr = mk_sp(attr.span.hi(), next_attr.span.lo());
+            let snippet = context.snippet(span_between_attr);
+            if snippet.chars().filter(|c| *c == '\n').count() >= 2 || snippet.contains('/') {
+                break;
+            }
+        }
+        last_index = i;
+    }
+    if last_index == 0 {
+        None
+    } else {
+        Some(&attrs[..last_index + 1])
+    }
+}
+
+fn rewrite_first_group_attrs(
+    context: &RewriteContext,
+    attrs: &[ast::Attribute],
+    shape: Shape,
+) -> Option<(usize, String)> {
+    if attrs.is_empty() {
+        return Some((0, String::new()));
+    }
+    // Rewrite doc comments
+    match take_while_with_pred(context, attrs, |a| a.is_sugared_doc) {
+        Some(sugared_docs) if !sugared_docs.is_empty() => {
+            let snippet = sugared_docs
+                .iter()
+                .map(|a| context.snippet(a.span))
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Some((
+                sugared_docs.len(),
+                rewrite_comment(&snippet, false, shape, context.config)?,
+            ));
+        }
+        _ => (),
+    }
+    // Rewrite `#[derive(..)]`s.
+    if context.config.merge_derives() {
+        match take_while_with_pred(context, attrs, is_derive) {
+            Some(derives) if !derives.is_empty() => {
+                let mut derive_args = vec![];
+                for derive in derives {
+                    derive_args.append(&mut get_derive_args(context, derive)?);
+                }
+                return Some((
+                    derives.len(),
+                    format_derive(context, &derive_args, shape)?,
+                ));
+            }
+            _ => (),
+        }
+    }
+    // Rewrite the first attribute.
+    Some((1, attrs[0].rewrite(context, shape)?))
+}
+
+fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
+    // Look at before and after comment and see if there are any empty lines.
+    let comment_begin = comment.chars().position(|c| c == '/');
+    let len = comment_begin.unwrap_or_else(|| comment.len());
+    let mlb = comment.chars().take(len).filter(|c| *c == '\n').count() > 1;
+    let mla = if comment_begin.is_none() {
+        mlb
+    } else {
+        let comment_end = comment.chars().rev().position(|c| !c.is_whitespace());
+        let len = comment_end.unwrap();
+        comment
+            .chars()
+            .rev()
+            .take(len)
+            .filter(|c| *c == '\n')
+            .count() > 1
+    };
+    (if mlb { "\n" } else { "" }, if mla { "\n" } else { "" })
+}
+
 impl<'a> Rewrite for [ast::Attribute] {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if self.is_empty() {
             return Some(String::new());
         }
-        let mut result = String::with_capacity(128);
-        let indent = shape.indent.to_string(context.config);
-
-        let mut derive_args = Vec::new();
-
-        let mut iter = self.iter().enumerate().peekable();
-        let mut insert_new_line = true;
-        let mut is_prev_sugared_doc = false;
-        while let Some((i, a)) = iter.next() {
-            let a_str = a.rewrite(context, shape)?;
-
-            // Write comments and blank lines between attributes.
-            if i > 0 {
-                let comment = context.snippet(mk_sp(self[i - 1].span.hi(), a.span.lo()));
-                // This particular horror show is to preserve line breaks in between doc
-                // comments. An alternative would be to force such line breaks to start
-                // with the usual doc comment token.
-                let (multi_line_before, multi_line_after) = if a.is_sugared_doc
-                    || is_prev_sugared_doc
-                {
-                    // Look at before and after comment and see if there are any empty lines.
-                    let comment_begin = comment.chars().position(|c| c == '/');
-                    let len = comment_begin.unwrap_or_else(|| comment.len());
-                    let mlb = comment.chars().take(len).filter(|c| *c == '\n').count() > 1;
-                    let mla = if comment_begin.is_none() {
-                        mlb
-                    } else {
-                        let comment_end = comment.chars().rev().position(|c| !c.is_whitespace());
-                        let len = comment_end.unwrap();
-                        comment
-                            .chars()
-                            .rev()
-                            .take(len)
-                            .filter(|c| *c == '\n')
-                            .count() > 1
-                    };
-                    (mlb, mla)
-                } else {
-                    (false, false)
-                };
-
-                let comment = recover_missing_comment_in_span(
-                    mk_sp(self[i - 1].span.hi(), a.span.lo()),
+        let (first_group_len, first_group_str) = rewrite_first_group_attrs(context, self, shape)?;
+        if self.len() == 1 || first_group_len == self.len() {
+            Some(first_group_str)
+        } else {
+            let rest_str = self[first_group_len..].rewrite(context, shape)?;
+            let missing_span = mk_sp(
+                self[first_group_len - 1].span.hi(),
+                self[first_group_len].span.lo(),
+            );
+            // Preserve an empty line before/after doc comments.
+            if self[0].is_sugared_doc || self[first_group_len].is_sugared_doc {
+                let snippet = context.snippet(missing_span);
+                let (mla, mlb) = has_newlines_before_after_comment(&snippet);
+                let comment = ::comment::recover_missing_comment_in_span(
+                    missing_span,
                     shape.with_max_width(context.config),
                     context,
                     0,
                 )?;
-
-                if !comment.is_empty() {
-                    if multi_line_before {
-                        result.push('\n');
-                    }
-                    result.push_str(&comment);
-                    result.push('\n');
-                    if multi_line_after {
-                        result.push('\n')
-                    }
-                } else if insert_new_line {
-                    result.push('\n');
-                    if multi_line_after {
-                        result.push('\n')
-                    }
-                }
-
-                if derive_args.is_empty() {
-                    result.push_str(&indent);
-                }
-
-                insert_new_line = true;
-            }
-
-            // Write the attribute itself.
-            if context.config.merge_derives() {
-                // If the attribute is `#[derive(...)]`, take the arguments.
-                if let Some(mut args) = get_derive_args(context, a) {
-                    derive_args.append(&mut args);
-                    match iter.peek() {
-                        // If the next attribute is `#[derive(...)]` as well, skip rewriting.
-                        Some(&(_, next_attr)) if is_derive(next_attr) => insert_new_line = false,
-                        // If not, rewrite the merged derives.
-                        _ => {
-                            result.push_str(&format_derive(context, &derive_args, shape)?);
-                            derive_args.clear();
-                        }
-                    }
+                let comment = if comment.is_empty() {
+                    format!("\n{}", mlb)
                 } else {
-                    result.push_str(&a_str);
-                }
+                    format!("{}{}\n{}", mla, comment, mlb)
+                };
+                Some(format!(
+                    "{}{}{}{}",
+                    first_group_str,
+                    comment,
+                    shape.indent.to_string(context.config),
+                    rest_str
+                ))
             } else {
-                result.push_str(&a_str);
+                combine_strs_with_missing_comments(
+                    context,
+                    &first_group_str,
+                    &rest_str,
+                    missing_span,
+                    shape,
+                    false,
+                )
             }
-
-            is_prev_sugared_doc = a.is_sugared_doc;
         }
-        Some(result)
     }
 }
 
