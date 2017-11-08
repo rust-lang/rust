@@ -1135,6 +1135,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "control whether #[inline] functions are in all cgus"),
     tls_model: Option<String> = (None, parse_opt_string, [TRACKED],
          "choose the TLS model to use (rustc --print tls-models for details)"),
+    saturating_float_casts: bool = (false, parse_bool, [TRACKED],
+        "make casts between integers and floats safe: clip out-of-range inputs to the min/max \
+         integer or to infinity respectively, and turn `NAN` into 0 when casting to integers"),
 }
 
 pub fn default_lib_output() -> CrateType {

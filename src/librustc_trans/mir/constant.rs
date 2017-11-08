@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc_const_math::ConstInt::*;
-use rustc_const_math::{ConstInt, ConstMathErr};
+use rustc_const_math::{ConstInt, ConstMathErr, MAX_F32_PLUS_HALF_ULP};
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::traits;
@@ -21,6 +21,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
+use rustc_apfloat::{ieee, Float, Status};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {adt, base, machine};
 use abi::{self, Abi};
@@ -689,20 +690,18 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     llvm::LLVMConstIntCast(llval, ll_t_out.to_ref(), s)
                                 }
                                 (CastTy::Int(_), CastTy::Float) => {
-                                    if signed {
-                                        llvm::LLVMConstSIToFP(llval, ll_t_out.to_ref())
-                                    } else {
-                                        llvm::LLVMConstUIToFP(llval, ll_t_out.to_ref())
-                                    }
+                                    cast_const_int_to_float(self.ccx, llval, signed, ll_t_out)
                                 }
                                 (CastTy::Float, CastTy::Float) => {
                                     llvm::LLVMConstFPCast(llval, ll_t_out.to_ref())
                                 }
                                 (CastTy::Float, CastTy::Int(IntTy::I)) => {
-                                    llvm::LLVMConstFPToSI(llval, ll_t_out.to_ref())
+                                    cast_const_float_to_int(self.ccx, &operand,
+                                                            true, ll_t_out, span)
                                 }
                                 (CastTy::Float, CastTy::Int(_)) => {
-                                    llvm::LLVMConstFPToUI(llval, ll_t_out.to_ref())
+                                    cast_const_float_to_int(self.ccx, &operand,
+                                                            false, ll_t_out, span)
                                 }
                                 (CastTy::Ptr(_), CastTy::Ptr(_)) |
                                 (CastTy::FnPtr, CastTy::Ptr(_)) |
@@ -952,6 +951,64 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some((const_scalar_binop(op, lllhs, llrhs, input_ty), of))
     } else {
         None
+    }
+}
+
+unsafe fn cast_const_float_to_int(ccx: &CrateContext,
+                                  operand: &Const,
+                                  signed: bool,
+                                  int_ty: Type,
+                                  span: Span) -> ValueRef {
+    let llval = operand.llval;
+    let float_bits = match operand.ty.sty {
+        ty::TyFloat(fty) => fty.bit_width(),
+        _ => bug!("cast_const_float_to_int: operand not a float"),
+    };
+    // Note: this breaks if llval is a complex constant expression rather than a simple constant.
+    // One way that might happen would be if addresses could be turned into integers in constant
+    // expressions, but that doesn't appear to be possible?
+    // In any case, an ICE is better than producing undef.
+    let llval_bits = consts::bitcast(llval, Type::ix(ccx, float_bits as u64));
+    let bits = const_to_opt_u128(llval_bits, false).unwrap_or_else(|| {
+        panic!("could not get bits of constant float {:?}",
+               Value(llval));
+    });
+    let int_width = int_ty.int_width() as usize;
+    // Try to convert, but report an error for overflow and NaN. This matches HIR const eval.
+    let cast_result = match float_bits {
+        32 if signed => ieee::Single::from_bits(bits).to_i128(int_width).map(|v| v as u128),
+        64 if signed => ieee::Double::from_bits(bits).to_i128(int_width).map(|v| v as u128),
+        32 => ieee::Single::from_bits(bits).to_u128(int_width),
+        64 => ieee::Double::from_bits(bits).to_u128(int_width),
+        n => bug!("unsupported float width {}", n),
+    };
+    if cast_result.status.contains(Status::INVALID_OP) {
+        let err = ConstEvalErr { span: span, kind: ErrKind::CannotCast };
+        err.report(ccx.tcx(), span, "expression");
+    }
+    C_big_integral(int_ty, cast_result.value)
+}
+
+unsafe fn cast_const_int_to_float(ccx: &CrateContext,
+                                  llval: ValueRef,
+                                  signed: bool,
+                                  float_ty: Type) -> ValueRef {
+    // Note: this breaks if llval is a complex constant expression rather than a simple constant.
+    // One way that might happen would be if addresses could be turned into integers in constant
+    // expressions, but that doesn't appear to be possible?
+    // In any case, an ICE is better than producing undef.
+    let value = const_to_opt_u128(llval, signed).unwrap_or_else(|| {
+        panic!("could not get z128 value of constant integer {:?}",
+               Value(llval));
+    });
+    if signed {
+        llvm::LLVMConstSIToFP(llval, float_ty.to_ref())
+    } else if float_ty.float_width() == 32 && value >= MAX_F32_PLUS_HALF_ULP {
+        // We're casting to f32 and the value is > f32::MAX + 0.5 ULP -> round up to infinity.
+        let infinity_bits = C_u32(ccx, ieee::Single::INFINITY.to_bits() as u32);
+        consts::bitcast(infinity_bits, float_ty)
+    } else {
+        llvm::LLVMConstUIToFP(llval, float_ty.to_ref())
     }
 }
 

@@ -24,6 +24,7 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
+#![feature(i128)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -43,6 +44,7 @@ extern crate libc;
 extern crate owning_ref;
 #[macro_use] extern crate rustc;
 extern crate rustc_allocator;
+extern crate rustc_apfloat;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate rustc_incremental;
