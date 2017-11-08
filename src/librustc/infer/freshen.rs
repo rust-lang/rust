@@ -103,7 +103,7 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_infer(freshener(index))
     }
 
-    fn freshen_closure_like<M, C>(&mut self,
+    fn freshen_generator_like<M, C>(&mut self,
                                   def_id: DefId,
                                   substs: ty::ClosureSubsts<'tcx>,
                                   t: Ty<'tcx>,
@@ -249,19 +249,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 t
             }
 
-            ty::TyClosure(def_id, substs) => {
-                self.freshen_closure_like(
-                    def_id, substs, t,
-                    |this| {
-                        let closure_sig = this.infcx.fn_sig(def_id);
-                        (tcx.mk_fn_ptr(closure_sig.fold_with(this)), tcx.types.char)
-                    },
-                    |substs| tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
-                )
-            }
-
             ty::TyGenerator(def_id, substs, interior) => {
-                self.freshen_closure_like(
+                self.freshen_generator_like(
                     def_id, substs, t,
                     |this| {
                         let gen_sig = this.infcx.generator_sig(def_id).unwrap();
@@ -300,6 +289,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyProjection(..) |
             ty::TyForeign(..) |
             ty::TyParam(..) |
+            ty::TyClosure(..) |
             ty::TyAnon(..) => {
                 t.super_fold_with(self)
             }
