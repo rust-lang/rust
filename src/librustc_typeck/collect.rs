@@ -1163,14 +1163,19 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 return tcx.typeck_tables_of(def_id).node_id_to_type(hir_id);
             }
 
-            tcx.mk_closure(def_id, Substs::for_item(
-                tcx, def_id,
-                |def, _| {
-                    let region = def.to_early_bound_region_data();
-                    tcx.mk_region(ty::ReEarlyBound(region))
-                },
-                |def, _| tcx.mk_param_from_def(def)
-            ))
+            let substs = ty::ClosureSubsts {
+                substs: Substs::for_item(
+                    tcx,
+                    def_id,
+                    |def, _| {
+                        let region = def.to_early_bound_region_data();
+                        tcx.mk_region(ty::ReEarlyBound(region))
+                    },
+                    |def, _| tcx.mk_param_from_def(def)
+                )
+            };
+
+            tcx.mk_closure(def_id, substs)
         }
 
         NodeExpr(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {

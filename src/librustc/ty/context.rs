@@ -1981,11 +1981,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_closure(self,
                       closure_id: DefId,
-                      substs: &'tcx Substs<'tcx>)
-        -> Ty<'tcx> {
-        self.mk_closure_from_closure_substs(closure_id, ClosureSubsts {
-            substs,
-        })
+                      substs: ClosureSubsts<'tcx>)
+                      -> Ty<'tcx> {
+        self.mk_closure_from_closure_substs(closure_id, substs)
     }
 
     pub fn mk_closure_from_closure_substs(self,

@@ -103,11 +103,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span))
             },
         );
+        let substs = ty::ClosureSubsts { substs };
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         if let Some(interior) = interior {
-            let closure_substs = ty::ClosureSubsts { substs: substs };
-            return self.tcx.mk_generator(expr_def_id, closure_substs, interior);
+            return self.tcx.mk_generator(expr_def_id, substs, interior);
         }
 
         debug!(

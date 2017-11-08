@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                         let closure_sig = this.infcx.fn_sig(def_id);
                         (tcx.mk_fn_ptr(closure_sig.fold_with(this)), tcx.types.char)
                     },
-                    |substs| tcx.mk_closure(def_id, substs)
+                    |substs| tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
                 )
             }
 
