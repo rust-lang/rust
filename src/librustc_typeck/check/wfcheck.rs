@@ -495,7 +495,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             }
         }
 
-        let self_kind = ExplicitSelf::determine(fcx, fcx.param_env, self_ty, self_arg_ty);
+        let is_self_ty = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
+        let self_kind = ExplicitSelf::determine(self_arg_ty, is_self_ty);
 
         if let ExplicitSelf::Other = self_kind {
             if !fcx.tcx.sess.features.borrow().arbitrary_self_types {

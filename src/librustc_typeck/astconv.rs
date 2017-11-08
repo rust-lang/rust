@@ -19,7 +19,6 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
@@ -1415,9 +1414,10 @@ pub enum ExplicitSelf<'tcx> {
 impl<'tcx> ExplicitSelf<'tcx> {
     /// Categorizes an explicit self declaration like `self: SomeType`
     /// into either `self`, `&self`, `&mut self`, `Box<self>`, or
-    /// `Other` (meaning the arbitrary_self_types feature is used).
-    /// We do this here via a combination of pattern matching and
-    /// `can_eq`. A more precise check is done in `check_method_receiver()`.
+    /// `Other`.
+    /// This is mainly used to require the arbitrary_self_types feature
+    /// in the case of `Other`, to improve error messages in the common cases,
+    /// and to make `Other` non-object-safe.
     ///
     /// Examples:
     ///
@@ -1436,21 +1436,19 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// }
     /// ```
     ///
-    pub fn determine<'a, 'gcx>(
-        infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        self_ty: Ty<'tcx>,
-        self_arg_ty: Ty<'tcx>
+    pub fn determine<'a, 'gcx, P>(
+        self_arg_ty: Ty<'tcx>,
+        is_self_ty: P
     ) -> ExplicitSelf<'tcx>
+    where
+        P: Fn(Ty<'tcx>) -> bool
     {
         use self::ExplicitSelf::*;
 
-        let can_eq = |expected, actual| infcx.can_eq(param_env, expected, actual).is_ok();
-
         match self_arg_ty.sty {
-            _ if can_eq(self_arg_ty, self_ty) => ByValue,
-            ty::TyRef(region, ty::TypeAndMut { ty, mutbl}) if can_eq(ty, self_ty) => ByReference(region, mutbl),
-            ty::TyAdt(def, _) if def.is_box() && can_eq(self_arg_ty.boxed_ty(), self_ty) => ByBox,
+            _ if is_self_ty(self_arg_ty) => ByValue,
+            ty::TyRef(region, ty::TypeAndMut { ty, mutbl}) if is_self_ty(ty) => ByReference(region, mutbl),
+            ty::TyAdt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => ByBox,
             _ => Other
         }
     }
