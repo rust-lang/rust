@@ -243,15 +243,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
-        for (&id, closure_ty) in fcx_tables.closure_tys().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            let closure_ty = self.resolve(closure_ty, &hir_id);
-            self.tables.closure_tys_mut().insert(hir_id, closure_ty);
-        }
-
         for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,

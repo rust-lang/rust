@@ -297,23 +297,18 @@ impl<'tcx> ClosureSubsts<'tcx> {
     }
 
     /// Returns the closure kind for this closure; may return a type
-    /// variable during inference.
+    /// variable during inference. To get the closure kind during
+    /// inference, use `infcx.closure_kind(def_id, substs)`.
     pub fn closure_kind_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_kind_ty
     }
 
     /// Returns the type representing the closure signature for this
-    /// closure; may contain type variables during inference.
+    /// closure; may contain type variables during inference. To get
+    /// the closure signature during inference, use
+    /// `infcx.fn_sig(def_id)`.
     pub fn closure_sig_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_sig_ty
-    }
-
-    /// Extracts the signature from the closure.
-    pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> ty::PolyFnSig<'tcx> {
-        match &self.split(def_id, tcx).closure_sig_ty.sty {
-            ty::TyFnPtr(sig) => *sig,
-            t => bug!("closure_sig_ty is not a fn-ptr: {:?}", t),
-        }
     }
 }
 
@@ -323,6 +318,16 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// there are no type variables.
     pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::ClosureKind {
         self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
+    }
+
+    /// Extracts the signature from the closure; only usable outside
+    /// of an inference context, because in that context we know that
+    /// there are no type variables.
+    pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
+        match self.closure_sig_ty(def_id, tcx).sty {
+            ty::TyFnPtr(sig) => sig,
+            ref t => bug!("closure_sig_ty is not a fn-ptr: {:?}", t),
+        }
     }
 }
 

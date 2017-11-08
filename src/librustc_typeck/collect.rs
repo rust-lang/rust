@@ -1265,7 +1265,14 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeExpr(&hir::Expr { node: hir::ExprClosure(..), hir_id, .. }) => {
-            tcx.typeck_tables_of(def_id).closure_tys()[hir_id]
+            let tables = tcx.typeck_tables_of(def_id);
+            match tables.node_id_to_type(hir_id).sty {
+                ty::TyClosure(closure_def_id, closure_substs) => {
+                    assert_eq!(def_id, closure_def_id);
+                    return closure_substs.closure_sig(closure_def_id, tcx);
+                }
+                ref t => bug!("closure with non-closure type: {:?}", t),
+            }
         }
 
         x => {

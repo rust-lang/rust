@@ -356,9 +356,6 @@ pub struct TypeckTables<'tcx> {
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
-    /// Records the type of each closure.
-    closure_tys: ItemLocalMap<ty::PolyFnSig<'tcx>>,
-
     /// Records the reasons that we picked the kind of each closure;
     /// not all closures are present in the map.
     closure_kind_origins: ItemLocalMap<(Span, ast::Name)>,
@@ -413,7 +410,6 @@ impl<'tcx> TypeckTables<'tcx> {
             upvar_capture_map: FxHashMap(),
             generator_sigs: ItemLocalMap(),
             generator_interiors: ItemLocalMap(),
-            closure_tys: ItemLocalMap(),
             closure_kind_origins: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
@@ -609,21 +605,6 @@ impl<'tcx> TypeckTables<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
 
-    pub fn closure_tys(&self) -> LocalTableInContext<ty::PolyFnSig<'tcx>> {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.closure_tys
-        }
-    }
-
-    pub fn closure_tys_mut(&mut self)
-                           -> LocalTableInContextMut<ty::PolyFnSig<'tcx>> {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.closure_tys
-        }
-    }
-
     pub fn closure_kind_origins(&self) -> LocalTableInContext<(Span, ast::Name)> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
@@ -730,7 +711,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             ref pat_binding_modes,
             ref pat_adjustments,
             ref upvar_capture_map,
-            ref closure_tys,
             ref closure_kind_origins,
             ref liberated_fn_sigs,
             ref fru_field_types,
@@ -773,7 +753,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
                  hcx.def_path_hash(closure_def_id))
             });
 
-            closure_tys.hash_stable(hcx, hasher);
             closure_kind_origins.hash_stable(hcx, hasher);
             liberated_fn_sigs.hash_stable(hcx, hasher);
             fru_field_types.hash_stable(hcx, hasher);

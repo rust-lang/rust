@@ -1484,9 +1484,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let Some(tables) = self.in_progress_tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                 let hir_id = self.tcx.hir.node_to_hir_id(id);
-                if let Some(&ty) = tables.borrow().closure_tys().get(hir_id) {
-                    return ty;
-                }
+                let closure_ty = tables.borrow().node_id_to_type(hir_id);
+                let (closure_def_id, closure_substs) = match closure_ty.sty {
+                    ty::TyClosure(closure_def_id, closure_substs) =>
+                        (closure_def_id, closure_substs),
+                    _ =>
+                        bug!("closure with non-closure type: {:?}", closure_ty),
+                };
+                assert_eq!(def_id, closure_def_id);
+                let closure_sig_ty = closure_substs.closure_sig_ty(def_id, self.tcx);
+                let closure_sig_ty = self.shallow_resolve(&closure_sig_ty);
+                return closure_sig_ty.fn_sig(self.tcx);
             }
         }
 
