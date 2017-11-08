@@ -17,3 +17,7 @@
 
 # Used by macOS' file system to track custom attributes of containing folder
 .DS_Store
+
+# Editors' specific files
+.idea/
+.vscode/
