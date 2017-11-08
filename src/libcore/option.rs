@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use {mem, ops};
+use {fmt, mem, ops};
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -296,7 +296,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn expect(self, msg: &str) -> T {
+    pub fn expect<S: fmt::Display>(self, msg: S) -> T {
         match self {
             Some(val) => val,
             None => expect_failed(msg),
@@ -835,7 +835,7 @@ impl<T: Default> Option<T> {
 // This is a separate function to reduce the code size of .expect() itself.
 #[inline(never)]
 #[cold]
-fn expect_failed(msg: &str) -> ! {
+fn expect_failed<S: fmt::Display>(msg: S) -> ! {
     panic!("{}", msg)
 }
 
