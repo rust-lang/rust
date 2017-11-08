@@ -104,7 +104,7 @@
 
 use collector::InliningMap;
 use common;
-use rustc::dep_graph::{DepNode, WorkProductId};
+use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::middle::trans::{Linkage, Visibility};
@@ -145,10 +145,6 @@ pub trait CodegenUnitExt<'tcx> {
 
     fn work_product_id(&self) -> WorkProductId {
         WorkProductId::from_cgu_name(self.name())
-    }
-
-    fn work_product_dep_node(&self) -> DepNode {
-        self.work_product_id().to_dep_node()
     }
 
     fn items_in_deterministic_order<'a>(&self,
@@ -252,14 +248,6 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result.sort_by(|cgu1, cgu2| {
         cgu1.name().cmp(cgu2.name())
     });
-
-    if tcx.sess.opts.enable_dep_node_debug_strs() {
-        for cgu in &result {
-            let dep_node = cgu.work_product_dep_node();
-            tcx.dep_graph.register_dep_node_debug_str(dep_node,
-                                                            || cgu.name().to_string());
-        }
-    }
 
     result
 }

@@ -459,10 +459,6 @@ define_dep_nodes!( <'tcx>
     // Represents metadata from an extern crate.
     [input] CrateMetadata(CrateNum),
 
-    // Represents some artifact that we save to disk. Note that these
-    // do not have a def-id as part of their identifier.
-    [] WorkProduct(WorkProductId),
-
     // Represents different phases in the compiler.
     [] RegionScopeTree(DefId),
     [eval_always] Coherence,
@@ -779,13 +775,6 @@ impl WorkProductId {
     pub fn from_fingerprint(fingerprint: Fingerprint) -> WorkProductId {
         WorkProductId {
             hash: fingerprint
-        }
-    }
-
-    pub fn to_dep_node(self) -> DepNode {
-        DepNode {
-            kind: DepKind::WorkProduct,
-            hash: self.hash,
         }
     }
 }

@@ -721,9 +721,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::EraseRegionsTy |
         DepKind::NormalizeTy |
 
-        // These are just odd
-        DepKind::Null |
-        DepKind::WorkProduct => {
+        // This one should never occur in this context
+        DepKind::Null => {
             bug!("force_from_dep_node() - Encountered {:?}", dep_node.kind)
         }
 
