@@ -3,6 +3,9 @@ authors = ["The Rust Project Developers"]
 name = "std"
 version = "0.0.0"
 build = "build.rs"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "The Rust Standard Library"
 
 [lib]
 name = "std"
@@ -15,7 +18,6 @@ alloc_jemalloc = { path = "../liballoc_jemalloc", optional = true }
 alloc_system = { path = "../liballoc_system" }
 panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
-collections = { path = "../libcollections" }
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
 rand = { path = "../librand" }
@@ -36,7 +38,6 @@ rustc_tsan = { path = "../librustc_tsan" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-gcc = "0.3.50"
 
 [features]
 backtrace = []

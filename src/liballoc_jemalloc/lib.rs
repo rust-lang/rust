@@ -107,7 +107,7 @@ mod contents {
     // ABI
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_alloc(size: usize,
                                      align: usize,
                                      err: *mut u8) -> *mut u8 {
@@ -122,13 +122,13 @@ mod contents {
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_oom(err: *const u8) -> ! {
         System.oom((*(err as *const AllocErr)).clone())
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
@@ -137,7 +137,7 @@ mod contents {
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_usable_size(layout: *const u8,
                                            min: *mut usize,
                                            max: *mut usize) {
@@ -153,7 +153,7 @@ mod contents {
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_realloc(ptr: *mut u8,
                                        _old_size: usize,
                                        old_align: usize,
@@ -177,7 +177,7 @@ mod contents {
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_alloc_zeroed(size: usize,
                                             align: usize,
                                             err: *mut u8) -> *mut u8 {
@@ -196,20 +196,21 @@ mod contents {
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_alloc_excess(size: usize,
                                             align: usize,
                                             excess: *mut usize,
                                             err: *mut u8) -> *mut u8 {
         let p = __rde_alloc(size, align, err);
         if !p.is_null() {
-            *excess = size;
+            let flags = align_to_flags(align);
+            *excess = nallocx(size, flags) as usize;
         }
         return p
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_realloc_excess(ptr: *mut u8,
                                               old_size: usize,
                                               old_align: usize,
@@ -219,13 +220,14 @@ mod contents {
                                               err: *mut u8) -> *mut u8 {
         let p = __rde_realloc(ptr, old_size, old_align, new_size, new_align, err);
         if !p.is_null() {
-            *excess = new_size;
+            let flags = align_to_flags(new_align);
+            *excess = nallocx(new_size, flags) as usize;
         }
-        return p
+        p
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_grow_in_place(ptr: *mut u8,
                                              old_size: usize,
                                              old_align: usize,
@@ -235,7 +237,7 @@ mod contents {
     }
 
     #[no_mangle]
-    #[linkage = "external"]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_shrink_in_place(ptr: *mut u8,
                                                _old_size: usize,
                                                old_align: usize,

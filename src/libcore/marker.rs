@@ -46,6 +46,8 @@ pub unsafe trait Send {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
 unsafe impl Send for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -122,7 +124,7 @@ pub trait Sized {
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "unsize", issue = "27732")]
-#[lang="unsize"]
+#[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {
     // Empty.
 }
@@ -349,6 +351,8 @@ pub unsafe trait Sync {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
 unsafe impl Sync for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -562,6 +566,8 @@ mod impls {
 #[lang = "freeze"]
 unsafe trait Freeze {}
 
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
 unsafe impl Freeze for .. {}
 
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}

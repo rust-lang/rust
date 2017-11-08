@@ -15,6 +15,7 @@
 #![feature(optin_builtin_traits)]
 
 trait Magic: Copy {} //~ ERROR E0568
+#[allow(auto_impl)]
 impl Magic for .. {}
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }

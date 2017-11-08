@@ -381,6 +381,12 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_adt(a_def, substs))
         }
 
+        (&ty::TyForeign(a_id), &ty::TyForeign(b_id))
+            if a_id == b_id =>
+        {
+            Ok(tcx.mk_foreign(a_id))
+        }
+
         (&ty::TyDynamic(ref a_obj, ref a_region), &ty::TyDynamic(ref b_obj, ref b_region)) => {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound,
                                                        |relation| {

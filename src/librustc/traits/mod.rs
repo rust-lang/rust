@@ -288,11 +288,11 @@ pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
 
-    /// Vtable for default trait implementations
+    /// Vtable for auto trait implementations
     /// This carries the information and nested obligations with regards
-    /// to a default implementation for a trait `Trait`. The nested obligations
+    /// to an auto implementation for a trait `Trait`. The nested obligations
     /// ensure the trait implementation holds for all the constituent types.
-    VtableDefaultImpl(VtableDefaultImplData<N>),
+    VtableAutoImpl(VtableAutoImplData<N>),
 
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter. The `Vec<N>` represents the
@@ -354,7 +354,7 @@ pub struct VtableClosureData<'tcx, N> {
 }
 
 #[derive(Clone)]
-pub struct VtableDefaultImplData<N> {
+pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
@@ -650,53 +650,55 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-pub fn get_vtable_methods<'a, 'tcx>(
+fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
-    -> impl Iterator<Item=Option<(DefId, &'tcx Substs<'tcx>)>> + 'a
+    -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>
 {
-    debug!("get_vtable_methods({:?})", trait_ref);
+    debug!("vtable_methods({:?})", trait_ref);
 
-    supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
-        let trait_methods = tcx.associated_items(trait_ref.def_id())
-            .filter(|item| item.kind == ty::AssociatedKind::Method);
+    Rc::new(
+        supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
+            let trait_methods = tcx.associated_items(trait_ref.def_id())
+                .filter(|item| item.kind == ty::AssociatedKind::Method);
 
-        // Now list each method's DefId and Substs (for within its trait).
-        // If the method can never be called from this object, produce None.
-        trait_methods.map(move |trait_method| {
-            debug!("get_vtable_methods: trait_method={:?}", trait_method);
-            let def_id = trait_method.def_id;
+            // Now list each method's DefId and Substs (for within its trait).
+            // If the method can never be called from this object, produce None.
+            trait_methods.map(move |trait_method| {
+                debug!("vtable_methods: trait_method={:?}", trait_method);
+                let def_id = trait_method.def_id;
 
-            // Some methods cannot be called on an object; skip those.
-            if !tcx.is_vtable_safe_method(trait_ref.def_id(), &trait_method) {
-                debug!("get_vtable_methods: not vtable safe");
-                return None;
-            }
+                // Some methods cannot be called on an object; skip those.
+                if !tcx.is_vtable_safe_method(trait_ref.def_id(), &trait_method) {
+                    debug!("vtable_methods: not vtable safe");
+                    return None;
+                }
 
-            // the method may have some early-bound lifetimes, add
-            // regions for those
-            let substs = Substs::for_item(tcx, def_id,
-                                          |_, _| tcx.types.re_erased,
-                                          |def, _| trait_ref.substs().type_for_def(def));
+                // the method may have some early-bound lifetimes, add
+                // regions for those
+                let substs = Substs::for_item(tcx, def_id,
+                                              |_, _| tcx.types.re_erased,
+                                              |def, _| trait_ref.substs().type_for_def(def));
 
-            // the trait type may have higher-ranked lifetimes in it;
-            // so erase them if they appear, so that we get the type
-            // at some particular call site
-            let substs = tcx.erase_late_bound_regions_and_normalize(&ty::Binder(substs));
+                // the trait type may have higher-ranked lifetimes in it;
+                // so erase them if they appear, so that we get the type
+                // at some particular call site
+                let substs = tcx.erase_late_bound_regions_and_normalize(&ty::Binder(substs));
 
-            // It's possible that the method relies on where clauses that
-            // do not hold for this particular set of type parameters.
-            // Note that this method could then never be called, so we
-            // do not want to try and trans it, in that case (see #23435).
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-            if !normalize_and_test_predicates(tcx, predicates.predicates) {
-                debug!("get_vtable_methods: predicates do not hold");
-                return None;
-            }
+                // It's possible that the method relies on where clauses that
+                // do not hold for this particular set of type parameters.
+                // Note that this method could then never be called, so we
+                // do not want to try and trans it, in that case (see #23435).
+                let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+                if !normalize_and_test_predicates(tcx, predicates.predicates) {
+                    debug!("vtable_methods: predicates do not hold");
+                    return None;
+                }
 
-            Some((def_id, substs))
-        })
-    })
+                Some((def_id, substs))
+            })
+        }).collect()
+    )
 }
 
 impl<'tcx,O> Obligation<'tcx,O> {
@@ -756,7 +758,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(i) => i.nested,
             VtableParam(n) => n,
             VtableBuiltin(i) => i.nested,
-            VtableDefaultImpl(d) => d.nested,
+            VtableAutoImpl(d) => d.nested,
             VtableClosure(c) => c.nested,
             VtableGenerator(c) => c.nested,
             VtableObject(d) => d.nested,
@@ -769,7 +771,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             &mut VtableImpl(ref mut i) => &mut i.nested,
             &mut VtableParam(ref mut n) => n,
             &mut VtableBuiltin(ref mut i) => &mut i.nested,
-            &mut VtableDefaultImpl(ref mut d) => &mut d.nested,
+            &mut VtableAutoImpl(ref mut d) => &mut d.nested,
             &mut VtableGenerator(ref mut c) => &mut c.nested,
             &mut VtableClosure(ref mut c) => &mut c.nested,
             &mut VtableObject(ref mut d) => &mut d.nested,
@@ -793,7 +795,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
                 vtable_base: o.vtable_base,
                 nested: o.nested.into_iter().map(f).collect(),
             }),
-            VtableDefaultImpl(d) => VtableDefaultImpl(VtableDefaultImplData {
+            VtableAutoImpl(d) => VtableAutoImpl(VtableAutoImplData {
                 trait_def_id: d.trait_def_id,
                 nested: d.nested.into_iter().map(f).collect(),
             }),
@@ -835,6 +837,8 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
+        trans_fulfill_obligation: trans::trans_fulfill_obligation,
+        vtable_methods,
         ..*providers
     };
 }
@@ -844,6 +848,8 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
+        trans_fulfill_obligation: trans::trans_fulfill_obligation,
+        vtable_methods,
         ..*providers
     };
 }

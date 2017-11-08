@@ -345,6 +345,31 @@ pub enum PassKind {
     Module,
 }
 
+/// LLVMRustThinLTOData
+pub enum ThinLTOData {}
+
+/// LLVMRustThinLTOBuffer
+pub enum ThinLTOBuffer {}
+
+/// LLVMRustThinLTOModule
+#[repr(C)]
+pub struct ThinLTOModule {
+    pub identifier: *const c_char,
+    pub data: *const u8,
+    pub len: usize,
+}
+
+/// LLVMThreadLocalMode
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum ThreadLocalMode {
+  NotThreadLocal,
+  GeneralDynamic,
+  LocalDynamic,
+  InitialExec,
+  LocalExec
+}
+
 // Opaque pointer types
 #[allow(missing_copy_implementations)]
 pub enum Module_opaque {}
@@ -478,6 +503,7 @@ pub mod debuginfo {
     }
 }
 
+pub enum ModuleBuffer {}
 
 // Link to our native llvm bindings (things that we need to use the C++ api
 // for) and because llvm is written in C++ we need to link against libstdc++
@@ -694,6 +720,7 @@ extern "C" {
     pub fn LLVMGetInitializer(GlobalVar: ValueRef) -> ValueRef;
     pub fn LLVMSetInitializer(GlobalVar: ValueRef, ConstantVal: ValueRef);
     pub fn LLVMSetThreadLocal(GlobalVar: ValueRef, IsThreadLocal: Bool);
+    pub fn LLVMSetThreadLocalMode(GlobalVar: ValueRef, Mode: ThreadLocalMode);
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
     pub fn LLVMRustGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
@@ -1270,6 +1297,9 @@ extern "C" {
                                                         PM: PassManagerRef,
                                                         Internalize: Bool,
                                                         RunInliner: Bool);
+    pub fn LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
+        PMB: PassManagerBuilderRef,
+        PM: PassManagerRef) -> bool;
 
     // Stuff that's in rustllvm/ because it's not upstream yet.
 
@@ -1609,6 +1639,7 @@ extern "C" {
     pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef, AddLifetimes: bool);
     pub fn LLVMRustLinkInExternalBitcode(M: ModuleRef, bc: *const c_char, len: size_t) -> bool;
+    pub fn LLVMRustLinkInParsedExternalBitcode(M: ModuleRef, M: ModuleRef) -> bool;
     pub fn LLVMRustRunRestrictionPass(M: ModuleRef, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
 
@@ -1678,4 +1709,48 @@ extern "C" {
     pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: ValueRef);
     pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
+    pub fn LLVMRustModuleBufferCreate(M: ModuleRef) -> *mut ModuleBuffer;
+    pub fn LLVMRustModuleBufferPtr(p: *const ModuleBuffer) -> *const u8;
+    pub fn LLVMRustModuleBufferLen(p: *const ModuleBuffer) -> usize;
+    pub fn LLVMRustModuleBufferFree(p: *mut ModuleBuffer);
+    pub fn LLVMRustModuleCost(M: ModuleRef) -> u64;
+
+    pub fn LLVMRustThinLTOAvailable() -> bool;
+    pub fn LLVMRustWriteThinBitcodeToFile(PMR: PassManagerRef,
+                                          M: ModuleRef,
+                                          BC: *const c_char) -> bool;
+    pub fn LLVMRustThinLTOBufferCreate(M: ModuleRef) -> *mut ThinLTOBuffer;
+    pub fn LLVMRustThinLTOBufferFree(M: *mut ThinLTOBuffer);
+    pub fn LLVMRustThinLTOBufferPtr(M: *const ThinLTOBuffer) -> *const c_char;
+    pub fn LLVMRustThinLTOBufferLen(M: *const ThinLTOBuffer) -> size_t;
+    pub fn LLVMRustCreateThinLTOData(
+        Modules: *const ThinLTOModule,
+        NumModules: c_uint,
+        PreservedSymbols: *const *const c_char,
+        PreservedSymbolsLen: c_uint,
+    ) -> *mut ThinLTOData;
+    pub fn LLVMRustPrepareThinLTORename(
+        Data: *const ThinLTOData,
+        Module: ModuleRef,
+    ) -> bool;
+    pub fn LLVMRustPrepareThinLTOResolveWeak(
+        Data: *const ThinLTOData,
+        Module: ModuleRef,
+    ) -> bool;
+    pub fn LLVMRustPrepareThinLTOInternalize(
+        Data: *const ThinLTOData,
+        Module: ModuleRef,
+    ) -> bool;
+    pub fn LLVMRustPrepareThinLTOImport(
+        Data: *const ThinLTOData,
+        Module: ModuleRef,
+    ) -> bool;
+    pub fn LLVMRustFreeThinLTOData(Data: *mut ThinLTOData);
+    pub fn LLVMRustParseBitcodeForThinLTO(
+        Context: ContextRef,
+        Data: *const u8,
+        len: usize,
+        Identifier: *const c_char,
+    ) -> ModuleRef;
+    pub fn LLVMGetModuleIdentifier(M: ModuleRef, size: *mut usize) -> *const c_char;
 }

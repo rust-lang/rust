@@ -25,7 +25,7 @@ use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
-pub struct SyntaxContext(u32);
+pub struct SyntaxContext(pub(super) u32);
 
 #[derive(Copy, Clone, Default)]
 pub struct SyntaxContextData {

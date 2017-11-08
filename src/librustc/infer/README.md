@@ -90,7 +90,7 @@ holds trivially because A==B.  However, we have now lost some
 flexibility, because perhaps the user intended for A and B to end up
 as different types and not the same type.
 
-Pictorally, what this does is to take two distinct variables with
+Pictorially, what this does is to take two distinct variables with
 (hopefully not completely) distinct type ranges and produce one with
 the intersection.
 

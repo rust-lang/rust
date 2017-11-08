@@ -8,7 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Rust compiler.
+//! The "main crate" of the Rust compiler. This crate contains common
+//! type definitions that are used by the other crates in the rustc
+//! "family". Some prominent examples (note that each of these modules
+//! has their own README with further details).
+//!
+//! - **HIR.** The "high-level (H) intermediate representation (IR)" is
+//!   defined in the `hir` module.
+//! - **MIR.** The "mid-level (M) intermediate representation (IR)" is
+//!   defined in the `mir` module. This module contains only the
+//!   *definition* of the MIR; the passes that transform and operate
+//!   on MIR are found in `librustc_mir` crate.
+//! - **Types.** The internal representation of types used in rustc is
+//!   defined in the `ty` module. This includes the **type context**
+//!   (or `tcx`), which is the central context during most of
+//!   compilation, containing the interners and other things.
+//! - **Traits.** Trait resolution is implemented in the `traits` module.
+//! - **Type inference.** The type inference code can be found in the `infer` module;
+//!   this code handles low-level equality and subtyping operations. The
+//!   type check pass in the compiler is found in the `librustc_typeck` crate.
+//!
+//! For a deeper explanation of how the compiler works and is
+//! organized, see the README.md file in this directory.
 //!
 //! # Note
 //!
@@ -22,9 +43,12 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
+#![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
+#![feature(inclusive_range_syntax)]
 #![cfg_attr(windows, feature(libc))]
+#![feature(macro_vis_matcher)]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]
@@ -34,11 +58,9 @@
 #![feature(unboxed_closures)]
 #![feature(trace_macros)]
 #![feature(test)]
+#![feature(const_atomic_bool_new)]
 
-#![cfg_attr(stage0, feature(const_fn))]
-#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
-
-#![recursion_limit="256"]
+#![recursion_limit="512"]
 
 extern crate arena;
 #[macro_use] extern crate bitflags;
@@ -50,7 +72,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate owning_ref;
 extern crate rustc_back;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
 extern crate rustc_const_math;
 extern crate rustc_errors as errors;
@@ -84,13 +106,13 @@ pub mod lint;
 
 pub mod middle {
     pub mod allocator;
+    pub mod borrowck;
     pub mod expr_use_visitor;
     pub mod const_val;
     pub mod cstore;
     pub mod dataflow;
     pub mod dead;
     pub mod dependency_format;
-    pub mod effect;
     pub mod entry;
     pub mod exported_symbols;
     pub mod free_region;

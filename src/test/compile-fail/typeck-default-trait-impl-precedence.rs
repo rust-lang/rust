@@ -16,6 +16,7 @@
 #![feature(optin_builtin_traits)]
 
 trait Defaulted { }
+#[allow(auto_impl)]
 impl Defaulted for .. { }
 impl<'a,T:Signed> Defaulted for &'a T { }
 impl<'a,T:Signed> Defaulted for &'a mut T { }

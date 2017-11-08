@@ -15,7 +15,6 @@
 
 #![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
-#![feature(core_intrinsics)]
 #![feature(i128_type)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]

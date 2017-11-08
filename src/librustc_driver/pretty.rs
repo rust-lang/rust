@@ -20,7 +20,6 @@ use {abort_on_err, driver};
 use rustc::ty::{self, TyCtxt, GlobalArenas, Resolutions};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
-use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::session::config::{Input, OutputFilenames};
@@ -237,7 +236,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  output_filenames,
-                                                                 |tcx, _, _, _, _| {
+                                                                 |tcx, _, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx,
@@ -660,10 +659,26 @@ impl ReplaceBodyWithLoop {
                     ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. }) |
                     ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. }) |
                     ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
-                    ast::TyKind::Tup(ref tys) => tys.iter().any(|subty| involves_impl_trait(subty)),
+                    ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
+                    ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
+                        match seg.parameters.as_ref().map(|p| &**p) {
+                            None => false,
+                            Some(&ast::PathParameters::AngleBracketed(ref data)) =>
+                                any_involves_impl_trait(data.types.iter()) ||
+                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty)),
+                            Some(&ast::PathParameters::Parenthesized(ref data)) =>
+                                any_involves_impl_trait(data.inputs.iter()) ||
+                                any_involves_impl_trait(data.output.iter()),
+                        }
+                    }),
                     _ => false,
                 }
             }
+
+            fn any_involves_impl_trait<'a, I: Iterator<Item = &'a P<ast::Ty>>>(mut it: I) -> bool {
+                it.any(|subty| involves_impl_trait(subty))
+            }
+
             involves_impl_trait(ty)
         } else {
             false
@@ -848,9 +863,6 @@ pub fn print_after_parsing(sess: &Session,
                            krate: &ast::Crate,
                            ppm: PpMode,
                            ofile: Option<&Path>) {
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
-
     let (src, src_name) = get_source(input, sess);
 
     let mut rdr = &*src;
@@ -893,9 +905,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 output_filenames: &OutputFilenames,
                                                 opt_uii: Option<UserIdentifiedItem>,
                                                 ofile: Option<&Path>) {
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
-
     if ppm.needs_analysis() {
         print_with_analysis(sess,
                             cstore,
@@ -1036,7 +1045,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      arenas,
                                                      crate_name,
                                                      output_filenames,
-                                                     |tcx, _, _, _, _| {
+                                                     |tcx, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {

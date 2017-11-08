@@ -117,7 +117,7 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FreeRegionMap<'tcx> {
     // Stores the relation `a < b`, where `a` and `b` are regions.
     //
@@ -181,6 +181,19 @@ impl<'tcx> FreeRegionMap<'tcx> {
         };
         debug!("lub_free_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
         result
+    }
+
+    /// Returns all regions that are known to outlive `r_a`. For
+    /// example, in a function:
+    ///
+    /// ```
+    /// fn foo<'a, 'b: 'a, 'c: 'b>() { .. }
+    /// ```
+    ///
+    /// if `r_a` represents `'a`, this function would return `{'b, 'c}`.
+    pub fn regions_that_outlive<'a, 'gcx>(&self, r_a: Region<'tcx>) -> Vec<&Region<'tcx>> {
+        assert!(is_free(r_a));
+        self.relation.greater_than(&r_a)
     }
 }
 

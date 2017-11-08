@@ -24,6 +24,6 @@ pub struct Big {
 // CHECK-LABEL: @test_mvi
 #[no_mangle]
 pub unsafe fn test_mvi(target: *mut Big, make_big: fn() -> Big) {
-    // CHECK: call void %1(%Big*{{[^%]*}} %0)
+    // CHECK: call void %make_big(%Big*{{[^%]*}} %target)
     move_val_init(target, make_big());
 }

@@ -77,13 +77,14 @@ pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Option<Si
 
 pub fn method_signature(id: NodeId,
                         ident: ast::Ident,
+                        generics: &ast::Generics,
                         m: &ast::MethodSig,
                         scx: &SaveContext)
                         -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
-    make_method_signature(id, ident, m, scx).ok()
+    make_method_signature(id, ident, generics, m, scx).ok()
 }
 
 pub fn assoc_const_signature(id: NodeId,
@@ -288,7 +289,7 @@ impl Sig for ast::Ty {
                     })
                 }
             }
-            ast::TyKind::TraitObject(ref bounds) => {
+            ast::TyKind::TraitObject(ref bounds, ..) => {
                 // FIXME recurse into bounds
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(nested))
@@ -476,8 +477,13 @@ impl Sig for ast::Item {
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
-            ast::ItemKind::Trait(unsafety, ref generics, ref bounds, _) => {
+            ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, _) => {
                 let mut text = String::new();
+
+                if is_auto == ast::IsAuto::Yes {
+                    text.push_str("auto ");
+                }
+
                 if unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
@@ -498,7 +504,7 @@ impl Sig for ast::Item {
 
                 Ok(sig)
             }
-            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 let mut text = String::new();
                 if unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
@@ -807,6 +813,23 @@ impl Sig for ast::ForeignItem {
 
                 Ok(extend_sig(ty_sig, text, defs, vec![]))
             }
+            ast::ForeignItemKind::Ty => {
+                let mut text = "type ".to_owned();
+                let name = self.ident.to_string();
+                let defs = vec![SigElement {
+                    id: id_from_node_id(self.id, scx),
+                    start: offset + text.len(),
+                    end: offset + text.len() + name.len(),
+                }];
+                text.push_str(&name);
+                text.push(';');
+
+                Ok(Signature {
+                    text: text,
+                    defs: defs,
+                    refs: vec![],
+                })
+            }
         }
     }
 }
@@ -895,6 +918,7 @@ fn make_assoc_const_signature(id: NodeId,
 
 fn make_method_signature(id: NodeId,
                          ident: ast::Ident,
+                         generics: &ast::Generics,
                          m: &ast::MethodSig,
                          scx: &SaveContext)
                          -> Result {
@@ -915,7 +939,7 @@ fn make_method_signature(id: NodeId,
 
     let mut sig = name_and_generics(text,
                                     0,
-                                    &m.generics,
+                                    generics,
                                     id,
                                     ident,
                                     scx)?;

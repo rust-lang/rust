@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:attr-on-trait.rs
+// ignore-stage1
 
 #![feature(proc_macro)]
 

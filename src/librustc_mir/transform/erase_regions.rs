@@ -17,7 +17,7 @@
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
-use rustc::mir::visit::{MutVisitor, Lookup};
+use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::mir::transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
@@ -35,7 +35,7 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: Lookup) {
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         if !self.in_validation_statement {
             *ty = self.tcx.erase_regions(ty);
         }

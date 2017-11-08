@@ -31,7 +31,6 @@ fn f_ext(_: ext::Alias) {} //~ ERROR type `ext::Priv` is private
 trait Tr1 {}
 impl m::Alias {} //~ ERROR type `m::Priv` is private
 impl Tr1 for ext::Alias {} //~ ERROR type `ext::Priv` is private
-                           //~^ ERROR type `ext::Priv` is private
 type A = <m::Alias as m::Trait>::X; //~ ERROR type `m::Priv` is private
 
 trait Tr2<T> {}

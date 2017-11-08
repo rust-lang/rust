@@ -433,6 +433,7 @@ impl<'a> StringReader<'a> {
                     self.filemap.record_multibyte_char(self.pos, new_ch_len);
                 }
             }
+            self.filemap.record_width(self.pos, new_ch);
         } else {
             self.ch = None;
             self.pos = new_pos;
@@ -1131,6 +1132,9 @@ impl<'a> StringReader<'a> {
                     if self.ch_is('.') {
                         self.bump();
                         Ok(token::DotDotDot)
+                    } else if self.ch_is('=') {
+                        self.bump();
+                        Ok(token::DotDotEq)
                     } else {
                         Ok(token::DotDot)
                     }
@@ -1718,7 +1722,9 @@ mod tests {
     use std::rc::Rc;
 
     fn mk_sess(cm: Rc<CodeMap>) -> ParseSess {
-        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()), Some(cm.clone()));
+        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
+                                                          Some(cm.clone()),
+                                                          false);
         ParseSess {
             span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),

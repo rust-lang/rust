@@ -300,7 +300,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             if i < parent_substs.len() {
                 parent_substs.region_at(i)
             } else if let Some(lifetime)
-                    = provided.lifetimes.get(i - parent_substs.len()) {
+                    = provided.as_ref().and_then(|p| p.lifetimes.get(i - parent_substs.len())) {
                 AstConv::ast_region_to_region(self.fcx, lifetime, Some(def))
             } else {
                 self.region_var_for_def(self.span, def)
@@ -310,7 +310,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             if i < parent_substs.len() {
                 parent_substs.type_at(i)
             } else if let Some(ast_ty)
-                    = provided.types.get(i - parent_substs.len() - method_generics.regions.len()) {
+                = provided.as_ref().and_then(|p| {
+                    p.types.get(i - parent_substs.len() - method_generics.regions.len())
+                })
+            {
                 self.to_ty(ast_ty)
             } else {
                 self.type_var_for_def(self.span, def, cur_substs)

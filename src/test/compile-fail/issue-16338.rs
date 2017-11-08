@@ -16,7 +16,6 @@ struct Slice<T> {
 fn main() {
     let Slice { data: data, len: len } = "foo";
     //~^ ERROR mismatched types
-    //~| expected type `&str`
     //~| found type `Slice<_>`
-    //~| expected &str, found struct `Slice`
+    //~| ERROR non-reference pattern used to match a reference
 }

@@ -40,7 +40,7 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::parse::token;
+use syntax::parse::token::{self, Token};
 use syntax::symbol::keywords;
 use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
@@ -338,11 +338,22 @@ impl<'a> Resolver<'a> {
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref struct_def, _) => {
                 // Define a name in the type namespace.
-                let def = Def::Struct(self.definitions.local_def_id(item.id));
+                let def_id = self.definitions.local_def_id(item.id);
+                let def = Def::Struct(def_id);
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
-                // Record field names for error reporting.
                 let mut ctor_vis = vis;
+
+                let has_non_exhaustive = item.attrs.iter()
+                    .any(|item| item.check_name("non_exhaustive"));
+
+                // If the structure is marked as non_exhaustive then lower the visibility
+                // to within the crate.
+                if has_non_exhaustive && vis == ty::Visibility::Public {
+                    ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+                }
+
+                // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().filter_map(|field| {
                     let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self) {
@@ -376,7 +387,7 @@ impl<'a> Resolver<'a> {
                 self.insert_field_names(item_def_id, field_names);
             }
 
-            ItemKind::DefaultImpl(..) | ItemKind::Impl(..) => {}
+            ItemKind::AutoImpl(..) | ItemKind::Impl(..) => {}
 
             ItemKind::Trait(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
@@ -414,22 +425,26 @@ impl<'a> Resolver<'a> {
         // value namespace, they are reserved for possible future use.
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
         let ctor_def = Def::VariantCtor(def_id, ctor_kind);
+
         self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
     }
 
     /// Constructs the reduced graph for one foreign item.
     fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expansion: Mark) {
-        let def = match item.node {
+        let (def, ns) = match item.node {
             ForeignItemKind::Fn(..) => {
-                Def::Fn(self.definitions.local_def_id(item.id))
+                (Def::Fn(self.definitions.local_def_id(item.id)), ValueNS)
             }
             ForeignItemKind::Static(_, m) => {
-                Def::Static(self.definitions.local_def_id(item.id), m)
+                (Def::Static(self.definitions.local_def_id(item.id), m), ValueNS)
+            }
+            ForeignItemKind::Ty => {
+                (Def::TyForeign(self.definitions.local_def_id(item.id)), TypeNS)
             }
         };
         let parent = self.current_module;
         let vis = self.resolve_visibility(&item.vis);
-        self.define(parent, item.ident, ValueNS, (def, vis, item.span, expansion));
+        self.define(parent, item.ident, ns, (def, vis, item.span, expansion));
     }
 
     fn build_reduced_graph_for_block(&mut self, block: &Block, expansion: Mark) {
@@ -462,7 +477,7 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
-            Def::Variant(..) | Def::TyAlias(..) => {
+            Def::Variant(..) | Def::TyAlias(..) | Def::TyForeign(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Fn(..) | Def::Static(..) | Def::Const(..) | Def::VariantCtor(..) => {
@@ -829,5 +844,18 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         self.resolver.current_module = parent.parent.unwrap(); // nearest normal ancestor
         visit::walk_trait_item(self, item);
         self.resolver.current_module = parent;
+    }
+
+    fn visit_token(&mut self, t: Token) {
+        if let Token::Interpolated(nt) = t {
+            match nt.0 {
+                token::NtExpr(ref expr) => {
+                    if let ast::ExprKind::Mac(..) = expr.node {
+                        self.visit_invoc(expr.id);
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 }

@@ -16,6 +16,7 @@ pub mod bar {
 
     pub trait Bar {}
 
+    #[allow(auto_impl)]
     impl Bar for .. {}
 
     pub trait Foo {

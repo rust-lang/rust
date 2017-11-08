@@ -82,7 +82,7 @@ const VALS_I64: (i64, i64, i64, i64) =
      );
 
 const VALS_U8: (u8, u8, u8, u8) =
-    ( //~ WARN constant evaluation error: attempt to subtract with overflow.
+    ( //~ WARN constant evaluation error: attempt to subtract with overflow
      -(u8::MIN as i8) as u8,
      u8::MIN - 1,
      //~^ ERROR constant evaluation error
@@ -96,7 +96,7 @@ const VALS_U8: (u8, u8, u8, u8) =
      );
 
 const VALS_U16: (u16, u16, u16, u16) =
-    ( //~ WARN constant evaluation error: attempt to subtract with overflow.
+    ( //~ WARN constant evaluation error: attempt to subtract with overflow
      -(u16::MIN as i16) as u16,
      u16::MIN - 1,
      //~^ ERROR constant evaluation error
@@ -110,7 +110,7 @@ const VALS_U16: (u16, u16, u16, u16) =
      );
 
 const VALS_U32: (u32, u32, u32, u32) =
-    ( //~ WARN constant evaluation error: attempt to subtract with overflow.
+    ( //~ WARN constant evaluation error: attempt to subtract with overflow
      -(u32::MIN as i32) as u32,
      u32::MIN - 1,
      //~^ ERROR constant evaluation error
@@ -124,7 +124,7 @@ const VALS_U32: (u32, u32, u32, u32) =
      );
 
 const VALS_U64: (u64, u64, u64, u64) =
-    ( //~ WARN constant evaluation error: attempt to subtract with overflow.
+    ( //~ WARN constant evaluation error: attempt to subtract with overflow
      -(u64::MIN as i64) as u64,
      u64::MIN - 1,
      //~^ ERROR constant evaluation error

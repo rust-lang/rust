@@ -593,6 +593,8 @@ macro_rules! bitand_assign_impl {
             #[inline]
             fn bitand_assign(&mut self, other: $t) { *self &= other }
         }
+
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for $t, $t }
     )+)
 }
 
@@ -638,6 +640,8 @@ macro_rules! bitor_assign_impl {
             #[inline]
             fn bitor_assign(&mut self, other: $t) { *self |= other }
         }
+
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for $t, $t }
     )+)
 }
 
@@ -683,6 +687,8 @@ macro_rules! bitxor_assign_impl {
             #[inline]
             fn bitxor_assign(&mut self, other: $t) { *self ^= other }
         }
+
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for $t, $t }
     )+)
 }
 
@@ -729,6 +735,8 @@ macro_rules! shl_assign_impl {
                 *self <<= other
             }
         }
+
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for $t, $f }
     )
 }
 
@@ -793,6 +801,8 @@ macro_rules! shr_assign_impl {
                 *self >>= other
             }
         }
+
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for $t, $f }
     )
 }
 

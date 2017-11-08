@@ -27,11 +27,19 @@
 //! for more details.
 //!
 //! Note: it is an important invariant that the default visitor walks
-//! the body of a function in "execution order" (more concretely,
-//! reverse post-order with respect to the CFG implied by the AST),
-//! meaning that if AST node A may execute before AST node B, then A
-//! is visited first.  The borrow checker in particular relies on this
-//! property.
+//! the body of a function in "execution order" - more concretely, if
+//! we consider the reverse post-order (RPO) of the CFG implied by the HIR,
+//! then a pre-order traversal of the HIR is consistent with the CFG RPO
+//! on the *initial CFG point* of each HIR node, while a post-order traversal
+//! of the HIR is consistent with the CFG RPO on each *final CFG point* of
+//! each CFG node.
+//!
+//! One thing that follows is that if HIR node A always starts/ends executing
+//! before HIR node B, then A appears in traversal pre/postorder before B,
+//! respectively. (This follows from RPO respecting CFG domination).
+//!
+//! This order consistency is required in a few places in rustc, for
+//! example generator inference, and possibly also HIR borrowck.
 
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
@@ -403,15 +411,23 @@ pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body) {
 }
 
 pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
+    // Intentionally visiting the expr first - the initialization expr
+    // dominates the local's definition.
+    walk_list!(visitor, visit_expr, &local.init);
+
     visitor.visit_id(local.id);
     visitor.visit_pat(&local.pat);
     walk_list!(visitor, visit_ty, &local.ty);
-    walk_list!(visitor, visit_expr, &local.init);
 }
 
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
     visitor.visit_id(lifetime.id);
-    visitor.visit_name(lifetime.span, lifetime.name);
+    match lifetime.name {
+        LifetimeName::Name(name) => {
+            visitor.visit_name(lifetime.span, name);
+        }
+        LifetimeName::Static | LifetimeName::Implicit | LifetimeName::Underscore => {}
+    }
 }
 
 pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V, lifetime_def: &'v LifetimeDef) {
@@ -487,7 +503,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             // visit_enum_def() takes care of visiting the Item's NodeId
             visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
         }
-        ItemDefaultImpl(_, ref trait_ref) => {
+        ItemAutoImpl(_, ref trait_ref) => {
             visitor.visit_id(item.id);
             visitor.visit_trait_ref(trait_ref)
         }
@@ -504,7 +520,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_variant_data(struct_definition, item.name, generics, item.id, item.span);
         }
-        ItemTrait(_, ref generics, ref bounds, ref trait_item_refs) => {
+        ItemTrait(.., ref generics, ref bounds, ref trait_item_refs) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_ty_param_bound, bounds);
@@ -611,7 +627,9 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'v PathSegment) {
     visitor.visit_name(path_span, segment.name);
-    visitor.visit_path_parameters(path_span, &segment.parameters);
+    if let Some(ref parameters) = segment.parameters {
+        visitor.visit_path_parameters(path_span, parameters);
+    }
 }
 
 pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
@@ -686,6 +704,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
             }
         }
         ForeignItemStatic(ref typ, _) => visitor.visit_ty(typ),
+        ForeignItemType => (),
     }
 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);
@@ -762,9 +781,7 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
         FnKind::ItemFn(_, generics, ..) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(_, sig, ..) => {
-            visitor.visit_generics(&sig.generics);
-        }
+        FnKind::Method(..) |
         FnKind::Closure(_) => {}
     }
 }
@@ -784,6 +801,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
     visitor.visit_name(trait_item.span, trait_item.name);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
+    visitor.visit_generics(&trait_item.generics);
     match trait_item.node {
         TraitItemKind::Const(ref ty, default) => {
             visitor.visit_id(trait_item.id);
@@ -792,7 +810,6 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         }
         TraitItemKind::Method(ref sig, TraitMethod::Required(ref names)) => {
             visitor.visit_id(trait_item.id);
-            visitor.visit_generics(&sig.generics);
             visitor.visit_fn_decl(&sig.decl);
             for name in names {
                 visitor.visit_name(name.span, name.node);
@@ -834,6 +851,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         ref vis,
         ref defaultness,
         ref attrs,
+        ref generics,
         ref node,
         span
     } = *impl_item;
@@ -842,6 +860,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     visitor.visit_vis(vis);
     visitor.visit_defaultness(defaultness);
     walk_list!(visitor, visit_attribute, attrs);
+    visitor.visit_generics(generics);
     match *node {
         ImplItemKind::Const(ref ty, body) => {
             visitor.visit_id(impl_item.id);

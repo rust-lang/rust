@@ -19,6 +19,7 @@ trait Sized { }
 
 #[lang = "freeze"]
 trait Freeze {}
+#[allow(auto_impl)]
 impl Freeze for .. {}
 
 #[lang="start"]

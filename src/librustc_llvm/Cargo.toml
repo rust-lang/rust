@@ -18,4 +18,4 @@ rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-gcc = "0.3.50"
+cc = "1.0.1"

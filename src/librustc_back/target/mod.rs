@@ -135,6 +135,7 @@ macro_rules! supported_targets {
 
 supported_targets! {
     ("x86_64-unknown-linux-gnu", x86_64_unknown_linux_gnu),
+    ("x86_64-unknown-linux-gnux32", x86_64_unknown_linux_gnux32),
     ("i686-unknown-linux-gnu", i686_unknown_linux_gnu),
     ("i586-unknown-linux-gnu", i586_unknown_linux_gnu),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
@@ -153,6 +154,7 @@ supported_targets! {
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
+    ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
@@ -214,7 +216,6 @@ supported_targets! {
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
 
-    ("le32-unknown-nacl", le32_unknown_nacl),
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-experimental-emscripten", wasm32_experimental_emscripten),
@@ -238,6 +239,8 @@ pub struct Target {
     pub target_endian: String,
     /// String to use as the `target_pointer_width` `cfg` variable.
     pub target_pointer_width: String,
+    /// Width of c_int type
+    pub target_c_int_width: String,
     /// OS name to use for conditional compilation.
     pub target_os: String,
     /// Environment name to use for conditional compilation.
@@ -266,8 +269,6 @@ pub struct TargetOptions {
 
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
-    /// Archive utility to use when managing archives. Defaults to "ar".
-    pub ar: String,
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
@@ -310,6 +311,9 @@ pub struct TargetOptions {
     pub relocation_model: String,
     /// Code model to use. Corresponds to `llc -code-model=$code_model`. Defaults to "default".
     pub code_model: String,
+    /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
+    /// and "local-exec". This is similar to the -ftls-model option in GCC/Clang.
+    pub tls_model: String,
     /// Do not emit code that uses the "red zone", if the ABI has one. Defaults to false.
     pub disable_redzone: bool,
     /// Eliminate frame pointers from stack frames if possible. Defaults to true.
@@ -428,6 +432,9 @@ pub struct TargetOptions {
 
     /// The minimum alignment for global symbols.
     pub min_global_align: Option<u64>,
+
+    /// Default number of codegen units to use in debug mode
+    pub default_codegen_units: Option<u64>,
 }
 
 impl Default for TargetOptions {
@@ -437,7 +444,6 @@ impl Default for TargetOptions {
         TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
-            ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
@@ -447,6 +453,7 @@ impl Default for TargetOptions {
             executables: false,
             relocation_model: "pic".to_string(),
             code_model: "default".to_string(),
+            tls_model: "global-dynamic".to_string(),
             disable_redzone: false,
             eliminate_frame_pointer: true,
             function_sections: true,
@@ -490,6 +497,7 @@ impl Default for TargetOptions {
             crt_static_respected: false,
             stack_probes: false,
             min_global_align: None,
+            default_codegen_units: None,
         }
     }
 }
@@ -555,6 +563,7 @@ impl Target {
             llvm_target: get_req_field("llvm-target")?,
             target_endian: get_req_field("target-endian")?,
             target_pointer_width: get_req_field("target-pointer-width")?,
+            target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
             target_os: get_req_field("os")?,
@@ -677,7 +686,6 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(linker);
-        key!(ar);
         key!(pre_link_args, link_args);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);
@@ -692,6 +700,7 @@ impl Target {
         key!(executables, bool);
         key!(relocation_model);
         key!(code_model);
+        key!(tls_model);
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);
         key!(function_sections, bool);
@@ -729,6 +738,7 @@ impl Target {
         key!(crt_static_respected, bool);
         key!(stack_probes, bool);
         key!(min_global_align, Option<u64>);
+        key!(default_codegen_units, Option<u64>);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -859,6 +869,7 @@ impl ToJson for Target {
         target_val!(llvm_target);
         target_val!(target_endian);
         target_val!(target_pointer_width);
+        target_val!(target_c_int_width);
         target_val!(arch);
         target_val!(target_os, "os");
         target_val!(target_env, "env");
@@ -868,7 +879,6 @@ impl ToJson for Target {
 
         target_option_val!(is_builtin);
         target_option_val!(linker);
-        target_option_val!(ar);
         target_option_val!(link_args - pre_link_args);
         target_option_val!(pre_link_objects_exe);
         target_option_val!(pre_link_objects_dll);
@@ -883,6 +893,7 @@ impl ToJson for Target {
         target_option_val!(executables);
         target_option_val!(relocation_model);
         target_option_val!(code_model);
+        target_option_val!(tls_model);
         target_option_val!(disable_redzone);
         target_option_val!(eliminate_frame_pointer);
         target_option_val!(function_sections);
@@ -920,6 +931,7 @@ impl ToJson for Target {
         target_option_val!(crt_static_respected);
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
+        target_option_val!(default_codegen_units);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

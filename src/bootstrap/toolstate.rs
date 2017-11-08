@@ -31,6 +31,13 @@ impl ToolState {
             BuildExpectation::Failing
         }
     }
+
+    pub fn testing(&self) -> bool {
+        match *self {
+            ToolState::Testing => true,
+            _ => false,
+        }
+    }
 }
 
 impl Default for ToolState {
@@ -45,4 +52,7 @@ impl Default for ToolState {
 /// This is created from `toolstate.toml`.
 pub struct ToolStates {
     pub miri: ToolState,
+    pub clippy: ToolState,
+    pub rls: ToolState,
+    pub rustfmt: ToolState,
 }

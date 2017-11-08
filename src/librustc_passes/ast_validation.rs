@@ -42,6 +42,15 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    fn invalid_non_exhaustive_attribute(&self, variant: &Variant) {
+        let has_non_exhaustive = variant.node.attrs.iter()
+            .any(|attr| attr.check_name("non_exhaustive"));
+        if has_non_exhaustive {
+            self.err_handler().span_err(variant.span,
+                                        "#[non_exhaustive] is not yet supported on variants");
+        }
+    }
+
     fn invalid_visibility(&self, vis: &Visibility, span: Span, note: Option<&str>) {
         if vis != &Visibility::Inherited {
             let mut err = struct_span_err!(self.session,
@@ -122,14 +131,6 @@ impl<'a> AstValidator<'a> {
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
-    fn visit_lifetime(&mut self, lt: &'a Lifetime) {
-        if lt.ident.name == "'_" {
-            self.err_handler().span_err(lt.span, &format!("invalid lifetime name `{}`", lt.ident));
-        }
-
-        visit::walk_lifetime(self, lt)
-    }
-
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
             ExprKind::While(.., Some(ident)) |
@@ -160,7 +161,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     err.emit();
                 });
             }
-            TyKind::TraitObject(ref bounds) => {
+            TyKind::TraitObject(ref bounds, ..) => {
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
                     if let RegionTyParamBound(ref lifetime) = *bound {
@@ -221,7 +222,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                         item.span,
                                         Some("place qualifiers on individual impl items instead"));
             }
-            ItemKind::DefaultImpl(..) => {
+            ItemKind::AutoImpl(..) => {
                 self.invalid_visibility(&item.vis, item.span, None);
             }
             ItemKind::ForeignMod(..) => {
@@ -232,12 +233,28 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
+                    self.invalid_non_exhaustive_attribute(variant);
                     for field in variant.node.data.fields() {
                         self.invalid_visibility(&field.vis, field.span, None);
                     }
                 }
             }
-            ItemKind::Trait(.., ref bounds, ref trait_items) => {
+            ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
+                if is_auto == IsAuto::Yes {
+                    // Auto traits cannot have generics, super traits nor contain items.
+                    if !generics.ty_params.is_empty() {
+                        self.err_handler().span_err(item.span,
+                                                    "auto traits cannot have generics");
+                    }
+                    if !bounds.is_empty() {
+                        self.err_handler().span_err(item.span,
+                                                    "auto traits cannot have super traits");
+                    }
+                    if !trait_items.is_empty() {
+                        self.err_handler().span_err(item.span,
+                                                    "auto traits cannot contain items");
+                    }
+                }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
@@ -296,7 +313,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     err.emit();
                 });
             }
-            ForeignItemKind::Static(..) => {}
+            ForeignItemKind::Static(..) | ForeignItemKind::Ty => {}
         }
 
         visit::walk_foreign_item(self, fi)

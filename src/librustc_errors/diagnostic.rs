@@ -17,18 +17,24 @@ use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
 
 #[must_use]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Diagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
-    pub code: Option<String>,
+    pub code: Option<DiagnosticId>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Vec<CodeSuggestion>,
 }
 
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum DiagnosticId {
+    Error(String),
+    Lint(String),
+}
+
 /// For example a note attached to an error.
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct SubDiagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
@@ -81,7 +87,7 @@ impl Diagnostic {
         Diagnostic::new_with_code(level, None, message)
     }
 
-    pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
+    pub fn new_with_code(level: Level, code: Option<DiagnosticId>, message: &str) -> Self {
         Diagnostic {
             level,
             message: vec![(message.to_owned(), Style::NoStyle)],
@@ -208,7 +214,7 @@ impl Diagnostic {
     /// Prints out a message with a suggested edit of the code. If the suggestion is presented
     /// inline it will only show the text message and not the text.
     ///
-    /// See `diagnostic::CodeSuggestion` for more information.
+    /// See `CodeSuggestion` for more information.
     pub fn span_suggestion_short(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
@@ -229,13 +235,14 @@ impl Diagnostic {
     /// "try adding parentheses: `(tup.0).1`"
     ///
     /// The message
+    ///
     /// * should not end in any punctuation (a `:` is added automatically)
     /// * should not be a question
     /// * should not contain any parts like "the following", "as shown"
     /// * may look like "to do xyz, use" or "to do xyz, use abc"
     /// * may contain a name of a function, variable or type, but not whole expressions
     ///
-    /// See `diagnostic::CodeSuggestion` for more information.
+    /// See `CodeSuggestion` for more information.
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
@@ -248,6 +255,7 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message with multiple suggested edits of the code.
     pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
@@ -265,7 +273,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn code(&mut self, s: String) -> &mut Self {
+    pub fn code(&mut self, s: DiagnosticId) -> &mut Self {
         self.code = Some(s);
         self
     }

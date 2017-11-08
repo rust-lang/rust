@@ -61,6 +61,9 @@ impl MirPass for SimplifyBranches {
                 }), expected, .. } if cond == expected => {
                     TerminatorKind::Goto { target: target }
                 },
+                TerminatorKind::FalseEdges { real_target, .. } => {
+                    TerminatorKind::Goto { target: real_target }
+                },
                 _ => continue
             };
         }

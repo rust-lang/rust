@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 // compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
 
@@ -31,13 +32,13 @@ impl<T> Trait for Struct<T> {
 fn main() {
     let s1 = Struct { _a: 0u32 };
 
-    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<instantiation_through_vtable::Struct[0]<u32>> @@ instantiation_through_vtable.cgu-0[Internal]
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<instantiation_through_vtable::Struct[0]<u32>> @@ instantiation_through_vtable0[Internal]
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::foo[0]<u32>
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::bar[0]<u32>
     let _ = &s1 as &Trait;
 
     let s1 = Struct { _a: 0u64 };
-    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<instantiation_through_vtable::Struct[0]<u64>> @@ instantiation_through_vtable.cgu-0[Internal]
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<instantiation_through_vtable::Struct[0]<u64>> @@ instantiation_through_vtable0[Internal]
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::foo[0]<u64>
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::bar[0]<u64>
     let _ = &s1 as &Trait;

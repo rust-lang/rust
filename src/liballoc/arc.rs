@@ -52,8 +52,10 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// also destroyed.
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
-/// exception. If you need to mutate through an `Arc`, use [`Mutex`][mutex],
-/// [`RwLock`][rwlock], or one of the [`Atomic`][atomic] types.
+/// exception: you cannot generally obtain a mutable reference to something
+/// inside an `Arc`. If you need to mutate through an `Arc`, use
+/// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
+/// types.
 ///
 /// ## Thread Safety
 ///
@@ -72,13 +74,13 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// first: after all, isn't the point of `Arc<T>` thread safety? The key is
 /// this: `Arc<T>` makes it thread safe to have multiple ownership of the same
 /// data, but it  doesn't add thread safety to its data. Consider
-/// `Arc<RefCell<T>>`. `RefCell<T>` isn't [`Sync`], and if `Arc<T>` was always
-/// [`Send`], `Arc<RefCell<T>>` would be as well. But then we'd have a problem:
-/// `RefCell<T>` is not thread safe; it keeps track of the borrowing count using
+/// `Arc<`[`RefCell<T>`]`>`. [`RefCell<T>`] isn't [`Sync`], and if `Arc<T>` was always
+/// [`Send`], `Arc<`[`RefCell<T>`]`>` would be as well. But then we'd have a problem:
+/// [`RefCell<T>`] is not thread safe; it keeps track of the borrowing count using
 /// non-atomic operations.
 ///
 /// In the end, this means that you may need to pair `Arc<T>` with some sort of
-/// `std::sync` type, usually `Mutex<T>`.
+/// [`std::sync`] type, usually [`Mutex<T>`][mutex].
 ///
 /// ## Breaking cycles with `Weak`
 ///
@@ -106,7 +108,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// // a and b both point to the same memory location as foo.
 /// ```
 ///
-/// The `Arc::clone(&from)` syntax is the most idiomatic because it conveys more explicitly
+/// The [`Arc::clone(&from)`] syntax is the most idiomatic because it conveys more explicitly
 /// the meaning of the code. In the example above, this syntax makes it easier to see that
 /// this code is creating a new reference rather than copying the whole content of foo.
 ///
@@ -141,6 +143,9 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// [upgrade]: struct.Weak.html#method.upgrade
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
+/// [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
+/// [`std::sync`]: ../../std/sync/index.html
+/// [`Arc::clone(&from)`]: #method.clone
 ///
 /// # Examples
 ///

@@ -24,7 +24,6 @@ use std::cmp::Ordering;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::symbol::keywords;
-use util::nodemap::FxHashMap;
 
 use serialize;
 
@@ -104,6 +103,8 @@ pub enum TypeVariants<'tcx> {
     /// variables. This happens when the `TyAdt` corresponds to an ADT
     /// definition and not a concrete use of it.
     TyAdt(&'tcx AdtDef, &'tcx Substs<'tcx>),
+
+    TyForeign(DefId),
 
     /// The pointee of a string slice. Written as `str`.
     TyStr,
@@ -596,9 +597,10 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
     pub fn from_ref_and_name(
         tcx: TyCtxt, trait_ref: ty::TraitRef<'tcx>, item_name: Name
     ) -> ProjectionTy<'tcx> {
-        let item_def_id = tcx.associated_items(trait_ref.def_id).find(
-            |item| item.name == item_name && item.kind == ty::AssociatedKind::Type
-        ).unwrap().def_id;
+        let item_def_id = tcx.associated_items(trait_ref.def_id).find(|item| {
+            item.kind == ty::AssociatedKind::Type &&
+            tcx.hygienic_eq(item_name, item.name, trait_ref.def_id)
+        }).unwrap().def_id;
 
         ProjectionTy {
             substs: trait_ref.substs,
@@ -1069,54 +1071,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Checks whether a type is visibly uninhabited from a particular module.
-    /// # Example
-    /// ```rust
-    /// enum Void {}
-    /// mod a {
-    ///     pub mod b {
-    ///         pub struct SecretlyUninhabited {
-    ///             _priv: !,
-    ///         }
-    ///     }
-    /// }
-    ///
-    /// mod c {
-    ///     pub struct AlsoSecretlyUninhabited {
-    ///         _priv: Void,
-    ///     }
-    ///     mod d {
-    ///     }
-    /// }
-    ///
-    /// struct Foo {
-    ///     x: a::b::SecretlyUninhabited,
-    ///     y: c::AlsoSecretlyUninhabited,
-    /// }
-    /// ```
-    /// In this code, the type `Foo` will only be visibly uninhabited inside the
-    /// modules b, c and d. This effects pattern-matching on `Foo` or types that
-    /// contain `Foo`.
-    ///
-    /// # Example
-    /// ```rust
-    /// let foo_result: Result<T, Foo> = ... ;
-    /// let Ok(t) = foo_result;
-    /// ```
-    /// This code should only compile in modules where the uninhabitedness of Foo is
-    /// visible.
-    pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        let mut visited = FxHashMap::default();
-        let forest = self.uninhabited_from(&mut visited, tcx);
-
-        // To check whether this type is uninhabited at all (not just from the
-        // given node) you could check whether the forest is empty.
-        // ```
-        // forest.is_empty()
-        // ```
-        forest.contains(tcx, module)
-    }
-
     pub fn is_primitive(&self) -> bool {
         match self.sty {
             TyBool | TyChar | TyInt(_) | TyUint(_) | TyFloat(_) => true,
@@ -1162,13 +1116,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 _ => false,
             },
             _ => false
-        }
-    }
-
-    pub fn is_structural(&self) -> bool {
-        match self.sty {
-            TyAdt(..) | TyTuple(..) | TyArray(..) | TyClosure(..) => true,
-            _ => self.is_slice() | self.is_trait(),
         }
     }
 
@@ -1395,6 +1342,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             TyDynamic(ref tt, ..) => tt.principal().map(|p| p.def_id()),
             TyAdt(def, _) => Some(def.did),
+            TyForeign(did) => Some(did),
             TyClosure(id, _) => Some(id),
             _ => None,
         }
@@ -1444,6 +1392,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyRawPtr(_) |
             TyNever |
             TyTuple(..) |
+            TyForeign(..) |
             TyParam(_) |
             TyInfer(_) |
             TyError => {

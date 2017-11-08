@@ -63,7 +63,7 @@ use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Ref, RefKind, SpanData, MacroRef, Def, DefKind, Relation, RelationKind,
-               ExternalCrateData};
+               ExternalCrateData, GlobalCrateId};
 use rls_data::config::Config;
 
 
@@ -81,10 +81,6 @@ pub enum Data {
     DefData(Def),
     RelationData(Relation),
 }
-
-macro_rules! option_try(
-    ($e:expr) => (match $e { Some(e) => e, None => return None })
-);
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     fn span_from_span(&self, span: Span) -> SpanData {
@@ -119,9 +115,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             };
             let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
-                name: self.tcx.crate_name(n).to_string(),
-                num: n.as_u32(),
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
+                num: n.as_u32(),
+                id: GlobalCrateId {
+                    name: self.tcx.crate_name(n).to_string(),
+                    disambiguator: self.tcx.crate_disambiguator(n)
+                                       .to_fingerprint().as_value(),
+                },
             });
         }
 
@@ -173,6 +173,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
+            // FIXME(plietar): needs a new DefKind in rls-data
+            ast::ForeignItemKind::Ty => None,
         }
     }
 
@@ -544,16 +546,16 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprKind::MethodCall(..) => {
+            ast::ExprKind::MethodCall(ref seg, ..) => {
                 let expr_hir_id = self.tcx.hir.definitions().node_to_hir_id(expr.id);
                 let method_id = self.tables.type_dependent_defs()[expr_hir_id].def_id();
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),
                 };
-                let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
-                filter!(self.span_utils, sub_span, expr.span, None);
-                let span = self.span_from_span(sub_span.unwrap());
+                let sub_span = seg.span;
+                filter!(self.span_utils, Some(sub_span), expr.span, None);
+                let span = self.span_from_span(sub_span);
                 Some(Data::RefData(Ref {
                     kind: RefKind::Function,
                     span,
@@ -577,8 +579,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::NodeItem(&hir::Item { node: hir::ItemUse(ref path, _), .. }) |
             Node::NodeVisibility(&hir::Visibility::Restricted { ref path, .. }) => path.def,
 
-            Node::NodeExpr(&hir::Expr { node: hir::ExprPath(ref qpath), .. }) |
             Node::NodeExpr(&hir::Expr { node: hir::ExprStruct(ref qpath, ..), .. }) |
+            Node::NodeExpr(&hir::Expr { node: hir::ExprPath(ref qpath), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::Path(ref qpath), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::Struct(ref qpath, ..), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::TupleStruct(ref qpath, ..), .. }) => {
@@ -612,13 +614,31 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Ref> {
+        // Returns true if the path is function type sugar, e.g., `Fn(A) -> B`.
+        fn fn_type(path: &ast::Path) -> bool {
+            if path.segments.len() != 1 {
+                return false;
+            }
+            if let Some(ref params) = path.segments[0].parameters {
+                if let ast::PathParameters::Parenthesized(_) = **params {
+                    return true;
+                }
+            }
+            false
+        }
+
+        if path.segments.is_empty() {
+            return None;
+        }
+
         let def = self.get_path_def(id);
-        let sub_span = self.span_utils.span_for_last_ident(path.span);
-        filter!(self.span_utils, sub_span, path.span, None);
+        let last_seg = &path.segments[path.segments.len() - 1];
+        let sub_span = last_seg.span;
+        filter!(self.span_utils, Some(sub_span), path.span, None);
         match def {
             HirDef::Upvar(id, ..) |
             HirDef::Local(id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
@@ -628,13 +648,22 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Static(..) |
             HirDef::Const(..) |
             HirDef::AssociatedConst(..) |
-            HirDef::StructCtor(..) |
             HirDef::VariantCtor(..) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
                     ref_id: id_from_def_id(def.def_id()),
+                })
+            }
+            HirDef::Trait(def_id) if fn_type(path) => {
+                // Function type bounds are desugared in the parser, so we have to
+                // special case them here.
+                let fn_span = self.span_utils.span_for_first_ident(path.span);
+                fn_span.map(|span| Ref {
+                    kind: RefKind::Type,
+                    span: self.span_from_span(span),
+                    ref_id: id_from_def_id(def_id),
                 })
             }
             HirDef::Struct(def_id) |
@@ -642,19 +671,30 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Union(def_id) |
             HirDef::Enum(def_id) |
             HirDef::TyAlias(def_id) |
+            HirDef::TyForeign(def_id) |
             HirDef::AssociatedTy(def_id) |
             HirDef::Trait(def_id) |
             HirDef::TyParam(def_id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Type,
                     span,
                     ref_id: id_from_def_id(def_id),
                 })
             }
+            HirDef::StructCtor(def_id, _) => {
+                // This is a reference to a tuple struct where the def_id points
+                // to an invisible constructor function. That is not a very useful
+                // def, so adjust to point to the tuple struct itself.
+                let span = self.span_from_span(sub_span);
+                let parent_def_id = self.tcx.parent_def_id(def_id).unwrap();
+                Some(Ref {
+                    kind: RefKind::Type,
+                    span,
+                    ref_id: id_from_def_id(parent_def_id),
+                })
+            }
             HirDef::Method(decl_id) => {
-                let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
-                filter!(self.span_utils, sub_span, path.span, None);
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx.associated_items(ti.container.id())
@@ -663,7 +703,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 } else {
                     None
                 };
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Function,
                     span,
@@ -671,7 +711,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Fn(def_id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Function,
                     span,
@@ -679,7 +719,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Mod(def_id) => {
-                let span = self.span_from_span(sub_span.unwrap());
+                let span = self.span_from_span(sub_span);
                 Some(Ref {
                     kind: RefKind::Mod,
                     span,
@@ -725,8 +765,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // macro uses.
         let callsite = span.source_callsite();
         let callsite_span = self.span_from_span(callsite);
-        let callee = option_try!(span.source_callee());
-        let callee_span = option_try!(callee.span);
+        let callee = span.source_callee()?;
+        let callee_span = callee.span?;
 
         // Ignore attribute macros, their spans are usually mangled
         if let MacroAttribute(_) = callee.format {
@@ -815,29 +855,31 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig
 }
 
-// An AST visitor for collecting paths from patterns.
-struct PathCollector {
-    // The Row field identifies the kind of pattern.
-    collected_paths: Vec<(NodeId, ast::Path, ast::Mutability)>,
+// An AST visitor for collecting paths (e.g., the names of structs) and formal
+// variables (idents) from patterns.
+struct PathCollector<'l> {
+    collected_paths: Vec<(NodeId, &'l ast::Path)>,
+    collected_idents: Vec<(NodeId, ast::Ident, Span, ast::Mutability)>,
 }
 
-impl PathCollector {
-    fn new() -> PathCollector {
-        PathCollector { collected_paths: vec![] }
+impl<'l> PathCollector<'l> {
+    fn new() -> PathCollector<'l> {
+        PathCollector {
+            collected_paths: vec![],
+            collected_idents: vec![],
+        }
     }
 }
 
-impl<'a> Visitor<'a> for PathCollector {
-    fn visit_pat(&mut self, p: &ast::Pat) {
+impl<'l, 'a: 'l> Visitor<'a> for PathCollector<'l> {
+    fn visit_pat(&mut self, p: &'a ast::Pat) {
         match p.node {
             PatKind::Struct(ref path, ..) => {
-                self.collected_paths.push((p.id, path.clone(),
-                                           ast::Mutability::Mutable));
+                self.collected_paths.push((p.id, path));
             }
             PatKind::TupleStruct(ref path, ..) |
             PatKind::Path(_, ref path) => {
-                self.collected_paths.push((p.id, path.clone(),
-                                           ast::Mutability::Mutable));
+                self.collected_paths.push((p.id, path));
             }
             PatKind::Ident(bm, ref path1, _) => {
                 debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
@@ -851,9 +893,7 @@ impl<'a> Visitor<'a> for PathCollector {
                     ast::BindingMode::ByRef(_) => ast::Mutability::Immutable,
                     ast::BindingMode::ByValue(mt) => mt,
                 };
-                // collect path for either visit_local or visit_arm
-                let path = ast::Path::from_ident(path1.span, path1.node);
-                self.collected_paths.push((p.id, path, immut));
+                self.collected_idents.push((p.id, path1.node, path1.span, immut));
             }
             _ => {}
         }

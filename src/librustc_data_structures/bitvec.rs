@@ -138,14 +138,14 @@ impl FromIterator<bool> for BitVector {
 /// A "bit matrix" is basically a matrix of booleans represented as
 /// one gigantic bitvector. In other words, it is as if you have
 /// `rows` bitvectors, each of length `columns`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BitMatrix {
     columns: usize,
     vector: Vec<u64>,
 }
 
 impl BitMatrix {
-    // Create a new `rows x columns` matrix, initially empty.
+    /// Create a new `rows x columns` matrix, initially empty.
     pub fn new(rows: usize, columns: usize) -> BitMatrix {
         // For every element, we need one bit for every other
         // element. Round up to an even number of u64s.
@@ -163,9 +163,13 @@ impl BitMatrix {
         (start, start + u64s_per_row)
     }
 
-    pub fn add(&mut self, source: usize, target: usize) -> bool {
-        let (start, _) = self.range(source);
-        let (word, mask) = word_mask(target);
+    /// Sets the cell at `(row, column)` to true. Put another way, add
+    /// `column` to the bitset for `row`.
+    ///
+    /// Returns true if this changed the matrix, and false otherwies.
+    pub fn add(&mut self, row: usize, column: usize) -> bool {
+        let (start, _) = self.range(row);
+        let (word, mask) = word_mask(column);
         let vector = &mut self.vector[..];
         let v1 = vector[start + word];
         let v2 = v1 | mask;
@@ -173,19 +177,19 @@ impl BitMatrix {
         v1 != v2
     }
 
-    /// Do the bits from `source` contain `target`?
-    ///
-    /// Put another way, if the matrix represents (transitive)
-    /// reachability, can `source` reach `target`?
-    pub fn contains(&self, source: usize, target: usize) -> bool {
-        let (start, _) = self.range(source);
-        let (word, mask) = word_mask(target);
+    /// Do the bits from `row` contain `column`? Put another way, is
+    /// the matrix cell at `(row, column)` true?  Put yet another way,
+    /// if the matrix represents (transitive) reachability, can
+    /// `row` reach `column`?
+    pub fn contains(&self, row: usize, column: usize) -> bool {
+        let (start, _) = self.range(row);
+        let (word, mask) = word_mask(column);
         (self.vector[start + word] & mask) != 0
     }
 
-    /// Returns those indices that are reachable from both `a` and
-    /// `b`. This is an O(n) operation where `n` is the number of
-    /// elements (somewhat independent from the actual size of the
+    /// Returns those indices that are true in rows `a` and `b`.  This
+    /// is an O(n) operation where `n` is the number of elements
+    /// (somewhat independent from the actual size of the
     /// intersection, in particular).
     pub fn intersection(&self, a: usize, b: usize) -> Vec<usize> {
         let (a_start, a_end) = self.range(a);
@@ -206,7 +210,7 @@ impl BitMatrix {
         result
     }
 
-    /// Add the bits from `read` to the bits from `write`,
+    /// Add the bits from row `read` to the bits from row `write`,
     /// return true if anything changed.
     ///
     /// This is used when computing transitive reachability because if
@@ -227,6 +231,8 @@ impl BitMatrix {
         changed
     }
 
+    /// Iterates through all the columns set to true in a given row of
+    /// the matrix.
     pub fn iter<'a>(&'a self, row: usize) -> BitVectorIter<'a> {
         let (start, end) = self.range(row);
         BitVectorIter {

@@ -284,7 +284,6 @@ mod prim_pointer { }
 /// Arrays of sizes from 0 to 32 (inclusive) implement the following traits if
 /// the element type allows it:
 ///
-/// - [`Clone`][clone] (only if `T: `[`Copy`][copy])
 /// - [`Debug`][debug]
 /// - [`IntoIterator`][intoiterator] (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`][partialeq], [`PartialOrd`][partialord], [`Eq`][eq], [`Ord`][ord]
@@ -299,8 +298,10 @@ mod prim_pointer { }
 /// entirely different types. As a stopgap, trait implementations are
 /// statically generated up to size 32.
 ///
-/// Arrays of *any* size are [`Copy`][copy] if the element type is [`Copy`][copy]. This
-/// works because the [`Copy`][copy] trait is specially known to the compiler.
+/// Arrays of *any* size are [`Copy`][copy] if the element type is [`Copy`][copy]
+/// and [`Clone`][clone] if the element type is [`Clone`][clone]. This works
+/// because [`Copy`][copy] and [`Clone`][clone] traits are specially known
+/// to the compiler.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
@@ -710,6 +711,10 @@ mod prim_u128 { }
 //
 /// The pointer-sized signed integer type.
 ///
+/// The size of this primitive is how many bytes it takes to reference any
+/// location in memory. For example, on a 32 bit target, this is 4 bytes
+/// and on a 64 bit target, this is 8 bytes.
+///
 /// *[See also the `std::isize` module](isize/index.html).*
 ///
 /// However, please note that examples are shared between primitive integer
@@ -721,6 +726,10 @@ mod prim_isize { }
 #[doc(primitive = "usize")]
 //
 /// The pointer-sized unsigned integer type.
+///
+/// The size of this primitive is how many bytes it takes to reference any
+/// location in memory. For example, on a 32 bit target, this is 4 bytes
+/// and on a 64 bit target, this is 8 bytes.
 ///
 /// *[See also the `std::usize` module](usize/index.html).*
 ///

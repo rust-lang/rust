@@ -17,6 +17,7 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
+use rustc::session::CrateDisambiguator;
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
@@ -171,7 +172,7 @@ impl CrateMetadata {
     pub fn hash(&self) -> Svh {
         self.root.hash
     }
-    pub fn disambiguator(&self) -> Symbol {
+    pub fn disambiguator(&self) -> CrateDisambiguator {
         self.root.disambiguator
     }
 
@@ -216,6 +217,16 @@ impl CrateMetadata {
     pub fn is_no_builtins(&self) -> bool {
         let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "no_builtins")
+    }
+
+     pub fn has_copy_closures(&self) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+        attr::contains_feature_attr(&attrs, "copy_closures")
+    }
+
+    pub fn has_clone_closures(&self) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+        attr::contains_feature_attr(&attrs, "clone_closures")
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {

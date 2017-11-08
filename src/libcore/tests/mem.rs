@@ -121,3 +121,19 @@ fn test_transmute() {
     }
 }
 
+#[test]
+#[allow(dead_code)]
+fn test_discriminant_send_sync() {
+    enum Regular {
+        A,
+        B(i32)
+    }
+    enum NotSendSync {
+        A(*const i32)
+    }
+
+    fn is_send_sync<T: Send + Sync>() { }
+
+    is_send_sync::<Discriminant<Regular>>();
+    is_send_sync::<Discriminant<NotSendSync>>();
+}

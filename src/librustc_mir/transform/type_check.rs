@@ -92,8 +92,8 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.sanitize_type(rvalue, rval_ty);
     }
 
-    fn visit_local_decl(&mut self, local_decl: &LocalDecl<'tcx>) {
-        self.super_local_decl(local_decl);
+    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
+        self.super_local_decl(local, local_decl);
         self.sanitize_type(local_decl, local_decl.ty);
     }
 
@@ -441,7 +441,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::Return |
             TerminatorKind::GeneratorDrop |
             TerminatorKind::Unreachable |
-            TerminatorKind::Drop { .. } => {
+            TerminatorKind::Drop { .. } |
+            TerminatorKind::FalseEdges { .. } => {
                 // no checks needed for these
             }
 
@@ -683,6 +684,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         span_mirbug!(self, block, "cleanup on cleanup block")
                     }
                     self.assert_iscleanup(mir, block, cleanup, true);
+                }
+            }
+            TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
+                self.assert_iscleanup(mir, block, real_target, is_cleanup);
+                for target in imaginary_targets {
+                    self.assert_iscleanup(mir, block, *target, is_cleanup);
                 }
             }
         }

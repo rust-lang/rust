@@ -24,8 +24,6 @@ fn black_box<T>(_: T) {
 const FOO: u8 = [5u8][1];
 //~^ ERROR constant evaluation error
 //~| index out of bounds: the len is 1 but the index is 1
-//~^^^ ERROR constant evaluation error
-//~| index out of bounds: the len is 1 but the index is 1
 
 fn main() {
     let a = -std::i8::MIN;
@@ -33,8 +31,7 @@ fn main() {
     //~| attempt to negate with overflow
     let b = 200u8 + 200u8 + 200u8;
     //~^ WARN this expression will panic at run-time
-    //~| attempt to add with overflow
-    //~^^^ WARN this expression will panic at run-time
+    //~^^ WARN this expression will panic at run-time
     //~| attempt to add with overflow
     let c = 200u8 * 4;
     //~^ WARN this expression will panic at run-time

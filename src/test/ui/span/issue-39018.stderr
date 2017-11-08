@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `&'static str`
+error[E0369]: binary operation `+` cannot be applied to type `&str`
   --> $DIR/issue-39018.rs:12:13
    |
 12 |     let x = "Hello " + "World!";

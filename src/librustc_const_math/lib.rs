@@ -22,9 +22,8 @@
 #![feature(i128)]
 #![feature(i128_type)]
 
-#![cfg_attr(stage0, feature(const_fn))]
-#![cfg_attr(not(stage0), feature(const_min_value))]
-#![cfg_attr(not(stage0), feature(const_max_value))]
+#![feature(const_min_value)]
+#![feature(const_max_value)]
 
 extern crate rustc_apfloat;
 

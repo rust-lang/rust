@@ -13,7 +13,7 @@
 //! Responsible for cleaning out a build directory of all old and stale
 //! artifacts to prepare for a fresh build. Currently doesn't remove the
 //! `build/cache` directory (download cache) or the `build/$target/llvm`
-//! directory as we want that cached between builds.
+//! directory unless the --all flag is present.
 
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -21,24 +21,29 @@ use std::path::Path;
 
 use Build;
 
-pub fn clean(build: &Build) {
+pub fn clean(build: &Build, all: bool) {
     rm_rf("tmp".as_ref());
-    rm_rf(&build.out.join("tmp"));
-    rm_rf(&build.out.join("dist"));
 
-    for host in &build.hosts {
-        let entries = match build.out.join(host).read_dir() {
-            Ok(iter) => iter,
-            Err(_) => continue,
-        };
+    if all {
+        rm_rf(&build.out);
+    } else {
+        rm_rf(&build.out.join("tmp"));
+        rm_rf(&build.out.join("dist"));
 
-        for entry in entries {
-            let entry = t!(entry);
-            if entry.file_name().to_str() == Some("llvm") {
-                continue
+        for host in &build.hosts {
+            let entries = match build.out.join(host).read_dir() {
+                Ok(iter) => iter,
+                Err(_) => continue,
+            };
+
+            for entry in entries {
+                let entry = t!(entry);
+                if entry.file_name().to_str() == Some("llvm") {
+                    continue
+                }
+                let path = t!(entry.path().canonicalize());
+                rm_rf(&path);
             }
-            let path = t!(entry.path().canonicalize());
-            rm_rf(&path);
         }
     }
 }

@@ -23,42 +23,48 @@ use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::DiagnosticId;
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
 use std::io::{self, Write};
 use std::vec;
 
-use rustc_serialize::json::as_json;
+use rustc_serialize::json::{as_json, as_pretty_json};
 
 pub struct JsonEmitter {
     dst: Box<Write + Send>,
     registry: Option<Registry>,
     cm: Rc<CodeMapper + 'static>,
+    pretty: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
-                  code_map: Rc<CodeMap>) -> JsonEmitter {
+                  code_map: Rc<CodeMap>,
+                  pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
             cm: code_map,
+            pretty,
         }
     }
 
-    pub fn basic() -> JsonEmitter {
+    pub fn basic(pretty: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)))
+        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)), pretty)
     }
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<Registry>,
-               code_map: Rc<CodeMap>) -> JsonEmitter {
+               code_map: Rc<CodeMap>,
+               pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
             cm: code_map,
+            pretty,
         }
     }
 }
@@ -66,7 +72,12 @@ impl JsonEmitter {
 impl Emitter for JsonEmitter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
         let data = Diagnostic::from_diagnostic_builder(db, self);
-        if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
+        let result = if self.pretty {
+            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+        } else {
+            writeln!(&mut self.dst, "{}", as_json(&data))
+        };
+        if let Err(e) = result {
             panic!("failed to print diagnostics: {:?}", e);
         }
     }
@@ -84,9 +95,7 @@ struct Diagnostic {
     spans: Vec<DiagnosticSpan>,
     /// Associated diagnostic messages.
     children: Vec<Diagnostic>,
-    /// The message as rustc would render it. Currently this is only
-    /// `Some` for "suggestions", but eventually it will include all
-    /// snippets.
+    /// The message as rustc would render it. Currently this is always `None`
     rendered: Option<String>,
 }
 
@@ -109,9 +118,7 @@ struct DiagnosticSpan {
     /// Label that should be placed at this location (if any)
     label: Option<String>,
     /// If we are suggesting a replacement, this will contain text
-    /// that should be sliced in atop this span. You may prefer to
-    /// load the fully rendered version from the parent `Diagnostic`,
-    /// however.
+    /// that should be sliced in atop this span.
     suggested_replacement: Option<String>,
     /// Macro invocations that created the code at this span, if any.
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
@@ -153,17 +160,15 @@ impl Diagnostic {
     fn from_diagnostic_builder(db: &DiagnosticBuilder,
                                je: &JsonEmitter)
                                -> Diagnostic {
-        let sugg = db.suggestions.iter().flat_map(|sugg| {
-            je.render(sugg).into_iter().map(move |rendered| {
-                Diagnostic {
-                    message: sugg.msg.clone(),
-                    code: None,
-                    level: "help",
-                    spans: DiagnosticSpan::from_suggestion(sugg, je),
-                    children: vec![],
-                    rendered: Some(rendered),
-                }
-            })
+        let sugg = db.suggestions.iter().map(|sugg| {
+            Diagnostic {
+                message: sugg.msg.clone(),
+                code: None,
+                level: "help",
+                spans: DiagnosticSpan::from_suggestion(sugg, je),
+                children: vec![],
+                rendered: None,
+            }
         });
         Diagnostic {
             message: db.message(),
@@ -342,9 +347,12 @@ impl DiagnosticSpanLine {
 }
 
 impl DiagnosticCode {
-    fn map_opt_string(s: Option<String>, je: &JsonEmitter) -> Option<DiagnosticCode> {
+    fn map_opt_string(s: Option<DiagnosticId>, je: &JsonEmitter) -> Option<DiagnosticCode> {
         s.map(|s| {
-
+            let s = match s {
+                DiagnosticId::Error(s) => s,
+                DiagnosticId::Lint(s) => s,
+            };
             let explanation = je.registry
                                 .as_ref()
                                 .and_then(|registry| registry.find_description(&s));
@@ -354,11 +362,5 @@ impl DiagnosticCode {
                 explanation,
             }
         })
-    }
-}
-
-impl JsonEmitter {
-    fn render(&self, suggestion: &CodeSuggestion) -> Vec<String> {
-        suggestion.splice_lines(&*self.cm).iter().map(|line| line.0.to_owned()).collect()
     }
 }

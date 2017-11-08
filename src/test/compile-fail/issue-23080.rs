@@ -19,6 +19,7 @@ unsafe trait Trait {
     }
 }
 
+#[allow(auto_impl)]
 unsafe impl Trait for .. {}
 
 fn call_method<T: Trait>(x: T) {

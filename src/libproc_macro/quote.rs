@@ -202,8 +202,8 @@ impl Quote for Token {
 
         gen_match! {
             Eq, Lt, Le, EqEq, Ne, Ge, Gt, AndAnd, OrOr, Not, Tilde, At, Dot, DotDot, DotDotDot,
-            Comma, Semi, Colon, ModSep, RArrow, LArrow, FatArrow, Pound, Dollar, Question,
-            Underscore;
+            DotDotEq, Comma, Semi, Colon, ModSep, RArrow, LArrow, FatArrow, Pound, Dollar,
+            Question, Underscore;
 
             Token::OpenDelim(delim) => quote!(rt::token::OpenDelim((quote delim))),
             Token::CloseDelim(delim) => quote!(rt::token::CloseDelim((quote delim))),

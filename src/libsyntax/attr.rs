@@ -500,6 +500,20 @@ pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str) -> Option<S
         .and_then(|at| at.value_str())
 }
 
+/// Check if `attrs` contains an attribute like `#![feature(feature_name)]`.
+/// This will not perform any "sanity checks" on the form of the attributes.
+pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
+    attrs.iter().any(|item| {
+        item.check_name("feature") &&
+        item.meta_item_list().map(|list| {
+            list.iter().any(|mi| {
+                mi.word().map(|w| w.name() == feature_name)
+                         .unwrap_or(false)
+            })
+        }).unwrap_or(false)
+    })
+}
+
 /* Higher-level applications */
 
 pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {

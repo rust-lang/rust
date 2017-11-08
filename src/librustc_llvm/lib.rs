@@ -172,6 +172,11 @@ pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
         LLVMSetThreadLocal(global, is_thread_local as Bool);
     }
 }
+pub fn set_thread_local_mode(global: ValueRef, mode: ThreadLocalMode) {
+    unsafe {
+        LLVMSetThreadLocalMode(global, mode);
+    }
+}
 
 impl Attribute {
     pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
@@ -346,10 +351,6 @@ pub fn initialize_available_targets() {
                  LLVMInitializePowerPCTargetMC,
                  LLVMInitializePowerPCAsmPrinter,
                  LLVMInitializePowerPCAsmParser);
-    init_target!(llvm_component = "pnacl",
-                 LLVMInitializePNaClTargetInfo,
-                 LLVMInitializePNaClTarget,
-                 LLVMInitializePNaClTargetMC);
     init_target!(llvm_component = "systemz",
                  LLVMInitializeSystemZTargetInfo,
                  LLVMInitializeSystemZTarget,

@@ -86,6 +86,7 @@ use syntax_pos::Span;
 
 use std::fmt;
 use std::rc::Rc;
+use util::nodemap::ItemLocalMap;
 
 #[derive(Clone, PartialEq)]
 pub enum Categorization<'tcx> {
@@ -285,6 +286,7 @@ pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
+    rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>,
     infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
 }
 
@@ -392,21 +394,46 @@ impl MutabilityCategory {
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                region_scope_tree: &'a region::ScopeTree,
-               tables: &'a ty::TypeckTables<'tcx>)
+               tables: &'a ty::TypeckTables<'tcx>,
+               rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
-        MemCategorizationContext { tcx, region_scope_tree, tables, infcx: None }
+        MemCategorizationContext {
+            tcx,
+            region_scope_tree,
+            tables,
+            rvalue_promotable_map,
+            infcx: None
+        }
     }
 }
 
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
+    /// Creates a `MemCategorizationContext` during type inference.
+    /// This is used during upvar analysis and a few other places.
+    /// Because the typeck tables are not yet complete, the results
+    /// from the analysis must be used with caution:
+    ///
+    /// - rvalue promotions are not known, so the lifetimes of
+    ///   temporaries may be overly conservative;
+    /// - similarly, as the results of upvar analysis are not yet
+    ///   known, the results around upvar accesses may be incorrect.
     pub fn with_infer(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                       region_scope_tree: &'a region::ScopeTree,
                       tables: &'a ty::TypeckTables<'tcx>)
                       -> MemCategorizationContext<'a, 'gcx, 'tcx> {
+        let tcx = infcx.tcx;
+
+        // Subtle: we can't do rvalue promotion analysis until the
+        // typeck phase is complete, which means that you can't trust
+        // the rvalue lifetimes that result, but that's ok, since we
+        // don't need to know those during type inference.
+        let rvalue_promotable_map = None;
+
         MemCategorizationContext {
-            tcx: infcx.tcx,
+            tcx,
             region_scope_tree,
             tables,
+            rvalue_promotable_map,
             infcx: Some(infcx),
         }
     }
@@ -477,10 +504,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
         let base_ty = self.node_ty(pat.hir_id)?;
-        // FIXME (Issue #18207): This code detects whether we are
-        // looking at a `ref x`, and if so, figures out what the type
-        // *being borrowed* is.  But ideally we would put in a more
-        // fundamental fix to this conflated use of the node id.
+        // This code detects whether we are looking at a `ref x`,
+        // and if so, figures out what the type *being borrowed* is.
         let ret_ty = match pat.node {
             PatKind::Binding(..) => {
                 let bm = *self.tables
@@ -871,8 +896,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                            span: Span,
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
-        let promotable = self.tcx.rvalue_promotable_to_static.borrow().get(&id).cloned()
-                                   .unwrap_or(false);
+        let hir_id = self.tcx.hir.node_to_hir_id(id);
+        let promotable = self.rvalue_promotable_map.as_ref().map(|m| m[&hir_id.local_id])
+                                                            .unwrap_or(false);
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
         let promotable = match expr_ty.sty {
@@ -887,7 +913,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let re = if promotable {
             self.tcx.types.re_static
         } else {
-            self.temporary_scope(self.tcx.hir.node_to_hir_id(id).local_id)
+            self.temporary_scope(hir_id.local_id)
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);
@@ -1094,7 +1120,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
+    fn cat_pattern_<F>(&self, mut cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
         where F : FnMut(cmt<'tcx>, &hir::Pat)
     {
         // Here, `cmt` is the categorization for the value being
@@ -1144,6 +1170,56 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         debug!("cat_pattern: {:?} cmt={:?}", pat, cmt);
 
+        // If (pattern) adjustments are active for this pattern, adjust the `cmt` correspondingly.
+        // `cmt`s are constructed differently from patterns. For example, in
+        //
+        // ```
+        // match foo {
+        //     &&Some(x, ) => { ... },
+        //     _ => { ... },
+        // }
+        // ```
+        //
+        // the pattern `&&Some(x,)` is represented as `Ref { Ref { TupleStruct }}`. To build the
+        // corresponding `cmt` we start with a `cmt` for `foo`, and then, by traversing the
+        // pattern, try to answer the question: given the address of `foo`, how is `x` reached?
+        //
+        // `&&Some(x,)` `cmt_foo`
+        //  `&Some(x,)` `deref { cmt_foo}`
+        //   `Some(x,)` `deref { deref { cmt_foo }}`
+        //        (x,)` `field0 { deref { deref { cmt_foo }}}` <- resulting cmt
+        //
+        // The above example has no adjustments. If the code were instead the (after adjustments,
+        // equivalent) version
+        //
+        // ```
+        // match foo {
+        //     Some(x, ) => { ... },
+        //     _ => { ... },
+        // }
+        // ```
+        //
+        // Then we see that to get the same result, we must start with `deref { deref { cmt_foo }}`
+        // instead of `cmt_foo` since the pattern is now `Some(x,)` and not `&&Some(x,)`, even
+        // though its assigned type is that of `&&Some(x,)`.
+        for _ in 0..self.tables
+                        .pat_adjustments()
+                        .get(pat.hir_id)
+                        .map(|v| v.len())
+                        .unwrap_or(0) {
+            cmt = self.cat_deref(pat, cmt, true /* implicit */)?;
+        }
+        let cmt = cmt; // lose mutability
+
+        // Invoke the callback, but only now, after the `cmt` has adjusted.
+        //
+        // To see that this makes sense, consider `match &Some(3) { Some(x) => { ... }}`. In that
+        // case, the initial `cmt` will be that for `&Some(3)` and the pattern is `Some(x)`. We
+        // don't want to call `op` with these incompatible values. As written, what happens instead
+        // is that `op` is called with the adjusted cmt (that for `*&Some(3)`) and the pattern
+        // `Some(x)` (which matches). Recursing once more, `*&Some(3)` and the pattern `Some(x)`
+        // result in the cmt `Downcast<Some>(*&Some(3)).0` associated to `x` and invoke `op` with
+        // that (where the `ref` on `x` is implied).
         op(cmt.clone(), pat);
 
         match pat.node {

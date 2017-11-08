@@ -16,6 +16,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// FIXME: after next stage0, change RangeInclusive { ... } back to ..=
+use ops::RangeInclusive;
+
 // How this module is organized.
 //
 // The library infrastructure for slices is fairly messy. There's
@@ -1044,32 +1047,32 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (0...self.end).get(slice)
+        (RangeInclusive { start: 0, end: self.end }).get(slice)
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (0...self.end).get_mut(slice)
+        (RangeInclusive { start: 0, end: self.end }).get_mut(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (0...self.end).get_unchecked(slice)
+        (RangeInclusive { start: 0, end: self.end }).get_unchecked(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0...self.end).get_unchecked_mut(slice)
+        (RangeInclusive { start: 0, end: self.end }).get_unchecked_mut(slice)
     }
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (0...self.end).index(slice)
+        (RangeInclusive { start: 0, end: self.end }).index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0...self.end).index_mut(slice)
+        (RangeInclusive { start: 0, end: self.end }).index_mut(slice)
     }
 }
 
@@ -1651,7 +1654,7 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for Split<'a, T, P> where P: FnMut(&T
     }
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     fn clone(&self) -> Split<'a, T, P> {
@@ -2090,7 +2093,7 @@ pub struct Windows<'a, T:'a> {
     size: usize
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Windows<'a, T> {
     fn clone(&self) -> Windows<'a, T> {
@@ -2192,7 +2195,7 @@ pub struct Chunks<'a, T:'a> {
     size: usize
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Chunks<'a, T> {
     fn clone(&self) -> Chunks<'a, T> {
@@ -2445,6 +2448,22 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
     mem::transmute(Repr { data: p, len: len })
+}
+
+/// Converts a reference to T into a slice of length 1 (without copying).
+#[unstable(feature = "from_ref", issue = "45703")]
+pub fn from_ref<T>(s: &T) -> &[T] {
+    unsafe {
+        from_raw_parts(s, 1)
+    }
+}
+
+/// Converts a reference to T into a slice of length 1 (without copying).
+#[unstable(feature = "from_ref", issue = "45703")]
+pub fn from_ref_mut<T>(s: &mut T) -> &mut [T] {
+    unsafe {
+        from_raw_parts_mut(s, 1)
+    }
 }
 
 // This function is public only because there is no other way to unit test heapsort.

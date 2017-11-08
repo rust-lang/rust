@@ -32,6 +32,7 @@ use rustc::session::Session;
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
+use rustc_trans_utils;
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -51,6 +52,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_overflow: bool,
     use_dll_storage_attrs: bool,
+    tls_model: llvm::ThreadLocalMode,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -158,9 +160,25 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
         Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid relocation mode",
-                             sess.opts
-                                 .cg
-                                 .code_model));
+                              reloc_model_arg));
+            sess.abort_if_errors();
+            bug!();
+        }
+    }
+}
+
+fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
+    let tls_model_arg = match sess.opts.debugging_opts.tls_model {
+        Some(ref s) => &s[..],
+        None => &sess.target.target.options.tls_model[..],
+    };
+
+    match ::back::write::TLS_MODEL_ARGS.iter().find(
+        |&&arg| arg.0 == tls_model_arg) {
+        Some(x) => x.1,
+        _ => {
+            sess.err(&format!("{:?} is not a valid TLS model",
+                              tls_model_arg));
             sess.abort_if_errors();
             bug!();
         }
@@ -282,10 +300,13 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
         let check_overflow = tcx.sess.overflow_checks();
 
+        let tls_model = get_tls_model(&tcx.sess);
+
         SharedCrateContext {
             tcx,
             check_overflow,
             use_dll_storage_attrs,
+            tls_model,
         }
     }
 
@@ -299,6 +320,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         common::type_is_freeze(self.tcx, ty)
+    }
+
+    pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
+        rustc_trans_utils::common::type_has_metadata(self.tcx, ty)
     }
 
     pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
@@ -320,19 +345,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: Arc<CodegenUnit<'tcx>>)
+               codegen_unit: Arc<CodegenUnit<'tcx>>,
+               llmod_id: &str)
                -> LocalCrateContext<'a, 'tcx> {
         unsafe {
-            // Append ".rs" to LLVM module identifier.
-            //
-            // LLVM code generator emits a ".file filename" directive
-            // for ELF backends. Value of the "filename" is set as the
-            // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-            // crashes if the module identifier is same as other symbols
-            // such as a function name in the module.
-            // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-            let llmod_id = format!("{}.rs", codegen_unit.name());
-
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess,
                                                           &llmod_id[..]);
 
@@ -532,6 +548,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared.use_dll_storage_attrs()
     }
 
+    pub fn tls_model(&self) -> llvm::ThreadLocalMode {
+        self.shared.tls_model
+    }
+
     /// Generate a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
@@ -651,7 +671,7 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
     }
 
     fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx().normalize_associated_type(&ty)
+        self.tcx().fully_normalize_associated_types_in(&ty)
     }
 }
 

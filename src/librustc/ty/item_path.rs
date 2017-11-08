@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // Always use types for non-local impls, where types are always
         // available, and filename/line-number is mostly uninteresting.
-        let use_types = !self.is_default_impl(impl_def_id) && (!impl_def_id.is_local() || {
+        let use_types = !self.is_auto_impl(impl_def_id) && (!impl_def_id.is_local() || {
             // Otherwise, use filename/line-number if forced.
             let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
             !force_no_types
@@ -280,6 +280,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     buffer.push(&format!("<{}>", self_ty));
                 }
             }
+
+            ty::TyForeign(did) => self.push_item_path(buffer, did),
 
             ty::TyBool |
             ty::TyChar |
@@ -344,8 +346,9 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
                                       .next(),
 
         ty::TyFnDef(def_id, _) |
-        ty::TyClosure(def_id, _) => Some(def_id),
-        ty::TyGenerator(def_id, _, _) => Some(def_id),
+        ty::TyClosure(def_id, _) |
+        ty::TyGenerator(def_id, _, _) |
+        ty::TyForeign(def_id) => Some(def_id),
 
         ty::TyBool |
         ty::TyChar |

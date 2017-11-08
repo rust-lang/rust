@@ -21,6 +21,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::FxHashMap;
 use rustc_allocator::ALLOCATOR_METHODS;
+use syntax::attr;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -34,7 +35,7 @@ pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
 pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
     format!("rust_metadata_{}_{}",
             tcx.crate_name(LOCAL_CRATE),
-            tcx.crate_disambiguator(LOCAL_CRATE))
+            tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
 }
 
 fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {
@@ -77,11 +78,7 @@ pub fn provide_local(providers: &mut Providers) {
     };
 
     providers.is_exported_symbol = |tcx, id| {
-        // FIXME(#42293) needs red/green to not break a bunch of incremental
-        // tests
-        tcx.dep_graph.with_ignore(|| {
-            tcx.exported_symbol_ids(id.krate).contains(&id)
-        })
+        tcx.exported_symbol_ids(id.krate).contains(&id)
     };
 
     providers.exported_symbols = |tcx, cnum| {
@@ -184,7 +181,15 @@ pub fn provide_extern(providers: &mut Providers) {
 }
 
 fn export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
-    if tcx.contains_extern_indicator(sym_def_id) {
+    // We export anything that's not mangled at the "C" layer as it probably has
+    // to do with ABI concerns. We do not, however, apply such treatment to
+    // special symbols in the standard library for various plumbing between
+    // core/std/allocators/etc. For example symbols used to hook up allocation
+    // are not considered for export
+    let is_extern = tcx.contains_extern_indicator(sym_def_id);
+    let std_internal = attr::contains_name(&tcx.get_attrs(sym_def_id),
+                                           "rustc_std_internal_symbol");
+    if is_extern && !std_internal {
         SymbolExportLevel::C
     } else {
         SymbolExportLevel::Rust

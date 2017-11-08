@@ -37,7 +37,6 @@ pub type BOOL = c_int;
 pub type BYTE = u8;
 pub type BOOLEAN = BYTE;
 pub type GROUP = c_uint;
-pub type LONG_PTR = isize;
 pub type LARGE_INTEGER = c_longlong;
 pub type LONG = c_long;
 pub type UINT = c_uint;
@@ -46,7 +45,6 @@ pub type USHORT = c_ushort;
 pub type SIZE_T = usize;
 pub type WORD = u16;
 pub type CHAR = c_char;
-pub type HCRYPTPROV = LONG_PTR;
 pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
 #[cfg(target_arch = "x86_64")]
@@ -279,15 +277,14 @@ pub const WAIT_TIMEOUT: DWORD = 258;
 pub const WAIT_FAILED: DWORD = 0xFFFFFFFF;
 
 #[cfg(target_env = "msvc")]
+#[cfg(feature = "backtrace")]
 pub const MAX_SYM_NAME: usize = 2000;
 #[cfg(target_arch = "x86")]
+#[cfg(feature = "backtrace")]
 pub const IMAGE_FILE_MACHINE_I386: DWORD = 0x014c;
 #[cfg(target_arch = "x86_64")]
+#[cfg(feature = "backtrace")]
 pub const IMAGE_FILE_MACHINE_AMD64: DWORD = 0x8664;
-
-pub const PROV_RSA_FULL: DWORD = 1;
-pub const CRYPT_SILENT: DWORD = 64;
-pub const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
 
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
@@ -575,6 +572,7 @@ pub struct OVERLAPPED {
 
 #[repr(C)]
 #[cfg(target_env = "msvc")]
+#[cfg(feature = "backtrace")]
 pub struct SYMBOL_INFO {
     pub SizeOfStruct: c_ulong,
     pub TypeIndex: c_ulong,
@@ -598,6 +596,7 @@ pub struct SYMBOL_INFO {
 
 #[repr(C)]
 #[cfg(target_env = "msvc")]
+#[cfg(feature = "backtrace")]
 pub struct IMAGEHLP_LINE64 {
     pub SizeOfStruct: u32,
     pub Key: *const c_void,
@@ -616,6 +615,7 @@ pub enum ADDRESS_MODE {
 }
 
 #[repr(C)]
+#[cfg(feature = "backtrace")]
 pub struct ADDRESS64 {
     pub Offset: u64,
     pub Segment: u16,
@@ -623,6 +623,7 @@ pub struct ADDRESS64 {
 }
 
 #[repr(C)]
+#[cfg(feature = "backtrace")]
 pub struct STACKFRAME64 {
     pub AddrPC: ADDRESS64,
     pub AddrReturn: ADDRESS64,
@@ -638,6 +639,7 @@ pub struct STACKFRAME64 {
 }
 
 #[repr(C)]
+#[cfg(feature = "backtrace")]
 pub struct KDHELP64 {
     pub Thread: u64,
     pub ThCallbackStack: DWORD,
@@ -1089,6 +1091,7 @@ extern "system" {
     pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW)
                          -> BOOL;
     pub fn FindClose(findFile: HANDLE) -> BOOL;
+    #[cfg(feature = "backtrace")]
     pub fn RtlCaptureContext(ctx: *mut CONTEXT);
     pub fn getsockopt(s: SOCKET,
                       level: c_int,
@@ -1120,20 +1123,13 @@ extern "system" {
                        res: *mut *mut ADDRINFOA) -> c_int;
     pub fn freeaddrinfo(res: *mut ADDRINFOA);
 
+    #[cfg(feature = "backtrace")]
     pub fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
+    #[cfg(feature = "backtrace")]
     pub fn FreeLibrary(handle: HMODULE) -> BOOL;
     pub fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
-    pub fn CryptAcquireContextA(phProv: *mut HCRYPTPROV,
-                                pszContainer: LPCSTR,
-                                pszProvider: LPCSTR,
-                                dwProvType: DWORD,
-                                dwFlags: DWORD) -> BOOL;
-    pub fn CryptGenRandom(hProv: HCRYPTPROV,
-                          dwLen: DWORD,
-                          pbBuffer: *mut BYTE) -> BOOL;
-    pub fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
 
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
 
@@ -1164,6 +1160,9 @@ extern "system" {
                   writefds: *mut fd_set,
                   exceptfds: *mut fd_set,
                   timeout: *const timeval) -> c_int;
+
+    #[link_name = "SystemFunction036"]
+    pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
 }
 
 // Functions that aren't available on every version of Windows that we support,
@@ -1229,7 +1228,7 @@ compat_fn! {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", feature = "backtrace"))]
 mod gnu {
     use super::*;
 
@@ -1257,5 +1256,5 @@ mod gnu {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", feature = "backtrace"))]
 pub use self::gnu::*;

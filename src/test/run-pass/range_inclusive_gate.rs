@@ -14,7 +14,7 @@
 
 fn main() {
     let mut count = 0;
-    for i in 0_usize...10 {
+    for i in 0_usize..=10 {
         assert!(i >= 0 && i <= 10);
         count += i;
     }

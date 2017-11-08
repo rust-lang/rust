@@ -11,6 +11,7 @@
 #![feature(optin_builtin_traits)]
 
 trait NotSame {}
+#[allow(auto_impl)]
 impl NotSame for .. {}
 impl<A> !NotSame for (A, A) {}
 

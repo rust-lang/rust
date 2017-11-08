@@ -15,6 +15,7 @@
 use std::mem;
 use std::fmt::{self, Write};
 use std::ops;
+#[cfg(stage0)]
 use std::ascii::AsciiExt;
 
 use syntax::symbol::Symbol;
@@ -337,7 +338,6 @@ impl<'a> fmt::Display for Html<'a> {
                         "l4re" => "L4Re",
                         "linux" => "Linux",
                         "macos" => "macOS",
-                        "nacl" => "NaCl",
                         "netbsd" => "NetBSD",
                         "openbsd" => "OpenBSD",
                         "redox" => "Redox",

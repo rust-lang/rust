@@ -400,8 +400,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyKind::Typeof(expr) => {
                 TyKind::Typeof(fld.fold_expr(expr))
             }
-            TyKind::TraitObject(bounds) => {
-                TyKind::TraitObject(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
+            TyKind::TraitObject(bounds, syntax) => {
+                TyKind::TraitObject(bounds.move_map(|b| fld.fold_ty_param_bound(b)), syntax)
             }
             TyKind::ImplTrait(bounds) => {
                 TyKind::ImplTrait(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
@@ -908,8 +908,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             let generics = folder.fold_generics(generics);
             ItemKind::Union(folder.fold_variant_data(struct_def), generics)
         }
-        ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
-            ItemKind::DefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
+        ItemKind::AutoImpl(unsafety, ref trait_ref) => {
+            ItemKind::AutoImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
         ItemKind::Impl(unsafety,
                        polarity,
@@ -926,7 +926,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             folder.fold_ty(ty),
             impl_items.move_flat_map(|item| folder.fold_impl_item(item)),
         ),
-        ItemKind::Trait(unsafety, generics, bounds, items) => ItemKind::Trait(
+        ItemKind::Trait(is_auto, unsafety, generics, bounds, items) => ItemKind::Trait(
+            is_auto,
             unsafety,
             folder.fold_generics(generics),
             folder.fold_bounds(bounds),
@@ -943,6 +944,7 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
         id: folder.new_id(i.id),
         ident: folder.fold_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
+        generics: folder.fold_generics(i.generics),
         node: match i.node {
             TraitItemKind::Const(ty, default) => {
                 TraitItemKind::Const(folder.fold_ty(ty),
@@ -972,6 +974,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
         vis: folder.fold_vis(i.vis),
         ident: folder.fold_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
+        generics: folder.fold_generics(i.generics),
         defaultness: i.defaultness,
         node: match i.node  {
             ast::ImplItemKind::Const(ty, expr) => {
@@ -1067,6 +1070,7 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T) -> For
             ForeignItemKind::Static(t, m) => {
                 ForeignItemKind::Static(folder.fold_ty(t), m)
             }
+            ForeignItemKind::Ty => ForeignItemKind::Ty,
         },
         span: folder.new_span(ni.span)
     }
@@ -1074,7 +1078,6 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T) -> For
 
 pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
     MethodSig {
-        generics: folder.fold_generics(sig.generics),
         abi: sig.abi,
         unsafety: sig.unsafety,
         constness: sig.constness,

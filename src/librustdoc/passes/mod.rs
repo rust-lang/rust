@@ -90,7 +90,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
             clean::ConstantItem(..) | clean::UnionItem(..) |
-            clean::AssociatedConstItem(..) => {
+            clean::AssociatedConstItem(..) | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -116,7 +116,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // handled in the `strip-priv-imports` pass
             clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
 
-            clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
+            clean::AutoImplItem(..) | clean::ImplItem(..) => {}
 
             // tymethods/macros have no control over privacy
             clean::MacroItem(..) | clean::TyMethodItem(..) => {}

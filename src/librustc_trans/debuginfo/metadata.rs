@@ -30,7 +30,7 @@ use rustc::ty::fold::TypeVisitor;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
 use rustc::hir;
-use rustc_data_structures::ToHex;
+use rustc::ich::Fingerprint;
 use {type_of, machine, monomorphize};
 use common::{self, CrateContext};
 use type_::Type;
@@ -146,11 +146,10 @@ impl<'tcx> TypeMap<'tcx> {
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
-
-        let mut type_id_hasher = TypeIdHasher::<[u8; 20]>::new(cx.tcx());
+        let mut type_id_hasher = TypeIdHasher::<Fingerprint>::new(cx.tcx());
         type_id_hasher.visit_ty(type_);
-
         let unique_type_id = type_id_hasher.finish().to_hex();
+
         let key = self.unique_id_interner.intern(&unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
 
@@ -544,6 +543,11 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
+        ty::TyForeign(..) => {
+            MetadataCreationResult::new(
+                        foreign_type_metadata(cx, t, unique_type_id),
+            false)
+        }
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
             match ptr_metadata(ty) {
@@ -583,7 +587,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ty::TyGenerator(def_id, substs, _) => {
             let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx()).map(|t| {
-                cx.tcx().normalize_associated_type(&t)
+                cx.tcx().fully_normalize_associated_types_in(&t)
             }).collect();
             prepare_tuple_metadata(cx,
                                    t,
@@ -751,6 +755,17 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     return ty_metadata;
+}
+
+fn foreign_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                   t: Ty<'tcx>,
+                                   unique_type_id: UniqueTypeId) -> DIType {
+    debug!("foreign_type_metadata: {:?}", t);
+
+    let llvm_type = type_of::type_of(cx, t);
+
+    let name = compute_debuginfo_type_name(cx, t, false);
+    create_struct_stub(cx, llvm_type, &name, unique_type_id, NO_SCOPE_METADATA)
 }
 
 fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,

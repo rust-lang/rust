@@ -49,7 +49,9 @@ mod imp {
                   target_arch = "powerpc64",
                   target_arch = "s390x")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", target_pointer_width = "32"))]
+        const NR_GETRANDOM: libc::c_long = 0x40000000 + 318;
+        #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;
@@ -344,15 +346,15 @@ mod imp {
     use io;
     use rand::Rng;
 
-    #[link(name = "magenta")]
+    #[link(name = "zircon")]
     extern {
-        fn mx_cprng_draw(buffer: *mut u8, len: usize, actual: *mut usize) -> i32;
+        fn zx_cprng_draw(buffer: *mut u8, len: usize, actual: *mut usize) -> i32;
     }
 
     fn getrandom(buf: &mut [u8]) -> Result<usize, i32> {
         unsafe {
             let mut actual = 0;
-            let status = mx_cprng_draw(buf.as_mut_ptr(), buf.len(), &mut actual);
+            let status = zx_cprng_draw(buf.as_mut_ptr(), buf.len(), &mut actual);
             if status == 0 {
                 Ok(actual)
             } else {
@@ -387,7 +389,7 @@ mod imp {
                 let ret = getrandom(buf);
                 match ret {
                     Err(err) => {
-                        panic!("kernel mx_cprng_draw call failed! (returned {}, buf.len() {})",
+                        panic!("kernel zx_cprng_draw call failed! (returned {}, buf.len() {})",
                             err, buf.len())
                     }
                     Ok(actual) => {

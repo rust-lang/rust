@@ -10,9 +10,10 @@
 
 #![feature(optin_builtin_traits)]
 
-trait MyDefaultImpl {}
+trait MyAutoImpl {}
 
-impl<T> MyDefaultImpl for .. {}
-//~^ ERROR default trait implementations are not allowed to have generics
+#[allow(auto_impl)]
+impl<T> MyAutoImpl for .. {}
+//~^ ERROR auto trait implementations are not allowed to have generics
 
 fn main() {}

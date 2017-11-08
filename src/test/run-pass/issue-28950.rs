@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten
+// ignore-emscripten no threads
 // compile-flags: -O
 
 // Tests that the `vec!` macro does not overflow the stack when it is

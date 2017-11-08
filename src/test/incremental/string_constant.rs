@@ -27,7 +27,8 @@ mod x {
     }
 
     #[cfg(rpass2)]
-    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+    #[rustc_dirty(label="HirBody", cfg="rpass2")]
+    #[rustc_dirty(label="MirOptimized", cfg="rpass2")]
     pub fn x() {
         println!("{}", "2");
     }
@@ -37,6 +38,7 @@ mod y {
     use x;
 
     #[rustc_clean(label="TypeckTables", cfg="rpass2")]
+    #[rustc_clean(label="MirOptimized", cfg="rpass2")]
     pub fn y() {
         x::x();
     }
@@ -46,6 +48,7 @@ mod z {
     use y;
 
     #[rustc_clean(label="TypeckTables", cfg="rpass2")]
+    #[rustc_clean(label="MirOptimized", cfg="rpass2")]
     pub fn z() {
         y::y();
     }

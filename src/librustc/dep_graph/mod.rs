@@ -11,21 +11,19 @@
 pub mod debug;
 mod dep_node;
 mod dep_tracking_map;
-mod edges;
 mod graph;
+mod prev;
 mod query;
 mod raii;
 mod safe;
+mod serialized;
 
 pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
-pub use self::dep_node::DepNode;
-pub use self::dep_node::WorkProductId;
-pub use self::graph::DepGraph;
-pub use self::graph::WorkProduct;
-pub use self::edges::DepNodeIndex;
+pub use self::dep_node::{DepNode, DepKind, DepConstructor, WorkProductId, label_strs};
+pub use self::graph::{DepGraph, WorkProduct, DepNodeIndex, DepNodeColor};
+pub use self::graph::WorkProductFileKind;
+pub use self::prev::PreviousDepGraph;
 pub use self::query::DepGraphQuery;
 pub use self::safe::AssertDepGraphSafe;
 pub use self::safe::DepGraphSafe;
-pub use self::raii::DepTask;
-
-pub use self::dep_node::{DepKind, DepConstructor};
+pub use self::serialized::{SerializedDepGraph, SerializedDepNodeIndex};

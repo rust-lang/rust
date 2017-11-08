@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate gcc;
+extern crate cc;
 
 use std::env;
 use std::process::{self, Command};
@@ -18,7 +18,7 @@ fn main() {
     // Locate the actual compiler that we're invoking
     env::remove_var("CC");
     env::remove_var("CXX");
-    let mut cfg = gcc::Build::new();
+    let mut cfg = cc::Build::new();
     cfg.cargo_metadata(false)
        .out_dir("/")
        .target(&target)

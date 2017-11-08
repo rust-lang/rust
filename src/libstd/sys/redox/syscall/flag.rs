@@ -11,7 +11,9 @@
 pub const CLONE_VM: usize = 0x100;
 pub const CLONE_FS: usize = 0x200;
 pub const CLONE_FILES: usize = 0x400;
+pub const CLONE_SIGHAND: usize = 0x800;
 pub const CLONE_VFORK: usize = 0x4000;
+pub const CLONE_THREAD: usize = 0x10000;
 
 pub const CLOCK_REALTIME: usize = 1;
 pub const CLOCK_MONOTONIC: usize = 4;
@@ -20,6 +22,7 @@ pub const EVENT_NONE: usize = 0;
 pub const EVENT_READ: usize = 1;
 pub const EVENT_WRITE: usize = 2;
 
+pub const F_DUPFD: usize = 0;
 pub const F_GETFD: usize = 1;
 pub const F_SETFD: usize = 2;
 pub const F_GETFL: usize = 3;
@@ -36,6 +39,8 @@ pub const MODE_TYPE: u16 = 0xF000;
 pub const MODE_DIR: u16 = 0x4000;
 pub const MODE_FILE: u16 = 0x8000;
 pub const MODE_SYMLINK: u16 = 0xA000;
+pub const MODE_FIFO: u16 = 0x1000;
+pub const MODE_CHR: u16 = 0x2000;
 
 pub const MODE_PERM: u16 = 0x0FFF;
 pub const MODE_SETUID: u16 = 0o4000;
@@ -95,5 +100,17 @@ pub const SIGWINCH: usize = 28;
 pub const SIGIO: usize =    29;
 pub const SIGPWR: usize =   30;
 pub const SIGSYS: usize =   31;
+
+pub const SIG_DFL: usize = 0;
+pub const SIG_IGN: usize = 1;
+
+pub const SA_NOCLDSTOP: usize = 0x00000001;
+pub const SA_NOCLDWAIT: usize = 0x00000002;
+pub const SA_SIGINFO: usize =   0x00000004;
+pub const SA_RESTORER: usize =  0x04000000;
+pub const SA_ONSTACK: usize =   0x08000000;
+pub const SA_RESTART: usize =   0x10000000;
+pub const SA_NODEFER: usize =   0x40000000;
+pub const SA_RESETHAND: usize = 0x80000000;
 
 pub const WNOHANG: usize = 1;

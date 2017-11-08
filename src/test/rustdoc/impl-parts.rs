@@ -12,6 +12,7 @@
 
 pub trait AnOibit {}
 
+#[allow(auto_impl)]
 impl AnOibit for .. {}
 
 pub struct Foo<T> { field: T }

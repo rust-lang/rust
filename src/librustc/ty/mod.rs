@@ -18,6 +18,7 @@ pub use self::fold::TypeFoldable;
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::map::DefPathData;
 use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -25,6 +26,7 @@ use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use mir::GeneratorLayout;
+use session::CrateDisambiguator;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
@@ -54,7 +56,6 @@ use rustc_const_math::ConstInt;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
-use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 use hir;
 
@@ -88,7 +89,9 @@ pub use self::maps::queries;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
+pub mod codec;
 pub mod error;
+mod erase_regions;
 pub mod fast_reject;
 pub mod fold;
 pub mod inhabitedness;
@@ -311,11 +314,6 @@ pub enum Variance {
 /// `tcx.variances_of()` to get the variance for a *particular*
 /// item.
 pub struct CrateVariancesMap {
-    /// This relation tracks the dependencies between the variance of
-    /// various items. In particular, if `a < b`, then the variance of
-    /// `a` depends on the sources of `b`.
-    pub dependencies: TransitiveRelation<DefId>,
-
     /// For each item with generics, maps to a vector of the variance
     /// of its generics.  If an item has no generics, it will have no
     /// entry.
@@ -675,6 +673,8 @@ pub struct TypeParameterDef {
     /// on generic parameter `T`, asserts data behind the parameter
     /// `T` won't be accessed during the parent type's `Drop` impl.
     pub pure_wrt_drop: bool,
+
+    pub synthetic: Option<hir::SyntheticTyParamKind>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
@@ -711,6 +711,13 @@ impl ty::EarlyBoundRegion {
 
 /// Information about the formal type/lifetime parameters associated
 /// with an item or method. Analogous to hir::Generics.
+///
+/// Note that in the presence of a `Self` parameter, the ordering here
+/// is different from the ordering in a Substs. Substs are ordered as
+///     Self, *Regions, *Other Type Params, (...child generics)
+/// while this struct is ordered as
+///     regions = Regions
+///     types = [Self, *Other Type Params]
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Generics {
     pub parent: Option<DefId>,
@@ -727,7 +734,7 @@ pub struct Generics {
     pub has_late_bound_regions: Option<Span>,
 }
 
-impl Generics {
+impl<'a, 'gcx, 'tcx> Generics {
     pub fn parent_count(&self) -> usize {
         self.parent_regions as usize + self.parent_types as usize
     }
@@ -740,14 +747,52 @@ impl Generics {
         self.parent_count() + self.own_count()
     }
 
-    pub fn region_param(&self, param: &EarlyBoundRegion) -> &RegionParameterDef {
-        assert_eq!(self.parent_count(), 0);
-        &self.regions[param.index as usize - self.has_self as usize]
+    pub fn region_param(&'tcx self,
+                        param: &EarlyBoundRegion,
+                        tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                        -> &'tcx RegionParameterDef
+    {
+        if let Some(index) = param.index.checked_sub(self.parent_count() as u32) {
+            &self.regions[index as usize - self.has_self as usize]
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+                .region_param(param, tcx)
+        }
     }
 
-    pub fn type_param(&self, param: &ParamTy) -> &TypeParameterDef {
-        assert_eq!(self.parent_count(), 0);
-        &self.types[param.idx as usize - self.has_self as usize - self.regions.len()]
+    /// Returns the `TypeParameterDef` associated with this `ParamTy`.
+    pub fn type_param(&'tcx self,
+                      param: &ParamTy,
+                      tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                      -> &TypeParameterDef {
+        if let Some(idx) = param.idx.checked_sub(self.parent_count() as u32) {
+            // non-Self type parameters are always offset by exactly
+            // `self.regions.len()`. In the absence of a Self, this is obvious,
+            // but even in the absence of a `Self` we just have to "compensate"
+            // for the regions:
+            //
+            // For example, for `trait Foo<'a, 'b, T1, T2>`, the
+            // situation is:
+            //     Substs:
+            //         0   1  2  3  4
+            //       Self 'a 'b  T1 T2
+            //     generics.types:
+            //         0  1  2
+            //       Self T1 T2
+            // And it can be seen that to move from a substs offset to a
+            // generics offset you just have to offset by the number of regions.
+            let type_param_offset = self.regions.len();
+            if let Some(idx) = (idx as usize).checked_sub(type_param_offset) {
+                assert!(!(self.has_self && idx == 0));
+                &self.types[idx]
+            } else {
+                assert!(self.has_self && idx == 0);
+                &self.types[0]
+            }
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+                .type_param(param, tcx)
+        }
     }
 }
 
@@ -1251,6 +1296,22 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     }
 }
 
+impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for ParamEnvAnd<'gcx, T>
+    where T: HashStable<StableHashingContext<'gcx>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ParamEnvAnd {
+            ref param_env,
+            ref value
+        } = *self;
+
+        param_env.hash_stable(hcx, hasher);
+        value.hash_stable(hcx, hasher);
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Destructor {
     /// The def-id of the destructor method
@@ -1265,6 +1326,12 @@ bitflags! {
         const IS_FUNDAMENTAL      = 1 << 2;
         const IS_UNION            = 1 << 3;
         const IS_BOX              = 1 << 4;
+        /// Indicates whether this abstract data type will be expanded on in future (new
+        /// fields/variants) and as such, whether downstream crates must match exhaustively on the
+        /// fields/variants of this data type.
+        ///
+        /// See RFC 2008 (https://github.com/rust-lang/rfcs/pull/2008).
+        const IS_NON_EXHAUSTIVE   = 1 << 5;
     }
 }
 
@@ -1465,6 +1532,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         if Some(did) == tcx.lang_items().owned_box() {
             flags = flags | AdtFlags::IS_BOX;
         }
+        if tcx.has_attr(did, "non_exhaustive") {
+            flags = flags | AdtFlags::IS_NON_EXHAUSTIVE;
+        }
         match kind {
             AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
             AdtKind::Union => flags = flags | AdtFlags::IS_UNION,
@@ -1491,6 +1561,11 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn is_enum(&self) -> bool {
         self.flags.intersects(AdtFlags::IS_ENUM)
+    }
+
+    #[inline]
+    pub fn is_non_exhaustive(&self) -> bool {
+        self.flags.intersects(AdtFlags::IS_NON_EXHAUSTIVE)
     }
 
     /// Returns the kind of the ADT - Struct or Enum.
@@ -1724,7 +1799,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 vec![]
             }
 
-            TyStr | TyDynamic(..) | TySlice(_) | TyError => {
+            TyStr | TyDynamic(..) | TySlice(_) | TyForeign(..) | TyError => {
                 // these are never sized - return the target type
                 vec![ty]
             }
@@ -2169,6 +2244,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Given a `VariantDef`, returns the def-id of the `AdtDef` of which it is a part.
+    pub fn adt_def_id_of_variant(self, variant_def: &'tcx VariantDef) -> DefId {
+        let def_key = self.def_key(variant_def.did);
+        match def_key.disambiguated_data.data {
+            // for enum variants and tuple structs, the def-id of the ADT itself
+            // is the *parent* of the variant
+            DefPathData::EnumVariant(..) | DefPathData::StructCtor =>
+                DefId { krate: variant_def.did.krate, index: def_key.parent.unwrap() },
+
+            // otherwise, for structs and unions, they share a def-id
+            _ => variant_def.did,
+        }
+    }
+
     pub fn item_name(self, id: DefId) -> InternedString {
         if let Some(id) = self.hir.as_local_node_id(id) {
             self.hir.name(id).as_str()
@@ -2233,8 +2322,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.get_attrs(did).iter().any(|item| item.check_name(attr))
     }
 
-    pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
-        self.trait_def(trait_def_id).has_default_impl
+    /// Returns true if this is an `auto trait`.
+    ///
+    /// NB. For a limited time, also returns true if `impl Trait for .. { }` is in the code-base.
+    pub fn trait_is_auto(self, trait_def_id: DefId) -> bool {
+        self.trait_def(trait_def_id).has_auto_impl
     }
 
     pub fn generator_layout(self, def_id: DefId) -> &'tcx GeneratorLayout<'tcx> {
@@ -2282,6 +2374,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    // Hygienically compare a use-site name (`use_name`) for a field or an associated item with its
+    // supposed definition name (`def_name`). The method also needs `DefId` of the supposed
+    // definition's parent/scope to perform comparison.
+    pub fn hygienic_eq(self, use_name: Name, def_name: Name, def_parent_def_id: DefId) -> bool {
+        self.adjust(use_name, def_parent_def_id, DUMMY_NODE_ID).0 == def_name.to_ident()
+    }
+
     pub fn adjust(self, name: Name, scope: DefId, block: NodeId) -> (Ident, DefId) {
         self.adjust_ident(name.to_ident(), scope, block)
     }
@@ -2293,6 +2392,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let scope = match ident.ctxt.adjust(expansion) {
             Some(macro_def) => self.hir.definitions().macro_def_scope(macro_def),
+            None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
             None => self.hir.get_module_parent(block),
         };
         (ident, scope)
@@ -2475,7 +2575,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 crate_num: CrateNum) -> Symbol {
+                                 crate_num: CrateNum) -> CrateDisambiguator {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.sess.local_crate_disambiguator()
 }
@@ -2489,6 +2589,7 @@ fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn provide(providers: &mut ty::maps::Providers) {
     util::provide(providers);
     context::provide(providers);
+    erase_regions::provide(providers);
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,

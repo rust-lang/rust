@@ -7,7 +7,13 @@ TARGET_RPATH_ENV = \
 
 RUSTC_ORIGINAL := $(RUSTC)
 BARE_RUSTC := $(HOST_RPATH_ENV) '$(RUSTC)'
+BARE_RUSTDOC := $(HOST_RPATH_ENV) '$(RUSTDOC)'
 RUSTC := $(BARE_RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR) $(RUSTFLAGS)
+RUSTDOC := $(BARE_RUSTDOC)
+ifdef RUSTC_LINKER
+RUSTC := $(RUSTC) -Clinker=$(RUSTC_LINKER)
+RUSTDOC := $(RUSTDOC) --linker $(RUSTC_LINKER) -Z unstable-options
+endif
 #CC := $(CC) -L $(TMPDIR)
 HTMLDOCCK := $(PYTHON) $(S)/src/etc/htmldocck.py
 
@@ -102,13 +108,13 @@ REMOVE_DYLIBS     = rm $(TMPDIR)/$(call DYLIB_GLOB,$(1))
 REMOVE_RLIBS      = rm $(TMPDIR)/$(call RLIB_GLOB,$(1))
 
 %.a: %.o
-	ar crus $@ $<
+	$(AR) crus $@ $<
 ifdef IS_MSVC
 %.lib: lib%.o
 	$(MSVC_LIB) -out:`cygpath -w $@` $<
 else
 %.lib: lib%.o
-	ar crus $@ $<
+	$(AR) crus $@ $<
 endif
 %.dylib: %.o
 	$(CC) -dynamiclib -Wl,-dylib -o $@ $<

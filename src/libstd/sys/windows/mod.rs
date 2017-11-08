@@ -20,9 +20,11 @@ use time::Duration;
 #[macro_use] pub mod compat;
 
 pub mod args;
+#[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod c;
 pub mod condvar;
+#[cfg(feature = "backtrace")]
 pub mod dynamic_lib;
 pub mod env;
 pub mod ext;

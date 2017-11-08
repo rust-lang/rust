@@ -270,3 +270,30 @@ fn test_cloned() {
     assert_eq!(opt_ref_ref.clone().cloned(), Some(&val));
     assert_eq!(opt_ref_ref.cloned().cloned(), Some(1));
 }
+
+#[test]
+fn test_try() {
+    fn try_option_some() -> Option<u8> {
+        let val = Some(1)?;
+        Some(val)
+    }
+    assert_eq!(try_option_some(), Some(1));
+
+    fn try_option_none() -> Option<u8> {
+        let val = None?;
+        Some(val)
+    }
+    assert_eq!(try_option_none(), None);
+
+    fn try_option_ok() -> Result<u8, NoneError> {
+        let val = Some(1)?;
+        Ok(val)
+    }
+    assert_eq!(try_option_ok(), Ok(1));
+
+    fn try_option_err() -> Result<u8, NoneError> {
+        let val = None?;
+        Ok(val)
+    }
+    assert_eq!(try_option_err(), Err(NoneError));
+}

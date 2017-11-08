@@ -94,20 +94,9 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
 
     // Everything else must be inferred.
 
-    // Lacking red/green, we read the variances for all items here
-    // but ignore the dependencies, then re-synthesize the ones we need.
-    let crate_map = tcx.dep_graph.with_ignore(|| tcx.crate_variances(LOCAL_CRATE));
+    let crate_map = tcx.crate_variances(LOCAL_CRATE);
     let dep_node = item_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
     tcx.dep_graph.read(dep_node);
-    for &dep_def_id in crate_map.dependencies.less_than(&item_def_id) {
-        if dep_def_id.is_local() {
-            let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-            tcx.dep_graph.read(dep_node);
-        } else {
-            let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVariances);
-            tcx.dep_graph.read(dep_node);
-        }
-    }
 
     crate_map.variances.get(&item_def_id)
                        .unwrap_or(&crate_map.empty_variance)

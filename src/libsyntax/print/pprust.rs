@@ -11,7 +11,7 @@
 pub use self::AnnNode::*;
 
 use abi::{self, Abi};
-use ast::{self, BlockCheckMode, PatKind, RangeEnd};
+use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use util::parser::{self, AssocOp, Fixity};
@@ -203,6 +203,8 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Dot                  => ".".to_string(),
         token::DotDot               => "..".to_string(),
         token::DotDotDot            => "...".to_string(),
+        token::DotDotEq             => "..=".to_string(),
+        token::DotEq                => ".=".to_string(),
         token::Comma                => ",".to_string(),
         token::Semi                 => ";".to_string(),
         token::Colon                => ":".to_string(),
@@ -1047,8 +1049,9 @@ impl<'a> State<'a> {
             ast::TyKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?
             }
-            ast::TyKind::TraitObject(ref bounds) => {
-                self.print_bounds("", &bounds[..])?;
+            ast::TyKind::TraitObject(ref bounds, syntax) => {
+                let prefix = if syntax == ast::TraitObjectSyntax::Dyn { "dyn " } else { "" };
+                self.print_bounds(prefix, &bounds[..])?;
             }
             ast::TyKind::ImplTrait(ref bounds) => {
                 self.print_bounds("impl ", &bounds[..])?;
@@ -1105,6 +1108,13 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(t)?;
+                self.s.word(";")?;
+                self.end()?; // end the head-ibox
+                self.end() // end the outer cbox
+            }
+            ast::ForeignItemKind::Ty => {
+                self.head(&visibility_qualified(&item.vis, "type"))?;
+                self.print_ident(item.ident)?;
                 self.s.word(";")?;
                 self.end()?; // end the head-ibox
                 self.end() // end the outer cbox
@@ -1277,7 +1287,7 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.ident, item.span, true)?;
             }
-            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
@@ -1328,10 +1338,11 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            ast::ItemKind::Trait(unsafety, ref generics, ref bounds, ref trait_items) => {
+            ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
+                self.print_is_auto(is_auto)?;
                 self.word_nbsp("trait")?;
                 self.print_ident(item.ident)?;
                 self.print_generics(generics)?;
@@ -1437,7 +1448,10 @@ impl<'a> State<'a> {
     pub fn print_visibility(&mut self, vis: &ast::Visibility) -> io::Result<()> {
         match *vis {
             ast::Visibility::Public => self.word_nbsp("pub"),
-            ast::Visibility::Crate(_) => self.word_nbsp("pub(crate)"),
+            ast::Visibility::Crate(_, sugar) => match sugar {
+                ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),
+                ast::CrateSugar::JustCrate => self.word_nbsp("crate")
+            }
             ast::Visibility::Restricted { ref path, .. } => {
                 let path = to_string(|s| s.print_path(path, false, 0, true));
                 if path == "self" || path == "super" {
@@ -1522,6 +1536,7 @@ impl<'a> State<'a> {
 
     pub fn print_method_sig(&mut self,
                             ident: ast::Ident,
+                            generics: &ast::Generics,
                             m: &ast::MethodSig,
                             vis: &ast::Visibility)
                             -> io::Result<()> {
@@ -1530,7 +1545,7 @@ impl<'a> State<'a> {
                       m.constness.node,
                       m.abi,
                       Some(ident),
-                      &m.generics,
+                      &generics,
                       vis)
     }
 
@@ -1550,7 +1565,7 @@ impl<'a> State<'a> {
                 if body.is_some() {
                     self.head("")?;
                 }
-                self.print_method_sig(ti.ident, sig, &ast::Visibility::Inherited)?;
+                self.print_method_sig(ti.ident, &ti.generics, sig, &ast::Visibility::Inherited)?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
                     self.print_block_with_attrs(body, &ti.attrs)?;
@@ -1589,7 +1604,7 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.head("")?;
-                self.print_method_sig(ii.ident, sig, &ii.vis)?;
+                self.print_method_sig(ii.ident, &ii.generics, sig, &ii.vis)?;
                 self.nbsp()?;
                 self.print_block_with_attrs(body, &ii.attrs)?;
             }
@@ -1970,6 +1985,15 @@ impl<'a> State<'a> {
             Fixity::Left => (prec, prec + 1),
             Fixity::Right => (prec + 1, prec),
             Fixity::None => (prec + 1, prec + 1),
+        };
+
+        let left_prec = match (&lhs.node, op.node) {
+            // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
+            // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
+            // of `(x as i32) < ...`. We need to convince it _not_ to do that.
+            (&ast::ExprKind::Cast { .. }, ast::BinOpKind::Lt) |
+            (&ast::ExprKind::Cast { .. }, ast::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
+            _ => left_prec,
         };
 
         self.print_expr_maybe_paren(lhs, left_prec)?;
@@ -2588,7 +2612,8 @@ impl<'a> State<'a> {
                 self.print_expr(begin)?;
                 self.s.space()?;
                 match *end_kind {
-                    RangeEnd::Included => self.s.word("...")?,
+                    RangeEnd::Included(RangeSyntax::DotDotDot) => self.s.word("...")?,
+                    RangeEnd::Included(RangeSyntax::DotDotEq) => self.s.word("..=")?,
                     RangeEnd::Excluded => self.s.word("..")?,
                 }
                 self.print_expr(end)?;
@@ -3106,6 +3131,13 @@ impl<'a> State<'a> {
         match s {
             ast::Unsafety::Normal => Ok(()),
             ast::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    pub fn print_is_auto(&mut self, s: ast::IsAuto) -> io::Result<()> {
+        match s {
+            ast::IsAuto::Yes => self.word_nbsp("auto"),
+            ast::IsAuto::No => Ok(()),
         }
     }
 }

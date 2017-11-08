@@ -117,6 +117,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
             ty::TyAdt(def, _) => {
                 self.check_def_id(item, def.did);
             }
+            ty::TyForeign(did) => {
+                self.check_def_id(item, did);
+            }
             ty::TyDynamic(ref data, ..) if data.principal().is_some() => {
                 self.check_def_id(item, data.principal().unwrap().def_id());
             }
@@ -132,6 +135,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           lang_items.str_impl(),
                                           "str",
                                           "str",
+                                          item.span);
+            }
+            ty::TySlice(slice_item) if slice_item == self.tcx.types.u8 => {
+                self.check_primitive_impl(def_id,
+                                          lang_items.slice_u8_impl(),
+                                          "slice_u8",
+                                          "[u8]",
                                           item.span);
             }
             ty::TySlice(_) => {

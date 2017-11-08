@@ -16,6 +16,7 @@ use super::suggest;
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
+use namespace::Namespace;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
@@ -23,11 +24,13 @@ use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use rustc::infer::{self, InferOk};
 use syntax::ast;
+use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
 use syntax_pos::Span;
 use rustc::hir;
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::cmp::max;
 
 use self::CandidateKind::*;
 pub use self::PickKind::*;
@@ -50,6 +53,10 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Collects near misses when the candidate functions are missing a `self` keyword and is only
     /// used for error reporting
     static_candidates: Vec<CandidateSource>,
+
+    /// When probing for names, include names that are close to the
+    /// requested name (by Levensthein distance)
+    allow_similar_names: bool,
 
     /// Some(candidate) if there is a private candidate
     private_candidate: Option<Def>,
@@ -242,6 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
                                                                      Vec::new(),
                                                                      Vec::new(),
+                                                                     None,
                                                                      mode)))
                 }
             }
@@ -261,7 +269,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // that we create during the probe process are removed later
         self.probe(|_| {
             let mut probe_cx =
-                ProbeContext::new(self, span, mode, method_name, return_type, steps);
+                ProbeContext::new(self, span, mode, method_name, return_type, Rc::new(steps));
 
             probe_cx.assemble_inherent_candidates();
             match scope {
@@ -333,7 +341,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
            mode: Mode,
            method_name: Option<ast::Name>,
            return_type: Option<Ty<'tcx>>,
-           steps: Vec<CandidateStep<'tcx>>)
+           steps: Rc<Vec<CandidateStep<'tcx>>>)
            -> ProbeContext<'a, 'gcx, 'tcx> {
         ProbeContext {
             fcx,
@@ -344,8 +352,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             inherent_candidates: Vec::new(),
             extension_candidates: Vec::new(),
             impl_dups: FxHashSet(),
-            steps: Rc::new(steps),
+            steps: steps,
             static_candidates: Vec::new(),
+            allow_similar_names: false,
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
         }
@@ -405,6 +414,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyAdt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
+            ty::TyForeign(did) => {
+                self.assemble_inherent_impl_candidates_for_type(did);
+            }
             ty::TyParam(p) => {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }
@@ -418,6 +430,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             }
             ty::TySlice(_) => {
                 let lang_def_id = lang_items.slice_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.slice_u8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
@@ -798,10 +813,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         if let Some(def) = private_candidate {
             return Err(MethodError::PrivateMatch(def, out_of_scope_traits));
         }
+        let lev_candidate = self.probe_for_lev_candidate()?;
 
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates,
                                                   unsatisfied_predicates,
                                                   out_of_scope_traits,
+                                                  lev_candidate,
                                                   self.mode)))
     }
 
@@ -913,11 +930,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         debug!("applicable_candidates: {:?}", applicable_candidates);
 
         if applicable_candidates.len() > 1 {
-            match self.collapse_candidates_to_trait_pick(&applicable_candidates[..]) {
-                Some(pick) => {
-                    return Some(Ok(pick));
-                }
-                None => {}
+            if let Some(pick) = self.collapse_candidates_to_trait_pick(&applicable_candidates[..]) {
+                return Some(Ok(pick));
             }
         }
 
@@ -1126,6 +1140,54 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         })
     }
 
+    /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
+    /// candidate method where the method name may have been misspelt. Similarly to other
+    /// Levenshtein based suggestions, we provide at most one such suggestion.
+    fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssociatedItem>, MethodError<'tcx>> {
+        debug!("Probing for method names similar to {:?}",
+               self.method_name);
+
+        let steps = self.steps.clone();
+        self.probe(|_| {
+            let mut pcx = ProbeContext::new(self.fcx, self.span, self.mode, self.method_name,
+                                            self.return_type, steps);
+            pcx.allow_similar_names = true;
+            pcx.assemble_inherent_candidates();
+            pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)?;
+
+            let method_names = pcx.candidate_method_names();
+            pcx.allow_similar_names = false;
+            let applicable_close_candidates: Vec<ty::AssociatedItem> = method_names
+                .iter()
+                .filter_map(|&method_name| {
+                    pcx.reset();
+                    pcx.method_name = Some(method_name);
+                    pcx.assemble_inherent_candidates();
+                    pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)
+                        .ok().map_or(None, |_| {
+                            pcx.pick_core()
+                                .and_then(|pick| pick.ok())
+                                .and_then(|pick| Some(pick.item))
+                        })
+                })
+               .collect();
+
+            if applicable_close_candidates.is_empty() {
+                Ok(None)
+            } else {
+                let best_name = {
+                    let names = applicable_close_candidates.iter().map(|cand| &cand.name);
+                    find_best_match_for_name(names,
+                                             &self.method_name.unwrap().as_str(),
+                                             None)
+                }.unwrap();
+                Ok(applicable_close_candidates
+                   .into_iter()
+                   .find(|method| method.name == best_name))
+            }
+        })
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
     fn has_applicable_self(&self, item: &ty::AssociatedItem) -> bool {
@@ -1253,10 +1315,24 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.tcx.erase_late_bound_regions(value)
     }
 
-    /// Find the method with the appropriate name (or return type, as the case may be).
+    /// Find the method with the appropriate name (or return type, as the case may be). If
+    /// `allow_similar_names` is set, find methods with close-matching names.
     fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssociatedItem> {
         if let Some(name) = self.method_name {
-            self.fcx.associated_item(def_id, name).map_or(Vec::new(), |x| vec![x])
+            if self.allow_similar_names {
+                let max_dist = max(name.as_str().len(), 3) / 3;
+                self.tcx.associated_items(def_id)
+                    .filter(|x| {
+                        let dist = lev_distance(&*name.as_str(), &x.name.as_str());
+                        Namespace::from(x.kind) == Namespace::Value && dist > 0
+                        && dist <= max_dist
+                    })
+                    .collect()
+            } else {
+                self.fcx
+                    .associated_item(def_id, name, Namespace::Value)
+                    .map_or(Vec::new(), |x| vec![x])
+            }
         } else {
             self.tcx.associated_items(def_id).collect()
         }

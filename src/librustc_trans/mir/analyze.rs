@@ -64,11 +64,18 @@ struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
 
 impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
     fn new(mircx: &'mir MirContext<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
-        LocalAnalyzer {
+        let mut analyzer = LocalAnalyzer {
             cx: mircx,
             lvalue_locals: BitVector::new(mircx.mir.local_decls.len()),
             seen_assigned: BitVector::new(mircx.mir.local_decls.len())
+        };
+
+        // Arguments get assigned to by means of the function being called
+        for idx in 0..mircx.mir.arg_count {
+            analyzer.seen_assigned.insert(idx + 1);
         }
+
+        analyzer
     }
 
     fn mark_as_lvalue(&mut self, local: mir::Local) {
@@ -221,7 +228,8 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
                 TerminatorKind::GeneratorDrop |
                 TerminatorKind::Unreachable |
                 TerminatorKind::SwitchInt { .. } |
-                TerminatorKind::Yield { .. }  => {
+                TerminatorKind::Yield { .. } |
+                TerminatorKind::FalseEdges { .. } => {
                     /* nothing to do */
                 }
                 TerminatorKind::Call { cleanup: unwind, .. } |

@@ -399,7 +399,8 @@ impl<'a> State<'a> {
                     },
                     span: syntax_pos::DUMMY_SP,
                 };
-                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics)?;
+                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics,
+                                 &f.arg_names[..])?;
             }
             hir::TyPath(ref qpath) => {
                 self.print_qpath(qpath, false)?
@@ -473,6 +474,13 @@ impl<'a> State<'a> {
                 self.print_name(item.name)?;
                 self.word_space(":")?;
                 self.print_type(&t)?;
+                self.s.word(";")?;
+                self.end()?; // end the head-ibox
+                self.end() // end the outer cbox
+            }
+            hir::ForeignItemType => {
+                self.head(&visibility_qualified(&item.vis, "type"))?;
+                self.print_name(item.name)?;
                 self.s.word(";")?;
                 self.end()?; // end the head-ibox
                 self.end() // end the outer cbox
@@ -652,7 +660,7 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
-            hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
+            hir::ItemAutoImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
@@ -709,9 +717,10 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            hir::ItemTrait(unsafety, ref generics, ref bounds, ref trait_items) => {
+            hir::ItemTrait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
+                self.print_is_auto(is_auto)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
                 self.print_name(item.name)?;
@@ -879,6 +888,7 @@ impl<'a> State<'a> {
     pub fn print_method_sig(&mut self,
                             name: ast::Name,
                             m: &hir::MethodSig,
+                            generics: &hir::Generics,
                             vis: &hir::Visibility,
                             arg_names: &[Spanned<ast::Name>],
                             body_id: Option<hir::BodyId>)
@@ -888,7 +898,7 @@ impl<'a> State<'a> {
                       m.constness,
                       m.abi,
                       Some(name),
-                      &m.generics,
+                      generics,
                       vis,
                       arg_names,
                       body_id)
@@ -904,12 +914,14 @@ impl<'a> State<'a> {
                 self.print_associated_const(ti.name, &ty, default, &hir::Inherited)?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
-                self.print_method_sig(ti.name, sig, &hir::Inherited, arg_names, None)?;
+                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, arg_names,
+                    None)?;
                 self.s.word(";")?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
                 self.head("")?;
-                self.print_method_sig(ti.name, sig, &hir::Inherited, &[], Some(body))?;
+                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, &[],
+                    Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
@@ -937,7 +949,7 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::Method(ref sig, body) => {
                 self.head("")?;
-                self.print_method_sig(ii.name, sig, &ii.vis, &[], Some(body))?;
+                self.print_method_sig(ii.name, sig, &ii.generics, &ii.vis, &[], Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
@@ -1213,11 +1225,17 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX)?;
         self.s.word(".")?;
         self.print_name(segment.name)?;
-        if !segment.parameters.lifetimes.is_empty() ||
-                !segment.parameters.types.is_empty() ||
-                !segment.parameters.bindings.is_empty() {
-            self.print_path_parameters(&segment.parameters, true)?;
-        }
+
+        segment.with_parameters(|parameters| {
+            if !parameters.lifetimes.is_empty() ||
+                !parameters.types.is_empty() ||
+                !parameters.bindings.is_empty()
+            {
+                self.print_path_parameters(&parameters, segment.infer_types, true)
+            } else {
+                Ok(())
+            }
+        })?;
         self.print_call_post(base_args)
     }
 
@@ -1234,6 +1252,15 @@ impl<'a> State<'a> {
             Fixity::Left => (prec, prec + 1),
             Fixity::Right => (prec + 1, prec),
             Fixity::None => (prec + 1, prec + 1),
+        };
+
+        let left_prec = match (&lhs.node, op.node) {
+            // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
+            // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
+            // of `(x as i32) < ...`. We need to convince it _not_ to do that.
+            (&hir::ExprCast { .. }, hir::BinOp_::BiLt) |
+            (&hir::ExprCast { .. }, hir::BinOp_::BiShl) => parser::PREC_FORCE_PAREN,
+            _ => left_prec,
         };
 
         self.print_expr_maybe_paren(lhs, left_prec)?;
@@ -1495,7 +1522,7 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             hir::ExprYield(ref expr) => {
-                self.s.word("yield")?;
+                self.word_space("yield")?;
                 self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
             }
         }
@@ -1564,8 +1591,12 @@ impl<'a> State<'a> {
             }
             if segment.name != keywords::CrateRoot.name() &&
                segment.name != keywords::DollarCrate.name() {
-                self.print_name(segment.name)?;
-                self.print_path_parameters(&segment.parameters, colons_before_params)?;
+               self.print_name(segment.name)?;
+               segment.with_parameters(|parameters| {
+                   self.print_path_parameters(parameters,
+                                              segment.infer_types,
+                                              colons_before_params)
+               })?;
             }
         }
 
@@ -1593,7 +1624,11 @@ impl<'a> State<'a> {
                     if segment.name != keywords::CrateRoot.name() &&
                        segment.name != keywords::DollarCrate.name() {
                         self.print_name(segment.name)?;
-                        self.print_path_parameters(&segment.parameters, colons_before_params)?;
+                        segment.with_parameters(|parameters| {
+                            self.print_path_parameters(parameters,
+                                                       segment.infer_types,
+                                                       colons_before_params)
+                        })?;
                     }
                 }
 
@@ -1601,7 +1636,11 @@ impl<'a> State<'a> {
                 self.s.word("::")?;
                 let item_segment = path.segments.last().unwrap();
                 self.print_name(item_segment.name)?;
-                self.print_path_parameters(&item_segment.parameters, colons_before_params)
+                item_segment.with_parameters(|parameters| {
+                    self.print_path_parameters(parameters,
+                                               item_segment.infer_types,
+                                               colons_before_params)
+                })
             }
             hir::QPath::TypeRelative(ref qself, ref item_segment) => {
                 self.s.word("<")?;
@@ -1609,13 +1648,18 @@ impl<'a> State<'a> {
                 self.s.word(">")?;
                 self.s.word("::")?;
                 self.print_name(item_segment.name)?;
-                self.print_path_parameters(&item_segment.parameters, colons_before_params)
+                item_segment.with_parameters(|parameters| {
+                    self.print_path_parameters(parameters,
+                                               item_segment.infer_types,
+                                               colons_before_params)
+                })
             }
         }
     }
 
     fn print_path_parameters(&mut self,
                              parameters: &hir::PathParameters,
+                             infer_types: bool,
                              colons_before_params: bool)
                              -> io::Result<()> {
         if parameters.parenthesized {
@@ -1652,7 +1696,7 @@ impl<'a> State<'a> {
 
             // FIXME(eddyb) This would leak into error messages, e.g.:
             // "non-exhaustive patterns: `Some::<..>(_)` not covered".
-            if parameters.infer_types && false {
+            if infer_types && false {
                 start_or_comma(self)?;
                 self.s.word("..")?;
             }
@@ -1975,7 +2019,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
-        self.print_name(lifetime.name)
+        self.print_name(lifetime.name.name())
     }
 
     pub fn print_lifetime_def(&mut self, lifetime: &hir::LifetimeDef) -> io::Result<()> {
@@ -2117,7 +2161,8 @@ impl<'a> State<'a> {
                        unsafety: hir::Unsafety,
                        decl: &hir::FnDecl,
                        name: Option<ast::Name>,
-                       generics: &hir::Generics)
+                       generics: &hir::Generics,
+                       arg_names: &[Spanned<ast::Name>])
                        -> io::Result<()> {
         self.ibox(indent_unit)?;
         if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
@@ -2140,7 +2185,7 @@ impl<'a> State<'a> {
                       name,
                       &generics,
                       &hir::Inherited,
-                      &[],
+                      arg_names,
                       None)?;
         self.end()
     }
@@ -2237,6 +2282,13 @@ impl<'a> State<'a> {
         match s {
             hir::Unsafety::Normal => Ok(()),
             hir::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    pub fn print_is_auto(&mut self, s: hir::IsAuto) -> io::Result<()> {
+        match s {
+            hir::IsAuto::Yes => self.word_nbsp("auto"),
+            hir::IsAuto::No => Ok(()),
         }
     }
 }

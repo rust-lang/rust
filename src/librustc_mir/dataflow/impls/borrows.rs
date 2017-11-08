@@ -11,6 +11,7 @@
 use rustc::mir::{self, Location, Mir};
 use rustc::mir::visit::Visitor;
 use rustc::ty::{Region, TyCtxt};
+use rustc::ty::RegionKind;
 use rustc::ty::RegionKind::ReScope;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
@@ -20,18 +21,24 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
 pub use dataflow::indexes::BorrowIndex;
+use transform::nll::region_infer::RegionInferenceContext;
+use transform::nll::ToRegionIndex;
+
+use syntax_pos::Span;
 
 use std::fmt;
 
 // `Borrows` maps each dataflow bit to an `Rvalue::Ref`, which can be
 // uniquely identified in the MIR by the `Location` of the assigment
 // statement in which it appears on the right hand side.
-pub struct Borrows<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+    region_span_map: FxHashMap<RegionKind, Span>,
+    nonlexical_regioncx: Option<&'a RegionInferenceContext<'tcx>>,
 }
 
 // temporarily allow some dead fields: `kind` and `region` will be
@@ -59,22 +66,29 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
     }
 }
 
-impl<'a, 'tcx> Borrows<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+               mir: &'a Mir<'tcx>,
+               nonlexical_regioncx: Option<&'a RegionInferenceContext<'tcx>>)
+               -> Self {
         let mut visitor = GatherBorrows { idx_vec: IndexVec::new(),
                                           location_map: FxHashMap(),
-                                          region_map: FxHashMap(), };
+                                          region_map: FxHashMap(),
+                                          region_span_map: FxHashMap()};
         visitor.visit_mir(mir);
         return Borrows { tcx: tcx,
                          mir: mir,
                          borrows: visitor.idx_vec,
                          location_map: visitor.location_map,
-                         region_map: visitor.region_map, };
+                         region_map: visitor.region_map,
+                         region_span_map: visitor.region_span_map,
+                         nonlexical_regioncx };
 
         struct GatherBorrows<'tcx> {
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
             location_map: FxHashMap<Location, BorrowIndex>,
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+            region_span_map: FxHashMap<RegionKind, Span>,
         }
         impl<'tcx> Visitor<'tcx> for GatherBorrows<'tcx> {
             fn visit_rvalue(&mut self,
@@ -90,6 +104,16 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
                     borrows.insert(idx);
                 }
             }
+
+            fn visit_statement(&mut self,
+                               block: mir::BasicBlock,
+                               statement: &mir::Statement<'tcx>,
+                               location: Location) {
+                if let mir::StatementKind::EndRegion(region_scope) = statement.kind {
+                    self.region_span_map.insert(ReScope(region_scope), statement.source_info.span);
+                }
+                self.super_statement(block, statement, location);
+            }
         }
     }
 
@@ -98,9 +122,45 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     pub fn location(&self, idx: BorrowIndex) -> &Location {
         &self.borrows[idx].location
     }
+
+    /// Returns the span for the "end point" given region. This will
+    /// return `None` if NLL is enabled, since that concept has no
+    /// meaning there.  Otherwise, it should return some.
+    pub fn opt_region_end_span(&self, region: &Region) -> Option<Span> {
+        let opt_span = self.region_span_map.get(region);
+        assert!(self.nonlexical_regioncx.is_some() ||
+                opt_span.is_some(), "end region not found for {:?}", region);
+        opt_span.map(|s| s.end_point())
+    }
+
+    /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
+    fn kill_loans_out_of_scope_at_location(&self,
+                                           sets: &mut BlockSets<BorrowIndex>,
+                                           location: Location) {
+        if let Some(regioncx) = self.nonlexical_regioncx {
+            for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
+                let borrow_region = borrow_data.region.to_region_index();
+                if !regioncx.region_contains_point(borrow_region, location) {
+                    // The region checker really considers the borrow
+                    // to start at the point **after** the location of
+                    // the borrow, but the borrow checker puts the gen
+                    // directly **on** the location of the
+                    // borrow. This results in a gen/kill both being
+                    // generated for same point if we are not
+                    // careful. Probably we should change the point of
+                    // the gen, but for now we hackily account for the
+                    // mismatch here by not generating a kill for the
+                    // location on the borrow itself.
+                    if location != borrow_data.location {
+                        sets.kill(&borrow_index);
+                    }
+                }
+            }
+        }
+    }
 }
 
-impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     type Idx = BorrowIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
@@ -122,11 +182,12 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
         });
         match stmt.kind {
             mir::StatementKind::EndRegion(region_scope) => {
-                let borrow_indexes = self.region_map.get(&ReScope(region_scope)).unwrap_or_else(|| {
-                    panic!("could not find BorrowIndexs for region scope {:?}", region_scope);
-                });
-
-                for idx in borrow_indexes { sets.kill(&idx); }
+                if let Some(borrow_indexes) = self.region_map.get(&ReScope(region_scope)) {
+                    assert!(self.nonlexical_regioncx.is_none());
+                    for idx in borrow_indexes { sets.kill(&idx); }
+                } else {
+                    // (if there is no entry, then there are no borrows to be tracked)
+                }
             }
 
             mir::StatementKind::Assign(_, ref rhs) => {
@@ -149,11 +210,14 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
             mir::StatementKind::Nop => {}
 
         }
+
+        self.kill_loans_out_of_scope_at_location(sets, location);
     }
+
     fn terminator_effect(&self,
-                         _sets: &mut BlockSets<BorrowIndex>,
-                         _location: Location) {
-        // no terminators start nor end region scopes.
+                         sets: &mut BlockSets<BorrowIndex>,
+                         location: Location) {
+        self.kill_loans_out_of_scope_at_location(sets, location);
     }
 
     fn propagate_call_return(&self,
@@ -165,14 +229,14 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for Borrows<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // union effects of preds when computing borrows
     }
 }
 
-impl<'a, 'tcx> DataflowOperator for Borrows<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> DataflowOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no Rvalue::Refs are active by default

@@ -1,16 +1,7 @@
-# This is a shim Cargo.toml over the "real Cargo.toml" found in the libc
-# repository itself. The purpose for this is to add a build script which prints
-# out `--cfg stdbuild` to mirror the makefiles' build system.
-#
-# Note that other than that this isn't actually needed, and we should probably
-# remove this shim in favor of just working with cargo features directly with
-# libc. That should make everything nicer!
-
 [package]
 name = "libc"
 version = "0.0.0"
 authors = ["The Rust Project Developers"]
-build = "build.rs"
 
 [lib]
 name = "libc"
@@ -20,4 +11,27 @@ bench = false
 doc = false
 
 [dependencies]
+# Specify the path to libcore; at the time of writing, removing this shim in
+# favor of using libc from git results in a compilation failure:
+#
+# Building stage0 std artifacts (x86_64-apple-darwin -> x86_64-apple-darwin)
+#    Compiling libc v0.0.0 (file:///Users/tamird/src/rust/src/rustc/libc_shim)
+# error[E0463]: can't find crate for `core`
+#
+# error: aborting due to previous error
+#
+# error: Could not compile `libc`.
+#
+# Caused by:
+#   process didn't exit successfully: `/Users/tamird/src/rust/build/bootstrap/debug/rustc --crate-name libc src/rustc/libc_shim/../../liblibc/src/lib.rs --error-format json --crate-type lib --emit=dep-info,link -C opt-level=2 --cfg feature="default" --cfg feature="no_std" --cfg feature="stdbuild" -C metadata=d758f87058112d7d -C extra-filename=-d758f87058112d7d --out-dir /Users/tamird/src/rust/build/x86_64-apple-darwin/stage0-std/x86_64-apple-darwin/release/deps --target x86_64-apple-darwin -L dependency=/Users/tamird/src/rust/build/x86_64-apple-darwin/stage0-std/x86_64-apple-darwin/release/deps -L dependency=/Users/tamird/src/rust/build/x86_64-apple-darwin/stage0-std/release/deps` (exit code: 101)
+# thread 'main' panicked at 'command did not execute successfully: "/Users/tamird/src/rust/build/x86_64-apple-darwin/stage0/bin/cargo" "build" "-j" "4" "--target" "x86_64-apple-darwin" "--release" "--features" "panic-unwind jemalloc backtrace" "--manifest-path" "/Users/tamird/src/rust/src/libstd/Cargo.toml" "--message-format" "json"
+# expected success, got: exit code: 101', src/bootstrap/compile.rs:883:8
+#
+# See https://github.com/rust-lang/rfcs/pull/1133.
 core = { path = "../../libcore" }
+
+[features]
+# Certain parts of libc are conditionally compiled differently than when used
+# outside rustc. See https://github.com/rust-lang/libc/search?l=Rust&q=stdbuild&type=&utf8=%E2%9C%93.
+stdbuild = []
+default = ["stdbuild"]

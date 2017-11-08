@@ -736,10 +736,10 @@ pub trait Read {
 
     /// Transforms this `Read` instance to an [`Iterator`] over its bytes.
     ///
-    /// The returned type implements [`Iterator`] where the `Item` is [`Result`]`<`[`u8`]`,
-    /// R::Err>`. The yielded item is [`Ok`] if a byte was successfully read and
-    /// [`Err`] otherwise for I/O errors. EOF is mapped to returning [`None`] from
-    /// this iterator.
+    /// The returned type implements [`Iterator`] where the `Item` is
+    /// [`Result`]`<`[`u8`]`, `[`io::Error`]>`.
+    /// The yielded item is [`Ok`] if a byte was successfully read and [`Err`]
+    /// otherwise. EOF is mapped to returning [`None`] from this iterator.
     ///
     /// # Examples
     ///
@@ -748,6 +748,7 @@ pub trait Read {
     /// [file]: ../fs/struct.File.html
     /// [`Iterator`]: ../../std/iter/trait.Iterator.html
     /// [`Result`]: ../../std/result/enum.Result.html
+    /// [`io::Error``]: ../../std/io/struct.Error.html
     /// [`u8`]: ../../std/primitive.u8.html
     /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
@@ -1410,6 +1411,8 @@ pub trait BufRead: Read {
     ///
     /// If successful, this function will return the total number of bytes read.
     ///
+    /// An empty buffer returned indicates that the stream has reached EOF.
+    ///
     /// # Errors
     ///
     /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
@@ -1469,6 +1472,8 @@ pub trait BufRead: Read {
     /// `buf`.
     ///
     /// If successful, this function will return the total number of bytes read.
+    ///
+    /// An empty buffer returned indicates that the stream has reached EOF.
     ///
     /// # Errors
     ///

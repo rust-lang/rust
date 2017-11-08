@@ -25,6 +25,7 @@ use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::codec::{self as ty_codec, TyDecoder};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::DefIdSet;
 
@@ -40,6 +41,7 @@ use std::str;
 use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
+use rustc_data_structures::indexed_vec::Idx;
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::codemap;
@@ -143,16 +145,6 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
 
-    fn with_position<F: FnOnce(&mut Self) -> R, R>(&mut self, pos: usize, f: F) -> R {
-        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
-        let old_opaque = mem::replace(&mut self.opaque, new_opaque);
-        let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
-        let r = f(self);
-        self.opaque = old_opaque;
-        self.lazy_state = old_state;
-        r
-    }
-
     fn read_lazy_distance(&mut self, min_size: usize) -> Result<usize, <Self as Decoder>::Error> {
         let distance = self.read_usize()?;
         let position = match self.lazy_state {
@@ -205,6 +197,60 @@ impl<'doc, 'tcx> Decoder for DecodeContext<'doc, 'tcx> {
 
     fn error(&mut self, err: &str) -> Self::Error {
         self.opaque.error(err)
+    }
+}
+
+
+impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
+
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.tcx.expect("missing TyCtxt in DecodeContext")
+    }
+
+    fn peek_byte(&self) -> u8 {
+        self.opaque.data[self.opaque.position()]
+    }
+
+    fn cached_ty_for_shorthand<F>(&mut self,
+                                  shorthand: usize,
+                                  or_insert_with: F)
+                                  -> Result<Ty<'tcx>, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>
+    {
+        let tcx = self.tcx();
+
+        let key = ty::CReaderCacheKey {
+            cnum: self.cdata().cnum,
+            pos: shorthand,
+        };
+
+        if let Some(&ty) = tcx.rcache.borrow().get(&key) {
+            return Ok(ty);
+        }
+
+        let ty = or_insert_with(self)?;
+        tcx.rcache.borrow_mut().insert(key, ty);
+        Ok(ty)
+    }
+
+    fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
+        where F: FnOnce(&mut Self) -> R
+    {
+        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
+        let old_opaque = mem::replace(&mut self.opaque, new_opaque);
+        let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
+        let r = f(self);
+        self.opaque = old_opaque;
+        self.lazy_state = old_state;
+        r
+    }
+
+    fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
+        if cnum == LOCAL_CRATE {
+            self.cdata().cnum
+        } else {
+            self.cdata().cnum_map.borrow()[cnum]
+        }
     }
 }
 
@@ -302,73 +348,37 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Ty<'tcx>, Self::Error> {
-        let tcx = self.tcx();
-
-        // Handle shorthands first, if we have an usize > 0x80.
-        if self.opaque.data[self.opaque.position()] & 0x80 != 0 {
-            let pos = self.read_usize()?;
-            assert!(pos >= SHORTHAND_OFFSET);
-            let key = ty::CReaderCacheKey {
-                cnum: self.cdata().cnum,
-                pos: pos - SHORTHAND_OFFSET,
-            };
-            if let Some(ty) = tcx.rcache.borrow().get(&key).cloned() {
-                return Ok(ty);
-            }
-
-            let ty = self.with_position(key.pos, Ty::decode)?;
-            tcx.rcache.borrow_mut().insert(key, ty);
-            Ok(ty)
-        } else {
-            Ok(tcx.mk_ty(ty::TypeVariants::decode(self)?))
-        }
+        ty_codec::decode_ty(self)
     }
 }
 
-
 impl<'a, 'tcx> SpecializedDecoder<ty::GenericPredicates<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<ty::GenericPredicates<'tcx>, Self::Error> {
-        Ok(ty::GenericPredicates {
-            parent: Decodable::decode(self)?,
-            predicates: (0..self.read_usize()?).map(|_| {
-                    // Handle shorthands first, if we have an usize > 0x80.
-                    if self.opaque.data[self.opaque.position()] & 0x80 != 0 {
-                        let pos = self.read_usize()?;
-                        assert!(pos >= SHORTHAND_OFFSET);
-                        let pos = pos - SHORTHAND_OFFSET;
-
-                        self.with_position(pos, ty::Predicate::decode)
-                    } else {
-                        ty::Predicate::decode(self)
-                    }
-                })
-                .collect::<Result<Vec<_>, _>>()?,
-        })
+        ty_codec::decode_predicates(self)
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
-        Ok(self.tcx().mk_substs((0..self.read_usize()?).map(|_| Decodable::decode(self)))?)
+        ty_codec::decode_substs(self)
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<ty::Region<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<ty::Region<'tcx>, Self::Error> {
-        Ok(self.tcx().mk_region(Decodable::decode(self)?))
+        ty_codec::decode_region(self)
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<Ty<'tcx>>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::Slice<Ty<'tcx>>, Self::Error> {
-        Ok(self.tcx().mk_type_list((0..self.read_usize()?).map(|_| Decodable::decode(self)))?)
+        ty_codec::decode_ty_slice(self)
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::AdtDef> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
-        let def_id = DefId::decode(self)?;
-        Ok(self.tcx().adt_def(def_id))
+        ty_codec::decode_adt_def(self)
     }
 }
 
@@ -376,22 +386,19 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>
     for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self)
         -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
-        Ok(self.tcx().mk_existential_predicates((0..self.read_usize()?)
-                                                .map(|_| Decodable::decode(self)))?)
+        ty_codec::decode_existential_predicate_slice(self)
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<ByteArray<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<ByteArray<'tcx>, Self::Error> {
-        Ok(ByteArray {
-            data: self.tcx().alloc_byte_array(&Vec::decode(self)?)
-        })
+        ty_codec::decode_byte_array(self)
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Const<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-        Ok(self.tcx().mk_const(Decodable::decode(self)?))
+        ty_codec::decode_const(self)
     }
 }
 
@@ -449,10 +456,11 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Enum(..) => Def::Enum(did),
             EntryKind::MacroDef(_) => Def::Macro(did, MacroKind::Bang),
             EntryKind::GlobalAsm => Def::GlobalAsm(did),
+            EntryKind::ForeignType => Def::TyForeign(did),
 
             EntryKind::ForeignMod |
             EntryKind::Impl(_) |
-            EntryKind::DefaultImpl(_) |
+            EntryKind::AutoImpl(_) |
             EntryKind::Field |
             EntryKind::Generator(_) |
             EntryKind::Closure(_) => return None,
@@ -522,7 +530,7 @@ impl<'a, 'tcx> CrateMetadata {
         ty::TraitDef::new(self.local_def_id(item_id),
                           data.unsafety,
                           data.paren_sugar,
-                          data.has_default_impl,
+                          data.has_auto_impl,
                           self.def_path_table.def_path_hash(item_id))
     }
 
@@ -728,7 +736,7 @@ impl<'a, 'tcx> CrateMetadata {
                         continue;
                     }
                     EntryKind::Impl(_) |
-                    EntryKind::DefaultImpl(_) => continue,
+                    EntryKind::AutoImpl(_) => continue,
 
                     _ => {}
                 }
@@ -1075,9 +1083,9 @@ impl<'a, 'tcx> CrateMetadata {
         self.dllimport_foreign_items.contains(&id)
     }
 
-    pub fn is_default_impl(&self, impl_id: DefIndex) -> bool {
+    pub fn is_auto_impl(&self, impl_id: DefIndex) -> bool {
         match self.entry(impl_id).kind {
-            EntryKind::DefaultImpl(_) => true,
+            EntryKind::AutoImpl(_) => true,
             _ => false,
         }
     }
@@ -1182,6 +1190,7 @@ impl<'a, 'tcx> CrateMetadata {
                                       end_pos,
                                       lines,
                                       multibyte_chars,
+                                      non_narrow_chars,
                                       .. } = filemap_to_import;
 
             let source_length = (end_pos - start_pos).to_usize();
@@ -1199,6 +1208,10 @@ impl<'a, 'tcx> CrateMetadata {
             for mbc in &mut multibyte_chars {
                 mbc.pos = mbc.pos - start_pos;
             }
+            let mut non_narrow_chars = non_narrow_chars.into_inner();
+            for swc in &mut non_narrow_chars {
+                *swc = *swc - start_pos;
+            }
 
             let local_version = local_codemap.new_imported_filemap(name,
                                                                    name_was_remapped,
@@ -1206,7 +1219,8 @@ impl<'a, 'tcx> CrateMetadata {
                                                                    src_hash,
                                                                    source_length,
                                                                    lines,
-                                                                   multibyte_chars);
+                                                                   multibyte_chars,
+                                                                   non_narrow_chars);
             debug!("CrateMetaData::imported_filemaps alloc \
                     filemap {:?} original (start_pos {:?} end_pos {:?}) \
                     translated (start_pos {:?} end_pos {:?})",

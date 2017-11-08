@@ -25,14 +25,13 @@ use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
+use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 
-use std::hash::Hash;
-use std::intrinsics;
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
@@ -119,7 +118,7 @@ impl<'a, 'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
-        self.encode_with_shorthand(ty, &ty.sty, |ecx| &mut ecx.type_shorthands)
+        ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
     }
 }
 
@@ -127,20 +126,17 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
     fn specialized_encode(&mut self,
                           predicates: &ty::GenericPredicates<'tcx>)
                           -> Result<(), Self::Error> {
-        predicates.parent.encode(self)?;
-        predicates.predicates.len().encode(self)?;
-        for predicate in &predicates.predicates {
-            self.encode_with_shorthand(predicate, predicate, |ecx| &mut ecx.predicate_shorthands)?
-        }
-        Ok(())
+        ty_codec::encode_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
+    }
+}
+
+impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
+    fn position(&self) -> usize {
+        self.opaque.position()
     }
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-
-    pub fn position(&self) -> usize {
-        self.opaque.position()
-    }
 
     fn emit_node<F: FnOnce(&mut Self, usize) -> R, R>(&mut self, f: F) -> R {
         assert_eq!(self.lazy_state, LazyState::NoNode);
@@ -202,44 +198,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             assert!(pos + LazySeq::<T>::min_size(len) <= ecx.position());
             LazySeq::with_position_and_length(pos, len)
         })
-    }
-
-    /// Encode the given value or a previously cached shorthand.
-    fn encode_with_shorthand<T, U, M>(&mut self,
-                                      value: &T,
-                                      variant: &U,
-                                      map: M)
-                                      -> Result<(), <Self as Encoder>::Error>
-        where M: for<'b> Fn(&'b mut Self) -> &'b mut FxHashMap<T, usize>,
-              T: Clone + Eq + Hash,
-              U: Encodable
-    {
-        let existing_shorthand = map(self).get(value).cloned();
-        if let Some(shorthand) = existing_shorthand {
-            return self.emit_usize(shorthand);
-        }
-
-        let start = self.position();
-        variant.encode(self)?;
-        let len = self.position() - start;
-
-        // The shorthand encoding uses the same usize as the
-        // discriminant, with an offset so they can't conflict.
-        let discriminant = unsafe { intrinsics::discriminant_value(variant) };
-        assert!(discriminant < SHORTHAND_OFFSET as u64);
-        let shorthand = start + SHORTHAND_OFFSET;
-
-        // Get the number of bits that leb128 could fit
-        // in the same space as the fully encoded type.
-        let leb128_bits = len * 7;
-
-        // Check that the shorthand is a not longer than the
-        // full encoding itself, i.e. it's an obvious win.
-        if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
-            map(self).insert(value.clone(), shorthand);
-        }
-
-        Ok(())
     }
 
     // Encodes something that corresponds to a single DepNode::GlobalMetaData
@@ -626,7 +584,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId)) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_struct_ctor({:?})", def_id);
         let tcx = self.tcx;
-        let variant = tcx.adt_def(adt_def_id).struct_variant();
+        let adt_def = tcx.adt_def(adt_def_id);
+        let variant = adt_def.struct_variant();
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
@@ -646,6 +605,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             if ctor_vis.is_at_least(field.vis, tcx) {
                 ctor_vis = field.vis;
             }
+        }
+
+        // If the structure is marked as non_exhaustive then lower the visibility
+        // to within the crate.
+        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
 
         let repr_options = get_repr_options(&tcx, adt_def_id);
@@ -961,7 +926,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_sig: None,
                 }), repr_options)
             }
-            hir::ItemDefaultImpl(..) => {
+            hir::ItemAutoImpl(..) => {
                 let data = ImplData {
                     polarity: hir::ImplPolarity::Positive,
                     defaultness: hir::Defaultness::Final,
@@ -970,7 +935,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
-                EntryKind::DefaultImpl(self.lazy(&data))
+                EntryKind::AutoImpl(self.lazy(&data))
             }
             hir::ItemImpl(_, polarity, defaultness, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
@@ -1012,7 +977,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
                     paren_sugar: trait_def.paren_sugar,
-                    has_default_impl: tcx.trait_has_default_impl(def_id),
+                    has_auto_impl: tcx.trait_is_auto(def_id),
                     super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
                 };
 
@@ -1419,6 +1384,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             }
             hir::ForeignItemStatic(_, true) => EntryKind::ForeignMutStatic,
             hir::ForeignItemStatic(_, false) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemType => EntryKind::ForeignType,
         };
 
         Entry {
@@ -1558,7 +1524,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemGlobalAsm(..) |
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
-            hir::ItemDefaultImpl(..) |
+            hir::ItemAutoImpl(..) |
             hir::ItemTy(..) => {
                 // no sub-item recording needed in these cases
             }

@@ -424,7 +424,7 @@ mod no_mangle {
     mod inner { #![no_mangle="3500"] }
 
     #[no_mangle = "3500"] fn f() { }
-    //~^ WARN function f is marked #[no_mangle], but not exported
+    //~^ WARN function is marked #[no_mangle], but not exported
 
     #[no_mangle = "3500"] struct S;
 

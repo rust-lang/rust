@@ -428,8 +428,9 @@ impl<'a> TraitDef<'a> {
                         }
                     }
                     _ => {
-                        cx.span_err(mitem.span,
-                                    "`derive` may only be applied to structs, enums and unions");
+                        // Non-ADT derive is an error, but it should have been
+                        // set earlier; see
+                        // libsyntax/ext/expand.rs:MacroExpander::expand()
                         return;
                     }
                 };
@@ -448,8 +449,10 @@ impl<'a> TraitDef<'a> {
                 push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))
             }
             _ => {
-                cx.span_err(mitem.span,
-                            "`derive` may only be applied to structs and enums");
+                // Non-Item derive is an error, but it should have been
+                // set earlier; see
+                // libsyntax/ext/expand.rs:MacroExpander::expand()
+                return;
             }
         }
     }
@@ -503,6 +506,7 @@ impl<'a> TraitDef<'a> {
                 vis: ast::Visibility::Inherited,
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
+                generics: Generics::default(),
                 node: ast::ImplItemKind::Type(type_def.to_ty(cx, self.span, type_ident, generics)),
                 tokens: None,
             }
@@ -918,12 +922,12 @@ impl<'a> MethodDef<'a> {
         ast::ImplItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
+            generics: fn_generics,
             span: trait_.span,
             vis: ast::Visibility::Inherited,
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
             node: ast::ImplItemKind::Method(ast::MethodSig {
-                                                generics: fn_generics,
                                                 abi,
                                                 unsafety,
                                                 constness:

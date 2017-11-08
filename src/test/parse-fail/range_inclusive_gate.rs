@@ -15,21 +15,21 @@
 // #![feature(inclusive_range_syntax, inclusive_range)]
 
 macro_rules! m {
-    () => { for _ in 1...10 {} } //~ ERROR inclusive range syntax is experimental
+    () => { for _ in 1..=10 {} } //~ ERROR inclusive range syntax is experimental
 }
 
 #[cfg(nope)]
 fn f() {}
 #[cfg(not(nope))]
 fn f() {
-    for _ in 1...10 {} //~ ERROR inclusive range syntax is experimental
+    for _ in 1..=10 {} //~ ERROR inclusive range syntax is experimental
 }
 
 #[cfg(nope)]
 macro_rules! n { () => {} }
 #[cfg(not(nope))]
 macro_rules! n {
-    () => { for _ in 1...10 {} } //~ ERROR inclusive range syntax is experimental
+    () => { for _ in 1..=10 {} } //~ ERROR inclusive range syntax is experimental
 }
 
 macro_rules! o {
@@ -38,7 +38,7 @@ macro_rules! o {
         fn g() {}
         #[cfg(not(nope))]
         fn g() {
-            for _ in 1...10 {} //~ ERROR inclusive range syntax is experimental
+            for _ in 1..=10 {} //~ ERROR inclusive range syntax is experimental
         }
 
         g();
@@ -54,7 +54,7 @@ macro_rules! p {
         fn h() {}
         #[cfg(not(nope))]
         fn h() {
-            for _ in 1...10 {} //~ ERROR inclusive range syntax is experimental
+            for _ in 1..=10 {} //~ ERROR inclusive range syntax is experimental
         }
 
         h();
@@ -62,8 +62,8 @@ macro_rules! p {
 }
 
 pub fn main() {
-    for _ in 1...10 {} //~ ERROR inclusive range syntax is experimental
-    for _ in ...10 {} //~ ERROR inclusive range syntax is experimental
+    for _ in 1..=10 {} //~ ERROR inclusive range syntax is experimental
+    for _ in ..=10 {} //~ ERROR inclusive range syntax is experimental
 
     f(); // not allowed in cfg'ed functions
 

@@ -16,30 +16,23 @@ use serialize::{self, Encoder, Decoder};
 use std::fmt;
 use std::u32;
 
-#[derive(Clone, Copy, Eq, Ord, PartialOrd, PartialEq, Hash, Debug)]
-pub struct CrateNum(u32);
+newtype_index!(CrateNum
+    {
+        derive[Debug]
+        ENCODABLE = custom
 
-impl Idx for CrateNum {
-    fn new(value: usize) -> Self {
-        assert!(value < (u32::MAX) as usize);
-        CrateNum(value as u32)
-    }
+        /// Item definitions in the currently-compiled crate would have the CrateNum
+        /// LOCAL_CRATE in their DefId.
+        const LOCAL_CRATE = 0,
 
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+        /// Virtual crate for builtin macros
+        // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
+        // `CrateNum`s.
+        const BUILTIN_MACROS_CRATE = u32::MAX,
 
-/// Item definitions in the currently-compiled crate would have the CrateNum
-/// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: CrateNum = CrateNum(0);
-
-/// Virtual crate for builtin macros
-// FIXME(jseyfried): this is also used for custom derives until proc-macro crates get `CrateNum`s.
-pub const BUILTIN_MACROS_CRATE: CrateNum = CrateNum(u32::MAX);
-
-/// A CrateNum value that indicates that something is wrong.
-pub const INVALID_CRATE: CrateNum = CrateNum(u32::MAX - 1);
+        /// A CrateNum value that indicates that something is wrong.
+        const INVALID_CRATE = u32::MAX - 1,
+    });
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {
@@ -93,9 +86,17 @@ impl serialize::UseSpecializedDecodable for CrateNum {
 ///
 /// Since the DefIndex is mostly treated as an opaque ID, you probably
 /// don't have to care about these ranges.
-#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
-           RustcDecodable, Hash, Copy)]
-pub struct DefIndex(u32);
+newtype_index!(DefIndex
+    {
+        DEBUG_FORMAT = custom,
+
+        /// The start of the "high" range of DefIndexes.
+        const DEF_INDEX_HI_START = 1 << 31,
+
+        /// The crate root is always assigned index 0 by the AST Map code,
+        /// thanks to `NodeCollector::new`.
+        const CRATE_DEF_INDEX = 0,
+    });
 
 impl fmt::Debug for DefIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -107,12 +108,6 @@ impl fmt::Debug for DefIndex {
 }
 
 impl DefIndex {
-    #[inline]
-    pub fn new(x: usize) -> DefIndex {
-        assert!(x < (u32::MAX as usize));
-        DefIndex(x as u32)
-    }
-
     #[inline]
     pub fn from_u32(x: u32) -> DefIndex {
         DefIndex(x)
@@ -151,13 +146,6 @@ impl DefIndex {
     }
 }
 
-/// The start of the "high" range of DefIndexes.
-const DEF_INDEX_HI_START: DefIndex = DefIndex(1 << 31);
-
-/// The crate root is always assigned index 0 by the AST Map code,
-/// thanks to `NodeCollector::new`.
-pub const CRATE_DEF_INDEX: DefIndex = DefIndex(0);
-
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum DefIndexAddressSpace {
     Low = 0,
@@ -186,12 +174,12 @@ pub struct DefId {
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "DefId {{ krate: {:?}, node: {:?}",
+        write!(f, "DefId {{ krate: {:?}, index: {:?}",
                self.krate, self.index)?;
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                write!(f, " => {}", tcx.def_path(*self).to_string(tcx))?;
+                write!(f, " => {}", tcx.def_path_debug_str(*self))?;
             }
             Ok(())
         })?;

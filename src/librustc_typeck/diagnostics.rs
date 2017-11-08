@@ -1854,7 +1854,7 @@ unsafe impl !Clone for Foo { }
 
 This will compile:
 
-```
+```ignore (ignore auto_trait future compatibility warning)
 #![feature(optin_builtin_traits)]
 
 struct Foo;
@@ -3986,6 +3986,10 @@ details.
 "##,
 
 E0599: r##"
+This error occurs when a method is used on a type which doesn't implement it:
+
+Erroneous code example:
+
 ```compile_fail,E0599
 struct Mouth;
 
@@ -4602,6 +4606,65 @@ foo.method(); // Ok!
 ```
 "##,
 
+E0638: r##"
+This error indicates that the struct or enum must be matched non-exhaustively
+as it has been marked as `non_exhaustive`.
+
+When applied within a crate, downstream users of the crate will need to use the
+`_` pattern when matching enums and use the `..` pattern when matching structs.
+
+For example, in the below example, since the enum is marked as
+`non_exhaustive`, it is required that downstream crates match non-exhaustively
+on it.
+
+```rust,ignore (pseudo-Rust)
+use std::error::Error as StdError;
+
+#[non_exhaustive] pub enum Error {
+   Message(String),
+   Other,
+}
+
+impl StdError for Error {
+   fn description(&self) -> &str {
+        // This will not error, despite being marked as non_exhaustive, as this
+        // enum is defined within the current crate, it can be matched
+        // exhaustively.
+        match *self {
+           Message(ref s) => s,
+           Other => "other or unknown error",
+        }
+   }
+}
+```
+
+An example of matching non-exhaustively on the above enum is provided below:
+
+```rust,ignore (pseudo-Rust)
+use mycrate::Error;
+
+// This will not error as the non_exhaustive Error enum has been matched with a
+// wildcard.
+match error {
+   Message(ref s) => ...,
+   Other => ...,
+   _ => ...,
+}
+```
+
+Similarly, for structs, match with `..` to avoid this error.
+"##,
+
+E0639: r##"
+This error indicates that the struct or enum cannot be instantiated from
+outside of the defining crate as it has been marked as `non_exhaustive` and as
+such more fields/variants may be added in future that could cause adverse side
+effects for this code.
+
+It is recommended that you look for a `new` function or equivalent in the
+crate's documentation.
+"##,
+
 }
 
 register_diagnostics! {
@@ -4665,7 +4728,7 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0521, // redundant default implementations of trait
+    E0521, // redundant auto implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 //  E0563, // cannot determine a type for this `impl Trait`: {} // removed in 6383de15
     E0564, // only named lifetimes are allowed in `impl Trait`,
@@ -4676,5 +4739,9 @@ register_diagnostics! {
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
 //  E0613, // Removed (merged with E0609)
+    E0640, // infer outlives
     E0627, // yield statement outside of generator literal
+    E0632, // cannot provide explicit type parameters when `impl Trait` is used in
+           // argument position.
+    E0641, // cannot cast to/from a pointer with an unknown kind
 }

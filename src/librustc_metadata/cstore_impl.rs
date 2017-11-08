@@ -21,7 +21,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
                             EncodedMetadataHashes, NativeLibraryKind};
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
-use rustc::session::Session;
+use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
@@ -55,9 +55,14 @@ macro_rules! provide {
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
-                let def_path_hash = $tcx.def_path_hash($def_id);
-                let dep_node = def_path_hash.to_dep_node(::rustc::dep_graph::DepKind::MetaData);
-
+                let def_path_hash = $tcx.def_path_hash(DefId {
+                    krate: $def_id.krate,
+                    index: CRATE_DEF_INDEX
+                });
+                let dep_node = def_path_hash
+                    .to_dep_node(::rustc::dep_graph::DepKind::CrateMetadata);
+                // The DepNodeIndex of the DepNode::CrateMetadata should be
+                // cached somewhere, so that we can use read_index().
                 $tcx.dep_graph.read(dep_node);
 
                 let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
@@ -139,7 +144,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_const_fn => { cdata.is_const_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    is_default_impl => { cdata.is_default_impl(def_id.index) }
+    is_auto_impl => { cdata.is_auto_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {
@@ -231,6 +236,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
 
     used_crate_source => { Rc::new(cdata.source.clone()) }
+
+    has_copy_closures => { cdata.has_copy_closures() }
+    has_clone_closures => { cdata.has_clone_closures() }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -374,6 +382,16 @@ impl CrateStore for cstore::CStore {
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name
+    }
+
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
+    {
+        self.get_crate_data(cnum).disambiguator()
+    }
+
+    fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
+    {
+        self.get_crate_data(cnum).hash()
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

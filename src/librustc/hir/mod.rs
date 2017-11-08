@@ -145,7 +145,27 @@ pub struct Lifetime {
     /// HIR lowering inserts these placeholders in type paths that
     /// refer to type definitions needing lifetime parameters,
     /// `&T` and `&mut T`, and trait objects without `... + 'a`.
-    pub name: Name,
+    pub name: LifetimeName,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+pub enum LifetimeName {
+    Implicit,
+    Underscore,
+    Static,
+    Name(Name),
+}
+
+impl LifetimeName {
+    pub fn name(&self) -> Name {
+        use self::LifetimeName::*;
+        match *self {
+            Implicit => keywords::Invalid.name(),
+            Underscore => Symbol::intern("'_"),
+            Static => keywords::StaticLifetime.name(),
+            Name(name) => name,
+        }
+    }
 }
 
 impl fmt::Debug for Lifetime {
@@ -159,11 +179,15 @@ impl fmt::Debug for Lifetime {
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        self.name == keywords::Invalid.name()
+        use self::LifetimeName::*;
+        match self.name {
+            Implicit | Underscore => true,
+            Static | Name(_) => false,
+        }
     }
 
     pub fn is_static(&self) -> bool {
-        self.name == "'static"
+        self.name == LifetimeName::Static
     }
 }
 
@@ -212,7 +236,13 @@ pub struct PathSegment {
     /// this is more than just simple syntactic sugar; the use of
     /// parens affects the region binding rules, so we preserve the
     /// distinction.
-    pub parameters: PathParameters,
+    pub parameters: Option<P<PathParameters>>,
+
+    /// Whether to infer remaining type parameters, if any.
+    /// This only applies to expression and pattern paths, and
+    /// out of those only the segments with no type parameters
+    /// to begin with, e.g. `Vec::new` is `<Vec<..>>::new::<..>`.
+    pub infer_types: bool,
 }
 
 impl PathSegment {
@@ -220,8 +250,34 @@ impl PathSegment {
     pub fn from_name(name: Name) -> PathSegment {
         PathSegment {
             name,
-            parameters: PathParameters::none()
+            infer_types: true,
+            parameters: None
         }
+    }
+
+    pub fn new(name: Name, parameters: PathParameters, infer_types: bool) -> Self {
+        PathSegment {
+            name,
+            infer_types,
+            parameters: if parameters.is_empty() {
+                None
+            } else {
+                Some(P(parameters))
+            }
+        }
+    }
+
+    // FIXME: hack required because you can't create a static
+    // PathParameters, so you can't just return a &PathParameters.
+    pub fn with_parameters<F, R>(&self, f: F) -> R
+        where F: FnOnce(&PathParameters) -> R
+    {
+        let dummy = PathParameters::none();
+        f(if let Some(ref params) = self.parameters {
+            &params
+        } else {
+            &dummy
+        })
     }
 }
 
@@ -231,11 +287,6 @@ pub struct PathParameters {
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
     pub types: HirVec<P<Ty>>,
-    /// Whether to infer remaining type parameters, if any.
-    /// This only applies to expression and pattern paths, and
-    /// out of those only the segments with no type parameters
-    /// to begin with, e.g. `Vec::new` is `<Vec<..>>::new::<..>`.
-    pub infer_types: bool,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
@@ -250,10 +301,14 @@ impl PathParameters {
         Self {
             lifetimes: HirVec::new(),
             types: HirVec::new(),
-            infer_types: true,
             bindings: HirVec::new(),
             parenthesized: false,
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.lifetimes.is_empty() && self.types.is_empty() &&
+            self.bindings.is_empty() && !self.parenthesized
     }
 
     pub fn inputs(&self) -> &[P<Ty>] {
@@ -296,6 +351,7 @@ pub struct TyParam {
     pub default: Option<P<Ty>>,
     pub span: Span,
     pub pure_wrt_drop: bool,
+    pub synthetic: Option<SyntheticTyParamKind>,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -364,6 +420,13 @@ impl Generics {
     }
 }
 
+/// Synthetic Type Parameters are converted to an other form during lowering, this allows
+/// to track the original form they had. Usefull for error messages.
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum SyntheticTyParamKind {
+    ImplTrait
+}
+
 /// A `where` clause in a definition
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereClause {
@@ -413,6 +476,10 @@ pub struct WhereEqPredicate {
 
 pub type CrateConfig = HirVec<P<MetaItem>>;
 
+/// The top-level data structure that stores the entire contents of
+/// the crate currently being compiled.
+///
+/// For more details, see [the module-level README](README.md).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,
@@ -432,7 +499,7 @@ pub struct Crate {
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
     pub bodies: BTreeMap<BodyId, Body>,
     pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    pub trait_default_impl: BTreeMap<DefId, NodeId>,
+    pub trait_auto_impl: BTreeMap<DefId, NodeId>,
 
     /// A list of the body ids written out in the order in which they
     /// appear in the crate. If you're going to process all the bodies
@@ -849,8 +916,6 @@ impl Stmt_ {
     }
 }
 
-// FIXME (pending discussion of #1697, #2178...): local should really be
-// a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Local {
@@ -927,7 +992,27 @@ pub struct BodyId {
     pub node_id: NodeId,
 }
 
-/// The body of a function or constant value.
+/// The body of a function, closure, or constant value. In the case of
+/// a function, the body contains not only the function body itself
+/// (which is an expression), but also the argument patterns, since
+/// those are something that the caller doesn't really care about.
+///
+/// # Examples
+///
+/// ```
+/// fn foo((x, y): (u32, u32)) -> u32 {
+///     x + y
+/// }
+/// ```
+///
+/// Here, the `Body` associated with `foo()` would contain:
+///
+/// - an `arguments` array containing the `(x, y)` pattern
+/// - a `value` containing the `x + y` expression (maybe wrapped in a block)
+/// - `is_generator` would be false
+///
+/// All bodies have an **owner**, which can be accessed via the HIR
+/// map using `body_owner_def_id()`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Body {
     pub arguments: HirVec<Arg>,
@@ -969,7 +1054,9 @@ pub enum Expr_ {
     /// A function call
     ///
     /// The first field resolves to the function itself (usually an `ExprPath`),
-    /// and the second field is the list of arguments
+    /// and the second field is the list of arguments.
+    /// This also represents calling the constructor of
+    /// tuple-like ADTs such as tuple structs and enum variants.
     ExprCall(P<Expr>, HirVec<Expr>),
     /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
@@ -1210,7 +1297,6 @@ pub struct MethodSig {
     pub constness: Constness,
     pub abi: Abi,
     pub decl: P<FnDecl>,
-    pub generics: Generics,
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1231,6 +1317,7 @@ pub struct TraitItem {
     pub name: Name,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
+    pub generics: Generics,
     pub node: TraitItemKind,
     pub span: Span,
 }
@@ -1275,6 +1362,7 @@ pub struct ImplItem {
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
+    pub generics: Generics,
     pub node: ImplItemKind,
     pub span: Span,
 }
@@ -1306,6 +1394,7 @@ pub struct Ty {
     pub id: NodeId,
     pub node: Ty_,
     pub span: Span,
+    pub hir_id: HirId,
 }
 
 impl fmt::Debug for Ty {
@@ -1332,6 +1421,7 @@ pub struct BareFnTy {
     pub abi: Abi,
     pub lifetimes: HirVec<LifetimeDef>,
     pub decl: P<FnDecl>,
+    pub arg_names: HirVec<Spanned<Name>>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1408,6 +1498,13 @@ pub struct FnDecl {
     /// True if this function has an `self`, `&self` or `&mut self` receiver
     /// (but not a `self: Xxx` one).
     pub has_implicit_self: bool,
+}
+
+/// Is the trait definition an auto trait?
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum IsAuto {
+    Yes,
+    No
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1721,12 +1818,12 @@ pub enum Item_ {
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
     ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
+    ItemTrait(IsAuto, Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
 
-    // Default trait implementations
+    /// Auto trait implementations
     ///
     /// `impl Trait for .. {}`
-    ItemDefaultImpl(Unsafety, TraitRef),
+    ItemAutoImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
@@ -1754,7 +1851,7 @@ impl Item_ {
             ItemUnion(..) => "union",
             ItemTrait(..) => "trait",
             ItemImpl(..) |
-            ItemDefaultImpl(..) => "item",
+            ItemAutoImpl(..) => "item",
         }
     }
 
@@ -1765,6 +1862,19 @@ impl Item_ {
             ItemEnum(..) => Some(AdtKind::Enum),
             _ => None,
         }
+    }
+
+    pub fn generics(&self) -> Option<&Generics> {
+        Some(match *self {
+            ItemFn(_, _, _, _, ref generics, _) |
+            ItemTy(_, ref generics) |
+            ItemEnum(_, ref generics) |
+            ItemStruct(_, ref generics) |
+            ItemUnion(_, ref generics) |
+            ItemTrait(_, _, ref generics, _, _) |
+            ItemImpl(_, _, _, ref generics, _, _, _)=> generics,
+            _ => return None
+        })
     }
 }
 
@@ -1824,6 +1934,8 @@ pub enum ForeignItem_ {
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
     ForeignItemStatic(P<Ty>, bool),
+    /// A foreign type
+    ForeignItemType,
 }
 
 impl ForeignItem_ {
@@ -1831,6 +1943,7 @@ impl ForeignItem_ {
         match *self {
             ForeignItemFn(..) => "foreign function",
             ForeignItemStatic(..) => "foreign static item",
+            ForeignItemType => "foreign type",
         }
     }
 }

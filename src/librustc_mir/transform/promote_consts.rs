@@ -380,10 +380,10 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         let mut promoter = Promoter {
             promoted: Mir::new(
                 IndexVec::new(),
-                Some(VisibilityScopeData {
-                    span,
-                    parent_scope: None
-                }).into_iter().collect(),
+                // FIXME: maybe try to filter this to avoid blowing up
+                // memory usage?
+                mir.visibility_scopes.clone(),
+                mir.visibility_scope_info.clone(),
                 IndexVec::new(),
                 ty,
                 None,

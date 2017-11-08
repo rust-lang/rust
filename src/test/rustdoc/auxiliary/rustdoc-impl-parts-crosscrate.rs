@@ -12,4 +12,5 @@
 
 pub trait AnOibit {}
 
+#[allow(auto_impl)]
 impl AnOibit for .. {}

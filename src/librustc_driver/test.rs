@@ -23,6 +23,7 @@ use rustc::middle::resolve_lifetime;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::maps::OnDiskCache;
 use rustc::infer::{self, InferOk, InferResult};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc_metadata::cstore::CStore;
@@ -30,6 +31,7 @@ use rustc::hir::map as hir_map;
 use rustc::mir::transform::Passes;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
+use rustc_trans_utils::trans_crate::TransCrate;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -105,7 +107,7 @@ fn test_env<F>(source_string: &str,
     options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
-    let cstore = Rc::new(CStore::new(box ::MetadataLoader));
+    let cstore = Rc::new(CStore::new(::DefaultTransCrate::metadata_loader()));
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
@@ -133,7 +135,7 @@ fn test_env<F>(source_string: &str,
 
     let arena = DroplessArena::new();
     let arenas = ty::GlobalArenas::new();
-    let hir_map = hir_map::map_crate(&mut hir_forest, &defs);
+    let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
     let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);
@@ -155,6 +157,7 @@ fn test_env<F>(source_string: &str,
                              resolutions,
                              named_region_map.unwrap(),
                              hir_map,
+                             OnDiskCache::new_empty(sess.codemap()),
                              "test_crate",
                              tx,
                              &outputs,
@@ -250,7 +253,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 hir::ItemUnion(..) |
                 hir::ItemTrait(..) |
                 hir::ItemImpl(..) |
-                hir::ItemDefaultImpl(..) => None,
+                hir::ItemAutoImpl(..) => None,
 
                 hir::ItemMod(ref m) => search_mod(this, m, idx, names),
             };

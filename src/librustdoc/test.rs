@@ -61,7 +61,8 @@ pub fn run(input: &str,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
            render_type: RenderType,
-           display_warnings: bool)
+           display_warnings: bool,
+           linker: Option<String>)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
@@ -121,10 +122,11 @@ pub fn run(input: &str,
                                        maybe_sysroot,
                                        Some(codemap),
                                        None,
-                                       render_type);
+                                       render_type,
+                                       linker);
 
     {
-        let map = hir::map::map_crate(&mut hir_forest, &defs);
+        let map = hir::map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
         let krate = map.krate();
         let mut hir_collector = HirCollector {
             sess: &sess,
@@ -180,10 +182,13 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
             externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-            maybe_sysroot: Option<PathBuf>) {
+            maybe_sysroot: Option<PathBuf>,
+            linker: Option<String>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = make_test(test, Some(cratename), as_test_harness, opts);
+    // FIXME(#44940): if doctests ever support path remapping, then this filename
+    // needs to be the result of CodeMap::span_to_unmapped_path
     let input = config::Input::Str {
         name: filename.to_owned(),
         input: test.to_owned(),
@@ -199,6 +204,7 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
         externs,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
+            linker,
             .. config::basic_codegen_options()
         },
         test: as_test_harness,
@@ -232,7 +238,8 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     let data = Arc::new(Mutex::new(Vec::new()));
     let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                      Some(codemap.clone()));
+                                                      Some(codemap.clone()),
+                                                      false);
     let old = io::set_panic(Some(box Sink(data.clone())));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
@@ -330,14 +337,22 @@ pub fn make_test(s: &str,
 
     let mut prog = String::new();
 
-    // First push any outer attributes from the example, assuming they
-    // are intended to be crate attributes.
-    prog.push_str(&crate_attrs);
+    if opts.attrs.is_empty() {
+        // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
+        // lints that are commonly triggered in doctests. The crate-level test attributes are
+        // commonly used to make tests fail in case they trigger warnings, so having this there in
+        // that case may cause some tests to pass when they shouldn't have.
+        prog.push_str("#![allow(unused)]\n");
+    }
 
-    // Next, any attributes for other aspects such as lints.
+    // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
     for attr in &opts.attrs {
         prog.push_str(&format!("#![{}]\n", attr));
     }
+
+    // Now push any outer attributes from the example, assuming they
+    // are intended to be crate attributes.
+    prog.push_str(&crate_attrs);
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
@@ -348,7 +363,21 @@ pub fn make_test(s: &str,
             }
         }
     }
-    if dont_insert_main || s.contains("fn main") {
+
+    // FIXME (#21299): prefer libsyntax or some other actual parser over this
+    // best-effort ad hoc approach
+    let already_has_main = s.lines()
+        .map(|line| {
+            let comment = line.find("//");
+            if let Some(comment_begins) = comment {
+                &line[0..comment_begins]
+            } else {
+                line
+            }
+        })
+        .any(|code| code.contains("fn main"));
+
+    if dont_insert_main || already_has_main {
         prog.push_str(&everything_else);
     } else {
         prog.push_str("fn main() {\n");
@@ -391,13 +420,33 @@ pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     // to be removed when hoedown will be definitely gone
     pub old_tests: HashMap<String, Vec<String>>,
+
+    // The name of the test displayed to the user, separated by `::`.
+    //
+    // In tests from Rust source, this is the path to the item
+    // e.g. `["std", "vec", "Vec", "push"]`.
+    //
+    // In tests from a markdown file, this is the titles of all headers (h1~h6)
+    // of the sections that contain the code block, e.g. if the markdown file is
+    // written as:
+    //
+    // ``````markdown
+    // # Title
+    //
+    // ## Subtitle
+    //
+    // ```rust
+    // assert!(true);
+    // ```
+    // ``````
+    //
+    // the `names` vector of that test will be `["Title", "Subtitle"]`.
     names: Vec<String>,
+
     cfgs: Vec<String>,
     libs: SearchPaths,
     externs: Externs,
-    cnt: usize,
     use_headers: bool,
-    current_header: Option<String>,
     cratename: String,
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
@@ -406,13 +455,14 @@ pub struct Collector {
     filename: Option<String>,
     // to be removed when hoedown will be removed as well
     pub render_type: RenderType,
+    linker: Option<String>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
                codemap: Option<Rc<CodeMap>>, filename: Option<String>,
-               render_type: RenderType) -> Collector {
+               render_type: RenderType, linker: Option<String>) -> Collector {
         Collector {
             tests: Vec::new(),
             old_tests: HashMap::new(),
@@ -420,9 +470,7 @@ impl Collector {
             cfgs,
             libs,
             externs,
-            cnt: 0,
             use_headers,
-            current_header: None,
             cratename,
             opts,
             maybe_sysroot,
@@ -430,32 +478,17 @@ impl Collector {
             codemap,
             filename,
             render_type,
+            linker,
         }
     }
 
     fn generate_name(&self, line: usize, filename: &str) -> String {
-        if self.use_headers {
-            if let Some(ref header) = self.current_header {
-                format!("{} - {} (line {})", filename, header, line)
-            } else {
-                format!("{} - (line {})", filename, line)
-            }
-        } else {
-            format!("{} - {} (line {})", filename, self.names.join("::"), line)
-        }
+        format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
     // to be removed once hoedown is gone
     fn generate_name_beginning(&self, filename: &str) -> String {
-        if self.use_headers {
-            if let Some(ref header) = self.current_header {
-                format!("{} - {} (line", filename, header)
-            } else {
-                format!("{} - (line", filename)
-            }
-        } else {
-            format!("{} - {} (line", filename, self.names.join("::"))
-        }
+        format!("{} - {} (line", filename, self.names.join("::"))
     }
 
     pub fn add_old_test(&mut self, test: String, filename: String) {
@@ -479,11 +512,10 @@ impl Collector {
                 found = entry.remove_item(&test).is_some();
             }
             if !found {
-                let _ = writeln!(&mut io::stderr(),
-                                 "WARNING: {} Code block is not currently run as a test, but will \
-                                  in future versions of rustdoc. Please ensure this code block is \
-                                  a runnable test, or use the `ignore` directive.",
-                                 name);
+                eprintln!("WARNING: {} Code block is not currently run as a test, but will \
+                           in future versions of rustdoc. Please ensure this code block is \
+                           a runnable test, or use the `ignore` directive.",
+                          name);
                 return
             }
         }
@@ -493,6 +525,7 @@ impl Collector {
         let cratename = self.cratename.to_string();
         let opts = self.opts.clone();
         let maybe_sysroot = self.maybe_sysroot.clone();
+        let linker = self.linker.clone();
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -521,7 +554,8 @@ impl Collector {
                                  compile_fail,
                                  error_codes,
                                  &opts,
-                                 maybe_sysroot)
+                                 maybe_sysroot,
+                                 linker)
                     })
                 } {
                     Ok(()) => (),
@@ -564,7 +598,7 @@ impl Collector {
     }
 
     pub fn register_header(&mut self, name: &str, level: u32) {
-        if self.use_headers && level == 1 {
+        if self.use_headers {
             // we use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
@@ -576,9 +610,28 @@ impl Collector {
                     }
                 }).collect::<String>();
 
-            // new header => reset count.
-            self.cnt = 0;
-            self.current_header = Some(name);
+            // Here we try to efficiently assemble the header titles into the
+            // test name in the form of `h1::h2::h3::h4::h5::h6`.
+            //
+            // Suppose originally `self.names` contains `[h1, h2, h3]`...
+            let level = level as usize;
+            if level <= self.names.len() {
+                // ... Consider `level == 2`. All headers in the lower levels
+                // are irrelevant in this new level. So we should reset
+                // `self.names` to contain headers until <h2>, and replace that
+                // slot with the new name: `[h1, name]`.
+                self.names.truncate(level);
+                self.names[level - 1] = name;
+            } else {
+                // ... On the other hand, consider `level == 5`. This means we
+                // need to extend `self.names` to contain five headers. We fill
+                // in the missing level (<h4>) with `_`. Thus `self.names` will
+                // become `[h1, h2, h3, "_", name]`.
+                if level - 1 > self.names.len() {
+                    self.names.resize(level - 1, "_".to_owned());
+                }
+                self.names.push(name);
+            }
         }
     }
 }
@@ -609,7 +662,6 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
-            self.collector.cnt = 0;
             if self.collector.render_type == RenderType::Pulldown {
                 markdown::old_find_testable_code(doc, self.collector,
                                                  attrs.span.unwrap_or(DUMMY_SP));

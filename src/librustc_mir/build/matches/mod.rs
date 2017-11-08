@@ -46,16 +46,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Get the arm bodies and their scopes, while declaring bindings.
         let arm_bodies: Vec<_> = arms.iter().map(|arm| {
+            // BUG: use arm lint level
             let body = self.hir.mirror(arm.body.clone());
-            let scope = self.declare_bindings(None, body.span, &arm.patterns[0]);
+            let scope = self.declare_bindings(None, body.span,
+                                              LintLevel::Inherited,
+                                              &arm.patterns[0]);
             (body, scope.unwrap_or(self.visibility_scope))
         }).collect();
+
+        // create binding start block for link them by false edges
+        let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
+        let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
+            .map(|_| self.cfg.start_new_block()).collect();
 
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
         // *per arm*. These candidates are kept sorted such that the
         // highest priority candidate comes first in the list.
         // (i.e. same order as in source)
+
         let candidates: Vec<_> =
             arms.iter()
                 .enumerate()
@@ -63,16 +72,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     arm.patterns.iter()
                                 .map(move |pat| (arm_index, pat, arm.guard.clone()))
                 })
-                .map(|(arm_index, pattern, guard)| {
+                .zip(pre_binding_blocks.iter().zip(pre_binding_blocks.iter().skip(1)))
+                .map(|((arm_index, pattern, guard),
+                       (pre_binding_block, next_candidate_pre_binding_block))| {
                     Candidate {
                         span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard,
                         arm_index,
+                        pre_binding_block: *pre_binding_block,
+                        next_candidate_pre_binding_block: *next_candidate_pre_binding_block,
                     }
                 })
                 .collect();
+
+        let outer_source_info = self.source_info(span);
+        self.cfg.terminate(*pre_binding_blocks.last().unwrap(),
+                           outer_source_info, TerminatorKind::Unreachable);
 
         // this will generate code to test discriminant_lvalue and
         // branch to the appropriate arm block
@@ -145,7 +162,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
             guard: None,
-            arm_index: 0, // since we don't call `match_candidates`, this field is unused
+
+            // since we don't call `match_candidates`, next fields is unused
+            arm_index: 0,
+            pre_binding_block: block,
+            next_candidate_pre_binding_block: block
         };
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
@@ -171,11 +192,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn declare_bindings(&mut self,
                             mut var_scope: Option<VisibilityScope>,
                             scope_span: Span,
+                            lint_level: LintLevel,
                             pattern: &Pattern<'tcx>)
                             -> Option<VisibilityScope> {
+        assert!(!(var_scope.is_some() && lint_level.is_explicit()),
+               "can't have both a var and a lint scope at the same time");
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
-                var_scope = Some(this.new_visibility_scope(scope_span));
+                var_scope = Some(this.new_visibility_scope(scope_span,
+                                                           LintLevel::Inherited,
+                                                           None));
+                // If we have lints, create a new visibility scope
+                // that marks the lints for the locals.
+                if lint_level.is_explicit() {
+                    this.visibility_scope =
+                        this.new_visibility_scope(scope_span, lint_level, None);
+                }
             }
             let source_info = SourceInfo {
                 span,
@@ -183,6 +215,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             };
             this.declare_binding(source_info, mutability, name, var, ty);
         });
+        // Pop any scope we created for the locals.
+        if let Some(var_scope) = var_scope {
+            self.visibility_scope = var_scope;
+        }
         var_scope
     }
 
@@ -260,6 +296,10 @@ pub struct Candidate<'pat, 'tcx:'pat> {
 
     // ...and then we branch to arm with this index.
     arm_index: usize,
+
+    // ...and the blocks for add false edges between candidates
+    pre_binding_block: BasicBlock,
+    next_candidate_pre_binding_block: BasicBlock,
 }
 
 #[derive(Clone, Debug)]
@@ -380,6 +420,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             candidates.iter().take_while(|c| c.match_pairs.is_empty()).count();
         debug!("match_candidates: {:?} candidates fully matched", fully_matched);
         let mut unmatched_candidates = candidates.split_off(fully_matched);
+
+        let fully_matched_with_guard =
+            candidates.iter().take_while(|c| c.guard.is_some()).count();
+
+        let unreachable_candidates = if fully_matched_with_guard + 1 < candidates.len() {
+            candidates.split_off(fully_matched_with_guard + 1)
+        } else {
+            vec![]
+        };
+
         for candidate in candidates {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
@@ -388,7 +438,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             } else {
                 // if None is returned, then any remaining candidates
                 // are unreachable (at least not through this path).
-                return vec![];
+                // Link them with false edges.
+                debug!("match_candidates: add false edges for unreachable {:?} and unmatched {:?}",
+                       unreachable_candidates, unmatched_candidates);
+                for candidate in unreachable_candidates {
+                    let source_info = self.source_info(candidate.span);
+                    let target = self.cfg.start_new_block();
+                    if let Some(otherwise) = self.bind_and_guard_matched_candidate(target,
+                                                                                   arm_blocks,
+                                                                                   candidate) {
+                        self.cfg.terminate(otherwise, source_info, TerminatorKind::Unreachable);
+                    }
+                }
+
+                if unmatched_candidates.is_empty() {
+                    return vec![]
+                } else {
+                    let target = self.cfg.start_new_block();
+                    return self.match_candidates(span, arm_blocks, unmatched_candidates, target);
+                }
             }
         }
 
@@ -403,9 +471,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.test_candidates(span, arm_blocks, &unmatched_candidates, block);
 
         // If the target candidates were exhaustive, then we are done.
-        if otherwise.is_empty() {
-            return vec![];
-        }
+        // But for borrowck continue build decision tree.
 
         // If all candidates were sorted into `target_candidates` somewhere, then
         // the initial set was inexhaustive.
@@ -653,9 +719,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         debug_assert!(candidate.match_pairs.is_empty());
 
-        self.bind_matched_candidate(block, candidate.bindings);
-
         let arm_block = arm_blocks.blocks[candidate.arm_index];
+        let candidate_source_info = self.source_info(candidate.span);
+
+        self.cfg.terminate(block, candidate_source_info,
+                               TerminatorKind::Goto { target: candidate.pre_binding_block });
+
+        block = self.cfg.start_new_block();
+        self.cfg.terminate(candidate.pre_binding_block, candidate_source_info,
+                               TerminatorKind::FalseEdges {
+                                   real_target: block,
+                                   imaginary_targets:
+                                       vec![candidate.next_candidate_pre_binding_block]});
+
+        self.bind_matched_candidate(block, candidate.bindings);
 
         if let Some(guard) = candidate.guard {
             // the block to branch to if the guard fails; if there is no
@@ -663,13 +740,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let guard = self.hir.mirror(guard);
             let source_info = self.source_info(guard.span);
             let cond = unpack!(block = self.as_local_operand(block, guard));
-            let otherwise = self.cfg.start_new_block();
+
+            let false_edge_block = self.cfg.start_new_block();
             self.cfg.terminate(block, source_info,
-                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
+                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block,
+                                   false_edge_block));
+
+            let otherwise = self.cfg.start_new_block();
+            self.cfg.terminate(false_edge_block, source_info,
+                               TerminatorKind::FalseEdges {
+                                   real_target: otherwise,
+                                   imaginary_targets:
+                                       vec![candidate.next_candidate_pre_binding_block] });
             Some(otherwise)
         } else {
-            let source_info = self.source_info(candidate.span);
-            self.cfg.terminate(block, source_info,
+            self.cfg.terminate(block, candidate_source_info,
                                TerminatorKind::Goto { target: arm_block });
             None
         }
@@ -712,6 +797,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty: var_ty.clone(),
             name: Some(name),
             source_info,
+            lexical_scope: self.visibility_scope,
             internal: false,
             is_user_variable: true,
         });

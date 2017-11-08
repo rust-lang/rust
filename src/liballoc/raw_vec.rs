@@ -114,7 +114,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 impl<T> RawVec<T, Heap> {
     /// Creates the biggest possible RawVec (on the system heap)
     /// without allocating. If T has positive size, then this makes a
-    /// RawVec with capacity 0. If T has 0 size, then it it makes a
+    /// RawVec with capacity 0. If T has 0 size, then it makes a
     /// RawVec with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     pub fn new() -> Self {

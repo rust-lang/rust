@@ -32,7 +32,6 @@ fn test_convert() {
 #[test]
 fn test_from_str() {
     assert_eq!(char::from_str("a").unwrap(), 'a');
-    assert_eq!(char::try_from("a").unwrap(), 'a');
     assert_eq!(char::from_str("\0").unwrap(), '\0');
     assert_eq!(char::from_str("\u{D7FF}").unwrap(), '\u{d7FF}');
     assert!(char::from_str("").is_err());

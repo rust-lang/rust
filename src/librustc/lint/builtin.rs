@@ -30,7 +30,7 @@ declare_lint! {
 
 declare_lint! {
     pub UNUSED_EXTERN_CRATES,
-    Warn,
+    Allow,
     "extern crates that are never used"
 }
 
@@ -104,12 +104,6 @@ declare_lint! {
     pub UNKNOWN_CRATE_TYPES,
     Deny,
     "unknown crate type found in #[crate_type] directive"
-}
-
-declare_lint! {
-    pub FAT_PTR_TRANSMUTES,
-    Allow,
-    "detects transmutes of fat pointers"
 }
 
 declare_lint! {
@@ -228,6 +222,12 @@ declare_lint! {
     "detects irrefutable patterns in if-let and while-let statements"
 }
 
+declare_lint! {
+    pub UNUSED_MUT,
+    Warn,
+    "detect mut variables which don't need to be mutable"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -250,7 +250,6 @@ impl LintPass for HardwiredLints {
             UNUSED_FEATURES,
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
-            FAT_PTR_TRANSMUTES,
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
@@ -270,7 +269,8 @@ impl LintPass for HardwiredLints {
             LATE_BOUND_LIFETIME_ARGUMENTS,
             DEPRECATED,
             UNUSED_UNSAFE,
-            IRREFUTABLE_LET_PATTERN
+            IRREFUTABLE_LET_PATTERN,
+            UNUSED_MUT
         )
     }
 }

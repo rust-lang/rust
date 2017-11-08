@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::*;
-use syntax_pos::Span;
+use syntax_pos::SpanData;
 use rustc::ty::maps::QueryMsg;
 use std::fs::File;
 use std::time::{Duration, Instant};
@@ -18,7 +18,7 @@ use rustc::dep_graph::{DepNode};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Query {
-    pub span: Span,
+    pub span: SpanData,
     pub msg: QueryMsg,
 }
 pub enum Effect {

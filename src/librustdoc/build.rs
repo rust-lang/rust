@@ -9,12 +9,12 @@
 // except according to those terms.
 
 extern crate build_helper;
-extern crate gcc;
+extern crate cc;
 
 fn main() {
     let src_dir = std::path::Path::new("../rt/hoedown/src");
     build_helper::rerun_if_changed_anything_in_dir(src_dir);
-    let mut cfg = gcc::Build::new();
+    let mut cfg = cc::Build::new();
     cfg.file("../rt/hoedown/src/autolink.c")
        .file("../rt/hoedown/src/buffer.c")
        .file("../rt/hoedown/src/document.c")

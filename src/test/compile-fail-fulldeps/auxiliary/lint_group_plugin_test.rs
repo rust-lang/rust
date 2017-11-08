@@ -12,6 +12,7 @@
 
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
+#![feature(macro_vis_matcher)]
 
 // Load rustc as a plugin to get macros
 #[macro_use]

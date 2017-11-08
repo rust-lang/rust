@@ -58,9 +58,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = this.source_info(expr_span);
 
         match expr.kind {
-            ExprKind::Scope { region_scope, value } => {
+            ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, block, |this| this.as_rvalue(block, scope, value))
+                this.in_scope(region_scope, lint_level, block,
+                              |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, scope, value));
@@ -96,7 +97,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
-                let result = this.local_decls.push(LocalDecl::new_temp(expr.ty, expr_span));
+                // The `Box<T>` temporary created here is not a part of the HIR,
+                // and therefore is not considered during generator OIBIT
+                // determination. See the comment about `box` at `yield_in_scope`.
+                let result = this.local_decls.push(
+                    LocalDecl::new_internal(expr.ty, expr_span));
                 this.cfg.push(block, Statement {
                     source_info,
                     kind: StatementKind::StorageLive(result)

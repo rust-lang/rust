@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use Diagnostic;
+use DiagnosticId;
 use DiagnosticStyledString;
 
 use Level;
@@ -192,7 +193,7 @@ impl<'a> DiagnosticBuilder<'a> {
                                      suggestions: Vec<String>)
                                      -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
-    forward!(pub fn code(&mut self, s: String) -> &mut Self);
+    forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
@@ -204,7 +205,7 @@ impl<'a> DiagnosticBuilder<'a> {
     /// struct_* methods on Handler.
     pub fn new_with_code(handler: &'a Handler,
                          level: Level,
-                         code: Option<String>,
+                         code: Option<DiagnosticId>,
                          message: &str)
                          -> DiagnosticBuilder<'a> {
         let diagnostic = Diagnostic::new_with_code(level, code, message);

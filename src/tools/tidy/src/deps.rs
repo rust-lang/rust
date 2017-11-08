@@ -35,8 +35,8 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "thread-id", // Apache-2.0, mdbook
     "cssparser", // MPL-2.0, rustdoc
     "smallvec", // MPL-2.0, rustdoc
-    "magenta-sys", // BSD-3-Clause, rustdoc
-    "magenta", // BSD-3-Clause, rustdoc
+    "fuchsia-zircon-sys", // BSD-3-Clause, rustdoc, rustc, cargo
+    "fuchsia-zircon", // BSD-3-Clause, rustdoc, rustc, cargo (jobserver & tempdir)
     "cssparser-macros", // MPL-2.0, rustdoc
     "selectors", // MPL-2.0, rustdoc
 ];

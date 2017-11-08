@@ -30,6 +30,7 @@
 #![deny(warnings)]
 #![no_std]
 
+#![feature(ascii_ctype)]
 #![feature(core_char_ext)]
 #![feature(str_internals)]
 #![feature(decode_utf8)]

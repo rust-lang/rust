@@ -196,7 +196,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
         for attr in attrs {
             if attr.check_name("thread_local") {
-                llvm::set_thread_local(g, true);
+                llvm::set_thread_local_mode(g, ccx.tls_model());
             }
         }
 
@@ -215,7 +215,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         // symbol and another one doesn't.
         for attr in ccx.tcx().get_attrs(def_id).iter() {
             if attr.check_name("thread_local") {
-                llvm::set_thread_local(g, true);
+                llvm::set_thread_local_mode(g, ccx.tls_model());
             }
         }
         if ccx.use_dll_storage_attrs() && !ccx.tcx().is_foreign_item(def_id) {
@@ -231,17 +231,13 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         g
     };
 
-
-    // FIXME(#42293) we should actually track this, but fails too many tests
-    // today.
-    ccx.tcx().dep_graph.with_ignore(|| {
-        if ccx.use_dll_storage_attrs() && ccx.tcx().is_dllimport_foreign_item(def_id) {
-            // For foreign (native) libs we know the exact storage type to use.
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-            }
+    if ccx.use_dll_storage_attrs() && ccx.tcx().is_dllimport_foreign_item(def_id) {
+        // For foreign (native) libs we know the exact storage type to use.
+        unsafe {
+            llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
         }
-    });
+    }
+
     ccx.instances().borrow_mut().insert(instance, g);
     ccx.statics().borrow_mut().insert(g, def_id);
     g
@@ -309,9 +305,8 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         debuginfo::create_global_var_metadata(ccx, id, g);
 
-        if attr::contains_name(attrs,
-                               "thread_local") {
-            llvm::set_thread_local(g, true);
+        if attr::contains_name(attrs, "thread_local") {
+            llvm::set_thread_local_mode(g, ccx.tls_model());
         }
 
         base::set_link_section(ccx, g, attrs);

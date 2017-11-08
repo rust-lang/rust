@@ -16,6 +16,15 @@ mod m {
     pub const A: i32 = 0;
 }
 
+mod foo {
+    #[derive(Debug)]
+    pub struct Foo;
+
+    // test whether the use suggestion isn't
+    // placed into the expansion of `#[derive(Debug)]
+    type Bar = Path;
+}
+
 fn main() {
     y!();
     let _ = A;

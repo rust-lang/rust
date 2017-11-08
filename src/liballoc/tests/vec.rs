@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::mem::size_of;
 use std::panic;
@@ -537,27 +536,27 @@ fn test_drain_range() {
 #[test]
 fn test_drain_inclusive_range() {
     let mut v = vec!['a', 'b', 'c', 'd', 'e'];
-    for _ in v.drain(1...3) {
+    for _ in v.drain(1..=3) {
     }
     assert_eq!(v, &['a', 'e']);
 
-    let mut v: Vec<_> = (0...5).map(|x| x.to_string()).collect();
-    for _ in v.drain(1...5) {
+    let mut v: Vec<_> = (0..=5).map(|x| x.to_string()).collect();
+    for _ in v.drain(1..=5) {
     }
     assert_eq!(v, &["0".to_string()]);
 
-    let mut v: Vec<String> = (0...5).map(|x| x.to_string()).collect();
-    for _ in v.drain(0...5) {
+    let mut v: Vec<String> = (0..=5).map(|x| x.to_string()).collect();
+    for _ in v.drain(0..=5) {
     }
     assert_eq!(v, Vec::<String>::new());
 
-    let mut v: Vec<_> = (0...5).map(|x| x.to_string()).collect();
-    for _ in v.drain(0...3) {
+    let mut v: Vec<_> = (0..=5).map(|x| x.to_string()).collect();
+    for _ in v.drain(0..=3) {
     }
     assert_eq!(v, &["4".to_string(), "5".to_string()]);
 
-    let mut v: Vec<_> = (0...1).map(|x| x.to_string()).collect();
-    for _ in v.drain(...0) {
+    let mut v: Vec<_> = (0..=1).map(|x| x.to_string()).collect();
+    for _ in v.drain(..=0) {
     }
     assert_eq!(v, &["1".to_string()]);
 }
@@ -572,7 +571,7 @@ fn test_drain_max_vec_size() {
 
     let mut v = Vec::<()>::with_capacity(usize::max_value());
     unsafe { v.set_len(usize::max_value()); }
-    for _ in v.drain(usize::max_value() - 1...usize::max_value() - 1) {
+    for _ in v.drain(usize::max_value() - 1..=usize::max_value() - 1) {
     }
     assert_eq!(v.len(), usize::max_value() - 1);
 }
@@ -581,7 +580,7 @@ fn test_drain_max_vec_size() {
 #[should_panic]
 fn test_drain_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
-    v.drain(5...5);
+    v.drain(5..=5);
 }
 
 #[test]
@@ -598,10 +597,10 @@ fn test_splice() {
 fn test_splice_inclusive_range() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    let t1: Vec<_> = v.splice(2...3, a.iter().cloned()).collect();
+    let t1: Vec<_> = v.splice(2..=3, a.iter().cloned()).collect();
     assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
     assert_eq!(t1, &[3, 4]);
-    let t2: Vec<_> = v.splice(1...2, Some(20)).collect();
+    let t2: Vec<_> = v.splice(1..=2, Some(20)).collect();
     assert_eq!(v, &[1, 20, 11, 12, 5]);
     assert_eq!(t2, &[2, 10]);
 }
@@ -619,7 +618,7 @@ fn test_splice_out_of_bounds() {
 fn test_splice_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(5...5, a.iter().cloned());
+    v.splice(5..=5, a.iter().cloned());
 }
 
 #[test]
@@ -966,5 +965,3 @@ fn drain_filter_complex() {
         assert_eq!(vec, vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     }
 }
-
-

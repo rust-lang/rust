@@ -384,6 +384,11 @@ impl LintLevelMap {
             self.sets.get_lint_level(lint, *idx, None)
         })
     }
+
+    /// Returns if this `id` has lint level information.
+    pub fn lint_level_set(&self, id: HirId) -> Option<u32> {
+        self.id_to_set.get(&id).cloned()
+    }
 }
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for LintLevelMap {

@@ -10,40 +10,40 @@
 
 set -ex
 
-URL=https://dl.google.com/android/repository
+export ANDROID_HOME=/android/sdk
+PATH=$PATH:"${ANDROID_HOME}/tools/bin"
 
 download_sdk() {
-    mkdir -p /android/sdk
-    cd /android/sdk
-    curl -fO $URL/$1
-    unzip -q $1
-    rm -rf $1
+    mkdir -p /android
+    curl -fo sdk.zip "https://dl.google.com/android/repository/sdk-tools-linux-$1.zip"
+    unzip -q sdk.zip -d "$ANDROID_HOME"
+    rm -f sdk.zip
 }
 
 download_sysimage() {
-    # See https://developer.android.com/studio/tools/help/android.html
     abi=$1
     api=$2
 
-    filter="platform-tools,android-$api"
-    filter="$filter,sys-img-$abi-android-$api"
-
-    # Keep printing yes to accept the licenses
-    while true; do echo yes; sleep 10; done | \
-        /android/sdk/tools/android update sdk -a --no-ui \
-            --filter "$filter"
+    # See https://developer.android.com/studio/command-line/sdkmanager.html for
+    # usage of `sdkmanager`.
+    #
+    # The output from sdkmanager is so noisy that it will occupy all of the 4 MB
+    # log extremely quickly. Thus we must silence all output.
+    yes | sdkmanager --licenses > /dev/null
+    sdkmanager platform-tools emulator \
+        "platforms;android-$api" \
+        "system-images;android-$api;default;$abi" > /dev/null
 }
 
 create_avd() {
-    # See https://developer.android.com/studio/tools/help/android.html
     abi=$1
     api=$2
 
-    echo no | \
-        /android/sdk/tools/android create avd \
-            --name $abi-$api \
-            --target android-$api \
-            --abi $abi
+    # See https://developer.android.com/studio/command-line/avdmanager.html for
+    # usage of `avdmanager`.
+    echo no | avdmanager create avd \
+        -n "$abi-$api" \
+        -k "system-images;android-$api;default;$abi"
 }
 
 download_and_create_avd() {
@@ -51,3 +51,15 @@ download_and_create_avd() {
     download_sysimage $2 $3
     create_avd $2 $3
 }
+
+# Usage:
+#
+#       setup_android_sdk 4333796 armeabi-v7a 18
+#
+# 4333796 =>
+#   SDK tool version.
+#   Copy from https://developer.android.com/studio/index.html#command-tools
+# armeabi-v7a =>
+#   System image ABI
+# 18 =>
+#   Android API Level (18 = Android 4.3 = Jelly Bean MR2)

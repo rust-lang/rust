@@ -10,8 +10,9 @@
 
 // ignore-tidy-linelength
 // compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zinline-in-all-cgus
 
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<drop_in_place_intrinsic::StructWithDtor[0]> @@ drop_in_place_intrinsic.cgu-0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<drop_in_place_intrinsic::StructWithDtor[0]> @@ drop_in_place_intrinsic0[Internal]
 struct StructWithDtor(u32);
 
 impl Drop for StructWithDtor {
@@ -22,7 +23,7 @@ impl Drop for StructWithDtor {
 //~ TRANS_ITEM fn drop_in_place_intrinsic::main[0]
 fn main() {
 
-    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<[drop_in_place_intrinsic::StructWithDtor[0]; 2]> @@ drop_in_place_intrinsic.cgu-0[Internal]
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<[drop_in_place_intrinsic::StructWithDtor[0]; 2]> @@ drop_in_place_intrinsic0[Internal]
     let x = [StructWithDtor(0), StructWithDtor(1)];
 
     drop_slice_in_place(&x);
@@ -34,7 +35,7 @@ fn drop_slice_in_place(x: &[StructWithDtor]) {
         // This is the interesting thing in this test case: Normally we would
         // not have drop-glue for the unsized [StructWithDtor]. This has to be
         // generated though when the drop_in_place() intrinsic is used.
-        //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<[drop_in_place_intrinsic::StructWithDtor[0]]> @@ drop_in_place_intrinsic.cgu-0[Internal]
+        //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<[drop_in_place_intrinsic::StructWithDtor[0]]> @@ drop_in_place_intrinsic0[Internal]
         ::std::ptr::drop_in_place(x as *const _ as *mut [StructWithDtor]);
     }
 }

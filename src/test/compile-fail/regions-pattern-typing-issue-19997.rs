@@ -8,13 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+
 fn main() {
     let a0 = 0;
     let f = 1;
     let mut a1 = &a0;
     match (&a1,) {
         (&ref b0,) => {
-            a1 = &f; //~ ERROR cannot assign
+            a1 = &f; //[ast]~ ERROR cannot assign
+                     //[mir]~^ ERROR cannot assign to `a1` because it is borrowed (Ast)
+                     //[mir]~| ERROR cannot assign to `a1` because it is borrowed (Mir)
         }
     }
 }
