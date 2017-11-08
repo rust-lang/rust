@@ -44,8 +44,7 @@ fn make_foo() {
     //~| ERROR E0038
     //~| NOTE method `foo` has a non-standard `self` type
     //~| NOTE the trait `Foo` cannot be made into an object
-    //~| NOTE required because of the requirements on the impl of
-    //~|      `std::ops::CoerceUnsized<std::boxed::Box<Foo>>` for `std::boxed::Box<usize>`
+    //~| NOTE requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<Foo>>`
 }
 
 fn make_bar() {
