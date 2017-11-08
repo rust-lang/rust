@@ -487,7 +487,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         loop {
             if let Some((potential_self_ty, _)) = autoderef.next() {
-                debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`", potential_self_ty, self_ty);
+                debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`",
+                    potential_self_ty, self_ty);
 
                 if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
                     autoderef.finalize();
@@ -497,7 +498,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     break
                 }
             } else {
-                fcx.tcx.sess.diagnostic().mut_span_err(span, &format!("invalid `self` type: {:?}", self_arg_ty))
+                fcx.tcx.sess.diagnostic().mut_span_err(
+                    span, &format!("invalid `self` type: {:?}", self_arg_ty))
                 .note(&format!("type must be `{:?}` or a type that dereferences to it`", self_ty))
                 .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
                 .code(DiagnosticId::Error("E0307".into()))

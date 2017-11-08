@@ -1,3 +1,12 @@
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 #![feature(arbitrary_self_types)]
 
 use std::rc::Rc;
@@ -35,7 +44,8 @@ fn make_foo() {
     //~| ERROR E0038
     //~| NOTE method `foo` has a non-standard `self` type
     //~| NOTE the trait `Foo` cannot be made into an object
-    //~| NOTE required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<Foo>>` for `std::boxed::Box<usize>`
+    //~| NOTE required because of the requirements on the impl of
+    //~|      `std::ops::CoerceUnsized<std::boxed::Box<Foo>>` for `std::boxed::Box<usize>`
 }
 
 fn make_bar() {
