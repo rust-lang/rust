@@ -416,6 +416,12 @@ impl<'hir> Map<'hir> {
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(id) {
+            if self.dep_graph.is_fully_enabled() {
+                let hir_id_owner = self.node_to_hir_id(id).owner;
+                let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+                self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+            }
+
             if let Some(body_id) = entry.associated_body() {
                 // For item-like things and closures, the associated
                 // body has its own distinct id, and that is returned
@@ -530,6 +536,12 @@ impl<'hir> Map<'hir> {
     /// from a node to the root of the ast (unless you get the same id back here
     /// that can happen if the id is not in the map itself or is just weird).
     pub fn get_parent_node(&self, id: NodeId) -> NodeId {
+        if self.dep_graph.is_fully_enabled() {
+            let hir_id_owner = self.node_to_hir_id(id).owner;
+            let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+            self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+        }
+
         self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
     }
 

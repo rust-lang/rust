@@ -459,10 +459,6 @@ define_dep_nodes!( <'tcx>
     // Represents metadata from an extern crate.
     [input] CrateMetadata(CrateNum),
 
-    // Represents some artifact that we save to disk. Note that these
-    // do not have a def-id as part of their identifier.
-    [] WorkProduct(WorkProductId),
-
     // Represents different phases in the compiler.
     [] RegionScopeTree(DefId),
     [eval_always] Coherence,
@@ -537,38 +533,19 @@ define_dep_nodes!( <'tcx>
     // The set of impls for a given trait.
     [] TraitImpls(DefId),
 
-    [] AllLocalTraitImpls,
+    [input] AllLocalTraitImpls,
 
-    // Trait selection cache is a little funny. Given a trait
-    // reference like `Foo: SomeTrait<Bar>`, there could be
-    // arbitrarily many def-ids to map on in there (e.g., `Foo`,
-    // `SomeTrait`, `Bar`). We could have a vector of them, but it
-    // requires heap-allocation, and trait sel in general can be a
-    // surprisingly hot path. So instead we pick two def-ids: the
-    // trait def-id, and the first def-id in the input types. If there
-    // is no def-id in the input types, then we use the trait def-id
-    // again. So for example:
-    //
-    // - `i32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
-    // - `u32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
-    // - `Clone: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
-    // - `Vec<i32>: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Vec }`
-    // - `String: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: String }`
-    // - `Foo: Trait<Bar>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    // - `Foo: Trait<i32>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    // - `(Foo, Bar): Trait` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    // - `i32: Trait<Foo>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    //
-    // You can see that we map many trait refs to the same
-    // trait-select node.  This is not a problem, it just means
-    // imprecision in our dep-graph tracking.  The important thing is
-    // that for any given trait-ref, we always map to the **same**
-    // trait-select node.
     [anon] TraitSelect,
 
     [] ParamEnv(DefId),
     [] DescribeDef(DefId),
-    [] DefSpan(DefId),
+
+    // FIXME(mw): DefSpans are not really inputs since they are derived from
+    // HIR. But at the moment HIR hashing still contains some hacks that allow
+    // to make type debuginfo to be source location independent. Declaring
+    // DefSpan an input makes sure that changes to these are always detected
+    // regardless of HIR hashing.
+    [input] DefSpan(DefId),
     [] LookupStability(DefId),
     [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),
@@ -588,7 +565,7 @@ define_dep_nodes!( <'tcx>
     [eval_always] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
     [input] InScopeTraits(DefIndex),
-    [] ModuleExports(DefId),
+    [input] ModuleExports(DefId),
     [] IsSanitizerRuntime(CrateNum),
     [] IsProfilerRuntime(CrateNum),
     [] GetPanicStrategy(CrateNum),
@@ -598,9 +575,9 @@ define_dep_nodes!( <'tcx>
     [] NativeLibraries(CrateNum),
     [] PluginRegistrarFn(CrateNum),
     [] DeriveRegistrarFn(CrateNum),
-    [] CrateDisambiguator(CrateNum),
-    [] CrateHash(CrateNum),
-    [] OriginalCrateName(CrateNum),
+    [input] CrateDisambiguator(CrateNum),
+    [input] CrateHash(CrateNum),
+    [input] OriginalCrateName(CrateNum),
 
     [] ImplementationsOfTrait { krate: CrateNum, trait_id: DefId },
     [] AllTraitImplementations(CrateNum),
@@ -608,27 +585,27 @@ define_dep_nodes!( <'tcx>
     [] IsDllimportForeignItem(DefId),
     [] IsStaticallyIncludedForeignItem(DefId),
     [] NativeLibraryKind(DefId),
-    [] LinkArgs,
+    [input] LinkArgs,
 
-    [] NamedRegion(DefIndex),
-    [] IsLateBound(DefIndex),
-    [] ObjectLifetimeDefaults(DefIndex),
+    [input] NamedRegion(DefIndex),
+    [input] IsLateBound(DefIndex),
+    [input] ObjectLifetimeDefaults(DefIndex),
 
     [] Visibility(DefId),
     [] DepKind(CrateNum),
-    [] CrateName(CrateNum),
+    [input] CrateName(CrateNum),
     [] ItemChildren(DefId),
     [] ExternModStmtCnum(DefId),
-    [] GetLangItems,
+    [input] GetLangItems,
     [] DefinedLangItems(CrateNum),
     [] MissingLangItems(CrateNum),
     [] ExternConstBody(DefId),
     [] VisibleParentMap,
     [] MissingExternCrateItem(CrateNum),
     [] UsedCrateSource(CrateNum),
-    [] PostorderCnums,
-    [] HasCloneClosures(CrateNum),
-    [] HasCopyClosures(CrateNum),
+    [input] PostorderCnums,
+    [input] HasCloneClosures(CrateNum),
+    [input] HasCopyClosures(CrateNum),
 
     // This query is not expected to have inputs -- as a result, it's
     // not a good candidate for "replay" because it's essentially a
@@ -638,11 +615,11 @@ define_dep_nodes!( <'tcx>
     // may save a bit of time.
     [anon] EraseRegionsTy { ty: Ty<'tcx> },
 
-    [] Freevars(DefId),
-    [] MaybeUnusedTraitImport(DefId),
+    [input] Freevars(DefId),
+    [input] MaybeUnusedTraitImport(DefId),
     [] MaybeUnusedExternCrates,
     [] StabilityIndex,
-    [] AllCrateNums,
+    [input] AllCrateNums,
     [] ExportedSymbols(CrateNum),
     [eval_always] CollectAndPartitionTranslationItems,
     [] ExportName(DefId),
@@ -650,7 +627,7 @@ define_dep_nodes!( <'tcx>
     [] IsTranslatedFunction(DefId),
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
-    [] OutputFilenames,
+    [input] OutputFilenames,
     [anon] NormalizeTy,
     // We use this for most things when incr. comp. is turned off.
     [] Null,
@@ -798,13 +775,6 @@ impl WorkProductId {
     pub fn from_fingerprint(fingerprint: Fingerprint) -> WorkProductId {
         WorkProductId {
             hash: fingerprint
-        }
-    }
-
-    pub fn to_dep_node(self) -> DepNode {
-        DepNode {
-            kind: DepKind::WorkProduct,
-            hash: self.hash,
         }
     }
 }

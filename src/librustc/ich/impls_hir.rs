@@ -356,33 +356,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Block {
             targeted_by_break,
         } = *self;
 
-        let non_item_stmts = || stmts.iter().filter(|stmt| {
-            match stmt.node {
-                hir::StmtDecl(ref decl, _) => {
-                    match decl.node {
-                        // If this is a declaration of a nested item, we don't
-                        // want to leave any trace of it in the hash value, not
-                        // even that it exists. Otherwise changing the position
-                        // of nested items would invalidate the containing item
-                        // even though that does not constitute a semantic
-                        // change.
-                        hir::DeclItem(_) => false,
-                        hir::DeclLocal(_) => true
-                    }
-                }
-                hir::StmtExpr(..) |
-                hir::StmtSemi(..) => true
-            }
-        });
-
-        let count = non_item_stmts().count();
-
-        count.hash_stable(hcx, hasher);
-
-        for stmt in non_item_stmts() {
-            stmt.hash_stable(hcx, hasher);
-        }
-
+        stmts.hash_stable(hcx, hasher);
         expr.hash_stable(hcx, hasher);
         rules.hash_stable(hcx, hasher);
         span.hash_stable(hcx, hasher);

@@ -99,11 +99,13 @@ impl IntoArgs for (CrateNum, DefId) {
 
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
-    generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
+    generics_of => {
+        tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
+    }
     predicates_of => { cdata.get_predicates(def_id.index, tcx) }
     super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
     trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
+        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
@@ -153,7 +155,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
-    item_attrs => { cdata.get_item_attrs(def_id.index) }
+    item_attrs => { cdata.get_item_attrs(def_id.index, tcx.sess) }
     // FIXME(#38501) We've skipped a `read` on the `HirBody` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
@@ -171,17 +173,17 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats()) }
-    is_panic_runtime => { cdata.is_panic_runtime() }
-    is_compiler_builtins => { cdata.is_compiler_builtins() }
+    is_panic_runtime => { cdata.is_panic_runtime(tcx.sess) }
+    is_compiler_builtins => { cdata.is_compiler_builtins(tcx.sess) }
     has_global_allocator => { cdata.has_global_allocator() }
-    is_sanitizer_runtime => { cdata.is_sanitizer_runtime() }
-    is_profiler_runtime => { cdata.is_profiler_runtime() }
+    is_sanitizer_runtime => { cdata.is_sanitizer_runtime(tcx.sess) }
+    is_profiler_runtime => { cdata.is_profiler_runtime(tcx.sess) }
     panic_strategy => { cdata.panic_strategy() }
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
-    is_no_builtins => { cdata.is_no_builtins() }
+    is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     exported_symbol_ids => { Rc::new(cdata.get_exported_symbols()) }
-    native_libraries => { Rc::new(cdata.get_native_libraries()) }
+    native_libraries => { Rc::new(cdata.get_native_libraries(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -237,8 +239,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Rc::new(cdata.source.clone()) }
 
-    has_copy_closures => { cdata.has_copy_closures() }
-    has_clone_closures => { cdata.has_clone_closures() }
+    has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
+    has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -358,8 +360,8 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics {
-        self.get_crate_data(def.krate).get_generics(def.index)
+    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
+        self.get_crate_data(def.krate).get_generics(def.index, sess)
     }
 
     fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
@@ -454,7 +456,7 @@ impl CrateStore for cstore::CStore {
         let body = filemap_to_stream(&sess.parse_sess, filemap, None);
 
         // Mark the attrs as used
-        let attrs = data.get_item_attrs(id.index);
+        let attrs = data.get_item_attrs(id.index, sess);
         for attr in attrs.iter() {
             attr::mark_used(attr);
         }

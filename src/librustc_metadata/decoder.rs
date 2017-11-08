@@ -87,6 +87,20 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
     }
 }
 
+
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'a Session) {
+    fn raw_bytes(self) -> &'a [u8] {
+        let (blob, _) = self;
+        &blob.0
+    }
+
+    fn sess(self) -> Option<&'a Session> {
+        let (_, sess) = self;
+        Some(sess)
+    }
+}
+
+
 impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadata {
     fn raw_bytes(self) -> &'a [u8] {
         self.blob.raw_bytes()
@@ -291,7 +305,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            return Ok(Span::new(lo, hi, NO_EXPANSION));
+            bug!("Cannot decode Span without Session.")
         };
 
         let (lo, hi) = if lo > hi {
@@ -313,7 +327,8 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             // originate from the same filemap.
             let last_filemap = &imported_filemaps[self.last_filemap_index];
 
-            if lo >= last_filemap.original_start_pos && lo <= last_filemap.original_end_pos &&
+            if lo >= last_filemap.original_start_pos &&
+               lo <= last_filemap.original_end_pos &&
                hi >= last_filemap.original_start_pos &&
                hi <= last_filemap.original_end_pos {
                 last_filemap
@@ -335,8 +350,8 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             }
         };
 
-        let lo = (lo - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
-        let hi = (hi - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
+        let lo = (lo + filemap.translated_filemap.start_pos) - filemap.original_start_pos;
+        let hi = (hi + filemap.translated_filemap.start_pos) - filemap.original_start_pos;
 
         Ok(Span::new(lo, hi, NO_EXPANSION))
     }
@@ -521,9 +536,9 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_trait_def(&self, item_id: DefIndex) -> ty::TraitDef {
+    pub fn get_trait_def(&self, item_id: DefIndex, sess: &Session) -> ty::TraitDef {
         let data = match self.entry(item_id).kind {
-            EntryKind::Trait(data) => data.decode(self),
+            EntryKind::Trait(data) => data.decode((self, sess)),
             _ => bug!(),
         };
 
@@ -607,8 +622,11 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_generics(&self, item_id: DefIndex) -> ty::Generics {
-        self.entry(item_id).generics.unwrap().decode(self)
+    pub fn get_generics(&self,
+                        item_id: DefIndex,
+                        sess: &Session)
+                        -> ty::Generics {
+        self.entry(item_id).generics.unwrap().decode((self, sess))
     }
 
     pub fn get_type(&self, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
@@ -908,7 +926,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_item_attrs(&self, node_id: DefIndex) -> Rc<[ast::Attribute]> {
+    pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Rc<[ast::Attribute]> {
         let (node_as, node_index) =
             (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
@@ -928,7 +946,7 @@ impl<'a, 'tcx> CrateMetadata {
         if def_key.disambiguated_data.data == DefPathData::StructCtor {
             item = self.entry(def_key.parent.unwrap());
         }
-        let result: Rc<[ast::Attribute]> = Rc::from(self.get_attributes(&item));
+        let result: Rc<[ast::Attribute]> = Rc::from(self.get_attributes(&item, sess));
         let vec_ = &mut self.attribute_cache.borrow_mut()[node_as];
         if vec_.len() < node_index + 1 {
             vec_.resize(node_index + 1, None);
@@ -945,9 +963,9 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
-    fn get_attributes(&self, item: &Entry<'tcx>) -> Vec<ast::Attribute> {
+    fn get_attributes(&self, item: &Entry<'tcx>, sess: &Session) -> Vec<ast::Attribute> {
         item.attributes
-            .decode(self)
+            .decode((self, sess))
             .map(|mut attr| {
                 // Need new unique IDs: old thread-local IDs won't map to new threads.
                 attr.id = attr::mk_attr_id();
@@ -1013,8 +1031,8 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
 
-    pub fn get_native_libraries(&self) -> Vec<NativeLibrary> {
-        self.root.native_libraries.decode(self).collect()
+    pub fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLibrary> {
+        self.root.native_libraries.decode((self, sess)).collect()
     }
 
     pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {

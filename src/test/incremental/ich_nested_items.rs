@@ -11,29 +11,29 @@
 // Check that the hash of `foo` doesn't change just because we ordered
 // the nested items (or even added new ones).
 
-// revisions: rpass1 rpass2
+// revisions: cfail1 cfail2
+// must-compile-successfully
 
+#![crate_type = "rlib"]
 #![feature(rustc_attrs)]
 
-#[cfg(rpass1)]
-fn foo() {
-    fn bar() { }
-    fn baz() { }
+#[cfg(cfail1)]
+pub fn foo() {
+    pub fn bar() { }
+    pub fn baz() { }
 }
 
-#[cfg(rpass2)]
-#[rustc_clean(label="Hir", cfg="rpass2")]
-#[rustc_clean(label="HirBody", cfg="rpass2")]
-fn foo() {
-    #[rustc_clean(label="Hir", cfg="rpass2")]
-    #[rustc_clean(label="HirBody", cfg="rpass2")]
-    fn baz() { } // order is different...
+#[cfg(cfail2)]
+#[rustc_clean(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+pub fn foo() {
+    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail2")]
+    pub fn baz() { } // order is different...
 
-    #[rustc_clean(label="Hir", cfg="rpass2")]
-    #[rustc_clean(label="HirBody", cfg="rpass2")]
-    fn bar() { } // but that doesn't matter.
+    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail2")]
+    pub fn bar() { } // but that doesn't matter.
 
-    fn bap() { } // neither does adding a new item
+    pub fn bap() { } // neither does adding a new item
 }
-
-fn main() { }

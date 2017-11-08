@@ -273,7 +273,7 @@ pub trait CrateStore {
     fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
     fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
-    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics;
+    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
     fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
@@ -327,7 +327,7 @@ impl CrateStore for DummyCrateStore {
         { bug!("crate_data_as_rc_any") }
     // item info
     fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics
+    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics
         { bug!("item_generics_cloned") }
 
     // trait/impl-item info
