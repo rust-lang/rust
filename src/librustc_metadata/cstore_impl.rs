@@ -183,7 +183,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     exported_symbol_ids => { Rc::new(cdata.get_exported_symbols()) }
-    native_libraries => { Rc::new(cdata.get_native_libraries()) }
+    native_libraries => { Rc::new(cdata.get_native_libraries(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }

@@ -258,14 +258,15 @@ impl<'a> CrateLoader<'a> {
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
         let def_path_table = record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
-            crate_root.def_path_table.decode(&metadata)
+            crate_root.def_path_table.decode((&metadata, self.sess))
         });
 
-        let exported_symbols = crate_root.exported_symbols.decode(&metadata).collect();
-
+        let exported_symbols = crate_root.exported_symbols
+                                         .decode((&metadata, self.sess))
+                                         .collect();
         let trait_impls = crate_root
             .impls
-            .decode(&metadata)
+            .decode((&metadata, self.sess))
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
 
@@ -298,7 +299,7 @@ impl<'a> CrateLoader<'a> {
         let dllimports: FxHashSet<_> = cmeta
             .root
             .native_libraries
-            .decode(&cmeta)
+            .decode((&cmeta, self.sess))
             .filter(|lib| relevant_lib(self.sess, lib) &&
                           lib.kind == cstore::NativeLibraryKind::NativeUnknown)
             .flat_map(|lib| {

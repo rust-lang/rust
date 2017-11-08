@@ -87,6 +87,20 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
     }
 }
 
+
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'a Session) {
+    fn raw_bytes(self) -> &'a [u8] {
+        let (blob, _) = self;
+        &blob.0
+    }
+
+    fn sess(self) -> Option<&'a Session> {
+        let (_, sess) = self;
+        Some(sess)
+    }
+}
+
+
 impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadata {
     fn raw_bytes(self) -> &'a [u8] {
         self.blob.raw_bytes()
@@ -1017,8 +1031,8 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
 
-    pub fn get_native_libraries(&self) -> Vec<NativeLibrary> {
-        self.root.native_libraries.decode(self).collect()
+    pub fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLibrary> {
+        self.root.native_libraries.decode((self, sess)).collect()
     }
 
     pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {
