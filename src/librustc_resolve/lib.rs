@@ -2603,7 +2603,7 @@ impl<'a> Resolver<'a> {
                             }
                         }
                         err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
-                                                       path_str));
+                                                     path_str));
                         return (err, candidates);
                     }
                     _ => {}
