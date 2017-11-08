@@ -386,19 +386,27 @@ impl<T: ?Sized> Box<T> {
     /// Simple usage:
     ///
     /// ```
-    /// let x = Box::new(41);
-    /// let static_ref = Box::leak(x);
-    /// *static_ref += 1;
-    /// assert_eq!(*static_ref, 42);
+    /// #![feature(box_leak)]
+    ///
+    /// fn main() {
+    ///     let x = Box::new(41);
+    ///     let static_ref = Box::leak(x);
+    ///     *static_ref += 1;
+    ///     assert_eq!(*static_ref, 42);
+    /// }
     /// ```
     ///
     /// Unsized data:
     ///
     /// ```
-    /// let x = vec![1, 2, 3].into_boxed_slice();
-    /// let static_ref = Box::leak(x);
-    /// static_ref[0] = 4;
-    /// assert_eq!(*static_ref, [4, 2, 3]);
+    /// #![feature(box_leak)]
+    ///
+    /// fn main() {
+    ///     let x = vec![1, 2, 3].into_boxed_slice();
+    ///     let static_ref = Box::leak(x);
+    ///     static_ref[0] = 4;
+    ///     assert_eq!(*static_ref, [4, 2, 3]);
+    /// }
     /// ```
     #[unstable(feature = "box_leak", reason = "needs an FCP to stabilize",
                issue = "0")]
