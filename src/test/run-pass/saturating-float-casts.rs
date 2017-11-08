@@ -15,7 +15,9 @@
 extern crate test;
 
 use std::{f32, f64};
-use std::{u8, i8, u16, i16, u32, i32, u64, i64, u128, i128};
+use std::{u8, i8, u16, i16, u32, i32, u64, i64};
+#[cfg(not(target_os="emscripten"))]
+use std::{u128, i128};
 use test::black_box;
 
 macro_rules! test {
@@ -92,8 +94,13 @@ macro_rules! fptoui_tests {
 }
 
 pub fn main() {
-    common_fptoi_tests!(f* -> i8 i16 i32 i64 i128 u8 u16 u32 u64 u128);
-    fptoui_tests!(f* -> u8 u16 u32 u64 u128);
+    common_fptoi_tests!(f* -> i8 i16 i32 i64 u8 u16 u32 u64);
+    fptoui_tests!(f* -> u8 u16 u32 u64);
+    // FIXME emscripten does not support i128
+    #[cfg(not(target_os="emscripten"))] {
+        common_fptoi_tests!(f* -> i128 u128);
+        fptoui_tests!(f* -> u128);
+    }
 
     // The following tests cover edge cases for some integer types.
 
@@ -125,30 +132,33 @@ pub fn main() {
     test!(4294967296., f* -> u32, 4294967295);
 
     // # u128
-    // float->int:
-    test_c!(f32::MAX, f32 -> u128, 0xffffff00000000000000000000000000);
-    // nextDown(f32::MAX) = 2^128 - 2 * 2^104
-    const SECOND_LARGEST_F32: f32 = 340282326356119256160033759537265639424.;
-    test_c!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
+    #[cfg(not(target_os="emscripten"))]
+    {
+        // float->int:
+        test_c!(f32::MAX, f32 -> u128, 0xffffff00000000000000000000000000);
+        // nextDown(f32::MAX) = 2^128 - 2 * 2^104
+        const SECOND_LARGEST_F32: f32 = 340282326356119256160033759537265639424.;
+        test_c!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
 
-    // int->float:
-    // f32::MAX - 0.5 ULP and smaller should be rounded down
-    test_c!(0xfffffe00000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
-    test_c!(0xfffffe7fffffffffffffffffffffffff, u128 -> f32, SECOND_LARGEST_F32);
-    test_c!(0xfffffe80000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
-    // numbers within < 0.5 ULP of f32::MAX it should be rounded to f32::MAX
-    test_c!(0xfffffe80000000000000000000000001, u128 -> f32, f32::MAX);
-    test_c!(0xfffffeffffffffffffffffffffffffff, u128 -> f32, f32::MAX);
-    test_c!(0xffffff00000000000000000000000000, u128 -> f32, f32::MAX);
-    test_c!(0xffffff00000000000000000000000001, u128 -> f32, f32::MAX);
-    test_c!(0xffffff7fffffffffffffffffffffffff, u128 -> f32, f32::MAX);
-    // f32::MAX + 0.5 ULP and greater should be rounded to infinity
-    test_c!(0xffffff80000000000000000000000000, u128 -> f32, f32::INFINITY);
-    test_c!(0xffffff80000000f00000000000000000, u128 -> f32, f32::INFINITY);
-    test_c!(0xffffff87ffffffffffffffff00000001, u128 -> f32, f32::INFINITY);
+        // int->float:
+        // f32::MAX - 0.5 ULP and smaller should be rounded down
+        test_c!(0xfffffe00000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
+        test_c!(0xfffffe7fffffffffffffffffffffffff, u128 -> f32, SECOND_LARGEST_F32);
+        test_c!(0xfffffe80000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
+        // numbers within < 0.5 ULP of f32::MAX it should be rounded to f32::MAX
+        test_c!(0xfffffe80000000000000000000000001, u128 -> f32, f32::MAX);
+        test_c!(0xfffffeffffffffffffffffffffffffff, u128 -> f32, f32::MAX);
+        test_c!(0xffffff00000000000000000000000000, u128 -> f32, f32::MAX);
+        test_c!(0xffffff00000000000000000000000001, u128 -> f32, f32::MAX);
+        test_c!(0xffffff7fffffffffffffffffffffffff, u128 -> f32, f32::MAX);
+        // f32::MAX + 0.5 ULP and greater should be rounded to infinity
+        test_c!(0xffffff80000000000000000000000000, u128 -> f32, f32::INFINITY);
+        test_c!(0xffffff80000000f00000000000000000, u128 -> f32, f32::INFINITY);
+        test_c!(0xffffff87ffffffffffffffff00000001, u128 -> f32, f32::INFINITY);
 
-    // u128->f64 should not be affected by the u128->f32 checks
-    test_c!(0xffffff80000000000000000000000000, u128 -> f64,
-          340282356779733661637539395458142568448.0);
-    test_c!(u128::MAX, u128 -> f64, 340282366920938463463374607431768211455.0);
+        // u128->f64 should not be affected by the u128->f32 checks
+        test_c!(0xffffff80000000000000000000000000, u128 -> f64,
+              340282356779733661637539395458142568448.0);
+        test_c!(u128::MAX, u128 -> f64, 340282366920938463463374607431768211455.0);
+    }
 }
