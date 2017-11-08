@@ -2498,7 +2498,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
         if !foreign.is_empty() {
             write!(w, "
-                <h2 id='foreign-impls' class='section-header'>
+                <h2 id='foreign-impls' class='small-section-header'>
                   Implementations on Foreign Types<a href='#foreign-impls' class='anchor'></a>
                 </h2>
             ")?;
@@ -3591,7 +3591,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             let mut links = HashSet::new();
             let ret = v.iter()
                        .filter_map(|i| if let Some(ref i) = i.inner_impl().trait_ {
-                           let out = format!("{:#}", i).replace("<", "&lt;").replace(">", "&gt;");
+                           let i_display = format!("{:#}", i);
+                           let out = Escape(&i_display);
                            let encoded = small_url_encode(&format!("{:#}", i));
                            let generated = format!("<a href=\"#impl-{}\">{}</a>", encoded, out);
                            if !links.contains(&generated) && links.insert(generated.clone()) {
@@ -3617,11 +3618,12 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
 fn sidebar_struct(fmt: &mut fmt::Formatter, it: &clean::Item,
                   s: &clean::Struct) -> fmt::Result {
     let mut sidebar = String::new();
+    let fields = get_struct_fields_name(&s.fields);
 
-    if s.fields.iter()
-               .any(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false }) {
+    if !fields.is_empty() {
         if let doctree::Plain = s.struct_type {
-            sidebar.push_str("<li><a href=\"#fields\">Fields</a></li>");
+            sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
+                                       <div class=\"sidebar-links\">{}</div>", fields));
         }
     }
 
@@ -3633,40 +3635,122 @@ fn sidebar_struct(fmt: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
+fn extract_for_impl_name(item: &clean::Item) -> Option<(String, String)> {
+    match item.inner {
+        clean::ItemEnum::ImplItem(ref i) => {
+            if let Some(ref trait_) = i.trait_ {
+                Some((format!("{:#}", i.for_), format!("{:#}", trait_)))
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
 fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
                  t: &clean::Trait) -> fmt::Result {
     let mut sidebar = String::new();
 
-    let has_types = t.items.iter().any(|m| m.is_associated_type());
-    let has_consts = t.items.iter().any(|m| m.is_associated_const());
-    let has_required = t.items.iter().any(|m| m.is_ty_method());
-    let has_provided = t.items.iter().any(|m| m.is_method());
+    let types = t.items
+                 .iter()
+                 .filter_map(|m| {
+                     match m.name {
+                         Some(ref name) if m.is_associated_type() => {
+                             Some(format!("<a href=\"#associatedtype.{name}\">{name}</a>",
+                                          name=name))
+                         }
+                         _ => None,
+                     }
+                 })
+                 .collect::<String>();
+    let consts = t.items
+                  .iter()
+                  .filter_map(|m| {
+                      match m.name {
+                          Some(ref name) if m.is_associated_const() => {
+                              Some(format!("<a href=\"#associatedconstant.{name}\">{name}</a>",
+                                           name=name))
+                          }
+                          _ => None,
+                      }
+                  })
+                  .collect::<String>();
+    let required = t.items
+                    .iter()
+                    .filter_map(|m| {
+                        match m.name {
+                            Some(ref name) if m.is_ty_method() => {
+                                Some(format!("<a href=\"#tymethod.{name}\">{name}</a>",
+                                             name=name))
+                            }
+                            _ => None,
+                        }
+                    })
+                    .collect::<String>();
+    let provided = t.items
+                    .iter()
+                    .filter_map(|m| {
+                        match m.name {
+                            Some(ref name) if m.is_method() => {
+                                Some(format!("<a href=\"#method.{name}\">{name}</a>", name=name))
+                            }
+                            _ => None,
+                        }
+                    })
+                    .collect::<String>();
 
-    if has_types {
-        sidebar.push_str("<li><a href=\"#associated-types\">Associated Types</a></li>");
+    if !types.is_empty() {
+        sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#associated-types\">\
+                                   Associated Types</a><div class=\"sidebar-links\">{}</div>",
+                                  types));
     }
-    if has_consts {
-        sidebar.push_str("<li><a href=\"#associated-const\">Associated Constants</a></li>");
+    if !consts.is_empty() {
+        sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#associated-const\">\
+                                   Associated Constants</a><div class=\"sidebar-links\">{}</div>",
+                                  consts));
     }
-    if has_required {
-        sidebar.push_str("<li><a href=\"#required-methods\">Required Methods</a></li>");
+    if !required.is_empty() {
+        sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#required-methods\">\
+                                   Required Methods</a><div class=\"sidebar-links\">{}</div>",
+                                  required));
     }
-    if has_provided {
-        sidebar.push_str("<li><a href=\"#provided-methods\">Provided Methods</a></li>");
+    if !provided.is_empty() {
+        sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#provided-methods\">\
+                                   Provided Methods</a><div class=\"sidebar-links\">{}</div>",
+                                  provided));
     }
 
     let c = cache();
 
     if let Some(implementors) = c.implementors.get(&it.def_id) {
-        if implementors.iter().any(|i| i.impl_.for_.def_id()
-                                   .map_or(false, |d| !c.paths.contains_key(&d)))
-        {
-            sidebar.push_str("<li><a href=\"#foreign-impls\">\
-                             Implementations on Foreign Types</a></li>");
+        let res = implementors.iter()
+                              .filter(|i| i.impl_.for_.def_id()
+                                                      .map_or(false, |d| !c.paths.contains_key(&d)))
+                              .filter_map(|i| {
+                                  if let Some(item) = implementor2item(&c, i) {
+                                      match extract_for_impl_name(&item) {
+                                          Some((ref name, ref url)) => {
+                                              Some(format!("<a href=\"#impl-{}\">{}</a>",
+                                                           small_url_encode(url),
+                                                           Escape(name)))
+                                          }
+                                          _ => None,
+                                      }
+                                  } else {
+                                      None
+                                  }
+                              })
+                              .collect::<String>();
+        if !res.is_empty() {
+            sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#foreign-impls\">\
+                                       Implementations on Foreign Types</a><div \
+                                       class=\"sidebar-links\">{}</div>",
+                                      res));
         }
     }
 
-    sidebar.push_str("<li><a href=\"#implementors\">Implementors</a></li>");
+    sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
 
     sidebar.push_str(&sidebar_assoc_items(it));
 
@@ -3693,13 +3777,29 @@ fn sidebar_typedef(fmt: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
+fn get_struct_fields_name(fields: &[clean::Item]) -> String {
+    fields.iter()
+          .filter(|f| if let clean::StructFieldItem(..) = f.inner {
+              true
+          } else {
+              false
+          })
+          .filter_map(|f| match f.name {
+              Some(ref name) => Some(format!("<a href=\"#structfield.{name}\">\
+                                              {name}</a>", name=name)),
+              _ => None,
+          })
+          .collect()
+}
+
 fn sidebar_union(fmt: &mut fmt::Formatter, it: &clean::Item,
                  u: &clean::Union) -> fmt::Result {
     let mut sidebar = String::new();
+    let fields = get_struct_fields_name(&u.fields);
 
-    if u.fields.iter()
-               .any(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false }) {
-        sidebar.push_str("<li><a href=\"#fields\">Fields</a></li>");
+    if !fields.is_empty() {
+        sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
+                                   <div class=\"sidebar-links\">{}</div>", fields));
     }
 
     sidebar.push_str(&sidebar_assoc_items(it));
@@ -3714,8 +3814,16 @@ fn sidebar_enum(fmt: &mut fmt::Formatter, it: &clean::Item,
                 e: &clean::Enum) -> fmt::Result {
     let mut sidebar = String::new();
 
-    if !e.variants.is_empty() {
-        sidebar.push_str("<li><a href=\"#variants\">Variants</a></li>");
+    let variants = e.variants.iter()
+                             .filter_map(|v| match v.name {
+                                 Some(ref name) => Some(format!("<a href=\"#variant.{name}\">{name}\
+                                                                 </a>", name = name)),
+                                 _ => None,
+                             })
+                             .collect::<String>();
+    if !variants.is_empty() {
+        sidebar.push_str(&format!("<a class=\"sidebar-title\" href=\"#variants\">Variants</a>\
+                                   <div class=\"sidebar-links\">{}</div>", variants));
     }
 
     sidebar.push_str(&sidebar_assoc_items(it));
