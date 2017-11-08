@@ -1281,17 +1281,10 @@ fn format_tuple_struct(
         }
         result.push(')');
     } else {
-        // 1 = ","
-        let body = rewrite_call_inner(
-            context,
-            "",
-            &fields.iter().map(|field| field).collect::<Vec<_>>()[..],
-            span,
-            Shape::indented(offset, context.config).sub_width(1)?,
-            context.config.fn_call_width(),
-            false,
-        )?;
-        result.push_str(&body);
+        let shape = Shape::indented(offset, context.config);
+        let fields = &fields.iter().map(|field| field).collect::<Vec<_>>()[..];
+        let one_line_width = context.config.fn_call_width();
+        result = rewrite_call_inner(context, &result, fields, span, shape, one_line_width, false)?;
     }
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n')
