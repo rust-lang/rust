@@ -469,10 +469,22 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         debug!("check_method_receiver: sig={:?}", sig);
 
+        let self_ty = fcx.normalize_associated_types_in(span, &self_ty);
+        let self_ty = fcx.liberate_late_bound_regions(
+            method.def_id,
+            &ty::Binder(self_ty)
+        );
+
         let self_arg_ty = sig.inputs()[0];
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
         let eq = |expected, actual| fcx.at(&cause, fcx.param_env).eq(expected, actual);
+        let self_arg_ty = fcx.normalize_associated_types_in(span, &self_arg_ty);
+        let self_arg_ty = fcx.liberate_late_bound_regions(
+            method.def_id,
+            &ty::Binder(self_arg_ty)
+        );
+
         let mut autoderef = fcx.autoderef(span, self_arg_ty);
 
         loop {
@@ -484,7 +496,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     autoderef.finalize();
                     break
                 }
-
             } else {
                 fcx.tcx.sess.diagnostic().mut_span_err(span, &format!("invalid `self` type: {:?}", self_arg_ty))
                 .note(&format!("type must be `{:?}` or a type that dereferences to it`", self_ty))
