@@ -213,6 +213,7 @@
             break;
 
         case "+":
+        case "-":
             ev.preventDefault();
             toggleAllDocs();
             break;
