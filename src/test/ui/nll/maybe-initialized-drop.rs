@@ -7,8 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// revisions: mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+
+//compile-flags: -Z emit-end-regions -Z borrowck-mir -Z nll
 
 struct Wrap<'p> { p: &'p mut i32 }
 
@@ -43,6 +43,7 @@ fn baz_a() {
     let s = String::from("str");
     let foo = Foo { a: s, b: wrap };
     move_string(foo.a);
+    x += 1; //~ ERROR because of Foo.b's Wrap dtor
 }
 
 fn baz_a_b() {
@@ -52,6 +53,7 @@ fn baz_a_b() {
     let foo = Foo { a: s, b: wrap };
     move_string(foo.a);
     move_wrap(foo.b);
+    x += 1; // OK, drops are inert
 }
 
 fn baz_b() {
@@ -60,6 +62,8 @@ fn baz_b() {
     let s = String::from("str");
     let foo = Foo { a: s, b: wrap };
     move_wrap(foo.b);
+    x += 1; //~ ERROR because of Foo.a's implicit dtor
+    // FIXME ^ Should not error in the future with implicit dtors, only manually implemented ones
 }
 
 fn main() { }

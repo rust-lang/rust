@@ -1,5 +1,5 @@
 error[E0506]: cannot assign to `x` because it is borrowed (Ast)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:24:5
+  --> $DIR/maybe-initialized-drop.rs:24:5
    |
 23 |     let wrap = Wrap { p: &mut x };
    |                               - borrow of `x` occurs here
@@ -7,7 +7,7 @@ error[E0506]: cannot assign to `x` because it is borrowed (Ast)
    |     ^^^^^^ assignment to borrowed `x` occurs here
 
 error[E0506]: cannot assign to `x` because it is borrowed (Ast)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:31:5
+  --> $DIR/maybe-initialized-drop.rs:31:5
    |
 29 |     let wrap = Wrap { p: &mut x };
    |                               - borrow of `x` occurs here
@@ -15,83 +15,32 @@ error[E0506]: cannot assign to `x` because it is borrowed (Ast)
 31 |     x += 1; // OK, drop is inert
    |     ^^^^^^ assignment to borrowed `x` occurs here
 
-error[E0506]: cannot assign to `x` because it is borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:24:5
-   |
-23 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
-24 |     x += 1; //~ ERROR because of dtor
-   |     ^^^^^^ assignment to borrowed `x` occurs here
-
-error[E0503]: cannot use `x` because it was mutably borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:24:5
-   |
-23 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
-24 |     x += 1; //~ ERROR because of dtor
-   |     ^^^^^^ use of borrowed `x`
-
-error[E0506]: cannot assign to `x` because it is borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:25:2
-   |
-23 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
-24 |     x += 1; //~ ERROR because of dtor
-25 | }
-   |  ^ assignment to borrowed `x` occurs here
-
-error[E0506]: cannot assign to `x` because it is borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:31:5
-   |
-29 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
-30 |     std::mem::drop(wrap);
-31 |     x += 1; // OK, drop is inert
-   |     ^^^^^^ assignment to borrowed `x` occurs here
-
-error[E0503]: cannot use `x` because it was mutably borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:31:5
-   |
-29 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
-30 |     std::mem::drop(wrap);
-31 |     x += 1; // OK, drop is inert
-   |     ^^^^^^ use of borrowed `x`
-
-error[E0506]: cannot assign to `x` because it is borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:32:2
-   |
-29 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
-...
-32 | }
-   |  ^ assignment to borrowed `x` occurs here
-
-error[E0506]: cannot assign to `x` because it is borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:46:2
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:46:5
    |
 42 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
+   |                               - borrow of `x` occurs here
 ...
-46 | }
-   |  ^ assignment to borrowed `x` occurs here
+46 |     x += 1; //~ ERROR because of Foo.b's Wrap dtor
+   |     ^^^^^^ assignment to borrowed `x` occurs here
 
-error[E0506]: cannot assign to `x` because it is borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:55:2
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:56:5
    |
-50 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
+51 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
 ...
-55 | }
-   |  ^ assignment to borrowed `x` occurs here
+56 |     x += 1; // OK, drops are inert
+   |     ^^^^^^ assignment to borrowed `x` occurs here
 
-error[E0506]: cannot assign to `x` because it is borrowed (Mir)
-  --> /home/paulf/rust/src/test/ui/nll/maybe-initialized-drop.rs:63:2
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:65:5
    |
-59 |     let wrap = Wrap { p: &mut x };
-   |                          ------ borrow of `x` occurs here
+61 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
 ...
-63 | }
-   |  ^ assignment to borrowed `x` occurs here
+65 |     x += 1; //~ ERROR because of Foo.a's implicit dtor
+   |     ^^^^^^ assignment to borrowed `x` occurs here
 
-error: aborting due to 11 previous errors
+error: aborting due to 5 previous errors
+

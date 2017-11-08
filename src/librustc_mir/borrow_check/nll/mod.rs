@@ -37,8 +37,8 @@ mod renumber;
 /// scraping out the set of free regions (e.g., region parameters)
 /// declared on the function. That set will need to be given to
 /// `compute_regions`.
-pub(super) fn replace_regions_in_mir<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+pub(super) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     source: MirSource,
     mir: &mut Mir<'tcx>
 ) -> FreeRegions<'tcx> {
@@ -54,13 +54,13 @@ pub(super) fn replace_regions_in_mir<'a, 'gcx, 'tcx>(
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub(super) fn compute_regions<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+pub(super) fn compute_regions<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     source: MirSource,
     free_regions: &FreeRegions<'tcx>,
     mir: &Mir<'tcx>,
     param_env: ty::ParamEnv<'gcx>,
-    flow_inits: &FlowInProgress<MaybeInitializedLvals<'a, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> RegionInferenceContext<'tcx> {
     // Run the MIR type-checker.

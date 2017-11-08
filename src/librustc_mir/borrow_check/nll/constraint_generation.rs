@@ -13,7 +13,7 @@ use rustc::mir::{Location, Lvalue, Mir, Rvalue};
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::Visitor;
 use rustc::mir::Lvalue::Projection;
-use rustc::mir::{LvalueProjection, ProjectionElem};
+use rustc::mir::{LvalueProjection, ProjectionElem, Local};
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty};
@@ -35,7 +35,7 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     mir_source: MirSource,
     liveness: &LivenessResults,
-    flow_inits: &FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     ConstraintGeneration {
@@ -56,7 +56,7 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     mir: &'cg Mir<'tcx>,
     liveness: &'cg LivenessResults,
     mir_source: MirSource,
-    flow_inits: &'cg FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    flow_inits: &'cg mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &'cg MoveData<'tcx>,
 }
 
@@ -84,19 +84,27 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                     }
                 });
 
-            self.liveness.drop.simulate_block(
-                self.mir,
-                bb,
-                |location, live_locals| {
-                    for live_local in live_locals.iter() {
-                        let mpi = self.move_data.rev_lookup.find_local(live_local);
-                        if self.flow_inits.has_any_child_of(mpi).is_some() {
-                            let live_local_ty = self.mir.local_decls[live_local].ty;
-                            self.add_drop_live_constraint(live_local_ty, location);
-                        }
+            let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
+            self.liveness.drop.simulate_block(self.mir, bb, |location, live_locals| {
+                all_live_locals.push((location, live_locals.iter().collect()));
+            });
+
+            self.flow_inits.reset_to_entry_of(bb);
+            for index in 0 .. self.mir.basic_blocks()[bb].statements.len() {
+                let location = Location { block: bb, statement_index: index };
+                let (location2, live_locals) = all_live_locals.pop().unwrap();
+                assert_eq!(location, location2);
+
+                for live_local in live_locals {
+                    let mpi = self.move_data.rev_lookup.find_local(live_local);
+                    if self.flow_inits.has_any_child_of(mpi).is_some() {
+                        let live_local_ty = self.mir.local_decls[live_local].ty;
+                        self.add_drop_live_constraint(live_local_ty, location);
                     }
-                },
-            );
+                }
+
+                self.flow_inits.reconstruct_statement_effect(location);
+            }
         }
     }
 

@@ -81,11 +81,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     // contain non-lexical lifetimes. It will have a lifetime tied
     // to the inference context.
     let mut mir: Mir<'tcx> = input_mir.clone();
-    let free_regions = {
+    let free_regions = if !tcx.sess.opts.debugging_opts.nll {
+        None
+    } else {
         let mir = &mut mir;
 
         // Replace all regions with fresh inference variables.
-        nll::replace_regions_in_mir(infcx, src, mir)
+        Some(nll::replace_regions_in_mir(infcx, src, mir))
     };
     let mir = &mir;
 
@@ -119,7 +121,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
-    let flow_inits = FlowInProgress::new(do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+    let mut flow_inits = FlowInProgress::new(do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                                  MaybeInitializedLvals::new(tcx, mir, &mdpe),
                                  |bd, i| &bd.move_data().move_paths[i]));
     let flow_uninits = FlowInProgress::new(do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
@@ -133,13 +135,14 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         Some(nll::compute_regions(
             infcx,
             src,
-            &free_regions,
+            &free_regions.unwrap(),
             mir,
             param_env,
-            &flow_inits,
+            &mut flow_inits,
             &mdpe.move_data
         ))
     };
+    let flow_inits = flow_inits; // remove mut
 
     let mut mbcx = MirBorrowckCtxt {
         tcx: tcx,
