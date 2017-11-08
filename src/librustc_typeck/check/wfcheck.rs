@@ -492,7 +492,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
                 if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
                     autoderef.finalize();
-                    if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, self_ty, potential_self_ty) {
+                    if let Some(mut err) = fcx.demand_eqtype_with_origin(
+                        &cause, self_ty, potential_self_ty) {
                         err.emit();
                     }
                     break
