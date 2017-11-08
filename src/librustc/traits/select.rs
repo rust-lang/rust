@@ -718,8 +718,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                match self.infcx.closure_kind(closure_def_id) {
+            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                match closure_substs.opt_closure_kind(closure_def_id, self.tcx()) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
                             EvaluatedToOk
