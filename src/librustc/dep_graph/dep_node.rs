@@ -568,7 +568,13 @@ define_dep_nodes!( <'tcx>
 
     [] ParamEnv(DefId),
     [] DescribeDef(DefId),
-    [] DefSpan(DefId),
+
+    // FIXME(mw): DefSpans are not really inputs since they are derived from
+    // HIR. But at the moment HIR hashing still contains some hacks that allow
+    // to make type debuginfo to be source location independent. Declaring
+    // DefSpan an input makes sure that changes to these are always detected
+    // regardless of HIR hashing.
+    [input] DefSpan(DefId),
     [] LookupStability(DefId),
     [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),

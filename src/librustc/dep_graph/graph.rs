@@ -789,6 +789,9 @@ impl CurrentDepGraph {
             // node.
             if cfg!(debug_assertions) {
                 if node.kind.is_input() && reads.len() > 0 &&
+                   // FIXME(mw): Special case for DefSpan until Spans are handled
+                   //            better in general.
+                   node.kind != DepKind::DefSpan &&
                     reads.iter().any(|&i| {
                         !(self.nodes[i].kind == DepKind::CrateMetadata ||
                           self.nodes[i].kind == DepKind::Krate)
