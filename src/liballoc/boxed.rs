@@ -365,14 +365,15 @@ impl<T: ?Sized> Box<T> {
         unsafe { mem::transmute(b) }
     }
 
-    /// Consumes and leaks the `Box`, returning a static reference,
-    /// `&'static T`.
+    /// Consumes and leaks the `Box`, returning a static mutable reference,
+    /// `&'static mut T`.
     ///
     /// This function is mainly useful for data that lives for the remainder of
-    /// the programs life. Dropping the returned reference will cause a memory
+    /// the program's life. Dropping the returned reference will cause a memory
     /// leak. If this is not acceptable, the reference should first be wrapped
-    /// with the [`Box::from_raw`] function producing a `Box` which can then be
-    /// dropped which will properly destroy `T` and release the memory.
+    /// with the [`Box::from_raw`] function producing a `Box`. This `Box` can
+    /// then be dropped which will properly destroy `T` and release the
+    /// allocated memory.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::leak(b)` instead of `b.leak()`. This
