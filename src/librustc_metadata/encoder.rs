@@ -1214,7 +1214,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             EntryKind::Generator(self.lazy(&data))
         } else {
             let data = ClosureData {
-                kind: tcx.closure_kind(def_id),
                 sig: self.lazy(&tcx.fn_sig(def_id)),
             };
             EntryKind::Closure(self.lazy(&data))

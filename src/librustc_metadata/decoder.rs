@@ -1020,13 +1020,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn closure_kind(&self, closure_id: DefIndex) -> ty::ClosureKind {
-        match self.entry(closure_id).kind {
-            EntryKind::Closure(data) => data.decode(self).kind,
-            _ => bug!(),
-        }
-    }
-
     pub fn fn_sig(&self,
                   id: DefIndex,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>)

@@ -498,7 +498,6 @@ define_dep_nodes!( <'tcx>
     [] IsAutoImpl(DefId),
     [] ImplTraitRef(DefId),
     [] ImplPolarity(DefId),
-    [] ClosureKind(DefId),
     [] FnSignature(DefId),
     [] GenSignature(DefId),
     [] CoerceUnsizedInfo(DefId),

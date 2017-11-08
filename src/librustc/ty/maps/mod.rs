@@ -167,10 +167,6 @@ define_maps! { <'tcx>
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
     [] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
 
-    /// Type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    [] fn closure_kind: ClosureKind(DefId) -> ty::ClosureKind,
-
     /// The result of unsafety-checking this def-id.
     [] fn unsafety_check_result: UnsafetyCheckResult(DefId) -> mir::UnsafetyCheckResult,
 

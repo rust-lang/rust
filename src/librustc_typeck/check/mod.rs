@@ -722,7 +722,6 @@ pub fn provide(providers: &mut Providers) {
         typeck_item_bodies,
         typeck_tables_of,
         has_typeck_tables,
-        closure_kind,
         generator_sig,
         adt_destructor,
         used_trait_imports,
@@ -736,14 +735,6 @@ fn generator_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let hir_id = tcx.hir.node_to_hir_id(node_id);
     tcx.typeck_tables_of(def_id).generator_sigs()[hir_id].map(|s| ty::Binder(s))
-}
-
-fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          def_id: DefId)
-                          -> ty::ClosureKind {
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let hir_id = tcx.hir.node_to_hir_id(node_id);
-    tcx.typeck_tables_of(def_id).closure_kinds()[hir_id].0
 }
 
 fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
