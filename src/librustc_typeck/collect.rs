@@ -1017,7 +1017,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) = node {
         // add a dummy parameter for the closure kind
         types.push(ty::TypeParameterDef {
-            index: type_start as u32,
+            index: type_start,
             name: Symbol::intern("<closure_kind>"),
             def_id,
             has_default: false,
@@ -1026,9 +1026,20 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             synthetic: None,
         });
 
+        // add a dummy parameter for the closure signature
+        types.push(ty::TypeParameterDef {
+            index: type_start + 1,
+            name: Symbol::intern("<closure_signature>"),
+            def_id,
+            has_default: false,
+            object_lifetime_default: rl::Set1::Empty,
+            pure_wrt_drop: false,
+            synthetic: None,
+        });
+
         tcx.with_freevars(node_id, |fv| {
-            types.extend(fv.iter().zip(1..).map(|(_, i)| ty::TypeParameterDef {
-                index: type_start + i as u32,
+            types.extend(fv.iter().zip(2..).map(|(_, i)| ty::TypeParameterDef {
+                index: type_start + i,
                 name: Symbol::intern("<upvar>"),
                 def_id,
                 has_default: false,

@@ -336,7 +336,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyGenerator(..) | ty::TyClosure(..) => {
+                ty::TyGenerator(..) => {
                     // the types in a closure or generator are always the types of
                     // local variables (or possibly references to local
                     // variables), we'll walk those.
@@ -344,6 +344,21 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // (Though, local variables are probably not
                     // needed, as they are separately checked w/r/t
                     // WFedness.)
+                }
+
+                ty::TyClosure(def_id, substs) => {
+                    // Just check the upvar types for WF. This is
+                    // needed because we capture the signature and it
+                    // may not be WF without the implied
+                    // bounds. Consider a closure like `|x: &'a T|` --
+                    // it may be that `T: 'a` is not known to hold in
+                    // the creator's context (and indeed the closure
+                    // may not be invoked by its creator, but rather
+                    // turned to someone who *can* verify that).
+                    subtys.skip_current_subtree(); // subtree handled by compute_projection
+                    for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
+                        self.compute(upvar_ty);
+                    }
                 }
 
                 ty::TyFnDef(..) | ty::TyFnPtr(_) => {

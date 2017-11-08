@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn g<F>(_: F) where F: FnOnce(Option<F>) {}
+struct Helper<'a, F: 'a>(&'a F);
+
+fn fix<F>(f: F) -> i32 where F: Fn(Helper<F>, i32) -> i32 {
+    f(Helper(&f), 8)
+}
 
 fn main() {
-    g(|_| {  });
+    fix(|_, x| x); //~ ERROR mismatched types
 }

@@ -110,6 +110,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.demand_eqtype(expr.span,
                                ty::ClosureKind::FnOnce.to_ty(self.tcx),
                                substs.closure_kind_ty(expr_def_id, self.tcx));
+            self.demand_eqtype(expr.span,
+                               self.tcx.types.char, // for generator, use some bogus type
+                               substs.closure_sig_ty(expr_def_id, self.tcx));
             return self.tcx.mk_generator(expr_def_id, substs, interior);
         }
 
@@ -137,6 +140,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             sig,
             opt_kind
         );
+
+        let sig_fn_ptr_ty = self.tcx.mk_fn_ptr(sig);
+        self.demand_eqtype(expr.span,
+                           sig_fn_ptr_ty,
+                           substs.closure_sig_ty(expr_def_id, self.tcx));
 
         self.tables.borrow_mut().closure_tys_mut().insert(expr.hir_id, sig);
         if let Some(kind) = opt_kind {

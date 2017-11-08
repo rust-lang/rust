@@ -174,7 +174,7 @@ pub enum TypeVariants<'tcx> {
 
 /// A closure can be modeled as a struct that looks like:
 ///
-///     struct Closure<'l0...'li, T0...Tj, CK, U0...Uk> {
+///     struct Closure<'l0...'li, T0...Tj, CK, CS, U0...Uk> {
 ///         upvar0: U0,
 ///         ...
 ///         upvark: Uk
@@ -187,6 +187,10 @@ pub enum TypeVariants<'tcx> {
 /// - CK represents the *closure kind* (Fn vs FnMut vs FnOnce). This
 ///   is rather hackily encoded via a scalar type. See
 ///   `TyS::to_opt_closure_kind` for details.
+/// - CS represents the *closure signature*, representing as a `fn()`
+///   type. For example, `fn(u32, u32) -> u32` would mean that the closure
+///   implements `CK<(u32, u32), Output = u32>`, where `CK` is the trait
+///   specified above.
 /// - U0...Uk are type parameters representing the types of its upvars
 ///   (borrowed, if appropriate; that is, if Ui represents a by-ref upvar,
 ///    and the up-var has the type `Foo`, then `Ui = &Foo`).
@@ -266,6 +270,7 @@ pub struct ClosureSubsts<'tcx> {
 /// parent slice and not canonical substs themselves.
 struct SplitClosureSubsts<'tcx> {
     closure_kind_ty: Ty<'tcx>,
+    closure_sig_ty: Ty<'tcx>,
     upvar_kinds: &'tcx [Kind<'tcx>],
 }
 
@@ -277,8 +282,9 @@ impl<'tcx> ClosureSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
         let parent_len = generics.parent_count();
         SplitClosureSubsts {
-            closure_kind_ty: self.substs[parent_len].as_type().expect("closure-kind should be type"),
-            upvar_kinds: &self.substs[parent_len + 1..],
+            closure_kind_ty: self.substs[parent_len].as_type().expect("CK should be a type"),
+            closure_sig_ty: self.substs[parent_len + 1].as_type().expect("CS should be a type"),
+            upvar_kinds: &self.substs[parent_len + 2..],
         }
     }
 
@@ -294,6 +300,20 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// variable during inference.
     pub fn closure_kind_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_kind_ty
+    }
+
+    /// Returns the type representing the closure signature for this
+    /// closure; may contain type variables during inference.
+    pub fn closure_sig_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).closure_sig_ty
+    }
+
+    /// Extracts the signature from the closure.
+    pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> ty::PolyFnSig<'tcx> {
+        match &self.split(def_id, tcx).closure_sig_ty.sty {
+            ty::TyFnPtr(sig) => *sig,
+            t => bug!("closure_sig_ty is not a fn-ptr: {:?}", t),
+        }
     }
 }
 
