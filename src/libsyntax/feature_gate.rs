@@ -385,6 +385,9 @@ declare_features! (
 
     // allow '|' at beginning of match arms (RFC 1925)
     (active, match_beginning_vert, "1.21.0", Some(44101)),
+
+    // allow irrefutable patterns in if-let and while-let statements (RFC 2086)
+    (active, irrefutable_let_pattern, "1.22.0", Some(44495)),
 );
 
 declare_features! (
