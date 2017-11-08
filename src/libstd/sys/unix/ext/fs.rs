@@ -20,7 +20,9 @@ use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 use sys::platform::fs::MetadataExt as UnixMetadataExt;
 
-/// Unix-specific extensions to `File`
+/// Unix-specific extensions to [`File`].
+///
+/// [`File`]: ../../../../std/fs/struct.File.html
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Reads a number of bytes starting from a given offset.
@@ -515,19 +517,79 @@ impl MetadataExt for fs::Metadata {
     fn blocks(&self) -> u64 { self.st_blocks() }
 }
 
-/// Add special unix types (block/char device, fifo and socket)
+/// Add support for special unix types (block/char device, fifo and socket).
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("block_device_file")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_block_device());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_block_device(&self) -> bool;
     /// Returns whether this file type is a char device.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("char_device_file")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_char_device());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_char_device(&self) -> bool;
     /// Returns whether this file type is a fifo.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("fifo_file")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_fifo());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_fifo(&self) -> bool;
     /// Returns whether this file type is a socket.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("unix.socket")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_socket());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_socket(&self) -> bool;
 }
@@ -540,7 +602,9 @@ impl FileTypeExt for fs::FileType {
     fn is_socket(&self) -> bool { self.as_inner().is(libc::S_IFSOCK) }
 }
 
-/// Unix-specific extension methods for `fs::DirEntry`
+/// Unix-specific extension methods for [`fs::DirEntry`].
+///
+/// [`fs::DirEntry`]: ../../../../std/fs/struct.DirEntry.html
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
@@ -600,7 +664,9 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 }
 
 #[stable(feature = "dir_builder", since = "1.6.0")]
-/// An extension trait for `fs::DirBuilder` for unix-specific options.
+/// An extension trait for [`fs::DirBuilder`] for unix-specific options.
+///
+/// [`fs::DirBuilder`]: ../../../../std/fs/struct.DirBuilder.html
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
