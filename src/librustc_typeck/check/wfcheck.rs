@@ -12,7 +12,6 @@ use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
-use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::util::ExplicitSelf;
@@ -478,7 +477,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let self_arg_ty = sig.inputs()[0];
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-        let eq = |expected, actual| fcx.at(&cause, fcx.param_env).eq(expected, actual);
         let self_arg_ty = fcx.normalize_associated_types_in(span, &self_arg_ty);
         let self_arg_ty = fcx.liberate_late_bound_regions(
             method.def_id,
@@ -491,9 +489,11 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             if let Some((potential_self_ty, _)) = autoderef.next() {
                 debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`", potential_self_ty, self_ty);
 
-                if let Ok(InferOk { obligations, value: () }) = eq(self_ty, potential_self_ty) {
-                    fcx.register_predicates(obligations);
+                if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
                     autoderef.finalize();
+                    if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, self_ty, potential_self_ty) {
+                        err.emit();
+                    }
                     break
                 }
             } else {
