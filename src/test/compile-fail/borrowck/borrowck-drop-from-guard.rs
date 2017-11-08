@@ -19,6 +19,6 @@ fn main()
     match Some(42) {
         Some(_) if { drop(my_str); false } => {}
         Some(_) => {}
-        None => { foo(my_str); } //~ ERROR (Mir) [E0381]
+        None => { foo(my_str); } //~ ERROR (Mir) [E0382]
     }
 }
