@@ -14,6 +14,8 @@ fn main() {
     let x = S.other(S.id());
 }
 
+// no_mangle to make sure this gets instantiated even in an executable.
+#[no_mangle]
 pub fn test() {
     let u = S;
     let mut v = S;

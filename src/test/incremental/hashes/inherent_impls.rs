@@ -25,7 +25,7 @@
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
 
-struct Foo;
+pub struct Foo;
 
 // Change Method Name -----------------------------------------------------------
 #[cfg(cfail1)]
@@ -577,4 +577,20 @@ impl<T: Clone> Bar<T> {
     #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_trait_bound_to_impl_parameter(&self) { }
+}
+
+
+// Force instantiation of some fns so we can check their hash.
+pub fn instantiation_root() {
+    Foo::method_privacy();
+
+    #[cfg(cfail1)]
+    {
+        Bar(0u32).change_impl_self_type();
+    }
+
+    #[cfg(not(cfail1))]
+    {
+        Bar(0u64).change_impl_self_type();
+    }
 }

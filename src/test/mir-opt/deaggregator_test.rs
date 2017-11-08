@@ -18,7 +18,10 @@ fn bar(a: usize) -> Baz {
     Baz { x: a, y: 0.0, z: false }
 }
 
-fn main() {}
+fn main() {
+    // Make sure the function actually gets instantiated.
+    bar(0);
+}
 
 // END RUST SOURCE
 // START rustc.node13.Deaggregator.before.mir

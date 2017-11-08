@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,19 +7,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
-#![crate_type="rlib"]
-#![allow(warnings)]
 
-pub mod a {
-    #[no_mangle]
-    pub extern fn fail() {
-    }
-}
+// ignore-tidy-linelength
+// compile-flags:-Zprint-trans-items=lazy
 
-pub mod b {
-    #[no_mangle]
-    pub extern fn fail() {
-    //~^ symbol `fail` is already defined
-    }
+// NB: We do not expect *any* translation item to be generated here.
+
+#![feature(const_fn)]
+#![deny(dead_code)]
+#![crate_type = "rlib"]
+
+pub const fn foo(x: u32) -> u32 {
+    x + 0xf00
 }

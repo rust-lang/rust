@@ -13,6 +13,7 @@ fn outer<T>() {
     fn inner() -> u32 {
         8675309
     }
+    inner();
 }
 
 extern "C" fn outer_foreign<T>() {
@@ -20,6 +21,7 @@ extern "C" fn outer_foreign<T>() {
     fn inner() -> u32 {
         11235813
     }
+    inner();
 }
 
 fn main() {

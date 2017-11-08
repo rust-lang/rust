@@ -13,7 +13,10 @@ fn test(x: u32) -> u32 {
     y
 }
 
-fn main() { }
+fn main() {
+    // Make sure the function actually gets instantiated.
+    test(0);
+}
 
 // END RUST SOURCE
 // START rustc.node4.CopyPropagation.before.mir

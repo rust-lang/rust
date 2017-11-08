@@ -328,7 +328,12 @@ impl DepGraph {
     }
 
     pub fn fingerprint_of(&self, dep_node: &DepNode) -> Fingerprint {
-        self.fingerprints.borrow()[dep_node]
+        match self.fingerprints.borrow().get(dep_node) {
+            Some(&fingerprint) => fingerprint,
+            None => {
+                bug!("Could not find current fingerprint for {:?}", dep_node)
+            }
+        }
     }
 
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {

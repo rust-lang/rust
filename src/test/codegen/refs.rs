@@ -15,7 +15,7 @@
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]] %arg0)
 #[no_mangle]
-fn helper(_: usize) {
+pub fn helper(_: usize) {
 }
 
 // CHECK-LABEL: @ref_dst

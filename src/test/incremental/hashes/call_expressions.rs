@@ -190,7 +190,7 @@ impl Struct2 {
 }
 
 // Change UFCS Callee Indirectly -----------------------------------------------
-mod change_ufcs_callee_indirectly {
+pub mod change_ufcs_callee_indirectly {
     #[cfg(cfail1)]
     use super::Struct as Struct;
     #[cfg(not(cfail1))]

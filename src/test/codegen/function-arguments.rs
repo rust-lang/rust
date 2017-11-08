@@ -93,20 +93,20 @@ pub fn struct_return() -> S {
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]] %arg0)
 #[no_mangle]
-fn helper(_: usize) {
+pub fn helper(_: usize) {
 }
 
 // CHECK: @slice(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-fn slice(_: &[u8]) {
+pub fn slice(_: &[u8]) {
 }
 
 // CHECK: @mutable_slice(i8* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
 // FIXME #25759 This should also have `nocapture`
 // ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
-fn mutable_slice(_: &mut [u8]) {
+pub fn mutable_slice(_: &mut [u8]) {
 }
 
 // CHECK: @unsafe_slice(%UnsafeInner* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
@@ -118,23 +118,23 @@ pub fn unsafe_slice(_: &[UnsafeInner]) {
 // CHECK: @str(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-fn str(_: &[u8]) {
+pub fn str(_: &[u8]) {
 }
 
 // CHECK: @trait_borrow({}* nonnull, {}* noalias nonnull readonly)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-fn trait_borrow(_: &Drop) {
+pub fn trait_borrow(_: &Drop) {
 }
 
 // CHECK: @trait_box({}* noalias nonnull, {}* noalias nonnull readonly)
 #[no_mangle]
-fn trait_box(_: Box<Drop>) {
+pub fn trait_box(_: Box<Drop>) {
 }
 
 // CHECK: { i16*, [[USIZE]] } @return_slice(i16* noalias nonnull readonly %x.ptr, [[USIZE]] %x.meta)
 #[no_mangle]
-fn return_slice(x: &[u16]) -> &[u16] {
+pub fn return_slice(x: &[u16]) -> &[u16] {
   x
 }
 

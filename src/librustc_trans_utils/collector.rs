@@ -211,6 +211,8 @@ use trans_item::{TransItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
 
+use syntax::attr;
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {
     Eager,
@@ -324,9 +326,14 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut roots = Vec::new();
 
     {
+        let entry_fn = tcx.sess.entry_fn.borrow().map(|(node_id, _)| {
+            tcx.hir.local_def_id(node_id)
+        });
+
         let mut visitor = RootCollector {
             tcx,
             mode,
+            entry_fn,
             output: &mut roots,
         };
 
@@ -875,6 +882,7 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
+    entry_fn: Option<DefId>,
 }
 
 impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
@@ -932,10 +940,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 let tcx = self.tcx;
                 let def_id = tcx.hir.local_def_id(item.id);
 
-                if (self.mode == TransItemCollectionMode::Eager ||
-                    !tcx.is_const_fn(def_id) || tcx.is_exported_symbol(def_id)) &&
-                   !item_has_type_parameters(tcx, def_id) {
-
+                if self.is_root(def_id) {
                     debug!("RootCollector: ItemFn({})",
                            def_id_to_string(tcx, def_id));
 
@@ -957,10 +962,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 let tcx = self.tcx;
                 let def_id = tcx.hir.local_def_id(ii.id);
 
-                if (self.mode == TransItemCollectionMode::Eager ||
-                    !tcx.is_const_fn(def_id) ||
-                    tcx.is_exported_symbol(def_id)) &&
-                   !item_has_type_parameters(tcx, def_id) {
+                if self.is_root(def_id) {
                     debug!("RootCollector: MethodImplItem({})",
                            def_id_to_string(tcx, def_id));
 
@@ -969,6 +971,22 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 }
             }
             _ => { /* Nothing to do here */ }
+        }
+    }
+}
+
+impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
+    fn is_root(&self, def_id: DefId) -> bool {
+        !item_has_type_parameters(self.tcx, def_id) && match self.mode {
+            TransItemCollectionMode::Eager => {
+                true
+            }
+            TransItemCollectionMode::Lazy => {
+                self.entry_fn == Some(def_id) ||
+                self.tcx.is_exported_symbol(def_id) ||
+                attr::contains_name(&self.tcx.get_attrs(def_id),
+                                    "rustc_std_internal_symbol")
+            }
         }
     }
 }
