@@ -1937,6 +1937,9 @@ pub enum ClosureKind {
 }
 
 impl<'a, 'tcx> ClosureKind {
+    // This is the initial value used when doing upvar inference.
+    pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
+
     pub fn trait_did(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefId {
         match *self {
             ClosureKind::Fn => tcx.require_lang_item(FnTraitLangItem),

@@ -359,9 +359,9 @@ pub struct TypeckTables<'tcx> {
     /// Records the type of each closure.
     closure_tys: ItemLocalMap<ty::PolyFnSig<'tcx>>,
 
-    /// Records the kind of each closure and the span and name of the variable
-    /// that caused the closure to be this kind.
-    closure_kinds: ItemLocalMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
+    /// Records the reasons that we picked the kind of each closure;
+    /// not all closures are present in the map.
+    closure_kind_origins: ItemLocalMap<(Span, ast::Name)>,
 
     generator_sigs: ItemLocalMap<Option<ty::GenSig<'tcx>>>,
 
@@ -414,7 +414,7 @@ impl<'tcx> TypeckTables<'tcx> {
             generator_sigs: ItemLocalMap(),
             generator_interiors: ItemLocalMap(),
             closure_tys: ItemLocalMap(),
-            closure_kinds: ItemLocalMap(),
+            closure_kind_origins: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
             cast_kinds: ItemLocalMap(),
@@ -624,19 +624,17 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn closure_kinds(&self) -> LocalTableInContext<(ty::ClosureKind,
-                                                        Option<(Span, ast::Name)>)> {
+    pub fn closure_kind_origins(&self) -> LocalTableInContext<(Span, ast::Name)> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
-            data: &self.closure_kinds
+            data: &self.closure_kind_origins
         }
     }
 
-    pub fn closure_kinds_mut(&mut self)
-            -> LocalTableInContextMut<(ty::ClosureKind, Option<(Span, ast::Name)>)> {
+    pub fn closure_kind_origins_mut(&mut self) -> LocalTableInContextMut<(Span, ast::Name)> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
-            data: &mut self.closure_kinds
+            data: &mut self.closure_kind_origins
         }
     }
 
@@ -733,7 +731,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             ref pat_adjustments,
             ref upvar_capture_map,
             ref closure_tys,
-            ref closure_kinds,
+            ref closure_kind_origins,
             ref liberated_fn_sigs,
             ref fru_field_types,
 
@@ -776,7 +774,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             });
 
             closure_tys.hash_stable(hcx, hasher);
-            closure_kinds.hash_stable(hcx, hasher);
+            closure_kind_origins.hash_stable(hcx, hasher);
             liberated_fn_sigs.hash_stable(hcx, hasher);
             fru_field_types.hash_stable(hcx, hasher);
             cast_kinds.hash_stable(hcx, hasher);

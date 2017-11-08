@@ -140,7 +140,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.tables.borrow_mut().closure_tys_mut().insert(expr.hir_id, sig);
         if let Some(kind) = opt_kind {
-            self.tables.borrow_mut().closure_kinds_mut().insert(expr.hir_id, (kind, None));
             self.demand_eqtype(expr.span,
                                kind.to_ty(self.tcx),
                                substs.closure_kind_ty(expr_def_id, self.tcx));

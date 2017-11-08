@@ -655,10 +655,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     ty::TypeVariants::TyClosure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                        if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
-                            self.tables.closure_kinds().get(hir_id)
-                        {
-                            err.span_note(span, &format!(
+                        if let Some((span, name)) = self.tables.closure_kind_origins().get(hir_id) {
+                            err.span_note(*span, &format!(
                                 "closure cannot be invoked more than once because \
                                 it moves the variable `{}` out of its environment",
                                 name

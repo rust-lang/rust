@@ -252,12 +252,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             self.tables.closure_tys_mut().insert(hir_id, closure_ty);
         }
 
-        for (&id, &closure_kind) in fcx_tables.closure_kinds().iter() {
+        for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,
                 local_id: id,
             };
-            self.tables.closure_kinds_mut().insert(hir_id, closure_kind);
+            self.tables.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
 
