@@ -107,6 +107,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         if let Some(interior) = interior {
+            self.demand_eqtype(expr.span,
+                               ty::ClosureKind::FnOnce.to_ty(self.tcx),
+                               substs.closure_kind_ty(expr_def_id, self.tcx));
             return self.tcx.mk_generator(expr_def_id, substs, interior);
         }
 
@@ -135,15 +138,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind
         );
 
-        {
-            let mut tables = self.tables.borrow_mut();
-            tables.closure_tys_mut().insert(expr.hir_id, sig);
-            match opt_kind {
-                Some(kind) => {
-                    tables.closure_kinds_mut().insert(expr.hir_id, (kind, None));
-                }
-                None => {}
-            }
+        self.tables.borrow_mut().closure_tys_mut().insert(expr.hir_id, sig);
+        if let Some(kind) = opt_kind {
+            self.tables.borrow_mut().closure_kinds_mut().insert(expr.hir_id, (kind, None));
+            self.demand_eqtype(expr.span,
+                               kind.to_ty(self.tcx),
+                               substs.closure_kind_ty(expr_def_id, self.tcx));
         }
 
         closure_type

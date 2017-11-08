@@ -290,16 +290,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
         upvar_kinds.iter().map(|t| t.as_type().expect("upvar should be type"))
     }
 
-    /// Returns the closure kind for this closure; may return `None`
-    /// if inference has not yet completed.
-    pub fn opt_closure_kind(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>)
-                            -> Option<ty::ClosureKind> {
-        let closure_kind_ty = self.closure_kind_ty(def_id, tcx);
-        closure_kind_ty.to_opt_closure_kind()
-    }
-
-    /// Returns the closure kind for this closure; may return `None`
-    /// if inference has not yet completed.
+    /// Returns the closure kind for this closure; may return a type
+    /// variable during inference.
     pub fn closure_kind_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_kind_ty
     }
@@ -307,9 +299,10 @@ impl<'tcx> ClosureSubsts<'tcx> {
 
 impl<'tcx> ClosureSubsts<'tcx> {
     /// Returns the closure kind for this closure; only usable outside
-    /// of an inference context.
+    /// of an inference context, because in that context we know that
+    /// there are no type variables.
     pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::ClosureKind {
-        self.opt_closure_kind(def_id, tcx).unwrap()
+        self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
     }
 }
 
@@ -1513,6 +1506,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             },
 
             TyInfer(_) => None,
+
+            TyError => Some(ty::ClosureKind::Fn),
 
             _ => bug!("cannot convert type `{:?}` to a closure kind", self),
         }

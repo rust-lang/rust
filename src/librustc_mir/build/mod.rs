@@ -248,14 +248,18 @@ pub fn closure_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
-    let closure_def_id = tcx.hir.local_def_id(closure_expr_id);
+    let (closure_def_id, closure_substs) = match closure_ty.sty {
+        ty::TyClosure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
+        _ => bug!("closure expr does not have closure type: {:?}", closure_ty)
+    };
+
     let region = ty::ReFree(ty::FreeRegion {
         scope: closure_def_id,
         bound_region: ty::BoundRegion::BrEnv,
     });
     let region = tcx.mk_region(region);
 
-    match tcx.closure_kind(closure_def_id) {
+    match closure_substs.closure_kind_ty(closure_def_id, tcx).to_opt_closure_kind().unwrap() {
         ty::ClosureKind::Fn =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,

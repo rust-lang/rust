@@ -643,8 +643,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                             violations)
                     }
 
-                    ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                        let found_kind = self.closure_kind(closure_def_id).unwrap();
+                    ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                        let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
                         let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
                         let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(

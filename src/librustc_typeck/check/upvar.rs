@@ -46,7 +46,6 @@ use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::TypeFoldable;
 use rustc::infer::UpvarRegion;
 use syntax::ast;
 use syntax_pos::Span;
@@ -158,39 +157,57 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        {
-            let body_owner_def_id = self.tcx.hir.body_owner_def_id(body.id());
-            let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
-            let mut delegate = InferBorrowKind {
-                fcx: self,
-                adjust_closure_kinds: FxHashMap(),
-                adjust_upvar_captures: ty::UpvarCaptureMap::default(),
-            };
-            euv::ExprUseVisitor::with_infer(
-                &mut delegate,
-                &self.infcx,
-                self.param_env,
-                region_scope_tree,
-                &self.tables.borrow(),
-            ).consume_body(body);
-
-            // Write the adjusted values back into the main tables.
-            if infer_kind {
-                if let Some(kind) = delegate
-                    .adjust_closure_kinds
-                    .remove(&closure_def_id.to_local())
-                {
-                    self.tables
-                        .borrow_mut()
-                        .closure_kinds_mut()
-                        .insert(closure_hir_id, kind);
-                }
+        // Extract the type of the closure.
+        let (def_id, closure_substs) = match self.node_ty(closure_hir_id).sty {
+            ty::TyClosure(def_id, substs) | ty::TyGenerator(def_id, substs, _) => (def_id, substs),
+            ref t => {
+                span_bug!(
+                    span,
+                    "type of closure expr {:?} is not a closure {:?}",
+                    closure_node_id,
+                    t
+                );
             }
-            self.tables
-                .borrow_mut()
-                .upvar_capture_map
-                .extend(delegate.adjust_upvar_captures);
+        };
+
+        let body_owner_def_id = self.tcx.hir.body_owner_def_id(body.id());
+        let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
+        let mut delegate = InferBorrowKind {
+            fcx: self,
+            adjust_closure_kinds: FxHashMap(),
+            adjust_upvar_captures: ty::UpvarCaptureMap::default(),
+        };
+        euv::ExprUseVisitor::with_infer(
+            &mut delegate,
+            &self.infcx,
+            self.param_env,
+            region_scope_tree,
+            &self.tables.borrow(),
+        ).consume_body(body);
+
+        // Write the adjusted values back into the main tables.
+        if infer_kind {
+            let opt_adjusted = delegate.adjust_closure_kinds.remove(&closure_def_id.to_local());
+            let closure_kind_ty = closure_substs.closure_kind_ty(def_id, self.tcx);
+            if let Some((kind, origin)) = opt_adjusted {
+                self.tables
+                    .borrow_mut()
+                    .closure_kinds_mut()
+                    .insert(closure_hir_id, (kind, origin));
+
+                self.demand_eqtype(span, kind.to_ty(self.tcx), closure_kind_ty);
+            } else {
+                // If there are only reads, or no upvars, then the
+                // default of `Fn` will never *have* to be adjusted, so there will be
+                // no entry in the map.
+                self.demand_eqtype(span, ty::ClosureKind::Fn.to_ty(self.tcx), closure_kind_ty);
+            }
         }
+
+        self.tables
+            .borrow_mut()
+            .upvar_capture_map
+            .extend(delegate.adjust_upvar_captures);
 
         // Now that we've analyzed the closure, we know how each
         // variable is borrowed, and we know what traits the closure
@@ -204,27 +221,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // C, then the type would have infinite size (and the
         // inference algorithm will reject it).
 
-        // Extract the type variables UV0...UVn.
-        let (def_id, closure_substs) = match self.node_ty(closure_hir_id).sty {
-            ty::TyClosure(def_id, substs) | ty::TyGenerator(def_id, substs, _) => (def_id, substs),
-            ref t => {
-                span_bug!(
-                    span,
-                    "type of closure expr {:?} is not a closure {:?}",
-                    closure_node_id,
-                    t
-                );
-            }
-        };
-
-        // Equate the type variable representing the closure kind.
-        let closure_kind_ty = closure_substs.closure_kind_ty(def_id, self.tcx);
-        if closure_kind_ty.needs_infer() {
-            let final_closure_kind = self.tables.borrow().closure_kinds()[closure_hir_id].0;
-            self.demand_eqtype(span, final_closure_kind.to_ty(self.tcx), closure_kind_ty);
-        }
-
-        // Equate the type variables with the actual types.
+        // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_node_id);
         debug!(
             "analyze_closure: id={:?} closure_substs={:?} final_upvar_tys={:?}",

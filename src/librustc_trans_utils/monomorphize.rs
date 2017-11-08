@@ -86,7 +86,7 @@ pub fn resolve_closure<'a, 'tcx> (
     requested_kind: ty::ClosureKind)
     -> Instance<'tcx>
 {
-    let actual_kind = tcx.closure_kind(def_id);
+    let actual_kind = substs.closure_kind(def_id, tcx);
 
     match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
         Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
