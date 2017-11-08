@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.2.15] 2017-11-08
+
+### Added
+
+- Add git-fmt tool
+- `where_single_line` configuration option.
+
+### Changed
+
+- Rename `chain_one_line_max` to `chain_width`.
+- Change the suffix of indent-related configuration options to `_indent`.
+
+## [0.2.14] 2017-11-06
+
+### Fixed
+
+- Rustup to the latest nightly.
+
+## [0.2.13] 2017-10-30
+
+### Fixed
+
+- Rustup to the latest nightly.
+
+## [0.2.12] 2017-10-29
+
+### Fixed
+
+- Fix a bug that `cargo fmt` hangs forever.
+
+## [0.2.11] 2017-10-29
+
+### Fixed
+
+- Fix a bug that `cargo fmt` crashes.
+
+## [0.2.10] 2017-10-28
+
+## [0.2.9] 2017-10-16
+
+## [0.2.8] 2017-09-28
+
 ## [0.2.7] 2017-09-21
 
 ### Added
