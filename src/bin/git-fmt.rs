@@ -97,7 +97,7 @@ fn uncommitted_files() -> Vec<String> {
     cmd.arg("--exclude-standard");
     let output = cmd.output().expect("Couldn't execute Git");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    stdout.lines().map(|s| s.to_owned()).collect()
+    stdout.lines().filter(|s| s.ends_with(".rs")).map(|s| s.to_owned()).collect()
 }
 
 fn check_uncommitted() {
