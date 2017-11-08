@@ -7,6 +7,7 @@ pub mod conv;
 pub mod add;
 pub mod pow;
 pub mod sub;
+pub mod mul;
 
 /// Trait for some basic operations on floats
 pub trait Float:
