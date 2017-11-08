@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use astconv::ExplicitSelf;
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
@@ -16,6 +15,7 @@ use hir::def_id::DefId;
 use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 

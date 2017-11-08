@@ -13,6 +13,7 @@ use rustc::infer::{self, InferOk};
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::util::ExplicitSelf;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{Subst, Substs};
@@ -21,7 +22,6 @@ use rustc::util::common::ErrorReported;
 use syntax_pos::Span;
 
 use super::{Inherited, FnCtxt};
-use astconv::ExplicitSelf;
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
