@@ -1282,16 +1282,15 @@ fn format_tuple_struct(
         result.push(')');
     } else {
         // 1 = ","
-        let body = rewrite_call_inner(
+        result = rewrite_call_inner(
             context,
-            "",
+            &result,
             &fields.iter().map(|field| field).collect::<Vec<_>>()[..],
             span,
             Shape::indented(offset, context.config).sub_width(1)?,
             context.config.fn_call_width(),
             false,
         )?;
-        result.push_str(&body);
     }
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n')
