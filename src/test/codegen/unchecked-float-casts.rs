@@ -37,29 +37,10 @@ pub fn f32_to_i32(x: f32) -> i32 {
 }
 
 #[no_mangle]
-pub fn f64_to_u8(x: f32) -> u16 {
+pub fn f64_to_u16(x: f64) -> u16 {
+    // CHECK: fptoui
     // CHECK-NOT: fcmp
     // CHECK-NOT: icmp
     // CHECK-NOT: select
     x as u16
-}
-
-// CHECK-LABEL: @i32_to_f64
-#[no_mangle]
-pub fn i32_to_f64(x: i32) -> f64 {
-    // CHECK: sitofp
-    // CHECK-NOT: fcmp
-    // CHECK-NOT: icmp
-    // CHECK-NOT: select
-    x as f64
-}
-
-// CHECK-LABEL: @u128_to_f32
-#[no_mangle]
-pub fn u128_to_f32(x: u128) -> f32 {
-    // CHECK: uitofp
-    // CHECK-NOT: fcmp
-    // CHECK-NOT: icmp
-    // CHECK-NOT: select
-    x as f32
 }

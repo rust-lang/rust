@@ -827,7 +827,7 @@ fn cast_int_to_float(bcx: &Builder,
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
     let is_u128_to_f32 = !signed && int_ty.int_width() == 128 && float_ty.float_width() == 32;
-    if is_u128_to_f32 && bcx.sess().opts.debugging_opts.saturating_float_casts {
+    if is_u128_to_f32 {
         // All inputs greater or equal to (f32::MAX + 0.5 ULP) are rounded to infinity,
         // and for everything else LLVM's uitofp works just fine.
         let max = C_big_integral(int_ty, MAX_F32_PLUS_HALF_ULP);

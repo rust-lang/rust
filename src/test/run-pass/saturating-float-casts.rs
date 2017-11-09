@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests saturating float->int casts. See u128-as-f32.rs for the opposite direction.
 // compile-flags: -Z saturating-float-casts
 
 #![feature(test, i128, i128_type, stmt_expr_attributes)]
@@ -139,26 +140,5 @@ pub fn main() {
         // nextDown(f32::MAX) = 2^128 - 2 * 2^104
         const SECOND_LARGEST_F32: f32 = 340282326356119256160033759537265639424.;
         test_c!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
-
-        // int->float:
-        // f32::MAX - 0.5 ULP and smaller should be rounded down
-        test_c!(0xfffffe00000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
-        test_c!(0xfffffe7fffffffffffffffffffffffff, u128 -> f32, SECOND_LARGEST_F32);
-        test_c!(0xfffffe80000000000000000000000000, u128 -> f32, SECOND_LARGEST_F32);
-        // numbers within < 0.5 ULP of f32::MAX it should be rounded to f32::MAX
-        test_c!(0xfffffe80000000000000000000000001, u128 -> f32, f32::MAX);
-        test_c!(0xfffffeffffffffffffffffffffffffff, u128 -> f32, f32::MAX);
-        test_c!(0xffffff00000000000000000000000000, u128 -> f32, f32::MAX);
-        test_c!(0xffffff00000000000000000000000001, u128 -> f32, f32::MAX);
-        test_c!(0xffffff7fffffffffffffffffffffffff, u128 -> f32, f32::MAX);
-        // f32::MAX + 0.5 ULP and greater should be rounded to infinity
-        test_c!(0xffffff80000000000000000000000000, u128 -> f32, f32::INFINITY);
-        test_c!(0xffffff80000000f00000000000000000, u128 -> f32, f32::INFINITY);
-        test_c!(0xffffff87ffffffffffffffff00000001, u128 -> f32, f32::INFINITY);
-
-        // u128->f64 should not be affected by the u128->f32 checks
-        test_c!(0xffffff80000000000000000000000000, u128 -> f64,
-              340282356779733661637539395458142568448.0);
-        test_c!(u128::MAX, u128 -> f64, 340282366920938463463374607431768211455.0);
     }
 }
