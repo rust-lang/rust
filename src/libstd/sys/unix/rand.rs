@@ -32,45 +32,14 @@ mod imp {
     use libc;
     use sys::os::errno;
 
-    #[cfg(all(target_os = "linux",
-              any(target_arch = "x86_64",
-                  target_arch = "x86",
-                  target_arch = "arm",
-                  target_arch = "aarch64",
-                  target_arch = "powerpc",
-                  target_arch = "powerpc64",
-                  target_arch = "s390x")))]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
-        #[cfg(all(target_arch = "x86_64", target_pointer_width = "32"))]
-        const NR_GETRANDOM: libc::c_long = 0x40000000 + 318;
-        #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-        const NR_GETRANDOM: libc::c_long = 318;
-        #[cfg(target_arch = "x86")]
-        const NR_GETRANDOM: libc::c_long = 355;
-        #[cfg(target_arch = "arm")]
-        const NR_GETRANDOM: libc::c_long = 384;
-        #[cfg(target_arch = "s390x")]
-        const NR_GETRANDOM: libc::c_long = 349;
-        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-        const NR_GETRANDOM: libc::c_long = 359;
-        #[cfg(target_arch = "aarch64")]
-        const NR_GETRANDOM: libc::c_long = 278;
-
-        const GRND_NONBLOCK: libc::c_uint = 0x0001;
-
         unsafe {
-            libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)
+            libc::syscall(libc::SYS_getrandom, buf.as_mut_ptr(), buf.len(), libc::GRND_NONBLOCK)
         }
     }
 
-    #[cfg(not(all(target_os = "linux",
-                  any(target_arch = "x86_64",
-                      target_arch = "x86",
-                      target_arch = "arm",
-                      target_arch = "aarch64",
-                      target_arch = "powerpc",
-                      target_arch = "powerpc64",
-                      target_arch = "s390x"))))]
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
 
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
@@ -94,14 +63,7 @@ mod imp {
         return true
     }
 
-    #[cfg(all(target_os = "linux",
-              any(target_arch = "x86_64",
-                  target_arch = "x86",
-                  target_arch = "arm",
-                  target_arch = "aarch64",
-                  target_arch = "powerpc",
-                  target_arch = "powerpc64",
-                  target_arch = "s390x")))]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn is_getrandom_available() -> bool {
         use io;
         use sync::atomic::{AtomicBool, Ordering};
@@ -125,14 +87,7 @@ mod imp {
         AVAILABLE.load(Ordering::Relaxed)
     }
 
-    #[cfg(not(all(target_os = "linux",
-                  any(target_arch = "x86_64",
-                      target_arch = "x86",
-                      target_arch = "arm",
-                      target_arch = "aarch64",
-                      target_arch = "powerpc",
-                      target_arch = "powerpc64",
-                      target_arch = "s390x"))))]
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     fn is_getrandom_available() -> bool { false }
 
     pub fn fill_bytes(v: &mut [u8]) {
