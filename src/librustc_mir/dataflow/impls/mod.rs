@@ -517,6 +517,19 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
             assert!(move_index.index() < bits_per_block);
             zero_to_one(sets.gen_set.words_mut(), *move_index);
         }
+        match term.kind {
+            mir::TerminatorKind::DropAndReplace { ref location, .. } => {
+                on_lookup_result_bits(self.tcx,
+                                      mir,
+                                      move_data,
+                                      move_data.rev_lookup.find(location),
+                                      |mpi| for moi in &move_data.path_map[mpi] {
+                                          assert!(moi.index() < bits_per_block);
+                                          sets.kill_set.add(&moi);
+                                      });
+            }
+            _ => {}
+        }
     }
 
     fn propagate_call_return(&self,
