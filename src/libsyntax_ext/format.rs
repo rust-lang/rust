@@ -228,7 +228,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 // argument second, if it's an implicit positional parameter
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
-                    parse::ArgumentIs(i) => Exact(i),
+                    parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => Exact(i),
                     parse::ArgumentNamed(s) => Named(s.to_string()),
                 };
 
@@ -254,25 +254,28 @@ impl<'a, 'b> Context<'a, 'b> {
     fn describe_num_args(&self) -> String {
         match self.args.len() {
             0 => "no arguments were given".to_string(),
-            1 => "there is only 1 argument".to_string(),
-            x => format!("there are only {} arguments", x),
+            1 => "there is 1 argument".to_string(),
+            x => format!("there are {} arguments", x),
         }
     }
 
     /// Handle invalid references to positional arguments. Output different
     /// errors for the case where all arguments are positional and for when
-    /// there are named arguments in the format string.
-    fn report_invalid_references(&self) {
+    /// there are named arguments or numbered positional arguments in the
+    /// format string.
+    fn report_invalid_references(&self, numbered_position_args: bool) {
+        let mut e;
         let mut refs: Vec<String> = self.invalid_refs
                                         .iter()
                                         .map(|r| r.to_string())
                                         .collect();
 
-        let msg = if self.names.is_empty() {
-            format!("{} positional argument{} in format string, but {}",
-                    self.pieces.len(),
-                    if self.pieces.len() > 1 { "s" } else { "" },
-                    self.describe_num_args())
+        if self.names.is_empty() && !numbered_position_args {
+            e = self.ecx.mut_span_err(self.fmtsp,
+                &format!("{} positional argument{} in format string, but {}",
+                         self.pieces.len(),
+                         if self.pieces.len() > 1 { "s" } else { "" },
+                         self.describe_num_args()));
         } else {
             let arg_list = match refs.len() {
                 1 => format!("argument {}", refs.pop().unwrap()),
@@ -281,12 +284,14 @@ impl<'a, 'b> Context<'a, 'b> {
                              head=refs.join(", "))
             };
 
-            format!("invalid reference to positional {} ({})",
-                    arg_list,
-                    self.describe_num_args())
+            e = self.ecx.mut_span_err(self.fmtsp,
+                &format!("invalid reference to positional {} ({})",
+                        arg_list,
+                        self.describe_num_args()));
+            e.note("positional arguments are zero-based");
         };
 
-        self.ecx.span_err(self.fmtsp, &msg[..]);
+        e.emit();
     }
 
     /// Actually verifies and tracks a given format placeholder
@@ -431,7 +436,8 @@ impl<'a, 'b> Context<'a, 'b> {
                         }
                     };
                     match arg.position {
-                        parse::ArgumentIs(i) => {
+                        parse::ArgumentIs(i)
+                        | parse::ArgumentImplicitlyIs(i) => {
                             // Map to index in final generated argument array
                             // in case of multiple types specified
                             let arg_idx = match arg_index_consumed.get_mut(i) {
@@ -740,6 +746,18 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         }
     }
 
+    let numbered_position_args = pieces.iter().any(|arg: &parse::Piece| {
+        match *arg {
+            parse::String(_) => false,
+            parse::NextArgument(arg) => {
+                match arg.position {
+                    parse::Position::ArgumentIs(_) => true,
+                    _ => false,
+                }
+            }
+        }
+    });
+
     cx.build_index_map();
 
     let mut arg_index_consumed = vec![0usize; cx.arg_index_map.len()];
@@ -766,7 +784,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     }
 
     if cx.invalid_refs.len() >= 1 {
-        cx.report_invalid_references();
+        cx.report_invalid_references(numbered_position_args);
     }
 
     // Make sure that all arguments were used and all arguments have types.
