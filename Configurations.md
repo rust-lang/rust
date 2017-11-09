@@ -477,7 +477,7 @@ Don't reformat anything
 
 ## `error_on_line_overflow`
 
-Error if unable to get all lines within max_width
+Error if unable to get all lines within `max_width`
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
