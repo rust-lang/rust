@@ -22,7 +22,11 @@ fn run_mode(dir: &'static str, mode: &'static str) {
     }
 
     config.mode = cfg_mode;
-    config.build_base = PathBuf::from("target/debug/test_build_base");
+    config.build_base = {
+        let mut path = std::env::current_dir().unwrap();
+        path.push("target/debug/test_build_base");
+        path
+    };
     config.src_base = PathBuf::from(format!("tests/{}", dir));
     config.rustc_path = clippy_driver_path();
 
