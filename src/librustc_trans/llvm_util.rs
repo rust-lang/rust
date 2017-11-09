@@ -78,7 +78,9 @@ const AARCH64_WHITELIST: &'static [&'static str] = &["neon\0"];
 const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
                                                  "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
                                                  "ssse3\0", "tbm\0", "lzcnt\0", "popcnt\0",
-                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0"];
+                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0",
+                                                 "xsave\0", "xsaveopt\0", "xsavec\0",
+                                                 "xsaves\0"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 
