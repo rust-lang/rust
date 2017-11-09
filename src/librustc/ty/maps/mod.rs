@@ -173,10 +173,6 @@ define_maps! { <'tcx>
     /// The signature of functions and closures.
     [] fn fn_sig: FnSignature(DefId) -> ty::PolyFnSig<'tcx>,
 
-    /// Records the signature of each generator. The def ID is the ID of the
-    /// expression defining the closure.
-    [] fn generator_sig: GenSignature(DefId) -> Option<ty::PolyGenSig<'tcx>>,
-
     /// Caches CoerceUnsized kinds for impls on custom types.
     [] fn coerce_unsized_info: CoerceUnsizedInfo(DefId)
         -> ty::adjustment::CoerceUnsizedInfo,

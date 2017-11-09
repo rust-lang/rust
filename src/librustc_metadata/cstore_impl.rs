@@ -136,7 +136,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         mir
     }
-    generator_sig => { cdata.generator_sig(def_id.index, tcx) }
     mir_const_qualif => {
         (cdata.mir_const_qualif(def_id.index), Rc::new(IdxSetBuf::new_empty(0)))
     }

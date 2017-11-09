@@ -1501,19 +1501,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.fn_sig(def_id)
     }
 
-    pub fn generator_sig(&self, def_id: DefId) -> Option<ty::PolyGenSig<'tcx>> {
-        if let Some(tables) = self.in_progress_tables {
-            if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                let hir_id = self.tcx.hir.node_to_hir_id(id);
-                if let Some(&ty) = tables.borrow().generator_sigs().get(hir_id) {
-                    return ty.map(|t| ty::Binder(t));
-                }
-            }
-        }
-
-        self.tcx.generator_sig(def_id)
-    }
-
     /// Normalizes associated types in `value`, potentially returning
     /// new obligations that must further be processed.
     pub fn partially_normalize_associated_types_in<T>(&self,

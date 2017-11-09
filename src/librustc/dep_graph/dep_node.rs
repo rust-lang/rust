@@ -499,7 +499,6 @@ define_dep_nodes!( <'tcx>
     [] ImplTraitRef(DefId),
     [] ImplPolarity(DefId),
     [] FnSignature(DefId),
-    [] GenSignature(DefId),
     [] CoerceUnsizedInfo(DefId),
 
     [] ItemVarianceConstraints(DefId),

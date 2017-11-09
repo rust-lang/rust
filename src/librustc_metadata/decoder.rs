@@ -1036,23 +1036,6 @@ impl<'a, 'tcx> CrateMetadata {
         sig.decode((self, tcx))
     }
 
-    fn get_generator_data(&self,
-                      id: DefIndex,
-                      tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                      -> Option<GeneratorData<'tcx>> {
-        match self.entry(id).kind {
-            EntryKind::Generator(data) => Some(data.decode((self, tcx))),
-            _ => None,
-        }
-    }
-
-    pub fn generator_sig(&self,
-                      id: DefIndex,
-                      tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                      -> Option<ty::PolyGenSig<'tcx>> {
-        self.get_generator_data(id, tcx).map(|d| d.sig)
-    }
-
     #[inline]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
         self.def_path_table.def_key(index)

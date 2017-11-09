@@ -3184,8 +3184,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                       substs: ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let gen_sig = self.infcx.generator_sig(closure_def_id).unwrap()
-            .subst(self.tcx(), substs.substs);
+        let gen_sig = substs.generator_poly_sig(closure_def_id, self.tcx());
         let ty::Binder((trait_ref, ..)) =
             self.tcx().generator_trait_ref_and_outputs(obligation.predicate.def_id(),
                                                        obligation.predicate.0.self_ty(), // (1)

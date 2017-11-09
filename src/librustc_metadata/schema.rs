@@ -518,7 +518,6 @@ impl_stable_hash_for!(struct ClosureData<'tcx> { sig });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct GeneratorData<'tcx> {
-    pub sig: ty::PolyGenSig<'tcx>,
     pub layout: mir::GeneratorLayout<'tcx>,
 }
-impl_stable_hash_for!(struct GeneratorData<'tcx> { sig, layout });
+impl_stable_hash_for!(struct GeneratorData<'tcx> { layout });
