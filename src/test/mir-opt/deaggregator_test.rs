@@ -24,7 +24,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node13.Deaggregator.before.mir
+// START rustc.bar.Deaggregator.before.mir
 // bb0: {
 //     ...
 //     _2 = _1;
@@ -33,8 +33,8 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node13.Deaggregator.before.mir
-// START rustc.node13.Deaggregator.after.mir
+// END rustc.bar.Deaggregator.before.mir
+// START rustc.bar.Deaggregator.after.mir
 // bb0: {
 //     ...
 //     _2 = _1;
@@ -45,4 +45,4 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node13.Deaggregator.after.mir
+// END rustc.bar.Deaggregator.after.mir

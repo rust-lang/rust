@@ -29,7 +29,7 @@ fn foo(i: i32) {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
 //     let _1: D;
@@ -76,4 +76,4 @@ fn foo(i: i32) {
 //         StorageDead(_1);
 //         return;
 //     }
-// END rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// END rustc.main.SimplifyCfg-qualify-consts.after.mir

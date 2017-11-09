@@ -36,7 +36,7 @@ fn main() {
 // contain name of the source file, so we cannot test for it.
 
 // END RUST SOURCE
-// START rustc.node4.EraseRegions.after.mir
+// START rustc.write_42.EraseRegions.after.mir
 // fn write_42(_1: *mut i32) -> bool {
 //     ...
 //     bb0: {
@@ -46,8 +46,8 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.node4.EraseRegions.after.mir
-// START rustc.node22.EraseRegions.after.mir
+// END rustc.write_42.EraseRegions.after.mir
+// START rustc.write_42-{{closure}}.EraseRegions.after.mir
 // fn write_42::{{closure}}(_1: &ReErased [closure@NodeId(22)], _2: *mut i32) -> () {
 //     ...
 //     bb0: {
@@ -57,8 +57,8 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.node22.EraseRegions.after.mir
-// START rustc.node31.EraseRegions.after.mir
+// END rustc.write_42-{{closure}}.EraseRegions.after.mir
+// START rustc.test.EraseRegions.after.mir
 // fn test(_1: &ReErased mut i32) -> () {
 //     ...
 //     bb0: {
@@ -73,8 +73,8 @@ fn main() {
 //         ...
 //     }
 // }
-// END rustc.node31.EraseRegions.after.mir
-// START rustc.node60.EraseRegions.after.mir
+// END rustc.test.EraseRegions.after.mir
+// START rustc.main-{{closure}}.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(60)], _2: &ReErased mut i32) -> bool {
 //     ...
 //     bb0: {
@@ -86,4 +86,4 @@ fn main() {
 //     }
 //     ...
 // }
-// END rustc.node60.EraseRegions.after.mir
+// END rustc.main-{{closure}}.EraseRegions.after.mir

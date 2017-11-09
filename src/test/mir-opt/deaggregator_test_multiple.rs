@@ -25,7 +25,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node10.Deaggregator.before.mir
+// START rustc.test.Deaggregator.before.mir
 // bb0: {
 //     ...
 //     _3 = _1;
@@ -39,8 +39,8 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node10.Deaggregator.before.mir
-// START rustc.node10.Deaggregator.after.mir
+// END rustc.test.Deaggregator.before.mir
+// START rustc.test.Deaggregator.after.mir
 // bb0: {
 //     ...
 //     _3 = _1;
@@ -56,4 +56,4 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.node10.Deaggregator.after.mir
+// END rustc.test.Deaggregator.after.mir

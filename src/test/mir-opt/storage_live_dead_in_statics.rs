@@ -44,7 +44,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.mir_map.0.mir
+// START rustc.XXX.mir_map.0.mir
 //    let mut _0: &'static Foo;
 //    let mut _1: &'static Foo;
 //    let mut _2: Foo;
@@ -197,4 +197,4 @@ fn main() {
 //        return;
 //    }
 //}
-// END rustc.node4.mir_map.0.mir
+// END rustc.XXX.mir_map.0.mir

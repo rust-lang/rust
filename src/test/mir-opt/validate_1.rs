@@ -28,14 +28,14 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node12.EraseRegions.after.mir
+// START rustc.{{impl}}-foo.EraseRegions.after.mir
 //     bb0: {
 //         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[317d]::{{impl}}[0]::foo[0] }, BrAnon(0)) Test, _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[317d]::{{impl}}[0]::foo[0] }, BrAnon(1)) mut i32]);
 //         ...
 //         return;
 //     }
-// END rustc.node12.EraseRegions.after.mir
-// START rustc.node23.EraseRegions.after.mir
+// END rustc.{{impl}}-foo.EraseRegions.after.mir
+// START rustc.main.EraseRegions.after.mir
 // fn main() -> () {
 //     ...
 //     bb0: {
@@ -57,8 +57,8 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.node23.EraseRegions.after.mir
-// START rustc.node50.EraseRegions.after.mir
+// END rustc.main.EraseRegions.after.mir
+// START rustc.main-{{closure}}.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(50)], _2: &ReErased mut i32) -> i32 {
 //     ...
 //     bb0: {
@@ -76,4 +76,4 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.node50.EraseRegions.after.mir
+// END rustc.main-{{closure}}.EraseRegions.after.mir

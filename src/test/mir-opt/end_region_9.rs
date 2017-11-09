@@ -37,7 +37,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// START rustc.main.SimplifyCfg-qualify-consts.after.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     ...
@@ -84,4 +84,4 @@ fn main() {
 //        goto -> bb1;
 //    }
 // }
-// END rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// END rustc.main.SimplifyCfg-qualify-consts.after.mir

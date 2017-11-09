@@ -26,7 +26,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node10.Deaggregator.before.mir
+// START rustc.bar.Deaggregator.before.mir
 // bb0: {
 //     StorageLive(_2);
 //     _2 = _1;
@@ -34,8 +34,8 @@ fn main() {
 //     StorageDead(_2);
 //     return;
 // }
-// END rustc.node10.Deaggregator.before.mir
-// START rustc.node10.Deaggregator.after.mir
+// END rustc.bar.Deaggregator.before.mir
+// START rustc.bar.Deaggregator.after.mir
 // bb0: {
 //     StorageLive(_2);
 //     _2 = _1;
@@ -44,4 +44,4 @@ fn main() {
 //     StorageDead(_2);
 //     return;
 // }
-// END rustc.node10.Deaggregator.after.mir
+// END rustc.bar.Deaggregator.after.mir

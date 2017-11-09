@@ -314,6 +314,29 @@ impl DefPath {
 
         s
     }
+
+    /// Return filename friendly string of the DefPah without
+    /// the crate-prefix. This method is useful if you don't have
+    /// a TyCtxt available.
+    pub fn to_filename_friendly_no_crate(&self) -> String {
+        let mut s = String::with_capacity(self.data.len() * 16);
+
+        let mut opt_delimiter = None;
+        for component in &self.data {
+            opt_delimiter.map(|d| s.push(d));
+            opt_delimiter = Some('-');
+            if component.disambiguator == 0 {
+                write!(s, "{}", component.data.as_interned_str()).unwrap();
+            } else {
+                write!(s,
+                       "{}[{}]",
+                       component.data.as_interned_str(),
+                       component.disambiguator)
+                    .unwrap();
+            }
+        }
+        s
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]

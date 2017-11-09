@@ -132,9 +132,13 @@ where
         let p = Path::new(file_dir);
         file_path.push(p);
     };
+
     let _ = fs::create_dir_all(&file_path);
-    let file_name = format!("rustc.node{}{}{}.{}.{}.mir",
-                            source.item_id(), promotion_id, pass_num, pass_name, disambiguator);
+    let function_name  = tcx.hir.def_path_from_id(source.item_id())
+        .map(|d| d.to_filename_friendly_no_crate())
+        .unwrap_or(format!("node{}", source.item_id()));
+    let file_name = format!("rustc.{}{}{}.{}.{}.mir",
+                            function_name, promotion_id, pass_num, pass_name, disambiguator);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|mut file| {
         writeln!(file, "// MIR for `{}`", node_path)?;

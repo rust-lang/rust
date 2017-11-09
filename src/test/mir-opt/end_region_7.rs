@@ -26,7 +26,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// START rustc.main.SimplifyCfg-qualify-consts.after.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     ...
@@ -70,9 +70,9 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         return;
 //     }
 // }
-// END rustc.node4.SimplifyCfg-qualify-consts.after.mir
+// END rustc.main.SimplifyCfg-qualify-consts.after.mir
 
-// START rustc.node22.SimplifyCfg-qualify-consts.after.mir
+// START rustc.main-{{closure}}.SimplifyCfg-qualify-consts.after.mir
 // fn main::{{closure}}(_1: [closure@NodeId(22) d:D]) -> i32 {
 //     let mut _0: i32;
 //     ...
@@ -94,4 +94,4 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         return;
 //     }
 // }
-// END rustc.node22.SimplifyCfg-qualify-consts.after.mir
+// END rustc.main-{{closure}}.SimplifyCfg-qualify-consts.after.mir

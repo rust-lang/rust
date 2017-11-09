@@ -24,7 +24,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node12.nll.0.mir
+// START rustc.main.nll.0.mir
 //    | Live variables on entry to bb1: []
 //    bb1: {
 //            | Live variables at bb1[0]: []
@@ -38,4 +38,4 @@ fn main() {
 //            | Live variables at bb1[4]: [_4]
 //        _3 = const use_x(_4) -> bb2;
 //    }
-// END rustc.node12.nll.0.mir
+// END rustc.main.nll.0.mir
