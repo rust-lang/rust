@@ -38,15 +38,15 @@ impl Emitter for EmitterWriter {
 
         if let Some((sugg, rest)) = db.suggestions.split_first() {
             if rest.is_empty() &&
-               // don't display multipart suggestions as labels
-               sugg.substitution_parts.len() == 1 &&
                // don't display multi-suggestions as labels
-               sugg.substitutions() == 1 &&
+               sugg.substitutions.len() == 1 &&
+               // don't display multipart suggestions as labels
+               sugg.substitutions[0].parts.len() == 1 &&
                // don't display long messages as labels
                sugg.msg.split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
-               sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
-                let substitution = &sugg.substitution_parts[0].substitutions[0];
+               !sugg.substitutions[0].parts[0].snippet.contains('\n') {
+                let substitution = &sugg.substitutions[0].parts[0].snippet;
                 let msg = if substitution.len() == 0 || !sugg.show_code_when_inline {
                     // This substitution is only removal or we explicitly don't want to show the
                     // code inline, don't show it
@@ -54,7 +54,7 @@ impl Emitter for EmitterWriter {
                 } else {
                     format!("help: {}: `{}`", sugg.msg, substitution)
                 };
-                primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
+                primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
             } else {
                 // if there are multiple suggestions, print them all in full
                 // to be consistent. We could try to figure out if we can
@@ -1098,14 +1098,10 @@ impl EmitterWriter {
                                -> io::Result<()> {
         use std::borrow::Borrow;
 
-        let primary_sub = &suggestion.substitution_parts[0];
         if let Some(ref cm) = self.cm {
             let mut buffer = StyledBuffer::new();
 
-            let lines = cm.span_to_lines(primary_sub.span).unwrap();
-
-            assert!(!lines.lines.is_empty());
-
+            // Render the suggestion message
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
             self.msg_to_buffer(&mut buffer,
@@ -1114,14 +1110,22 @@ impl EmitterWriter {
                                "suggestion",
                                Some(Style::HeaderMsg));
 
+            // Render the replacements for each suggestion
             let suggestions = suggestion.splice_lines(cm.borrow());
-            let span_start_pos = cm.lookup_char_pos(primary_sub.span.lo());
-            let line_start = span_start_pos.line;
-            draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
+
             let mut row_num = 2;
-            for (&(ref complete, show_underline), ref sub) in suggestions
-                    .iter().zip(primary_sub.substitutions.iter()).take(MAX_SUGGESTIONS)
-            {
+            for &(ref complete, ref parts) in suggestions.iter().take(MAX_SUGGESTIONS) {
+                let show_underline = parts.len() == 1
+                    && complete.lines().count() == 1
+                    && parts[0].snippet.trim() != complete.trim();
+
+                let lines = cm.span_to_lines(parts[0].span).unwrap();
+
+                assert!(!lines.lines.is_empty());
+
+                let span_start_pos = cm.lookup_char_pos(parts[0].span.lo());
+                let line_start = span_start_pos.line;
+                draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
                 let mut line_pos = 0;
                 // Only show underline if there's a single suggestion and it is a single line
                 let mut lines = complete.lines();
@@ -1136,21 +1140,22 @@ impl EmitterWriter {
                     buffer.append(row_num, line, Style::NoStyle);
                     line_pos += 1;
                     row_num += 1;
-                    // Only show an underline in the suggestions if the suggestion is not the
-                    // entirety of the code being shown and the displayed code is not multiline.
-                    if show_underline {
-                        draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
-                        let sub_len = sub.trim_right().len();
-                        let underline_start = span_start_pos.col.0;
-                        let underline_end = span_start_pos.col.0 + sub_len;
-                        for p in underline_start..underline_end {
-                            buffer.putc(row_num,
-                                        max_line_num_len + 3 + p,
-                                        '^',
-                                        Style::UnderlinePrimary);
-                        }
-                        row_num += 1;
+                }
+                // Only show an underline in the suggestions if the suggestion is not the
+                // entirety of the code being shown and the displayed code is not multiline.
+                if show_underline {
+                    draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
+                    let start = parts[0].snippet.len() - parts[0].snippet.trim_left().len();
+                    let sub_len = parts[0].snippet.trim().len();
+                    let underline_start = span_start_pos.col.0 + start;
+                    let underline_end = span_start_pos.col.0 + sub_len;
+                    for p in underline_start..underline_end {
+                        buffer.putc(row_num,
+                                    max_line_num_len + 3 + p,
+                                    '^',
+                                    Style::UnderlinePrimary);
                     }
+                    row_num += 1;
                 }
 
                 // if we elided some lines, add an ellipsis

@@ -76,17 +76,20 @@ pub struct CodeSuggestion {
     ///
     /// ```
     /// vec![
-    ///     (0..3, vec!["a", "x"]),
-    ///     (4..7, vec!["b", "y"]),
+    ///     Substitution { parts: vec![(0..3, "a"), (4..7, "b")] },
+    ///     Substitution { parts: vec![(0..3, "x"), (4..7, "y")] },
     /// ]
     /// ```
     ///
     /// or by replacing the entire span:
     ///
     /// ```
-    /// vec![(0..7, vec!["a.b", "x.y"])]
+    /// vec![
+    ///     Substitution { parts: vec![(0..7, "a.b")] },
+    ///     Substitution { parts: vec![(0..7, "x.y")] },
+    /// ]
     /// ```
-    pub substitution_parts: Vec<Substitution>,
+    pub substitutions: Vec<Substitution>,
     pub msg: String,
     pub show_code_when_inline: bool,
 }
@@ -94,8 +97,13 @@ pub struct CodeSuggestion {
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 /// See the docs on `CodeSuggestion::substitutions`
 pub struct Substitution {
+    pub parts: Vec<SubstitutionPart>,
+}
+
+#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub struct SubstitutionPart {
     pub span: Span,
-    pub substitutions: Vec<String>,
+    pub snippet: String,
 }
 
 pub trait CodeMapper {
@@ -109,18 +117,8 @@ pub trait CodeMapper {
 }
 
 impl CodeSuggestion {
-    /// Returns the number of substitutions
-    fn substitutions(&self) -> usize {
-        self.substitution_parts[0].substitutions.len()
-    }
-
-    /// Returns the number of substitutions
-    fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
-        self.substitution_parts.iter().map(|sub| sub.span)
-    }
-
-    /// Returns the assembled code suggestions and wether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<(String, bool)> {
+    /// Returns the assembled code suggestions and whether they should be shown with an underline.
+    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<(String, Vec<SubstitutionPart>)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -142,60 +140,42 @@ impl CodeSuggestion {
             }
         }
 
-        if self.substitution_parts.is_empty() {
-            return vec![(String::new(), false)];
-        }
+        assert!(!self.substitutions.is_empty());
 
-        let mut primary_spans: Vec<_> = self.substitution_parts
-            .iter()
-            .map(|sub| (sub.span, &sub.substitutions))
-            .collect();
+        self.substitutions.iter().cloned().map(|mut substitution| {
+            // Assumption: all spans are in the same file, and all spans
+            // are disjoint. Sort in ascending order.
+            substitution.parts.sort_by_key(|part| part.span.lo());
 
-        // Assumption: all spans are in the same file, and all spans
-        // are disjoint. Sort in ascending order.
-        primary_spans.sort_by_key(|sp| sp.0.lo());
+            // Find the bounding span.
+            let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
+            let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
+            let bounding_span = Span::new(lo, hi, NO_EXPANSION);
+            let lines = cm.span_to_lines(bounding_span).unwrap();
+            assert!(!lines.lines.is_empty());
 
-        // Find the bounding span.
-        let lo = primary_spans.iter().map(|sp| sp.0.lo()).min().unwrap();
-        let hi = primary_spans.iter().map(|sp| sp.0.hi()).min().unwrap();
-        let bounding_span = Span::new(lo, hi, NO_EXPANSION);
-        let lines = cm.span_to_lines(bounding_span).unwrap();
-        assert!(!lines.lines.is_empty());
+            // To build up the result, we do this for each span:
+            // - push the line segment trailing the previous span
+            //   (at the beginning a "phantom" span pointing at the start of the line)
+            // - push lines between the previous and current span (if any)
+            // - if the previous and current span are not on the same line
+            //   push the line segment leading up to the current span
+            // - splice in the span substitution
+            //
+            // Finally push the trailing line segment of the last span
+            let fm = &lines.file;
+            let mut prev_hi = cm.lookup_char_pos(bounding_span.lo());
+            prev_hi.col = CharPos::from_usize(0);
 
-        // To build up the result, we do this for each span:
-        // - push the line segment trailing the previous span
-        //   (at the beginning a "phantom" span pointing at the start of the line)
-        // - push lines between the previous and current span (if any)
-        // - if the previous and current span are not on the same line
-        //   push the line segment leading up to the current span
-        // - splice in the span substitution
-        //
-        // Finally push the trailing line segment of the last span
-        let fm = &lines.file;
-        let mut prev_hi = cm.lookup_char_pos(bounding_span.lo());
-        prev_hi.col = CharPos::from_usize(0);
+            let mut prev_line = fm.get_line(lines.lines[0].line_index);
+            let mut buf = String::new();
 
-        let mut prev_line = fm.get_line(lines.lines[0].line_index);
-        let mut bufs = vec![(String::new(), false); self.substitutions()];
-
-        for (sp, substitutes) in primary_spans {
-            let cur_lo = cm.lookup_char_pos(sp.lo());
-            for (&mut (ref mut buf, ref mut underline), substitute) in bufs.iter_mut()
-                                                                           .zip(substitutes) {
+            for part in &substitution.parts {
+                let cur_lo = cm.lookup_char_pos(part.span.lo());
                 if prev_hi.line == cur_lo.line {
-                    push_trailing(buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
-
-                    // Only show an underline in the suggestions if the suggestion is not the
-                    // entirety of the code being shown and the displayed code is not multiline.
-                    if prev_line.as_ref().unwrap().trim().len() > 0
-                        && !substitute.ends_with('\n')
-                        && substitute.lines().count() == 1
-                    {
-                        *underline = true;
-                    }
+                    push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
                 } else {
-                    *underline = false;
-                    push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
+                    push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
                     // push lines between the previous and current span (if any)
                     for idx in prev_hi.line..(cur_lo.line - 1) {
                         if let Some(line) = fm.get_line(idx) {
@@ -207,22 +187,20 @@ impl CodeSuggestion {
                         buf.push_str(&cur_line[..cur_lo.col.to_usize()]);
                     }
                 }
-                buf.push_str(substitute);
+                buf.push_str(&part.snippet);
+                prev_hi = cm.lookup_char_pos(part.span.hi());
+                prev_line = fm.get_line(prev_hi.line - 1);
             }
-            prev_hi = cm.lookup_char_pos(sp.hi());
-            prev_line = fm.get_line(prev_hi.line - 1);
-        }
-        for &mut (ref mut buf, _) in &mut bufs {
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
-                push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
+                push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
             }
             // remove trailing newlines
             while buf.ends_with('\n') {
                 buf.pop();
             }
-        }
-        bufs
+            (buf, substitution.parts)
+        }).collect()
     }
 }
 

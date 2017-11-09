@@ -284,17 +284,17 @@ impl DiagnosticSpan {
 
     fn from_suggestion(suggestion: &CodeSuggestion, je: &JsonEmitter)
                        -> Vec<DiagnosticSpan> {
-        suggestion.substitution_parts
+        suggestion.substitutions
                       .iter()
                       .flat_map(|substitution| {
-                          substitution.substitutions.iter().map(move |suggestion| {
+                          substitution.parts.iter().map(move |suggestion| {
                               let span_label = SpanLabel {
-                                  span: substitution.span,
+                                  span: suggestion.span,
                                   is_primary: true,
                                   label: None,
                               };
                               DiagnosticSpan::from_span_label(span_label,
-                                                              Some(suggestion),
+                                                              Some(&suggestion.snippet),
                                                               je)
                           })
                       })

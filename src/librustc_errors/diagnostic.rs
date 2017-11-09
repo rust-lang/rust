@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use CodeSuggestion;
+use SubstitutionPart;
 use Substitution;
 use Level;
 use RenderSpan;
@@ -217,9 +218,11 @@ impl Diagnostic {
     /// See `CodeSuggestion` for more information.
     pub fn span_suggestion_short(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
-            substitution_parts: vec![Substitution {
-                span: sp,
-                substitutions: vec![suggestion],
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
             }],
             msg: msg.to_owned(),
             show_code_when_inline: false,
@@ -245,9 +248,11 @@ impl Diagnostic {
     /// See `CodeSuggestion` for more information.
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
-            substitution_parts: vec![Substitution {
-                span: sp,
-                substitutions: vec![suggestion],
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
             }],
             msg: msg.to_owned(),
             show_code_when_inline: true,
@@ -258,10 +263,12 @@ impl Diagnostic {
     /// Prints out a message with multiple suggested edits of the code.
     pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
-            substitution_parts: vec![Substitution {
-                span: sp,
-                substitutions: suggestions,
-            }],
+            substitutions: suggestions.into_iter().map(|snippet| Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet,
+                    span: sp,
+                }],
+            }).collect(),
             msg: msg.to_owned(),
             show_code_when_inline: true,
         });
