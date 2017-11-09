@@ -119,6 +119,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                     debug!("add_liveness_constraints: reconstruct_statement_effect from {:#?}", location);
                     self.flow_inits.reconstruct_statement_effect(location);
                 }
+                self.flow_inits.apply_local_effect();
             }
         }
     }
