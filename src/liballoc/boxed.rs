@@ -411,7 +411,10 @@ impl<T: ?Sized> Box<T> {
     #[unstable(feature = "box_leak", reason = "needs an FCP to stabilize",
                issue = "0")]
     #[inline]
-    pub fn leak<'a, T: 'a>(b: Box<T>) -> &'a mut T {
+    pub fn leak<'a>(b: Box<T>) -> &'a mut T
+    where
+        T: 'a // Technically not needed, but kept to be explicit.
+    {
         unsafe { &mut *Box::into_raw(b) }
     }
 }
