@@ -208,7 +208,7 @@ pub unsafe fn _mm_insert_epi64(a: i64x2, i: i64, imm8: u8) -> i64x2 {
     a.replace((imm8 & 0b1) as u32, i)
 }
 
-/// Compare packed 8-bit integers in `a` and `b`,87 and return packed maximum
+/// Compare packed 8-bit integers in `a` and `b` and return packed maximum
 /// values in dst.
 #[inline(always)]
 #[target_feature = "+sse4.1"]
@@ -242,6 +242,42 @@ pub unsafe fn _mm_max_epi32(a: i32x4, b: i32x4) -> i32x4 {
 #[cfg_attr(test, assert_instr(pmaxud))]
 pub unsafe fn _mm_max_epu32(a: u32x4, b: u32x4) -> u32x4 {
     pmaxud(a, b)
+}
+
+/// Compare packed 8-bit integers in `a` and `b` and return packed minimum
+/// values in dst.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pminsb))]
+pub unsafe fn _mm_min_epi8(a: i8x16, b: i8x16) -> i8x16 {
+    pminsb(a, b)
+}
+
+/// Compare packed unsigned 16-bit integers in `a` and `b`, and return packed
+/// minimum.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pminuw))]
+pub unsafe fn _mm_min_epu16(a: u16x8, b: u16x8) -> u16x8 {
+    pminuw(a, b)
+}
+
+/// Compare packed 32-bit integers in `a` and `b`, and return packed minimum
+/// values.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pminsd))]
+pub unsafe fn _mm_min_epi32(a: i32x4, b: i32x4) -> i32x4 {
+    pminsd(a, b)
+}
+
+/// Compare packed unsigned 32-bit integers in `a` and `b`, and return packed
+/// minimum values.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pminud))]
+pub unsafe fn _mm_min_epu32(a: u32x4, b: u32x4) -> u32x4 {
+    pminud(a, b)
 }
 
 /// Convert packed 32-bit integers from `a` and `b` to packed 16-bit integers
@@ -569,6 +605,14 @@ extern "C" {
     fn pmaxsd(a: i32x4, b: i32x4) -> i32x4;
     #[link_name = "llvm.x86.sse41.pmaxud"]
     fn pmaxud(a: u32x4, b: u32x4) -> u32x4;
+    #[link_name = "llvm.x86.sse41.pminsb"]
+    fn pminsb(a: i8x16, b: i8x16) -> i8x16;
+    #[link_name = "llvm.x86.sse41.pminuw"]
+    fn pminuw(a: u16x8, b: u16x8) -> u16x8;
+    #[link_name = "llvm.x86.sse41.pminsd"]
+    fn pminsd(a: i32x4, b: i32x4) -> i32x4;
+    #[link_name = "llvm.x86.sse41.pminud"]
+    fn pminud(a: u32x4, b: u32x4) -> u32x4;
     #[link_name = "llvm.x86.sse41.packusdw"]
     fn packusdw(a: i32x4, b: i32x4) -> u16x8;
     #[link_name = "llvm.x86.sse41.dppd"]
@@ -781,6 +825,84 @@ mod tests {
         let b = u32x4::new(2, 3, 6, 7);
         let r = sse41::_mm_max_epu32(a, b);
         let e = u32x4::new(2, 4, 6, 8);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_min_epi8_1() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = i8x16::new(
+            1, 4, 5, 8, 9, 12, 13, 16,
+            17, 20, 21, 24, 25, 28, 29, 32,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let b = i8x16::new(
+            2, 3, 6, 7, 10, 11, 14, 15,
+            18, 19, 22, 23, 26, 27, 30, 31,
+        );
+        let r = sse41::_mm_min_epi8(a, b);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = i8x16::new(
+            1, 3, 5, 7, 9, 11, 13, 15,
+            17, 19, 21, 23, 25, 27, 29, 31,
+        );
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_min_epi8_2() {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = i8x16::new(
+            1, -4, -5, 8, -9, -12, 13, -16,
+            17, 20, 21, 24, 25, 28, 29, 32,
+        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let b = i8x16::new(
+            2, -3, -6, 7, -10, -11, 14, -15,
+            18, 19, 22, 23, 26, 27, 30, 31,
+        );
+        let r = sse41::_mm_min_epi8(a, b);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e = i8x16::new(
+            1, -4, -6, 7, -10, -12, 13, -16,
+            17, 19, 21, 23, 25, 27, 29, 31,
+        );
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_min_epu16() {
+        let a = u16x8::new(1, 4, 5, 8, 9, 12, 13, 16);
+        let b = u16x8::new(2, 3, 6, 7, 10, 11, 14, 15);
+        let r = sse41::_mm_min_epu16(a, b);
+        let e = u16x8::new(1, 3, 5, 7, 9, 11, 13, 15);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_min_epi32_1() {
+        let a = i32x4::new(1, 4, 5, 8);
+        let b = i32x4::new(2, 3, 6, 7);
+        let r = sse41::_mm_min_epi32(a, b);
+        let e = i32x4::new(1, 3, 5, 7);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_min_epi32_2() {
+        let a = i32x4::new(-1, 4, 5, -7);
+        let b = i32x4::new(-2, 3, -6, 8);
+        let r = sse41::_mm_min_epi32(a, b);
+        let e = i32x4::new(-2, 3, -6, -7);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_min_epu32() {
+        let a = u32x4::new(1, 4, 5, 8);
+        let b = u32x4::new(2, 3, 6, 7);
+        let r = sse41::_mm_min_epu32(a, b);
+        let e = u32x4::new(1, 3, 5, 7);
         assert_eq!(r, e);
     }
 
