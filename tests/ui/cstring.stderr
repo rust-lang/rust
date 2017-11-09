@@ -1,11 +1,3 @@
-error: function is never used: `temporary_cstring`
- --> $DIR/cstring.rs:4:1
-  |
-4 | fn temporary_cstring() {
-  | ^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = note: `-D dead-code` implied by `-D warnings`
-
 error: you are getting the inner pointer of a temporary `CString`
  --> $DIR/cstring.rs:7:5
   |
