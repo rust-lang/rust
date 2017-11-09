@@ -262,18 +262,30 @@ fn link_binary_output(sess: &Session,
         check_file_is_writeable(obj, sess);
     }
 
-    let tmpdir = match TempDir::new("rustc") {
-        Ok(tmpdir) => tmpdir,
-        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
-    };
-
     let mut out_filenames = vec![];
 
     if outputs.outputs.contains_key(&OutputType::Metadata) {
         let out_filename = filename_for_metadata(sess, crate_name, outputs);
-        emit_metadata(sess, trans, &out_filename);
+        // To avoid races with another rustc process scanning the output directory,
+        // we need to write the file somewhere else and atomically move it to its
+        // final destination, with a `fs::rename` call. In order for the rename to
+        // always succeed, the temporary file needs to be on the same filesystem,
+        // which is why we create it inside the output directory specifically.
+        let metadata_tmpdir = match TempDir::new_in(out_filename.parent().unwrap(), "rmeta") {
+            Ok(tmpdir) => tmpdir,
+            Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
+        };
+        let metadata = emit_metadata(sess, trans, &metadata_tmpdir);
+        if let Err(e) = fs::rename(metadata, &out_filename) {
+            sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+        }
         out_filenames.push(out_filename);
     }
+
+    let tmpdir = match TempDir::new("rustc") {
+        Ok(tmpdir) => tmpdir,
+        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
+    };
 
     if outputs.outputs.should_trans() {
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
@@ -283,10 +295,10 @@ fn link_binary_output(sess: &Session,
                           trans,
                           RlibFlavor::Normal,
                           &out_filename,
-                          tmpdir.path()).build();
+                          &tmpdir).build();
             }
             config::CrateTypeStaticlib => {
-                link_staticlib(sess, trans, &out_filename, tmpdir.path());
+                link_staticlib(sess, trans, &out_filename, &tmpdir);
             }
             _ => {
                 link_natively(sess, crate_type, &out_filename, trans, tmpdir.path());
@@ -321,14 +333,23 @@ fn archive_config<'a>(sess: &'a Session,
     }
 }
 
-fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
-    let result = fs::File::create(out_filename).and_then(|mut f| {
+/// We use a temp directory here to avoid races between concurrent rustc processes,
+/// such as builds in the same directory using the same filename for metadata while
+/// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
+/// directory being searched for `extern crate` (observing an incomplete file).
+/// The returned path is the temporary file containing the complete metadata.
+fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, tmpdir: &TempDir)
+                     -> PathBuf {
+    let out_filename = tmpdir.path().join(METADATA_FILENAME);
+    let result = fs::File::create(&out_filename).and_then(|mut f| {
         f.write_all(&trans.metadata.raw_data)
     });
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
     }
+
+    out_filename
 }
 
 enum RlibFlavor {
@@ -346,7 +367,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  trans: &CrateTranslation,
                  flavor: RlibFlavor,
                  out_filename: &Path,
-                 tmpdir: &Path) -> ArchiveBuilder<'a> {
+                 tmpdir: &TempDir) -> ArchiveBuilder<'a> {
     info!("preparing rlib to {:?}", out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
 
@@ -408,12 +429,8 @@ fn link_rlib<'a>(sess: &'a Session,
     match flavor {
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
-            // contain the metadata in a separate file. We use a temp directory
-            // here so concurrent builds in the same directory don't try to use
-            // the same filename for metadata (stomping over one another)
-            let metadata = tmpdir.join(METADATA_FILENAME);
-            emit_metadata(sess, trans, &metadata);
-            ab.add_file(&metadata);
+            // contain the metadata in a separate file.
+            ab.add_file(&emit_metadata(sess, trans, tmpdir));
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
@@ -457,7 +474,7 @@ fn link_rlib<'a>(sess: &'a Session,
 fn link_staticlib(sess: &Session,
                   trans: &CrateTranslation,
                   out_filename: &Path,
-                  tempdir: &Path) {
+                  tempdir: &TempDir) {
     let mut ab = link_rlib(sess,
                            trans,
                            RlibFlavor::StaticlibBase,
