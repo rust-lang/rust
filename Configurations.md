@@ -1552,6 +1552,68 @@ use sit;
 
 See also [`reorder_imports`](#reorder_imports).
 
+## `reorder_extern_crates`
+
+Reorder `extern crate` statements alphabetically
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `true` (default):
+
+```rust
+extern crate dolor;
+extern crate ipsum;
+extern crate lorem;
+extern crate sit;
+```
+
+#### `false`:
+
+```rust
+extern crate lorem;
+extern crate ipsum;
+extern crate dolor;
+extern crate sit;
+```
+
+See also [`reorder_extern_crates_in_group`](#reorder_extern_crates_in_group).
+
+## `reorder_extern_crates_in_group`
+
+Reorder `extern crate` statements in group
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+**Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
+
+#### `true` (default):
+
+```rust
+extern crate a;
+extern crate b;
+
+extern crate dolor;
+extern crate ipsum;
+extern crate lorem;
+extern crate sit;
+```
+
+#### `false`:
+
+```rust
+extern crate b;
+extern crate a;
+
+extern crate lorem;
+extern crate ipsum;
+extern crate dolor;
+extern crate sit;
+```
+
+See also [`reorder_extern_crates`](#reorder_extern_crates).
+
 ## `single_line_if_else_max_width`
 
 Maximum line length for single line if-else expressions.
