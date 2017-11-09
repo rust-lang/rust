@@ -4444,7 +4444,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
-        -> PResult<'a, (Generics, TyParam)> {
+        -> PResult<'a, (ast::Generics, TyParam)> {
         let span = self.span;
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
@@ -4463,7 +4463,7 @@ impl<'a> Parser<'a> {
         };
         generics.where_clause = self.parse_where_clause()?;
 
-        Ok((Generics, TyParam {
+        Ok((generics, TyParam {
             attrs: preceding_attrs.into(),
             ident,
             id: ast::DUMMY_NODE_ID,
