@@ -365,8 +365,8 @@ impl<T: ?Sized> Box<T> {
         unsafe { mem::transmute(b) }
     }
 
-    /// Consumes and leaks the `Box`, returning a static mutable reference,
-    /// `&'static mut T`.
+    /// Consumes and leaks the `Box`, returning a mutable reference,
+    /// `&'a mut T`. Here, the lifetime `'a` may be chosen to be `'static`.
     ///
     /// This function is mainly useful for data that lives for the remainder of
     /// the program's life. Dropping the returned reference will cause a memory
