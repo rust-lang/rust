@@ -2123,10 +2123,27 @@ let lorem = ipsum.map(|dolor| dolor.sit())?;
 
 Density of a where clause.
 
-- **Default value**: `"CompressedIfEmpty"`
+- **Default value**: `"Vertical"`
 - **Possible values**: `"Compressed"`, `"CompressedIfEmpty"`, `"Tall"`, `"Vertical"`
 
-#### `"CompressedIfEmpty"` (default):
+#### `"Vertical"` (default):
+
+```rust
+trait Lorem {
+    fn ipsum<Dolor>(dolor: Dolor) -> Sit
+        where Dolor: Eq;
+
+    fn ipsum<Dolor>(dolor: Dolor) -> Sit
+        where Dolor: Eq
+    {
+        // body
+    }
+}
+```
+
+**Note:** `where_density = "Vertical"` currently produces the same output as `where_density = "Tall"`.
+
+#### `"CompressedIfEmpty"`:
 
 ```rust
 trait Lorem {
@@ -2174,23 +2191,6 @@ trait Lorem {
 ```
 
 **Note:** `where_density = "Tall"` currently produces the same output as `where_density = "Vertical"`.
-
-#### `"Vertical"`:
-
-```rust
-trait Lorem {
-    fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq;
-
-    fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq
-    {
-        // body
-    }
-}
-```
-
-**Note:** `where_density = "Vertical"` currently produces the same output as `where_density = "Tall"`.
 
 See also: [`where_layout`](#where_layout), [`where_pred_indent`](#where_pred_indent), [`where_style`](#where_style).
 
