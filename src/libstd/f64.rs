@@ -23,6 +23,8 @@ use core::num;
 use intrinsics;
 #[cfg(not(test))]
 use num::FpCategory;
+#[cfg(not(test))]
+use sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
@@ -34,53 +36,6 @@ pub use core::f64::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
 pub use core::f64::{MIN, MIN_POSITIVE, MAX};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::consts;
-
-#[allow(dead_code)]
-mod cmath {
-    use libc::{c_double, c_int};
-
-    #[link_name = "m"]
-    extern {
-        pub fn acos(n: c_double) -> c_double;
-        pub fn asin(n: c_double) -> c_double;
-        pub fn atan(n: c_double) -> c_double;
-        pub fn atan2(a: c_double, b: c_double) -> c_double;
-        pub fn cbrt(n: c_double) -> c_double;
-        pub fn cosh(n: c_double) -> c_double;
-        pub fn erf(n: c_double) -> c_double;
-        pub fn erfc(n: c_double) -> c_double;
-        pub fn expm1(n: c_double) -> c_double;
-        pub fn fdim(a: c_double, b: c_double) -> c_double;
-        pub fn fmod(a: c_double, b: c_double) -> c_double;
-        pub fn frexp(n: c_double, value: &mut c_int) -> c_double;
-        pub fn ilogb(n: c_double) -> c_int;
-        pub fn ldexp(x: c_double, n: c_int) -> c_double;
-        pub fn logb(n: c_double) -> c_double;
-        pub fn log1p(n: c_double) -> c_double;
-        pub fn nextafter(x: c_double, y: c_double) -> c_double;
-        pub fn modf(n: c_double, iptr: &mut c_double) -> c_double;
-        pub fn sinh(n: c_double) -> c_double;
-        pub fn tan(n: c_double) -> c_double;
-        pub fn tanh(n: c_double) -> c_double;
-        pub fn tgamma(n: c_double) -> c_double;
-
-        // These are commonly only available for doubles
-
-        pub fn j0(n: c_double) -> c_double;
-        pub fn j1(n: c_double) -> c_double;
-        pub fn jn(i: c_int, n: c_double) -> c_double;
-
-        pub fn y0(n: c_double) -> c_double;
-        pub fn y1(n: c_double) -> c_double;
-        pub fn yn(i: c_int, n: c_double) -> c_double;
-
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgamma_r")]
-        pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
-
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypot")]
-        pub fn hypot(x: c_double, y: c_double) -> c_double;
-    }
-}
 
 #[cfg(not(test))]
 #[lang = "f64"]

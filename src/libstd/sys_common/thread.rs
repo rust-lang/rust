@@ -10,12 +10,11 @@
 
 use env;
 use alloc::boxed::FnBox;
-use libc;
 use sync::atomic::{self, Ordering};
 use sys::stack_overflow;
 use sys::thread as imp;
 
-pub unsafe fn start_thread(main: *mut libc::c_void) {
+pub unsafe fn start_thread(main: *mut u8) {
     // Next, set up our stack overflow handler which may get triggered if we run
     // out of stack.
     let _handler = stack_overflow::Handler::new();

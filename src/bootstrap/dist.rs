@@ -743,7 +743,6 @@ impl Step for Src {
             "src/liblibc",
             "src/libpanic_abort",
             "src/libpanic_unwind",
-            "src/librand",
             "src/librustc_asan",
             "src/librustc_lsan",
             "src/librustc_msan",

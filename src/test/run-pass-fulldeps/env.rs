@@ -10,14 +10,15 @@
 
 // compile-flags: --test
 
-#![feature(rand, std_panic)]
+#![feature(rustc_private, std_panic)]
+
+extern crate rand;
 
 use std::env::*;
-use std::__rand as rand;
-use std::__rand::Rng;
 use std::iter::repeat;
 use std::ffi::{OsString, OsStr};
 
+use rand::Rng;
 
 fn make_rand_name() -> OsString {
     let mut rng = rand::thread_rng();

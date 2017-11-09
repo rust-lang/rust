@@ -14,7 +14,6 @@ use cmp::Ordering;
 use error::Error;
 use fmt::{self, Write};
 use io;
-use libc;
 use mem;
 use memchr;
 use ops;
@@ -22,6 +21,7 @@ use os::raw::c_char;
 use ptr;
 use slice;
 use str::{self, Utf8Error};
+use sys;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -404,7 +404,7 @@ impl CString {
     /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
-        let len = libc::strlen(ptr) + 1; // Including the NUL byte
+        let len = sys::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts_mut(ptr, len as usize);
         CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
     }
@@ -861,7 +861,7 @@ impl CStr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
-        let len = libc::strlen(ptr);
+        let len = sys::strlen(ptr);
         let ptr = ptr as *const u8;
         CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
     }

@@ -87,7 +87,7 @@ impl Thread {
         };
 
         extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
-            unsafe { start_thread(main); }
+            unsafe { start_thread(main as *mut u8); }
             ptr::null_mut()
         }
     }

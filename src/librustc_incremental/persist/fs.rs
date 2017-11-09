@@ -125,7 +125,8 @@ use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{UNIX_EPOCH, SystemTime, Duration};
-use std::__rand::{thread_rng, Rng};
+
+use rand::{thread_rng, Rng};
 
 const LOCK_FILE_EXT: &'static str = ".lock";
 const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";

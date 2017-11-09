@@ -36,8 +36,8 @@ pub fn unwind_backtrace(frames: &mut [Frame])
     } as usize;
     for (from, to) in raw_frames.iter().zip(frames.iter_mut()).take(nb_frames) {
         *to = Frame {
-            exact_position: *from,
-            symbol_addr: *from,
+            exact_position: *from as *mut u8,
+            symbol_addr: *from as *mut u8,
         };
     }
     Ok((nb_frames as usize, BacktraceContext))

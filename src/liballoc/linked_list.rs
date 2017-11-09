@@ -1269,9 +1269,10 @@ unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 
 #[cfg(test)]
 mod tests {
-    use std::__rand::{thread_rng, Rng};
     use std::thread;
     use std::vec::Vec;
+
+    use rand::{thread_rng, Rng};
 
     use super::{LinkedList, Node};
 

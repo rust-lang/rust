@@ -107,8 +107,8 @@ impl Step for Std {
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         std_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
-                &mut cargo,
-                &libstd_stamp(build, compiler, target));
+                  &mut cargo,
+                  &libstd_stamp(build, compiler, target));
 
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, build.build),
@@ -359,8 +359,8 @@ impl Step for Test {
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         test_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
-                &mut cargo,
-                &libtest_stamp(build, compiler, target));
+                  &mut cargo,
+                  &libtest_stamp(build, compiler, target));
 
         builder.ensure(TestLink {
             compiler: builder.compiler(compiler.stage, build.build),
@@ -866,12 +866,13 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
             // `std-<hash>.dll.lib` on Windows. The aforementioned methods only
             // split the file name by the last extension (`.lib`) while we need
             // to split by all extensions (`.dll.lib`).
+            let expected_len = t!(filename.metadata()).len();
             let filename = filename.file_name().unwrap().to_str().unwrap();
             let mut parts = filename.splitn(2, '.');
             let file_stem = parts.next().unwrap().to_owned();
             let extension = parts.next().unwrap().to_owned();
 
-            toplevel.push((file_stem, extension));
+            toplevel.push((file_stem, extension, expected_len));
         }
     }
 
@@ -891,11 +892,12 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
         .map(|e| t!(e))
         .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
         .collect::<Vec<_>>();
-    for (prefix, extension) in toplevel {
-        let candidates = contents.iter().filter(|&&(_, ref filename, _)| {
+    for (prefix, extension, expected_len) in toplevel {
+        let candidates = contents.iter().filter(|&&(_, ref filename, ref meta)| {
             filename.starts_with(&prefix[..]) &&
                 filename[prefix.len()..].starts_with("-") &&
-                filename.ends_with(&extension[..])
+                filename.ends_with(&extension[..]) &&
+                meta.len() == expected_len
         });
         let max = candidates.max_by_key(|&&(_, _, ref metadata)| {
             FileTime::from_last_modification_time(metadata)

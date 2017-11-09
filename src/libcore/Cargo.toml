@@ -10,7 +10,7 @@ test = false
 bench = false
 
 [dev-dependencies]
-rand = { path = "../librand" }
+rand = "0.3"
 
 [[test]]
 name = "coretests"

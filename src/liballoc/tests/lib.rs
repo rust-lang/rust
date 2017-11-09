@@ -30,6 +30,7 @@
 #![feature(unicode)]
 
 extern crate std_unicode;
+extern crate rand;
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

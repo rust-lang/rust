@@ -14,7 +14,6 @@
 use env;
 use io::prelude::*;
 use io;
-use libc;
 use str;
 use sync::atomic::{self, Ordering};
 use path::{self, Path};
@@ -39,9 +38,9 @@ pub const HEX_WIDTH: usize = 10;
 #[derive(Debug, Copy, Clone)]
 pub struct Frame {
     /// Exact address of the call that failed.
-    pub exact_position: *const libc::c_void,
+    pub exact_position: *const u8,
     /// Address of the enclosing function.
-    pub symbol_addr: *const libc::c_void,
+    pub symbol_addr: *const u8,
 }
 
 /// Max number of frames to print.
@@ -201,8 +200,10 @@ fn output(w: &mut Write, idx: usize, frame: Frame,
 ///
 /// See also `output`.
 #[allow(dead_code)]
-fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
-                       format: PrintFormat) -> io::Result<()> {
+fn output_fileline(w: &mut Write,
+                   file: &[u8],
+                   line: u32,
+                   format: PrintFormat) -> io::Result<()> {
     // prior line: "  ##: {:2$} - func"
     w.write_all(b"")?;
     match format {
