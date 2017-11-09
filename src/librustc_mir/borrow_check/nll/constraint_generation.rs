@@ -89,11 +89,13 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                 all_live_locals.push((location, live_locals.iter().collect()));
             });
 
+            let terminator_index = self.mir.basic_blocks()[bb].statements.len();
             self.flow_inits.reset_to_entry_of(bb);
-            for index in 0 .. self.mir.basic_blocks()[bb].statements.len() {
-                let location = Location { block: bb, statement_index: index };
-                let (location2, live_locals) = all_live_locals.pop().unwrap();
-                assert_eq!(location, location2);
+            while let Some((location, live_locals)) = all_live_locals.pop() {
+                if location.statement_index == terminator_index {
+                    self.flow_inits.reconstruct_terminator_effect(location);
+                    continue;
+                }
 
                 for live_local in live_locals {
                     let mpi = self.move_data.rev_lookup.find_local(live_local);
