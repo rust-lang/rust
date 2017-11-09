@@ -25,7 +25,7 @@ use getopts::{HasArg, Matches, Occur, Options};
 
 use rustfmt::{run, Input, Summary};
 use rustfmt::file_lines::FileLines;
-use rustfmt::config::{get_toml_path, Config, WriteMode};
+use rustfmt::config::{get_toml_path, Color, Config, WriteMode};
 
 type FmtError = Box<error::Error + Send + Sync>;
 type FmtResult<T> = std::result::Result<T, FmtError>;
@@ -59,6 +59,7 @@ struct CliOptions {
     skip_children: bool,
     verbose: bool,
     write_mode: Option<WriteMode>,
+    color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
 }
@@ -90,6 +91,14 @@ impl CliOptions {
             }
         }
 
+        if let Some(ref color) = matches.opt_str("color") {
+            if let Ok(color) = Color::from_str(color) {
+                options.color = Some(color);
+            } else {
+                return Err(FmtError::from(format!("Invalid color: {}", color)));
+            }
+        }
+
         if let Some(ref file_lines) = matches.opt_str("file-lines") {
             options.file_lines = file_lines.parse()?;
         }
@@ -104,6 +113,9 @@ impl CliOptions {
         config.set().unstable_features(self.unstable_features);
         if let Some(write_mode) = self.write_mode {
             config.set().write_mode(write_mode);
+        }
+        if let Some(color) = self.color {
+            config.set().color(color);
         }
     }
 }
@@ -130,6 +142,12 @@ fn make_opts() -> Options {
         "write-mode",
         "how to write output (not usable when piping from stdin)",
         "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
+    );
+    opts.optopt(
+        "",
+        "color",
+        "use colored output (if supported)",
+        "[always|never|auto]",
     );
     opts.optflag("", "skip-children", "don't reformat child modules");
 

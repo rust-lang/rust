@@ -23,7 +23,7 @@ use std::str::Chars;
 
 use rustfmt::*;
 use rustfmt::filemap::{write_system_newlines, FileMap};
-use rustfmt::config::{Config, ReportTactic};
+use rustfmt::config::{Color, Config, ReportTactic};
 use rustfmt::rustfmt_diff::*;
 
 const DIFF_CONTEXT_SIZE: usize = 3;
@@ -229,9 +229,11 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
     let mut t = term::stdout().unwrap();
 
     for (file_name, diff) in result {
-        print_diff(diff, |line_num| {
-            format!("\nMismatch at {}:{}:", file_name, line_num)
-        });
+        print_diff(
+            diff,
+            |line_num| format!("\nMismatch at {}:{}:", file_name, line_num),
+            Color::Auto,
+        );
     }
 
     t.reset().unwrap();
