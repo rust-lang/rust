@@ -1,8 +1,0 @@
-error: unexpected end of macro invocation
-  --> $DIR/assert_eq_trailing_comma.rs:12:20
-   |
-12 |     assert_eq!(1, 1,);
-   |                    ^
-
-error: aborting due to previous error
-
