@@ -41,7 +41,7 @@
 
     // On the search screen, so you remain on the last tab you opened.
     //
-    // 0 for "Types/modules"
+    // 0 for "In name"
     // 1 for "As parameters"
     // 2 for "As return value"
     var currentTab = 0;
@@ -1093,7 +1093,7 @@
             output = '<h1>Results for ' + escape(query.query) +
                 (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
                 '<div id="titles">' +
-                makeTabHeader(0, "Types/modules", results['others'].length) +
+                makeTabHeader(0, "In name", results['others'].length) +
                 makeTabHeader(1, "As parameters", results['in_args'].length) +
                 makeTabHeader(2, "As return value", results['returned'].length) +
                 '</div><div id="results">';
