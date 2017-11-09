@@ -505,7 +505,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
                 .code(DiagnosticId::Error("E0307".into()))
                 .emit();
-                break
+                return
             }
         }
 

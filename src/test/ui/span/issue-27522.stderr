@@ -7,14 +7,5 @@ error[E0307]: invalid `self` type: &SomeType
    = note: type must be `Self` or a type that dereferences to it`
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
-error: arbitrary `self` types are unstable (see issue #44874)
-  --> $DIR/issue-27522.rs:16:22
-   |
-16 |     fn handler(self: &SomeType);
-   |                      ^^^^^^^^^
-   |
-   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
-   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

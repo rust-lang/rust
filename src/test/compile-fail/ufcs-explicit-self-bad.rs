@@ -17,7 +17,6 @@ struct Foo {
 impl Foo {
     fn foo(self: isize, x: isize) -> isize {
         //~^ ERROR invalid `self` type
-        //~| ERROR arbitrary `self` types are unstable
         self.f + x
     }
 }
@@ -29,12 +28,10 @@ struct Bar<T> {
 impl<T> Bar<T> {
     fn foo(self: Bar<isize>, x: isize) -> isize {
         //~^ ERROR invalid `self` type
-        //~| ERROR arbitrary `self` types are unstable
         x
     }
     fn bar(self: &Bar<usize>, x: isize) -> isize {
         //~^ ERROR invalid `self` type
-        //~| ERROR arbitrary `self` types are unstable
         x
     }
 }
