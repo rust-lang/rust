@@ -14,7 +14,8 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::MutVisitor;
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
+use transform::MirPass;
 
 pub struct NoLandingPads;
 

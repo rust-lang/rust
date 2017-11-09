@@ -17,8 +17,9 @@
 use rustc::ty::{self, TyCtxt, RegionKind};
 use rustc::hir;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc::middle::region;
+use transform::MirPass;
 
 pub struct AddValidation;
 

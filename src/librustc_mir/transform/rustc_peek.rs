@@ -14,9 +14,10 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+use transform::MirPass;
 
 use dataflow::do_dataflow;
 use dataflow::MoveDataParamEnv;

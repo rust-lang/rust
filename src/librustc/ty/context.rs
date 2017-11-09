@@ -31,7 +31,6 @@ use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::Mir;
-use mir::transform::Passes;
 use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
 use traits;
@@ -882,8 +881,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub maps: maps::Maps<'tcx>,
 
-    pub mir_passes: Rc<Passes>,
-
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
@@ -1055,7 +1052,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   cstore: &'tcx CrateStore,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
-                                  mir_passes: Rc<Passes>,
                                   arenas: &'tcx GlobalArenas<'tcx>,
                                   arena: &'tcx DroplessArena,
                                   resolutions: ty::Resolutions,
@@ -1172,7 +1168,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir,
             def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
-            mir_passes,
             rcache: RefCell::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),

@@ -16,12 +16,13 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
+use transform::MirPass;
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
 use syntax::{attr};

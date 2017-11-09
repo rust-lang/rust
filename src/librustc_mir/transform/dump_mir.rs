@@ -16,9 +16,10 @@ use std::fs::File;
 use std::io;
 
 use rustc::mir::Mir;
-use rustc::mir::transform::{MirPass, MirPassIndex, MirSource, MirSuite, PassHook};
+use rustc::mir::transform::MirSource;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
+use transform::{MirPass, MirPassIndex, MirSuite, PassHook};
 use util as mir_util;
 
 pub struct Marker(pub &'static str);

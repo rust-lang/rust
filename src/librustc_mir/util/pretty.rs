@@ -11,7 +11,7 @@
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
-use rustc::mir::transform::{MirSuite, MirPassIndex, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
@@ -20,6 +20,7 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{PathBuf, Path};
+use transform::{MirSuite, MirPassIndex};
 use super::graphviz::write_mir_fn_graphviz;
 
 const INDENT: &'static str = "    ";

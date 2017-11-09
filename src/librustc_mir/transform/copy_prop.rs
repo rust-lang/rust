@@ -30,9 +30,10 @@
 //! future.
 
 use rustc::mir::{Constant, Local, LocalKind, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
+use transform::MirPass;
 use util::def_use::DefUseAnalysis;
 
 pub struct CopyPropagation;

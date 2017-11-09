@@ -26,7 +26,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
@@ -38,6 +38,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::usize;
 
+use transform::MirPass;
 use super::promote_consts::{self, Candidate, TempState};
 
 bitflags! {

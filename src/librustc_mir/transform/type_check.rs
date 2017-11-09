@@ -18,11 +18,12 @@ use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::MirSource;
 use rustc::mir::visit::Visitor;
 use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
+use transform::MirPass;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;

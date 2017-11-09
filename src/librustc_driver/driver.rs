@@ -22,7 +22,6 @@ use rustc::lint;
 use rustc::middle::{self, stability, reachable};
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
@@ -989,63 +988,12 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // FIXME(eddyb) get rid of this once we replace const_eval with miri.
     rustc_const_eval::provide(&mut extern_providers);
 
-    // Setup the MIR passes that we want to run.
-    let mut passes = Passes::new();
-    passes.push_hook(mir::transform::dump_mir::DumpMir);
-
-    // Remove all `EndRegion` statements that are not involved in borrows.
-    passes.push_pass(MIR_CONST, mir::transform::clean_end_regions::CleanEndRegions);
-
-    // What we need to do constant evaluation.
-    passes.push_pass(MIR_CONST, mir::transform::simplify::SimplifyCfg::new("initial"));
-    passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);
-    passes.push_pass(MIR_CONST, mir::transform::rustc_peek::SanityCheck);
-
-    // We compute "constant qualifications" between MIR_CONST and MIR_VALIDATED.
-
-    // What we need to run borrowck etc.
-
-    passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
-    passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
-
-    // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
-
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
-    passes.push_pass(MIR_OPTIMIZED,
-                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
-
-    // These next passes must be executed together
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::elaborate_drops::ElaborateDrops);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
-    // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
-    // an AllCallEdges pass right before it.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AllCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_validation::AddValidation);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
-    // No lifetime analysis based on borrowing can be done from here on out.
-
-    // From here on out, regions are gone.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::erase_regions::EraseRegions);
-
-    // Optimizations begin.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::inline::Inline);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::instcombine::InstCombine);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::deaggregator::Deaggregator);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::copy_prop::CopyPropagation);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyLocals);
-
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::generator::StateTransform);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
-
     let (tx, rx) = mpsc::channel();
 
     TyCtxt::create_and_enter(sess,
                              cstore,
                              local_providers,
                              extern_providers,
-                             Rc::new(passes),
                              arenas,
                              arena,
                              resolutions,
