@@ -47,7 +47,7 @@ use core::iter::FusedIterator;
 use std_unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
-use borrow::{Borrow, ToOwned};
+use borrow::{Borrow, BorrowMut, ToOwned};
 use string::String;
 use std_unicode;
 use vec::Vec;
@@ -179,6 +179,38 @@ impl Borrow<str> for String {
     #[inline]
     fn borrow(&self) -> &str {
         &self[..]
+    }
+}
+
+#[unstable(feature = "borrow_mut_string", issue = "45808")]
+impl<'a> BorrowMut<str> for String {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut str {
+        &mut self[..]
+    }
+}
+
+#[unstable(feature = "borrow_ref_string", issue = "45808")]
+impl<'a> Borrow<str> for &'a String {
+    #[inline]
+    fn borrow(&self) -> &str {
+        &self[..]
+    }
+}
+
+#[unstable(feature = "borrow_ref_string", issue = "45808")]
+impl<'a> Borrow<str> for &'a mut String {
+    #[inline]
+    fn borrow(&self) -> &str {
+        &self[..]
+    }
+}
+
+#[unstable(feature = "borrow_ref_string", issue = "45808")]
+impl<'a> BorrowMut<str> for &'a mut String {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut str {
+        &mut self[..]
     }
 }
 
