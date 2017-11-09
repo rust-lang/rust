@@ -390,7 +390,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// fn main() {
     ///     let x = Box::new(41);
-    ///     let static_ref = Box::leak(x);
+    ///     let static_ref: &'static mut usize = Box::leak(x);
     ///     *static_ref += 1;
     ///     assert_eq!(*static_ref, 42);
     /// }
@@ -411,7 +411,7 @@ impl<T: ?Sized> Box<T> {
     #[unstable(feature = "box_leak", reason = "needs an FCP to stabilize",
                issue = "0")]
     #[inline]
-    pub fn leak(b: Box<T>) -> &'static mut T {
+    pub fn leak<'a, T: 'a>(b: Box<T>) -> &'a mut T {
         unsafe { &mut *Box::into_raw(b) }
     }
 }
