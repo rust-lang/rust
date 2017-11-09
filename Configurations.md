@@ -1152,7 +1152,7 @@ use foo::{xxx, yyy, zzz};
 use foo::{aaa, bbb, ccc, ddd, eee, fff};
 ```
 
-#### `"HorizontalVertical"`
+#### `"HorizontalVertical"`:
 
 ```rust
 use foo::{xxx, yyy, zzz};
@@ -1165,7 +1165,7 @@ use foo::{aaa,
           fff};
 ```
 
-#### `"Vertical"`
+#### `"Vertical"`:
 
 ```rust
 use foo::{xxx,
