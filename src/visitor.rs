@@ -797,7 +797,7 @@ fn take_while_with_pred<'a, P>(
     context: &RewriteContext,
     attrs: &'a [ast::Attribute],
     pred: P,
-) -> Option<&'a [ast::Attribute]>
+) -> &'a [ast::Attribute]
 where
     P: Fn(&ast::Attribute) -> bool,
 {
@@ -818,9 +818,9 @@ where
         last_index = i;
     }
     if last_index == 0 {
-        None
+        &[]
     } else {
-        Some(&attrs[..last_index + 1])
+        &attrs[..last_index + 1]
     }
 }
 
@@ -833,34 +833,30 @@ fn rewrite_first_group_attrs(
         return Some((0, String::new()));
     }
     // Rewrite doc comments
-    match take_while_with_pred(context, attrs, |a| a.is_sugared_doc) {
-        Some(sugared_docs) if !sugared_docs.is_empty() => {
-            let snippet = sugared_docs
-                .iter()
-                .map(|a| context.snippet(a.span))
-                .collect::<Vec<_>>()
-                .join("\n");
-            return Some((
-                sugared_docs.len(),
-                rewrite_comment(&snippet, false, shape, context.config)?,
-            ));
-        }
-        _ => (),
+    let sugared_docs = take_while_with_pred(context, attrs, |a| a.is_sugared_doc);
+    if !sugared_docs.is_empty() {
+        let snippet = sugared_docs
+            .iter()
+            .map(|a| context.snippet(a.span))
+            .collect::<Vec<_>>()
+            .join("\n");
+        return Some((
+            sugared_docs.len(),
+            rewrite_comment(&snippet, false, shape, context.config)?,
+        ));
     }
     // Rewrite `#[derive(..)]`s.
     if context.config.merge_derives() {
-        match take_while_with_pred(context, attrs, is_derive) {
-            Some(derives) if !derives.is_empty() => {
-                let mut derive_args = vec![];
-                for derive in derives {
-                    derive_args.append(&mut get_derive_args(context, derive)?);
-                }
-                return Some((
-                    derives.len(),
-                    format_derive(context, &derive_args, shape)?,
-                ));
+        let derives = take_while_with_pred(context, attrs, is_derive);
+        if !derives.is_empty() {
+            let mut derive_args = vec![];
+            for derive in derives {
+                derive_args.append(&mut get_derive_args(context, derive)?);
             }
-            _ => (),
+            return Some((
+                derives.len(),
+                format_derive(context, &derive_args, shape)?,
+            ));
         }
     }
     // Rewrite the first attribute.
