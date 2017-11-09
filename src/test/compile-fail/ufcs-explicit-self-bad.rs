@@ -1,7 +1,3 @@
-//~  ERROR mismatched types
-//~| ERROR mismatched types
-//~| ERROR mismatched types
-//~| ERROR mismatched types
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -51,8 +47,17 @@ trait SomeTrait {
 
 impl<'a, T> SomeTrait for &'a Bar<T> {
     fn dummy1(self: &&'a Bar<T>) { }
-    fn dummy2(self: &Bar<T>) {}
+    fn dummy2(self: &Bar<T>) {} //~ ERROR mismatched method receiver
+    //~^ ERROR mismatched method receiver
     fn dummy3(self: &&Bar<T>) {}
+    //~^ ERROR mismatched method receiver
+    //~| expected type `&'a Bar<T>`
+    //~| found type `&Bar<T>`
+    //~| lifetime mismatch
+    //~| ERROR mismatched method receiver
+    //~| expected type `&'a Bar<T>`
+    //~| found type `&Bar<T>`
+    //~| lifetime mismatch
 }
 
 fn main() {
