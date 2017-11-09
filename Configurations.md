@@ -477,12 +477,21 @@ Don't reformat anything
 
 ## `error_on_line_overflow`
 
-Error if unable to get all lines within max_width
+Error if unable to get all lines within `max_width`
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
 
 See also [`max_width`](#max_width).
+
+## `error_on_line_overflow_comments`
+
+Error if unable to get all comment lines within `comment_width`.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+See also [`comment_width`](#comment_width).
 
 ## `fn_args_density`
 
@@ -1152,7 +1161,7 @@ use foo::{xxx, yyy, zzz};
 use foo::{aaa, bbb, ccc, ddd, eee, fff};
 ```
 
-#### `"HorizontalVertical"`
+#### `"HorizontalVertical"`:
 
 ```rust
 use foo::{xxx, yyy, zzz};
@@ -1165,7 +1174,7 @@ use foo::{aaa,
           fff};
 ```
 
-#### `"Vertical"`
+#### `"Vertical"`:
 
 ```rust
 use foo::{xxx,
@@ -1542,6 +1551,94 @@ use sit;
 ```
 
 See also [`reorder_imports`](#reorder_imports).
+
+## `reorder_extern_crates`
+
+Reorder `extern crate` statements alphabetically
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `true` (default):
+
+```rust
+extern crate dolor;
+extern crate ipsum;
+extern crate lorem;
+extern crate sit;
+```
+
+#### `false`:
+
+```rust
+extern crate lorem;
+extern crate ipsum;
+extern crate dolor;
+extern crate sit;
+```
+
+See also [`reorder_extern_crates_in_group`](#reorder_extern_crates_in_group).
+
+## `reorder_extern_crates_in_group`
+
+Reorder `extern crate` statements in group
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+**Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
+
+#### `true` (default):
+
+```rust
+extern crate a;
+extern crate b;
+
+extern crate dolor;
+extern crate ipsum;
+extern crate lorem;
+extern crate sit;
+```
+
+#### `false`:
+
+```rust
+extern crate b;
+extern crate a;
+
+extern crate lorem;
+extern crate ipsum;
+extern crate dolor;
+extern crate sit;
+```
+
+See also [`reorder_extern_crates`](#reorder_extern_crates).
+
+## `report_todo`
+
+Report `TODO` items in comments.
+
+- **Default value**: `"Never"`
+- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
+
+Warns about any comments containing `TODO` in them when set to `"Always"`. If
+it contains a `#X` (with `X` being a number) in parentheses following the
+`TODO`, `"Unnumbered"` will ignore it.
+
+See also [`report_fixme`](#report_fixme).
+
+## `report_fixme`
+
+Report `FIXME` items in comments.
+
+- **Default value**: `"Never"`
+- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
+
+Warns about any comments containing `FIXME` in them when set to `"Always"`. If
+it contains a `#X` (with `X` being a number) in parentheses following the
+`FIXME`, `"Unnumbered"` will ignore it.
+
+See also [`report_todo`](#report_todo).
 
 ## `single_line_if_else_max_width`
 
@@ -2123,10 +2220,27 @@ let lorem = ipsum.map(|dolor| dolor.sit())?;
 
 Density of a where clause.
 
-- **Default value**: `"CompressedIfEmpty"`
+- **Default value**: `"Vertical"`
 - **Possible values**: `"Compressed"`, `"CompressedIfEmpty"`, `"Tall"`, `"Vertical"`
 
-#### `"CompressedIfEmpty"` (default):
+#### `"Vertical"` (default):
+
+```rust
+trait Lorem {
+    fn ipsum<Dolor>(dolor: Dolor) -> Sit
+        where Dolor: Eq;
+
+    fn ipsum<Dolor>(dolor: Dolor) -> Sit
+        where Dolor: Eq
+    {
+        // body
+    }
+}
+```
+
+**Note:** `where_density = "Vertical"` currently produces the same output as `where_density = "Tall"`.
+
+#### `"CompressedIfEmpty"`:
 
 ```rust
 trait Lorem {
@@ -2174,23 +2288,6 @@ trait Lorem {
 ```
 
 **Note:** `where_density = "Tall"` currently produces the same output as `where_density = "Vertical"`.
-
-#### `"Vertical"`:
-
-```rust
-trait Lorem {
-    fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq;
-
-    fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq
-    {
-        // body
-    }
-}
-```
-
-**Note:** `where_density = "Vertical"` currently produces the same output as `where_density = "Tall"`.
 
 See also: [`where_layout`](#where_layout), [`where_pred_indent`](#where_pred_indent), [`where_style`](#where_style).
 
