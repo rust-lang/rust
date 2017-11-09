@@ -490,77 +490,199 @@ impl AsciiExt for [u8] {
     }
 }
 
-macro_rules! impl_by_delegating {
-    ($ty:ty, $owned:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl AsciiExt for $ty {
-            type Owned = $owned;
+macro_rules! delegating_ascii_methods {
+    () => {
+        #[inline]
+        fn is_ascii(&self) -> bool { self.is_ascii() }
 
-            #[inline]
-            fn is_ascii(&self) -> bool { self.is_ascii() }
+        #[inline]
+        fn to_ascii_uppercase(&self) -> Self::Owned { self.to_ascii_uppercase() }
 
-            #[inline]
-            fn to_ascii_uppercase(&self) -> Self::Owned { self.to_ascii_uppercase() }
+        #[inline]
+        fn to_ascii_lowercase(&self) -> Self::Owned { self.to_ascii_lowercase() }
 
-            #[inline]
-            fn to_ascii_lowercase(&self) -> Self::Owned { self.to_ascii_lowercase() }
+        #[inline]
+        fn eq_ignore_ascii_case(&self, o: &Self) -> bool { self.eq_ignore_ascii_case(o) }
 
-            #[inline]
-            fn eq_ignore_ascii_case(&self, o: &Self) -> bool { self.eq_ignore_ascii_case(o) }
+        #[inline]
+        fn make_ascii_uppercase(&mut self) { self.make_ascii_uppercase(); }
 
-            #[inline]
-            fn make_ascii_uppercase(&mut self) { self.make_ascii_uppercase(); }
-
-            #[inline]
-            fn make_ascii_lowercase(&mut self) { self.make_ascii_lowercase(); }
-
-            #[inline]
-            fn is_ascii_alphabetic(&self) -> bool { self.is_ascii_alphabetic() }
-
-            #[inline]
-            fn is_ascii_uppercase(&self) -> bool { self.is_ascii_uppercase() }
-
-            #[inline]
-            fn is_ascii_lowercase(&self) -> bool { self.is_ascii_lowercase() }
-
-            #[inline]
-            fn is_ascii_alphanumeric(&self) -> bool { self.is_ascii_alphanumeric() }
-
-            #[inline]
-            fn is_ascii_digit(&self) -> bool { self.is_ascii_digit() }
-
-            #[inline]
-            fn is_ascii_hexdigit(&self) -> bool { self.is_ascii_hexdigit() }
-
-            #[inline]
-            fn is_ascii_punctuation(&self) -> bool { self.is_ascii_punctuation() }
-
-            #[inline]
-            fn is_ascii_graphic(&self) -> bool { self.is_ascii_graphic() }
-
-            #[inline]
-            fn is_ascii_whitespace(&self) -> bool { self.is_ascii_whitespace() }
-
-            #[inline]
-            fn is_ascii_control(&self) -> bool { self.is_ascii_control() }
-        }
+        #[inline]
+        fn make_ascii_lowercase(&mut self) { self.make_ascii_lowercase(); }
     }
 }
 
-impl_by_delegating!(u8, u8);
-impl_by_delegating!(char, char);
+macro_rules! delegating_ascii_ctype_methods {
+    () => {
+        #[inline]
+        fn is_ascii_alphabetic(&self) -> bool { self.is_ascii_alphabetic() }
+
+        #[inline]
+        fn is_ascii_uppercase(&self) -> bool { self.is_ascii_uppercase() }
+
+        #[inline]
+        fn is_ascii_lowercase(&self) -> bool { self.is_ascii_lowercase() }
+
+        #[inline]
+        fn is_ascii_alphanumeric(&self) -> bool { self.is_ascii_alphanumeric() }
+
+        #[inline]
+        fn is_ascii_digit(&self) -> bool { self.is_ascii_digit() }
+
+        #[inline]
+        fn is_ascii_hexdigit(&self) -> bool { self.is_ascii_hexdigit() }
+
+        #[inline]
+        fn is_ascii_punctuation(&self) -> bool { self.is_ascii_punctuation() }
+
+        #[inline]
+        fn is_ascii_graphic(&self) -> bool { self.is_ascii_graphic() }
+
+        #[inline]
+        fn is_ascii_whitespace(&self) -> bool { self.is_ascii_whitespace() }
+
+        #[inline]
+        fn is_ascii_control(&self) -> bool { self.is_ascii_control() }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for u8 {
+    type Owned = u8;
+
+    delegating_ascii_methods!();
+    delegating_ascii_ctype_methods!();
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for char {
+    type Owned = char;
+
+    delegating_ascii_methods!();
+    delegating_ascii_ctype_methods!();
+}
 
 // FIXME(LukasKalbertodt): the macro invocation should replace the impl block
 // for `[u8]` above. But this is not possible until the stage0 compiler is new
 // enough to contain the inherent ascii methods for `[u8]`.
 #[cfg(not(stage0))]
-impl_by_delegating!([u8], Vec<u8>);
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for [u8] {
+    type Owned = Vec<u8>;
+
+    delegating_ascii_methods!();
+
+    #[inline]
+    fn is_ascii_alphabetic(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_alphabetic())
+    }
+
+    #[inline]
+    fn is_ascii_uppercase(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_uppercase())
+    }
+
+    #[inline]
+    fn is_ascii_lowercase(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_lowercase())
+    }
+
+    #[inline]
+    fn is_ascii_alphanumeric(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_alphanumeric())
+    }
+
+    #[inline]
+    fn is_ascii_digit(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_digit())
+    }
+
+    #[inline]
+    fn is_ascii_hexdigit(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_hexdigit())
+    }
+
+    #[inline]
+    fn is_ascii_punctuation(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_punctuation())
+    }
+
+    #[inline]
+    fn is_ascii_graphic(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_graphic())
+    }
+
+    #[inline]
+    fn is_ascii_whitespace(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_whitespace())
+    }
+
+    #[inline]
+    fn is_ascii_control(&self) -> bool {
+        self.iter().all(|b| b.is_ascii_control())
+    }
+}
 
 // FIXME(LukasKalbertodt): the macro invocation should replace the impl block
 // for `str` above. But this is not possible until the stage0 compiler is new
 // enough to contain the inherent ascii methods for `str`.
 #[cfg(not(stage0))]
-impl_by_delegating!(str, String);
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for str {
+    type Owned = String;
+
+    delegating_ascii_methods!();
+
+    #[inline]
+    fn is_ascii_alphabetic(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_alphabetic())
+    }
+
+    #[inline]
+    fn is_ascii_uppercase(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_uppercase())
+    }
+
+    #[inline]
+    fn is_ascii_lowercase(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_lowercase())
+    }
+
+    #[inline]
+    fn is_ascii_alphanumeric(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_alphanumeric())
+    }
+
+    #[inline]
+    fn is_ascii_digit(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_digit())
+    }
+
+    #[inline]
+    fn is_ascii_hexdigit(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_hexdigit())
+    }
+
+    #[inline]
+    fn is_ascii_punctuation(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_punctuation())
+    }
+
+    #[inline]
+    fn is_ascii_graphic(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_graphic())
+    }
+
+    #[inline]
+    fn is_ascii_whitespace(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_whitespace())
+    }
+
+    #[inline]
+    fn is_ascii_control(&self) -> bool {
+        self.bytes().all(|b| b.is_ascii_control())
+    }
+}
 
 /// An iterator over the escaped version of a byte.
 ///
@@ -684,6 +806,7 @@ mod tests {
     //! Note that most of these tests are not testing `AsciiExt` methods, but
     //! test inherent ascii methods of char, u8, str and [u8]. `AsciiExt` is
     //! just using those methods, though.
+    use super::AsciiExt;
     use char::from_u32;
 
     #[test]
