@@ -580,6 +580,39 @@ pub unsafe fn _mm_round_ss(a: f32x4, b: f32x4, rounding: i32) -> f32x4 {
     constify_imm4!(rounding, call)
 }
 
+/// Find minimal u16 element in vector.
+/// Place it in the first element of resulting vector and it's index
+/// in second element (formally bits [16..18] inclusive).
+/// All other elements are set to zero.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(phminposuw))]
+pub unsafe fn _mm_minpos_epu16(a: u16x8) -> u16x8 {
+    phminposuw(a)
+}
+
+/// Multiply the low 32-bit integers from each packed 64-bit element
+/// in a and b, and store the signed 64-bit results in dst.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmuldq))]
+pub unsafe fn _mm_mul_epi32(a: i32x4, b: i32x4) -> i64x2 {
+    pmuldq(a, b)
+}
+
+/// Multiply the packed 32-bit integers in a and b, producing intermediate
+/// 64-bit integers, and  returns the lowest 32-bit, whatever they might be,
+/// reinterpreted as a signed integer.
+/// While pmulld i32x4::splat(2), i32x4::splat(2) returns the obvious
+/// i32x4::splat(4), pmulld i32x4::splat(i32::MAX), i32x4::splat(2)
+/// would return a negative number.
+#[inline(always)]
+#[target_feature = "+sse4.1"]
+#[cfg_attr(test, assert_instr(pmulld))]
+pub unsafe fn _mm_mullo_epi32(a: i32x4, b: i32x4) -> i32x4 {
+    a * b
+}
+
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -627,6 +660,10 @@ extern "C" {
     fn roundsd(a: f64x2, b: f64x2, rounding: i32) -> f64x2;
     #[link_name = "llvm.x86.sse41.round.ss"]
     fn roundss(a: f32x4, b: f32x4, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.sse41.phminposuw"]
+    fn phminposuw(a: u16x8) -> u16x8;
+    #[link_name = "llvm.x86.sse41.pmuldq"]
+    fn pmuldq(a: i32x4, b: i32x4) -> i64x2;
 }
 
 #[cfg(test)]
@@ -1107,6 +1144,48 @@ mod tests {
         let r = sse41::_mm_round_ss(a, b, sse41::_MM_FROUND_CUR_DIRECTION);
         sse::_MM_SET_ROUNDING_MODE(old_mode);
         let e = f32x4::new(-2.0, 3.5, 7.5, 15.5);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_minpos_epu16_1() {
+        let a = u16x8::new(23, 18, 44, 97, 50, 13, 67, 66);
+        let r = sse41::_mm_minpos_epu16(a);
+        let e = u16x8::new(13, 5, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_minpos_epu16_2() {
+        let a = u16x8::new(0, 18, 44, 97, 50, 13, 67, 66);
+        let r = sse41::_mm_minpos_epu16(a);
+        let e = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_mul_epi32() {
+        let a =
+            i32x4::new(15, 2 /* ignored */, 1234567, 4 /* ignored */);
+        let b = i32x4::new(
+            -20,
+            -256, /* ignored */
+            666666,
+            666666, /* ignored */
+        );
+        let r = sse41::_mm_mul_epi32(a, b);
+        let e = i64x2::new(-300, 823043843622);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn _mm_mullo_epi32() {
+        let a = i32x4::new(15, -2, 1234567, 99999);
+        let b = i32x4::new(-20, -256, 666666, -99999);
+        let r = sse41::_mm_mullo_epi32(a, b);
+        // Attention, most significant bit in r[2] is treated as a sign bit!
+        // 1234567 * 666666 = -1589877210
+        let e = i32x4::new(-300, 512, -1589877210, -1409865409);
         assert_eq!(r, e);
     }
 }
