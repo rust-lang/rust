@@ -633,6 +633,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
+        // never overwrite an existing (constraint, origin) - only insert one if it isn't
+        // present in the map yet. This prevents origins from outside the snapshot being
+        // replaced with "less informative" origins e.g. during calls to `can_eq`
         self.constraints.borrow_mut().entry(constraint).or_insert_with(|| {
             if self.in_snapshot() {
                 self.undo_log.borrow_mut().push(AddConstraint(constraint));
