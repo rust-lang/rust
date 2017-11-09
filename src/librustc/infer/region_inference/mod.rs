@@ -633,11 +633,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
-        if self.constraints.borrow_mut().insert(constraint, origin).is_none() {
+        self.constraints.borrow_mut().entry(constraint).or_insert_with(|| {
             if self.in_snapshot() {
                 self.undo_log.borrow_mut().push(AddConstraint(constraint));
             }
-        }
+            origin
+        });
     }
 
     fn add_verify(&self, verify: Verify<'tcx>) {
