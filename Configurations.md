@@ -1614,6 +1614,32 @@ extern crate sit;
 
 See also [`reorder_extern_crates`](#reorder_extern_crates).
 
+## `report_todo`
+
+Report `TODO` items in comments.
+
+- **Default value**: `"Never"`
+- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
+
+Warns about any comments containing `TODO` in them when set to `"Always"`. If
+it contains a `#X` (with `X` being a number) in parentheses following the
+`TODO`, `"Unnumbered"` will ignore it.
+
+See also [`report_fixme`](#report_fixme).
+
+## `report_fixme`
+
+Report `FIXME` items in comments.
+
+- **Default value**: `"Never"`
+- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
+
+Warns about any comments containing `FIXME` in them when set to `"Always"`. If
+it contains a `#X` (with `X` being a number) in parentheses following the
+`FIXME`, `"Unnumbered"` will ignore it.
+
+See also [`report_todo`](#report_todo).
+
 ## `single_line_if_else_max_width`
 
 Maximum line length for single line if-else expressions.
