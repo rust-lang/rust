@@ -484,6 +484,15 @@ Error if unable to get all lines within `max_width`
 
 See also [`max_width`](#max_width).
 
+## `error_on_line_overflow_comments`
+
+Error if unable to get all comment lines within `comment_width`.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+See also [`comment_width`](#comment_width).
+
 ## `fn_args_density`
 
 Argument density in functions
