@@ -1191,6 +1191,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub enum ExplicitSelf<'tcx> {
     ByValue,
     ByReference(ty::Region<'tcx>, hir::Mutability),
+    ByRawPointer(hir::Mutability),
     ByBox,
     Other
 }
@@ -1231,10 +1232,15 @@ impl<'tcx> ExplicitSelf<'tcx> {
 
         match self_arg_ty.sty {
             _ if is_self_ty(self_arg_ty) => ByValue,
-            ty::TyRef(region, ty::TypeAndMut { ty, mutbl}) if is_self_ty(ty) => {
+            ty::TyRef(region, ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {
                 ByReference(region, mutbl)
             }
-            ty::TyAdt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => ByBox,
+            ty::TyRawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {
+                ByRawPointer(mutbl)
+            }
+            ty::TyAdt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => {
+                ByBox
+            }
             _ => Other
         }
     }

@@ -37,6 +37,7 @@ pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     cur_ty: Ty<'tcx>,
     obligations: Vec<traits::PredicateObligation<'tcx>>,
     at_start: bool,
+    include_raw_pointers: bool,
     span: Span,
 }
 
@@ -76,12 +77,13 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
         }
 
         // Otherwise, deref if type is derefable:
-        let (kind, new_ty) = if let Some(mt) = self.cur_ty.builtin_deref(false, NoPreference) {
-            (AutoderefKind::Builtin, mt.ty)
-        } else {
-            let ty = self.overloaded_deref_ty(self.cur_ty)?;
-            (AutoderefKind::Overloaded, ty)
-        };
+        let (kind, new_ty) =
+            if let Some(mt) = self.cur_ty.builtin_deref(self.include_raw_pointers, NoPreference) {
+                (AutoderefKind::Builtin, mt.ty)
+            } else {
+                let ty = self.overloaded_deref_ty(self.cur_ty)?;
+                (AutoderefKind::Overloaded, ty)
+            };
 
         if new_ty.references_error() {
             return None;
@@ -194,6 +196,15 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// also dereference through raw pointer types
+    /// e.g. assuming ptr_to_Foo is the type `*const Foo`
+    /// fcx.autoderef(span, ptr_to_Foo)  => [*const Foo]
+    /// fcx.autoderef(span, ptr_to_Foo).include_raw_ptrs() => [*const Foo, Foo]
+    pub fn include_raw_pointers(mut self) -> Self {
+        self.include_raw_pointers = true;
+        self
+    }
+
     pub fn finalize(self) {
         let fcx = self.fcx;
         fcx.register_predicates(self.into_obligations());
@@ -212,6 +223,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             cur_ty: self.resolve_type_vars_if_possible(&base_ty),
             obligations: vec![],
             at_start: true,
+            include_raw_pointers: false,
             span,
         }
     }
