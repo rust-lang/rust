@@ -377,6 +377,7 @@ mod tests {
         assert_eq!(a, b);
     }
 
+    #[cfg(not(feature = "intel_sde"))]
     #[simd_test = "xsaves"]
     unsafe fn xsaves() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
@@ -389,7 +390,7 @@ mod tests {
         assert_eq!(a, b);
     }
 
-    #[cfg(not(target_arch = "x86"))]
+    #[cfg(not(any(target_arch = "x86", feature = "intel_sde")))]
     #[simd_test = "xsaves"]
     unsafe fn xsaves64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers

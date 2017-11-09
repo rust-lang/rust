@@ -8,7 +8,7 @@ matrix:
     - env: TARGET=i586-unknown-linux-gnu
     - env: TARGET=i686-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1
+    - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1 FEATURES="intel_sde"
     - env: TARGET=arm-unknown-linux-gnueabihf
     - env: TARGET=armv7-unknown-linux-gnueabihf
     - env: TARGET=aarch64-unknown-linux-gnu
@@ -33,7 +33,7 @@ install:
 
 script:
   - cargo generate-lockfile
-  - ci/run-docker.sh $TARGET
+  - ci/run-docker.sh $TARGET $FEATURES
 
 notifications:
   email:

@@ -33,3 +33,4 @@ cupid = "0.4.0"
 [features]
 strict = []
 std = []
+intel_sde = []

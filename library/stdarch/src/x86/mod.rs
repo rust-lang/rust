@@ -16,6 +16,8 @@ pub use self::avx2::*;
 pub use self::abm::*;
 pub use self::bmi::*;
 pub use self::bmi2::*;
+
+#[cfg(not(feature = "intel_sde"))]
 pub use self::tbm::*;
 
 pub use self::runtime::{__unstable_detect_feature, __Feature};
@@ -48,6 +50,8 @@ mod avx2;
 mod abm;
 mod bmi;
 mod bmi2;
+
+#[cfg(not(feature = "intel_sde"))]
 mod tbm;
 
 #[allow(non_camel_case_types)]

@@ -16,6 +16,7 @@ run() {
       --env CARGO_HOME=/cargo \
       --volume `rustc --print sysroot`:/rust:ro \
       --env TARGET=$target \
+      --env FEATURES=$2 \
       --env STDSIMD_TEST_EVERYTHING \
       --volume `pwd`:/checkout:ro \
       --volume `pwd`/target:/checkout/target \
@@ -31,5 +32,5 @@ if [ -z "$1" ]; then
     run $d
   done
 else
-  run $1
+  run $1 $2
 fi

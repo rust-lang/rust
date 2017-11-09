@@ -15,10 +15,14 @@ case ${TARGET} in
         ;;
 esac
 
+FEATURES="strict,$FEATURES"
+FEATURES_STD="${FEATURES},std"
+
 echo "RUSTFLAGS=${RUSTFLAGS}"
+echo "FEATURES=${FEATURES}"
 
-cargo test --target $TARGET --features "strict"
-cargo test --release --target $TARGET --features "strict"
+cargo test --target $TARGET --features $FEATURES
+cargo test --release --target $TARGET --features $FEATURES
 
-cargo test --target $TARGET --features "strict,std"
-cargo test --release --target $TARGET --features "strict,std"
+cargo test --target $TARGET --features $FEATURES_STD
+cargo test --release --target $TARGET --features $FEATURES_STD
