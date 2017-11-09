@@ -10,7 +10,7 @@
 
 //! Code for type-checking closure expressions.
 
-use super::{check_fn, Expectation, FnCtxt};
+use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use astconv::AstConv;
 use rustc::hir::def_id::DefId;
@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
-        let interior = check_fn(
+        let generator_types = check_fn(
             self,
             self.param_env,
             liberated_sig,
@@ -106,13 +106,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = ty::ClosureSubsts { substs };
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
-        if let Some(interior) = interior {
+        if let Some(GeneratorTypes { yield_ty, interior }) = generator_types {
             self.demand_eqtype(expr.span,
-                               ty::ClosureKind::FnOnce.to_ty(self.tcx),
-                               substs.closure_kind_ty(expr_def_id, self.tcx));
+                               yield_ty,
+                               substs.generator_yield_ty(expr_def_id, self.tcx));
             self.demand_eqtype(expr.span,
-                               self.tcx.types.char, // for generator, use some bogus type
-                               substs.closure_sig_ty(expr_def_id, self.tcx));
+                               liberated_sig.output(),
+                               substs.generator_return_ty(expr_def_id, self.tcx));
             return self.tcx.mk_generator(expr_def_id, substs, interior);
         }
 

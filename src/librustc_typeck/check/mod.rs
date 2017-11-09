@@ -972,6 +972,17 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
                 _: hir::BodyId, _: Span, _: ast::NodeId) { }
 }
 
+/// When `check_fn` is invoked on a generator (i.e., a body that
+/// includes yield), it returns back some information about the yield
+/// points.
+struct GeneratorTypes<'tcx> {
+    /// Type of value that is yielded.
+    yield_ty: ty::Ty<'tcx>,
+
+    /// Types that are captured (see `GeneratorInterior` for more).
+    interior: ty::GeneratorInterior<'tcx>
+}
+
 /// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item
 /// there is still a bit more to do.
@@ -985,7 +996,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             fn_id: ast::NodeId,
                             body: &'gcx hir::Body,
                             can_be_generator: bool)
-                            -> (FnCtxt<'a, 'gcx, 'tcx>, Option<ty::GeneratorInterior<'tcx>>)
+                            -> (FnCtxt<'a, 'gcx, 'tcx>, Option<GeneratorTypes<'tcx>>)
 {
     let mut fn_sig = fn_sig.clone();
 
@@ -1047,7 +1058,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
         inherited.tables.borrow_mut().generator_interiors_mut().insert(fn_hir_id, interior);
 
-        Some(interior)
+        Some(GeneratorTypes { yield_ty: gen_sig.yield_ty, interior: interior })
     } else {
         inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, None);
         None

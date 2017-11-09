@@ -256,6 +256,17 @@ pub enum TypeVariants<'tcx> {
 /// closure C wind up influencing the decisions we ought to make for
 /// closure C (which would then require fixed point iteration to
 /// handle). Plus it fixes an ICE. :P
+///
+/// ## Generators
+///
+/// Perhaps surprisingly, `ClosureSubsts` are also used for
+/// generators.  In that case, what is written above is only half-true
+/// -- the set of type parameters is similar, but the role of CK and
+/// CS are different.  CK represents the "yield type" and CS
+/// represents the "return type" of the generator.
+///
+/// It'd be nice to split this struct into ClosureSubsts and
+/// GeneratorSubsts, I believe. -nmatsakis
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
@@ -309,6 +320,31 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// `infcx.fn_sig(def_id)`.
     pub fn closure_sig_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_sig_ty
+    }
+
+    /// Returns the type representing the yield type of the generator.
+    pub fn generator_yield_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
+        self.closure_kind_ty(def_id, tcx)
+    }
+
+    /// Returns the type representing the return type of the generator.
+    pub fn generator_return_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
+        self.closure_sig_ty(def_id, tcx)
+    }
+
+    /// Return the "generator signature", which consists of its yield
+    /// and return types.
+    ///
+    /// NB. We treat this as a `PolyGenSig`, but since it only
+    /// contains associated types of the generator, at present it
+    /// never binds any regions.
+    pub fn generator_poly_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> PolyGenSig<'tcx> {
+        ty::Binder(
+            ty::GenSig {
+                yield_ty: self.generator_yield_ty(def_id, tcx),
+                return_ty: self.generator_return_ty(def_id, tcx),
+            }
+        )
     }
 }
 
