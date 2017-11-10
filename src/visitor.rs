@@ -510,6 +510,10 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
+    pub fn opt_snippet(&self, span: Span) -> Option<String> {
+        self.codemap.span_to_snippet(span).ok()
+    }
+
     pub fn snippet(&self, span: Span) -> String {
         match self.codemap.span_to_snippet(span) {
             Ok(s) => s,
