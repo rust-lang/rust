@@ -20,6 +20,7 @@ use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::{Subst,Substs};
+use rustc::hir::map::definitions::DefPathData;
 
 use std::collections::VecDeque;
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -550,22 +551,31 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         Operand::Consume(cast_tmp)
     }
 
-    fn make_call_args(&self, args: Vec<Operand<'tcx>>,
-                      callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Vec<Operand<'tcx>> {
-        let tcx = self.tcx;
+    fn make_call_args(
+        &self,
+        args: Vec<Operand<'tcx>>,
+        callsite: &CallSite<'tcx>,
+        caller_mir: &mut Mir<'tcx>,
+    ) -> Vec<Operand<'tcx>> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
-        args.into_iter().map(|a| {
-            if let Operand::Consume(Lvalue::Local(local)) = a {
+
+        fn create_temp_if_necessary<'a, 'tcx: 'a>(
+            arg: Operand<'tcx>,
+            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+            callsite: &CallSite<'tcx>,
+            caller_mir: &mut Mir<'tcx>,
+        ) -> Operand<'tcx> {
+            if let Operand::Consume(Lvalue::Local(local)) = arg {
                 if caller_mir.local_kind(local) == LocalKind::Temp {
                     // Reuse the operand if it's a temporary already
-                    return a;
+                    return arg;
                 }
             }
 
-            debug!("Creating temp for argument");
+            debug!("Creating temp for argument {:?}", arg);
             // Otherwise, create a temporary for the arg
-            let arg = Rvalue::Use(a);
+            let arg = Rvalue::Use(arg);
 
             let ty = arg.ty(caller_mir, tcx);
 
@@ -575,11 +585,47 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
             let stmt = Statement {
                 source_info: callsite.location,
-                kind: StatementKind::Assign(arg_tmp.clone(), arg)
+                kind: StatementKind::Assign(arg_tmp.clone(), arg),
             };
             caller_mir[callsite.bb].statements.push(stmt);
             Operand::Consume(arg_tmp)
-        }).collect()
+        }
+
+        let tcx = self.tcx;
+
+        // A closure is passed its self-type and a tuple like `(arg1, arg2, ...)`,
+        // hence mappings to tuple fields are needed.
+        if tcx.def_key(callsite.callee).disambiguated_data.data == DefPathData::ClosureExpr {
+            let mut args = args.into_iter();
+
+            let self_ = create_temp_if_necessary(args.next().unwrap(), tcx, callsite, caller_mir);
+
+            let tuple = if let Operand::Consume(lvalue) =
+                create_temp_if_necessary(args.next().unwrap(), tcx, callsite, caller_mir)
+            {
+                lvalue
+            } else {
+                unreachable!()
+            };
+            assert!(args.next().is_none());
+
+            let tuple_tys = if let ty::TyTuple(s, _) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
+                s
+            } else {
+                bug!("Closure arguments are not passed as a tuple");
+            };
+
+            let mut res = Vec::with_capacity(1 + tuple_tys.len());
+            res.push(self_);
+            res.extend(tuple_tys.iter().enumerate().map(|(i, ty)| {
+                Operand::Consume(tuple.clone().field(Field::new(i), ty))
+            }));
+            res
+        } else {
+            args.into_iter()
+                .map(|a| create_temp_if_necessary(a, tcx, callsite, caller_mir))
+                .collect()
+        }
     }
 }
 
