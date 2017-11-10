@@ -2213,7 +2213,7 @@ impl<'a> State<'a> {
                 if limits == ast::RangeLimits::HalfOpen {
                     self.s.word("..")?;
                 } else {
-                    self.s.word("...")?;
+                    self.s.word("..=")?;
                 }
                 if let Some(ref e) = *end {
                     self.print_expr_maybe_paren(e, fake_prec)?;

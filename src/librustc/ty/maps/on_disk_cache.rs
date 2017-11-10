@@ -165,7 +165,7 @@ impl<'a> CacheDecoder<'a> {
     fn find_filemap_prev_bytepos(&self,
                                  prev_bytepos: BytePos)
                                  -> Option<(BytePos, StableFilemapId)> {
-        for (start, id) in self.prev_filemap_starts.range(BytePos(0) ... prev_bytepos).rev() {
+        for (start, id) in self.prev_filemap_starts.range(BytePos(0) ..= prev_bytepos).rev() {
             return Some((*start, *id))
         }
 

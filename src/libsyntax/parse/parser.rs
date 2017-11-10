@@ -2783,10 +2783,11 @@ impl<'a> Parser<'a> {
             if op.precedence() < min_prec {
                 break;
             }
-            // Warn about deprecated ... syntax (until SNAP)
-            if self.token == token::DotDotDot {
-                self.warn_dotdoteq(self.span);
+            // Check for deprecated `...` syntax
+            if self.token == token::DotDotDot && op == AssocOp::DotDotEq {
+                self.err_dotdotdot_syntax(self.span);
             }
+
             self.bump();
             if op.is_comparison() {
                 self.check_no_chained_comparison(&lhs, &op);
@@ -2819,7 +2820,6 @@ impl<'a> Parser<'a> {
                 //
                 // We have 2 alternatives here: `x..y`/`x..=y` and `x..`/`x..=` The other
                 // two variants are handled with `parse_prefix_range_expr` call above.
-                // (and `x...y`/`x...` until SNAP)
                 let rhs = if self.is_at_start_of_range_notation_rhs() {
                     Some(self.parse_assoc_expr_with(op.precedence() + 1,
                                                     LhsExpr::NotYetParsed)?)
@@ -3007,22 +3007,22 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse prefix-forms of range notation: `..expr`, `..`, `..=expr` (and `...expr` until SNAP)
+    /// Parse prefix-forms of range notation: `..expr`, `..`, `..=expr`
     fn parse_prefix_range_expr(&mut self,
                                already_parsed_attrs: Option<ThinVec<Attribute>>)
                                -> PResult<'a, P<Expr>> {
-        // SNAP remove DotDotDot
+        // Check for deprecated `...` syntax
+        if self.token == token::DotDotDot {
+            self.err_dotdotdot_syntax(self.span);
+        }
+
         debug_assert!([token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token),
-                      "parse_prefix_range_expr: token {:?} is not DotDot/DotDotDot/DotDotEq",
+                      "parse_prefix_range_expr: token {:?} is not DotDot/DotDotEq",
                       self.token);
         let tok = self.token.clone();
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
         let lo = self.span;
         let mut hi = self.span;
-        // Warn about deprecated ... syntax (until SNAP)
-        if tok == token::DotDotDot {
-            self.warn_dotdoteq(self.span);
-        }
         self.bump();
         let opt_end = if self.is_at_start_of_range_notation_rhs() {
             // RHS must be parsed with more associativity than the dots.
@@ -4332,9 +4332,13 @@ impl<'a> Parser<'a> {
         }).emit();
     }
 
-    fn warn_dotdoteq(&self, span: Span) {
-        self.diagnostic().struct_span_warn(span, {
-            "`...` is being replaced by `..=`"
+    fn err_dotdotdot_syntax(&self, span: Span) {
+        self.diagnostic().struct_span_err(span, {
+            "`...` syntax cannot be used in expressions"
+        }).help({
+            "Use `..` if you need an exclusive range (a < b)"
+        }).help({
+            "or `..=` if you need an inclusive range (a <= b)"
         }).emit();
     }
 

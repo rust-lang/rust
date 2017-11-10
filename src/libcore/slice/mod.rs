@@ -16,9 +16,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// FIXME: after next stage0, change RangeInclusive { ... } back to ..=
-use ops::RangeInclusive;
-
 // How this module is organized.
 //
 // The library infrastructure for slices is fairly messy. There's
@@ -1047,32 +1044,32 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (RangeInclusive { start: 0, end: self.end }).get(slice)
+        (0..=self.end).get(slice)
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (RangeInclusive { start: 0, end: self.end }).get_mut(slice)
+        (0..=self.end).get_mut(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (RangeInclusive { start: 0, end: self.end }).get_unchecked(slice)
+        (0..=self.end).get_unchecked(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (RangeInclusive { start: 0, end: self.end }).get_unchecked_mut(slice)
+        (0..=self.end).get_unchecked_mut(slice)
     }
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (RangeInclusive { start: 0, end: self.end }).index(slice)
+        (0..=self.end).index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (RangeInclusive { start: 0, end: self.end }).index_mut(slice)
+        (0..=self.end).index_mut(slice)
     }
 }
 
