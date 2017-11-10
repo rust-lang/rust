@@ -231,8 +231,13 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
                     }
                 }
             }
+            mir::StatementKind::StorageDead(local) => {
+                on_lookup_result_bits(tcx, mir, move_data,
+                                      move_data.rev_lookup.find(&mir::Lvalue::Local(local)),
+                                      |mpi| callback(mpi, DropFlagState::Absent))
+
+            }
             mir::StatementKind::StorageLive(_) |
-            mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Validate(..) |
