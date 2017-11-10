@@ -910,6 +910,10 @@ extern "system" {
 
     pub fn GetConsoleMode(hConsoleHandle: HANDLE,
                           lpMode: LPDWORD) -> BOOL;
+    pub fn GetFullPathNameW(lpFileName: LPCWSTR,
+                            nBufferLength: DWORD,
+                            lpBuffer: LPWSTR,
+                            lpFilePart: *mut LPWSTR) -> DWORD;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR,
                               dwFileAttributes: DWORD) -> BOOL;

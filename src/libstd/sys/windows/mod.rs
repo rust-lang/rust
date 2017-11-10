@@ -15,6 +15,7 @@ use ffi::{OsStr, OsString};
 use io::{self, ErrorKind};
 use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
+use sys::windows::path::parse_prefix;
 use time::Duration;
 
 pub use libc::strlen;
@@ -93,6 +94,50 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
         }
         maybe_result.push(0);
         Ok(maybe_result)
+    }
+    inner(s.as_ref())
+}
+
+// Windows APIs that take a path are especially tricky.  For legacy reasons,
+// Windows has a limit of 255 characters for a path, unless one prefixes the
+// path with \\?\ or \??\.  That is too short!  We want Rust programs to not
+// have this limit.  So Rust must add this before calling the relevant Windows
+// APIs.  That, however, disables filename normalization, so Rust must call
+// GetFullPathNameW() (which thankfully works on long paths) before passing the
+// buffer to the operating system.
+pub fn to_u16path<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
+    fn inner(s: &OsStr) -> io::Result<Vec<u16>> {
+        if len(s) >= 4 {
+            match s[0..4] {
+                br"\\?\" | br"\??\" => return to_u16s(s),
+            }
+        }
+        let wide = to_u16s(s)?;
+
+        if wide.len() < 256 {
+            match s.get(1) {
+                Some(& b':') => match s[0] {
+                    b'a'...b'z' | b'A'...b'Z' => {
+                        // Disk path.  Windows will handle this fine.
+                        return Ok(wide)
+                    }
+                }
+                Some(& b'\\') => if s[0] == b'\\' {
+                    if s[2..].iter().position(|x| x == b'\\').is_some() {
+                        // Short UNC path.  Again, Windows will handle this one fine.
+                        return Ok(wide)
+                    }
+                }
+            }
+        }
+
+        fill_utf16_buf(|ptr, len| unsafe {
+            // There is a race condition here: if another thread is changing the
+            // current directory, this could return inconsistemnt values between
+            // two calls.  Hence we must use fill_utf16_buf() (which uses a
+            // loop).
+            c::GetFullPathNameW(wide.as_ptr(), len, ptr, ptr::null_mut())
+        }, |slice| [92, 92, 63, 92].chain(slice).chain(Some(0)).collect())
     }
     inner(s.as_ref())
 }

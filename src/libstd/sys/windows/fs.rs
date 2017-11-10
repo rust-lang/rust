@@ -23,7 +23,7 @@ use sys::time::SystemTime;
 use sys::{c, cvt};
 use sys_common::FromInner;
 
-use super::to_u16s;
+use super::to_u16path;
 
 pub struct File { handle: Handle }
 
@@ -255,7 +255,7 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = to_u16s(path)?;
+        let path = to_u16path(path)?;
         let handle = unsafe {
             c::CreateFileW(path.as_ptr(),
                            opts.get_access_mode()?,
@@ -547,7 +547,7 @@ impl DirBuilder {
     pub fn new() -> DirBuilder { DirBuilder }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let p = to_u16s(p)?;
+        let p = to_u16path(p)?;
         cvt(unsafe {
             c::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
         })?;
@@ -558,7 +558,7 @@ impl DirBuilder {
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = p.to_path_buf();
     let star = p.join("*");
-    let path = to_u16s(&star)?;
+    let path = to_u16path(&star)?;
 
     unsafe {
         let mut wfd = mem::zeroed();
@@ -576,14 +576,14 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p_u16s = to_u16s(p)?;
+    let p_u16s = to_u16path(p)?;
     cvt(unsafe { c::DeleteFileW(p_u16s.as_ptr()) })?;
     Ok(())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = to_u16s(old)?;
-    let new = to_u16s(new)?;
+    let old = to_u16path(old)?;
+    let new = to_u16path(new)?;
     cvt(unsafe {
         c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING)
     })?;
@@ -591,7 +591,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = to_u16s(p)?;
+    let p = to_u16path(p)?;
     cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) })?;
     Ok(())
 }
@@ -639,8 +639,8 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
-    let src = to_u16s(src)?;
-    let dst = to_u16s(dst)?;
+    let src = to_u16path(src)?;
+    let dst = to_u16path(dst)?;
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
     // Formerly, symlink creation required the SeCreateSymbolicLink privilege. For the Windows 10
     // Creators Update, Microsoft loosened this to allow unprivileged symlink creation if the
@@ -665,8 +665,8 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = to_u16s(src)?;
-    let dst = to_u16s(dst)?;
+    let src = to_u16path(src)?;
+    let dst = to_u16path(dst)?;
     cvt(unsafe {
         c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     })?;
@@ -693,7 +693,7 @@ pub fn lstat(path: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = to_u16s(p)?;
+    let p = to_u16path(p)?;
     unsafe {
         cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs))?;
         Ok(())
@@ -734,8 +734,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         if dwStreamNumber == 1 {*(lpData as *mut i64) = StreamBytesTransferred;}
         c::PROGRESS_CONTINUE
     }
-    let pfrom = to_u16s(from)?;
-    let pto = to_u16s(to)?;
+    let pfrom = to_u16path(from)?;
+    let pto = to_u16path(to)?;
     let mut size = 0i64;
     cvt(unsafe {
         c::CopyFileExW(pfrom.as_ptr(), pto.as_ptr(), Some(callback),
