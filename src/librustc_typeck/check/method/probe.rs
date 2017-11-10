@@ -321,9 +321,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // a real method lookup, this is a hard error (it's an
                 // ambiguity and we can't make progress).
                 if !is_suggestion.0 {
-                    let t = self.structurally_resolved_type(span, final_ty);
-                    assert_eq!(t, self.tcx.types.err);
-                    return None
+                    // don't report a type error if we dereferenced a raw pointer,
+                    // because that would break backwards compatibility in certain cases
+                    if !reached_raw_pointer {
+                        let t = self.structurally_resolved_type(span, final_ty);
+                        assert_eq!(t, self.tcx.types.err);
+                        return None
+                    }
                 } else {
                     // If we're just looking for suggestions,
                     // though, ambiguity is no big thing, we can
