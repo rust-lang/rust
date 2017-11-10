@@ -191,7 +191,7 @@ impl Default for Span {
 /// This is needed to implement a custom quoter.
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub fn quote_span(span: Span) -> TokenStream {
-    TokenStream(quote::Quote::quote(&span.0))
+    quote::Quote::quote(span)
 }
 
 macro_rules! diagnostic_method {
@@ -728,7 +728,7 @@ impl TokenTree {
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 pub mod __internal {
-    pub use quote::{Quoter, __rt};
+    pub use quote::{LiteralKind, Quoter, unquote};
 
     use std::cell::Cell;
 
