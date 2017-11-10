@@ -337,6 +337,13 @@ pub enum ColorConfig {
     NeverColor,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum OutputFormat {
+    Pretty,
+    Terse,
+    Json
+}
+
 #[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
@@ -348,7 +355,7 @@ pub struct TestOpts {
     pub logfile: Option<PathBuf>,
     pub nocapture: bool,
     pub color: ColorConfig,
-    pub quiet: bool,
+    pub format: OutputFormat,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub options: Options,
@@ -367,7 +374,7 @@ impl TestOpts {
             logfile: None,
             nocapture: false,
             color: AutoColor,
-            quiet: false,
+            format: OutputFormat,
             test_threads: None,
             skip: vec![],
             options: Options::new(),
@@ -399,7 +406,11 @@ fn optgroups() -> getopts::Options {
         .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never");
+            never  = never colorize output;", "auto|always|never")
+        .optopt("", "format", "Configure formatting of output:
+            pretty = Print verbose output;
+            terse  = Display one character per test;
+            json   = Output a json document", "pretty|terse|json");
     return opts
 }
 
@@ -499,6 +510,19 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         }
     };
 
+    let format = match matches.opt_str("format").as_ref().map(|s| &**s) {
+        None if quiet => OutputFormat::Terse,
+        Some("pretty") | None => OutputFormat::Pretty,
+        Some("terse") => OutputFormat::Terse,
+        Some("json") => OutputFormat::Json,
+
+        Some(v) => {
+            return Some(Err(format!("argument for --format must be pretty, terse, or json (was \
+                                     {})",
+                                    v)))
+        }
+    };
+
     let test_opts = TestOpts {
         list,
         filter,
@@ -509,7 +533,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         logfile,
         nocapture,
         color,
-        quiet,
+        format,
         test_threads,
         skip: matches.opt_strs("skip"),
         options: Options::new(),
@@ -673,7 +697,9 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         None => Raw(io::stdout()),
         Some(t) => Pretty(t),
     };
-    let mut out = HumanFormatter::new(output, use_color(opts), opts.quiet);
+    
+    let quiet = opts.format == OutputFormat::Terse;
+    let mut out = HumanFormatter::new(output, use_color(opts), quiet);
     let mut st = ConsoleTestState::new(opts)?;
 
     let mut ntest = 0;
@@ -702,7 +728,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         }
     }
 
-    if !opts.quiet {
+    if !quiet {
         if ntest != 0 || nbench != 0 || nmetric != 0 {
             out.write_plain("\n")?;
         }
@@ -732,7 +758,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TeTimeout(ref test) => out.write_timeout(test),
             TeResult(test, result, stdout) => {
                 st.write_log_result(&test, &result)?;
-                out.write_result(&result)?;
+                out.write_result(&test, &result)?;
                 match result {
                     TrOk => {
                         st.passed += 1;
@@ -778,8 +804,11 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         Some(t) => Pretty(t),
     };
 
-    let mut out = HumanFormatter::new(output, use_color(opts), opts.quiet);
-
+    let mut out: Box<OutputFormatter> = match opts.format {
+        OutputFormat::Pretty => Box::new(HumanFormatter::new(output, use_color(opts), false)),
+        OutputFormat::Terse => Box::new(HumanFormatter::new(output, use_color(opts), true)),
+        OutputFormat::Json => Box::new(JsonFormatter::new(output)),
+    };
     let mut st = ConsoleTestState::new(opts)?;
     fn len_if_padded(t: &TestDescAndFn) -> usize {
         match t.testfn.padding() {
@@ -791,7 +820,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         let n = t.desc.name.as_slice();
         st.max_name_len = n.len();
     }
-    run_tests(opts, tests, |x| callback(&x, &mut st, &mut out))?;
+    run_tests(opts, tests, |x| callback(&x, &mut st, &mut *out))?;
 
     assert!(st.current_test_count() == st.total);
 

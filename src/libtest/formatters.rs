@@ -17,7 +17,7 @@ pub(crate) trait OutputFormatter {
         align: NamePadding,
         max_name_len: usize) -> io::Result<()>;
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()>;
-    fn write_result(&mut self, result: &TestResult) -> io::Result<()>;
+    fn write_result(&mut self, desc: &TestDesc, result: &TestResult) -> io::Result<()>;
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool>;
 }
 
@@ -187,7 +187,7 @@ impl<T: Write> OutputFormatter for HumanFormatter<T> {
         }
     }
 
-    fn write_result(&mut self, result: &TestResult) -> io::Result<()> {
+    fn write_result(&mut self, _desc: &TestDesc, result: &TestResult) -> io::Result<()> {
         match *result {
             TrOk => self.write_ok(),
             TrFailed | TrFailedMsg(_) => self.write_failed(),
@@ -250,5 +250,88 @@ impl<T: Write> OutputFormatter for HumanFormatter<T> {
         self.write_plain(&s)?;
 
         Ok(success)
+    }
+}
+
+pub(crate) struct JsonFormatter<T> {
+    out: OutputLocation<T>,
+    had_events: bool
+}
+
+impl<T: Write> JsonFormatter<T> {
+    pub fn new(out: OutputLocation<T>) -> Self {
+        Self {
+            out,
+            had_events: false
+        }
+    }
+
+    fn write_str<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+        self.out.write_all(s.as_ref().as_ref())
+    }
+
+    fn write_event(&mut self, event: &str) -> io::Result<()> {
+        if self.had_events {
+            self.out.write_all(b",\n")?;
+        }
+        else {
+            self.had_events = true;
+        }
+
+        self.out.write_all(event.as_ref())
+    }
+}
+
+impl<T: Write> OutputFormatter for JsonFormatter<T> {
+    fn write_run_start(&mut self, _len: usize) -> io::Result<()> {
+        self.write_str("{\n\tevents: [\n")
+    }
+
+    fn write_test_start(&mut self,
+                        desc: &TestDesc,
+                        _align: NamePadding,
+                        _max_name_len: usize) -> io::Result<()> {
+        self.write_event(&*format!("\t\t{{ \"test\": \"{}\", \"event\": \"started\" }}", desc.name))
+    }
+
+    fn write_result(&mut self, desc: &TestDesc, result: &TestResult) -> io::Result<()> {
+        let output = match *result {
+            TrOk =>                 format!("\t\t{{ \"test\": \"{}\", \"event\": \"ok\" }}", desc.name),
+            TrFailed =>             format!("\t\t{{ \"test\": \"{}\", \"event\": \"failed\" }}", desc.name),
+            TrFailedMsg(ref m) =>   format!("\t\t{{ \"test\": \"{}\", \"event\": \"failed\", \"extra\": \"{}\" }}", desc.name, m),
+            TrIgnored =>            format!("\t\t{{ \"test\": \"{}\", \"event\": \"ignored\" }}", desc.name),
+            TrAllowedFail =>        format!("\t\t{{ \"test\": \"{}\", \"event\": \"allowed_failure\" }}", desc.name),
+            TrMetrics(ref mm) =>    format!("\t\t{{ \"test\": \"{}\", \"event\": \"metrics\", \"extra\": \"{}\" }}", desc.name, mm.fmt_metrics()),
+            TrBench(ref bs) =>      format!("\t\t{{ \"test\": \"{}\", \"event\": \"bench\", \"extra\": \"{}\" }}", desc.name, fmt_bench_samples(bs)),
+        };
+
+        self.write_event(&*output)
+    }
+
+    fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
+        self.write_event(&*format!("\t{{ \"test\": \"{}\", \"event\": \"timeout\" }}", desc.name))
+    }
+
+    fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
+        self.write_str("\n\t],\n\t\"summary\": {\n")?;
+
+        self.write_str(&*format!("\t\t\"passed\": {},\n", state.passed))?;
+        self.write_str(&*format!("\t\t\"failed\": {},\n", state.failed + state.allowed_fail))?;
+        self.write_str(&*format!("\t\t\"allowed_fail\": {},\n", state.allowed_fail))?;
+        self.write_str(&*format!("\t\t\"ignored\": {},\n", state.ignored))?;
+        self.write_str(&*format!("\t\t\"measured\": {},\n", state.measured))?;
+
+        if state.failed == 0 {
+            self.write_str(&*format!("\t\t\"filtered_out\": {}\n", state.filtered_out))?;
+        } else {
+            self.write_str(&*format!("\t\t\"filtered_out\": {},\n", state.filtered_out))?;
+            self.write_str("\t\t\"failures\": [")?;
+
+            self.write_str("\t\t]\n")?;
+        }
+        
+        self.write_str("\t}\n}\n")?;
+
+        Ok(state.failed == 0)
     }
 }
