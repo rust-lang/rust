@@ -607,6 +607,45 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns `None` if the option is `None`, otherwise calls `predicate`
+    /// with the wrapped value and returns:
+    ///
+    /// - `Some(t)` if `predicate` returns `true` (where `t` is the wrapped
+    ///   value), and
+    /// - `None` if `predicate` returns `false`.
+    ///
+    /// This function works similar to `Iterator::filter()`. You can imagine
+    /// the `Option<T>` being an iterator over one or zero elements. `filter()`
+    /// lets you decide which elements to keep.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(option_filter)]
+    ///
+    /// fn is_even(n: &i32) -> bool {
+    ///     n % 2 == 0
+    /// }
+    ///
+    /// assert_eq!(None.filter(is_even), None);
+    /// assert_eq!(Some(3).filter(is_even), None);
+    /// assert_eq!(Some(4).filter(is_even), Some(4));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_filter", issue = "45860")]
+    pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
+        match self {
+            Some(x) => {
+                if predicate(&x) {
+                    Some(x)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        }
+    }
+
     /// Returns the option if it contains a value, otherwise returns `optb`.
     ///
     /// # Examples

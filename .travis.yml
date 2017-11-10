@@ -253,7 +253,14 @@ after_failure:
 
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
-  - ls $HOME/Library/Logs/DiagnosticReports/
+  - ls -lat $HOME/Library/Logs/DiagnosticReports/
+  - find $HOME/Library/Logs/DiagnosticReports/ ! \(
+      -name '*.stage2-*.crash'
+      -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
+    \)
+      -exec echo -e travis_fold":start:crashlog\n\033[31;1m" {} "\033[0m" \;
+      -exec head -750 {} \;
+      -exec echo travis_fold":"end:crashlog \;
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
@@ -286,6 +293,7 @@ before_deploy:
           rm -rf obj/build/dist/doc &&
           cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
+  - travis_retry gem update --system
 
 deploy:
   - provider: s3

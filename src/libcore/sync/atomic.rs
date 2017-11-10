@@ -927,6 +927,7 @@ impl<T> AtomicPtr<T> {
     }
 }
 
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
 impl<T> From<*mut T> for AtomicPtr<T> {
     #[inline]

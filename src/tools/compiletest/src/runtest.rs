@@ -29,7 +29,7 @@ use std::fmt;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, ExitStatus, Stdio};
+use std::process::{Command, Output, ExitStatus, Stdio, Child};
 use std::str;
 
 use extract_gdb_version;
@@ -1344,12 +1344,14 @@ actual:\n\
         if let Some(input) = input {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
-        let Output { status, stdout, stderr } = child.wait_with_output().unwrap();
+
+        let Output { status, stdout, stderr } = read2_abbreviated(child)
+            .expect("failed to read output");
 
         let result = ProcRes {
             status,
-            stdout: String::from_utf8(stdout).unwrap(),
-            stderr: String::from_utf8(stderr).unwrap(),
+            stdout: String::from_utf8_lossy(&stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&stderr).into_owned(),
             cmdline,
         };
 
@@ -1635,7 +1637,9 @@ actual:\n\
         cmd.arg("-a").arg("-u");
         cmd.arg(filename);
         cmd.arg("-nobanner");
-        let output = match cmd.output() {
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
+        let output = match cmd.spawn().and_then(read2_abbreviated) {
             Ok(output) => output,
             Err(_) => return,
         };
@@ -2095,6 +2099,8 @@ actual:\n\
 
         let mut cmd = Command::new(make);
         cmd.current_dir(&self.testpaths.file)
+           .stdout(Stdio::piped())
+           .stderr(Stdio::piped())
            .env("TARGET", &self.config.target)
            .env("PYTHON", &self.config.docck_python)
            .env("S", src_root)
@@ -2143,7 +2149,7 @@ actual:\n\
             }
         }
 
-        let output = cmd.output().expect("failed to spawn `make`");
+        let output = cmd.spawn().and_then(read2_abbreviated).expect("failed to spawn `make`");
         if !output.status.success() {
             let res = ProcRes {
                 status: output.status,
@@ -2535,4 +2541,77 @@ fn nocomment_mir_line(line: &str) -> &str {
     } else {
         line
     }
+}
+
+fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
+    use std::mem::replace;
+    use read2::read2;
+
+    const HEAD_LEN: usize = 160 * 1024;
+    const TAIL_LEN: usize = 256 * 1024;
+
+    enum ProcOutput {
+        Full(Vec<u8>),
+        Abbreviated {
+            head: Vec<u8>,
+            skipped: usize,
+            tail: Box<[u8]>,
+        }
+    }
+
+    impl ProcOutput {
+        fn extend(&mut self, data: &[u8]) {
+            let new_self = match *self {
+                ProcOutput::Full(ref mut bytes) => {
+                    bytes.extend_from_slice(data);
+                    let new_len = bytes.len();
+                    if new_len <= HEAD_LEN + TAIL_LEN {
+                        return;
+                    }
+                    let tail = bytes.split_off(new_len - TAIL_LEN).into_boxed_slice();
+                    let head = replace(bytes, Vec::new());
+                    let skipped = new_len - HEAD_LEN - TAIL_LEN;
+                    ProcOutput::Abbreviated { head, skipped, tail }
+                }
+                ProcOutput::Abbreviated { ref mut skipped, ref mut tail, .. } => {
+                    *skipped += data.len();
+                    if data.len() <= TAIL_LEN {
+                        tail[..data.len()].copy_from_slice(data);
+                        tail.rotate(data.len());
+                    } else {
+                        tail.copy_from_slice(&data[(data.len() - TAIL_LEN)..]);
+                    }
+                    return;
+                }
+            };
+            *self = new_self;
+        }
+
+        fn into_bytes(self) -> Vec<u8> {
+            match self {
+                ProcOutput::Full(bytes) => bytes,
+                ProcOutput::Abbreviated { mut head, skipped, tail } => {
+                    write!(&mut head, "\n\n<<<<<< SKIPPED {} BYTES >>>>>>\n\n", skipped).unwrap();
+                    head.extend_from_slice(&tail);
+                    head
+                }
+            }
+        }
+    }
+
+    let mut stdout = ProcOutput::Full(Vec::new());
+    let mut stderr = ProcOutput::Full(Vec::new());
+
+    drop(child.stdin.take());
+    read2(child.stdout.take().unwrap(), child.stderr.take().unwrap(), &mut |is_stdout, data, _| {
+        if is_stdout { &mut stdout } else { &mut stderr }.extend(data);
+        data.clear();
+    })?;
+    let status = child.wait()?;
+
+    Ok(Output {
+        status,
+        stdout: stdout.into_bytes(),
+        stderr: stderr.into_bytes(),
+    })
 }

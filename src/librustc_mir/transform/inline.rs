@@ -37,7 +37,7 @@ const UNKNOWN_SIZE_COST: usize = 10;
 
 pub struct Inline;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
     callee: DefId,
     substs: &'tcx Substs<'tcx>,
@@ -113,7 +113,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         loop {
             local_change = false;
             while let Some(callsite) = callsites.pop_front() {
+                debug!("checking whether to inline callsite {:?}", callsite);
                 if !self.tcx.is_mir_available(callsite.callee) {
+                    debug!("checking whether to inline callsite {:?} - MIR unavailable", callsite);
                     continue;
                 }
 
@@ -133,10 +135,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 };
 
                 let start = caller_mir.basic_blocks().len();
-
+                debug!("attempting to inline callsite {:?} - mir={:?}", callsite, callee_mir);
                 if !self.inline_call(callsite, caller_mir, callee_mir) {
+                    debug!("attempting to inline callsite {:?} - failure", callsite);
                     continue;
                 }
+                debug!("attempting to inline callsite {:?} - success", callsite);
 
                 // Add callsites from inlined function
                 for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated().skip(start) {
@@ -180,16 +184,19 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                      callee_mir: &Mir<'tcx>)
                      -> bool
     {
+        debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
         // Don't inline closures that have captures
         // FIXME: Handle closures better
         if callee_mir.upvar_decls.len() > 0 {
+            debug!("    upvar decls present - not inlining");
             return false;
         }
 
         // Cannot inline generators which haven't been transformed yet
         if callee_mir.yield_ty.is_some() {
+            debug!("    yield ty present - not inlining");
             return false;
         }
 
@@ -201,7 +208,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             // there are cases that prevent inlining that we
             // need to check for first.
             attr::InlineAttr::Always => true,
-            attr::InlineAttr::Never => return false,
+            attr::InlineAttr::Never => {
+                debug!("#[inline(never)] present - not inlining");
+                return false
+            }
             attr::InlineAttr::Hint => true,
             attr::InlineAttr::None => false,
         };
@@ -211,6 +221,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // reference unexported symbols
         if callsite.callee.is_local() {
             if callsite.substs.types().count() == 0 && !hinted {
+                debug!("    callee is an exported function - not inlining");
                 return false;
             }
         }
@@ -232,6 +243,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         if callee_mir.basic_blocks().len() <= 3 {
             threshold += threshold / 4;
         }
+        debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
 
@@ -327,12 +339,17 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             }
         }
 
-        debug!("Inline cost for {:?} is {}", callsite.callee, cost);
-
         if let attr::InlineAttr::Always = hint {
+            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
             true
         } else {
-            cost <= threshold
+            if cost <= threshold {
+                debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
+                true
+            } else {
+                debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
+                false
+            }
         }
     }
 

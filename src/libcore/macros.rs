@@ -120,6 +120,9 @@ macro_rules! assert_eq {
             }
         }
     });
+    ($left:expr, $right:expr,) => ({
+        assert_eq!($left, $right)
+    });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
@@ -168,6 +171,9 @@ macro_rules! assert_ne {
             }
         }
     });
+    ($left:expr, $right:expr,) => {
+        assert_ne!($left, $right)
+    };
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
