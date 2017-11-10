@@ -549,6 +549,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         terr
                     );
                 }
+                self.check_rvalue(mir, rv, location);
             }
             StatementKind::SetDiscriminant {
                 ref lvalue,
@@ -1008,6 +1009,91 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     ty
                 );
             }
+        }
+    }
+
+    fn aggregate_field_ty(&mut self, ak: &Box<AggregateKind<'tcx>>, field: usize, location: Location)
+        -> Result<Ty<'tcx>, FieldAccessError>
+    {
+        let tcx = self.tcx();
+
+        let (variant, substs) = match **ak {
+            AggregateKind::Adt(def, variant, substs, _) => { // handle unions?
+                (&def.variants[variant], substs)
+            },
+            AggregateKind::Closure(def_id, substs) => {
+                return match substs.upvar_tys(def_id, tcx).nth(field) {
+                    Some(ty) => Ok(ty),
+                    None => Err(FieldAccessError::OutOfRange {
+                        field_count: substs.upvar_tys(def_id, tcx).count()
+                    }),
+                }
+            },
+            AggregateKind::Generator(def_id, substs, _) => {
+                if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field) {
+                    return Ok(ty);
+                }
+
+                return match substs.field_tys(def_id, tcx).nth(field) {
+                    Some(ty) => Ok(ty),
+                    None => Err(FieldAccessError::OutOfRange {
+                        field_count: substs.field_tys(def_id, tcx).count() + 1
+                    }),
+                }
+            },
+            AggregateKind::Array(ty) => {
+                return Ok(ty);
+            },
+            AggregateKind::Tuple => {
+                unreachable!("This should have been covered in check_rvalues");
+            },
+        };
+
+        if let Some(field) = variant.fields.get(field) {
+            Ok(self.normalize(&field.ty(tcx, substs), location))
+        } else {
+            Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
+        }
+    }
+
+    #[allow(dead_code)]
+    fn check_rvalue(&mut self, mir: &Mir<'tcx>, rv: &Rvalue<'tcx>, location: Location) {
+        let tcx = self.tcx();
+        match rv {
+            Rvalue::Aggregate(ref ak, ref ops) => {
+                match **ak {
+                    // tuple rvalue field type is always the type of the op. Nothing to check here.
+                    AggregateKind::Tuple => { },
+                    _ => {
+                        for (i, op) in ops.iter().enumerate() {
+                            let field_ty = if let Ok(field_ty) = self.aggregate_field_ty(ak, i, location) {
+                                field_ty
+                            } else {
+                                // TODO(nashenas88) log span_mirbug terr??
+                                continue;
+                            };
+                            let op_ty = match op {
+                                Operand::Consume(lv) => lv.ty(mir, tcx).to_ty(tcx),
+                                Operand::Constant(c) => c.ty,
+                            };
+                            if let Err(_terr) = self.sub_types(op_ty, field_ty, location.at_successor_within_block()) {
+                                // TODO(nashenas88) log span_mirbug terr??
+                            }
+                        }
+                    },
+                }
+            },
+            // FIXME: These other cases have to be implemented in future PRs
+            Rvalue::Use(..) |
+            Rvalue::Repeat(..) |
+            Rvalue::Ref(..) |
+            Rvalue::Len(..) |
+            Rvalue::Cast(..) |
+            Rvalue::BinaryOp(..) |
+            Rvalue::CheckedBinaryOp(..) |
+            Rvalue::UnaryOp(..) |
+            Rvalue::Discriminant(..) |
+            Rvalue::NullaryOp(..) => { }
         }
     }
 
