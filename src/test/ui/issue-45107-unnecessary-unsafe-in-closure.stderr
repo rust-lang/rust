@@ -1,0 +1,71 @@
+error: unnecessary `unsafe` block
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:17:13
+   |
+17 | /             unsafe {
+18 | |                 v.set_len(24);
+19 | |                 |w: &mut Vec<u32>| { unsafe {
+20 | |                     w.set_len(32);
+21 | |                 } };
+22 | |             }
+   | |_____________^ unnecessary `unsafe` block
+   |
+note: lint level defined here
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:11:8
+   |
+11 | #[deny(unused_unsafe)]
+   |        ^^^^^^^^^^^^^
+note: because it's nested under this `unsafe` block
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:15:5
+   |
+15 | /     unsafe {
+16 | |         let f = |v: &mut Vec<_>| {
+17 | |             unsafe {
+18 | |                 v.set_len(24);
+...  |
+29 | |         f(&mut v);
+30 | |     }
+   | |_____^
+
+error: unnecessary `unsafe` block
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:19:38
+   |
+19 |                   |w: &mut Vec<u32>| { unsafe {
+   |  ______________________________________^
+20 | |                     w.set_len(32);
+21 | |                 } };
+   | |_________________^ unnecessary `unsafe` block
+   |
+note: because it's nested under this `unsafe` block
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:17:13
+   |
+17 | /             unsafe {
+18 | |                 v.set_len(24);
+19 | |                 |w: &mut Vec<u32>| { unsafe {
+20 | |                     w.set_len(32);
+21 | |                 } };
+22 | |             }
+   | |_____________^
+
+error: unnecessary `unsafe` block
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:23:34
+   |
+23 |               |x: &mut Vec<u32>| { unsafe {
+   |  __________________________________^
+24 | |                 x.set_len(40);
+25 | |             } };
+   | |_____________^ unnecessary `unsafe` block
+   |
+note: because it's nested under this `unsafe` block
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:15:5
+   |
+15 | /     unsafe {
+16 | |         let f = |v: &mut Vec<_>| {
+17 | |             unsafe {
+18 | |                 v.set_len(24);
+...  |
+29 | |         f(&mut v);
+30 | |     }
+   | |_____^
+
+error: aborting due to 6 previous errors
+
