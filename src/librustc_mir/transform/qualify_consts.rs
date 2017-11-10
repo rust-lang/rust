@@ -979,7 +979,6 @@ impl MirPass for QualifyAndPromoteConstants {
             }
             MirSource::Static(_, hir::MutImmutable) => Mode::Static,
             MirSource::Static(_, hir::MutMutable) => Mode::StaticMut,
-            MirSource::GeneratorDrop(_) |
             MirSource::Promoted(..) => return
         };
 

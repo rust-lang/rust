@@ -603,8 +603,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 None,
             MirSource::Fn(_) =>
                 Some(self.topmost_scope()),
-            MirSource::Promoted(..) |
-            MirSource::GeneratorDrop(..) =>
+            MirSource::Promoted(..) =>
                 bug!(),
         }
     }

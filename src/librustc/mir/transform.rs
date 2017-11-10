@@ -31,9 +31,6 @@ pub enum MirSource {
 
     /// Promoted rvalues within a function.
     Promoted(NodeId, Promoted),
-
-    /// Drop glue for a generator.
-    GeneratorDrop(NodeId),
 }
 
 impl<'a, 'gcx, 'tcx> MirSource {
@@ -70,7 +67,6 @@ impl<'a, 'gcx, 'tcx> MirSource {
         match *self {
             MirSource::Fn(id) |
             MirSource::Const(id) |
-            MirSource::GeneratorDrop(id) |
             MirSource::Static(id, _) |
             MirSource::Promoted(id, _) => id
         }

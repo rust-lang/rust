@@ -61,7 +61,6 @@ impl MirPass for CopyPropagation {
                     return
                 }
             }
-            MirSource::GeneratorDrop(_) => (),
         }
 
         // We only run when the MIR optimization level is > 1.

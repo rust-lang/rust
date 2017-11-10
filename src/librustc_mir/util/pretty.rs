@@ -114,7 +114,6 @@ where
 {
     let promotion_id = match source {
         MirSource::Promoted(_, id) => format!("-{:?}", id),
-        MirSource::GeneratorDrop(_) => format!("-drop"),
         _ => String::new()
     };
 
@@ -374,7 +373,6 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         MirSource::Static(_, hir::MutImmutable) => write!(w, "static")?,
         MirSource::Static(_, hir::MutMutable) => write!(w, "static mut")?,
         MirSource::Promoted(_, i) => write!(w, "{:?} in", i)?,
-        MirSource::GeneratorDrop(_) => write!(w, "drop_glue")?,
     }
 
     item_path::with_forced_impl_filename_line(|| { // see notes on #41697 elsewhere
@@ -382,7 +380,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
     })?;
 
     match src {
-        MirSource::Fn(_) | MirSource::GeneratorDrop(_) => {
+        MirSource::Fn(_) => {
             write!(w, "(")?;
 
             // fn argument types.
