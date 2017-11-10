@@ -1,4 +1,3 @@
-
 fn main() {
     loop {
         return some_val;

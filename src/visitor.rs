@@ -510,6 +510,10 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
+    pub fn opt_snippet(&self, span: Span) -> Option<String> {
+        self.codemap.span_to_snippet(span).ok()
+    }
+
     pub fn snippet(&self, span: Span) -> String {
         match self.codemap.span_to_snippet(span) {
             Ok(s) => s,
@@ -693,6 +697,20 @@ impl<'a> FmtVisitor<'a> {
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
         self.format_missing_with_indent(filemap.end_pos);
+    }
+
+    pub fn skip_empty_lines(&mut self, end_pos: BytePos) {
+        while let Some(pos) = self.codemap
+            .opt_span_after(mk_sp(self.last_pos, end_pos), "\n")
+        {
+            if let Some(snippet) = self.opt_snippet(mk_sp(self.last_pos, pos)) {
+                if snippet.trim().is_empty() {
+                    self.last_pos = pos;
+                } else {
+                    return;
+                }
+            }
+        }
     }
 
     pub fn get_context(&self) -> RewriteContext {
