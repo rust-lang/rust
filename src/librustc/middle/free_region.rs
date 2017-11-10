@@ -63,28 +63,28 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
                            -> bool {
         let result = sub_region == super_region || {
             match (sub_region, super_region) {
-                (&ty::ReEmpty, _) |
-                (_, &ty::ReStatic) =>
+                (ty::ReEmpty, _) |
+                (_, ty::ReStatic) =>
                     true,
 
-                (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
-                    self.region_scope_tree.is_subscope_of(sub_scope, super_scope),
+                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) =>
+                    self.region_scope_tree.is_subscope_of(*sub_scope, *super_scope),
 
-                (&ty::ReScope(sub_scope), &ty::ReEarlyBound(ref br)) => {
+                (ty::ReScope(sub_scope), ty::ReEarlyBound(ref br)) => {
                     let fr_scope = self.region_scope_tree.early_free_scope(self.tcx, br);
-                    self.region_scope_tree.is_subscope_of(sub_scope, fr_scope)
+                    self.region_scope_tree.is_subscope_of(*sub_scope, fr_scope)
                 }
 
-                (&ty::ReScope(sub_scope), &ty::ReFree(ref fr)) => {
+                (ty::ReScope(sub_scope), ty::ReFree(fr)) => {
                     let fr_scope = self.region_scope_tree.free_scope(self.tcx, fr);
-                    self.region_scope_tree.is_subscope_of(sub_scope, fr_scope)
+                    self.region_scope_tree.is_subscope_of(*sub_scope, fr_scope)
                 }
 
-                (&ty::ReEarlyBound(_), &ty::ReEarlyBound(_)) |
-                (&ty::ReFree(_), &ty::ReEarlyBound(_)) |
-                (&ty::ReEarlyBound(_), &ty::ReFree(_)) |
-                (&ty::ReFree(_), &ty::ReFree(_)) =>
-                    self.free_regions.sub_free_regions(&sub_region, &super_region),
+                (ty::ReEarlyBound(_), ty::ReEarlyBound(_)) |
+                (ty::ReFree(_), ty::ReEarlyBound(_)) |
+                (ty::ReEarlyBound(_), ty::ReFree(_)) |
+                (ty::ReFree(_), ty::ReFree(_)) =>
+                    self.free_regions.sub_free_regions(sub_region, super_region),
 
                 _ =>
                     false,
@@ -162,23 +162,23 @@ impl<'tcx> FreeRegionMap<'tcx> {
     /// (with the exception that `'static: 'x` is not notable)
     pub fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
         debug!("relate_regions(sub={:?}, sup={:?})", sub, sup);
-        if (is_free(sub) || *sub == ty::ReStatic) && is_free(sup) {
+        if is_free_or_static(sub) && is_free(sup) {
             self.relation.add(sub, sup)
         }
     }
 
-    /// True if `r_a <= r_b` is known to hold. Both `r_a` and `r_b`
-    /// must be free regions from the function header.
+    /// Tests whether `r_a <= sup`. Both must be free regions or
+    /// `'static`.
     pub fn sub_free_regions<'a, 'gcx>(&self,
                                       r_a: Region<'tcx>,
                                       r_b: Region<'tcx>)
                                       -> bool {
-        debug!("sub_free_regions(r_a={:?}, r_b={:?})", r_a, r_b);
-        assert!(is_free(r_a));
-        assert!(is_free(r_b));
-        let result = r_a == r_b || self.relation.contains(&r_a, &r_b);
-        debug!("sub_free_regions: result={}", result);
-        result
+        assert!(is_free_or_static(r_a) && is_free_or_static(r_b));
+        if let ty::ReStatic = r_b {
+            true // `'a <= 'static` is just always true, and not stored in the relation explicitly
+        } else {
+            r_a == r_b || self.relation.contains(&r_a, &r_b)
+        }
     }
 
     /// Compute the least-upper-bound of two free regions. In some
@@ -221,6 +221,13 @@ fn is_free(r: Region) -> bool {
     match *r {
         ty::ReEarlyBound(_) | ty::ReFree(_) => true,
         _ => false
+    }
+}
+
+fn is_free_or_static(r: Region) -> bool {
+    match *r {
+        ty::ReStatic => true,
+        _ => is_free(r),
     }
 }
 
