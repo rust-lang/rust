@@ -525,6 +525,26 @@ impl<'a> Display for Arguments<'a> {
 #[lang = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Position {
+    ///     longitude: f32,
+    ///     latitude: f32,
+    /// }
+    ///
+    /// impl fmt::Debug for Position {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "({:?}, {:?})", self.longitude, self.latitude)
+    ///     }
+    /// }
+    ///
+    /// assert_eq!("(1.987, 2.983)".to_owned(),
+    ///            format!("{:?}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter) -> Result;
 }
