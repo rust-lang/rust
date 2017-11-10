@@ -557,56 +557,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         callsite: &CallSite<'tcx>,
         caller_mir: &mut Mir<'tcx>,
     ) -> Vec<Operand<'tcx>> {
-        // FIXME: Analysis of the usage of the arguments to avoid
-        // unnecessary temporaries.
-
-        fn create_temp_if_necessary<'a, 'tcx: 'a>(
-            arg: Operand<'tcx>,
-            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-            callsite: &CallSite<'tcx>,
-            caller_mir: &mut Mir<'tcx>,
-        ) -> Operand<'tcx> {
-            if let Operand::Consume(Lvalue::Local(local)) = arg {
-                if caller_mir.local_kind(local) == LocalKind::Temp {
-                    // Reuse the operand if it's a temporary already
-                    return arg;
-                }
-            }
-
-            debug!("Creating temp for argument {:?}", arg);
-            // Otherwise, create a temporary for the arg
-            let arg = Rvalue::Use(arg);
-
-            let ty = arg.ty(caller_mir, tcx);
-
-            let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
-            let arg_tmp = caller_mir.local_decls.push(arg_tmp);
-            let arg_tmp = Lvalue::Local(arg_tmp);
-
-            let stmt = Statement {
-                source_info: callsite.location,
-                kind: StatementKind::Assign(arg_tmp.clone(), arg),
-            };
-            caller_mir[callsite.bb].statements.push(stmt);
-            Operand::Consume(arg_tmp)
-        }
-
         let tcx = self.tcx;
 
         // A closure is passed its self-type and a tuple like `(arg1, arg2, ...)`,
         // hence mappings to tuple fields are needed.
         if tcx.def_key(callsite.callee).disambiguated_data.data == DefPathData::ClosureExpr {
             let mut args = args.into_iter();
-
-            let self_ = create_temp_if_necessary(args.next().unwrap(), tcx, callsite, caller_mir);
-
-            let tuple = if let Operand::Consume(lvalue) =
-                create_temp_if_necessary(args.next().unwrap(), tcx, callsite, caller_mir)
-            {
-                lvalue
-            } else {
-                unreachable!()
-            };
+            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
+            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
             assert!(args.next().is_none());
 
             let tuple_tys = if let ty::TyTuple(s, _) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
@@ -616,16 +574,52 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             };
 
             let mut res = Vec::with_capacity(1 + tuple_tys.len());
-            res.push(self_);
+            res.push(Operand::Consume(self_));
             res.extend(tuple_tys.iter().enumerate().map(|(i, ty)| {
                 Operand::Consume(tuple.clone().field(Field::new(i), ty))
             }));
             res
         } else {
             args.into_iter()
-                .map(|a| create_temp_if_necessary(a, tcx, callsite, caller_mir))
+                .map(|a| Operand::Consume(self.create_temp_if_necessary(a, callsite, caller_mir)))
                 .collect()
         }
+    }
+
+    /// If `arg` is already a temporary, returns it. Otherwise, introduces a fresh
+    /// temporary `T` and an instruction `T = arg`, and returns `T`.
+    fn create_temp_if_necessary(
+        &self,
+        arg: Operand<'tcx>,
+        callsite: &CallSite<'tcx>,
+        caller_mir: &mut Mir<'tcx>,
+    ) -> Lvalue<'tcx> {
+        // FIXME: Analysis of the usage of the arguments to avoid
+        // unnecessary temporaries.
+
+        if let Operand::Consume(Lvalue::Local(local)) = arg {
+            if caller_mir.local_kind(local) == LocalKind::Temp {
+                // Reuse the operand if it's a temporary already
+                return Lvalue::Local(local);
+            }
+        }
+
+        debug!("Creating temp for argument {:?}", arg);
+        // Otherwise, create a temporary for the arg
+        let arg = Rvalue::Use(arg);
+
+        let ty = arg.ty(caller_mir, self.tcx);
+
+        let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
+        let arg_tmp = caller_mir.local_decls.push(arg_tmp);
+        let arg_tmp = Lvalue::Local(arg_tmp);
+
+        let stmt = Statement {
+            source_info: callsite.location,
+            kind: StatementKind::Assign(arg_tmp.clone(), arg),
+        };
+        caller_mir[callsite.bb].statements.push(stmt);
+        arg_tmp
     }
 }
 
