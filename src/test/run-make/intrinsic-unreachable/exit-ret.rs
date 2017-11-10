@@ -11,10 +11,12 @@
 #![feature(asm)]
 #![crate_type="lib"]
 
-pub fn exit(n: usize) {
+#[deny(unreachable_code)]
+pub fn exit(n: usize) -> i32 {
     unsafe {
         // Pretend this asm is an exit() syscall.
         asm!("" :: "r"(n) :: "volatile");
         // Can't actually reach this point, but rustc doesn't know that.
     }
+    42
 }

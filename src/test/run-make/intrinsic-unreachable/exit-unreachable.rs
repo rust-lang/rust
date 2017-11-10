@@ -13,10 +13,12 @@
 
 use std::intrinsics;
 
-pub fn exit(n: usize) -> ! {
+#[allow(unreachable_code)]
+pub fn exit(n: usize) -> i32 {
     unsafe {
         // Pretend this asm is an exit() syscall.
         asm!("" :: "r"(n) :: "volatile");
         intrinsics::unreachable()
     }
+    42
 }
