@@ -1622,7 +1622,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                   "associated type defaults are unstable");
             }
             _ if ti.generics.is_parameterized() => {
-                gate_feature_post!(&self, generic_associated_types, ti.span, "generic associated types are unstable");
+                gate_feature_post!(&self, generic_associated_types, ti.span,
+                                   "generic associated types are unstable");
             }
             _ => {}
         }
@@ -1643,7 +1644,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
             _ if ii.generics.is_parameterized() => {
-                gate_feature_post!(&self, generic_associated_types, ii.span, "generic associated types are unstable");
+                gate_feature_post!(&self, generic_associated_types, ii.span,
+                                   "generic associated types are unstable");
             }
             _ => {}
         }
