@@ -275,6 +275,9 @@ declare_features! (
     // Allows `impl Trait` in function return types.
     (active, conservative_impl_trait, "1.12.0", Some(34511)),
 
+    // Allows `impl Trait` in function arguments.
+    (active, universal_impl_trait, "1.23.0", Some(34511)),
+
     // The `!` type
     (active, never_type, "1.13.0", Some(35121)),
 
@@ -1450,10 +1453,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match ty.node {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
-            }
-            ast::TyKind::ImplTrait(..) => {
-                gate_feature_post!(&self, conservative_impl_trait, ty.span,
-                                   "`impl Trait` is experimental");
             }
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span,

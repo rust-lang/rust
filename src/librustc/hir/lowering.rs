@@ -771,9 +771,21 @@ impl<'a> LoweringContext<'a> {
                 use syntax::feature_gate::{emit_feature_err, GateIssue};
                 match itctx {
                     ImplTraitContext::Existential => {
+                        let has_feature = self.sess.features.borrow().conservative_impl_trait;
+                        if !t.span.allows_unstable() && !has_feature {
+                            emit_feature_err(&self.sess.parse_sess, "conservative_impl_trait",
+                                             t.span, GateIssue::Language,
+                                             "`impl Trait` in return position is experimental");
+                        }
                         hir::TyImplTraitExistential(self.lower_bounds(bounds, itctx))
                     },
                     ImplTraitContext::Universal(def_id) => {
+                        let has_feature = self.sess.features.borrow().universal_impl_trait;
+                        if !t.span.allows_unstable() && !has_feature {
+                            emit_feature_err(&self.sess.parse_sess, "universal_impl_trait",
+                                             t.span, GateIssue::Language,
+                                             "`impl Trait` in argument position is experimental");
+                        }
                         hir::TyImplTraitUniversal(def_id, self.lower_bounds(bounds, itctx))
                     },
                     ImplTraitContext::Disallowed => {
