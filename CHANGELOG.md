@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.170
+* Rustup to *rustc 1.23.0-nightly (d6b06c63a 2017-11-09)*
+
 ## 0.0.169
 * Rustup to *rustc 1.23.0-nightly (3b82e4c74 2017-11-05)*
 * New lints: [`just_underscores_and_digits`], [`result_map_unwrap_or_else`], [`transmute_bytes_to_str`]

@@ -620,14 +620,18 @@ where
     I: IntoIterator<Item = (Span, String)>,
 {
     let sugg = rustc_errors::CodeSuggestion {
-        substitution_parts: sugg.into_iter()
-            .map(|(span, sub)| {
-                rustc_errors::Substitution {
-                    span: span,
-                    substitutions: vec![sub],
-                }
-            })
-            .collect(),
+        substitutions: vec![
+            rustc_errors::Substitution {
+                parts: sugg.into_iter()
+                    .map(|(span, snippet)| {
+                        rustc_errors::SubstitutionPart {
+                            snippet,
+                            span,
+                        }
+                    })
+                    .collect(),
+            }
+        ],
         msg: help_msg,
         show_code_when_inline: true,
     };

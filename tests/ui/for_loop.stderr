@@ -82,7 +82,7 @@ error: the loop variable `i` is only used to index `vec`.
 help: consider using an iterator
    |
 86 |     for <item> in &vec {
-   |         ^^^^^^
+   |
 
 error: the loop variable `i` is only used to index `vec`.
   --> $DIR/for_loop.rs:95:5
@@ -95,7 +95,7 @@ error: the loop variable `i` is only used to index `vec`.
 help: consider using an iterator
    |
 95 |     for <item> in &vec {
-   |         ^^^^^^
+   |
 
 error: the loop variable `j` is only used to index `STATIC`.
    --> $DIR/for_loop.rs:100:5
@@ -108,7 +108,7 @@ error: the loop variable `j` is only used to index `STATIC`.
 help: consider using an iterator
     |
 100 |     for <item> in STATIC.iter().take(4) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `j` is only used to index `CONST`.
    --> $DIR/for_loop.rs:104:5
@@ -121,7 +121,7 @@ error: the loop variable `j` is only used to index `CONST`.
 help: consider using an iterator
     |
 104 |     for <item> in CONST.iter().take(4) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `i` is used to index `vec`
    --> $DIR/for_loop.rs:108:5
@@ -134,7 +134,7 @@ error: the loop variable `i` is used to index `vec`
 help: consider using an iterator
     |
 108 |     for (i, <item>) in vec.iter().enumerate() {
-    |         ^^^^^^^^^^^
+    |
 
 error: the loop variable `i` is only used to index `vec2`.
    --> $DIR/for_loop.rs:116:5
@@ -147,7 +147,7 @@ error: the loop variable `i` is only used to index `vec2`.
 help: consider using an iterator
     |
 116 |     for <item> in vec2.iter().take(vec.len()) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `i` is only used to index `vec`.
    --> $DIR/for_loop.rs:120:5
@@ -160,7 +160,7 @@ error: the loop variable `i` is only used to index `vec`.
 help: consider using an iterator
     |
 120 |     for <item> in vec.iter().skip(5) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `i` is only used to index `vec`.
    --> $DIR/for_loop.rs:124:5
@@ -173,7 +173,7 @@ error: the loop variable `i` is only used to index `vec`.
 help: consider using an iterator
     |
 124 |     for <item> in vec.iter().take(MAX_LEN) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `i` is only used to index `vec`.
    --> $DIR/for_loop.rs:128:5
@@ -186,7 +186,7 @@ error: the loop variable `i` is only used to index `vec`.
 help: consider using an iterator
     |
 128 |     for <item> in vec.iter().take(MAX_LEN + 1) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `i` is only used to index `vec`.
    --> $DIR/for_loop.rs:132:5
@@ -199,7 +199,7 @@ error: the loop variable `i` is only used to index `vec`.
 help: consider using an iterator
     |
 132 |     for <item> in vec.iter().take(10).skip(5) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `i` is only used to index `vec`.
    --> $DIR/for_loop.rs:136:5
@@ -212,7 +212,7 @@ error: the loop variable `i` is only used to index `vec`.
 help: consider using an iterator
     |
 136 |     for <item> in vec.iter().take(10 + 1).skip(5) {
-    |         ^^^^^^
+    |
 
 error: the loop variable `i` is used to index `vec`
    --> $DIR/for_loop.rs:140:5
@@ -225,7 +225,7 @@ error: the loop variable `i` is used to index `vec`
 help: consider using an iterator
     |
 140 |     for (i, <item>) in vec.iter().enumerate().skip(5) {
-    |         ^^^^^^^^^^^
+    |
 
 error: the loop variable `i` is used to index `vec`
    --> $DIR/for_loop.rs:144:5
@@ -238,7 +238,7 @@ error: the loop variable `i` is used to index `vec`
 help: consider using an iterator
     |
 144 |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
-    |         ^^^^^^^^^^^
+    |
 
 error: this range is empty so this for loop will never run
    --> $DIR/for_loop.rs:148:5
@@ -448,7 +448,7 @@ error: you seem to want to iterate on a map's values
 help: use the corresponding method
     |
 385 |     for v in m.values() {
-    |         ^
+    |
 
 error: you seem to want to iterate on a map's values
    --> $DIR/for_loop.rs:390:5
@@ -464,7 +464,7 @@ error: you seem to want to iterate on a map's values
 help: use the corresponding method
     |
 390 |     for v in (*m).values() {
-    |         ^
+    |
 
 error: you seem to want to iterate on a map's values
    --> $DIR/for_loop.rs:398:5
@@ -477,7 +477,7 @@ error: you seem to want to iterate on a map's values
 help: use the corresponding method
     |
 398 |     for v in m.values_mut() {
-    |         ^
+    |
 
 error: you seem to want to iterate on a map's values
    --> $DIR/for_loop.rs:403:5
@@ -490,7 +490,7 @@ error: you seem to want to iterate on a map's values
 help: use the corresponding method
     |
 403 |     for v in (*m).values_mut() {
-    |         ^
+    |
 
 error: you seem to want to iterate on a map's keys
    --> $DIR/for_loop.rs:409:5
@@ -503,7 +503,7 @@ error: you seem to want to iterate on a map's keys
 help: use the corresponding method
     |
 409 |     for k in rm.keys() {
-    |         ^
+    |
 
 error: it looks like you're manually copying between slices
    --> $DIR/for_loop.rs:462:5

@@ -10,5 +10,5 @@ error: the loop variable `i` is only used to index `ns`.
 help: consider using an iterator
    |
 8  |     for <item> in ns.iter().take(10).skip(3) {
-   |         ^^^^^^
+   |
 

@@ -8,5 +8,5 @@ error: needlessly taken reference of both operands
 help: use the values directly
    |
 13 |     let foo = 5 - 6;
-   |               ^
+   |
 
