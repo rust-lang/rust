@@ -57,3 +57,11 @@ trait X /* comment */ {}
 trait Y // comment
 {
 }
+
+// #2055
+pub trait Foo:
+// A and C
+A + C
+// and B
+    + B
+{}
