@@ -699,6 +699,20 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_with_indent(filemap.end_pos);
     }
 
+    pub fn skip_empty_lines(&mut self, end_pos: BytePos) {
+        while let Some(pos) = self.codemap
+            .opt_span_after(mk_sp(self.last_pos, end_pos), "\n")
+        {
+            if let Some(snippet) = self.opt_snippet(mk_sp(self.last_pos, pos)) {
+                if snippet.trim().is_empty() {
+                    self.last_pos = pos;
+                } else {
+                    return;
+                }
+            }
+        }
+    }
+
     pub fn get_context(&self) -> RewriteContext {
         RewriteContext {
             parse_session: self.parse_session,

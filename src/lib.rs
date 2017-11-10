@@ -321,6 +321,7 @@ where
         let filemap = visitor.codemap.lookup_char_pos(module.inner.lo()).file;
         // Format inner attributes if available.
         if !krate.attrs.is_empty() && path == main_file {
+            visitor.skip_empty_lines(filemap.end_pos);
             if visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner) {
                 visitor.push_rewrite(module.inner, None);
             } else {
@@ -328,6 +329,7 @@ where
             }
         } else {
             visitor.last_pos = filemap.start_pos;
+            visitor.skip_empty_lines(filemap.end_pos);
             visitor.format_separate_mod(module, &*filemap);
         };
 
