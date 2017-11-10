@@ -4631,8 +4631,8 @@ impl Trait parameters in a trait declaration versus its impl.
 
 ```compile_fail,E0642
 #![feature(universal_impl_trait)]
-trait Foo
-    fn foo(&self, _: &impl Iterator)
+trait Foo {
+    fn foo(&self, _: &impl Iterator);
 }
 impl Foo for () {
     fn foo<U: Iterator>(&self, _: &U) { } // error method `foo` has incompatible
