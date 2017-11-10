@@ -398,6 +398,12 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
 
+  // Tell LLVM to translate `unreachable` into an explicit trap instruction.
+  // This limits the extent of possible undefined behavior in some cases, as it
+  // prevents control flow from "falling through" into whatever code happens to
+  // be layed out next in memory.
+  Options.TrapUnreachable = true;
+
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), RealCPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
