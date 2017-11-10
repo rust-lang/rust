@@ -48,8 +48,8 @@ macro_rules! test_c {
     });
 
     ($fval:expr, f* -> $ity:ident, $ival:expr) => (
-        test!($fval, f32 -> $ity, $ival);
-        test!($fval, f64 -> $ity, $ival);
+        test_c!($fval, f32 -> $ity, $ival);
+        test_c!($fval, f64 -> $ity, $ival);
     )
 }
 
