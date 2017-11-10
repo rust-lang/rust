@@ -13,7 +13,7 @@ use core::mem;
 use core::ops::Drop;
 use core::ptr::{self, Unique};
 use core::slice;
-use heap::{Alloc, Layout, Heap};
+use heap::{Alloc, Layout, Heap, Excess};
 use super::boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
@@ -174,29 +174,29 @@ impl<T, A: Alloc> RawVec<T, A> {
 /// Panics on overflow if `current_capacity + capacity_increase >
 /// std::usize::MAX`.
 ///
-///
 /// # Growth strategy
 ///
 /// RawVec grows differently depending on:
 ///
-/// - 1. initial size: grows from zero to at least 64 bytes;
+/// - 1. initial size: grows from zero to four elements or at least 64 bytes;
 ///   use `with_capacity` to avoid a growth from zero.
 ///
 /// - 2. vector size:
-///   - small vectors (<= 4096 bytes) and large vectors (>= 4096 * 32 bytes)
-///   grow with a growth factor of 2x.
-///   - otherwise (medium-sized vectors) grow with a growth factor of 1.5x.
+///   - small vectors (<= 4096 bytes) grow with a factor of 2x.
+///   - medium-sized and large vectors grow with a growth factor of 1.5x.
 ///
 /// # Growth factor
 ///
-/// Medium-sized vectors' growth-factor is chosen to allow reusing memory from
-/// previous allocations. Previously freed memory can be reused after
+/// The growth factor of medium-sized and large vectors is chosen to allow
+/// reusing memory from previously-freed allocations in subsequent allocations.
 ///
-/// - 4 reallocations for a growth factor of 1.5x
-/// - 3 reallocations for a growth factor of 1.45x
-/// - 2 reallocations for a growth factor of 1.3x
+/// Depending on the growth factor, previously freed memory can be reused after
 ///
-/// Which one is better [is application
+/// - 4 reallocations for a growth factor of 1.5x,
+/// - 3 reallocations for a growth factor of 1.45x,
+/// - 2 reallocations for a growth factor of 1.3x,
+///
+/// Which growth-factor is better [is application
 /// dependent](https://stackoverflow.com/questions/1100311/
 /// what-is-the-ideal-growth-rate-for-a-dynamically-allocated-array),
 /// also some claim that [the golden ration (1.618) is
@@ -205,7 +205,12 @@ impl<T, A: Alloc> RawVec<T, A> {
 /// The trade-off is having to wait for many reallocations to be able to
 /// reuse old memory.
 ///
-/// Note: a factor of 2x _never_ allows reusing previously-freed memory.
+/// A factor of 2x _never_ allows reusing any previously-freed memory but
+/// `jemalloc`'s memory blocks < 4096 bytes cannot grow in place, that is,
+/// trying to grow a vector < 4096 bytes is always going to require allocating
+/// new memory and copying the contents over. Since `jemalloc`'s memory pools
+/// for small allocations grow with powers of 2 it makes sense to keep a
+/// growth-factor of 2x for these allocations.
 ///
 #[inline(always)]
 fn amortized_new_capacity(elem_size: usize, current_capacity: usize,
@@ -215,31 +220,18 @@ fn amortized_new_capacity(elem_size: usize, current_capacity: usize,
     // `current_capacity <= isize::MAX` so that `current_capacity * N` where `N
     // <= 2` cannot overflow.
     let growth_capacity = match current_capacity {
-        // Empty vector => at least 64 bytes
-        //
-        // [Original]:
-        0 => if elem_size > (!0) / 8 { 1 } else { 4 },
-        // [NEW]:
-        // 0 => (64 / elem_size).max(1),
-        // [NEW 2]:
-        // 0 => (32 / elem_size).max(4),
-        //
+        // Empty vector => 4 elements or at least 64 bytes
+        0 => (64 / elem_size).max(4),
 
-        // Small and large vectors (<= 4096 bytes, and >= 4096 * 32 bytes):
-        //
-        // FIXME: jemalloc specific behavior, allocators should provide a
-        // way to query the byte size of blocks that can grow inplace.
-        //
-        // jemalloc can never grow in place small blocks but blocks larger
-        // than or equal to 4096 bytes can be expanded in place:
-        // c if c <  4096 / elem_size => 2 * c,
-        // c if c > 4096 * 32 / elem_size => 2 * c,
+        // Small vectors: jemalloc cannot grow in place blocks smaller than 4096
+        // bytes so until then the memory of previously-freed allocations
+        // cannot be reused by subsequent allocations:
+        c if c <  4096 / elem_size => 2 * c,
 
-        // Medium sized vectors in the [4096, 4096 * 32) bytes range:
-        c => c / 2 * 3 + 1,
-
-        // [Original]
-        // c => 2 * c,
+        // Medium and large vectors (>= 4096 bytes): a growth factor of 1.5
+        // allows the memory of a previously-freeed allocation to be reused
+        // after 4 subsequent allocations:
+        c => (c / 2 + 1) * 3,
     };
     cmp::max(growth_capacity,
              current_capacity.checked_add(capacity_increase).unwrap())
@@ -596,27 +588,21 @@ impl<T, A: Alloc> RawVec<T, A> {
                 Some(layout) => layout,
                 None => panic!("capacity overflow"),
             };
-            let (_, usable_size) = self.a.usable_size(&new_layout);
-            let new_cap = usable_size / elem_size;
-            let new_layout = match Layout::array::<T>(new_cap) {
-                Some(layout) => layout,
-                None => panic!("capacity overflow"),
-            };
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size());
-            let res = match self.current_layout() {
+            let Excess(res, usable_size) = match self.current_layout() {
                 Some(layout) => {
                     let old_ptr = self.ptr.as_ptr() as *mut u8;
-                    self.a.realloc(old_ptr, layout, new_layout)
+                    self.a.realloc_excess(old_ptr, layout, new_layout)
                 }
-                None => self.a.alloc(new_layout),
+                None => self.a.alloc_excess(new_layout),
             };
             let uniq = match res {
                 Ok(ptr) => Unique::new_unchecked(ptr as *mut T),
                 Err(e) => self.a.oom(e),
             };
             self.ptr = uniq;
-            self.cap = new_cap;
+            self.cap = usable_size / mem::size_of::<T>();
         }
     }
 
@@ -666,17 +652,14 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             let ptr = self.ptr() as *mut _;
             let new_layout = Layout::new::<T>().repeat(new_cap).unwrap().0;
-            let (_, usable_size) = self.a.usable_size(&new_layout);
-            let new_cap = usable_size / elem_size;
-            let new_layout = match Layout::array::<T>(new_cap) {
-                Some(layout) => layout,
-                None => panic!("capacity overflow"),
-            };
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size());
             match self.a.grow_in_place(ptr, old_layout, new_layout) {
                 Ok(_) => {
-                    self.cap = new_cap;
+                    // FIXME: grow_in_place swallows the usable_size, so we
+                    // need to recompute it here:
+                    let (_, new_usable_size) = self.a.usable_size(&new_layout);
+                    self.cap = new_usable_size / mem::size_of::<T>();
                     true
                 }
                 Err(_) => {
