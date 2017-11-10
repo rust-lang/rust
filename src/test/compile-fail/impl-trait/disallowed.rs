@@ -10,11 +10,6 @@
 
 #![feature(conservative_impl_trait)]
 
-fn arguments(_: impl Fn(),
-//~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
-             _: Vec<impl Clone>) {}
-//~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
-
 type Factory<R> = impl Fn() -> R;
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 

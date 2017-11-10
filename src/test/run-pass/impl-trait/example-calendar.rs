@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait, fn_traits, step_trait, unboxed_closures)]
+#![feature(conservative_impl_trait,
+           universal_impl_trait,
+           fn_traits,
+           step_trait,
+           unboxed_closures
+)]
 
 //! Derived from: <https://raw.githubusercontent.com/quickfur/dcal/master/dcal.d>.
 //!
@@ -457,9 +462,9 @@ fn test_group_by() {
 ///
 /// Groups an iterator of dates by month.
 ///
-fn by_month<It>(it: It)
-                ->  impl Iterator<Item=(u32, impl Iterator<Item=NaiveDate> + Clone)> + Clone
-where It: Iterator<Item=NaiveDate> + Clone {
+fn by_month(it: impl Iterator<Item=NaiveDate> + Clone)
+           ->  impl Iterator<Item=(u32, impl Iterator<Item=NaiveDate> + Clone)> + Clone
+{
     it.group_by(|d| d.month())
 }
 
@@ -474,9 +479,9 @@ fn test_by_month() {
 ///
 /// Groups an iterator of dates by week.
 ///
-fn by_week<It>(it: It)
-               -> impl Iterator<Item=(u32, impl DateIterator)> + Clone
-where It: DateIterator {
+fn by_week(it: impl DateIterator)
+          -> impl Iterator<Item=(u32, impl DateIterator)> + Clone
+{
     // We go forward one day because `isoweekdate` considers the week to start on a Monday.
     it.group_by(|d| d.succ().isoweekdate().1)
 }
@@ -548,8 +553,7 @@ const COLS_PER_WEEK: u32 = 7 * COLS_PER_DAY;
 ///
 /// Formats an iterator of weeks into an iterator of strings.
 ///
-fn format_weeks<It>(it: It) -> impl Iterator<Item=String>
-where It: Iterator, It::Item: DateIterator {
+fn format_weeks(it: impl Iterator<Item = impl DateIterator>) -> impl Iterator<Item=String> {
     it.map(|week| {
         let mut buf = String::with_capacity((COLS_PER_DAY * COLS_PER_WEEK + 2) as usize);
 
@@ -627,7 +631,7 @@ fn test_month_title() {
 ///
 /// Formats a month.
 ///
-fn format_month<It: DateIterator>(it: It) -> impl Iterator<Item=String> {
+fn format_month(it: impl DateIterator) -> impl Iterator<Item=String> {
     let mut month_days = it.peekable();
     let title = month_title(month_days.peek().unwrap().month());
 
@@ -659,8 +663,9 @@ fn test_format_month() {
 ///
 /// Formats an iterator of months.
 ///
-fn format_months<It>(it: It) -> impl Iterator<Item=impl Iterator<Item=String>>
-where It: Iterator, It::Item: DateIterator {
+fn format_months(it: impl Iterator<Item = impl DateIterator>)
+                -> impl Iterator<Item=impl Iterator<Item=String>>
+{
     it.map(format_month)
 }
 
