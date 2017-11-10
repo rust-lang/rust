@@ -260,7 +260,14 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 "refutable pattern in {}: `{}` not covered",
                 origin, pattern_string
             );
-            diag.span_label(pat.span, format!("pattern `{}` not covered", pattern_string));
+            let label_msg = match pat.node {
+                PatKind::Path(hir::QPath::Resolved(None, ref path))
+                        if path.segments.len() == 1 && path.segments[0].parameters.is_none() => {
+                    format!("interpreted as a {} pattern, not new variable", path.def.kind_name())
+                }
+                _ => format!("pattern `{}` not covered", pattern_string),
+            };
+            diag.span_label(pat.span, label_msg);
             diag.emit();
         });
     }
