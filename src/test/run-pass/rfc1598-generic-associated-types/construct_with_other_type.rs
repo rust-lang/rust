@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(generic_associated_types)]
+
 trait Foo {
     type Bar<'a, 'b>;
 }
