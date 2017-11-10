@@ -5035,6 +5035,10 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if let ty::TyParam(ParamTy {idx, ..}) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
             tps_used[idx as usize - generics.lifetimes.len()] = true;
+        } else if let ty::TyError = leaf_ty.sty {
+            // If there already another error, do not emit an error for not using a type Parameter
+            assert!(tcx.sess.err_count() > 0);
+            return;
         }
     }
 

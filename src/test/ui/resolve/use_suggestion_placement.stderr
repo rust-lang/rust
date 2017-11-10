@@ -33,17 +33,5 @@ help: possible candidates are found in other modules, you can import them into s
 11 | use std::collections::hash_map::HashMap;
    |
 
-error[E0091]: type parameter `K` is unused
-  --> $DIR/use_suggestion_placement.rs:35:15
-   |
-35 |     type Dict<K, V> = HashMap<K, V>;
-   |               ^ unused type parameter
-
-error[E0091]: type parameter `V` is unused
-  --> $DIR/use_suggestion_placement.rs:35:18
-   |
-35 |     type Dict<K, V> = HashMap<K, V>;
-   |                  ^ unused type parameter
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

@@ -4625,6 +4625,22 @@ It is recommended that you look for a `new` function or equivalent in the
 crate's documentation.
 "##,
 
+E0642: r##"
+This error indicates that there is a mismatch between generic parameters and
+impl Trait parameters in a trait Declaration versus it's impl.
+
+```compile_fail,E0642
+#![feature(conservative_impl_trait)]
+trait Foo
+    fn foo(&self, &impl Iterator)
+}
+impl Foo for () {
+    fn foo<U: Iterator>(&self, _: &U) { } // error method `foo` has incompatible
+                                          // signature for trait
+}
+```
+"##,
+
 }
 
 register_diagnostics! {
