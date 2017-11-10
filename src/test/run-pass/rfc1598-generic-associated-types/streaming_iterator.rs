@@ -25,7 +25,8 @@ struct Foo<T: StreamingIterator> {
 
 // Users can bound parameters by the type constructed by that trait's associated type constructor
 // of a trait using HRTB. Both type equality bounds and trait bounds of this kind are valid:
-//fn foo<T: for<'a> StreamingIterator<Item<'a>=&'a [i32]>>(iter: T) { ... }
+//FIXME(sunjay): This next line should parse and be valid
+//fn foo<T: for<'a> StreamingIterator<Item<'a>=&'a [i32]>>(iter: T) { /* ... */ }
 fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
 
 fn main() {}
