@@ -937,7 +937,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let body_lo = context.codemap.span_after(item.span, "{");
 
-        let shape = Shape::indented(offset + last_line_width(&result), context.config);
+        let shape = Shape::indented(offset, context.config);
         let generics_str =
             rewrite_generics(context, generics, shape, mk_sp(item.span.lo(), body_lo))?;
         result.push_str(&generics_str);
