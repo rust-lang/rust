@@ -38,12 +38,12 @@ use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
-use rustc::mir::transform::MirSource;
 use rustc::ty::item_path;
 use std::path::{Path, PathBuf};
 use std::fs;
 use rustc::ty::TyCtxt;
 use std::io::{self, Write};
+use transform::MirSource;
 
 pub type LocalSet = IdxSetBuf<Local>;
 
@@ -357,7 +357,7 @@ pub fn dump_mir<'a, 'tcx>(
     }
     let node_path = item_path::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
-        tcx.item_path_str(tcx.hir.local_def_id(source.item_id()))
+        tcx.item_path_str(source.def_id)
     });
     dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, result);
 }
@@ -375,7 +375,8 @@ fn dump_matched_mir_node<'a, 'tcx>(
         let p = Path::new(file_dir);
         file_path.push(p);
     };
-    let file_name = format!("rustc.node{}{}-liveness.mir", source.item_id(), pass_name);
+    let item_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
+    let file_name = format!("rustc.node{}{}-liveness.mir", item_id, pass_name);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|mut file| {
         writeln!(file, "// MIR local liveness analysis for `{}`", node_path)?;

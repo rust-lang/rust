@@ -10,7 +10,6 @@
 
 use rustc::hir;
 use rustc::mir::{BasicBlock, BorrowKind, Location, Lvalue, Mir, Rvalue, Statement, StatementKind};
-use rustc::mir::transform::MirSource;
 use rustc::mir::visit::Visitor;
 use rustc::mir::Lvalue::Projection;
 use rustc::mir::{LvalueProjection, ProjectionElem};
@@ -31,7 +30,7 @@ pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     regioncx: &mut RegionInferenceContext<'tcx>,
     mir: &Mir<'tcx>,
-    mir_source: MirSource,
+    param_env: ty::ParamEnv<'tcx>,
     liveness: &LivenessResults,
 ) {
     ConstraintGeneration {
@@ -39,7 +38,7 @@ pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
         regioncx,
         mir,
         liveness,
-        mir_source,
+        param_env,
     }.add_constraints();
 }
 
@@ -48,7 +47,7 @@ struct ConstraintGeneration<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     regioncx: &'cx mut RegionInferenceContext<'tcx>,
     mir: &'cx Mir<'tcx>,
     liveness: &'cx LivenessResults,
-    mir_source: MirSource,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
@@ -153,13 +152,11 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
             // `dtorck_constraint_for_ty` could not resolve (e.g.,
             // associated types and parameters). We need to normalize
             // associated types here and possibly recursively process.
-            let def_id = tcx.hir.local_def_id(self.mir_source.item_id());
-            let param_env = self.infcx.tcx.param_env(def_id);
             for ty in dtorck_types {
                 // FIXME -- I think that this may disregard some region obligations
                 // or something. Do we care? -nmatsakis
                 let cause = ObligationCause::dummy();
-                match traits::fully_normalize(self.infcx, cause, param_env, &ty) {
+                match traits::fully_normalize(self.infcx, cause, self.param_env, &ty) {
                     Ok(ty) => match ty.sty {
                         ty::TyParam(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
                             self.add_regular_live_constraint(ty, location);

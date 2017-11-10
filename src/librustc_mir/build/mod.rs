@@ -16,7 +16,6 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::mir::*;
-use rustc::mir::transform::MirSource;
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
@@ -30,6 +29,7 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
+use transform::MirSource;
 use util as mir_util;
 
 /// Construct the MIR for a given def-id.
@@ -83,12 +83,11 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         _ => unsupported(),
     };
 
-    let src = MirSource::from_node(tcx, id);
     tcx.infer_ctxt().enter(|infcx| {
-        let cx = Cx::new(&infcx, src);
+        let cx = Cx::new(&infcx, id);
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
-        } else if let MirSource::Fn(id) = src {
+        } else if let hir::BodyOwnerKind::Fn = cx.body_owner_kind {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
             let fn_hir_id = tcx.hir.node_to_hir_id(id);
@@ -150,7 +149,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             mem::transmute::<Mir, Mir<'tcx>>(mir)
         };
 
-        mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir, |_, _| Ok(()) );
+        mir_util::dump_mir(tcx, None, "mir_map", &0,
+                           MirSource::item(def_id), &mir, |_, _| Ok(()) );
 
         mir
     })
@@ -214,8 +214,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let span = tcx.hir.span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         tcx.infer_ctxt().enter(|infcx| {
-            let (mut mir, src) =
-                shim::build_adt_ctor(&infcx, ctor_id, fields, span);
+            let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
             // Convert the Mir to global types.
             let tcx = infcx.tcx.global_tcx();
@@ -228,7 +227,9 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 mem::transmute::<Mir, Mir<'tcx>>(mir)
             };
 
-            mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir, |_, _| Ok(()) );
+            mir_util::dump_mir(tcx, None, "mir_map", &0,
+                               MirSource::item(tcx.hir.local_def_id(ctor_id)),
+                               &mir, |_, _| Ok(()) );
 
             mir
         })

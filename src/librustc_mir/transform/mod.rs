@@ -10,8 +10,7 @@
 
 use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::Mir;
-use rustc::mir::transform::MirSource;
+use rustc::mir::{Mir, Promoted};
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::ty::steal::Steal;
@@ -108,6 +107,24 @@ fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     tcx.alloc_steal_mir(mir)
 }
 
+/// Where a specific Mir comes from.
+#[derive(Debug, Copy, Clone)]
+pub struct MirSource {
+    pub def_id: DefId,
+
+    /// If `Some`, this is a promoted rvalue within the parent function.
+    pub promoted: Option<Promoted>,
+}
+
+impl MirSource {
+    pub fn item(def_id: DefId) -> Self {
+        MirSource {
+            def_id,
+            promoted: None
+        }
+    }
+}
+
 /// Generates a default name for the pass based on the name of the
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
@@ -133,9 +150,13 @@ pub trait MirPass {
                           mir: &mut Mir<'tcx>);
 }
 
-pub macro run_passes($tcx:ident, $mir:ident, $source:ident, $suite_index:expr; $($pass:expr,)*) {{
+pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $($pass:expr,)*) {{
     let suite_index: usize = $suite_index;
-    let run_passes = |mir: &mut _, source| {
+    let run_passes = |mir: &mut _, promoted| {
+        let source = MirSource {
+            def_id: $def_id,
+            promoted
+        };
         let mut index = 0;
         let mut run_pass = |pass: &MirPass| {
             let run_hooks = |mir: &_, index, is_after| {
@@ -150,10 +171,11 @@ pub macro run_passes($tcx:ident, $mir:ident, $source:ident, $suite_index:expr; $
         };
         $(run_pass(&$pass);)*
     };
-    run_passes(&mut $mir, $source);
+
+    run_passes(&mut $mir, None);
 
     for (index, promoted_mir) in $mir.promoted.iter_enumerated_mut() {
-        run_passes(promoted_mir, MirSource::Promoted($source.item_id(), index));
+        run_passes(promoted_mir, Some(index));
 
         // Let's make sure we don't miss any nested instances
         assert!(promoted_mir.promoted.is_empty());
@@ -165,8 +187,7 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut mir = tcx.mir_built(def_id).steal();
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    run_passes![tcx, mir, source, 0;
+    run_passes![tcx, mir, def_id, 0;
         // Remove all `EndRegion` statements that are not involved in borrows.
         clean_end_regions::CleanEndRegions,
 
@@ -179,15 +200,15 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
 }
 
 fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    if let MirSource::Const(_) = source {
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(node_id) {
         // Ensure that we compute the `mir_const_qualif` for constants at
         // this point, before we steal the mir-const result.
         let _ = tcx.mir_const_qualif(def_id);
     }
 
     let mut mir = tcx.mir_const(def_id).steal();
-    run_passes![tcx, mir, source, 1;
+    run_passes![tcx, mir, def_id, 1;
         // What we need to run borrowck etc.
         qualify_consts::QualifyAndPromoteConstants,
         simplify::SimplifyCfg::new("qualify-consts"),
@@ -202,8 +223,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     let _ = tcx.borrowck(def_id);
 
     let mut mir = tcx.mir_validated(def_id).steal();
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    run_passes![tcx, mir, source, 2;
+    run_passes![tcx, mir, def_id, 2;
         no_landing_pads::NoLandingPads,
         simplify_branches::SimplifyBranches::new("initial"),
 

@@ -10,9 +10,8 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::MirSource;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use transform::MirPass;
+use transform::{MirPass, MirSource};
 
 #[derive(PartialEq)]
 pub enum AddCallGuards {
