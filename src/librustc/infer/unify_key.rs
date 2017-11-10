@@ -33,7 +33,7 @@ pub struct RegionVidKey {
 
 impl Combine for RegionVidKey {
     fn combine(&self, other: &RegionVidKey) -> RegionVidKey {
-        let min_vid = if self.min_vid.index < other.min_vid.index {
+        let min_vid = if self.min_vid.index() < other.min_vid.index() {
             self.min_vid
         } else {
             other.min_vid
@@ -45,8 +45,8 @@ impl Combine for RegionVidKey {
 
 impl UnifyKey for ty::RegionVid {
     type Value = RegionVidKey;
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid { index: i } }
+    fn index(&self) -> u32 { self.0 }
+    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid(i) }
     fn tag(_: Option<ty::RegionVid>) -> &'static str { "RegionVid" }
 }
 

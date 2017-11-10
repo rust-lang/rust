@@ -726,7 +726,7 @@ define_print! {
                     }
                 }
                 ty::ReVar(region_vid) if cx.identify_regions => {
-                    write!(f, "'{}rv", region_vid.index)
+                    write!(f, "'{}rv", region_vid.index())
                 }
                 ty::ReScope(_) |
                 ty::ReVar(_) |
@@ -850,7 +850,7 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "'_#{}r", self.index)
+        write!(f, "'_#{}r", self.index())
     }
 }
 

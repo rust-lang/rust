@@ -894,22 +894,11 @@ pub struct FloatVid {
     pub index: u32,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Copy)]
-pub struct RegionVid {
-    pub index: u32,
-}
-
-// FIXME: We could convert this to use `newtype_index!`
-impl Idx for RegionVid {
-    fn new(value: usize) -> Self {
-        assert!(value < ::std::u32::MAX as usize);
-        RegionVid { index: value as u32 }
-    }
-
-    fn index(self) -> usize {
-        self.index as usize
-    }
-}
+newtype_index!(RegionVid
+    {
+        pub idx
+        DEBUG_FORMAT = custom,
+    });
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct SkolemizedRegionVid {
