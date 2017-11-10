@@ -1,5 +1,5 @@
-#!/bin/sh
-# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+#!/usr/bin/env python
+# Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -9,18 +9,185 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-# Exit if anything fails
-set -e
+from __future__ import print_function
+from subprocess import (
+    CalledProcessError,
+    check_call,
+    check_output,
+)
+import os
+import sys
 
-# Find out where the pretty printer Python module is
-RUSTC_SYSROOT=`rustc --print=sysroot`
-GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 
-# Run GDB with the additional arguments that load the pretty printers
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 # Set the environment variable `RUST_GDB` to overwrite the call to a
 # different/specific command (defaults to `gdb`).
-RUST_GDB="${RUST_GDB:-gdb}"
-PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" ${RUST_GDB} \
-  -d "$GDB_PYTHON_MODULE_DIRECTORY" \
-  -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
-  "$@"
+RUST_GDB = os.environ.get("RUST_GDB", "gdb")
+
+try:
+    RUSTC_SYSROOT = check_output(["rustc", "--print=sysroot"]).strip()
+    RUSTC_VERSION = check_output(["rustc", "--version"]).strip()
+except Exception as e:
+    eprint("Couldn't execute rustc!")
+    sys.exit(1)
+
+DWARF_PATTERN = "rustc version "
+RUST_DWARFROOT = "/checkout"
+DEFAULT_RUST_SRC_PATH = "{}/lib/rustlib/src/rust".format(RUSTC_SYSROOT)
+GDB_PYTHON_MODULE_DIRECTORY = "{}/lib/rustlib/etc".format(RUSTC_SYSROOT)
+
+VERSION_MISMATCH_MESSAGE = """\
+ERROR: The current rustc doesn't match the version used to compile the binary
+The binary was built with rust version {}"""
+
+HOWTO_FIX_MISSING_SRC = """
+gdb will not be able to display source code for rust libstd functions.
+To fix this, do one of the following:
+  - Install the matching versions of the rust and rust-src components via rustup, and run:
+      `rustup default $version`
+  - Set the RUST_DBG_LIBSTD_SRC_PATH environment variable when running this command
+  - Skip loading the Rust standard library source code with the environment variable
+    RUST_DBG_IGNORE_LIBSTD_SRC=1
+"""
+
+
+def check_src_present(path):
+    if os.path.exists(os.path.expanduser(path)):
+        return True
+    return False
+
+
+def cmd_exists(cmd):
+    try:
+        check_call("command -v {} 2>&1 >/dev/null".format(cmd), shell=True)
+        return True
+    except CalledProcessError:
+        return False
+
+
+def get_target_rust_version():
+    cmd = "dwprod {} | grep \"{}\" | head -n 1".format(target_path, DWARF_PATTERN)
+    try:
+        dwarf = check_output(cmd, shell=True)
+    except:
+        return None
+
+    try:
+        # TODO: Get commit hash, needed for nightly?
+        version = dwarf.split(DWARF_PATTERN)[1].strip().replace("))", ")")
+        return version
+    except:
+        return None
+
+
+def install_dwprod():
+    if cmd_exists("dwprod"):
+        return True
+    eprint(("Could not find dwprod, which is necessary to verify that the version of the "
+            "rust libstd source matches the compiler version that built the target binary."
+            "\n"
+            ))
+    response = raw_input("Would you like to install dwprod now? (y)es/(n)o [y]: ")
+    response = response.lower()
+    if not response or response[0] == 'y':
+        try:
+            check_call(["cargo", "install", "dwprod"])
+        except CalledProcessError:
+            print("Unable to install dwprod.")
+            sys.exit(1)
+
+        if not cmd_exists("dwprod"):
+            eprint((
+                "Still cannot find dwprod. Ensure that the cargo binary path is in your $PATH "
+                "environment variable, and that the cargo installation finished successfully"))
+            sys.exit(1)
+
+        return True
+
+    else:
+        eprint("WARNING: Using a potentially incorrect version of rust stdlib source")
+        return False
+
+
+def run(env, args, rust_std_src_path, rust_gdb=RUST_GDB):
+    env["PYTHONPATH"] = ":".join(filter(None, [
+        env.get("PYTHONPATH", None),
+        GDB_PYTHON_MODULE_DIRECTORY
+    ]))
+
+    exec_args = [rust_gdb]
+    # Run GDB with the additional arguments that load the pretty printers
+    exec_args.extend(["-d", GDB_PYTHON_MODULE_DIRECTORY])
+    exec_args.extend(["-iex", "add-auto-load-safe-path {}".format(GDB_PYTHON_MODULE_DIRECTORY)])
+    # Add path substitution to display source code for rust-std functions
+    if rust_std_src_path:
+        exec_args.extend([
+            "-iex", "set substitute-path {} {}".format(RUST_DWARFROOT, rust_std_src_path)])
+
+    # Pass through the rest of the original arguments
+    exec_args.extend(args)
+    os.execvpe(rust_gdb, args, env)
+
+
+def rustpath_usable(rust_std_src_path, target_path):
+    rust_libstd_path_is_default = (rust_std_src_path == DEFAULT_RUST_SRC_PATH)
+    if check_src_present(rust_std_src_path):
+        usable = True
+        # By default we'll look for the rust-src installed alongside the current rustc. It
+        # doesn't make sense to check the version of rustc if the user has overridden this path.
+        if rust_libstd_path_is_default:
+            if install_dwprod() and not verify_rust_std_src_version(rust_std_src_path, target_path):
+                usable = False
+
+    else:
+        usable = False
+        if not rust_libstd_path_is_default:
+            eprint("RUST_DBG_LIBSTD_PATH is set to a nonexistent location: {}".format(
+                rust_std_src_path))
+            sys.exit(1)
+
+    if usable:
+        if not rust_libstd_path_is_default:
+            eprint(("Using rust libstd source code path "
+                    "{} from environment").format(rust_std_src_path))
+
+    return usable
+
+
+def verify_rust_std_src_version(rust_std_src_path, target_path):
+    target_version = get_target_rust_version()
+
+    if not target_version:
+        eprint("Unable to determine the version of rust used to build {}".format(target_path))
+        return False
+
+    if target_version not in RUSTC_VERSION:
+        eprint(VERSION_MISMATCH_MESSAGE.format(target_version))
+        eprint(HOWTO_FIX_MISSING_SRC)
+        return False
+
+    return True
+
+
+if __name__ == "__main__":
+    env = os.environ.copy()
+    skip_src = os.environ.get("RUST_DBG_IGNORE_LIBSTD_SRC", None) == "1"
+
+    target_path = sys.argv[-1]
+    # verify that the last argument to GDB is the target binary
+    if not (os.path.exists(target_path) and os.path.isfile(target_path)):
+        eprint("rust-gdb requires the last argument to be the path to the target binary")
+        sys.exit(1)
+
+    rust_std_src_path = os.environ.get("RUST_DBG_LIBSTD_SRC_PATH", DEFAULT_RUST_SRC_PATH)
+
+    if skip_src:
+        rust_std_src_path = None
+        eprint("rust libstd source code printing disabled.")
+    elif not rustpath_usable(rust_std_src_path, target_path):
+        rust_std_src_path = None
+        eprint("WARNING: rust libstd source code was not found.")
+        eprint(HOWTO_FIX_MISSING_SRC)
+    run(env, sys.argv[1:], rust_std_src_path)
