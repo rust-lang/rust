@@ -150,6 +150,9 @@
             addClass(search, "hidden");
             removeClass(document.getElementById("main"), "hidden");
             var hash = ev.newURL.slice(ev.newURL.indexOf('#') + 1);
+            if (browserSupportsHistoryApi()) {
+                history.replaceState(hash, "", "#" + hash);
+            }
             var elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
@@ -1560,6 +1563,17 @@
             });
         }
     });
+
+    var search_input = document.getElementsByClassName("search-input")[0];
+
+    if (search_input) {
+        search_input.onfocus = function() {
+            if (search.value !== "") {
+                addClass(document.getElementById("main"), "hidden");
+                removeClass(document.getElementById("search"), "hidden");
+            }
+        };
+    }
 }());
 
 // Sets the focus on the search bar at the top of the page
