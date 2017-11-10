@@ -222,6 +222,7 @@ pub struct Build {
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
+    rustfmt_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     verbosity: usize,
@@ -304,6 +305,7 @@ impl Build {
         let rust_info = channel::GitInfo::new(&config, &src);
         let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
+        let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
 
         Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -323,6 +325,7 @@ impl Build {
             rust_info,
             cargo_info,
             rls_info,
+            rustfmt_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
@@ -812,6 +815,11 @@ impl Build {
     /// Returns the value of `package_vers` above for rls
     fn rls_package_vers(&self) -> String {
         self.package_vers(&self.release_num("rls"))
+    }
+
+    /// Returns the value of `package_vers` above for rustfmt
+    fn rustfmt_package_vers(&self) -> String {
+        self.package_vers(&self.release_num("rustfmt"))
     }
 
     /// Returns the `version` string associated with this compiler for Rust
