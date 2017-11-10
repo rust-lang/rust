@@ -71,6 +71,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Instant, Duration};
+use std::borrow::Cow;
 
 const TEST_WARN_TIMEOUT_S: u64 = 60;
 const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
@@ -97,13 +98,32 @@ use formatters::*;
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String),
+    AlignedTestName(Cow<'static, str>, NamePadding),
 }
 impl TestName {
     fn as_slice(&self) -> &str {
         match *self {
             StaticTestName(s) => s,
             DynTestName(ref s) => s,
+            AlignedTestName(ref s, _) => &*s,
         }
+    }
+
+    fn padding(&self) -> NamePadding {
+        match self {
+            &AlignedTestName(_, p) => p,
+            _ => PadNone,
+        }
+    }
+
+    fn with_padding(&self, padding: NamePadding) -> TestName {
+        let name = match self {
+            &TestName::StaticTestName(name) => Cow::Borrowed(name),
+            &TestName::DynTestName(ref name) => Cow::Owned(name.clone()),
+            &TestName::AlignedTestName(ref name, _) => name.clone(),
+        };
+
+        TestName::AlignedTestName(name, padding)
     }
 }
 impl fmt::Display for TestName {
@@ -112,7 +132,7 @@ impl fmt::Display for TestName {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum NamePadding {
     PadNone,
     PadOnRight,
@@ -306,6 +326,13 @@ pub enum ColorConfig {
     NeverColor,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum OutputFormat {
+    Pretty,
+    Terse,
+    Json
+}
+
 #[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
@@ -317,7 +344,7 @@ pub struct TestOpts {
     pub logfile: Option<PathBuf>,
     pub nocapture: bool,
     pub color: ColorConfig,
-    pub quiet: bool,
+    pub format: OutputFormat,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub options: Options,
@@ -336,7 +363,7 @@ impl TestOpts {
             logfile: None,
             nocapture: false,
             color: AutoColor,
-            quiet: false,
+            format: OutputFormat::Pretty,
             test_threads: None,
             skip: vec![],
             options: Options::new(),
@@ -362,13 +389,17 @@ fn optgroups() -> getopts::Options {
                                      in parallel", "n_threads")
         .optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
                                be used multiple times)","FILTER")
-        .optflag("q", "quiet", "Display one character per test instead of one line.\
-                                Equivalent to --format=terse")
+        .optflag("q", "quiet", "Display one character per test instead of one line. \
+                                Alias to --format=terse")
         .optflag("", "exact", "Exactly match filters rather than by substring")
         .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never");
+            never  = never colorize output;", "auto|always|never")
+        .optopt("", "format", "Configure formatting of output:
+            pretty = Print verbose output;
+            terse  = Display one character per test;
+            json   = Output a json document", "pretty|terse|json");
     return opts
 }
 
@@ -469,6 +500,19 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         }
     };
 
+    let format = match matches.opt_str("format").as_ref().map(|s| &**s) {
+        None if quiet => OutputFormat::Terse,
+        Some("pretty") | None => OutputFormat::Pretty,
+        Some("terse") => OutputFormat::Terse,
+        Some("json") => OutputFormat::Json,
+
+        Some(v) => {
+            return Some(Err(format!("argument for --format must be pretty, terse, or json (was \
+                                     {})",
+                                    v)))
+        }
+    };
+
     let test_opts = TestOpts {
         list,
         filter,
@@ -479,7 +523,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         logfile,
         nocapture,
         color,
-        quiet,
+        format,
         test_threads,
         skip: matches.opt_strs("skip"),
         options: Options::new(),
@@ -539,7 +583,6 @@ struct ConsoleTestState {
     metrics: MetricMap,
     failures: Vec<(TestDesc, Vec<u8>)>,
     not_failures: Vec<(TestDesc, Vec<u8>)>,
-    max_name_len: usize, // number of columns to fill when aligning names
     options: Options,
 }
 
@@ -562,7 +605,6 @@ impl ConsoleTestState {
             metrics: MetricMap::new(),
             failures: Vec::new(),
             not_failures: Vec::new(),
-            max_name_len: 0,
             options: opts.options,
         })
     }
@@ -641,7 +683,9 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         None => Raw(io::stdout()),
         Some(t) => Pretty(t),
     };
-    let mut out = HumanFormatter::new(output, use_color(opts), opts.quiet);
+
+    let quiet = opts.format == OutputFormat::Terse;
+    let mut out = HumanFormatter::new(output, use_color(opts), quiet, 0);
     let mut st = ConsoleTestState::new(opts)?;
 
     let mut ntest = 0;
@@ -668,11 +712,11 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         }
     }
 
-    if !opts.quiet {
+    if !quiet {
         if ntest != 0 || nbench != 0 {
-            st.write_plain("\n")?;
+            out.write_plain("\n")?;
         }
-        st.write_plain(format!("{}, {}\n",
+        out.write_plain(format!("{}, {}\n",
             plural(ntest, "test"),
             plural(nbench, "benchmark")))?;
     }
@@ -682,6 +726,14 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
+    let tests = {
+        let mut tests = tests;
+        for test in tests.iter_mut() {
+            test.desc.name = test.desc.name.with_padding(test.testfn.padding());
+        }
+
+        tests
+    };
 
     fn callback(event: &TestEvent,
                 st: &mut ConsoleTestState,
@@ -693,11 +745,11 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                 out.write_run_start(filtered_tests.len())
             },
             TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
-            TeWait(ref test, padding) => out.write_test_start(test, padding, st.max_name_len),
+            TeWait(ref test) => out.write_test_start(test),
             TeTimeout(ref test) => out.write_timeout(test),
             TeResult(test, result, stdout) => {
                 st.write_log_result(&test, &result)?;
-                out.write_result(&result)?;
+                out.write_result(&test, &result, &*stdout)?;
                 match result {
                     TrOk => {
                         st.passed += 1;
@@ -734,8 +786,25 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         Some(t) => Pretty(t),
     };
 
-    let mut out = HumanFormatter::new(output, use_color(opts), opts.quiet);
+    let max_name_len = if let Some(t) = tests.iter().max_by_key(|t| len_if_padded(*t)) {
+        let n = t.desc.name.as_slice();
+        n.len()
+    }
+    else {
+        0
+    };
 
+    let mut out: Box<OutputFormatter> = match opts.format {
+        OutputFormat::Pretty => Box::new(HumanFormatter::new(output,
+                                                                use_color(opts),
+                                                                false,
+                                                                max_name_len)),
+        OutputFormat::Terse => Box::new(HumanFormatter::new(output,
+                                                                use_color(opts),
+                                                                true,
+                                                                max_name_len)),
+        OutputFormat::Json => Box::new(JsonFormatter::new(output)),
+    };
     let mut st = ConsoleTestState::new(opts)?;
     fn len_if_padded(t: &TestDescAndFn) -> usize {
         match t.testfn.padding() {
@@ -743,11 +812,8 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             PadOnRight => t.desc.name.as_slice().len(),
         }
     }
-    if let Some(t) = tests.iter().max_by_key(|t| len_if_padded(*t)) {
-        let n = t.desc.name.as_slice();
-        st.max_name_len = n.len();
-    }
-    run_tests(opts, tests, |x| callback(&x, &mut st, &mut out))?;
+
+    run_tests(opts, tests, |x| callback(&x, &mut st, &mut *out))?;
 
     assert!(st.current_test_count() == st.total);
 
@@ -770,7 +836,7 @@ fn should_sort_failures_before_printing_them() {
         allow_fail: false,
     };
 
-    let mut out = HumanFormatter::new(Raw(Vec::new()), false, false);
+    let mut out = HumanFormatter::new(Raw(Vec::new()), false, false, 10);
 
     let st = ConsoleTestState {
         log_out: None,
@@ -781,7 +847,6 @@ fn should_sort_failures_before_printing_them() {
         allowed_fail: 0,
         filtered_out: 0,
         measured: 0,
-        max_name_len: 10,
         metrics: MetricMap::new(),
         failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
         options: Options::new(),
@@ -839,7 +904,7 @@ fn stdout_isatty() -> bool {
 #[derive(Clone)]
 pub enum TestEvent {
     TeFiltered(Vec<TestDesc>),
-    TeWait(TestDesc, NamePadding),
+    TeWait(TestDesc),
     TeResult(TestDesc, TestResult, Vec<u8>),
     TeTimeout(TestDesc),
     TeFilteredOut(usize),
@@ -915,7 +980,7 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
     if concurrency == 1 {
         while !remaining.is_empty() {
             let test = remaining.pop().unwrap();
-            callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
+            callback(TeWait(test.desc.clone()))?;
             run_test(opts, !opts.run_tests, test, tx.clone());
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
@@ -926,6 +991,7 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
                 let test = remaining.pop().unwrap();
                 let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
                 running_tests.insert(test.desc.clone(), timeout);
+                callback(TeWait(test.desc.clone()))?; //here no pad
                 run_test(opts, !opts.run_tests, test, tx.clone());
                 pending += 1;
             }
@@ -949,7 +1015,6 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
             let (desc, result, stdout) = res.unwrap();
             running_tests.remove(&desc);
 
-            callback(TeWait(desc.clone(), PadNone))?;
             callback(TeResult(desc, result, stdout))?;
             pending -= 1;
         }
@@ -958,7 +1023,7 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
         for b in filtered_benchs {
-            callback(TeWait(b.desc.clone(), b.testfn.padding()))?;
+            callback(TeWait(b.desc.clone()))?;
             run_test(opts, false, b, tx.clone());
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
@@ -1239,10 +1304,7 @@ pub fn run_test(opts: &TestOpts,
             !cfg!(target_os = "emscripten") &&
             !cfg!(target_arch = "wasm32");
         if supports_threads {
-            let cfg = thread::Builder::new().name(match name {
-                DynTestName(ref name) => name.clone(),
-                StaticTestName(name) => name.to_owned(),
-            });
+            let cfg = thread::Builder::new().name(name.as_slice().to_owned());
             cfg.spawn(runtest).unwrap();
         } else {
             runtest();
