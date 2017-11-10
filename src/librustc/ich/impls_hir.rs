@@ -287,7 +287,8 @@ impl_stable_hash_for!(enum hir::Ty_ {
     TyTup(ts),
     TyPath(qpath),
     TyTraitObject(trait_refs, lifetime),
-    TyImplTrait(bounds),
+    TyImplTraitExistential(bounds),
+    TyImplTraitUniversal(def_id, bounds),
     TyTypeof(body_id),
     TyErr,
     TyInfer

@@ -1461,9 +1461,12 @@ pub enum Ty_ {
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
-    /// An `impl Bound1 + Bound2 + Bound3` type
-    /// where `Bound` is a trait or a lifetime.
-    TyImplTrait(TyParamBounds),
+    /// An exsitentially quantified (there exists a type satisfying) `impl
+    /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
+    TyImplTraitExistential(TyParamBounds),
+    /// An universally quantified (for all types satisfying) `impl
+    /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
+    TyImplTraitUniversal(DefId, TyParamBounds),
     /// Unused for now
     TyTypeof(BodyId),
     /// TyInfer means the type should be inferred instead of it having been

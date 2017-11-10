@@ -130,7 +130,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTrait(..) = ty.node {
+        if let hir::TyImplTraitExistential(..) = ty.node {
             let def_id = self.tcx.hir.local_def_id(ty.id);
             self.tcx.generics_of(def_id);
             self.tcx.predicates_of(def_id);
@@ -854,7 +854,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
             Some(tcx.closure_base_def_id(def_id))
         }
-        NodeTy(&hir::Ty { node: hir::TyImplTrait(..), .. }) => {
+        NodeTy(&hir::Ty { node: hir::TyImplTraitExistential(..), .. }) => {
             let mut parent_id = node_id;
             loop {
                 match tcx.hir.get(parent_id) {
@@ -1155,7 +1155,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             icx.to_ty(ty)
         }
 
-        NodeTy(&hir::Ty { node: TyImplTrait(..), .. }) => {
+        NodeTy(&hir::Ty { node: TyImplTraitExistential(..), .. }) => {
             let owner = tcx.hir.get_parent_did(node_id);
             let hir_id = tcx.hir.node_to_hir_id(node_id);
             tcx.typeck_tables_of(owner).node_id_to_type(hir_id)
@@ -1373,7 +1373,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        NodeTy(&Ty { node: TyImplTrait(ref bounds), span, .. }) => {
+        NodeTy(&Ty { node: TyImplTraitExistential(ref bounds), span, .. }) => {
             let substs = Substs::identity_for_item(tcx, def_id);
             let anon_ty = tcx.mk_anon(def_id, substs);
 
