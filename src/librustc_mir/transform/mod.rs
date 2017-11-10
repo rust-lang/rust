@@ -22,7 +22,6 @@ use std::borrow::Cow;
 use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
-use transform;
 
 pub mod add_validation;
 pub mod clean_end_regions;
@@ -109,41 +108,6 @@ fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     tcx.alloc_steal_mir(mir)
 }
 
-fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-    // Unsafety check uses the raw mir, so make sure it is run
-    let _ = tcx.unsafety_check_result(def_id);
-
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    let mut mir = tcx.mir_built(def_id).steal();
-    transform::run_suite(tcx, source, MIR_CONST, &mut mir);
-    tcx.alloc_steal_mir(mir)
-}
-
-fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    if let MirSource::Const(_) = source {
-        // Ensure that we compute the `mir_const_qualif` for constants at
-        // this point, before we steal the mir-const result.
-        let _ = tcx.mir_const_qualif(def_id);
-    }
-
-    let mut mir = tcx.mir_const(def_id).steal();
-    transform::run_suite(tcx, source, MIR_VALIDATED, &mut mir);
-    tcx.alloc_steal_mir(mir)
-}
-
-fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
-    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
-    // execute before we can steal.
-    let _ = tcx.mir_borrowck(def_id);
-    let _ = tcx.borrowck(def_id);
-
-    let mut mir = tcx.mir_validated(def_id).steal();
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    transform::run_suite(tcx, source, MIR_OPTIMIZED, &mut mir);
-    tcx.alloc_mir(mir)
-}
-
 /// Generates a default name for the pass based on the name of the
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
@@ -154,38 +118,6 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
         Cow::from(name)
     }
 }
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct MirSuite(pub usize);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct MirPassIndex(pub usize);
-
-/// A pass hook is invoked both before and after each pass executes.
-/// This is primarily used to dump MIR for debugging.
-///
-/// You can tell whether this is before or after by inspecting the
-/// `mir` parameter -- before the pass executes, it will be `None` (in
-/// which case you can inspect the MIR from previous pass by executing
-/// `mir_cx.read_previous_mir()`); after the pass executes, it will be
-/// `Some()` with the result of the pass (in which case the output
-/// from the previous pass is most likely stolen, so you would not
-/// want to try and access it). If the pass is interprocedural, then
-/// the hook will be invoked once per output.
-pub trait PassHook {
-    fn on_mir_pass<'a, 'tcx: 'a>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 suite: MirSuite,
-                                 pass_num: MirPassIndex,
-                                 pass_name: &str,
-                                 source: MirSource,
-                                 mir: &Mir<'tcx>,
-                                 is_after: bool);
-}
-
-/// The full suite of types that identifies a particular
-/// application of a pass to a def-id.
-pub type PassId = (MirSuite, MirPassIndex, DefId);
 
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
@@ -201,132 +133,104 @@ pub trait MirPass {
                           mir: &mut Mir<'tcx>);
 }
 
-/// A manager for MIR passes.
-///
-/// FIXME(#41712) -- it is unclear whether we should have this struct.
-#[derive(Clone)]
-pub struct Passes {
-    pass_hooks: Vec<Rc<PassHook>>,
-    suites: Vec<Vec<Rc<MirPass>>>,
+pub macro run_passes($tcx:ident, $mir:ident, $source:ident, $suite_index:expr; $($pass:expr,)*) {{
+    let suite_index: usize = $suite_index;
+    let run_passes = |mir: &mut _, source| {
+        let mut index = 0;
+        let mut run_pass = |pass: &MirPass| {
+            let run_hooks = |mir: &_, index, is_after| {
+                dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", suite_index, index),
+                                      &pass.name(), source, mir, is_after);
+            };
+            run_hooks(mir, index, false);
+            pass.run_pass($tcx, source, mir);
+            run_hooks(mir, index, true);
+
+            index += 1;
+        };
+        $(run_pass(&$pass);)*
+    };
+    run_passes(&mut $mir, $source);
+
+    for (index, promoted_mir) in $mir.promoted.iter_enumerated_mut() {
+        run_passes(promoted_mir, MirSource::Promoted($source.item_id(), index));
+
+        // Let's make sure we don't miss any nested instances
+        assert!(promoted_mir.promoted.is_empty());
+    }
+}}
+
+fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+    // Unsafety check uses the raw mir, so make sure it is run
+    let _ = tcx.unsafety_check_result(def_id);
+
+    let mut mir = tcx.mir_built(def_id).steal();
+    let source = MirSource::from_local_def_id(tcx, def_id);
+    run_passes![tcx, mir, source, 0;
+        // Remove all `EndRegion` statements that are not involved in borrows.
+        clean_end_regions::CleanEndRegions,
+
+        // What we need to do constant evaluation.
+        simplify::SimplifyCfg::new("initial"),
+        type_check::TypeckMir,
+        rustc_peek::SanityCheck,
+    ];
+    tcx.alloc_steal_mir(mir)
 }
 
-/// The number of "pass suites" that we have:
-///
-/// - ready for constant evaluation
-/// - unopt
-/// - optimized
-pub const MIR_SUITES: usize = 3;
-
-/// Run the passes we need to do constant qualification and evaluation.
-pub const MIR_CONST: MirSuite = MirSuite(0);
-
-/// Run the passes we need to consider the MIR validated and ready for borrowck etc.
-pub const MIR_VALIDATED: MirSuite = MirSuite(1);
-
-/// Run the passes we need to consider the MIR *optimized*.
-pub const MIR_OPTIMIZED: MirSuite = MirSuite(2);
-
-impl<'a, 'tcx> Passes {
-    pub fn new() -> Passes {
-        Passes {
-            pass_hooks: Vec::new(),
-            suites: (0..MIR_SUITES).map(|_| Vec::new()).collect(),
-        }
+fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+    let source = MirSource::from_local_def_id(tcx, def_id);
+    if let MirSource::Const(_) = source {
+        // Ensure that we compute the `mir_const_qualif` for constants at
+        // this point, before we steal the mir-const result.
+        let _ = tcx.mir_const_qualif(def_id);
     }
 
-    /// Pushes a built-in pass.
-    pub fn push_pass<T: MirPass + 'static>(&mut self, suite: MirSuite, pass: T) {
-        self.suites[suite.0].push(Rc::new(pass));
-    }
-
-    /// Pushes a pass hook.
-    pub fn push_hook<T: PassHook + 'static>(&mut self, hook: T) {
-        self.pass_hooks.push(Rc::new(hook));
-    }
-
-    pub fn passes(&self, suite: MirSuite) -> &[Rc<MirPass>] {
-        &self.suites[suite.0]
-    }
-
-    pub fn hooks(&self) -> &[Rc<PassHook>] {
-        &self.pass_hooks
-    }
+    let mut mir = tcx.mir_const(def_id).steal();
+    run_passes![tcx, mir, source, 1;
+        // What we need to run borrowck etc.
+        qualify_consts::QualifyAndPromoteConstants,
+        simplify::SimplifyCfg::new("qualify-consts"),
+    ];
+    tcx.alloc_steal_mir(mir)
 }
 
-fn run_suite<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       source: MirSource,
-                       suite: MirSuite,
-                       mir: &mut Mir<'tcx>)
-{
-    // Setup the MIR passes that we want to run.
-    let mut passes = Passes::new();
-    passes.push_hook(dump_mir::DumpMir);
+fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
+    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
+    // execute before we can steal.
+    let _ = tcx.mir_borrowck(def_id);
+    let _ = tcx.borrowck(def_id);
 
-    // Remove all `EndRegion` statements that are not involved in borrows.
-    passes.push_pass(MIR_CONST, clean_end_regions::CleanEndRegions);
+    let mut mir = tcx.mir_validated(def_id).steal();
+    let source = MirSource::from_local_def_id(tcx, def_id);
+    run_passes![tcx, mir, source, 2;
+        no_landing_pads::NoLandingPads,
+        simplify_branches::SimplifyBranches::new("initial"),
 
-    // What we need to do constant evaluation.
-    passes.push_pass(MIR_CONST, simplify::SimplifyCfg::new("initial"));
-    passes.push_pass(MIR_CONST, type_check::TypeckMir);
-    passes.push_pass(MIR_CONST, rustc_peek::SanityCheck);
+        // These next passes must be executed together
+        add_call_guards::CriticalCallEdges,
+        elaborate_drops::ElaborateDrops,
+        no_landing_pads::NoLandingPads,
+        // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
+        // an AllCallEdges pass right before it.
+        add_call_guards::AllCallEdges,
+        add_validation::AddValidation,
+        simplify::SimplifyCfg::new("elaborate-drops"),
+        // No lifetime analysis based on borrowing can be done from here on out.
 
-    // We compute "constant qualifications" between MIR_CONST and MIR_VALIDATED.
+        // From here on out, regions are gone.
+        erase_regions::EraseRegions,
 
-    // What we need to run borrowck etc.
+        // Optimizations begin.
+        inline::Inline,
+        instcombine::InstCombine,
+        deaggregator::Deaggregator,
+        copy_prop::CopyPropagation,
+        simplify::SimplifyLocals,
 
-    passes.push_pass(MIR_VALIDATED, qualify_consts::QualifyAndPromoteConstants);
-    passes.push_pass(MIR_VALIDATED, simplify::SimplifyCfg::new("qualify-consts"));
-
-    // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
-
-    passes.push_pass(MIR_OPTIMIZED, no_landing_pads::NoLandingPads);
-    passes.push_pass(MIR_OPTIMIZED,
-                     simplify_branches::SimplifyBranches::new("initial"));
-
-    // These next passes must be executed together
-    passes.push_pass(MIR_OPTIMIZED, add_call_guards::CriticalCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, elaborate_drops::ElaborateDrops);
-    passes.push_pass(MIR_OPTIMIZED, no_landing_pads::NoLandingPads);
-    // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
-    // an AllCallEdges pass right before it.
-    passes.push_pass(MIR_OPTIMIZED, add_call_guards::AllCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, add_validation::AddValidation);
-    passes.push_pass(MIR_OPTIMIZED, simplify::SimplifyCfg::new("elaborate-drops"));
-    // No lifetime analysis based on borrowing can be done from here on out.
-
-    // From here on out, regions are gone.
-    passes.push_pass(MIR_OPTIMIZED, erase_regions::EraseRegions);
-
-    // Optimizations begin.
-    passes.push_pass(MIR_OPTIMIZED, inline::Inline);
-    passes.push_pass(MIR_OPTIMIZED, instcombine::InstCombine);
-    passes.push_pass(MIR_OPTIMIZED, deaggregator::Deaggregator);
-    passes.push_pass(MIR_OPTIMIZED, copy_prop::CopyPropagation);
-    passes.push_pass(MIR_OPTIMIZED, simplify::SimplifyLocals);
-
-    passes.push_pass(MIR_OPTIMIZED, generator::StateTransform);
-    passes.push_pass(MIR_OPTIMIZED, add_call_guards::CriticalCallEdges);
-    passes.push_pass(MIR_OPTIMIZED, dump_mir::Marker("PreTrans"));
-
-    for (index, pass) in passes.passes(suite).iter().enumerate() {
-        let pass_num = MirPassIndex(index);
-
-        for hook in passes.hooks() {
-            hook.on_mir_pass(tcx, suite, pass_num, &pass.name(), source, &mir, false);
-        }
-
-        pass.run_pass(tcx, source, mir);
-
-        for (index, promoted_mir) in mir.promoted.iter_enumerated_mut() {
-            let promoted_source = MirSource::Promoted(source.item_id(), index);
-            pass.run_pass(tcx, promoted_source, promoted_mir);
-
-            // Let's make sure we don't miss any nested instances
-            assert!(promoted_mir.promoted.is_empty());
-        }
-
-        for hook in passes.hooks() {
-            hook.on_mir_pass(tcx, suite, pass_num, &pass.name(), source, &mir, true);
-        }
-    }
+        generator::StateTransform,
+        add_call_guards::CriticalCallEdges,
+        dump_mir::Marker("PreTrans"),
+    ];
+    tcx.alloc_mir(mir)
 }

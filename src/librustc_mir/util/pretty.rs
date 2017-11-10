@@ -20,7 +20,6 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{PathBuf, Path};
-use transform::{MirSuite, MirPassIndex};
 use super::graphviz::write_mir_fn_graphviz;
 
 const INDENT: &'static str = "    ";
@@ -58,7 +57,7 @@ pub enum PassWhere {
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
 pub fn dump_mir<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                   pass_num: Option<(MirSuite, MirPassIndex)>,
+                                   pass_num: Option<&Display>,
                                    pass_name: &str,
                                    disambiguator: &Display,
                                    source: MirSource,
@@ -103,7 +102,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 // run while we are already attempting to evaluate `type_of`.
 
 fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            pass_num: Option<(MirSuite, MirPassIndex)>,
+                                            pass_num: Option<&Display>,
                                             pass_name: &str,
                                             node_path: &str,
                                             disambiguator: &Display,
@@ -124,7 +123,7 @@ where
     } else {
         match pass_num {
             None => format!(".-------"),
-            Some((suite, pass_num)) => format!(".{:03}-{:03}", suite.0, pass_num.0),
+            Some(pass_num) => format!(".{}", pass_num),
         }
     };
 
