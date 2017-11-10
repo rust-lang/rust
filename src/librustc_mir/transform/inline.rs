@@ -20,7 +20,6 @@ use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::{Subst,Substs};
-use rustc::hir::map::definitions::DefPathData;
 
 use std::collections::VecDeque;
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -561,7 +560,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // A closure is passed its self-type and a tuple like `(arg1, arg2, ...)`,
         // hence mappings to tuple fields are needed.
-        if tcx.def_key(callsite.callee).disambiguated_data.data == DefPathData::ClosureExpr {
+        if tcx.is_closure(callsite.callee) {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);

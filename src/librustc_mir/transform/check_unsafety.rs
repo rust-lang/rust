@@ -15,7 +15,6 @@ use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::DefPathData;
 use rustc::lint::builtin::{SAFE_EXTERN_STATICS, UNUSED_UNSAFE};
 use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, Visitor};
@@ -362,11 +361,11 @@ fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: a
 
 pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     debug!("check_unsafety({:?})", def_id);
-    match tcx.def_key(def_id).disambiguated_data.data {
-        // closures are handled by their parent fn.
-        DefPathData::ClosureExpr => return,
-        _ => {}
-    };
+
+    // closures are handled by their parent fn.
+    if tcx.is_closure(def_id) {
+        return;
+    }
 
     let UnsafetyCheckResult {
         violations,
