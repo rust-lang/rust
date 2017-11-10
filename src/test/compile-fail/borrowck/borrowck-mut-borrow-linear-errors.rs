@@ -12,17 +12,29 @@
 // conflicts with a new loan, as opposed to every issued loan.  This keeps us
 // down to O(n) errors (for n problem lines), instead of O(n^2) errors.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+
 fn main() {
     let mut x = 1;
     let mut addr;
     loop {
         match 1 {
-            1 => { addr = &mut x; }
-            //~^ ERROR cannot borrow `x` as mutable more than once at a time
-            2 => { addr = &mut x; }
-            //~^ ERROR cannot borrow `x` as mutable more than once at a time
-            _ => { addr = &mut x; }
-            //~^ ERROR cannot borrow `x` as mutable more than once at a time
+            1 => { addr = &mut x; } //[ast]~ ERROR [E0499]
+            //[mir]~^ ERROR (Ast) [E0499]
+            //[mir]~| ERROR (Mir) [E0499]
+            2 => { addr = &mut x; } //[ast]~ ERROR [E0499]
+            //[mir]~^ ERROR (Ast) [E0499]
+            //[mir]~| ERROR (Mir) [E0506]
+            //[mir]~| ERROR (Mir) [E0499]
+            //[mir]~| ERROR (Mir) [E0499]
+            _ => { addr = &mut x; } //[ast]~ ERROR [E0499]
+            //[mir]~^ ERROR (Ast) [E0499]
+            //[mir]~| ERROR (Mir) [E0506]
+            //[mir]~| ERROR (Mir) [E0499]
+            //[mir]~| ERROR (Mir) [E0499]
         }
     }
 }
+
+

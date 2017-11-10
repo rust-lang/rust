@@ -125,12 +125,18 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
     /// Returns the span for the "end point" given region. This will
     /// return `None` if NLL is enabled, since that concept has no
-    /// meaning there.  Otherwise, it should return some.
+    /// meaning there.  Otherwise, return region span if it exists and
+    /// span for end of the function if it doesn't exist.
     pub fn opt_region_end_span(&self, region: &Region) -> Option<Span> {
-        let opt_span = self.region_span_map.get(region);
-        assert!(self.nonlexical_regioncx.is_some() ||
-                opt_span.is_some(), "end region not found for {:?}", region);
-        opt_span.map(|s| s.end_point())
+        match self.nonlexical_regioncx {
+            Some(_) => None,
+            None => {
+                match self.region_span_map.get(region) {
+                    Some(span) => Some(span.end_point()),
+                    None => Some(self.mir.span.end_point())
+                }
+            }
+        }
     }
 
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
