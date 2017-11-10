@@ -24,7 +24,7 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::middle::free_region::FreeRegionMap;
+use rustc::infer::outlives::free_region_map::FreeRegionMap;
 use rustc::ty::{self, RegionVid};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::FxHashMap;

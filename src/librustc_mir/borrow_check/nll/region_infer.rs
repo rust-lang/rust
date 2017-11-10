@@ -13,7 +13,7 @@ use rustc::infer::InferCtxt;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::NLLRegionVariableOrigin;
 use rustc::infer::region_constraints::VarOrigins;
-use rustc::middle::free_region::FreeRegionMap;
+use rustc::infer::outlives::free_region_map::FreeRegionMap;
 use rustc::mir::{Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;

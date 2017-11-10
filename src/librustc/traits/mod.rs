@@ -17,9 +17,9 @@ pub use self::ObligationCauseCode::*;
 
 use hir;
 use hir::def_id::DefId;
+use infer::outlives::free_region_map::FreeRegionMap;
 use middle::const_val::ConstEvalErr;
 use middle::region;
-use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};

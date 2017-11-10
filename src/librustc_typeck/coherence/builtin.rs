@@ -11,7 +11,7 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/translation.
 
-use rustc::middle::free_region::FreeRegionMap;
+use rustc::infer::outlives::free_region_map::FreeRegionMap;
 use rustc::middle::region;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
