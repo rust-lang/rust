@@ -401,7 +401,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   // Tell LLVM to translate `unreachable` into an explicit trap instruction.
   // This limits the extent of possible undefined behavior in some cases, as it
   // prevents control flow from "falling through" into whatever code happens to
-  // be layed out next in memory.
+  // be laid out next in memory.
   Options.TrapUnreachable = true;
 
   TargetMachine *TM = TheTarget->createTargetMachine(
