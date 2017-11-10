@@ -1118,7 +1118,7 @@ impl<'a> NameBinding<'a> {
         match self.kind {
             NameBindingKind::Import {
                 directive: &ImportDirective {
-                    subclass: ImportDirectiveSubclass::ExternCrate, ..
+                    subclass: ImportDirectiveSubclass::ExternCrate(_), ..
                 }, ..
             } => true,
             _ => false,
@@ -1130,6 +1130,15 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Import { .. } => true,
             _ => false,
         }
+    }
+
+    fn is_renamed_extern_crate(&self) -> bool {
+        if let NameBindingKind::Import { directive, ..} = self.kind {
+            if let ImportDirectiveSubclass::ExternCrate(Some(_)) = directive.subclass {
+                return true;
+            }
+        }
+        false
     }
 
     fn is_glob_import(&self) -> bool {
@@ -3700,7 +3709,8 @@ impl<'a> Resolver<'a> {
             let cm = self.session.codemap();
             let rename_msg = "You can use `as` to change the binding name of the import";
 
-            if let Ok(snippet) = cm.span_to_snippet(binding.span) {
+            if let (Ok(snippet), false) = (cm.span_to_snippet(binding.span),
+                                           binding.is_renamed_extern_crate()) {
                 err.span_suggestion(binding.span,
                                     rename_msg,
                                     format!("{} as Other{}", snippet, name));

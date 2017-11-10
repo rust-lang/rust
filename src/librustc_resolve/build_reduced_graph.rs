@@ -250,7 +250,7 @@ impl<'a> Resolver<'a> {
                 }
             }
 
-            ItemKind::ExternCrate(_) => {
+            ItemKind::ExternCrate(as_name) => {
                 self.crate_loader.process_item(item, &self.definitions);
 
                 // n.b. we don't need to look at the path option here, because cstore already did
@@ -265,7 +265,7 @@ impl<'a> Resolver<'a> {
                     id: item.id,
                     parent,
                     imported_module: Cell::new(Some(module)),
-                    subclass: ImportDirectiveSubclass::ExternCrate,
+                    subclass: ImportDirectiveSubclass::ExternCrate(as_name),
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
