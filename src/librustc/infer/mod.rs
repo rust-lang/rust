@@ -18,7 +18,7 @@ pub use ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
 
 use hir::def_id::DefId;
-use middle::free_region::{FreeRegionMap, RegionRelations};
+use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
 use mir::tcx::PlaceTy;
@@ -44,6 +44,7 @@ use self::higher_ranked::HrMatchResult;
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::region_constraints::{GenericKind, VerifyBound, RegionConstraintData, VarOrigins};
 use self::lexical_region_resolve::LexicalRegionResolutions;
+use self::outlives::free_region_map::FreeRegionMap;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
@@ -58,7 +59,7 @@ pub mod lattice;
 mod lub;
 pub mod region_constraints;
 mod lexical_region_resolve;
-mod outlives;
+pub mod outlives;
 pub mod resolve;
 mod freshen;
 mod sub;

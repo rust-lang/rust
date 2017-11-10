@@ -11,8 +11,8 @@
 use check::regionck::RegionCtxt;
 
 use hir::def_id::DefId;
-use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk};
+use rustc::infer::outlives::free_region_map::FreeRegionMap;
 use rustc::middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};

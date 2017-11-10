@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::free_region::FreeRegionMap;
 use infer::{InferCtxt, GenericKind};
+use infer::outlives::free_region_map::FreeRegionMap;
 use infer::outlives::implied_bounds::ImpliedBound;
 use ty::{self, Ty};
 
