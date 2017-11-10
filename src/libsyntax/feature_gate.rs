@@ -431,6 +431,9 @@ declare_features! (
 
     // Nested groups in `use` (RFC 2128)
     (active, use_nested_groups, "1.23.0", Some(44494)),
+
+    // generic associated types (RFC 1598)
+    (active, generic_associated_types, "1.23.0", Some(44265)),
 );
 
 declare_features! (
@@ -1618,6 +1621,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, associated_type_defaults, ti.span,
                                   "associated type defaults are unstable");
             }
+            _ if ti.generics.is_parameterized() => {
+                gate_feature_post!(&self, generic_associated_types, ti.span, "generic associated types are unstable");
+            }
             _ => {}
         }
         visit::walk_trait_item(self, ti);
@@ -1635,6 +1641,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if sig.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");
                 }
+            }
+            _ if ii.generics.is_parameterized() => {
+                gate_feature_post!(&self, generic_associated_types, ii.span, "generic associated types are unstable");
             }
             _ => {}
         }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(generic_associated_types)]
+
 use std::fmt::Display;
 
 trait StreamingIterator {

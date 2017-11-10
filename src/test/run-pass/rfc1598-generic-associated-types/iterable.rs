@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(generic_associated_types)]
+
 trait Iterable {
     type Item<'a>;
     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
