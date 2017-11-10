@@ -50,6 +50,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     self::check_unsafety::provide(providers);
     *providers = Providers {
         mir_keys,
+        mir_built,
         mir_const,
         mir_validated,
         optimized_mir,
@@ -103,9 +104,17 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
     Rc::new(set)
 }
 
+fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+    let mir = build::mir_build(tcx, def_id);
+    tcx.alloc_steal_mir(mir)
+}
+
 fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-    let mut mir = build::mir_build(tcx, def_id);
+    // Unsafety check uses the raw mir, so make sure it is run
+    let _ = tcx.unsafety_check_result(def_id);
+
     let source = MirSource::from_local_def_id(tcx, def_id);
+    let mut mir = tcx.mir_built(def_id).steal();
     transform::run_suite(tcx, source, MIR_CONST, &mut mir);
     tcx.alloc_steal_mir(mir)
 }
@@ -117,7 +126,6 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         // this point, before we steal the mir-const result.
         let _ = tcx.mir_const_qualif(def_id);
     }
-    let _ = tcx.unsafety_violations(def_id);
 
     let mut mir = tcx.mir_const(def_id).steal();
     transform::run_suite(tcx, source, MIR_VALIDATED, &mut mir);
