@@ -723,7 +723,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
         // This one should never occur in this context
         DepKind::Null => {
-            bug!("force_from_dep_node() - Encountered {:?}", dep_node.kind)
+            bug!("force_from_dep_node() - Encountered {:?}", dep_node)
         }
 
         // These are not queries

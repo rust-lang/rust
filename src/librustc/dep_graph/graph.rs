@@ -524,14 +524,22 @@ impl DepGraph {
                             current_deps.push(node_index);
                             continue;
                         }
-                    } else if cfg!(debug_assertions) {
+                    } else {
                         match dep_dep_node.kind {
                             DepKind::Hir |
                             DepKind::HirBody |
                             DepKind::CrateMetadata => {
-                                assert!(dep_dep_node.extract_def_id(tcx).is_none(),
-                                    "Input {:?} should have been pre-allocated but wasn't.",
-                                    dep_dep_node);
+                                if dep_node.extract_def_id(tcx).is_none() {
+                                    // If the node does not exist anymore, we
+                                    // just fail to mark green.
+                                    return None
+                                } else {
+                                    // If the node does exist, it should have
+                                    // been pre-allocated.
+                                    bug!("DepNode {:?} should have been \
+                                          pre-allocated but wasn't.",
+                                          dep_dep_node)
+                                }
                             }
                             _ => {
                                 // For other kinds of inputs it's OK to be
