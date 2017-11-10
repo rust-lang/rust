@@ -71,6 +71,7 @@ use std::thread;
 use std::time::{Instant, Duration};
 
 const TEST_WARN_TIMEOUT_S: u64 = 60;
+const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -614,7 +615,14 @@ impl<T: Write> ConsoleTestState<T> {
     pub fn write_short_result(&mut self, verbose: &str, quiet: &str, color: term::color::Color)
                               -> io::Result<()> {
         if self.quiet {
-            self.write_pretty(quiet, color)
+            self.write_pretty(quiet, color)?;
+            if self.current_test_count() % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
+                // we insert a new line every 100 dots in order to flush the
+                // screen when dealing with line-buffered output (e.g. piping to
+                // `stamp` in the rust CI).
+                self.write_plain("\n")?;
+            }
+            Ok(())
         } else {
             self.write_pretty(verbose, color)?;
             self.write_plain("\n")
@@ -771,9 +779,12 @@ impl<T: Write> ConsoleTestState<T> {
         Ok(())
     }
 
+    fn current_test_count(&self) -> usize {
+        self.passed + self.failed + self.ignored + self.measured + self.allowed_fail
+    }
+
     pub fn write_run_finish(&mut self) -> io::Result<bool> {
-        assert!(self.passed + self.failed + self.ignored + self.measured +
-                    self.allowed_fail == self.total);
+        assert!(self.current_test_count() == self.total);
 
         if self.options.display_output {
             self.write_outputs()?;
