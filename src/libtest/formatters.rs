@@ -77,7 +77,7 @@ impl<T: Write> HumanFormatter<T> {
                 // `stamp` in the rust CI).
                 self.write_plain("\n")?;
             }
-            
+
             self.test_count += 1;
             Ok(())
         } else {
@@ -296,13 +296,39 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 
     fn write_result(&mut self, desc: &TestDesc, result: &TestResult) -> io::Result<()> {
         let output = match *result {
-            TrOk =>                 format!("\t\t{{ \"test\": \"{}\", \"event\": \"ok\" }}", desc.name),
-            TrFailed =>             format!("\t\t{{ \"test\": \"{}\", \"event\": \"failed\" }}", desc.name),
-            TrFailedMsg(ref m) =>   format!("\t\t{{ \"test\": \"{}\", \"event\": \"failed\", \"extra\": \"{}\" }}", desc.name, m),
-            TrIgnored =>            format!("\t\t{{ \"test\": \"{}\", \"event\": \"ignored\" }}", desc.name),
-            TrAllowedFail =>        format!("\t\t{{ \"test\": \"{}\", \"event\": \"allowed_failure\" }}", desc.name),
-            TrMetrics(ref mm) =>    format!("\t\t{{ \"test\": \"{}\", \"event\": \"metrics\", \"extra\": \"{}\" }}", desc.name, mm.fmt_metrics()),
-            TrBench(ref bs) =>      format!("\t\t{{ \"test\": \"{}\", \"event\": \"bench\", \"extra\": \"{}\" }}", desc.name, fmt_bench_samples(bs)),
+            TrOk => {
+                format!("\t\t{{ \"test\": \"{}\", \"event\": \"ok\" }}", desc.name)
+            },
+
+            TrFailed => {
+                format!("\t\t{{ \"test\": \"{}\", \"event\": \"failed\" }}", desc.name)
+            },
+
+            TrFailedMsg(ref m) => {
+                format!("\t\t{{ \"test\": \"{}\", \"event\": \"failed\", \"extra\": \"{}\" }}",
+                        desc.name,
+                        m)
+            },
+
+            TrIgnored => {
+                format!("\t\t{{ \"test\": \"{}\", \"event\": \"ignored\" }}", desc.name)
+            },
+
+            TrAllowedFail => {
+                format!("\t\t{{ \"test\": \"{}\", \"event\": \"allowed_failure\" }}", desc.name)
+            },
+
+            TrMetrics(ref mm) => {
+                format!("\t\t{{ \"test\": \"{}\", \"event\": \"metrics\", \"extra\": \"{}\" }}",
+                        desc.name,
+                        mm.fmt_metrics())
+            },
+
+            TrBench(ref bs) => {
+                format!("\t\t{{ \"test\": \"{}\", \"event\": \"bench\", \"extra\": \"{}\" }}",
+                        desc.name,
+                        fmt_bench_samples(bs))
+            },
         };
 
         self.write_event(&*output)
@@ -343,10 +369,10 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                     self.write_str(&*format!("\t\t\t\"{}\": \"{}\"", f.name, output))?;
                 }
             }
-           
+
             self.write_str("\n\t\t]\n")?;
         }
-        
+
         self.write_str("\t}\n}\n")?;
 
         Ok(state.failed == 0)

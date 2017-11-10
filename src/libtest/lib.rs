@@ -374,7 +374,7 @@ impl TestOpts {
             logfile: None,
             nocapture: false,
             color: AutoColor,
-            format: OutputFormat,
+            format: OutputFormat::Pretty,
             test_threads: None,
             skip: vec![],
             options: Options::new(),
@@ -400,8 +400,8 @@ fn optgroups() -> getopts::Options {
                                      in parallel", "n_threads")
         .optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
                                be used multiple times)","FILTER")
-        .optflag("q", "quiet", "Display one character per test instead of one line.\
-                                Equivalent to --format=terse")
+        .optflag("q", "quiet", "Display one character per test instead of one line. \
+                                Alias to --format=terse")
         .optflag("", "exact", "Exactly match filters rather than by substring")
         .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
@@ -697,7 +697,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         None => Raw(io::stdout()),
         Some(t) => Pretty(t),
     };
-    
+
     let quiet = opts.format == OutputFormat::Terse;
     let mut out = HumanFormatter::new(output, use_color(opts), quiet);
     let mut st = ConsoleTestState::new(opts)?;
