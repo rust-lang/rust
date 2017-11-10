@@ -94,29 +94,38 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
             self.flow_inits.reset_to_entry_of(bb);
             while let Some((location, live_locals)) = all_live_locals.pop() {
                 for live_local in live_locals {
-                    debug!("add_liveness_constraints: location={:?} live_local={:?}", location, live_local);
+                    debug!("add_liveness_constraints: location={:?} live_local={:?}", location,
+                           live_local);
 
                     self.flow_inits.each_state_bit(|mpi_init| {
                         debug!("add_liveness_constraints: location={:?} initialized={:?}",
                                location,
-                               &self.flow_inits.base_results.operator().move_data().move_paths[mpi_init]);
+                               &self.flow_inits
+                                   .base_results
+                                   .operator()
+                                   .move_data()
+                                   .move_paths[mpi_init]);
                     });
 
                     let mpi = self.move_data.rev_lookup.find_local(live_local);
                     if self.flow_inits.has_any_child_of(mpi).is_some() {
-                        debug!("add_liveness_constraints: mpi={:?} has initialization children", mpi);
+                        debug!("add_liveness_constraints: mpi={:?} has initialization children",
+                               mpi);
                         let live_local_ty = self.mir.local_decls[live_local].ty;
                         self.add_drop_live_constraint(live_local_ty, location);
                     } else {
-                        debug!("add_liveness_constraints: mpi={:?} has no initialized children", mpi);
+                        debug!("add_liveness_constraints: mpi={:?} has no initialized children",
+                               mpi);
                     }
                 }
 
                 if location.statement_index == terminator_index {
-                    debug!("add_liveness_constraints: reconstruct_terminator_effect from {:#?}", location);
+                    debug!("add_liveness_constraints: reconstruct_terminator_effect from {:#?}",
+                           location);
                     self.flow_inits.reconstruct_terminator_effect(location);
                 } else {
-                    debug!("add_liveness_constraints: reconstruct_statement_effect from {:#?}", location);
+                    debug!("add_liveness_constraints: reconstruct_statement_effect from {:#?}",
+                           location);
                     self.flow_inits.reconstruct_statement_effect(location);
                 }
                 self.flow_inits.apply_local_effect();
