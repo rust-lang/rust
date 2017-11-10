@@ -144,6 +144,15 @@ pub enum AssociatedItemContainer {
 }
 
 impl AssociatedItemContainer {
+    /// Asserts that this is the def-id of an associated item declared
+    /// in a trait, and returns the trait def-id.
+    pub fn assert_trait(&self) -> DefId {
+        match *self {
+            TraitContainer(id) => id,
+            _ => bug!("associated item has wrong container type: {:?}", self)
+        }
+    }
+
     pub fn id(&self) -> DefId {
         match *self {
             TraitContainer(id) => id,
@@ -895,6 +904,12 @@ pub enum Predicate<'tcx> {
     ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
 }
 
+impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
+    fn as_ref(&self) -> &Predicate<'tcx> {
+        self
+    }
+}
+
 impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
     /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
@@ -1195,6 +1210,25 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::ObjectSafe(..) |
             Predicate::ClosureKind(..) |
             Predicate::TypeOutlives(..) |
+            Predicate::ConstEvaluatable(..) => {
+                None
+            }
+        }
+    }
+
+    pub fn to_opt_type_outlives(&self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
+        match *self {
+            Predicate::TypeOutlives(data) => {
+                Some(data)
+            }
+            Predicate::Trait(..) |
+            Predicate::Projection(..) |
+            Predicate::Equate(..) |
+            Predicate::Subtype(..) |
+            Predicate::RegionOutlives(..) |
+            Predicate::WellFormed(..) |
+            Predicate::ObjectSafe(..) |
+            Predicate::ClosureKind(..) |
             Predicate::ConstEvaluatable(..) => {
                 None
             }

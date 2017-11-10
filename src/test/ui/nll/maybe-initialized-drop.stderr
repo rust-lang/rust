@@ -1,0 +1,46 @@
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:24:5
+   |
+23 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
+24 |     x += 1; //~ ERROR because of dtor
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:31:5
+   |
+29 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
+30 |     std::mem::drop(wrap);
+31 |     x += 1; // OK, drop is inert
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:46:5
+   |
+42 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
+...
+46 |     x += 1; //~ ERROR because of Foo.b's Wrap dtor
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:56:5
+   |
+51 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
+...
+56 |     x += 1; // OK, drops are inert
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error[E0506]: cannot assign to `x` because it is borrowed (Ast)
+  --> $DIR/maybe-initialized-drop.rs:65:5
+   |
+61 |     let wrap = Wrap { p: &mut x };
+   |                               - borrow of `x` occurs here
+...
+65 |     x += 1; //~ ERROR because of Foo.a's implicit dtor
+   |     ^^^^^^ assignment to borrowed `x` occurs here
+
+error: aborting due to 5 previous errors
+

@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::mir::{BasicBlock, BorrowKind, Location, Lvalue, Mir, Rvalue, Statement, StatementKind};
+use rustc::mir::{Location, Lvalue, Mir, Rvalue};
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::Visitor;
 use rustc::mir::Lvalue::Projection;
-use rustc::mir::{LvalueProjection, ProjectionElem};
+use rustc::mir::{LvalueProjection, ProjectionElem, Local};
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty};
@@ -21,18 +21,22 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::DUMMY_SP;
+use borrow_check::FlowInProgress;
+use dataflow::MaybeInitializedLvals;
+use dataflow::move_paths::{MoveData, HasMoveData};
 
-use super::subtype;
 use super::LivenessResults;
-use super::ToRegionIndex;
+use super::ToRegionVid;
 use super::region_infer::RegionInferenceContext;
 
-pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     regioncx: &mut RegionInferenceContext<'tcx>,
     mir: &Mir<'tcx>,
     mir_source: MirSource,
     liveness: &LivenessResults,
+    flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    move_data: &MoveData<'tcx>,
 ) {
     ConstraintGeneration {
         infcx,
@@ -40,18 +44,23 @@ pub(super) fn generate_constraints<'a, 'gcx, 'tcx>(
         mir,
         liveness,
         mir_source,
+        flow_inits,
+        move_data,
     }.add_constraints();
 }
 
-struct ConstraintGeneration<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
-    regioncx: &'cx mut RegionInferenceContext<'tcx>,
-    mir: &'cx Mir<'tcx>,
-    liveness: &'cx LivenessResults,
+/// 'cg = the duration of the constraint generation process itself.
+struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
+    infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
+    regioncx: &'cg mut RegionInferenceContext<'tcx>,
+    mir: &'cg Mir<'tcx>,
+    liveness: &'cg LivenessResults,
     mir_source: MirSource,
+    flow_inits: &'cg mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    move_data: &'cg MoveData<'tcx>,
 }
 
-impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
+impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
     fn add_constraints(&mut self) {
         self.add_liveness_constraints();
         self.add_borrow_constraints();
@@ -75,14 +84,52 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
                     }
                 });
 
-            self.liveness
-                .drop
-                .simulate_block(self.mir, bb, |location, live_locals| {
-                    for live_local in live_locals.iter() {
+            let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
+            self.liveness.drop.simulate_block(self.mir, bb, |location, live_locals| {
+                all_live_locals.push((location, live_locals.iter().collect()));
+            });
+            debug!("add_liveness_constraints: all_live_locals={:#?}", all_live_locals);
+
+            let terminator_index = self.mir.basic_blocks()[bb].statements.len();
+            self.flow_inits.reset_to_entry_of(bb);
+            while let Some((location, live_locals)) = all_live_locals.pop() {
+                for live_local in live_locals {
+                    debug!("add_liveness_constraints: location={:?} live_local={:?}", location,
+                           live_local);
+
+                    self.flow_inits.each_state_bit(|mpi_init| {
+                        debug!("add_liveness_constraints: location={:?} initialized={:?}",
+                               location,
+                               &self.flow_inits
+                                   .base_results
+                                   .operator()
+                                   .move_data()
+                                   .move_paths[mpi_init]);
+                    });
+
+                    let mpi = self.move_data.rev_lookup.find_local(live_local);
+                    if self.flow_inits.has_any_child_of(mpi).is_some() {
+                        debug!("add_liveness_constraints: mpi={:?} has initialization children",
+                               mpi);
                         let live_local_ty = self.mir.local_decls[live_local].ty;
                         self.add_drop_live_constraint(live_local_ty, location);
+                    } else {
+                        debug!("add_liveness_constraints: mpi={:?} has no initialized children",
+                               mpi);
                     }
-                });
+                }
+
+                if location.statement_index == terminator_index {
+                    debug!("add_liveness_constraints: reconstruct_terminator_effect from {:#?}",
+                           location);
+                    self.flow_inits.reconstruct_terminator_effect(location);
+                } else {
+                    debug!("add_liveness_constraints: reconstruct_statement_effect from {:#?}",
+                           location);
+                    self.flow_inits.reconstruct_statement_effect(location);
+                }
+                self.flow_inits.apply_local_effect();
+            }
         }
     }
 
@@ -103,7 +150,7 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
         self.infcx
             .tcx
             .for_each_free_region(&live_ty, |live_region| {
-                let vid = live_region.to_region_index();
+                let vid = live_region.to_region_vid();
                 self.regioncx.add_live_point(vid, location);
             });
     }
@@ -182,29 +229,6 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
         self.visit_mir(self.mir);
     }
 
-    fn add_borrow_constraint(
-        &mut self,
-        location: Location,
-        destination_lv: &Lvalue<'tcx>,
-        borrow_region: ty::Region<'tcx>,
-        _borrow_kind: BorrowKind,
-        _borrowed_lv: &Lvalue<'tcx>,
-    ) {
-        let tcx = self.infcx.tcx;
-        let span = self.mir.source_info(location).span;
-        let destination_ty = destination_lv.ty(self.mir, tcx).to_ty(tcx);
-
-        let destination_region = match destination_ty.sty {
-            ty::TyRef(r, _) => r,
-            _ => bug!()
-        };
-
-        self.regioncx.add_outlives(span,
-                                   borrow_region.to_region_index(),
-                                   destination_region.to_region_index(),
-                                   location.successor_within_block());
-    }
-
     fn add_reborrow_constraint(
         &mut self,
         location: Location,
@@ -230,8 +254,8 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
 
                     let span = self.mir.source_info(location).span;
                     self.regioncx.add_outlives(span,
-                                               base_region.to_region_index(),
-                                               borrow_region.to_region_index(),
+                                               base_region.to_region_vid(),
+                                               borrow_region.to_region_vid(),
                                                location.successor_within_block());
                 }
             }
@@ -239,36 +263,23 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &Statement<'tcx>,
-                       location: Location) {
+impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
+    fn visit_rvalue(&mut self,
+                    rvalue: &Rvalue<'tcx>,
+                    location: Location) {
+        debug!("visit_rvalue(rvalue={:?}, location={:?})", rvalue, location);
 
-        debug!("visit_statement(statement={:?}, location={:?})", statement, location);
-
-        // Look for a statement like:
+        // Look for an rvalue like:
         //
-        //     D = & L
+        //     & L
         //
-        // where D is the path to which we are assigning, and
-        // L is the path that is borrowed.
-        if let StatementKind::Assign(ref destination_lv, ref rv) = statement.kind {
-            if let Rvalue::Ref(region, bk, ref borrowed_lv) = *rv {
-                self.add_borrow_constraint(location, destination_lv, region, bk, borrowed_lv);
-                self.add_reborrow_constraint(location, region, borrowed_lv);
-            }
-
-            let tcx = self.infcx.tcx;
-            let destination_ty = destination_lv.ty(self.mir, tcx).to_ty(tcx);
-            let rv_ty = rv.ty(self.mir, tcx);
-
-            let span = self.mir.source_info(location).span;
-            for (a, b) in subtype::outlives_pairs(tcx, rv_ty, destination_ty) {
-                self.regioncx.add_outlives(span, a, b, location.successor_within_block());
-            }
+        // where L is the path that is borrowed. In that case, we have
+        // to add the reborrow constraints (which don't fall out
+        // naturally from the type-checker).
+        if let Rvalue::Ref(region, _bk, ref borrowed_lv) = *rvalue {
+            self.add_reborrow_constraint(location, region, borrowed_lv);
         }
 
-        self.super_statement(block, statement, location);
+        self.super_rvalue(rvalue, location);
     }
 }

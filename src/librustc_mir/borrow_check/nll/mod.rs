@@ -8,40 +8,70 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::{self, RegionKind};
+use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::infer::InferCtxt;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
+use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
+use borrow_check::FlowInProgress;
+use dataflow::MaybeInitializedLvals;
+use dataflow::move_paths::MoveData;
 
 use util as mir_util;
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+mod subtype_constraint_generation;
 mod free_regions;
-mod subtype;
+use self::free_regions::FreeRegions;
 
 pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
 
 mod renumber;
 
+/// Rewrites the regions in the MIR to use NLL variables, also
+/// scraping out the set of free regions (e.g., region parameters)
+/// declared on the function. That set will need to be given to
+/// `compute_regions`.
+pub(super) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
+    source: MirSource,
+    mir: &mut Mir<'tcx>
+) -> FreeRegions<'tcx> {
+    // Compute named region information.
+    let free_regions = free_regions::free_regions(infcx, source);
+
+    // Replace all regions with fresh inference variables.
+    renumber::renumber_mir(infcx, &free_regions, mir);
+
+    free_regions
+}
+
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub fn compute_regions<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+pub(super) fn compute_regions<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     source: MirSource,
-    mir: &mut Mir<'tcx>,
+    free_regions: &FreeRegions<'tcx>,
+    mir: &Mir<'tcx>,
+    param_env: ty::ParamEnv<'gcx>,
+    flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    move_data: &MoveData<'tcx>,
 ) -> RegionInferenceContext<'tcx> {
-    // Compute named region information.
-    let free_regions = &free_regions::free_regions(infcx, source);
+    // Run the MIR type-checker.
+    let body_id = source.item_id();
+    let constraint_sets = &type_check::type_check(infcx, body_id, param_env, mir);
 
-    // Replace all regions with fresh inference variables.
-    let num_region_variables = renumber::renumber_mir(infcx, free_regions, mir);
+    // Create the region inference context, taking ownership of the region inference
+    // data that was contained in `infcx`.
+    let var_origins = infcx.take_region_var_origins();
+    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
+    subtype_constraint_generation::generate(&mut regioncx, free_regions, mir, constraint_sets);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -62,10 +92,18 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
         ),
     };
 
-    // Create the region inference context, generate the constraints,
-    // and then solve them.
-    let mut regioncx = RegionInferenceContext::new(free_regions, num_region_variables, mir);
-    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
+    // Generate non-subtyping constraints.
+    constraint_generation::generate_constraints(
+        infcx,
+        &mut regioncx,
+        &mir,
+        source,
+        liveness,
+        flow_inits,
+        move_data
+    );
+
+    // Solve the region constraints.
     regioncx.solve(infcx, &mir);
 
     // Dump MIR results into a file, if that is enabled. This let us
@@ -150,23 +188,19 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     });
 }
 
-newtype_index!(RegionIndex {
-    DEBUG_FORMAT = "'_#{}r",
-});
-
 /// Right now, we piggy back on the `ReVar` to store our NLL inference
-/// regions. These are indexed with `RegionIndex`. This method will
-/// assert that the region is a `ReVar` and convert the internal index
-/// into a `RegionIndex`. This is reasonable because in our MIR we
-/// replace all free regions with inference variables.
-pub trait ToRegionIndex {
-    fn to_region_index(&self) -> RegionIndex;
+/// regions. These are indexed with `RegionVid`. This method will
+/// assert that the region is a `ReVar` and extract its interal index.
+/// This is reasonable because in our MIR we replace all free regions
+/// with inference variables.
+pub trait ToRegionVid {
+    fn to_region_vid(&self) -> RegionVid;
 }
 
-impl ToRegionIndex for RegionKind {
-    fn to_region_index(&self) -> RegionIndex {
+impl ToRegionVid for RegionKind {
+    fn to_region_vid(&self) -> RegionVid {
         if let &ty::ReVar(vid) = self {
-            RegionIndex::new(vid.index as usize)
+            vid
         } else {
             bug!("region is not an ReVar: {:?}", self)
         }

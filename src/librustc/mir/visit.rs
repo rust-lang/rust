@@ -292,11 +292,10 @@ macro_rules! make_mir_visitor {
                     self.visit_visibility_scope_data(scope);
                 }
 
-                let lookup = TyContext::SourceInfo(SourceInfo {
+                self.visit_ty(&$($mutability)* mir.return_ty, TyContext::ReturnTy(SourceInfo {
                     span: mir.span,
                     scope: ARGUMENT_VISIBILITY_SCOPE,
-                });
-                self.visit_ty(&$($mutability)* mir.return_ty, lookup);
+                }));
 
                 for local in mir.local_decls.indices() {
                     self.visit_local_decl(local, & $($mutability)* mir.local_decls[local]);
@@ -811,7 +810,7 @@ make_mir_visitor!(MutVisitor,mut);
 
 /// Extra information passed to `visit_ty` and friends to give context
 /// about where the type etc appears.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TyContext {
     LocalDecl {
         /// The index of the local variable we are visiting.
@@ -821,9 +820,11 @@ pub enum TyContext {
         source_info: SourceInfo,
     },
 
-    Location(Location),
+    /// The return type of the function.
+    ReturnTy(SourceInfo),
 
-    SourceInfo(SourceInfo),
+    /// A type found at some location.
+    Location(Location),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

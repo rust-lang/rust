@@ -31,15 +31,15 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-// | '_#0r: {bb1[1], bb2[0], bb2[1]}
 // | '_#1r: {bb1[1], bb2[0], bb2[1]}
+// | '_#2r: {bb1[1], bb2[0], bb2[1]}
 // ...
-//             let _2: &'_#1r usize;
+//             let _2: &'_#2r usize;
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
 //    bb1: {
 //            | Live variables at bb1[0]: [_1, _3]
-//        _2 = &'_#0r _1[_3];
+//        _2 = &'_#1r _1[_3];
 //            | Live variables at bb1[1]: [_2]
 //        switchInt(const true) -> [0u8: bb3, otherwise: bb2];
 //    }

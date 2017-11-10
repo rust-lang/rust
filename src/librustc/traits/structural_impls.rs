@@ -26,13 +26,6 @@ impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
     }
 }
 
-impl<'tcx> fmt::Debug for traits::RegionObligation<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",
-               self.sub_region,
-               self.sup_type)
-    }
-}
 impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Obligation(predicate={:?},depth={})",
@@ -221,13 +214,11 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             }
             super::CompareImplMethodObligation { item_name,
                                                  impl_item_def_id,
-                                                 trait_item_def_id,
-                                                 lint_id } => {
+                                                 trait_item_def_id } => {
                 Some(super::CompareImplMethodObligation {
                     item_name,
                     impl_item_def_id,
                     trait_item_def_id,
-                    lint_id,
                 })
             }
             super::ExprAssignable => Some(super::ExprAssignable),

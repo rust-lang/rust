@@ -192,7 +192,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
     ///
     /// if `r_a` represents `'a`, this function would return `{'b, 'c}`.
     pub fn regions_that_outlive<'a, 'gcx>(&self, r_a: Region<'tcx>) -> Vec<&Region<'tcx>> {
-        assert!(is_free(r_a));
+        assert!(is_free(r_a) || *r_a == ty::ReStatic);
         self.relation.greater_than(&r_a)
     }
 }

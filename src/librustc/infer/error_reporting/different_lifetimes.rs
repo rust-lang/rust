@@ -13,8 +13,8 @@
 use hir;
 use infer::InferCtxt;
 use ty::{self, Region};
-use infer::region_inference::RegionResolutionError::*;
-use infer::region_inference::RegionResolutionError;
+use infer::lexical_region_resolve::RegionResolutionError::*;
+use infer::lexical_region_resolve::RegionResolutionError;
 use hir::map as hir_map;
 use middle::resolve_lifetime as rl;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};

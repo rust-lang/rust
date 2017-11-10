@@ -31,6 +31,7 @@
 #![feature(i128)]
 #![feature(conservative_impl_trait)]
 #![feature(specialization)]
+#![feature(underscore_lifetimes)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
