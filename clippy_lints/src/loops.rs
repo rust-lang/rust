@@ -952,16 +952,17 @@ fn check_for_loop_range<'a, 'tcx>(
             let mut visitor = VarVisitor {
                 cx: cx,
                 var: canonical_id,
-                indexed: HashMap::new(),
+                indexed_mut: HashSet::new(),
+                indexed_indirectly: HashMap::new(),
                 indexed_directly: HashMap::new(),
                 referenced: HashSet::new(),
                 nonindex: false,
+                prefer_mutable: false,
             };
             walk_expr(&mut visitor, body);
 
             // linting condition: we only indexed one variable, and indexed it directly
-            // (`indexed_directly` is subset of `indexed`)
-            if visitor.indexed.len() == 1 && visitor.indexed_directly.len() == 1 {
+            if visitor.indexed_indirectly.is_empty() && visitor.indexed_directly.len() == 1 {
                 let (indexed, indexed_extent) = visitor
                     .indexed_directly
                     .into_iter()
@@ -1009,6 +1010,12 @@ fn check_for_loop_range<'a, 'tcx>(
                     "".to_owned()
                 };
 
+                let (ref_mut, method) = if visitor.indexed_mut.contains(&indexed) {
+                    ("mut ", "iter_mut")
+                } else {
+                    ("", "iter")
+                };
+
                 if visitor.nonindex {
                     span_lint_and_then(
                         cx,
@@ -1021,16 +1028,16 @@ fn check_for_loop_range<'a, 'tcx>(
                                 "consider using an iterator".to_string(),
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.node)),
-                                    (arg.span, format!("{}.iter().enumerate(){}{}", indexed, take, skip)),
+                                    (arg.span, format!("{}.{}().enumerate(){}{}", indexed, method, take, skip)),
                                 ],
                             );
                         },
                     );
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
-                        format!("&{}", indexed)
+                        format!("&{}{}", ref_mut, indexed)
                     } else {
-                        format!("{}.iter(){}{}", indexed, take, skip)
+                        format!("{}.{}(){}{}", indexed, method, take, skip)
                     };
 
                     span_lint_and_then(
@@ -1537,8 +1544,10 @@ struct VarVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     /// var name to look for as index
     var: ast::NodeId,
-    /// indexed variables, the extend is `None` for global
-    indexed: HashMap<Name, Option<region::Scope>>,
+    /// indexed variables that are used mutably
+    indexed_mut: HashSet<Name>,
+    /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
+    indexed_indirectly: HashMap<Name, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
     indexed_directly: HashMap<Name, Option<region::Scope>>,
@@ -1548,20 +1557,21 @@ struct VarVisitor<'a, 'tcx: 'a> {
     /// has the loop variable been used in expressions other than the index of
     /// an index op?
     nonindex: bool,
+    /// Whether we are inside the `$` in `&mut $` or `$ = foo` or `$.bar`, where bar
+    /// takes `&mut self`
+    prefer_mutable: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
+    fn check(&mut self, idx: &'tcx Expr, seqexpr: &'tcx Expr, expr: &'tcx Expr) -> bool {
         if_chain! {
-            // an index op
-            if let ExprIndex(ref seqexpr, ref idx) = expr.node;
             // the indexed container is referenced by a name
             if let ExprPath(ref seqpath) = seqexpr.node;
             if let QPath::Resolved(None, ref seqvar) = *seqpath;
             if seqvar.segments.len() == 1;
             then {
                 let index_used_directly = same_var(self.cx, idx, self.var);
-                let index_used = index_used_directly || {
+                let indexed_indirectly = {
                     let mut used_visitor = LocalUsedVisitor {
                         cx: self.cx,
                         local: self.var,
@@ -1571,7 +1581,10 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     used_visitor.used
                 };
 
-                if index_used {
+                if indexed_indirectly || index_used_directly {
+                    if self.prefer_mutable {
+                        self.indexed_mut.insert(seqvar.segments[0].name);
+                    }
                     let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
                     match def {
                         Def::Local(node_id) | Def::Upvar(node_id, ..) => {
@@ -1580,23 +1593,47 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                             let parent_id = self.cx.tcx.hir.get_parent(expr.id);
                             let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
-                            self.indexed.insert(seqvar.segments[0].name, Some(extent));
+                            if indexed_indirectly {
+                                self.indexed_indirectly.insert(seqvar.segments[0].name, Some(extent));
+                            }
                             if index_used_directly {
                                 self.indexed_directly.insert(seqvar.segments[0].name, Some(extent));
                             }
-                            return;  // no need to walk further *on the variable*
+                            return false;  // no need to walk further *on the variable*
                         }
                         Def::Static(..) | Def::Const(..) => {
-                            self.indexed.insert(seqvar.segments[0].name, None);
+                            if indexed_indirectly {
+                                self.indexed_indirectly.insert(seqvar.segments[0].name, None);
+                            }
                             if index_used_directly {
                                 self.indexed_directly.insert(seqvar.segments[0].name, None);
                             }
-                            return;  // no need to walk further *on the variable*
+                            return false;  // no need to walk further *on the variable*
                         }
                         _ => (),
                     }
                 }
             }
+        }
+        true
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if_chain! {
+            // a range index op
+            if let ExprMethodCall(ref meth, _, ref args) = expr.node;
+            if meth.name == "index" || meth.name == "index_mut";
+            if !self.check(&args[1], &args[0], expr);
+            then { return }
+        }
+
+        if_chain! {
+            // an index op
+            if let ExprIndex(ref seqexpr, ref idx) = expr.node;
+            if !self.check(idx, seqexpr, expr);
+            then { return }
         }
 
         if_chain! {
@@ -1615,8 +1652,47 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 }
             }
         }
-
-        walk_expr(self, expr);
+        let old = self.prefer_mutable;
+        match expr.node {
+            ExprAssignOp(_, ref lhs, ref rhs) |
+            ExprAssign(ref lhs, ref rhs) => {
+                self.prefer_mutable = true;
+                self.visit_expr(lhs);
+                self.prefer_mutable = false;
+                self.visit_expr(rhs);
+            },
+            ExprAddrOf(mutbl, ref expr) => {
+                if mutbl == MutMutable {
+                    self.prefer_mutable = true;
+                }
+                self.visit_expr(expr);
+            },
+            ExprCall(ref f, ref args) => {
+                for (ty, expr) in self.cx.tables.expr_ty(f).fn_sig(self.cx.tcx).inputs().skip_binder().iter().zip(args) {
+                    self.prefer_mutable = false;
+                    if let ty::TyRef(_, mutbl) = ty.sty {
+                        if mutbl.mutbl == MutMutable {
+                            self.prefer_mutable = true;
+                        }
+                    }
+                    self.visit_expr(expr);
+                }
+            },
+            ExprMethodCall(_, _, ref args) => {
+                let def_id = self.cx.tables.type_dependent_defs()[expr.hir_id].def_id();
+                for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
+                    self.prefer_mutable = false;
+                    if let ty::TyRef(_, mutbl) = ty.sty {
+                        if mutbl.mutbl == MutMutable {
+                            self.prefer_mutable = true;
+                        }
+                    }
+                    self.visit_expr(expr);
+                }
+            },
+            _ => walk_expr(self, expr),
+        }
+        self.prefer_mutable = old;
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
