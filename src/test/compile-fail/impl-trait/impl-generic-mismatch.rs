@@ -12,7 +12,7 @@
 use std::fmt::Debug;
 
 trait Foo {
-    fn foo(&self, &impl Debug);
+    fn foo(&self, _: &impl Debug);
 }
 
 impl Foo for () {
@@ -21,7 +21,7 @@ impl Foo for () {
 }
 
 trait Bar {
-    fn bar<U: Debug>(&self, &U);
+    fn bar<U: Debug>(&self, _: &U);
 }
 
 impl Bar for () {

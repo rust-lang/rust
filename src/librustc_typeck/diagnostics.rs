@@ -4630,9 +4630,9 @@ This error indicates that there is a mismatch between generic parameters and
 impl Trait parameters in a trait declaration versus its impl.
 
 ```compile_fail,E0642
-#![feature(conservative_impl_trait)]
+#![feature(universal_impl_trait)]
 trait Foo
-    fn foo(&self, &impl Iterator)
+    fn foo(&self, _: &impl Iterator)
 }
 impl Foo for () {
     fn foo<U: Iterator>(&self, _: &U) { } // error method `foo` has incompatible
