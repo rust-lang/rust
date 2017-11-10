@@ -28,6 +28,16 @@ pub struct RegionInferenceContext<'tcx> {
     /// from as well as its final inferred value.
     definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
+    /// The liveness constraints added to each region. For most
+    /// regions, these start out empty and steadily grow, though for
+    /// each free region R they start out containing the entire CFG
+    /// and `end(R)`.
+    liveness_constraints: IndexVec<RegionVid, Region>,
+
+    /// The final inferred values of the inference variables; `None`
+    /// until `solve` is invoked.
+    inferred_values: Option<IndexVec<RegionVid, Region>>,
+
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
 }
@@ -46,11 +56,6 @@ struct RegionDefinition<'tcx> {
     /// If true, this is a constant region which cannot grow larger.
     /// This is used for named regions as well as `'static`.
     constant: bool,
-
-    /// The current value of this inference variable. This starts out
-    /// empty, but grows as we add constraints. The final value is
-    /// determined when `solve()` is executed.
-    value: Region,
 }
 
 /// The value of an individual region variable. Region variables
@@ -115,6 +120,8 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// of those will be constant regions representing the free
     /// regions defined in `free_regions`.
     pub fn new(var_origins: VarOrigins, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) -> Self {
+        let num_region_variables = var_origins.len();
+
         // Create a RegionDefinition for each inference variable.
         let definitions = var_origins
             .into_iter()
@@ -123,6 +130,8 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
 
         let mut result = Self {
             definitions: definitions,
+            liveness_constraints: IndexVec::from_elem_n(Region::default(), num_region_variables),
+            inferred_values: None,
             constraints: Vec::new(),
         };
 
@@ -170,24 +179,23 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
 
             // Add all nodes in the CFG to `definition.value`.
             for (block, block_data) in mir.basic_blocks().iter_enumerated() {
-                let definition = &mut self.definitions[variable];
+                let liveness_constraint = &mut self.liveness_constraints[variable];
                 for statement_index in 0..block_data.statements.len() + 1 {
                     let location = Location {
                         block,
                         statement_index,
                     };
-                    definition.value.add_point(location);
+                    liveness_constraint.add_point(location);
                 }
             }
 
             // Add `end(X)` into the set for X.
-            self.definitions[variable].value.add_free_region(variable);
+            self.liveness_constraints[variable].add_free_region(variable);
 
             // `'static` outlives all other free regions as well.
             if let ty::ReStatic = free_region {
                 for &other_variable in indices.values() {
-                    self.definitions[variable]
-                        .value
+                    self.liveness_constraints[variable]
                         .add_free_region(other_variable);
                 }
             }
@@ -196,16 +204,14 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
             // Y: X is true). Add `end(X)` into the set for `Y`.
             for superregion in free_region_map.regions_that_outlive(&free_region) {
                 let superregion_index = indices[superregion];
-                self.definitions[superregion_index]
-                    .value
-                    .add_free_region(variable);
+                self.liveness_constraints[superregion_index].add_free_region(variable);
             }
 
             debug!(
                 "init_free_regions: region variable for `{:?}` is `{:?}` with value `{:?}`",
                 free_region,
                 variable,
-                self.definitions[variable].value
+                self.liveness_constraints[variable],
             );
         }
     }
@@ -219,25 +225,25 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Until `solve()` executes, this value is not particularly meaningful.
     pub fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
-        self.definitions[r].value.contains_point(p)
+        let inferred_values = self.inferred_values
+            .as_ref()
+            .expect("region values not yet inferred");
+        inferred_values[r].contains_point(p)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
     pub(super) fn region_value(&self, r: RegionVid) -> &fmt::Debug {
-        &self.definitions[r].value
+        let inferred_values = self.inferred_values
+            .as_ref()
+            .expect("region values not yet inferred");
+        &inferred_values[r]
     }
 
     /// Indicates that the region variable `v` is live at the point `point`.
     pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) {
         debug!("add_live_point({:?}, {:?})", v, point);
-        let definition = &mut self.definitions[v];
-        if !definition.constant {
-            definition.value.add_point(point);
-        } else {
-            // Constants are used for free regions, which already
-            // contain all the points in the control-flow graph.
-            assert!(definition.value.contains_point(point));
-        }
+        assert!(self.inferred_values.is_none(), "values already inferred");
+        self.liveness_constraints[v].add_point(point);
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
@@ -249,6 +255,7 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
         point: Location,
     ) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
+        assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(Constraint {
             span,
             sup,
@@ -259,6 +266,7 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
 
     /// Perform region inference.
     pub(super) fn solve(&mut self, infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &Mir<'tcx>) {
+        assert!(self.inferred_values.is_none(), "values already inferred");
         let errors = self.propagate_constraints(mir);
 
         // worst error msg ever
@@ -291,39 +299,43 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
             constraints
         });
 
+        // The initial values for each region are derived from the liveness
+        // constraints we have accumulated.
+        let mut inferred_values = self.liveness_constraints.clone();
+
         while changed {
             changed = false;
             for constraint in &self.constraints {
                 debug!("propagate_constraints: constraint={:?}", constraint);
-                let sub = &self.definitions[constraint.sub].value.clone();
-                let sup_def = &mut self.definitions[constraint.sup];
+                let sub = &inferred_values[constraint.sub].clone();
+                let sup_value = &mut inferred_values[constraint.sup];
 
                 debug!("propagate_constraints:    sub (before): {:?}", sub);
-                debug!("propagate_constraints:    sup (before): {:?}", sup_def.value);
+                debug!("propagate_constraints:    sup (before): {:?}", sup_value);
 
-                if !sup_def.constant {
+                if !self.definitions[constraint.sup].constant {
                     // If this is not a constant, then grow the value as needed to
                     // accommodate the outlives constraint.
 
-                    if dfs.copy(sub, &mut sup_def.value, constraint.point) {
+                    if dfs.copy(sub, sup_value, constraint.point) {
                         changed = true;
                     }
 
-                    debug!("propagate_constraints:    sup (after) : {:?}", sup_def.value);
+                    debug!("propagate_constraints:    sup (after) : {:?}", sup_value);
                     debug!("propagate_constraints:    changed     : {:?}", changed);
                 } else {
                     // If this is a constant, check whether it *would
                     // have* to grow in order for the constraint to be
                     // satisfied. If so, create an error.
 
-                    let mut sup_value = sup_def.value.clone();
-                    if dfs.copy(sub, &mut sup_value, constraint.point) {
+                    let sup_value = &mut sup_value.clone();
+                    if dfs.copy(sub, sup_value, constraint.point) {
                         // Constant values start out with the entire
                         // CFG, so it must be some new free region
                         // that was added. Find one.
                         let &new_region = sup_value
                             .free_regions
-                            .difference(&sup_def.value.free_regions)
+                            .difference(&sup_value.free_regions)
                             .next()
                             .unwrap();
                         debug!("propagate_constraints:    new_region : {:?}", new_region);
@@ -335,6 +347,8 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
             }
             debug!("\n");
         }
+
+        self.inferred_values = Some(inferred_values);
         errors
     }
 }
@@ -424,7 +438,6 @@ impl<'tcx> RegionDefinition<'tcx> {
             origin,
             name: None,
             constant: false,
-            value: Region::default(),
         }
     }
 }
