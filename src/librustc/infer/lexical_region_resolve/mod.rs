@@ -171,7 +171,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         for (r, vid) in seeds {
             // While all things transitively reachable in the graph
             // from the variable (`'0` in the example above).
-            let seed_index = NodeIndex(vid.index as usize);
+            let seed_index = NodeIndex(vid.index() as usize);
             for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
                 let succ_index = succ_index.0;
 
@@ -512,16 +512,16 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             match *constraint {
                 Constraint::VarSubVar(a_id, b_id) => {
                     graph.add_edge(
-                        NodeIndex(a_id.index as usize),
-                        NodeIndex(b_id.index as usize),
+                        NodeIndex(a_id.index() as usize),
+                        NodeIndex(b_id.index() as usize),
                         *constraint,
                     );
                 }
                 Constraint::RegSubVar(_, b_id) => {
-                    graph.add_edge(dummy_source, NodeIndex(b_id.index as usize), *constraint);
+                    graph.add_edge(dummy_source, NodeIndex(b_id.index() as usize), *constraint);
                 }
                 Constraint::VarSubReg(a_id, _) => {
-                    graph.add_edge(NodeIndex(a_id.index as usize), dummy_sink, *constraint);
+                    graph.add_edge(NodeIndex(a_id.index() as usize), dummy_sink, *constraint);
                 }
                 Constraint::RegSubReg(..) => {
                     // this would be an edge from `dummy_source` to
@@ -630,9 +630,9 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             let node_idx = state.stack.pop().unwrap();
 
             // check whether we've visited this node on some previous walk
-            if dup_vec[node_idx.index as usize] == u32::MAX {
-                dup_vec[node_idx.index as usize] = orig_node_idx.index;
-            } else if dup_vec[node_idx.index as usize] != orig_node_idx.index {
+            if dup_vec[node_idx.index() as usize] == u32::MAX {
+                dup_vec[node_idx.index() as usize] = orig_node_idx.index() as u32;
+            } else if dup_vec[node_idx.index() as usize] != orig_node_idx.index() as u32 {
                 state.dup_found = true;
             }
 
@@ -659,7 +659,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         ) {
             debug!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
-            let source_node_index = NodeIndex(source_vid.index as usize);
+            let source_node_index = NodeIndex(source_vid.index() as usize);
             for (_, edge) in graph.adjacent_edges(source_node_index, dir) {
                 match edge.data {
                     Constraint::VarSubVar(from_vid, to_vid) => {

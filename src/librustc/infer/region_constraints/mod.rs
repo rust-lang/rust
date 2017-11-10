@@ -16,7 +16,7 @@ use self::CombineMapType::*;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 use super::unify_key;
 
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unify::{self, UnificationTable};
 use ty::{self, Ty, TyCtxt};
@@ -404,7 +404,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             }
             AddVar(vid) => {
                 self.var_origins.pop().unwrap();
-                assert_eq!(self.var_origins.len(), vid.index as usize);
+                assert_eq!(self.var_origins.len(), vid.index() as usize);
             }
             AddConstraint(ref constraint) => {
                 self.data.constraints.remove(constraint);
