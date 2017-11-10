@@ -325,9 +325,26 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
             self.write_str(&*format!("\t\t\"filtered_out\": {}\n", state.filtered_out))?;
         } else {
             self.write_str(&*format!("\t\t\"filtered_out\": {},\n", state.filtered_out))?;
-            self.write_str("\t\t\"failures\": [")?;
+            self.write_str("\t\t\"failures\": [\n")?;
 
-            self.write_str("\t\t]\n")?;
+            let mut has_items = false;
+            for &(ref f, ref stdout) in &state.failures {
+                if !stdout.is_empty() {
+                    if has_items {
+                        self.write_str(",\n")?;
+                    } else {
+                        has_items = true;
+                    }
+
+                    let output = String::from_utf8_lossy(stdout)
+                                    .replace("\\", "\\\\")
+                                    .replace("\"", "\\\"");
+
+                    self.write_str(&*format!("\t\t\t\"{}\": \"{}\"", f.name, output))?;
+                }
+            }
+           
+            self.write_str("\n\t\t]\n")?;
         }
         
         self.write_str("\t}\n}\n")?;
