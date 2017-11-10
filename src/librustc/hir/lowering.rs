@@ -103,6 +103,7 @@ pub struct LoweringContext<'a> {
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
+    is_in_trait_impl: bool,
 
     type_def_lifetime_params: DefIdMap<usize>,
 
@@ -174,6 +175,7 @@ pub fn lower_crate(sess: &Session,
         item_local_id_counters: NodeMap(),
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
+        is_in_trait_impl: false,
     }.lower_crate(krate)
 }
 
@@ -241,6 +243,21 @@ impl<'a> LoweringContext<'a> {
             lctx: &'lcx mut LoweringContext<'interner>,
         }
 
+        impl<'lcx, 'interner> ItemLowerer<'lcx, 'interner> {
+            fn with_trait_impl_ref<F>(&mut self, trait_impl_ref: &Option<TraitRef>, f: F)
+                where F: FnOnce(&mut Self)
+            {
+                let old = self.lctx.is_in_trait_impl;
+                self.lctx.is_in_trait_impl = if let &None = trait_impl_ref {
+                    false
+                } else {
+                    true
+                };
+                f(self);
+                self.lctx.is_in_trait_impl = old;
+            }
+        }
+
         impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
             fn visit_item(&mut self, item: &'lcx Item) {
                 let mut item_lowered = true;
@@ -253,7 +270,13 @@ impl<'a> LoweringContext<'a> {
                 });
 
                 if item_lowered {
-                    visit::walk_item(self, item);
+                    if let ItemKind::Impl(_,_,_,_,ref opt_trait_ref,_,_) = item.node {
+                        self.with_trait_impl_ref(opt_trait_ref, |this| {
+                            visit::walk_item(this, item)
+                        });
+                    } else {
+                        visit::walk_item(self, item);
+                    }
                 }
             }
 
