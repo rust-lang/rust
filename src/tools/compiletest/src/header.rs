@@ -259,9 +259,9 @@ impl TestProps {
         props
     }
 
-    pub fn from_file(testfile: &Path, config: &Config) -> Self {
+    pub fn from_file(testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
-        props.load_from(testfile, None, config);
+        props.load_from(testfile, cfg, config);
         props
     }
 
@@ -269,10 +269,10 @@ impl TestProps {
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
-    pub fn load_from(&mut self,
-                     testfile: &Path,
-                     cfg: Option<&str>,
-                     config: &Config) {
+    fn load_from(&mut self,
+                 testfile: &Path,
+                 cfg: Option<&str>,
+                 config: &Config) {
         iter_header(testfile,
                     cfg,
                     &mut |ln| {
