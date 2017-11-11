@@ -35,7 +35,7 @@ use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{colon_spaces, contains_skip, extra_offset, first_line_width, inner_attributes,
             last_line_extendable, last_line_width, left_most_sub_expr, mk_sp, outer_attributes,
             paren_overhead, ptr_vec_to_ref_vec, semicolon_for_stmt, stmt_expr,
-            trimmed_last_line_width};
+            trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -168,10 +168,13 @@ pub fn format_expr(
         ast::ExprKind::TupField(..) |
         ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
         ast::ExprKind::Mac(ref mac) => {
-            // Failure to rewrite a macro should not imply failure to
-            // rewrite the expression.
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
-                .or_else(|| Some(context.snippet(expr.span)))
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
+                wrap_str(
+                    context.snippet(expr.span),
+                    context.config.max_width(),
+                    shape,
+                )
+            })
         }
         ast::ExprKind::Ret(None) => Some("return".to_owned()),
         ast::ExprKind::Ret(Some(ref expr)) => {
