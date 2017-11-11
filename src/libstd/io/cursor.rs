@@ -230,6 +230,10 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
         Ok(n)
     }
 
+    fn size_hint(&self) -> usize {
+        (self.inner.as_ref().len() as u64).saturating_sub(self.pos) as usize
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()

@@ -544,6 +544,19 @@ pub trait Read {
         Initializer::zeroing()
     }
 
+    /// Return an estimate of how many bytes would be read from this source until EOF,
+    /// or zero if that is unknown.
+    ///
+    /// This is used by [`read_to_end`] and [`read_to_string`] to pre-allocate a memory buffer.
+    ///
+    /// [`read_to_end`]: #method.read_to_end
+    /// [`read_to_string`]: #method.read_to_string
+    #[unstable(feature = "read_size_hint", issue = /* FIXME */ "0")]
+    #[inline]
+    fn size_hint(&self) -> usize {
+        0
+    }
+
     /// Read all bytes until EOF in this source, placing them into `buf`.
     ///
     /// All bytes read from this source will be appended to the specified buffer
@@ -1720,6 +1733,14 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         self.second.read(buf)
     }
 
+    fn size_hint(&self) -> usize {
+        if self.done_first {
+            self.second.size_hint()
+        } else {
+            self.first.size_hint().saturating_add(self.second.size_hint())
+        }
+    }
+
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
         if initializer.should_initialize() {
@@ -1916,6 +1937,14 @@ impl<T: Read> Read for Take<T> {
         let n = self.inner.read(&mut buf[..max])?;
         self.limit -= n as u64;
         Ok(n)
+    }
+
+    fn size_hint(&self) -> usize {
+        if self.limit == 0 {
+            0
+        } else {
+            cmp::min(self.limit, self.inner.size_hint() as u64) as usize
+        }
     }
 
     unsafe fn initializer(&self) -> Initializer {

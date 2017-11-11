@@ -449,6 +449,13 @@ impl Read for File {
         self.inner.read(buf)
     }
 
+    fn size_hint(&self) -> usize {
+        match self.metadata() {
+            Ok(meta) => meta.len() as usize,
+            Err(_) => 0,
+        }
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -471,6 +478,10 @@ impl Seek for File {
 impl<'a> Read for &'a File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    fn size_hint(&self) -> usize {
+        (**self).size_hint()
     }
 
     #[inline]

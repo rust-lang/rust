@@ -211,6 +211,12 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
+    #[inline]
+    fn size_hint(&self) -> usize {
+        let buffered_len = self.cap - self.pos;
+        buffered_len.saturating_add(self.inner.size_hint())
+    }
+
     // we can't skip unconditionally because of the large buffer case in read.
     unsafe fn initializer(&self) -> Initializer {
         self.inner.initializer()
