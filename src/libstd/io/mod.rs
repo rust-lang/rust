@@ -366,7 +366,6 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
-    let ret;
     loop {
         if g.len == g.buf.len() {
             unsafe {
@@ -378,20 +377,12 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
         }
 
         match r.read(&mut g.buf[g.len..]) {
-            Ok(0) => {
-                ret = Ok(g.len - start_len);
-                break;
-            }
+            Ok(0) => return Ok(g.len - start_len),
             Ok(n) => g.len += n,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => {
-                ret = Err(e);
-                break;
-            }
+            Err(e) => return Err(e),
         }
     }
-
-    ret
 }
 
 /// The `Read` trait allows for reading bytes from a source.
