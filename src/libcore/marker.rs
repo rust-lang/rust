@@ -39,7 +39,7 @@ use hash::Hasher;
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang = "send"]
+#[cfg_attr(stage0, lang = "send")]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
 pub unsafe trait Send {
     // empty.

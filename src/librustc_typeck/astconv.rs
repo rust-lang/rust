@@ -572,8 +572,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             let b = &trait_bounds[0];
             let span = b.trait_ref.path.span;
             struct_span_err!(self.tcx().sess, span, E0225,
-                "only Send/Sync traits can be used as additional traits in a trait object")
-                .span_label(span, "non-Send/Sync additional trait")
+                "only auto traits can be used as additional traits in a trait object")
+                .span_label(span, "non-auto additional trait")
                 .emit();
         }
 
@@ -1257,27 +1257,10 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     -> (Vec<DefId>, Vec<&'b hir::PolyTraitRef>)
 {
     let (auto_traits, trait_bounds): (Vec<_>, _) = trait_bounds.iter().partition(|bound| {
+        // Checks whether `trait_did` is an auto trait and adds it to `auto_traits` if so.
         match bound.trait_ref.path.def {
-            Def::Trait(trait_did) => {
-                // Checks whether `trait_did` refers to one of the builtin
-                // traits, like `Send`, and adds it to `auto_traits` if so.
-                if Some(trait_did) == tcx.lang_items().send_trait() ||
-                    Some(trait_did) == tcx.lang_items().sync_trait() {
-                    let segments = &bound.trait_ref.path.segments;
-                    segments[segments.len() - 1].with_parameters(|parameters| {
-                        if !parameters.types.is_empty() {
-                            check_type_argument_count(tcx, bound.trait_ref.path.span,
-                                                      parameters.types.len(), &[]);
-                        }
-                        if !parameters.lifetimes.is_empty() {
-                            report_lifetime_number_error(tcx, bound.trait_ref.path.span,
-                                                         parameters.lifetimes.len(), 0);
-                        }
-                    });
-                    true
-                } else {
-                    false
-                }
+            Def::Trait(trait_did) if tcx.trait_is_auto(trait_did) => {
+                true
             }
             _ => false
         }
