@@ -2174,6 +2174,90 @@ impl Path {
         fs::canonicalize(self)
     }
 
+    /// Returns the normalized (or "cleaned") form of the path with all current
+    /// dir (.) and parent dir (..) references resolved.
+    ///
+    /// This is a purely logical calculation; the file system is not used. Namely,
+    /// this leaves symlinks intact and does not check to see if the target exists.
+    ///
+    /// This may change the meaning of a path involving symlinks and parent dir
+    /// references.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let path = Path::new("/recipes/./snacks/../desserts/banana_creme_pie.txt");
+    /// assert_eq!(path.normalize(), PathBuf::from("/recipes/desserts/banana_creme_pie.txt"));
+    /// let path = Path::new("../.././lots///of////./separators/");
+    /// assert_eq!(path.normalize(), PathBuf::from("../../lots/of/separators"));
+    /// let path = Path::new("/../../../cannot_go_above_root");
+    /// assert_eq!(path.normalize(), PathBuf::from("/cannot_go_above_root"));
+    /// ```
+    #[stable(feature = "path_ext", since = "1.24.0")]
+    pub fn normalize(&self) -> PathBuf {
+        let mut stack: Vec<Component> = vec![];
+
+        // We assume .components() removes redundant consecutive path separators.
+        // Note that .components() also does some normalization of '.' on its own anyways.
+        // This '.' normalization happens to be compatible with the approach below.
+        for component in self.components() {
+            match component {
+                // Drop CurDir components, do not even push onto the stack.
+                Component::CurDir => {},
+
+                // For ParentDir components, we need to use the contents of the stack.
+                Component::ParentDir => {
+                    // Look at the top element of stack, if any.
+                    let top = stack.last().cloned();
+
+                    match top {
+                        // A component is on the stack, need more pattern matching.
+                        Some(c) => {
+                            match c {
+                                // Push the ParentDir on the stack.
+                                Component::Prefix(_) => { stack.push(component); },
+
+                                // The parent of a RootDir is itself, so drop the ParentDir (no-op).
+                                Component::RootDir => {},
+
+                                // A CurDir should never be found on the stack, since they are dropped when seen.
+                                Component::CurDir => { unreachable!(); },
+
+                                // If a ParentDir is found, it must be due to it piling up at the start of a path.
+                                // Push the new ParentDir onto the stack.
+                                Component::ParentDir => { stack.push(component); },
+
+                                // If a Normal is found, pop it off.
+                                Component::Normal(_) => { let _ = stack.pop(); }
+                            }
+                        },
+
+                        // Stack is empty, so path is empty, just push.
+                        None => { stack.push(component); }
+                    }
+                },
+
+                // All others, simply push onto the stack.
+                _ => { stack.push(component); },
+            }
+        }
+
+        // If an empty PathBuf would be returned, instead return CurDir ('.').
+        if stack.is_empty() {
+            return PathBuf::from(Component::CurDir.as_ref());
+        }
+
+        let mut norm_path = PathBuf::new();
+
+        for item in &stack {
+            norm_path.push(item.as_ref());
+        }
+
+        norm_path
+    }
+
     /// Reads a symbolic link, returning the file that the link points to.
     ///
     /// This is an alias to [`fs::read_link`].
@@ -3969,5 +4053,68 @@ mod tests {
     fn display_format_flags() {
         assert_eq!(format!("a{:#<5}b", Path::new("").display()), "a#####b");
         assert_eq!(format!("a{:#<5}b", Path::new("a").display()), "aa####b");
+    }
+
+    #[test]
+    pub fn test_normalize() {
+        macro_rules! tn(
+            ($path:expr, $expected:expr) => ( {
+                let mut actual = PathBuf::from($path);
+                let mut actual = actual.normalize();
+                assert!(actual.to_str() == Some($expected),
+                        "normalizing {:?}: Expected {:?}, got {:?}",
+                        $path, $expected,
+                        actual.to_str().unwrap());
+            });
+        );
+
+        tn!("", ".");
+        tn!("/", "/");
+        tn!("foo", "foo");
+        tn!(".", ".");
+        tn!("..", "..");
+        tn!("/foo", "/foo");
+        tn!("/foo/", "/foo");
+        tn!("/foo/bar", "/foo/bar");
+        tn!("foo/bar", "foo/bar");
+        tn!("foo/.", "foo");
+        tn!("foo//bar", "foo/bar");
+
+        // TODO: CONTINUE HERE!!!!!
+        if cfg!(windows) {
+            tn!("a\\b\\c", "a\\b");
+            tn!("\\a", "\\");
+            tn!("\\", "\\");
+
+            tn!("C:\\a\\b", "C:\\a");
+            tn!("C:\\a", "C:\\");
+            tn!("C:\\", "C:\\");
+            tn!("C:a\\b", "C:a");
+            tn!("C:a", "C:");
+            tn!("C:", "C:");
+            tn!("\\\\server\\share\\a\\b", "\\\\server\\share\\a");
+            tn!("\\\\server\\share\\a", "\\\\server\\share\\");
+            tn!("\\\\server\\share", "\\\\server\\share");
+            tn!("\\\\?\\a\\b\\c", "\\\\?\\a\\b");
+            tn!("\\\\?\\a\\b", "\\\\?\\a\\");
+            tn!("\\\\?\\a", "\\\\?\\a");
+            tn!("\\\\?\\C:\\a\\b", "\\\\?\\C:\\a");
+            tn!("\\\\?\\C:\\a", "\\\\?\\C:\\");
+            tn!("\\\\?\\C:\\", "\\\\?\\C:\\");
+            tn!("\\\\?\\UNC\\server\\share\\a\\b",
+                "\\\\?\\UNC\\server\\share\\a",
+                true);
+            tn!("\\\\?\\UNC\\server\\share\\a",
+                "\\\\?\\UNC\\server\\share\\",
+                true);
+            tn!("\\\\?\\UNC\\server\\share",
+                "\\\\?\\UNC\\server\\share",
+                false);
+            tn!("\\\\.\\a\\b\\c", "\\\\.\\a\\b");
+            tn!("\\\\.\\a\\b", "\\\\.\\a\\");
+            tn!("\\\\.\\a", "\\\\.\\a");
+
+            tn!("\\\\?\\a\\b\\", "\\\\?\\a\\");
+        }
     }
 }
