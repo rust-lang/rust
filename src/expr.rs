@@ -1929,7 +1929,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
             .all(|line| line.ends_with('\\'))
         {
             let new_indent = shape.visual_indent(1).indent;
-            return Some(String::from(
+            let indented_string_lit = String::from(
                 string_lit
                     .lines()
                     .map(|line| {
@@ -1942,16 +1942,17 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                     .collect::<Vec<_>>()
                     .join("\n")
                     .trim_left(),
-            ));
+            );
+            return wrap_str(indented_string_lit, context.config.max_width(), shape);
         } else {
-            return Some(string_lit);
+            return wrap_str(string_lit, context.config.max_width(), shape);
         }
     }
 
     if !context.config.force_format_strings()
         && !string_requires_rewrite(context, span, &string_lit, shape)
     {
-        return Some(string_lit);
+        return wrap_str(string_lit, context.config.max_width(), shape);
     }
 
     // Remove the quote characters.
