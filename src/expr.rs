@@ -1597,13 +1597,11 @@ fn rewrite_match_arm(
                 arm_comma(context.config, body, is_last),
             ));
         }
-        (
-            mk_sp(
-                arm.attrs[arm.attrs.len() - 1].span.hi(),
-                arm.pats[0].span.lo(),
-            ),
-            arm.attrs.rewrite(context, shape)?,
-        )
+        let missing_span = mk_sp(
+            arm.attrs[arm.attrs.len() - 1].span.hi(),
+            arm.pats[0].span.lo(),
+        );
+        (missing_span, arm.attrs.rewrite(context, shape)?)
     } else {
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
@@ -1727,14 +1725,10 @@ fn rewrite_match_body(
     };
 
     let forbid_same_line = has_guard && pats_str.contains('\n') && !is_empty_block;
-    let next_line_indent = if is_block {
-        if is_empty_block {
-            shape.indent.block_indent(context.config)
-        } else {
-            shape.indent
-        }
-    } else {
+    let next_line_indent = if !is_block || is_empty_block {
         shape.indent.block_indent(context.config)
+    } else {
+        shape.indent
     };
     let combine_next_line_body = |body_str: &str| {
         if is_block {
