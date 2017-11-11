@@ -443,7 +443,7 @@
                 var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (obj.name === val.name) {
                     if (literalSearch === true) {
-                        if (val.generics.length > 0) {
+                        if (val.generics.length !== 0) {
                             if (obj.generics && obj.length >= val.generics.length) {
                                 var elems = obj.generics.slice(0);
                                 var allFound = true;
@@ -467,7 +467,8 @@
                         }
                         return true;
                     }
-                    // No need to check anything else: we found it. Let's just move on.
+                    // If the type has generics but don't match, then it won't return at this point.
+                    // Otherwise, `checkGenerics` will return 0 and it'll return.
                     var tmp_lev = checkGenerics(obj, val);
                     if (tmp_lev <= MAX_LEV_DISTANCE) {
                         return tmp_lev;
@@ -494,7 +495,9 @@
                         lev_distance = min(levenshtein(obj.generics[x], val.name), lev_distance);
                     }
                 }
-                return lev_distance;
+                // Now whatever happens, the returned distance is "less good" so we should mark it
+                // as such, and so we add 1 to the distance to make it "less good".
+                return lev_distance + 1;
             }
 
             function findArg(obj, val, literalSearch) {
@@ -503,7 +506,7 @@
                 if (obj && obj.type && obj.type.inputs.length > 0) {
                     for (var i = 0; i < obj.type.inputs.length; i++) {
                         var tmp = checkType(obj.type.inputs[i], val, literalSearch);
-                        if (literalSearch && tmp === true) {
+                        if (literalSearch === true && tmp === true) {
                             return true;
                         }
                         lev_distance = min(tmp, lev_distance);
@@ -520,7 +523,7 @@
 
                 if (obj && obj.type && obj.type.output) {
                     var tmp = checkType(obj.type.output, val, literalSearch);
-                    if (literalSearch && tmp === true) {
+                    if (literalSearch === true && tmp === true) {
                         return true;
                     }
                     lev_distance = min(tmp, lev_distance);
