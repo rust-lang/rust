@@ -20,5 +20,8 @@ pub fn exit(n: usize) -> i32 {
         asm!("" :: "r"(n) :: "volatile");
         intrinsics::unreachable()
     }
+    // This return value is just here to generate some extra code for a return
+    // value, making it easier for the test script to detect whether the
+    // compiler deleted it.
     42
 }
