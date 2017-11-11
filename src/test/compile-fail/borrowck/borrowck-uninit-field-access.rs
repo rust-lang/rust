@@ -39,11 +39,11 @@ fn main() {
     let _moved = line1.origin;
     let _ = line1.origin.x + 1; //[ast]~ ERROR use of collaterally moved value: `line1.origin.x`
                                 //[mir]~^       [E0382]
-                                //[mir]~| (Mir) [E0381]
+                                //[mir]~| (Mir) [E0382]
 
     let mut line2 = Line::default();
     let _moved = (line2.origin, line2.middle);
     line2.consume(); //[ast]~ ERROR use of partially moved value: `line2` [E0382]
                      //[mir]~^       [E0382]
-                     //[mir]~| (Mir) [E0381]
+                     //[mir]~| (Mir) [E0382]
 }
