@@ -1605,7 +1605,8 @@ extern "C" {
                                        UseSoftFP: bool,
                                        PositionIndependentExecutable: bool,
                                        FunctionSections: bool,
-                                       DataSections: bool)
+                                       DataSections: bool,
+                                       TrapUnreachable: bool)
                                        -> TargetMachineRef;
     pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
     pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: ModuleRef);
