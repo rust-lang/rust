@@ -30,7 +30,7 @@ If you are already using Rust nightly and have successfully installed tools like
 `cargo add` and `cargo clippy`, just do:
 
 ```sh
-$ cargo install --git https://github.com/ibabushkin/rust-semverver
+$ cargo +nightly install --git https://github.com/ibabushkin/rust-semverver
 ```
 
 <details>
