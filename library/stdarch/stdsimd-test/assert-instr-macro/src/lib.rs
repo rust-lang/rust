@@ -28,8 +28,8 @@ pub fn assert_instr(
         .expect("expected #[assert_instr(instr, a = b, ...)]");
     let item =
         syn::parse::<syn::Item>(item).expect("must be attached to an item");
-    let func = match item.node {
-        syn::ItemKind::Fn(ref f) => f,
+    let func = match item {
+        syn::Item::Fn(ref f) => f,
         _ => panic!("must be attached to a function"),
     };
 
@@ -70,7 +70,8 @@ pub fn assert_instr(
                 }
             };
         }
-        let attrs = item.attrs
+
+        let attrs = func.attrs
             .iter()
             .filter(|attr| {
                 attr.path
