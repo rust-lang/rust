@@ -49,6 +49,7 @@
 #![feature(inclusive_range_syntax)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(macro_vis_matcher)]
+#![feature(match_default_bindings)]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]

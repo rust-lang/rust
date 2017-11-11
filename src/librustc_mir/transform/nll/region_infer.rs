@@ -11,6 +11,7 @@
 use super::RegionIndex;
 use super::free_regions::FreeRegions;
 use rustc::infer::InferCtxt;
+use rustc::middle::free_region::FreeRegionMap;
 use rustc::mir::{Location, Mir};
 use rustc::ty;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -26,6 +27,16 @@ pub struct RegionInferenceContext<'tcx> {
     /// from as well as its final inferred value.
     definitions: IndexVec<RegionIndex, RegionDefinition<'tcx>>,
 
+    /// The liveness constraints added to each region. For most
+    /// regions, these start out empty and steadily grow, though for
+    /// each free region R they start out containing the entire CFG
+    /// and `end(R)`.
+    liveness_constraints: IndexVec<RegionIndex, Region>,
+
+    /// The final inferred values of the inference variables; `None`
+    /// until `solve` is invoked.
+    inferred_values: Option<IndexVec<RegionIndex, Region>>,
+
     /// The indices of all "free regions" in scope. These are the
     /// lifetime parameters (anonymous and named) declared in the
     /// function signature:
@@ -39,6 +50,8 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
+
+    free_region_map: &'tcx FreeRegionMap<'tcx>,
 }
 
 #[derive(Default)]
@@ -46,15 +59,6 @@ struct RegionDefinition<'tcx> {
     /// If this is a free-region, then this is `Some(X)` where `X` is
     /// the name of the region.
     name: Option<ty::Region<'tcx>>,
-
-    /// If true, this is a constant region which cannot grow larger.
-    /// This is used for named regions as well as `'static`.
-    constant: bool,
-
-    /// The current value of this inference variable. This starts out
-    /// empty, but grows as we add constraints. The final value is
-    /// determined when `solve()` is executed.
-    value: Region,
 }
 
 /// The value of an individual region variable. Region variables
@@ -108,7 +112,7 @@ pub struct Constraint {
     point: Location,
 }
 
-impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
+impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
     /// of those will be constant regions representing the free
@@ -122,8 +126,11 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
             definitions: (0..num_region_variables)
                 .map(|_| RegionDefinition::default())
                 .collect(),
+            liveness_constraints: IndexVec::from_elem_n(Region::default(), num_region_variables),
+            inferred_values: None,
             constraints: Vec::new(),
             free_regions: Vec::new(),
+            free_region_map: free_regions.free_region_map,
         };
 
         result.init_free_regions(free_regions, mir);
@@ -151,9 +158,9 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// is just itself. R1 (`'b`) in contrast also outlives `'a` and
     /// hence contains R0 and R1.
     fn init_free_regions(&mut self, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) {
-        let &FreeRegions {
-            ref indices,
-            ref free_region_map,
+        let FreeRegions {
+            indices,
+            free_region_map: _,
         } = free_regions;
 
         // For each free region X:
@@ -164,37 +171,27 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
 
             // Initialize the name and a few other details.
             self.definitions[variable].name = Some(free_region);
-            self.definitions[variable].constant = true;
 
             // Add all nodes in the CFG to `definition.value`.
             for (block, block_data) in mir.basic_blocks().iter_enumerated() {
-                let definition = &mut self.definitions[variable];
+                let liveness_constraint = &mut self.liveness_constraints[variable];
                 for statement_index in 0..block_data.statements.len() + 1 {
                     let location = Location {
                         block,
                         statement_index,
                     };
-                    definition.value.add_point(location);
+                    liveness_constraint.add_point(location);
                 }
             }
 
             // Add `end(X)` into the set for X.
-            self.definitions[variable].value.add_free_region(variable);
-
-            // Go through each region Y that outlives X (i.e., where
-            // Y: X is true). Add `end(X)` into the set for `Y`.
-            for superregion in free_region_map.regions_that_outlive(&free_region) {
-                let superregion_index = RegionIndex::new(indices[superregion]);
-                self.definitions[superregion_index]
-                    .value
-                    .add_free_region(variable);
-            }
+            self.liveness_constraints[variable].add_free_region(variable);
 
             debug!(
                 "init_free_regions: region variable for `{:?}` is `{:?}` with value `{:?}`",
                 free_region,
                 variable,
-                self.definitions[variable].value
+                self.liveness_constraints[variable],
             );
         }
     }
@@ -208,25 +205,25 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Until `solve()` executes, this value is not particularly meaningful.
     pub fn region_contains_point(&self, r: RegionIndex, p: Location) -> bool {
-        self.definitions[r].value.contains_point(p)
+        let inferred_values = self.inferred_values
+            .as_ref()
+            .expect("region values not yet inferred");
+        inferred_values[r].contains_point(p)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
     pub(super) fn region_value(&self, r: RegionIndex) -> &fmt::Debug {
-        &self.definitions[r].value
+        let inferred_values = self.inferred_values
+            .as_ref()
+            .expect("region values not yet inferred");
+        &inferred_values[r]
     }
 
     /// Indicates that the region variable `v` is live at the point `point`.
     pub(super) fn add_live_point(&mut self, v: RegionIndex, point: Location) {
         debug!("add_live_point({:?}, {:?})", v, point);
-        let definition = &mut self.definitions[v];
-        if !definition.constant {
-            definition.value.add_point(point);
-        } else {
-            // Constants are used for free regions, which already
-            // contain all the points in the control-flow graph.
-            assert!(definition.value.contains_point(point));
-        }
+        assert!(self.inferred_values.is_none(), "values already inferred");
+        self.liveness_constraints[v].add_point(point);
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
@@ -238,6 +235,7 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
         point: Location,
     ) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
+        assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(Constraint {
             span,
             sup,
@@ -247,19 +245,62 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Perform region inference.
-    pub(super) fn solve(&mut self, infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &Mir<'tcx>) {
-        let errors = self.propagate_constraints(mir);
+    pub(super) fn solve(&mut self, infcx: &InferCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) {
+        assert!(self.inferred_values.is_none(), "values already inferred");
 
-        // worst error msg ever
-        for (fr1, span, fr2) in errors {
-            infcx.tcx.sess.span_err(
-                span,
-                &format!(
-                    "free region `{}` does not outlive `{}`",
-                    self.definitions[fr1].name.unwrap(),
-                    self.definitions[fr2].name.unwrap()
-                ),
-            );
+        // Find the minimal regions that can solve the constraints. This is infallible.
+        self.propagate_constraints(mir);
+
+        // Now, see whether any of the constraints were too strong. In particular,
+        // we want to check for a case where a free region exceeded its bounds.
+        // Consider:
+        //
+        //     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
+        //
+        // In this case, returning `x` requires `&'a u32 <: &'b u32`
+        // and hence we establish (transitively) a constraint that
+        // `'a: 'b`. The `propagate_constraints` code above will
+        // therefore add `end('a)` into the region for `'b` -- but we
+        // have no evidence that `'b` outlives `'a`, so we want to report
+        // an error.
+        for free_region in &self.free_regions {
+            self.check_free_region(infcx, *free_region);
+        }
+    }
+
+    fn check_free_region(&self, infcx: &InferCtxt<'_, '_, 'tcx>, fr: RegionIndex) {
+        let inferred_values = self.inferred_values.as_ref().unwrap();
+        let fr_definition = &self.definitions[fr];
+        let fr_name = fr_definition.name.unwrap();
+        let fr_value = &inferred_values[fr];
+
+        // Find every region `o` such that `fr: o`
+        // (because `fr` includes `end(o)`).
+        for &outlived_fr in &fr_value.free_regions {
+            // `fr` includes `end(fr)`, that's not especially
+            // interesting.
+            if fr == outlived_fr {
+                continue;
+            }
+
+            let outlived_fr_definition = &self.definitions[outlived_fr];
+            let outlived_fr_name = outlived_fr_definition.name.unwrap();
+
+            // Check that `o <= fr`. If not, report an error.
+            if !self.free_region_map
+                .sub_free_regions(outlived_fr_name, fr_name)
+            {
+                // worst error msg ever
+                let blame_span = self.blame_span(fr, outlived_fr);
+                infcx.tcx.sess.span_err(
+                    blame_span,
+                    &format!(
+                        "free region `{}` does not outlive `{}`",
+                        fr_name,
+                        outlived_fr_name
+                    ),
+                );
+            }
         }
     }
 
@@ -267,59 +308,88 @@ impl<'a, 'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    fn propagate_constraints(
-        &mut self,
-        mir: &Mir<'tcx>,
-    ) -> Vec<(RegionIndex, Span, RegionIndex)> {
+    fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
         let mut changed = true;
         let mut dfs = Dfs::new(mir);
-        let mut error_regions = FxHashSet();
-        let mut errors = vec![];
+
+        // The initial values for each region are derived from the liveness
+        // constraints we have accumulated.
+        let mut inferred_values = self.liveness_constraints.clone();
+
         while changed {
             changed = false;
+            debug!("propagate_constraints: --------------------");
             for constraint in &self.constraints {
-                debug!("constraint: {:?}", constraint);
-                let sub = &self.definitions[constraint.sub].value.clone();
-                let sup_def = &mut self.definitions[constraint.sup];
+                debug!("propagate_constraints: constraint={:?}", constraint);
 
-                debug!("    sub (before): {:?}", sub);
-                debug!("    sup (before): {:?}", sup_def.value);
+                let sub = &inferred_values[constraint.sub].clone();
+                let sup_value = &mut inferred_values[constraint.sup];
 
-                if !sup_def.constant {
-                    // If this is not a constant, then grow the value as needed to
-                    // accommodate the outlives constraint.
+                // Grow the value as needed to accommodate the
+                // outlives constraint.
 
-                    if dfs.copy(sub, &mut sup_def.value, constraint.point) {
-                        changed = true;
-                    }
-
-                    debug!("    sup (after) : {:?}", sup_def.value);
-                    debug!("    changed     : {:?}", changed);
-                } else {
-                    // If this is a constant, check whether it *would
-                    // have* to grow in order for the constraint to be
-                    // satisfied. If so, create an error.
-
-                    let mut sup_value = sup_def.value.clone();
-                    if dfs.copy(sub, &mut sup_value, constraint.point) {
-                        // Constant values start out with the entire
-                        // CFG, so it must be some new free region
-                        // that was added. Find one.
-                        let &new_region = sup_value
-                            .free_regions
-                            .difference(&sup_def.value.free_regions)
-                            .next()
-                            .unwrap();
-                        debug!("    new_region : {:?}", new_region);
-                        if error_regions.insert(constraint.sup) {
-                            errors.push((constraint.sup, constraint.span, new_region));
-                        }
-                    }
+                if dfs.copy(sub, sup_value, constraint.point) {
+                    debug!("propagate_constraints:   sub={:?}", sub);
+                    debug!("propagate_constraints:   sup={:?}", sup_value);
+                    changed = true;
                 }
             }
             debug!("\n");
         }
-        errors
+
+        self.inferred_values = Some(inferred_values);
+    }
+
+    /// Tries to finds a good span to blame for the fact that `fr1`
+    /// contains `fr2`.
+    fn blame_span(&self, fr1: RegionIndex, fr2: RegionIndex) -> Span {
+        // Find everything that influenced final value of `fr`.
+        let influenced_fr1 = self.dependencies(fr1);
+
+        // Try to find some outlives constraint `'X: fr2` where `'X`
+        // influenced `fr1`. Blame that.
+        //
+        // NB, this is a pretty bad choice most of the time. In
+        // particular, the connection between `'X` and `fr1` may not
+        // be obvious to the user -- not to mention the naive notion
+        // of dependencies, which doesn't account for the locations of
+        // contraints at all. But it will do for now.
+        for constraint in &self.constraints {
+            if constraint.sub == fr2 && influenced_fr1[constraint.sup] {
+                return constraint.span;
+            }
+        }
+
+        bug!(
+            "could not find any constraint to blame for {:?}: {:?}",
+            fr1,
+            fr2
+        );
+    }
+
+    /// Finds all regions whose values `'a` may depend on in some way.
+    /// Basically if there exists a constraint `'a: 'b @ P`, then `'b`
+    /// and `dependencies('b)` will be in the final set.
+    ///
+    /// Used during error reporting, extremely naive and inefficient.
+    fn dependencies(&self, r0: RegionIndex) -> IndexVec<RegionIndex, bool> {
+        let mut result_set = IndexVec::from_elem(false, &self.definitions);
+        let mut changed = true;
+        result_set[r0] = true;
+
+        while changed {
+            changed = false;
+            for constraint in &self.constraints {
+                if result_set[constraint.sup] {
+                    if !result_set[constraint.sub] {
+                        result_set[constraint.sub] = true;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        result_set
     }
 }
 
