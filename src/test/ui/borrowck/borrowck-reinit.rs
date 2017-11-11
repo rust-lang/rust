@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z borrowck-mir -Z emit-end-regions
 
-//compile-flags: -Z emit-end-regions -Z borrowck-mir
-
-fn foo(_:String) {}
-
-fn main()
-{
-    let my_str = "hello".to_owned();
-    match Some(42) {
-        Some(_) if { drop(my_str); false } => {}
-        Some(_) => {}
-        None => { foo(my_str); } //~ ERROR (Mir) [E0382]
-    }
+fn main() {
+    let mut x = Box::new(0);
+    let _u = x; // error shouldn't note this move
+    x = Box::new(1);
+    drop(x);
+    let _ = (1,x);
 }

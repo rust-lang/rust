@@ -52,14 +52,14 @@
             var start = elemClass.indexOf(className);
             if (start == -1) {
                 return false;
-            } else if (elemClass.length == className.length) {
+            } else if (elemClass.length === className.length) {
                 return true;
             } else {
-                if (start > 0 && elemClass[start - 1] != ' ') {
+                if (start > 0 && elemClass[start - 1] !== ' ') {
                     return false;
                 }
                 var end = start + className.length;
-                if (end < elemClass.length && elemClass[end] != ' ') {
+                if (end < elemClass.length && elemClass[end] !== ' ') {
                     return false;
                 }
                 return true;
@@ -122,6 +122,7 @@
     }
 
     function highlightSourceLines(ev) {
+        var search = document.getElementById("search");
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
             from = parseInt(match[1], 10);
@@ -144,6 +145,17 @@
             })
             for (i = from; i <= to; ++i) {
                 addClass(document.getElementById(i), 'line-highlighted');
+            }
+        } else if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+            addClass(search, "hidden");
+            removeClass(document.getElementById("main"), "hidden");
+            var hash = ev.newURL.slice(ev.newURL.indexOf('#') + 1);
+            if (browserSupportsHistoryApi()) {
+                history.replaceState(hash, "", "?search=#" + hash);
+            }
+            var elem = document.getElementById(hash);
+            if (elem) {
+                elem.scrollIntoView();
             }
         }
     }
@@ -1552,6 +1564,22 @@
             });
         }
     });
+
+    var search_input = document.getElementsByClassName("search-input")[0];
+
+    if (search_input) {
+        search_input.onfocus = function() {
+            if (search_input.value !== "") {
+                addClass(document.getElementById("main"), "hidden");
+                removeClass(document.getElementById("search"), "hidden");
+                if (browserSupportsHistoryApi()) {
+                    history.replaceState(search_input.value,
+                                         "",
+                                         "?search=" + encodeURIComponent(search_input.value));
+                }
+            }
+        };
+    }
 }());
 
 // Sets the focus on the search bar at the top of the page
