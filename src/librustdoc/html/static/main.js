@@ -145,7 +145,7 @@
                 if (x) {
                     x.scrollIntoView();
                 }
-            };
+            }
             onEach(document.getElementsByClassName('line-numbers'), function(e) {
                 onEach(e.getElementsByTagName('span'), function(i_e) {
                     removeClass(i_e, 'line-highlighted');
@@ -388,16 +388,6 @@
                 return b;
             }
 
-            function nbElements(obj) {
-                var size = 0, key;
-                for (key in obj) {
-                    if (obj.hasOwnProperty(key)) {
-                        size += 1;
-                    }
-                }
-                return size;
-            }
-
             function extractGenerics(val) {
                 val = val.toLowerCase();
                 if (val.indexOf('<') !== -1) {
@@ -568,6 +558,7 @@
             if ((val.charAt(0) === "\"" || val.charAt(0) === "'") &&
                 val.charAt(val.length - 1) === val.charAt(0))
             {
+                var results_length = 0;
                 val = extractGenerics(val.substr(1, val.length - 2));
                 for (var i = 0; i < nSearchWords; ++i) {
                     var param = findArg(searchIndex[i], val, true);
@@ -576,8 +567,10 @@
                     if (searchWords[i] === val.name) {
                         // filter type: ... queries
                         if (typePassesFilter(typeFilter, searchIndex[i].ty) &&
-                            results[ty.path + ty.name] === undefined) {
+                            results[ty.path + ty.name] === undefined)
+                        {
                             results[ty.path + ty.name] = {id: i, index: -1};
+                            results_length += 1;
                         }
                     } else if ((param === true || returned === true) &&
                                typePassesFilter(typeFilter, searchIndex[i].ty)) {
@@ -589,6 +582,7 @@
                                 param: param,
                                 returned: returned,
                             };
+                            results_length += 1;
                         } else {
                             if (param === true) {
                                 results[ty.path + ty.name].param = true;
@@ -598,7 +592,7 @@
                             }
                         }
                     }
-                    if (nbElements(results) === max) {
+                    if (results_length === max) {
                         break;
                     }
                 }
@@ -612,7 +606,7 @@
                 var input = parts[0];
                 // sort inputs so that order does not matter
                 var inputs = input.split(",").map(trimmer).sort();
-                for (var i = 0; i < inputs.length; i++) {
+                for (var i = 0; i < inputs.length; ++i) {
                     inputs[i] = extractGenerics(inputs[i]);
                 }
                 var output = extractGenerics(parts[1]);
@@ -671,6 +665,7 @@
                 // gather matching search results up to a certain maximum
                 val = val.replace(/\_/g, "");
                 var valGenerics = extractGenerics(val);
+                var results_length = 0;
                 for (var i = 0; i < split.length; ++i) {
                     for (var j = 0; j < nSearchWords; ++j) {
                         var lev_distance;
@@ -731,6 +726,7 @@
                                     param: param,
                                     returned: returned,
                                 };
+                                results_length += 1;
                             } else {
                                 if (results[ty.path + ty.name].lev > lev) {
                                     results[ty.path + ty.name].lev = lev;
@@ -743,7 +739,7 @@
                                 }
                             }
                         }
-                        if (nbElements(results) === max) {
+                        if (results_length === max) {
                             break;
                         }
                     }
