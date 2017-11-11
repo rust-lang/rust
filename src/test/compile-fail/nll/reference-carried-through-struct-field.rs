@@ -17,8 +17,6 @@ struct Wrap<'a> { w: &'a mut u32 }
 fn foo() {
     let mut x = 22;
     let wrapper = Wrap { w: &mut x };
-    //~^ ERROR cannot assign to `x` because it is borrowed (Mir) [E0506]
-    //~^^ ERROR cannot use `x` because it was mutably borrowed (Mir) [E0503]
     x += 1; //[ast]~ ERROR cannot assign to `x` because it is borrowed [E0506]
     //[mir]~^ ERROR cannot assign to `x` because it is borrowed (Ast) [E0506]
     //[mir]~^^ ERROR cannot assign to `x` because it is borrowed (Mir) [E0506]

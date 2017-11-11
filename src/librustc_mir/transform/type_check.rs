@@ -1056,28 +1056,39 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    #[allow(dead_code)]
     fn check_rvalue(&mut self, mir: &Mir<'tcx>, rv: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
         match rv {
-            Rvalue::Aggregate(ref ak, ref ops) => {
+            Rvalue::Aggregate(ak, ops) => {
                 match **ak {
                     // tuple rvalue field type is always the type of the op. Nothing to check here.
                     AggregateKind::Tuple => { },
                     _ => {
                         for (i, op) in ops.iter().enumerate() {
-                            let field_ty = if let Ok(field_ty) = self.aggregate_field_ty(ak, i, location) {
-                                field_ty
-                            } else {
-                                // TODO(nashenas88) log span_mirbug terr??
-                                continue;
+                            let field_ty = match self.aggregate_field_ty(ak, i, location) {
+                                Ok(field_ty) => field_ty,
+                                Err(FieldAccessError::OutOfRange { field_count }) => {
+                                    span_mirbug!(
+                                        self,
+                                        rv,
+                                        "accessed field #{} but variant only has {}",
+                                        i,
+                                        field_count);
+                                    continue;
+                                },
                             };
                             let op_ty = match op {
                                 Operand::Consume(lv) => lv.ty(mir, tcx).to_ty(tcx),
                                 Operand::Constant(c) => c.ty,
                             };
-                            if let Err(_terr) = self.sub_types(op_ty, field_ty, location.at_successor_within_block()) {
-                                // TODO(nashenas88) log span_mirbug terr??
+                            if let Err(terr) = self.sub_types(op_ty, field_ty, location.at_successor_within_block()) {
+                                span_mirbug!(
+                                    self,
+                                    rv,
+                                    "{:?} is not a subtype of {:?}: {:?}",
+                                    op_ty,
+                                    field_ty,
+                                    terr);
                             }
                         }
                     },
