@@ -267,10 +267,10 @@ impl<'tcx> Mir<'tcx> {
         let block = &self[location.block];
         let stmts = &block.statements;
         let idx = location.statement_index;
-        if location.statement_index < stmts.len() {
+        if idx < stmts.len() {
             &stmts[idx].source_info
         } else {
-            assert!(location.statement_index == stmts.len());
+            assert!(idx == stmts.len());
             &block.terminator().source_info
         }
     }
