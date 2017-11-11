@@ -366,6 +366,17 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
+
+    let size_hint = r.size_hint();
+    if size_hint > 0 {
+        unsafe {
+            g.buf.reserve(size_hint);
+            let capacity = g.buf.capacity();
+            g.buf.set_len(capacity);
+            r.initializer().initialize(&mut g.buf[g.len..]);
+        }
+    }
+
     loop {
         if g.len == g.buf.len() {
             unsafe {
