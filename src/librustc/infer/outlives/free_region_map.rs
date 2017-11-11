@@ -29,31 +29,8 @@ impl<'tcx> FreeRegionMap<'tcx> {
         self.relation.is_empty()
     }
 
-    pub fn relate_free_regions_from_predicates(&mut self,
-                                               predicates: &[ty::Predicate<'tcx>]) {
-        debug!("relate_free_regions_from_predicates(predicates={:?})", predicates);
-        for predicate in predicates {
-            match *predicate {
-                ty::Predicate::Projection(..) |
-                ty::Predicate::Trait(..) |
-                ty::Predicate::Equate(..) |
-                ty::Predicate::Subtype(..) |
-                ty::Predicate::WellFormed(..) |
-                ty::Predicate::ObjectSafe(..) |
-                ty::Predicate::ClosureKind(..) |
-                ty::Predicate::TypeOutlives(..) |
-                ty::Predicate::ConstEvaluatable(..) => {
-                    // No region bounds here
-                }
-                ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
-                    self.relate_regions(r_b, r_a);
-                }
-            }
-        }
-    }
-
-    /// Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
-    /// (with the exception that `'static: 'x` is not notable)
+    // Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
+    // (with the exception that `'static: 'x` is not notable)
     pub fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
         debug!("relate_regions(sub={:?}, sup={:?})", sub, sup);
         if is_free_or_static(sub) && is_free(sup) {

@@ -17,7 +17,6 @@ use driver;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
-use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::middle::resolve_lifetime;
 use rustc::ty::subst::{Kind, Subst};
@@ -25,6 +24,7 @@ use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::maps::OnDiskCache;
 use rustc::infer::{self, InferOk, InferResult};
+use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
@@ -162,14 +162,15 @@ fn test_env<F>(source_string: &str,
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
             let mut region_scope_tree = region::ScopeTree::default();
+            let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
             body(Env {
                 infcx: &infcx,
                 region_scope_tree: &mut region_scope_tree,
-                param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+                param_env: param_env,
             });
-            let free_regions = FreeRegionMap::new();
+            let outlives_env = OutlivesEnvironment::new(param_env);
             let def_id = tcx.hir.local_def_id(ast::CRATE_NODE_ID);
-            infcx.resolve_regions_and_report_errors(def_id, &region_scope_tree, &free_regions);
+            infcx.resolve_regions_and_report_errors(def_id, &region_scope_tree, &outlives_env);
             assert_eq!(tcx.sess.err_count(), expected_err_count);
         });
     });
