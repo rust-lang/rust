@@ -11,6 +11,7 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 use rustc::hir;
+use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
@@ -1549,6 +1550,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         }
     }
 
+    // FIXME Instead of passing usize, Field should be passed
     // End-user visible description of the `field_index`nth field of `base`
     fn describe_field(&self, base: &Lvalue, field_index: usize) -> String {
         match *base {
@@ -1600,7 +1602,20 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 },
                 ty::TyArray(ty, _) | ty::TySlice(ty) => {
                     self.describe_field_from_ty(&ty, field_index)
-                }
+                },
+                ty::TyClosure(closure_def_id, _) => {
+                    // Convert the def-id into a node-id. node-ids are only valid for
+                    // the local code in the current crate, so this returns an `Option` in case
+                    // the closure comes from another crate. But in that case we wouldn't
+                    // be borrowck'ing it, so we can just unwrap:
+                    let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
+                    let local_def = self.tcx.with_freevars(node_id, |fv| fv[field_index].def);
+
+                    match local_def {
+                        Def::Local(local_node_id) => self.tcx.hir.name(local_node_id).to_string(),
+                        _ => unreachable!()
+                    }
+                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
                     // (https://github.com/rust-lang/rfcs/pull/1546)
