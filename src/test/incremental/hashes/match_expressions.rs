@@ -36,7 +36,7 @@ pub fn add_arm(x: u32) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", 
+#[rustc_clean(cfg="cfail2",
 except="HirBody,MirValidated,MirOptimized,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
