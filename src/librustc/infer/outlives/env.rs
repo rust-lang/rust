@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, GenericKind};
+use infer::{GenericKind, InferCtxt};
 use infer::outlives::free_region_map::FreeRegionMap;
-use infer::outlives::implied_bounds::ImpliedBound;
+use infer::outlives::implied_bounds::{self, OutlivesBound};
 use ty::{self, Ty};
 
 use syntax::ast;
@@ -50,7 +50,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
             region_bound_pairs: vec![],
         };
 
-        env.init_free_regions_from_predicates();
+        env.add_outlives_bounds(None, implied_bounds::explicit_outlives_bounds(param_env));
 
         env
     }
@@ -144,65 +144,54 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
         for &ty in fn_sig_tys {
             let ty = infcx.resolve_type_vars_if_possible(&ty);
             debug!("add_implied_bounds: ty = {}", ty);
-            let implied_bounds = infcx.implied_bounds(self.param_env, body_id, ty, span);
-
-            // But also record other relationships, such as `T:'x`,
-            // that don't go into the free-region-map but which we use
-            // here.
-            for implication in implied_bounds {
-                debug!("add_implied_bounds: implication={:?}", implication);
-                match implication {
-                    ImpliedBound::RegionSubRegion(
-                        r_a @ &ty::ReEarlyBound(_),
-                        &ty::ReVar(vid_b),
-                    ) |
-                    ImpliedBound::RegionSubRegion(r_a @ &ty::ReFree(_), &ty::ReVar(vid_b)) => {
-                        infcx.add_given(r_a, vid_b);
-                    }
-                    ImpliedBound::RegionSubParam(r_a, param_b) => {
-                        self.region_bound_pairs
-                            .push((r_a, GenericKind::Param(param_b)));
-                    }
-                    ImpliedBound::RegionSubProjection(r_a, projection_b) => {
-                        self.region_bound_pairs
-                            .push((r_a, GenericKind::Projection(projection_b)));
-                    }
-                    ImpliedBound::RegionSubRegion(r_a, r_b) => {
-                        // In principle, we could record (and take
-                        // advantage of) every relationship here, but
-                        // we are also free not to -- it simply means
-                        // strictly less that we can successfully type
-                        // check. Right now we only look for things
-                        // relationships between free regions. (It may
-                        // also be that we should revise our inference
-                        // system to be more general and to make use
-                        // of *every* relationship that arises here,
-                        // but presently we do not.)
-                        self.free_region_map.relate_regions(r_a, r_b);
-                    }
-                }
-            }
+            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
+            self.add_outlives_bounds(Some(infcx), implied_bounds)
         }
     }
 
-    fn init_free_regions_from_predicates(&mut self) {
-        debug!("init_free_regions_from_predicates()");
-        for predicate in self.param_env.caller_bounds {
-            debug!("init_free_regions_from_predicates: predicate={:?}", predicate);
-            match *predicate {
-                ty::Predicate::Projection(..) |
-                ty::Predicate::Trait(..) |
-                ty::Predicate::Equate(..) |
-                ty::Predicate::Subtype(..) |
-                ty::Predicate::WellFormed(..) |
-                ty::Predicate::ObjectSafe(..) |
-                ty::Predicate::ClosureKind(..) |
-                ty::Predicate::TypeOutlives(..) |
-                ty::Predicate::ConstEvaluatable(..) => {
-                    // No region bounds here
+    /// Processes outlives bounds that are known to hold, whether from implied or other sources.
+    ///
+    /// The `infcx` parameter is optional; if the implied bounds may
+    /// contain inference variables, it should be supplied, in which
+    /// case we will register "givens" on the inference context. (See
+    /// `RegionConstraintData`.)
+    fn add_outlives_bounds<I>(
+        &mut self,
+        infcx: Option<&InferCtxt<'a, 'gcx, 'tcx>>,
+        outlives_bounds: I,
+    ) where
+        I: IntoIterator<Item = OutlivesBound<'tcx>>,
+    {
+        // But also record other relationships, such as `T:'x`,
+        // that don't go into the free-region-map but which we use
+        // here.
+        for outlives_bound in outlives_bounds {
+            debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
+            match outlives_bound {
+                OutlivesBound::RegionSubRegion(r_a @ &ty::ReEarlyBound(_), &ty::ReVar(vid_b)) |
+                OutlivesBound::RegionSubRegion(r_a @ &ty::ReFree(_), &ty::ReVar(vid_b)) => {
+                    infcx.expect("no infcx provided but region vars found").add_given(r_a, vid_b);
                 }
-                ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
-                    self.free_region_map.relate_regions(r_b, r_a);
+                OutlivesBound::RegionSubParam(r_a, param_b) => {
+                    self.region_bound_pairs
+                        .push((r_a, GenericKind::Param(param_b)));
+                }
+                OutlivesBound::RegionSubProjection(r_a, projection_b) => {
+                    self.region_bound_pairs
+                        .push((r_a, GenericKind::Projection(projection_b)));
+                }
+                OutlivesBound::RegionSubRegion(r_a, r_b) => {
+                    // In principle, we could record (and take
+                    // advantage of) every relationship here, but
+                    // we are also free not to -- it simply means
+                    // strictly less that we can successfully type
+                    // check. Right now we only look for things
+                    // relationships between free regions. (It may
+                    // also be that we should revise our inference
+                    // system to be more general and to make use
+                    // of *every* relationship that arises here,
+                    // but presently we do not.)
+                    self.free_region_map.relate_regions(r_a, r_b);
                 }
             }
         }

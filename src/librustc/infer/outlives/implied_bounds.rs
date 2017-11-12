@@ -16,28 +16,32 @@ use ty::{self, Ty, TypeFoldable};
 use ty::outlives::Component;
 use ty::wf;
 
-/// Implied bounds are region relationships that we deduce
-/// automatically.  The idea is that (e.g.) a caller must check that a
-/// function's argument types are well-formed immediately before
-/// calling that fn, and hence the *callee* can assume that its
-/// argument types are well-formed. This may imply certain relationships
-/// between generic parameters. For example:
-///
-///     fn foo<'a,T>(x: &'a T)
-///
-/// can only be called with a `'a` and `T` such that `&'a T` is WF.
-/// For `&'a T` to be WF, `T: 'a` must hold. So we can assume `T: 'a`.
+/// Outlives bounds are relationships between generic parameters,
+/// whether they both be regions (`'a: 'b`) or whether types are
+/// involved (`T: 'a`).  These relationships can be extracted from the
+/// full set of predicates we understand or also from types (in which
+/// case they are called implied bounds). They are fed to the
+/// `OutlivesEnv` which in turn is supplied to the region checker and
+/// other parts of the inference system.
 #[derive(Debug)]
-pub enum ImpliedBound<'tcx> {
+pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
     RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
 }
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
-    /// Compute the implied bounds that a callee/impl can assume based on
-    /// the fact that caller/projector has ensured that `ty` is WF.  See
-    /// the `ImpliedBound` type for more details.
+    /// Implied bounds are region relationships that we deduce
+    /// automatically.  The idea is that (e.g.) a caller must check that a
+    /// function's argument types are well-formed immediately before
+    /// calling that fn, and hence the *callee* can assume that its
+    /// argument types are well-formed. This may imply certain relationships
+    /// between generic parameters. For example:
+    ///
+    ///     fn foo<'a,T>(x: &'a T)
+    ///
+    /// can only be called with a `'a` and `T` such that `&'a T` is WF.
+    /// For `&'a T` to be WF, `T: 'a` must hold. So we can assume `T: 'a`.
     ///
     /// # Parameters
     ///
@@ -48,13 +52,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// - `ty`, the type that we are supposed to assume is WF.
     /// - `span`, a span to use when normalizing, hopefully not important,
     ///   might be useful if a `bug!` occurs.
-    pub fn implied_bounds(
+    pub fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: ast::NodeId,
         ty: Ty<'tcx>,
         span: Span,
-    ) -> Vec<ImpliedBound<'tcx>> {
+    ) -> Vec<OutlivesBound<'tcx>> {
         let tcx = self.tcx;
 
         // Sometimes when we ask what it takes for T: WF, we get back that
@@ -76,8 +80,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             // than the ultimate set. (Note: normally there won't be
             // unresolved inference variables here anyway, but there might be
             // during typeck under some circumstances.)
-            let obligations =
-                wf::obligations(self, param_env, body_id, ty, span).unwrap_or(vec![]);
+            let obligations = wf::obligations(self, param_env, body_id, ty, span).unwrap_or(vec![]);
 
             // NB: All of these predicates *ought* to be easily proven
             // true. In fact, their correctness is (mostly) implied by
@@ -105,7 +108,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 obligations
                     .iter()
                     .filter(|o| o.predicate.has_infer_types())
-                    .cloned());
+                    .cloned(),
+            );
 
             // From the full set of obligations, just filter down to the
             // region relationships.
@@ -125,25 +129,21 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                         vec![]
                     }
 
-                    ty::Predicate::RegionOutlives(ref data) => {
-                        match data.no_late_bound_regions() {
-                            None => vec![],
-                            Some(ty::OutlivesPredicate(r_a, r_b)) => {
-                                vec![ImpliedBound::RegionSubRegion(r_b, r_a)]
-                            }
+                    ty::Predicate::RegionOutlives(ref data) => match data.no_late_bound_regions() {
+                        None => vec![],
+                        Some(ty::OutlivesPredicate(r_a, r_b)) => {
+                            vec![OutlivesBound::RegionSubRegion(r_b, r_a)]
                         }
-                    }
+                    },
 
-                    ty::Predicate::TypeOutlives(ref data) => {
-                        match data.no_late_bound_regions() {
-                            None => vec![],
-                            Some(ty::OutlivesPredicate(ty_a, r_b)) => {
-                                let ty_a = self.resolve_type_vars_if_possible(&ty_a);
-                                let components = tcx.outlives_components(ty_a);
-                                Self::implied_bounds_from_components(r_b, components)
-                            }
+                    ty::Predicate::TypeOutlives(ref data) => match data.no_late_bound_regions() {
+                        None => vec![],
+                        Some(ty::OutlivesPredicate(ty_a, r_b)) => {
+                            let ty_a = self.resolve_type_vars_if_possible(&ty_a);
+                            let components = tcx.outlives_components(ty_a);
+                            Self::implied_bounds_from_components(r_b, components)
                         }
-                    }
+                    },
                 }
             }));
         }
@@ -165,17 +165,17 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     fn implied_bounds_from_components(
         sub_region: ty::Region<'tcx>,
         sup_components: Vec<Component<'tcx>>,
-    ) -> Vec<ImpliedBound<'tcx>> {
+    ) -> Vec<OutlivesBound<'tcx>> {
         sup_components
             .into_iter()
             .flat_map(|component| {
                 match component {
                     Component::Region(r) =>
-                        vec![ImpliedBound::RegionSubRegion(sub_region, r)],
+                        vec![OutlivesBound::RegionSubRegion(sub_region, r)],
                     Component::Param(p) =>
-                        vec![ImpliedBound::RegionSubParam(sub_region, p)],
+                        vec![OutlivesBound::RegionSubParam(sub_region, p)],
                     Component::Projection(p) =>
-                        vec![ImpliedBound::RegionSubProjection(sub_region, p)],
+                        vec![OutlivesBound::RegionSubProjection(sub_region, p)],
                     Component::EscapingProjection(_) =>
                     // If the projection has escaping regions, don't
                     // try to infer any implied bounds even for its
@@ -192,4 +192,27 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             })
             .collect()
     }
+}
+
+pub fn explicit_outlives_bounds<'tcx>(
+    param_env: ty::ParamEnv<'tcx>,
+) -> impl Iterator<Item = OutlivesBound<'tcx>> + 'tcx {
+    debug!("explicit_outlives_bounds()");
+    param_env
+        .caller_bounds
+        .into_iter()
+        .filter_map(move |predicate| match predicate {
+            ty::Predicate::Projection(..) |
+            ty::Predicate::Trait(..) |
+            ty::Predicate::Equate(..) |
+            ty::Predicate::Subtype(..) |
+            ty::Predicate::WellFormed(..) |
+            ty::Predicate::ObjectSafe(..) |
+            ty::Predicate::ClosureKind(..) |
+            ty::Predicate::TypeOutlives(..) |
+            ty::Predicate::ConstEvaluatable(..) => None,
+            ty::Predicate::RegionOutlives(ref data) => data.no_late_bound_regions().map(
+                |ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a),
+            ),
+        })
 }
