@@ -354,6 +354,57 @@ fn example() {
 #### `false`:
 
 ```rust
+fn example() {
+    // If
+    foo!(
+        if x {
+            foo();
+        } else {
+            bar();
+        }
+    );
+
+    // IfLet
+    foo!(
+        if let Some(..) = x {
+            foo();
+        } else {
+            bar();
+        }
+    );
+
+    // While
+    foo!(
+        while x {
+            foo();
+            bar();
+        }
+    );
+
+    // WhileLet
+    foo!(
+        while let Some(..) = x {
+            foo();
+            bar();
+        }
+    );
+
+    // ForLoop
+    foo!(
+        for x in y {
+            foo();
+            bar();
+        }
+    );
+
+    // Loop
+    foo!(
+        loop {
+            foo();
+            bar();
+        }
+    );
+}
 ```
 
 ## `comment_width`
