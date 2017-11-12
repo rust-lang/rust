@@ -81,7 +81,6 @@ use rustc::middle::cstore::MetadataLoader;
 use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
 use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType};
-use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
@@ -167,12 +166,14 @@ impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
         box metadata::LlvmMetadataLoader
     }
 
-    fn provide_local(providers: &mut ty::maps::Providers) {
-        provide_local(providers);
+    fn provide(providers: &mut ty::maps::Providers) {
+        back::symbol_names::provide(providers);
+        back::symbol_export::provide(providers);
+        base::provide(providers);
     }
 
     fn provide_extern(providers: &mut ty::maps::Providers) {
-        provide_extern(providers);
+        back::symbol_export::provide_extern(providers);
     }
 
     fn trans_crate<'a, 'tcx>(
@@ -332,15 +333,3 @@ pub struct CrateInfo {
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
-
-pub fn provide_local(providers: &mut Providers) {
-    back::symbol_names::provide(providers);
-    back::symbol_export::provide_local(providers);
-    base::provide_local(providers);
-}
-
-pub fn provide_extern(providers: &mut Providers) {
-    back::symbol_names::provide(providers);
-    back::symbol_export::provide_extern(providers);
-    base::provide_extern(providers);
-}

@@ -45,7 +45,7 @@ use rustc::hir;
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => $compute:block)*) => {
-        pub fn provide<$lt>(providers: &mut Providers<$lt>) {
+        pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
                                     -> <ty::queries::$name<$lt> as
                                         QueryConfig>::Value
@@ -243,7 +243,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
 }
 
-pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
+pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
     fn is_const_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
         let node_id = tcx.hir.as_local_node_id(def_id)
                              .expect("Non-local call to local provider is_const_fn");

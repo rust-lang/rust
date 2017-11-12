@@ -970,7 +970,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
-    DefaultTransCrate::provide_local(&mut local_providers);
+    DefaultTransCrate::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     traits::provide(&mut local_providers);
@@ -978,16 +978,12 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     rustc_const_eval::provide(&mut local_providers);
     rustc_passes::provide(&mut local_providers);
     middle::region::provide(&mut local_providers);
-    cstore::provide_local(&mut local_providers);
+    cstore::provide(&mut local_providers);
     lint::provide(&mut local_providers);
 
-    let mut extern_providers = ty::maps::Providers::default();
-    cstore::provide(&mut extern_providers);
+    let mut extern_providers = local_providers;
+    cstore::provide_extern(&mut extern_providers);
     DefaultTransCrate::provide_extern(&mut extern_providers);
-    ty::provide_extern(&mut extern_providers);
-    traits::provide_extern(&mut extern_providers);
-    // FIXME(eddyb) get rid of this once we replace const_eval with miri.
-    rustc_const_eval::provide(&mut extern_providers);
 
     // Setup the MIR passes that we want to run.
     let mut passes = Passes::new();
