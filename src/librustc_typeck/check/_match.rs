@@ -23,7 +23,9 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
 use syntax::ast;
 use syntax::codemap::Spanned;
+use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate;
+use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -120,17 +122,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         .pat_adjustments_mut()
                         .insert(pat.hir_id, pat_adjustments);
                 } else {
-                    let mut err = feature_gate::feature_err(
-                        &tcx.sess.parse_sess,
-                        "match_default_bindings",
-                        pat.span,
-                        feature_gate::GateIssue::Language,
-                        "non-reference pattern used to match a reference",
-                    );
-                    if let Ok(snippet) = tcx.sess.codemap().span_to_snippet(pat.span) {
-                        err.span_suggestion(pat.span, "consider using", format!("&{}", &snippet));
+                    fn feature_err<'a>(sp: Span, sess: &'a ParseSess) -> DiagnosticBuilder<'a> {
+                        feature_gate::feature_err(
+                            sess,
+                            "match_default_bindings",
+                            sp,
+                            feature_gate::GateIssue::Language,
+                            "non-reference pattern used to match a reference",
+                        )
                     }
-                    err.emit();
+                    if let Ok(snippet) = tcx.sess.codemap().span_to_snippet(pat.span) {
+                        // The following is a bit of a hack. We probably should check the AST for
+                        // this instead, but this should be good enough for the expected cases.
+                        let prev_span = pat.span.prev_point();
+                        let (sp, sugg) = match tcx.sess.codemap().span_to_snippet(prev_span) {
+                            // Make the suggestion more obvious when having `&(_, _)`
+                            Ok(ref prev) if &*prev == "&" => {
+                                (prev_span.to(pat.span), format!("&&{}", &snippet)),
+                            }
+                            _ => (pat.span, format!("&{}", &snippet)),
+                        };
+                        let mut err = feature_err(sp, &tcx.sess.parse_sess);
+                        err.span_suggestion(sp, "consider using a reference", sugg);
+                        err.emit();
+                    } else {
+                        feature_err(pat.span, &tcx.sess.parse_sess).emit();
+                    }
                 }
             }
         }

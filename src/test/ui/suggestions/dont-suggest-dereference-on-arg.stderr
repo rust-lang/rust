@@ -1,0 +1,10 @@
+error: non-reference pattern used to match a reference (see issue #42640)
+  --> dont-suggest-dereference-on-arg.rs:16:19
+   |
+16 |         .filter(|&(ref a, _)| foo(a))
+   |                  ^^^^^^^^^^^ help: consider using: `&&(ref k, _)`
+   |
+   = help: add #![feature(match_default_bindings)] to the crate attributes to enable
+
+error: aborting due to previous error
+
