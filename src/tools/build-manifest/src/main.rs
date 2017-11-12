@@ -280,10 +280,6 @@ impl Builder {
         if rls_present {
             manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
         }
-        if rustfmt_present {
-            manifest.renames.insert("rustfmt".to_owned(),
-                                    Rename { to: "rustfmt-preview".to_owned() });
-        }
 
         let mut pkg = Package {
             version: self.cached_version("rust")

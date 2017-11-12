@@ -1161,7 +1161,7 @@ impl Step for Rustfmt {
         // Prepare the image directory
         // We expect RLS to build, because we've exited this step above if tool
         // state for RLS isn't testing.
-        let rustfmt = builder.ensure(tool::Rls {
+        let rustfmt = builder.ensure(tool::Rustfmt {
             compiler: builder.compiler(stage, build.build),
             target
         }).expect("Rustfmt to build: toolstate is testing");
