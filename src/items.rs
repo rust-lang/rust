@@ -911,7 +911,7 @@ fn format_struct(
     one_line_width: Option<usize>,
 ) -> Option<String> {
     match *struct_parts.def {
-        ast::VariantData::Unit(..) => Some(format_unit_struct(struct_parts)),
+        ast::VariantData::Unit(..) => format_unit_struct(context, struct_parts, offset),
         ast::VariantData::Tuple(ref fields, _) => {
             format_tuple_struct(context, struct_parts, fields, offset)
         }
@@ -1088,8 +1088,15 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
     }
 }
 
-fn format_unit_struct(p: &StructParts) -> String {
-    format!("{};", format_header(p.prefix, p.ident, p.vis))
+fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent) -> Option<String> {
+    let header_str = format_header(p.prefix, p.ident, p.vis);
+    let generics_str = if let Some(generics) = p.generics {
+        let shape = Shape::indented(offset, context.config).offset_left(header_str.len())?;
+        rewrite_generics(context, generics, shape, generics.span)?
+    } else {
+        String::new()
+    };
+    Some(format!("{}{};", header_str, generics_str))
 }
 
 pub fn format_struct_struct(
