@@ -313,3 +313,6 @@ pub(crate) struct Foo();
 pub struct ReadinessCheckRegistry(
     Mutex<HashMap<Arc<String>, Box<Fn() -> ReadinessCheck + Sync + Send>>>,
 );
+
+// #2144 unit struct with generics
+struct MyBox<T: ?Sized>;
