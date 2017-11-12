@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<'a> {
-    data: &'a[u8],
+use std::rc::Rc;
+
+trait Foo {
+    fn foo(self: Rc<Box<Self>>); //~ ERROR arbitrary `self` types are unstable
 }
 
-impl <'a> Foo<'a>{
-    fn bar(self: &mut Foo) {
-    //~^ mismatched method receiver
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
-    //~| lifetime mismatch
-    //~| mismatched method receiver
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
-    //~| lifetime mismatch
-    }
+struct Bar;
+
+impl Foo for Bar {
+    fn foo(self: Rc<Box<Self>>) {} //~ ERROR arbitrary `self` types are unstable
+}
+
+impl Bar {
+    fn bar(self: Box<Rc<Self>>) {} //~ ERROR arbitrary `self` types are unstable
 }
 
 fn main() {}

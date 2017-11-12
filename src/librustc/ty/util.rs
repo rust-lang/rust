@@ -12,6 +12,7 @@
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
+use hir;
 use ich::NodeIdHashingMode;
 use middle::const_val::ConstVal;
 use traits::{self, Reveal};
@@ -1176,6 +1177,58 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.layout_depth.set(depth);
 
     layout
+}
+
+pub enum ExplicitSelf<'tcx> {
+    ByValue,
+    ByReference(ty::Region<'tcx>, hir::Mutability),
+    ByBox,
+    Other
+}
+
+impl<'tcx> ExplicitSelf<'tcx> {
+    /// Categorizes an explicit self declaration like `self: SomeType`
+    /// into either `self`, `&self`, `&mut self`, `Box<self>`, or
+    /// `Other`.
+    /// This is mainly used to require the arbitrary_self_types feature
+    /// in the case of `Other`, to improve error messages in the common cases,
+    /// and to make `Other` non-object-safe.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// impl<'a> Foo for &'a T {
+    ///     // Legal declarations:
+    ///     fn method1(self: &&'a T); // ExplicitSelf::ByReference
+    ///     fn method2(self: &'a T); // ExplicitSelf::ByValue
+    ///     fn method3(self: Box<&'a T>); // ExplicitSelf::ByBox
+    ///     fn method4(self: Rc<&'a T>); // ExplicitSelf::Other
+    ///
+    ///     // Invalid cases will be caught by `check_method_receiver`:
+    ///     fn method_err1(self: &'a mut T); // ExplicitSelf::Other
+    ///     fn method_err2(self: &'static T) // ExplicitSelf::ByValue
+    ///     fn method_err3(self: &&T) // ExplicitSelf::ByReference
+    /// }
+    /// ```
+    ///
+    pub fn determine<P>(
+        self_arg_ty: Ty<'tcx>,
+        is_self_ty: P
+    ) -> ExplicitSelf<'tcx>
+    where
+        P: Fn(Ty<'tcx>) -> bool
+    {
+        use self::ExplicitSelf::*;
+
+        match self_arg_ty.sty {
+            _ if is_self_ty(self_arg_ty) => ByValue,
+            ty::TyRef(region, ty::TypeAndMut { ty, mutbl}) if is_self_ty(ty) => {
+                ByReference(region, mutbl)
+            }
+            ty::TyAdt(def, _) if def.is_box() && is_self_ty(self_arg_ty.boxed_ty()) => ByBox,
+            _ => Other
+        }
+    }
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {

@@ -13,6 +13,7 @@ use rustc::infer::{self, InferOk};
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::util::ExplicitSelf;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{Subst, Substs};
@@ -21,7 +22,6 @@ use rustc::util::common::ErrorReported;
 use syntax_pos::Span;
 
 use super::{Inherited, FnCtxt};
-use astconv::ExplicitSelf;
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -503,12 +503,17 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ty::TraitContainer(_) => tcx.mk_self_type()
         };
         let self_arg_ty = *tcx.fn_sig(method.def_id).input(0).skip_binder();
-        match ExplicitSelf::determine(untransformed_self_ty, self_arg_ty) {
-            ExplicitSelf::ByValue => "self".to_string(),
-            ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_string(),
-            ExplicitSelf::ByReference(_, hir::MutMutable) => "&mut self".to_string(),
-            _ => format!("self: {}", self_arg_ty)
-        }
+        let param_env = ty::ParamEnv::empty(Reveal::All);
+
+        tcx.infer_ctxt().enter(|infcx| {
+            let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
+            match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
+                ExplicitSelf::ByValue => "self".to_string(),
+                ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_string(),
+                ExplicitSelf::ByReference(_, hir::MutMutable) => "&mut self".to_string(),
+                _ => format!("self: {}", self_arg_ty)
+            }
+        })
     };
 
     match (trait_m.method_has_self_argument, impl_m.method_has_self_argument) {

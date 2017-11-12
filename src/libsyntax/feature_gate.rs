@@ -409,6 +409,9 @@ declare_features! (
 
     // extern types
     (active, extern_types, "1.23.0", Some(43467)),
+
+    // Allow trait methods with arbitrary self types
+    (active, arbitrary_self_types, "1.23.0", Some(44874)),
 );
 
 declare_features! (

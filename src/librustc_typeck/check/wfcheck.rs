@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use astconv::ExplicitSelf;
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 
 use syntax::ast;
+use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
@@ -451,8 +452,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                          method: &ty::AssociatedItem,
                                          self_ty: Ty<'tcx>)
     {
-        // check that the type of the method's receiver matches the
-        // method's first parameter.
+        // check that the method has a valid receiver type, given the type `Self`
         debug!("check_method_receiver({:?}, self_ty={:?})",
                method, self_ty);
 
@@ -468,26 +468,57 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         debug!("check_method_receiver: sig={:?}", sig);
 
-        let self_arg_ty = sig.inputs()[0];
-        let rcvr_ty = match ExplicitSelf::determine(self_ty, self_arg_ty) {
-            ExplicitSelf::ByValue => self_ty,
-            ExplicitSelf::ByReference(region, mutbl) => {
-                fcx.tcx.mk_ref(region, ty::TypeAndMut {
-                    ty: self_ty,
-                    mutbl,
-                })
-            }
-            ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty)
-        };
-        let rcvr_ty = fcx.normalize_associated_types_in(span, &rcvr_ty);
-        let rcvr_ty = fcx.liberate_late_bound_regions(method.def_id,
-                                                      &ty::Binder(rcvr_ty));
+        let self_ty = fcx.normalize_associated_types_in(span, &self_ty);
+        let self_ty = fcx.liberate_late_bound_regions(
+            method.def_id,
+            &ty::Binder(self_ty)
+        );
 
-        debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
+        let self_arg_ty = sig.inputs()[0];
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-        if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty) {
-            err.emit();
+        let self_arg_ty = fcx.normalize_associated_types_in(span, &self_arg_ty);
+        let self_arg_ty = fcx.liberate_late_bound_regions(
+            method.def_id,
+            &ty::Binder(self_arg_ty)
+        );
+
+        let mut autoderef = fcx.autoderef(span, self_arg_ty);
+
+        loop {
+            if let Some((potential_self_ty, _)) = autoderef.next() {
+                debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`",
+                    potential_self_ty, self_ty);
+
+                if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
+                    autoderef.finalize();
+                    if let Some(mut err) = fcx.demand_eqtype_with_origin(
+                        &cause, self_ty, potential_self_ty) {
+                        err.emit();
+                    }
+                    break
+                }
+            } else {
+                fcx.tcx.sess.diagnostic().mut_span_err(
+                    span, &format!("invalid `self` type: {:?}", self_arg_ty))
+                .note(&format!("type must be `{:?}` or a type that dereferences to it`", self_ty))
+                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .code(DiagnosticId::Error("E0307".into()))
+                .emit();
+                return
+            }
+        }
+
+        let is_self_ty = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
+        let self_kind = ExplicitSelf::determine(self_arg_ty, is_self_ty);
+
+        if let ExplicitSelf::Other = self_kind {
+            if !fcx.tcx.sess.features.borrow().arbitrary_self_types {
+                feature_gate::feature_err(&fcx.tcx.sess.parse_sess, "arbitrary_self_types", span,
+                    GateIssue::Language, "arbitrary `self` types are unstable")
+                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .emit();
+            }
         }
     }
 

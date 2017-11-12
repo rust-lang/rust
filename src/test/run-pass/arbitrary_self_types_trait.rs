@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,22 +7,22 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(arbitrary_self_types)]
 
-struct Foo<'a> {
-    data: &'a[u8],
+use std::rc::Rc;
+
+trait Trait {
+    fn trait_method<'a>(self: &'a Box<Rc<Self>>) -> &'a [i32];
 }
 
-impl <'a> Foo<'a>{
-    fn bar(self: &mut Foo) {
-    //~^ mismatched method receiver
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
-    //~| lifetime mismatch
-    //~| mismatched method receiver
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
-    //~| lifetime mismatch
+impl Trait for Vec<i32> {
+    fn trait_method<'a>(self: &'a Box<Rc<Self>>) -> &'a [i32] {
+        &***self
     }
 }
 
-fn main() {}
+fn main() {
+    let v = vec![1,2,3];
+
+    assert_eq!(&[1,2,3], Box::new(Rc::new(v)).trait_method());
+}

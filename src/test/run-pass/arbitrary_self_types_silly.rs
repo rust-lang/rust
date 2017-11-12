@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,14 +7,23 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-use std::rc::Rc;
+#![feature(arbitrary_self_types)]
 
 struct Foo;
+struct Bar;
+
+impl std::ops::Deref for Bar {
+    type Target = Foo;
+
+    fn deref(&self) -> &Foo {
+        &Foo
+    }
+}
 
 impl Foo {
-    fn x(self: Rc<Foo>) {} //~ ERROR E0308
+    fn bar(self: Bar) -> i32 { 3 }
 }
 
 fn main() {
+    assert_eq!(3, Bar.bar());
 }

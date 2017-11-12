@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,22 +7,27 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(arbitrary_self_types)]
 
-struct Foo<'a> {
-    data: &'a[u8],
+use std::rc::Rc;
+
+struct Foo {
+    x: i32,
+    y: i32,
 }
 
-impl <'a> Foo<'a>{
-    fn bar(self: &mut Foo) {
-    //~^ mismatched method receiver
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
-    //~| lifetime mismatch
-    //~| mismatched method receiver
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
-    //~| lifetime mismatch
+impl Foo {
+    fn x(self: &Rc<Self>) -> i32 {
+        self.x
+    }
+
+    fn y(self: Rc<Self>) -> i32 {
+        self.y
     }
 }
 
-fn main() {}
+fn main() {
+    let foo = Rc::new(Foo {x: 3, y: 4});
+    assert_eq!(3, foo.x());
+    assert_eq!(4, foo.y());
+}
