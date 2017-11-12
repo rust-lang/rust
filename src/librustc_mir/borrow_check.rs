@@ -11,7 +11,6 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 use rustc::hir;
-use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
@@ -1022,7 +1021,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                      access_lvalue: (ShallowOrDeep, &Lvalue<'tcx>),
                                      flow_state: &InProgress<'b, 'gcx, 'tcx>,
                                      mut op: F)
-        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>, &Lvalue) -> Control
+        where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>, &Lvalue<'tcx>) -> Control
     {
         let (access, lvalue) = access_lvalue;
 
@@ -1249,7 +1248,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn report_use_of_moved_or_uninitialized(&mut self,
                            _context: Context,
                            desired_action: &str,
-                           (lvalue, span): (&Lvalue, Span),
+                           (lvalue, span): (&Lvalue<'tcx>, Span),
                            mpi: MovePathIndex,
                            curr_move_out: &IdxSetBuf<MoveOutIndex>) {
 
@@ -1291,8 +1290,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_move_out_while_borrowed(&mut self,
                                       _context: Context,
-                                      (lvalue, span): (&Lvalue, Span),
-                                      borrow: &BorrowData) {
+                                      (lvalue, span): (&Lvalue<'tcx>, Span),
+                                      borrow: &BorrowData<'tcx>) {
         self.tcx.cannot_move_when_borrowed(span,
                                            &self.describe_lvalue(lvalue),
                                            Origin::Mir)
@@ -1306,8 +1305,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_use_while_mutably_borrowed(&mut self,
                                          _context: Context,
-                                         (lvalue, span): (&Lvalue, Span),
-                                         borrow : &BorrowData) {
+                                         (lvalue, span): (&Lvalue<'tcx>, Span),
+                                         borrow : &BorrowData<'tcx>) {
 
         let mut err = self.tcx.cannot_use_when_mutably_borrowed(
             span, &self.describe_lvalue(lvalue),
@@ -1383,8 +1382,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_conflicting_borrow(&mut self,
                                  context: Context,
-                                 common_prefix: &Lvalue,
-                                 (lvalue, span): (&Lvalue, Span),
+                                 common_prefix: &Lvalue<'tcx>,
+                                 (lvalue, span): (&Lvalue<'tcx>, Span),
                                  gen_borrow_kind: BorrowKind,
                                  issued_borrow: &BorrowData,
                                  end_issued_loan_span: Option<Span>) {
@@ -1454,7 +1453,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_illegal_mutation_of_borrowed(&mut self,
                                            _: Context,
-                                           (lvalue, span): (&Lvalue, Span),
+                                           (lvalue, span): (&Lvalue<'tcx>, Span),
                                            loan: &BorrowData) {
         let mut err = self.tcx.cannot_assign_to_borrowed(
             span, self.retrieve_borrow_span(loan), &self.describe_lvalue(lvalue), Origin::Mir);
@@ -1464,7 +1463,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_illegal_reassignment(&mut self,
                                    _context: Context,
-                                   (lvalue, span): (&Lvalue, Span),
+                                   (lvalue, span): (&Lvalue<'tcx>, Span),
                                    assigned_span: Span) {
         self.tcx.cannot_reassign_immutable(span,
                                            &self.describe_lvalue(lvalue),
@@ -1475,7 +1474,9 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 .emit();
     }
 
-    fn report_assignment_to_static(&mut self, _context: Context, (lvalue, span): (&Lvalue, Span)) {
+    fn report_assignment_to_static(&mut self,
+                                   _context: Context,
+                                   (lvalue, span): (&Lvalue<'tcx>, Span)) {
         let mut err = self.tcx.cannot_assign_static(
             span, &self.describe_lvalue(lvalue), Origin::Mir);
         err.emit();
@@ -1484,14 +1485,17 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
     // End-user visible description of `lvalue`
-    fn describe_lvalue(&self, lvalue: &Lvalue) -> String {
+    fn describe_lvalue(&self, lvalue: &Lvalue<'tcx>) -> String {
         let mut buf = String::new();
         self.append_lvalue_to_string(lvalue, &mut buf, None);
         buf
     }
 
     // Appends end-user visible description of `lvalue` to `buf`.
-    fn append_lvalue_to_string(&self, lvalue: &Lvalue, buf: &mut String, autoderef: Option<bool>) {
+    fn append_lvalue_to_string(&self,
+                               lvalue: &Lvalue<'tcx>,
+                               buf: &mut String,
+                               autoderef: Option<bool>) {
         match *lvalue {
             Lvalue::Local(local) => {
                 self.append_local_to_string(local, buf, "_");
@@ -1501,41 +1505,50 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
             Lvalue::Projection(ref proj) => {
                 let mut autoderef = autoderef.unwrap_or(false);
-                let (prefix, suffix, index_operand) = match proj.elem {
+
+                match proj.elem {
                     ProjectionElem::Deref => {
                         if autoderef {
-                            ("", format!(""), None)
+                            self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
                         } else {
-                            ("(*", format!(")"), None)
+                            buf.push_str(&"(*");
+                            self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                            buf.push_str(&")");
                         }
                     },
-                    ProjectionElem::Downcast(..) =>
-                        ("",   format!(""), None), // (dont emit downcast info)
+                    ProjectionElem::Downcast(..) => {
+                        self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                    },
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
-                        ("", format!(".{}", self.describe_field(&proj.base, field.index())), None)
+                        let is_projection_from_ty_closure = proj.base.ty(self.mir, self.tcx)
+                                .to_ty(self.tcx).is_closure();
+
+                        let field_name = self.describe_field(&proj.base, field.index());
+                        if is_projection_from_ty_closure {
+                            buf.push_str(&format!("{}", field_name));
+                        } else {
+                            self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                            buf.push_str(&format!(".{}", field_name));
+                        }
                     },
                     ProjectionElem::Index(index) => {
                         autoderef = true;
-                        ("",   format!(""), Some(index))
+
+                        self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                        buf.push_str("[");
+                        self.append_local_to_string(index, buf, "..");
+                        buf.push_str("]");
                     },
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                         autoderef = true;
                         // Since it isn't possible to borrow an element on a particular index and
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
-                        ("",   format!("[..]"), None)
+                        self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                        buf.push_str(&"[..]");
                     },
                 };
-                buf.push_str(prefix);
-                self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
-                if let Some(index) = index_operand {
-                    buf.push_str("[");
-                    self.append_local_to_string(index, buf, "..");
-                    buf.push_str("]");
-                } else {
-                    buf.push_str(&suffix);
-                }
             }
         }
     }
@@ -1609,12 +1622,9 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
                     let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
-                    let local_def = self.tcx.with_freevars(node_id, |fv| fv[field_index].def);
+                    let freevar = self.tcx.with_freevars(node_id, |fv| fv[field_index]);
 
-                    match local_def {
-                        Def::Local(local_node_id) => self.tcx.hir.name(local_node_id).to_string(),
-                        _ => unreachable!()
-                    }
+                    self.tcx.hir.name(freevar.var_id()).to_string()
                  }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
