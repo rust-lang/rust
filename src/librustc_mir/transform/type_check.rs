@@ -1031,14 +1031,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn aggregate_field_ty(
         &mut self,
         ak: &Box<AggregateKind<'tcx>>,
-        field: usize,
+        field_index: usize,
         location: Location,
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
 
         match **ak {
-            AggregateKind::Adt(def, variant, substs, _) => {
-                if let Some(field) = def.variants[variant].fields.get(field) {
+            AggregateKind::Adt(def, variant_index, substs, active_field_index) => {
+                let variant = &def.variants[variant_index];
+                let adj_field_index = active_field_index.unwrap_or(field_index);
+                if let Some(field) = variant.fields.get(adj_field_index) {
                     Ok(self.normalize(&field.ty(tcx, substs), location))
                 } else {
                     Err(FieldAccessError::OutOfRange {
@@ -1047,7 +1049,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             AggregateKind::Closure(def_id, substs) => {
-                match substs.upvar_tys(def_id, tcx).nth(field) {
+                match substs.upvar_tys(def_id, tcx).nth(field_index) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
                         field_count: substs.upvar_tys(def_id, tcx).count(),
@@ -1055,10 +1057,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             AggregateKind::Generator(def_id, substs, _) => {
-                if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field) {
-                    Ok(ty);
+                if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field_index) {
+                    Ok(ty)
                 } else {
-                    match substs.field_tys(def_id, tcx).nth(field) {
+                    match substs.field_tys(def_id, tcx).nth(field_index) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
                             field_count: substs.field_tys(def_id, tcx).count() + 1,

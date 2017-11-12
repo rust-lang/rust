@@ -1375,10 +1375,14 @@ pub enum AggregateKind<'tcx> {
     /// The type is of the element
     Array(Ty<'tcx>),
     Tuple,
-    /// The second field is variant number (discriminant), it's equal to 0
-    /// for struct and union expressions. The fourth field is active field
-    /// number and is present only for union expressions.
+
+    /// The second field is variant number (discriminant), it's equal
+    /// to 0 for struct and union expressions. The fourth field is
+    /// active field number and is present only for union expressions
+    /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
+    /// active field index would identity the field `c`
     Adt(&'tcx AdtDef, usize, &'tcx Substs<'tcx>, Option<usize>),
+
     Closure(DefId, ClosureSubsts<'tcx>),
     Generator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
 }
