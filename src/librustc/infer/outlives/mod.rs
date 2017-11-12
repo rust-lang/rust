@@ -12,5 +12,5 @@
 
 pub mod env;
 pub mod free_region_map;
-pub mod implied_bounds;
+pub mod bounds;
 mod obligations;
