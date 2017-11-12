@@ -1834,7 +1834,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         //     T: Trait
         // so it seems ok if we (conservatively) fail to accept that `Unsize`
         // obligation above. Should be possible to extend this in the future.
-        let source = match self.tcx().no_late_bound_regions(&obligation.self_ty()) {
+        let source = match obligation.self_ty().no_late_bound_regions() {
             Some(t) => t,
             None => {
                 // Don't add any candidates if there are bound regions.
@@ -2784,7 +2784,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // assemble_candidates_for_unsizing should ensure there are no late bound
         // regions here. See the comment there for more details.
         let source = self.infcx.shallow_resolve(
-            tcx.no_late_bound_regions(&obligation.self_ty()).unwrap());
+            obligation.self_ty().no_late_bound_regions().unwrap());
         let target = obligation.predicate.skip_binder().trait_ref.substs.type_at(1);
         let target = self.infcx.shallow_resolve(target);
 

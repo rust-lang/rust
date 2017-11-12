@@ -126,7 +126,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     ty::Predicate::RegionOutlives(ref data) => {
-                        match tcx.no_late_bound_regions(data) {
+                        match data.no_late_bound_regions() {
                             None => vec![],
                             Some(ty::OutlivesPredicate(r_a, r_b)) => {
                                 vec![ImpliedBound::RegionSubRegion(r_b, r_a)]
@@ -135,7 +135,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     ty::Predicate::TypeOutlives(ref data) => {
-                        match tcx.no_late_bound_regions(data) {
+                        match data.no_late_bound_regions() {
                             None => vec![],
                             Some(ty::OutlivesPredicate(ty_a, r_b)) => {
                                 let ty_a = self.resolve_type_vars_if_possible(&ty_a);

@@ -364,16 +364,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         Binder(value)
     }
 
-    pub fn no_late_bound_regions<T>(self, value: &Binder<T>) -> Option<T>
-        where T : TypeFoldable<'tcx>
-    {
-        if value.0.has_escaping_regions() {
-            None
-        } else {
-            Some(value.0.clone())
-        }
-    }
-
     /// Returns a set of all late-bound regions that are constrained
     /// by `value`, meaning that if we instantiate those LBR with
     /// variables and equate `value` with something else, those
