@@ -400,14 +400,14 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 
         ty::Predicate::TypeOutlives(ref binder) => {
             // Check if there are higher-ranked regions.
-            match selcx.tcx().no_late_bound_regions(binder) {
+            match binder.no_late_bound_regions() {
                 // If there are, inspect the underlying type further.
                 None => {
                     // Convert from `Binder<OutlivesPredicate<Ty, Region>>` to `Binder<Ty>`.
                     let binder = binder.map_bound_ref(|pred| pred.0);
 
                     // Check if the type has any bound regions.
-                    match selcx.tcx().no_late_bound_regions(&binder) {
+                    match binder.no_late_bound_regions() {
                         // If so, this obligation is an error (for now). Eventually we should be
                         // able to support additional cases here, like `for<'a> &'a str: 'a`.
                         None => {
