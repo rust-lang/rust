@@ -564,7 +564,7 @@
                 var results_length = 0;
                 val = extractGenerics(val.substr(1, val.length - 2));
                 for (var i = 0; i < nSearchWords; ++i) {
-                    var param = findArg(searchIndex[i], val, true);
+                    var in_args = findArg(searchIndex[i], val, true);
                     var returned = checkReturned(searchIndex[i], val, true);
                     var ty = searchIndex[i];
                     if (searchWords[i] === val.name) {
@@ -575,20 +575,20 @@
                             results[ty.path + ty.name] = {id: i, index: -1};
                             results_length += 1;
                         }
-                    } else if ((param === true || returned === true) &&
+                    } else if ((in_args === true || returned === true) &&
                                typePassesFilter(typeFilter, searchIndex[i].ty)) {
                         if (results[ty.path + ty.name] === undefined) {
                             results[ty.path + ty.name] = {
                                 id: i,
                                 index: -1,
                                 dontValidate: true,
-                                param: param,
+                                in_args: in_args,
                                 returned: returned,
                             };
                             results_length += 1;
                         } else {
-                            if (param === true) {
-                                results[ty.path + ty.name].param = true;
+                            if (in_args === true) {
+                                results[ty.path + ty.name].in_args = true;
                             }
                             if (returned === true) {
                                 results[ty.path + ty.name].returned = true;
@@ -625,7 +625,7 @@
                     var typeOutput = type.output ? type.output.name : "";
                     var returned = checkReturned(ty, output, true);
                     if (output.name === "*" || returned === true) {
-                        var param = false;
+                        var in_args = false;
                         var module = false;
 
                         if (input === "*") {
@@ -635,15 +635,15 @@
                             for (var it = 0; allFound === true && it < inputs.length; it++) {
                                 allFound = checkType(type, inputs[it], true);
                             }
-                            param = allFound;
+                            in_args = allFound;
                         }
-                        if (param === true || returned === true || module === true) {
+                        if (in_args === true || returned === true || module === true) {
                             if (results[ty.path + ty.name] !== undefined) {
                                 if (returned === true) {
                                     results[ty.path + ty.name].returned = true;
                                 }
-                                if (param === true) {
-                                    results[ty.path + ty.name].param = true;
+                                if (in_args === true) {
+                                    results[ty.path + ty.name].in_args = true;
                                 }
                             } else {
                                 results[ty.path + ty.name] = {
@@ -651,7 +651,7 @@
                                     index: -1,
                                     dontValidate: true,
                                     returned: returned,
-                                    param: param,
+                                    in_args: in_args,
                                 };
                             }
                         }
@@ -677,10 +677,10 @@
                             continue;
                         }
                         var returned = false;
-                        var param = false;
+                        var in_args = false;
                         var index = -1;
                         // we want lev results to go lower than others
-                        var lev = 0;
+                        var lev = MAX_LEV_DISTANCE;
 
                         if (searchWords[j].indexOf(split[i]) > -1 ||
                             searchWords[j].indexOf(val) > -1 ||
@@ -696,7 +696,7 @@
                             if (typePassesFilter(typeFilter, searchIndex[j].ty) &&
                                 (results[ty.path + ty.name] === undefined ||
                                  results[ty.path + ty.name].lev > lev_distance)) {
-                                lev = lev_distance;
+                                lev = min(lev, lev_distance);
                                 index = 0;
                             }
                         }
@@ -705,8 +705,8 @@
                             if (typePassesFilter(typeFilter, searchIndex[j].ty) &&
                                 (results[ty.path + ty.name] === undefined ||
                                  results[ty.path + ty.name].lev > lev_distance)) {
-                                param = true;
-                                lev = lev_distance;
+                                in_args = true;
+                                lev = min(lev_distance, lev);
                                 index = 0;
                             }
                         }
@@ -716,7 +716,7 @@
                                 (results[ty.path + ty.name] === undefined ||
                                  results[ty.path + ty.name].lev > lev_distance)) {
                                 returned = true;
-                                lev = lev_distance;
+                                lev = min(lev_distance, lev);
                                 index = 0;
                             }
                         }
@@ -726,7 +726,7 @@
                                     id: j,
                                     index: index,
                                     lev: lev,
-                                    param: param,
+                                    in_args: in_args,
                                     returned: returned,
                                 };
                                 results_length += 1;
@@ -734,8 +734,8 @@
                                 if (results[ty.path + ty.name].lev > lev) {
                                     results[ty.path + ty.name].lev = lev;
                                 }
-                                if (param === true) {
-                                    results[ty.path + ty.name].param = true;
+                                if (in_args === true) {
+                                    results[ty.path + ty.name].in_args = true;
                                 }
                                 if (returned === true) {
                                     results[ty.path + ty.name].returned = true;
@@ -1164,11 +1164,14 @@
                     filterdata.push([obj.name, obj.ty, obj.path, obj.desc]);
                     if (obj.type) {
                         if (results['returned'].length < maxResults &&
-                            resultIndex[i].returned === true) {
+                            resultIndex[i].returned === true)
+                        {
                             results['returned'].push(obj);
                             added = true;
                         }
-                        if (results['in_args'].length < maxResults && resultIndex[i] === true) {
+                        if (results['in_args'].length < maxResults &&
+                            resultIndex[i].in_args === true)
+                        {
                             results['in_args'].push(obj);
                             added = true;
                         }
