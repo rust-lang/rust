@@ -22,7 +22,7 @@ impl<'r> Itble<'r, usize, Range<usize>> for (usize, usize) {
 fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
 {
     let cont_iter = cont.iter();
-//~^ ERROR cannot infer an appropriate lifetime for autoref due to conflicting requirements
+//~^ ERROR 24:26: 24:30: explicit lifetime required in the type of `cont` [E0621]
     let result = cont_iter.fold(Some(0), |state, val| {
         state.map_or(None, |mask| {
             let bit = 1 << val;

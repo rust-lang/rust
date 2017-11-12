@@ -22,7 +22,7 @@ mod argparse {
 
     impl<'a> Flag<'a> {
         pub fn set_desc(self, s: &str) -> Flag<'a> {
-            Flag { //~ ERROR cannot infer
+            Flag { //~ ERROR 25:13: 30:14: explicit lifetime required in the type of `s` [E0621]
                 name: self.name,
                 desc: s,
                 max_count: self.max_count,

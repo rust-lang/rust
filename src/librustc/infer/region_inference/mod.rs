@@ -28,6 +28,7 @@ use ty::{Region, RegionVid};
 use ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound, ReErased};
 use ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
 
+use std::collections::BTreeMap;
 use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::mem;
@@ -36,7 +37,7 @@ use std::u32;
 mod graphviz;
 
 /// A constraint that influences the inference process.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Constraint<'tcx> {
     /// One region variable is subregion of another
     ConstrainVarSubVar(RegionVid, RegionVid),
@@ -186,7 +187,13 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// Constraints of the form `A <= B` introduced by the region
     /// checker.  Here at least one of `A` and `B` must be a region
     /// variable.
-    constraints: RefCell<FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
+    ///
+    /// Using `BTreeMap` because the order in which we iterate over
+    /// these constraints can affect the way we build the region graph,
+    /// which in turn affects the way that region errors are reported,
+    /// leading to small variations in error output across runs and
+    /// platforms.
+    constraints: RefCell<BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
 
     /// A "verify" is something that we need to verify after inference is
     /// done, but which does not directly affect inference in any way.
@@ -357,7 +364,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             tcx,
             var_origins: RefCell::new(Vec::new()),
             values: RefCell::new(None),
-            constraints: RefCell::new(FxHashMap()),
+            constraints: RefCell::new(BTreeMap::new()),
             verifys: RefCell::new(Vec::new()),
             givens: RefCell::new(FxHashSet()),
             lubs: RefCell::new(FxHashMap()),

@@ -25,7 +25,7 @@ struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn new(lexer: &'a mut Lexer) -> Parser<'a> {
         Parser { lexer: lexer }
-        //~^ ERROR cannot infer an appropriate lifetime
+        //~^ ERROR 27:25: 27:30: explicit lifetime required in the type of `lexer` [E0621]
     }
 }
 

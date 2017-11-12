@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct thing<'a, Q:'a> {
-    x: &'a Q
+struct Foo {
+    field: i32,
 }
 
-fn thing<'a,Q>(x: &Q) -> thing<'a,Q> {
-    thing{ x: x } //~ ERROR 16:5: 16:18: explicit lifetime required in the type of `x` [E0621]
+fn foo2<'a>(a: &'a Foo, x: &i32) -> &'a i32 {
+    if true {
+        let p: &i32 = &a.field;
+        &*p
+    } else {
+        &*x
+    }
 }
 
-fn main() {
-    thing(&());
-}
+fn main() { }
