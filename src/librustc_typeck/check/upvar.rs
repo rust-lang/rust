@@ -289,10 +289,14 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
         let guarantor = cmt.guarantor();
         debug!("adjust_upvar_borrow_kind_for_consume: guarantor={:?}",
                guarantor);
+        debug!("adjust_upvar_borrow_kind_for_consume: guarantor.cat={:?}",
+               guarantor.cat);
         match guarantor.cat {
             Categorization::Deref(_, mc::BorrowedPtr(..)) |
             Categorization::Deref(_, mc::Implicit(..)) => {
-                match cmt.note {
+                debug!("adjust_upvar_borrow_kind_for_consume: found deref with note {:?}",
+                       cmt.note);
+                match guarantor.note {
                     mc::NoteUpvarRef(upvar_id) => {
                         debug!("adjust_upvar_borrow_kind_for_consume: \
                                 setting upvar_id={:?} to by value",

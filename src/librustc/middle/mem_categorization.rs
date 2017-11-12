@@ -88,7 +88,7 @@ use std::fmt;
 use std::rc::Rc;
 use util::nodemap::ItemLocalSet;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Categorization<'tcx> {
     Rvalue(ty::Region<'tcx>),              // temporary val, argument is its scope
     StaticItem,
@@ -109,7 +109,7 @@ pub struct Upvar {
 }
 
 // different kinds of pointers:
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerKind<'tcx> {
     /// `Box<T>`
     Unique,
@@ -177,7 +177,7 @@ pub enum Note {
 // dereference, but its type is the type *before* the dereference
 // (`@T`). So use `cmt.ty` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct cmt_<'tcx> {
     pub id: ast::NodeId,           // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
@@ -750,12 +750,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let kind = match self.node_ty(fn_hir_id)?.sty {
             ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
-            _ => {
+            ty::TyClosure(..) => {
                 match self.tables.closure_kinds().get(fn_hir_id) {
                     Some(&(kind, _)) => kind,
                     None => span_bug!(span, "missing closure kind"),
                 }
             }
+            ref t => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", t),
         };
 
         let closure_expr_def_index = self.tcx.hir.local_def_id(fn_node_id).index;
@@ -1499,41 +1500,6 @@ impl<'tcx> cmt_<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for cmt_<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{{{:?} id:{} m:{:?} ty:{:?}}}",
-               self.cat,
-               self.id,
-               self.mutbl,
-               self.ty)
-    }
-}
-
-impl<'tcx> fmt::Debug for Categorization<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Categorization::StaticItem => write!(f, "static"),
-            Categorization::Rvalue(r) => { write!(f, "rvalue({:?})", r) }
-            Categorization::Local(id) => {
-               let name = ty::tls::with(|tcx| tcx.hir.name(id));
-               write!(f, "local({})", name)
-            }
-            Categorization::Upvar(upvar) => {
-                write!(f, "upvar({:?})", upvar)
-            }
-            Categorization::Deref(ref cmt, ptr) => {
-                write!(f, "{:?}-{:?}->", cmt.cat, ptr)
-            }
-            Categorization::Interior(ref cmt, interior) => {
-                write!(f, "{:?}.{:?}", cmt.cat, interior)
-            }
-            Categorization::Downcast(ref cmt, _) => {
-                write!(f, "{:?}->(enum)", cmt.cat)
-            }
-        }
-    }
-}
-
 pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
     match ptr {
         Unique => "Box",
@@ -1544,27 +1510,6 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
         BorrowedPtr(ty::UniqueImmBorrow, _) |
         Implicit(ty::UniqueImmBorrow, _) => "&unique",
         UnsafePtr(_) => "*",
-    }
-}
-
-impl<'tcx> fmt::Debug for PointerKind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Unique => write!(f, "Box"),
-            BorrowedPtr(ty::ImmBorrow, ref r) |
-            Implicit(ty::ImmBorrow, ref r) => {
-                write!(f, "&{:?}", r)
-            }
-            BorrowedPtr(ty::MutBorrow, ref r) |
-            Implicit(ty::MutBorrow, ref r) => {
-                write!(f, "&{:?} mut", r)
-            }
-            BorrowedPtr(ty::UniqueImmBorrow, ref r) |
-            Implicit(ty::UniqueImmBorrow, ref r) => {
-                write!(f, "&{:?} uniq", r)
-            }
-            UnsafePtr(_) => write!(f, "*")
-        }
     }
 }
 
