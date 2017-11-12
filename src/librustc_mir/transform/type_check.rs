@@ -1036,13 +1036,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
 
-        let (variant, substs) = match **ak {
+        match **ak {
             AggregateKind::Adt(def, variant, substs, _) => {
-                // handle unions?
-                (&def.variants[variant], substs)
+                if let Some(field) = def.variants[variant].fields.get(field) {
+                    Ok(self.normalize(&field.ty(tcx, substs), location))
+                } else {
+                    Err(FieldAccessError::OutOfRange {
+                        field_count: variant.fields.len(),
+                    })
+                }
             }
             AggregateKind::Closure(def_id, substs) => {
-                return match substs.upvar_tys(def_id, tcx).nth(field) {
+                match substs.upvar_tys(def_id, tcx).nth(field) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
                         field_count: substs.upvar_tys(def_id, tcx).count(),
@@ -1051,30 +1056,22 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             AggregateKind::Generator(def_id, substs, _) => {
                 if let Some(ty) = substs.upvar_tys(def_id, tcx).nth(field) {
-                    return Ok(ty);
+                    Ok(ty);
+                } else {
+                    match substs.field_tys(def_id, tcx).nth(field) {
+                        Some(ty) => Ok(ty),
+                        None => Err(FieldAccessError::OutOfRange {
+                            field_count: substs.field_tys(def_id, tcx).count() + 1,
+                        }),
+                    }
                 }
-
-                return match substs.field_tys(def_id, tcx).nth(field) {
-                    Some(ty) => Ok(ty),
-                    None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.field_tys(def_id, tcx).count() + 1,
-                    }),
-                };
             }
             AggregateKind::Array(ty) => {
-                return Ok(ty);
+                Ok(ty)
             }
             AggregateKind::Tuple => {
                 unreachable!("This should have been covered in check_rvalues");
             }
-        };
-
-        if let Some(field) = variant.fields.get(field) {
-            Ok(self.normalize(&field.ty(tcx, substs), location))
-        } else {
-            Err(FieldAccessError::OutOfRange {
-                field_count: variant.fields.len(),
-            })
         }
     }
 
