@@ -25,6 +25,7 @@ use core::ops::{Index, IndexMut, Place, Placer, InPlace};
 use core::ptr;
 use core::ptr::Shared;
 use core::slice;
+use core::intrinsics;
 
 use core::hash::{Hash, Hasher};
 use core::cmp;
@@ -1752,7 +1753,7 @@ impl<T> VecDeque<T> {
     // This may panic or abort
     #[inline]
     fn grow_if_necessary(&mut self) {
-        if self.is_full() {
+        if unsafe { intrinsics::unlikely(self.is_full()) } {
             let old_cap = self.cap();
             self.buf.double();
             unsafe {

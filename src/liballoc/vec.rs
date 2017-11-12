@@ -79,6 +79,7 @@ use core::ops;
 use core::ptr;
 use core::ptr::Shared;
 use core::slice;
+use core::intrinsics;
 
 use borrow::ToOwned;
 use borrow::Cow;
@@ -707,6 +708,11 @@ impl<T> Vec<T> {
         self.pop().unwrap()
     }
 
+    #[inline(always)]
+    fn is_full(&self) -> bool {
+        self.len == self.buf.cap()
+    }
+
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
     ///
@@ -729,8 +735,8 @@ impl<T> Vec<T> {
         assert!(index <= len);
 
         // space for the new element
-        if len == self.buf.cap() {
-            self.buf.double();
+        if unsafe { intrinsics::unlikely(self.is_full()) } {
+            self.buf.reserve(self.len, 1);
         }
 
         unsafe {
@@ -964,8 +970,8 @@ impl<T> Vec<T> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.cap() {
-            self.buf.double();
+        if unsafe { intrinsics::unlikely(self.is_full()) } {
+            self.buf.reserve(self.len, 1);
         }
         unsafe {
             let end = self.as_mut_ptr().offset(self.len as isize);
@@ -2532,8 +2538,9 @@ impl<'a, T> Placer<T> for PlaceBack<'a, T> {
     fn make_place(self) -> Self {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.vec.len == self.vec.buf.cap() {
-            self.vec.buf.double();
+        if unsafe { intrinsics::unlikely(self.vec.is_full()) } {
+            let len = self.vec.len();
+            self.vec.buf.reserve(len, 1);
         }
         self
     }
