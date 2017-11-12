@@ -35,7 +35,7 @@ use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{colon_spaces, contains_skip, extra_offset, first_line_width, inner_attributes,
             last_line_extendable, last_line_width, left_most_sub_expr, mk_sp, outer_attributes,
             paren_overhead, ptr_vec_to_ref_vec, semicolon_for_stmt, stmt_expr,
-            trimmed_last_line_width};
+            trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -168,10 +168,13 @@ pub fn format_expr(
         ast::ExprKind::TupField(..) |
         ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
         ast::ExprKind::Mac(ref mac) => {
-            // Failure to rewrite a macro should not imply failure to
-            // rewrite the expression.
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
-                .or_else(|| Some(context.snippet(expr.span)))
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
+                wrap_str(
+                    context.snippet(expr.span),
+                    context.config.max_width(),
+                    shape,
+                )
+            })
         }
         ast::ExprKind::Ret(None) => Some("return".to_owned()),
         ast::ExprKind::Ret(Some(ref expr)) => {
@@ -1594,13 +1597,11 @@ fn rewrite_match_arm(
                 arm_comma(context.config, body, is_last),
             ));
         }
-        (
-            mk_sp(
-                arm.attrs[arm.attrs.len() - 1].span.hi(),
-                arm.pats[0].span.lo(),
-            ),
-            arm.attrs.rewrite(context, shape)?,
-        )
+        let missing_span = mk_sp(
+            arm.attrs[arm.attrs.len() - 1].span.hi(),
+            arm.pats[0].span.lo(),
+        );
+        (missing_span, arm.attrs.rewrite(context, shape)?)
     } else {
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
@@ -1724,14 +1725,10 @@ fn rewrite_match_body(
     };
 
     let forbid_same_line = has_guard && pats_str.contains('\n') && !is_empty_block;
-    let next_line_indent = if is_block {
-        if is_empty_block {
-            shape.indent.block_indent(context.config)
-        } else {
-            shape.indent
-        }
-    } else {
+    let next_line_indent = if !is_block || is_empty_block {
         shape.indent.block_indent(context.config)
+    } else {
+        shape.indent
     };
     let combine_next_line_body = |body_str: &str| {
         if is_block {
@@ -1926,7 +1923,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
             .all(|line| line.ends_with('\\'))
         {
             let new_indent = shape.visual_indent(1).indent;
-            return Some(String::from(
+            let indented_string_lit = String::from(
                 string_lit
                     .lines()
                     .map(|line| {
@@ -1939,16 +1936,17 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                     .collect::<Vec<_>>()
                     .join("\n")
                     .trim_left(),
-            ));
+            );
+            return wrap_str(indented_string_lit, context.config.max_width(), shape);
         } else {
-            return Some(string_lit);
+            return wrap_str(string_lit, context.config.max_width(), shape);
         }
     }
 
     if !context.config.force_format_strings()
         && !string_requires_rewrite(context, span, &string_lit, shape)
     {
-        return Some(string_lit);
+        return wrap_str(string_lit, context.config.max_width(), shape);
     }
 
     // Remove the quote characters.
