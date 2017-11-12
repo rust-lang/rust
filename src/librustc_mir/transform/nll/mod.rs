@@ -47,7 +47,7 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
 
     // Run the MIR type-checker.
     let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
-    let constraint_sets = &type_check::type_check(infcx, mir_node_id, param_env, mir);
+    let constraint_sets = &type_check::type_check(infcx, mir_node_id, param_env, mir, def_id);
 
     // Create the region inference context, taking ownership of the region inference
     // data that was contained in `infcx`.
