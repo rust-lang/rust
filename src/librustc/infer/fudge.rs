@@ -131,7 +131,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         // variables to their binding anyhow, we know
                         // that it is unbound, so we can just return
                         // it.
-                        debug_assert!(self.infcx.type_variables.borrow_mut().probe(vid).is_none());
+                        debug_assert!(self.infcx.type_variables.borrow_mut()
+                                      .probe(vid)
+                                      .is_unknown());
                         ty
                     }
 
@@ -139,7 +141,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         // This variable was created during the
                         // fudging. Recreate it with a fresh variable
                         // here.
-                        self.infcx.next_ty_var(origin)
+                        //
+                        // The ROOT universe is fine because we only
+                        // ever invoke this routine at the
+                        // "item-level" of inference.
+                        self.infcx.next_ty_var(ty::UniverseIndex::ROOT, origin)
                     }
                 }
             }

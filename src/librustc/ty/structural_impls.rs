@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::type_variable;
 use middle::const_val::{self, ConstVal, ConstAggregate, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -239,6 +238,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
         tcx.lift(&self.caller_bounds).map(|caller_bounds| {
             ty::ParamEnv {
                 reveal: self.reveal,
+                universe: self.universe,
                 caller_bounds,
             }
         })
@@ -381,19 +381,6 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::error::ExpectedFound<T> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for type_variable::Default<'a> {
-    type Lifted = type_variable::Default<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.ty).map(|ty| {
-            type_variable::Default {
-                ty,
-                origin_span: self.origin_span,
-                def_id: self.def_id
-            }
-        })
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
     type Lifted = ty::error::TypeError<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -425,9 +412,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
 
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
-            TyParamDefaultMismatch(ref x) => {
-                return tcx.lift(x).map(TyParamDefaultMismatch)
-            }
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch)
         })
     }
@@ -601,12 +585,23 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ParamEnv<'tcx> {
         ty::ParamEnv {
             reveal: self.reveal,
             caller_bounds: self.caller_bounds.fold_with(folder),
+            universe: self.universe.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        let &ty::ParamEnv { reveal: _, ref caller_bounds } = self;
-        caller_bounds.super_visit_with(visitor)
+        let &ty::ParamEnv { reveal: _, ref universe, ref caller_bounds } = self;
+        universe.super_visit_with(visitor) || caller_bounds.super_visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::UniverseIndex {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
+        *self
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
+        false
     }
 }
 
@@ -1119,20 +1114,6 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::error::ExpectedFoun
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for type_variable::Default<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        type_variable::Default {
-            ty: self.ty.fold_with(folder),
-            origin_span: self.origin_span,
-            def_id: self.def_id
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor)
-    }
-}
-
 impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         self.iter().map(|x| x.fold_with(folder)).collect()
@@ -1172,7 +1153,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
             Sorts(x) => Sorts(x.fold_with(folder)),
-            TyParamDefaultMismatch(ref x) => TyParamDefaultMismatch(x.fold_with(folder)),
             ExistentialMismatch(x) => ExistentialMismatch(x.fold_with(folder)),
         }
     }
@@ -1191,7 +1171,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
                 b.visit_with(visitor)
             },
             Sorts(x) => x.visit_with(visitor),
-            TyParamDefaultMismatch(ref x) => x.visit_with(visitor),
             ExistentialMismatch(x) => x.visit_with(visitor),
             Mismatch |
             Mutability |

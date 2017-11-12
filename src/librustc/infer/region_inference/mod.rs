@@ -21,7 +21,7 @@ use super::unify_key;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
-use rustc_data_structures::unify::{self, UnificationTable};
+use rustc_data_structures::unify as ut;
 use middle::free_region::RegionRelations;
 use ty::{self, Ty, TyCtxt};
 use ty::{Region, RegionVid};
@@ -216,7 +216,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     lubs: RefCell<CombineMap<'tcx>>,
     glbs: RefCell<CombineMap<'tcx>>,
-    skolemization_count: Cell<u32>,
+    skolemization_count: Cell<ty::UniverseIndex>,
     bound_count: Cell<u32>,
 
     /// The undo log records actions that might later be undone.
@@ -230,7 +230,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// back.
     undo_log: RefCell<Vec<UndoLogEntry<'tcx>>>,
 
-    unification_table: RefCell<UnificationTable<ty::RegionVid>>,
+    unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::RegionVid>>>,
 
     /// This contains the results of inference.  It begins as an empty
     /// option and only acquires a value after inference is complete.
@@ -239,8 +239,8 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 pub struct RegionSnapshot {
     length: usize,
-    region_snapshot: unify::Snapshot<ty::RegionVid>,
-    skolemization_count: u32,
+    region_snapshot: ut::Snapshot<ut::InPlace<ty::RegionVid>>,
+    skolemization_count: ty::UniverseIndex,
 }
 
 /// When working with skolemized regions, we often wish to find all of
@@ -362,10 +362,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             givens: RefCell::new(FxHashSet()),
             lubs: RefCell::new(FxHashMap()),
             glbs: RefCell::new(FxHashMap()),
-            skolemization_count: Cell::new(0),
+            skolemization_count: Cell::new(ty::UniverseIndex::ROOT),
             bound_count: Cell::new(0),
             undo_log: RefCell::new(Vec::new()),
-            unification_table: RefCell::new(UnificationTable::new()),
+            unification_table: RefCell::new(ut::UnificationTable::new()),
         }
     }
 
@@ -389,7 +389,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         assert!(self.undo_log.borrow().len() > snapshot.length);
         assert!((*self.undo_log.borrow())[snapshot.length] == OpenSnapshot);
         assert!(self.skolemization_count.get() == snapshot.skolemization_count,
-                "failed to pop skolemized regions: {} now vs {} at start",
+                "failed to pop skolemized regions: {:?} now vs {:?} at start",
                 self.skolemization_count.get(),
                 snapshot.skolemization_count);
 
@@ -501,9 +501,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         assert!(self.in_snapshot());
         assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
 
-        let sc = self.skolemization_count.get();
-        self.skolemization_count.set(sc + 1);
-        self.tcx.mk_region(ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br))
+        let universe = self.skolemization_count.get().subuniverse();
+        self.skolemization_count.set(universe);
+        self.tcx.mk_region(ReSkolemized(universe, br))
     }
 
     /// Removes all the edges to/from the skolemized regions that are
@@ -517,31 +517,31 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         assert!(self.in_snapshot());
         assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
-        assert!(self.skolemization_count.get() as usize >= skols.len(),
+        assert!(self.skolemization_count.get().as_usize() >= skols.len(),
                 "popping more skolemized variables than actually exist, \
                  sc now = {}, skols.len = {}",
-                self.skolemization_count.get(),
+                self.skolemization_count.get().as_usize(),
                 skols.len());
 
-        let last_to_pop = self.skolemization_count.get();
-        let first_to_pop = last_to_pop - (skols.len() as u32);
+        let last_to_pop = self.skolemization_count.get().subuniverse();
+        let first_to_pop = ty::UniverseIndex::from(last_to_pop.as_u32() - (skols.len() as u32));
 
         assert!(first_to_pop >= snapshot.skolemization_count,
                 "popping more regions than snapshot contains, \
-                 sc now = {}, sc then = {}, skols.len = {}",
+                 sc now = {:?}, sc then = {:?}, skols.len = {}",
                 self.skolemization_count.get(),
                 snapshot.skolemization_count,
                 skols.len());
         debug_assert! {
             skols.iter()
                  .all(|&k| match *k {
-                     ty::ReSkolemized(index, _) =>
-                         index.index >= first_to_pop &&
-                         index.index < last_to_pop,
+                     ty::ReSkolemized(universe, _) =>
+                         universe >= first_to_pop &&
+                         universe < last_to_pop,
                      _ =>
                          false
                  }),
-            "invalid skolemization keys or keys out of range ({}..{}): {:?}",
+            "invalid skolemization keys or keys out of range ({:?}..{:?}): {:?}",
             snapshot.skolemization_count,
             self.skolemization_count.get(),
             skols
@@ -812,7 +812,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 
     pub fn opportunistic_resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
-        let vid = self.unification_table.borrow_mut().find_value(rid).min_vid;
+        let vid = self.unification_table.borrow_mut().probe_value(rid).min_vid;
         self.tcx.mk_region(ty::ReVar(vid))
     }
 
@@ -1527,7 +1527,7 @@ impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
 
 impl fmt::Debug for RegionSnapshot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionSnapshot(length={},skolemization={})",
+        write!(f, "RegionSnapshot(length={},skolemization={:?})",
                self.length, self.skolemization_count)
     }
 }

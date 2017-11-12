@@ -213,7 +213,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
     let param_env = ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates),
-                                      Reveal::UserFacing);
+                                      Reveal::UserFacing,
+                                      ty::UniverseIndex::ROOT);
     let param_env = traits::normalize_param_env_or_error(tcx,
                                                          impl_m.def_id,
                                                          param_env,

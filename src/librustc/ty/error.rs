@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use infer::type_variable;
 use middle::const_val::ConstVal;
-use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
+use ty::{self, BoundRegion, Region, Ty, TyCtxt};
 
 use std::fmt;
 use syntax::abi;
@@ -52,7 +51,6 @@ pub enum TypeError<'tcx> {
     CyclicTy,
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
 }
 
@@ -161,11 +159,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.expected,
                        values.found)
             },
-            TyParamDefaultMismatch(ref values) => {
-                write!(f, "conflicting type parameter defaults `{}` and `{}`",
-                       values.expected.ty,
-                       values.found.ty)
-            }
             ExistentialMismatch(ref values) => {
                 report_maybe_different(f, format!("trait `{}`", values.expected),
                                        format!("trait `{}`", values.found))
@@ -257,42 +250,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         "consider boxing your closure and/or using it as a trait object");
                 }
             },
-            TyParamDefaultMismatch(values) => {
-                let expected = values.expected;
-                let found = values.found;
-                db.span_note(sp, &format!("conflicting type parameter defaults `{}` and `{}`",
-                                          expected.ty,
-                                          found.ty));
-
-                match self.hir.span_if_local(expected.def_id) {
-                    Some(span) => {
-                        db.span_note(span, "a default was defined here...");
-                    }
-                    None => {
-                        let item_def_id = self.parent(expected.def_id).unwrap();
-                        db.note(&format!("a default is defined on `{}`",
-                                         self.item_path_str(item_def_id)));
-                    }
-                }
-
-                db.span_note(
-                    expected.origin_span,
-                    "...that was applied to an unconstrained type variable here");
-
-                match self.hir.span_if_local(found.def_id) {
-                    Some(span) => {
-                        db.span_note(span, "a second default was defined here...");
-                    }
-                    None => {
-                        let item_def_id = self.parent(found.def_id).unwrap();
-                        db.note(&format!("a second default is defined on `{}`",
-                                         self.item_path_str(item_def_id)));
-                    }
-                }
-
-                db.span_note(found.origin_span,
-                             "...that also applies to the same type variable here");
-            }
             _ => {}
         }
     }

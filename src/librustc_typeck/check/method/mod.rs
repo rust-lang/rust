@@ -249,13 +249,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self.tcx,
                                       trait_def_id,
                                       |def, _| self.region_var_for_def(span, def),
-                                      |def, substs| {
+                                      |def, _substs| {
             if def.index == 0 {
                 self_ty
             } else if let Some(ref input_types) = opt_input_types {
                 input_types[def.index as usize - 1]
             } else {
-                self.type_var_for_def(span, def, substs)
+                self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
             }
         });
 

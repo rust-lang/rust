@@ -50,7 +50,9 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
                                        -> ty::ImplHeader<'tcx>
 {
     let tcx = selcx.tcx();
-    let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
+    let impl_substs = selcx.infcx().fresh_substs_for_item(param_env.universe,
+                                                          DUMMY_SP,
+                                                          impl_def_id);
 
     let header = ty::ImplHeader {
         impl_def_id,

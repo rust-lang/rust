@@ -503,7 +503,8 @@ fn sub_free_bound_false_infer() {
     //! does NOT hold for any instantiation of `_#1`.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let t_infer1 = env.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+        let t_infer1 = env.infcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                             TypeVariableOrigin::MiscVariable(DUMMY_SP));
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         env.check_not_sub(env.t_fn(&[t_infer1], env.tcx().types.isize),
                           env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
@@ -522,7 +523,8 @@ fn lub_free_bound_infer() {
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |mut env| {
         env.create_simple_region_hierarchy();
-        let t_infer1 = env.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+        let t_infer1 = env.infcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                             TypeVariableOrigin::MiscVariable(DUMMY_SP));
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_free1 = env.t_rptr_free(1);
         env.check_lub(env.t_fn(&[t_infer1], env.tcx().types.isize),
@@ -642,7 +644,8 @@ fn glb_bound_free() {
 fn glb_bound_free_infer() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        let t_infer1 = env.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+        let t_infer1 = env.infcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                             TypeVariableOrigin::MiscVariable(DUMMY_SP));
 
         // compute GLB(fn(_) -> isize, for<'b> fn(&'b isize) -> isize),
         // which should yield for<'b> fn(&'b isize) -> isize
