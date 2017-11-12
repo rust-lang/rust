@@ -1138,8 +1138,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     tls_model: Option<String> = (None, parse_opt_string, [TRACKED],
          "choose the TLS model to use (rustc --print tls-models for details)"),
     saturating_float_casts: bool = (false, parse_bool, [TRACKED],
-        "make casts between integers and floats safe: clip out-of-range inputs to the min/max \
-         integer or to infinity respectively, and turn `NAN` into 0 when casting to integers"),
+        "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
+         the max/min integer respectively, and NaN is mapped to 0"),
 }
 
 pub fn default_lib_output() -> CrateType {
