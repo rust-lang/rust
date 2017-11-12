@@ -624,6 +624,7 @@ impl<'a> Builder<'a> {
             }
 
             if mode != Mode::Libstd && // FIXME(#45320)
+               mode != Mode::Libtest && // FIXME(#45511)
                self.config.rust_codegen_units.is_none() &&
                self.build.is_rust_llvm(compiler.host)
             {
