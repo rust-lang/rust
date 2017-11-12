@@ -69,9 +69,13 @@ impl MirPass for CopyPropagation {
             return;
         }
 
+        let mut def_use_analysis = DefUseAnalysis::new(mir);
         loop {
-            let mut def_use_analysis = DefUseAnalysis::new(mir);
             def_use_analysis.analyze(mir);
+
+            if eliminate_self_assignments(mir, &def_use_analysis) {
+                def_use_analysis.analyze(mir);
+            }
 
             let mut changed = false;
             for dest_local in mir.local_decls.indices() {
@@ -99,9 +103,14 @@ impl MirPass for CopyPropagation {
                                dest_local);
                         continue
                     }
-                    let dest_lvalue_def = dest_use_info.defs_and_uses.iter().filter(|lvalue_def| {
-                        lvalue_def.context.is_mutating_use() && !lvalue_def.context.is_drop()
-                    }).next().unwrap();
+                    // Conservatively gives up if the dest is an argument,
+                    // because there may be uses of the original argument value.
+                    if mir.local_kind(dest_local) == LocalKind::Arg {
+                        debug!("  Can't copy-propagate local: dest {:?} (argument)",
+                            dest_local);
+                        continue;
+                    }
+                    let dest_lvalue_def = dest_use_info.defs_not_including_drop().next().unwrap();
                     location = dest_lvalue_def.location;
 
                     let basic_block = &mir[location.block];
@@ -149,6 +158,39 @@ impl MirPass for CopyPropagation {
             }
         }
     }
+}
+
+fn eliminate_self_assignments<'tcx>(
+    mir: &mut Mir<'tcx>,
+    def_use_analysis: &DefUseAnalysis<'tcx>,
+) -> bool {
+    let mut changed = false;
+
+    for dest_local in mir.local_decls.indices() {
+        let dest_use_info = def_use_analysis.local_info(dest_local);
+
+        for def in dest_use_info.defs_not_including_drop() {
+            let location = def.location;
+            if let Some(stmt) = mir[location.block].statements.get(location.statement_index) {
+                match stmt.kind {
+                    StatementKind::Assign(
+                        Lvalue::Local(local),
+                        Rvalue::Use(Operand::Consume(Lvalue::Local(src_local))),
+                    ) if local == dest_local && dest_local == src_local => {}
+                    _ => {
+                        continue;
+                    }
+                }
+            } else {
+                continue;
+            }
+            debug!("Deleting a self-assignment for {:?}", dest_local);
+            mir.make_statement_nop(location);
+            changed = true;
+        }
+    }
+
+    changed
 }
 
 enum Action<'tcx> {
