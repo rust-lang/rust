@@ -2228,10 +2228,12 @@ Density of a where clause.
 ```rust
 trait Lorem {
     fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq;
+    where
+        Dolor: Eq;
 
     fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq
+    where
+        Dolor: Eq,
     {
         // body
     }
