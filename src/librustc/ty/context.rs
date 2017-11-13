@@ -1311,9 +1311,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn serialize_query_result_cache<E>(self,
                                            encoder: &mut E)
                                            -> Result<(), E::Error>
-        where E: ::rustc_serialize::Encoder
+        where E: ty::codec::TyEncoder
     {
-        self.on_disk_query_result_cache.serialize(encoder)
+        self.on_disk_query_result_cache.serialize(self, encoder)
     }
 
 }

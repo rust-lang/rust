@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use errors::Diagnostic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
-                      SpecializedDecoder};
+                      SpecializedDecoder, SpecializedEncoder};
 use session::Session;
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -21,6 +21,9 @@ use std::collections::BTreeMap;
 use std::mem;
 use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
+use ty;
+use ty::codec::{self as ty_codec};
+use ty::context::TyCtxt;
 
 /// `OnDiskCache` provides an interface to incr. comp. data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -46,11 +49,7 @@ struct Header {
     prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
 }
 
-// This type is used only for (de-)serialization.
-#[derive(RustcEncodable, RustcDecodable)]
-struct Body {
-    diagnostics: Vec<(SerializedDepNodeIndex, Vec<Diagnostic>)>,
-}
+type EncodedPrevDiagnostics = Vec<(SerializedDepNodeIndex, Vec<Diagnostic>)>;
 
 impl<'sess> OnDiskCache<'sess> {
     /// Create a new OnDiskCache instance from the serialized data in `data`.
@@ -64,14 +63,21 @@ impl<'sess> OnDiskCache<'sess> {
         let mut decoder = opaque::Decoder::new(&data[..], start_pos);
         let header = Header::decode(&mut decoder).unwrap();
 
-        let prev_diagnostics: FxHashMap<_, _> = {
+        let prev_diagnostics = {
             let mut decoder = CacheDecoder {
                 opaque: decoder,
                 codemap: sess.codemap(),
                 prev_filemap_starts: &header.prev_filemap_starts,
             };
-            let body = Body::decode(&mut decoder).unwrap();
-            body.diagnostics.into_iter().collect()
+
+            let prev_diagnostics: FxHashMap<_, _> = {
+                let diagnostics = EncodedPrevDiagnostics::decode(&mut decoder)
+                    .expect("Error while trying to decode prev. diagnostics \
+                             from incr. comp. cache.");
+                diagnostics.into_iter().collect()
+            };
+
+            prev_diagnostics
         };
 
         OnDiskCache {
@@ -91,11 +97,21 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'a, 'tcx, E>(&self,
-                                  encoder: &mut E)
-                                  -> Result<(), E::Error>
-        where E: Encoder
-    {
+    pub fn serialize<'a, 'gcx, 'lcx, E>(&self,
+                                        tcx: TyCtxt<'a, 'gcx, 'lcx>,
+                                        encoder: &mut E)
+                                        -> Result<(), E::Error>
+        where E: ty_codec::TyEncoder
+     {
+        // Serializing the DepGraph should not modify it:
+        let _in_ignore = tcx.dep_graph.in_ignore();
+
+        let mut encoder = CacheEncoder {
+            encoder,
+            type_shorthands: FxHashMap(),
+            predicate_shorthands: FxHashMap(),
+        };
+
         let prev_filemap_starts: BTreeMap<_, _> = self
             .codemap
             .files()
@@ -103,16 +119,16 @@ impl<'sess> OnDiskCache<'sess> {
             .map(|fm| (fm.start_pos, StableFilemapId::new(fm)))
             .collect();
 
-        Header { prev_filemap_starts }.encode(encoder)?;
+        Header { prev_filemap_starts }.encode(&mut encoder)?;
 
-        let diagnostics: Vec<(SerializedDepNodeIndex, Vec<Diagnostic>)> =
+        let diagnostics: EncodedPrevDiagnostics =
             self.current_diagnostics
                 .borrow()
                 .iter()
                 .map(|(k, v)| (SerializedDepNodeIndex::new(k.index()), v.clone()))
                 .collect();
 
-        Body { diagnostics }.encode(encoder)?;
+        diagnostics.encode(&mut encoder)?;
 
         Ok(())
     }
@@ -151,6 +167,9 @@ impl<'sess> OnDiskCache<'sess> {
         x.extend(diagnostics.into_iter());
     }
 }
+
+
+//- DECODING -------------------------------------------------------------------
 
 /// A decoder that can read the incr. comp. cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and
@@ -227,5 +246,85 @@ impl<'a> SpecializedDecoder<Span> for CacheDecoder<'a> {
         }
 
         Ok(DUMMY_SP)
+    }
+}
+
+
+//- ENCODING -------------------------------------------------------------------
+
+struct CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    encoder: &'enc mut E,
+    type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
+    predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+}
+
+impl<'enc, 'tcx, E> ty_codec::TyEncoder for CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn position(&self) -> usize {
+        self.encoder.position()
+    }
+}
+
+impl<'enc, 'tcx, E> SpecializedEncoder<ty::Ty<'tcx>> for CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, ty: &ty::Ty<'tcx>) -> Result<(), Self::Error> {
+        ty_codec::encode_with_shorthand(self, ty,
+            |encoder| &mut encoder.type_shorthands)
+    }
+}
+
+impl<'enc, 'tcx, E> SpecializedEncoder<ty::GenericPredicates<'tcx>>
+    for CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self,
+                          predicates: &ty::GenericPredicates<'tcx>)
+                          -> Result<(), Self::Error> {
+        ty_codec::encode_predicates(self, predicates,
+            |encoder| &mut encoder.predicate_shorthands)
+    }
+}
+
+macro_rules! encoder_methods {
+    ($($name:ident($ty:ty);)*) => {
+        $(fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
+            self.encoder.$name(value)
+        })*
+    }
+}
+
+impl<'enc, 'tcx, E> Encoder for CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    type Error = E::Error;
+
+    fn emit_nil(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    encoder_methods! {
+        emit_usize(usize);
+        emit_u128(u128);
+        emit_u64(u64);
+        emit_u32(u32);
+        emit_u16(u16);
+        emit_u8(u8);
+
+        emit_isize(isize);
+        emit_i128(i128);
+        emit_i64(i64);
+        emit_i32(i32);
+        emit_i16(i16);
+        emit_i8(i8);
+
+        emit_bool(bool);
+        emit_f64(f64);
+        emit_f32(f32);
+        emit_char(char);
+        emit_str(&str);
     }
 }
