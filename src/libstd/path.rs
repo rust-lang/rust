@@ -1690,11 +1690,11 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        if !cfg!(target_os = "redox") {
-            self.has_root() && (cfg!(unix) || self.prefix().is_some())
-        } else {
+        if cfg!(target_os = "redox") {
             // FIXME: Allow Redox prefixes
-            has_redox_scheme(self.as_u8_slice())
+            self.has_root() || has_redox_scheme(self.as_u8_slice())
+        } else {
+            self.has_root() && (cfg!(unix) || self.prefix().is_some())
         }
     }
 
