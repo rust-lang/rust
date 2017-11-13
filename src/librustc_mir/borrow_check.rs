@@ -1169,8 +1169,10 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         err.emit();
     }
 
-    /// Finds the span of arguments of aclosure (within `maybe_closure_span`) and its usage of
+    /// Finds the span of arguments of a closure (within `maybe_closure_span`) and its usage of
     /// the local assigned at `location`.
+    /// This is done by searching in statements succeeding `location`
+    /// and originating from `maybe_closure_span`.
     fn find_closure_span(
         &self,
         maybe_closure_span: Span,
