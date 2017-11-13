@@ -16,14 +16,14 @@ matrix:
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     # "alternate" deployments, these are "nightlies" but don't have assertions
     # turned on, they're deployed to a different location primarily for projects
     # which are stuck on nightly and don't want llvm assertions in the artifacts
     # that they use.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
-      if: branch = auto
+      if: branch = try OR branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -322,7 +322,7 @@ deploy:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: try
-      condition: $DEPLOY = 1
+      condition: $DEPLOY_ALT = 1
 
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
