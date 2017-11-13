@@ -11,7 +11,7 @@
 use ty;
 
 use rustc_data_structures::indexed_vec::Idx;
-use serialize::{self, Encoder, Decoder};
+use serialize::{self, Encoder, Decoder, Decodable, Encodable};
 
 use std::fmt;
 use std::u32;
@@ -146,6 +146,20 @@ impl DefIndex {
     }
 }
 
+impl serialize::UseSpecializedEncodable for DefIndex {
+    #[inline]
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u32(self.0)
+    }
+}
+
+impl serialize::UseSpecializedDecodable for DefIndex {
+    #[inline]
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<DefIndex, D::Error> {
+        d.read_u32().map(DefIndex)
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum DefIndexAddressSpace {
     Low = 0,
@@ -188,7 +202,6 @@ impl fmt::Debug for DefId {
     }
 }
 
-
 impl DefId {
     /// Make a local `DefId` with the given index.
     pub fn local(index: DefIndex) -> DefId {
@@ -197,5 +210,31 @@ impl DefId {
 
     pub fn is_local(&self) -> bool {
         self.krate == LOCAL_CRATE
+    }
+}
+
+impl serialize::UseSpecializedEncodable for DefId {
+    #[inline]
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        let DefId {
+            krate,
+            index,
+        } = *self;
+
+        krate.encode(s)?;
+        index.encode(s)
+    }
+}
+
+impl serialize::UseSpecializedDecodable for DefId {
+    #[inline]
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<DefId, D::Error> {
+        let krate = CrateNum::decode(d)?;
+        let index = DefIndex::decode(d)?;
+
+        Ok(DefId {
+            krate,
+            index
+        })
     }
 }
