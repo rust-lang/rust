@@ -17,17 +17,15 @@ fn main() {
     // Test case where first chain element isn't a path, but is shorter than
     // the size of a tab.
     x().y(|| match cond() {
-        true => (),
-        false => (),
-    });
+              true => (),
+              false => (),
+          });
 
-    loong_func().quux(move || {
-        if true {
-            1
-        } else {
-            2
-        }
-    });
+    loong_func().quux(move || if true {
+                          1
+                      } else {
+                          2
+                      });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
         let x = c;
@@ -49,10 +47,10 @@ fn main() {
         });
     });
 
-    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
-        xxxxxxx.map(|x| x + 5)
-               .map(|x| x / 2)
-               .fold(0, |acc, x| acc + x);
+    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx.map(|x| x + 5)
+                                                                          .map(|x| x / 2)
+                                                                          .fold(0,
+                                                                                |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
         x += 1;
@@ -62,15 +60,11 @@ fn main() {
 }
 
 fn floaters() {
-    let z = Foo {
-        field1: val1,
-        field2: val2,
-    };
+    let z = Foo { field1: val1,
+                  field2: val2, };
 
-    let x = Foo {
-                field1: val1,
-                field2: val2,
-            }.method_call()
+    let x = Foo { field1: val1,
+                  field2: val2, }.method_call()
             .method_call();
 
     let y = if cond {
@@ -83,12 +77,10 @@ fn floaters() {
         match x {
             PushParam => {
                 // params are 1-indexed
-                stack.push(
-                    mparams[match cur.to_digit(10) {
-                                Some(d) => d as usize - 1,
-                                None => return Err("bad param number".to_owned()),
-                            }].clone(),
-                );
+                stack.push(mparams[match cur.to_digit(10) {
+                                       Some(d) => d as usize - 1,
+                                       None => return Err("bad param number".to_owned()),
+                                   }].clone());
             }
         }
     }
@@ -106,10 +98,8 @@ fn floaters() {
     })
                   .quux();
 
-    Foo {
-        y: i_am_multi_line,
-        z: ok,
-    }.baz(|| {
+    Foo { y: i_am_multi_line,
+          z: ok, }.baz(|| {
         force();
         multiline();
     })
@@ -157,10 +147,8 @@ fn issue1434() {
     for _ in 0..100 {
         let prototype_id =
             PrototypeIdData::from_reader::<_, B>(&mut self.file_cursor).chain_err(|| {
-                format!(
-                    "could not read prototype ID at offset {:#010x}",
-                    current_offset
-                )
+                format!("could not read prototype ID at offset {:#010x}",
+                        current_offset)
             })?;
     }
 }
