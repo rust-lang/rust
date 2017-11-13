@@ -441,7 +441,11 @@ impl<'a> FmtVisitor<'a> {
             &self.get_context(),
             generics,
             self.config.item_brace_style(),
-            enum_def.variants.is_empty(),
+            if enum_def.variants.is_empty() {
+                BracePos::ForceSameLine
+            } else {
+                BracePos::Auto
+            },
             self.block_indent,
             mk_sp(span.lo(), body_start),
             last_line_width(&enum_header),
@@ -1091,8 +1095,20 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent) -> Option<String> {
     let header_str = format_header(p.prefix, p.ident, p.vis);
     let generics_str = if let Some(generics) = p.generics {
-        let shape = Shape::indented(offset, context.config).offset_left(header_str.len())?;
-        rewrite_generics(context, generics, shape, generics.span)?
+        let hi = if generics.where_clause.predicates.is_empty() {
+            generics.span.hi()
+        } else {
+            generics.where_clause.span.hi()
+        };
+        format_generics(
+            context,
+            generics,
+            context.config.item_brace_style(),
+            BracePos::None,
+            offset,
+            mk_sp(generics.span.lo(), hi),
+            last_line_width(&header_str),
+        )?
     } else {
         String::new()
     };
@@ -1120,7 +1136,11 @@ pub fn format_struct_struct(
             context,
             g,
             context.config.item_brace_style(),
-            fields.is_empty(),
+            if fields.is_empty() {
+                BracePos::ForceSameLine
+            } else {
+                BracePos::Auto
+            },
             offset,
             mk_sp(header_hi, body_lo),
             last_line_width(&result),
@@ -2778,11 +2798,18 @@ fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> S
     format!("{}{}{}", format_visibility(vis), item_name, ident)
 }
 
+#[derive(PartialEq, Eq)]
+enum BracePos {
+    None,
+    Auto,
+    ForceSameLine,
+}
+
 fn format_generics(
     context: &RewriteContext,
     generics: &ast::Generics,
     brace_style: BraceStyle,
-    force_same_line_brace: bool,
+    brace_pos: BracePos,
     offset: Indent,
     span: Span,
     used_width: usize,
@@ -2792,7 +2819,10 @@ fn format_generics(
 
     let same_line_brace = if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
         let budget = context.budget(last_line_used_width(&result, offset.width()));
-        let option = WhereClauseOption::snuggled(&result);
+        let mut option = WhereClauseOption::snuggled(&result);
+        if brace_pos == BracePos::None {
+            option.suppress_comma = true;
+        }
         // If the generics are not parameterized then generics.span.hi() == 0,
         // so we use span.lo(), which is the position after `struct Foo`.
         let span_end_before_where = if generics.is_parameterized() {
@@ -2813,19 +2843,22 @@ fn format_generics(
             false,
         )?;
         result.push_str(&where_clause_str);
-        force_same_line_brace || brace_style == BraceStyle::PreferSameLine
+        brace_pos == BracePos::ForceSameLine || brace_style == BraceStyle::PreferSameLine
             || (generics.where_clause.predicates.is_empty()
                 && trimmed_last_line_width(&result) == 1)
     } else {
-        force_same_line_brace || trimmed_last_line_width(&result) == 1
+        brace_pos == BracePos::ForceSameLine || trimmed_last_line_width(&result) == 1
             || brace_style != BraceStyle::AlwaysNextLine
     };
+    if brace_pos == BracePos::None {
+        return Some(result);
+    }
     let total_used_width = last_line_used_width(&result, used_width);
     let remaining_budget = context.budget(total_used_width);
     // If the same line brace if forced, it indicates that we are rewriting an item with empty body,
     // and hence we take the closer into account as well for one line budget.
     // We assume that the closer has the same length as the opener.
-    let overhead = if force_same_line_brace {
+    let overhead = if brace_pos == BracePos::ForceSameLine {
         // 3 = ` {}`
         3
     } else {
