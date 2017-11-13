@@ -92,10 +92,9 @@ impl CliOptions {
         }
 
         if let Some(ref color) = matches.opt_str("color") {
-            if let Ok(color) = Color::from_str(color) {
-                options.color = Some(color);
-            } else {
-                return Err(FmtError::from(format!("Invalid color: {}", color)));
+            match Color::from_str(color) {
+                Ok(color) => options.color = Some(color),
+                _ => return Err(FmtError::from(format!("Invalid color: {}", color))),
             }
         }
 

@@ -13,7 +13,7 @@ use diff;
 use std::collections::VecDeque;
 use std::io;
 use term;
-use utils::iscolored;
+use utils::use_colored_tty;
 
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
@@ -102,7 +102,7 @@ where
     F: Fn(u32) -> String,
 {
     match term::stdout() {
-        Some(ref t) if iscolored(color) && t.supports_color() => {
+        Some(ref t) if use_colored_tty(color) && t.supports_color() => {
             print_diff_fancy(diff, get_section_title, term::stdout().unwrap())
         }
         _ => print_diff_basic(diff, get_section_title),

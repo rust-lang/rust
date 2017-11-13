@@ -485,7 +485,7 @@ pub fn isatty() -> bool {
     }
 }
 
-pub fn iscolored(color: Color) -> bool {
+pub fn use_colored_tty(color: Color) -> bool {
     match color {
         Color::Always => true,
         Color::Never => false,

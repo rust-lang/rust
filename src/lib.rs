@@ -44,7 +44,7 @@ use checkstyle::{output_footer, output_header};
 use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
-use utils::iscolored;
+use utils::use_colored_tty;
 use visitor::FmtVisitor;
 
 pub use self::summary::Summary;
@@ -581,7 +581,7 @@ pub fn run(input: Input, config: &Config) -> Summary {
             if report.has_warnings() {
                 match term::stderr() {
                     Some(ref t)
-                        if iscolored(config.color()) && t.supports_color()
+                        if use_colored_tty(config.color()) && t.supports_color()
                             && t.supports_attr(term::Attr::Bold) =>
                     {
                         match report.print_warnings_fancy(term::stderr().unwrap()) {
