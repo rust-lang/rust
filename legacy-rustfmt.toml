@@ -1,8 +1,3 @@
-fn_args_indent = "Visual"
-array_indent = "Visual"
-control_style = "Legacy"
-where_style = "Legacy"
-generics_indent = "Visual"
-fn_call_indent = "Visual"
+indent_style = "Visual"
 combine_control_expr = false
 fn_args_paren_newline = true
