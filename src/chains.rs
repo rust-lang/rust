@@ -87,7 +87,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     let parent_shape = if is_block_expr(context, &parent, "\n") {
-        match context.config.chain_indent() {
+        match context.config.indent_style() {
             IndentStyle::Visual => shape.visual_indent(0),
             IndentStyle::Block => shape,
         }
@@ -105,10 +105,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
         (
             chain_indent(context, shape.add_offset(parent_rewrite.len())),
-            context.config.chain_indent() == IndentStyle::Visual || is_small_parent,
+            context.config.indent_style() == IndentStyle::Visual || is_small_parent,
         )
     } else if is_block_expr(context, &parent, &parent_rewrite) {
-        match context.config.chain_indent() {
+        match context.config.indent_style() {
             // Try to put the first child on the same line with parent's last line
             IndentStyle::Block => (parent_shape.block_indent(context.config.tab_spaces()), true),
             // The parent is a block, so align the rest of the chain with the closing
@@ -127,7 +127,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let first_child_shape = if extend {
         let overhead = last_line_width(&parent_rewrite);
         let offset = trimmed_last_line_width(&parent_rewrite) + prefix_try_num;
-        match context.config.chain_indent() {
+        match context.config.indent_style() {
             IndentStyle::Visual => parent_shape.offset_left(overhead)?,
             IndentStyle::Block => parent_shape.block().offset_left(offset)?,
         }
@@ -172,7 +172,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         } else {
             other_child_shape
         };
-        match context.config.chain_indent() {
+        match context.config.indent_style() {
             IndentStyle::Visual => last_shape.sub_width(shape.rhs_overhead(context.config))?,
             IndentStyle::Block => last_shape,
         }
@@ -262,7 +262,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     let first_connector = if is_small_parent || fits_single_line
         || last_line_extendable(&parent_rewrite)
-        || context.config.chain_indent() == IndentStyle::Visual
+        || context.config.indent_style() == IndentStyle::Visual
     {
         ""
     } else {
@@ -272,7 +272,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let result = if is_small_parent && rewrites.len() > 1 {
         let second_connector = if fits_single_line || rewrites[1] == "?"
             || last_line_extendable(&rewrites[0])
-            || context.config.chain_indent() == IndentStyle::Visual
+            || context.config.indent_style() == IndentStyle::Visual
         {
             ""
         } else {
@@ -295,7 +295,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         )
     };
     let result = format!("{}{}", result, repeat_try(suffix_try_num));
-    if context.config.chain_indent() == IndentStyle::Visual {
+    if context.config.indent_style() == IndentStyle::Visual {
         wrap_str(result, context.config.max_width(), shape)
     } else {
         Some(result)
@@ -381,7 +381,7 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
 }
 
 fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
-    match context.config.chain_indent() {
+    match context.config.indent_style() {
         IndentStyle::Visual => shape.visual_indent(0),
         IndentStyle::Block => shape
             .block_indent(context.config.tab_spaces())

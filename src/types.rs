@@ -18,7 +18,7 @@ use syntax::symbol::keywords;
 
 use spanned::Spanned;
 use codemap::SpanUtils;
-use config::{IndentStyle, Style, TypeDensity};
+use config::{IndentStyle, TypeDensity};
 use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens, PairParts};
 use items::{format_generics_item_list, generics_shape_from_config};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
@@ -302,7 +302,7 @@ where
     // 2 for ()
     let budget = shape.width.checked_sub(2)?;
     // 1 for (
-    let offset = match context.config.fn_args_indent() {
+    let offset = match context.config.indent_style() {
         IndentStyle::Block => {
             shape
                 .block()
@@ -357,14 +357,14 @@ where
         },
         separator_place: SeparatorPlace::Back,
         shape: list_shape,
-        ends_with_newline: tactic.ends_with_newline(context.config.fn_call_indent()),
+        ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
         config: context.config,
     };
 
     let list_str = write_list(&item_vec, &fmt)?;
 
-    let ty_shape = match context.config.fn_args_indent() {
+    let ty_shape = match context.config.indent_style() {
         IndentStyle::Block => shape.block().block_indent(context.config.tab_spaces()),
         IndentStyle::Visual => shape.block_left(4)?,
     };
@@ -447,9 +447,9 @@ impl Rewrite for ast::WherePredicate {
                     }
                 } else {
                     let used_width = type_str.len() + colon.len();
-                    let ty_shape = match context.config.where_style() {
-                        Style::Legacy => shape.block_left(used_width)?,
-                        Style::Rfc => shape,
+                    let ty_shape = match context.config.indent_style() {
+                        IndentStyle::Visual => shape.block_left(used_width)?,
+                        IndentStyle::Block => shape,
                     };
                     let bounds = bounds
                         .iter()

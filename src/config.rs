@@ -40,11 +40,6 @@ macro_rules! configuration_option_enum{
     }
 }
 
-configuration_option_enum! { Style:
-    Rfc, // Follow the style RFCs style.
-    Legacy, // Follow the traditional Rustfmt style.
-}
-
 configuration_option_enum! { NewlineStyle:
     Windows, // \r\n
     Unix, // \n
@@ -521,6 +516,7 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
 
 
 create_config! {
+    indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
     unstable_features: bool, false, true,
             "Enables unstable features. Only available on nightly channel";
     verbose: bool, false, false, "Use verbose output";
@@ -545,7 +541,6 @@ create_config! {
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, false,
         "Brace style for structs and enums";
-    control_style: Style, Style::Rfc, false, "Indent style for control flow statements";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
         "Brace style for control flow constructs";
     impl_empty_single_line: bool, true, false, "Put empty-body implementations on a single line";
@@ -559,16 +554,12 @@ create_config! {
         "Location of return type in function declaration";
     fn_args_paren_newline: bool, false, false, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, false, "Argument density in functions";
-    fn_args_indent: IndentStyle, IndentStyle::Block, false,
-        "Layout of function arguments and tuple structs";
-    array_indent: IndentStyle, IndentStyle::Block, false, "Indent on arrays";
     array_width: usize, 60, false,
         "Maximum width of an array literal before falling back to vertical formatting";
     array_horizontal_layout_threshold: usize, 0, false,
         "How many elements array must have before rustfmt uses horizontal layout.";
     type_punctuation_density: TypeDensity, TypeDensity::Wide, false,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
-    where_style: Style, Style::Rfc, false, "Overall strategy for where clauses";
     // TODO:
     // 1. Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
@@ -576,18 +567,12 @@ create_config! {
     where_density: Density, Density::Vertical, false, "Density of a where clause";
     where_single_line: bool, false, false, "To force single line where layout";
     where_layout: ListTactic, ListTactic::Vertical, false, "Element layout inside a where clause";
-    where_pred_indent: IndentStyle, IndentStyle::Visual, false,
-        "Indentation style of a where predicate";
-    generics_indent: IndentStyle, IndentStyle::Block, false, "Indentation of generics";
-    struct_lit_indent: IndentStyle, IndentStyle::Block, false, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle, false,
         "Multiline style on literal structs";
-    fn_call_indent: IndentStyle, IndentStyle::Block, false, "Indentation for function calls, etc.";
     report_todo: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
-    chain_indent: IndentStyle, IndentStyle::Block, false, "Indentation of chain";
     chain_width: usize, 60, false, "Maximum length of a chain to fit on a single line";
     chain_split_single_child: bool, false, false, "Split a chain with a single child if its length \
                                             exceeds `chain_width`";
