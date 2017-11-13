@@ -43,8 +43,8 @@ fn main() {
 
     fffffffffffffffffffffffffffffffffff(a, {
         SCRIPT_TASK_ROOT.with(|root| {
-            *root.borrow_mut() = Some(&script_task);
-        });
+                                  *root.borrow_mut() = Some(&script_task);
+                              });
     });
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx.map(|x| x + 5)
@@ -53,9 +53,9 @@ fn main() {
                                                                                 |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
-        x += 1;
-        x
-    })
+                             x += 1;
+                             x
+                         })
                     .filter(some_mod::some_filter)
 }
 
@@ -93,16 +93,16 @@ fn floaters() {
     .baz();
 
     Foo { x: val }.baz(|| {
-        force();
-        multiline();
-    })
+                           force();
+                           multiline();
+                       })
                   .quux();
 
     Foo { y: i_am_multi_line,
           z: ok, }.baz(|| {
-        force();
-        multiline();
-    })
+             force();
+             multiline();
+         })
     .quux();
 
     a + match x {
