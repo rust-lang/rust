@@ -1,4 +1,4 @@
-// rustfmt-generics_indent: Block
+// rustfmt-indent_style: Block
 // Generics indent
 
 fn lorem<

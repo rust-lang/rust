@@ -1,4 +1,4 @@
-// rustfmt-imports_indent: Block
+// rustfmt-indent_style: Block
 
 use lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,

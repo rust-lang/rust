@@ -1,4 +1,4 @@
-// rustfmt-where_style: Legacy
+// rustfmt-indent_style: Legacy
 // Where style
 
 fn lorem<Ipsum, Dolor, Sit, Amet>() -> T

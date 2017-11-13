@@ -1,4 +1,4 @@
-// rustfmt-fn_args_indent = "block"
+// rustfmt-indent_style = "block"
 
 #![feature(pub_restricted)]
 

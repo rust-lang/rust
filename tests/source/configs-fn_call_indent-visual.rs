@@ -1,4 +1,4 @@
-// rustfmt-fn_call_indent: Visual
+// rustfmt-indent_style: Visual
 // Function call style
 
 fn main() {

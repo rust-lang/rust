@@ -1,4 +1,4 @@
-// rustfmt-fn_args_indent: Block
+// rustfmt-indent_style: Block
 // Function arguments layout
 
 fn lorem() {}

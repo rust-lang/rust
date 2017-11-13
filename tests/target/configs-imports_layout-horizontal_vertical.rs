@@ -1,4 +1,4 @@
-// rustfmt-imports_indent: Block
+// rustfmt-indent_style: Block
 // rustfmt-imports_layout: HorizontalVertical
 
 use comment::{contains_comment, recover_comment_removed, rewrite_comment, FindUncommented};
