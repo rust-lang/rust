@@ -457,7 +457,10 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         let rev_lookup = &move_data.rev_lookup;
 
         match stmt.kind {
-            // skip move out for StorageDead
+            // this analysis only tries to find moves explicitly
+            // written by the user, so we ignore the move-outs
+            // created by `StorageDead` and at the beginning
+            // of a function.
             mir::StatementKind::StorageDead(_) => {}
             _ => {
                 debug!("stmt {:?} at loc {:?} moves out of move_indexes {:?}",
