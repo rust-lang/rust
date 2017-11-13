@@ -59,6 +59,7 @@ pub mod filemap;
 pub mod file_lines;
 pub mod visitor;
 mod checkstyle;
+mod closures;
 mod items;
 mod missed_spans;
 mod lists;
