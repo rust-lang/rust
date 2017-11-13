@@ -5,7 +5,7 @@ Rustfmt is designed to be very configurable. You can create a TOML file called `
 A possible content of `rustfmt.toml` or `.rustfmt.toml` might look like this:
 
 ```toml
-array_indent = "Block"
+indent_style = "Block"
 array_width = 80
 reorder_imported_names = true
 ```
@@ -22,7 +22,7 @@ Use this option to prevent a huge array from being vertically formatted.
 - **Default value**: `0`
 - **Possible values**: any positive integer
 
-**Note:** A value of `0` results in [`array_indent`](#array_indent) being applied regardless of a line's width.
+**Note:** A value of `0` results in [`indent_style`](#indent_style) being applied regardless of a line's width.
 
 #### `0` (default):
 
@@ -50,12 +50,14 @@ let a = vec![
 ];
 ```
 
-## `array_indent`
+## `indent_style`
 
-Indent on arrays
+Indent on expressions or items.
 
 - **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
+
+### Array
 
 #### `"Block"` (default):
 
@@ -83,6 +85,200 @@ let lorem = vec!["ipsum",
                  "elit"];
 ```
 
+### Control flow
+
+#### `"Block"` (default):
+
+```rust
+if lorem_ipsum &&
+    dolor_sit &&
+    amet_consectetur
+{
+    // ...
+}
+```
+
+#### `"Visual"`:
+
+```rust
+if lorem_ipsum &&
+   dolor_sit &&
+   amet_consectetur {
+    // ...
+}
+```
+
+See also: [`control_brace_style`](#control_brace_style).
+
+### Function arguments
+
+#### `"Block"` (default):
+
+```rust
+fn lorem() {}
+
+fn lorem(ipsum: usize) {}
+
+fn lorem(
+    ipsum: usize,
+    dolor: usize,
+    sit: usize,
+    amet: usize,
+    consectetur: usize,
+    adipiscing: usize,
+    elit: usize,
+) {
+    // body
+}
+```
+
+#### `"Visual"`:
+
+```rust
+fn lorem() {}
+
+fn lorem(ipsum: usize) {}
+
+fn lorem(ipsum: usize,
+         dolor: usize,
+         sit: usize,
+         amet: usize,
+         consectetur: usize,
+         adipiscing: usize,
+         elit: usize) {
+    // body
+}
+```
+
+### Functaion calls
+
+#### `"Block"` (default):
+
+```rust
+lorem(
+    "lorem",
+    "ipsum",
+    "dolor",
+    "sit",
+    "amet",
+    "consectetur",
+    "adipiscing",
+    "elit",
+);
+```
+
+#### `"Visual"`:
+
+```rust
+lorem("lorem",
+      "ipsum",
+      "dolor",
+      "sit",
+      "amet",
+      "consectetur",
+      "adipiscing",
+      "elit");
+```
+
+### Generics
+
+#### `"Block"` (default):
+
+```rust
+fn lorem<
+    Ipsum: Eq = usize,
+    Dolor: Eq = usize,
+    Sit: Eq = usize,
+    Amet: Eq = usize,
+    Adipiscing: Eq = usize,
+    Consectetur: Eq = usize,
+    Elit: Eq = usize
+>(
+    ipsum: Ipsum,
+    dolor: Dolor,
+    sit: Sit,
+    amet: Amet,
+    adipiscing: Adipiscing,
+    consectetur: Consectetur,
+    elit: Elit,
+) -> T {
+    // body
+}
+```
+
+#### `"Visual"`:
+
+```rust
+fn lorem<Ipsum: Eq = usize,
+         Dolor: Eq = usize,
+         Sit: Eq = usize,
+         Amet: Eq = usize,
+         Adipiscing: Eq = usize,
+         Consectetur: Eq = usize,
+         Elit: Eq = usize>
+    (ipsum: Ipsum,
+     dolor: Dolor,
+     sit: Sit,
+     amet: Amet,
+     adipiscing: Adipiscing,
+     consectetur: Consectetur,
+     elit: Elit)
+     -> T {
+    // body
+}
+```
+
+#### Struct
+
+#### `"Block"` (default):
+
+```rust
+let lorem = Lorem {
+    ipsum: dolor,
+    sit: amet,
+};
+```
+
+#### `"Visual"`:
+
+```rust
+let lorem = Lorem { ipsum: dolor,
+                    sit: amet, };
+```
+
+See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`indent_style`](#indent_style).
+
+### Where predicates
+
+#### `"Block"` (default):
+
+```rust
+fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
+where 
+    Ipsum: Eq,
+    Dolor: Eq,
+    Sit: Eq,
+    Amet: Eq
+{
+    // body
+}
+```
+
+#### `"Visual"`:
+
+```rust
+fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
+    where Ipsum: Eq,
+          Dolor: Eq,
+          Sit: Eq,
+          Amet: Eq
+{
+    // body
+}
+```
+
+See also: [`where_density`](#where_density), [`where_layout`](#where_layout).
+
 ## `array_width`
 
 Maximum width of an array literal before falling back to vertical formatting
@@ -90,7 +286,7 @@ Maximum width of an array literal before falling back to vertical formatting
 - **Default value**: `60`
 - **Possible values**: any positive integer
 
-**Note:** A value of `0` results in [`array_indent`](#array_indent) being applied regardless of a line's width.
+**Note:** A value of `0` results in [`indent_style`](#indent_style) being applied regardless of a line's width.
 
 #### Lines shorter than `array_width`:
 ```rust
@@ -98,7 +294,7 @@ let lorem = vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "
 ```
 
 #### Lines longer than `array_width`:
-See [`array_indent`](#array_indent).
+See [`indent_style`](#indent_style).
 
 ## `attributes_on_same_line_as_field`
 
@@ -414,35 +610,12 @@ let (lorem, ipsum, _, _) = (1, 2, 3, 4);
 let (lorem, ipsum, ..) = (1, 2, 3, 4);
 ```
 
-## `control_style`
+## `indent_style`
 
 Indent style for control flow statements
 
 - **Default value**: `"Rfc"`
 - **Possible values**: `"Rfc"`, `"Legacy"`
-
-#### `"Rfc"` (default):
-
-```rust
-if lorem_ipsum &&
-    dolor_sit &&
-    amet_consectetur
-{
-    // ...
-}
-```
-
-#### `"Legacy"`:
-
-```rust
-if lorem_ipsum &&
-   dolor_sit &&
-   amet_consectetur {
-    // ...
-}
-```
-
-See also: [`control_brace_style`](#control_brace_style).
 
 ## `control_brace_style`
 
@@ -640,51 +813,6 @@ trait Lorem {
 }
 ```
 
-## `fn_args_indent`
-
-Layout of function arguments and tuple structs
-
-- **Default value**: `"Block"`
-- **Possible values**: `"Block"`, `"Visual"`
-
-#### `"Block"` (default):
-
-```rust
-fn lorem() {}
-
-fn lorem(ipsum: usize) {}
-
-fn lorem(
-    ipsum: usize,
-    dolor: usize,
-    sit: usize,
-    amet: usize,
-    consectetur: usize,
-    adipiscing: usize,
-    elit: usize,
-) {
-    // body
-}
-```
-
-#### `"Visual"`:
-
-```rust
-fn lorem() {}
-
-fn lorem(ipsum: usize) {}
-
-fn lorem(ipsum: usize,
-         dolor: usize,
-         sit: usize,
-         amet: usize,
-         consectetur: usize,
-         adipiscing: usize,
-         elit: usize) {
-    // body
-}
-```
-
 ## `fn_args_paren_newline`
 
 If function argument parenthesis goes on a newline
@@ -784,41 +912,6 @@ where
 }
 ```
 
-## `fn_call_indent`
-
-Indentation for function calls, etc.
-
-- **Default value**: `"Block"`
-- **Possible values**: `"Block"`, `"Visual"`
-
-#### `"Block"` (default):
-
-```rust
-lorem(
-    "lorem",
-    "ipsum",
-    "dolor",
-    "sit",
-    "amet",
-    "consectetur",
-    "adipiscing",
-    "elit",
-);
-```
-
-#### `"Visual"`:
-
-```rust
-lorem("lorem",
-      "ipsum",
-      "dolor",
-      "sit",
-      "amet",
-      "consectetur",
-      "adipiscing",
-      "elit");
-```
-
 ## `fn_call_width`
 
 Maximum width of the args of a function call before falling back to vertical formatting
@@ -835,7 +928,7 @@ lorem("lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "el
 
 #### Function call longer than `fn_call_width`:
 
-See [`fn_call_indent`](#fn_call_indent).
+See [`indent_style`](#indent_style).
 
 ## `fn_empty_single_line`
 
@@ -900,7 +993,7 @@ fn lorem(ipsum: Ipsum,
 
 ```
 
-**Note**: This option only takes effect when `fn_call_indent` is set to `"Visual"`.
+**Note**: This option only takes effect when `indent_style` is set to `"Visual"`.
 
 ## `fn_single_line`
 
@@ -993,59 +1086,6 @@ let lorem =
 ```
 
 See also [`force_format_strings`](#force_format_strings), [`max_width`](#max_width).
-
-## `generics_indent`
-
-Indentation of generics
-
-- **Default value**: `"Block"`
-- **Possible values**: `"Block"`, `"Visual"`
-
-#### `"Block"` (default):
-
-```rust
-fn lorem<
-    Ipsum: Eq = usize,
-    Dolor: Eq = usize,
-    Sit: Eq = usize,
-    Amet: Eq = usize,
-    Adipiscing: Eq = usize,
-    Consectetur: Eq = usize,
-    Elit: Eq = usize
->(
-    ipsum: Ipsum,
-    dolor: Dolor,
-    sit: Sit,
-    amet: Amet,
-    adipiscing: Adipiscing,
-    consectetur: Consectetur,
-    elit: Elit,
-) -> T {
-    // body
-}
-```
-
-#### `"Visual"`:
-
-```rust
-fn lorem<Ipsum: Eq = usize,
-         Dolor: Eq = usize,
-         Sit: Eq = usize,
-         Amet: Eq = usize,
-         Adipiscing: Eq = usize,
-         Consectetur: Eq = usize,
-         Elit: Eq = usize>
-    (ipsum: Ipsum,
-     dolor: Dolor,
-     sit: Sit,
-     amet: Amet,
-     adipiscing: Adipiscing,
-     consectetur: Consectetur,
-     elit: Elit)
-     -> T {
-    // body
-}
-```
 
 ## `hard_tabs`
 
@@ -1982,32 +2022,7 @@ let lorem = Lorem {
 };
 ```
 
-See also: [`struct_lit_indent`](#struct_lit_indent), [`struct_lit_width`](#struct_lit_width).
-
-## `struct_lit_indent`
-
-Style of struct definition
-
-- **Default value**: `"Block"`
-- **Possible values**: `"Block"`, `"Visual"`
-
-#### `"Block"` (default):
-
-```rust
-let lorem = Lorem {
-    ipsum: dolor,
-    sit: amet,
-};
-```
-
-#### `"Visual"`:
-
-```rust
-let lorem = Lorem { ipsum: dolor,
-                    sit: amet, };
-```
-
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_indent`](#struct_lit_indent).
+See also: [`indent_style`](#indent_style), [`struct_lit_width`](#struct_lit_width).
 
 ## `struct_lit_width`
 
@@ -2024,9 +2039,9 @@ let lorem = Lorem { ipsum: dolor, sit: amet };
 ```
 
 #### Lines longer than `struct_lit_width`:
-See [`struct_lit_indent`](#struct_lit_indent).
+See [`indent_style`](#indent_style).
 
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_indent`](#struct_lit_indent).
+See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`indent_style`](#indent_style).
 
 ## `struct_variant_width`
 
@@ -2308,7 +2323,7 @@ trait Lorem {
 
 **Note:** `where_density = "Tall"` currently produces the same output as `where_density = "Vertical"`.
 
-See also: [`where_layout`](#where_layout), [`where_pred_indent`](#where_pred_indent), [`where_style`](#where_style).
+See also: [`where_layout`](#where_layout), [`indent_style`](#indent_style).
 
 ## `where_layout`
 
@@ -2389,82 +2404,7 @@ fn lorem<Ipsum, Dolor, Sit, Amet>(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Am
 }
 ```
 
-**Note**: This option only takes effect when `where_style` is set to `"Legacy"`.
-
-See also: [`where_density`](#where_density), [`where_pred_indent`](#where_pred_indent), [`where_style`](#where_style).
-
-## `where_pred_indent`
-
-Indentation style of a where predicate
-
-- **Default value**: `"Visual"`
-- **Possible values**: `"Block"`, `"Visual"`
-
-#### `"Visual"` (default):
-
-```rust
-fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
-    where Ipsum: Eq,
-          Dolor: Eq,
-          Sit: Eq,
-          Amet: Eq
-{
-    // body
-}
-```
-
-#### `"Block"`:
-
-```rust
-fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
-    where Ipsum: Eq,
-        Dolor: Eq,
-        Sit: Eq,
-        Amet: Eq
-{
-    // body
-}
-```
-
-**Note**: This option only takes effect when `where_style` is set to `"Legacy"`.
-
-See also: [`where_density`](#where_density), [`where_layout`](#where_layout), [`where_style`](#where_style).
-
-## `where_style`
-
-Overall strategy for where clauses
-
-- **Default value**: `"Rfc"`
-- **Possible values**: `"Rfc"`, `"Legacy"`
-
-#### `"Rfc"` (default):
-
-```rust
-fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
-where
-    Ipsum: Eq,
-    Dolor: Eq,
-    Sit: Eq,
-    Amet: Eq,
-{
-    // body
-}
-```
-
-#### `"Legacy"`:
-
-```rust
-fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
-    where Ipsum: Eq,
-          Dolor: Eq,
-          Sit: Eq,
-          Amet: Eq
-{
-    // body
-}
-```
-
-See also: [`where_density`](#where_density), [`where_layout`](#where_layout), [`where_pred_indent`](#where_pred_indent).
+See also: [`where_density`](#where_density), [`indent_style`](#indent_style).
 
 ## `wrap_comments`
 
