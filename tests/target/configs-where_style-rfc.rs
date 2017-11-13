@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Rfc
+// rustfmt-indent_style: Block
 // Where style
 
 fn lorem<Ipsum, Dolor, Sit, Amet>() -> T

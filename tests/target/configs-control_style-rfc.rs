@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Rfc
+// rustfmt-indent_style: Block
 
 // #1618
 fn main() {
