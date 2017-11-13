@@ -170,11 +170,11 @@ features = ["c"]
 - [x] lshrdi3.c
 - [x] moddi3.c
 - [x] modsi3.c
-- [ ] muldf3.c
+- [x] muldf3.c
 - [x] muldi3.c
 - [x] mulodi4.c
 - [x] mulosi4.c
-- [ ] mulsf3.c
+- [x] mulsf3.c
 - [x] powidf2.c
 - [x] powisf2.c
 - [ ] subdf3.c
