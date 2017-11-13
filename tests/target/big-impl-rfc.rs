@@ -1,7 +1,4 @@
 // rustfmt-indent_style: Block
-// rustfmt-indent_style: Block
-// rustfmt-indent_style: Block
-// rustfmt-indent_style: Block
 
 // #1357
 impl<'a, Select, From, Distinct, Where, Order, Limit, Offset, Groupby, DB> InternalBoxedDsl<'a, DB>
