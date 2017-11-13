@@ -1,4 +1,4 @@
-// rustfmt-chain_indent: Block
+// rustfmt-indent_style: Block
 // Chain indent
 
 fn main() {

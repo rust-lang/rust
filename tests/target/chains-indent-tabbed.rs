@@ -1,4 +1,4 @@
-// rustfmt-chain_indent: Block
+// rustfmt-indent_style: Block
 
 fn test() {
     let x = my_long_function()

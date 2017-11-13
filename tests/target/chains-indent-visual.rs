@@ -1,4 +1,4 @@
-// rustfmt-chain_indent: Visual
+// rustfmt-indent_style: Visual
 
 fn test() {
     let x = my_long_function().my_even_longer_function()

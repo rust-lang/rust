@@ -1,4 +1,4 @@
-// rustfmt-chain_indent: Visual
+// rustfmt-indent_style: Visual
 // Chain indent
 
 fn main() {
