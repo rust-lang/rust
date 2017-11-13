@@ -212,3 +212,11 @@ fn issue2063() {
         Ok(Response::new().with_body(ctx.params.0))
     }
 }
+
+fn issue1524() {
+    let f = |x| x;
+    let f = |x| x;
+    let f = |x| x;
+    let f = |x| x;
+    let f = |x| x;
+}
