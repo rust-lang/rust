@@ -8,6 +8,8 @@ Language
 - [`#![feature(const_fn)]` is now no longer required for
   calling const functions.][43017] It's still required for creating
   constant functions.
+- [`T op= &T` now works for numeric types.][44287] eg. `let mut x = 2; x += &8;`
+- [types that impl `Drop` are now allowed in `const` and `static` types][44456]
 
 Compiler
 --------
@@ -27,6 +29,7 @@ Libraries
 - [Properly detect overflow in `Instant += Duration`.][44220]
 - [impl `Hasher` for `{&mut Hasher, Box<Hasher>}`][44015]
 - [impl `fmt::Debug` for `SplitWhitespace`.][44303]
+- [`Option<T>` now impls `Try`][42526] This allows for using `?` with `Option` types.
 
 Stabilized APIs
 ---------------
@@ -47,28 +50,40 @@ Misc
 
 Compatibility Notes
 -------------------
-- [The minimum Android version that rustc can build for has been bumped to `4.0` from `2.3`][45656]
+- [The minimum Android version that rustc can build for has been bumped
+  to `4.0` from `2.3`][45656]
+- [Allowing `T op= &T` for numeric types has broken some type
+  inference cases][45480]
 
-[45075]: https://github.com/rust-lang/rust/pull/45075
-[45094]: https://github.com/rust-lang/rust/pull/45094
-[45095]: https://github.com/rust-lang/rust/pull/45095
-[45064]: https://github.com/rust-lang/rust/pull/45064
+
+[42526]: https://github.com/rust-lang/rust/pull/42526
+[43017]: https://github.com/rust-lang/rust/pull/43017
+[43716]: https://github.com/rust-lang/rust/pull/43716
+[43949]: https://github.com/rust-lang/rust/pull/43949
+[44015]: https://github.com/rust-lang/rust/pull/44015
+[44220]: https://github.com/rust-lang/rust/pull/44220
+[44251]: https://github.com/rust-lang/rust/pull/44251
+[44287]: https://github.com/rust-lang/rust/pull/44287
+[44303]: https://github.com/rust-lang/rust/pull/44303
+[44456]: https://github.com/rust-lang/rust/pull/44456
+[44466]: https://github.com/rust-lang/rust/pull/44466
 [44895]: https://github.com/rust-lang/rust/pull/44895
 [44966]: https://github.com/rust-lang/rust/pull/44966
 [44978]: https://github.com/rust-lang/rust/pull/44978
 [45041]: https://github.com/rust-lang/rust/pull/45041
-[44466]: https://github.com/rust-lang/rust/pull/44466
-[44220]: https://github.com/rust-lang/rust/pull/44220
-[44251]: https://github.com/rust-lang/rust/pull/44251
-[44303]: https://github.com/rust-lang/rust/pull/44303
-[43949]: https://github.com/rust-lang/rust/pull/43949
-[44015]: https://github.com/rust-lang/rust/pull/44015
-[43716]: https://github.com/rust-lang/rust/pull/43716
-[43017]: https://github.com/rust-lang/rust/pull/43017
+[45064]: https://github.com/rust-lang/rust/pull/45064
+[45075]: https://github.com/rust-lang/rust/pull/45075
+[45094]: https://github.com/rust-lang/rust/pull/45094
+[45095]: https://github.com/rust-lang/rust/pull/45095
+[45480]: https://github.com/rust-lang/rust/issues/45480
 [45656]: https://github.com/rust-lang/rust/pull/45656
 [cargo/3992]: https://github.com/rust-lang/cargo/pull/3992
 [cargo/4496]: https://github.com/rust-lang/cargo/pull/4496
 [cargo/4571]: https://github.com/rust-lang/cargo/pull/4571
+
+
+
+
 
 
 Version 1.21.0 (2017-10-12)
