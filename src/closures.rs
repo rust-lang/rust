@@ -48,37 +48,10 @@ pub fn rewrite_closure(
     let body_shape = shape.offset_left(extra_offset)?;
 
     if let ast::ExprKind::Block(ref block) = body.node {
-        // The body of the closure is an empty block.
-        if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
-            return Some(format!("{} {{}}", prefix));
-        }
-
-        let no_return_type = match fn_decl.output {
-            ast::FunctionRetTy::Default(_) => true,
-            _ => false,
-        };
-
-        // Figure out if the block is necessary.
-        let needs_block = is_unsafe_block(block) || block.stmts.len() > 1 || context.inside_macro
-            || block_contains_comment(block, context.codemap)
-            || prefix.contains('\n');
-
-        if no_return_type && !needs_block {
-            // block.stmts.len() == 1
-            if let Some(expr) = stmt_expr(&block.stmts[0]) {
-                let result = if is_block_closure_forced(expr) {
-                    rewrite_closure_with_block(expr, &prefix, context, shape)
-                } else {
-                    rewrite_closure_expr(expr, &prefix, context, body_shape)
-                };
-                if result.is_some() {
-                    return result;
-                }
-            }
-        }
-
-        // Either we require a block, or tried without and failed.
-        rewrite_closure_block(block, &prefix, context, body_shape)
+        try_rewrite_without_block(block, fn_decl, &prefix, context, shape, body_shape).or_else(|| {
+            // Either we require a block, or tried without and failed.
+            rewrite_closure_block(block, &prefix, context, body_shape)
+        })
     } else {
         rewrite_closure_expr(body, &prefix, context, body_shape).or_else(|| {
             // The closure originally had a non-block expression, but we can't fit on
@@ -86,6 +59,52 @@ pub fn rewrite_closure(
             rewrite_closure_with_block(body, &prefix, context, body_shape)
         })
     }
+}
+
+fn try_rewrite_without_block(
+    block: &ast::Block,
+    fn_decl: &ast::FnDecl,
+    prefix: &str,
+    context: &RewriteContext,
+    shape: Shape,
+    body_shape: Shape,
+) -> Option<String> {
+    // The body of the closure is an empty block.
+    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
+        return Some(format!("{} {{}}", prefix));
+    }
+
+    match fn_decl.output {
+        ast::FunctionRetTy::Default(_) => {}
+        _ => return None,
+    }
+
+    get_inner_expr(block, prefix, context).and_then(|expr| {
+        return if is_block_closure_forced(expr) {
+            rewrite_closure_with_block(expr, prefix, context, shape)
+        } else {
+            rewrite_closure_expr(expr, prefix, context, body_shape)
+        };
+    })
+}
+
+fn get_inner_expr<'a>(
+    block: &'a ast::Block,
+    prefix: &str,
+    context: &RewriteContext,
+) -> Option<&'a ast::Expr> {
+    if !needs_block(block, prefix, context) {
+        // block.stmts.len() == 1
+        stmt_expr(&block.stmts[0])
+    } else {
+        None
+    }
+}
+
+// Figure out if a block is necessary.
+fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext) -> bool {
+    is_unsafe_block(block) || block.stmts.len() > 1 || context.inside_macro
+        || block_contains_comment(block, context.codemap) || prefix.contains('\n')
 }
 
 // Rewrite closure with a single expression wrapping its body with block.
