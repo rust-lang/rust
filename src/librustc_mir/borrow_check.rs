@@ -1169,8 +1169,72 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         err.emit();
     }
 
+    /// Finds the span of arguments of a closure (within `maybe_closure_span`) and its usage of
+    /// the local assigned at `location`.
+    /// This is done by searching in statements succeeding `location`
+    /// and originating from `maybe_closure_span`.
+    fn find_closure_span(
+        &self,
+        maybe_closure_span: Span,
+        location: Location,
+    ) -> Option<(Span, Span)> {
+        use rustc::hir::ExprClosure;
+        use rustc::mir::AggregateKind;
+
+        let local = if let StatementKind::Assign(Lvalue::Local(local), _) =
+            self.mir[location.block].statements[location.statement_index].kind
+        {
+            local
+        } else {
+            return None;
+        };
+
+        for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
+            if maybe_closure_span != stmt.source_info.span {
+                break;
+            }
+
+            if let StatementKind::Assign(_, Rvalue::Aggregate(ref kind, ref lvs)) = stmt.kind {
+                if let AggregateKind::Closure(def_id, _) = **kind {
+                    debug!("find_closure_span: found closure {:?}", lvs);
+
+                    return if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                        let args_span = if let ExprClosure(_, _, _, span, _) =
+                            self.tcx.hir.expect_expr(node_id).node
+                        {
+                            span
+                        } else {
+                            return None;
+                        };
+
+                        self.tcx
+                            .with_freevars(node_id, |freevars| {
+                                for (v, lv) in freevars.iter().zip(lvs) {
+                                    if let Operand::Consume(Lvalue::Local(l)) = *lv {
+                                        if local == l {
+                                            debug!(
+                                                "find_closure_span: found captured local {:?}",
+                                                l
+                                            );
+                                            return Some(v.span);
+                                        }
+                                    }
+                                }
+                                None
+                            })
+                            .map(|var_span| (args_span, var_span))
+                    } else {
+                        None
+                    };
+                }
+            }
+        }
+
+        None
+    }
+
     fn report_conflicting_borrow(&mut self,
-                                 _context: Context,
+                                 context: Context,
                                  common_prefix: &Lvalue,
                                  (lvalue, span): (&Lvalue, Span),
                                  gen_borrow_kind: BorrowKind,
@@ -1183,38 +1247,60 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
         let issued_span = self.retrieve_borrow_span(issued_borrow);
 
+        let new_closure_span = self.find_closure_span(span, context.loc);
+        let span = new_closure_span.map(|(args, _)| args).unwrap_or(span);
+        let old_closure_span = self.find_closure_span(issued_span, issued_borrow.location);
+        let issued_span = old_closure_span.map(|(args, _)| args).unwrap_or(issued_span);
+
+        let desc_lvalue = self.describe_lvalue(lvalue);
+
         // FIXME: supply non-"" `opt_via` when appropriate
         let mut err = match (gen_borrow_kind, "immutable", "mutable",
                              issued_borrow.kind, "immutable", "mutable") {
             (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt) |
             (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) =>
                 self.tcx.cannot_reborrow_already_borrowed(
-                    span, &self.describe_lvalue(lvalue), "", lft, issued_span,
+                    span, &desc_lvalue, "", lft, issued_span,
                     "it", rgt, "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Mut, _, _, BorrowKind::Mut, _, _) =>
                 self.tcx.cannot_mutably_borrow_multiply(
-                    span, &self.describe_lvalue(lvalue), "", issued_span,
+                    span, &desc_lvalue, "", issued_span,
                     "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) =>
                 self.tcx.cannot_uniquely_borrow_by_two_closures(
-                    span, &self.describe_lvalue(lvalue), issued_span,
+                    span, &desc_lvalue, issued_span,
                     end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Unique, _, _, _, _, _) =>
                 self.tcx.cannot_uniquely_borrow_by_one_closure(
-                    span, &self.describe_lvalue(lvalue), "",
+                    span, &desc_lvalue, "",
                     issued_span, "it", "", end_issued_loan_span, Origin::Mir),
 
             (_, _, _, BorrowKind::Unique, _, _) =>
                 self.tcx.cannot_reborrow_already_uniquely_borrowed(
-                    span, &self.describe_lvalue(lvalue), "it", "",
+                    span, &desc_lvalue, "it", "",
                     issued_span, "", end_issued_loan_span, Origin::Mir),
 
             (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) =>
                 unreachable!(),
         };
+
+        if let Some((_, var_span)) = old_closure_span {
+            err.span_label(
+                var_span,
+                format!("previous borrow occurs due to use of `{}` in closure", desc_lvalue),
+            );
+        }
+
+        if let Some((_, var_span)) = new_closure_span {
+            err.span_label(
+                var_span,
+                format!("borrow occurs due to use of `{}` in closure", desc_lvalue),
+            );
+        }
+
         err.emit();
     }
 

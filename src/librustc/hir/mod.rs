@@ -1949,7 +1949,7 @@ impl ForeignItem_ {
 }
 
 /// A free variable referred to in a function.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
     /// The variable being accessed free.
     pub def: Def,
