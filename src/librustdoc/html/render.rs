@@ -361,6 +361,7 @@ impl ToJson for IndexItem {
 /// A type used for the search index.
 struct Type {
     name: Option<String>,
+    generics: Option<Vec<String>>,
 }
 
 impl ToJson for Type {
@@ -369,6 +370,9 @@ impl ToJson for Type {
             Some(ref name) => {
                 let mut data = BTreeMap::new();
                 data.insert("name".to_owned(), name.to_json());
+                if let Some(ref generics) = self.generics {
+                    data.insert("generics".to_owned(), generics.to_json());
+                }
                 Json::Object(data)
             },
             None => Json::Null
@@ -420,7 +424,7 @@ fn init_ids() -> FxHashMap<String, usize> {
      "methods",
      "deref-methods",
      "implementations",
-     ].into_iter().map(|id| (String::from(*id), 1)).collect()
+    ].into_iter().map(|id| (String::from(*id), 1)).collect()
 }
 
 /// This method resets the local table of used ID attributes. This is typically
@@ -666,7 +670,6 @@ fn concise_compared_strs(s1: &str, s2: &str) -> (String, String) {
     let s2 = &s2[start_byte..];
     (format!("...{}", concise_str(s1)), format!("...{}", concise_str(s2)))
 }
-
 
 fn print_message(msg: &str, intro_msg: &mut bool, span: &Span, text: &str) {
     if !*intro_msg {
@@ -3956,21 +3959,40 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
 }
 
 fn get_index_type(clean_type: &clean::Type) -> Type {
-    Type { name: get_index_type_name(clean_type).map(|s| s.to_ascii_lowercase()) }
+    let t = Type {
+        name: get_index_type_name(clean_type, true).map(|s| s.to_ascii_lowercase()),
+        generics: get_generics(clean_type),
+    };
+    t
 }
 
-fn get_index_type_name(clean_type: &clean::Type) -> Option<String> {
+fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<String> {
     match *clean_type {
         clean::ResolvedPath { ref path, .. } => {
             let segments = &path.segments;
             Some(segments[segments.len() - 1].name.clone())
-        },
-        clean::Generic(ref s) => Some(s.clone()),
+        }
+        clean::Generic(ref s) if accept_generic => Some(s.clone()),
         clean::Primitive(ref p) => Some(format!("{:?}", p)),
-        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
+        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
         // FIXME: add all from clean::Type.
         _ => None
     }
+}
+
+fn get_generics(clean_type: &clean::Type) -> Option<Vec<String>> {
+    clean_type.generics()
+              .and_then(|types| {
+                  let r = types.iter()
+                               .filter_map(|t| get_index_type_name(t, false))
+                               .map(|s| s.to_ascii_lowercase())
+                               .collect::<Vec<_>>();
+                  if r.is_empty() {
+                      None
+                  } else {
+                      Some(r)
+                  }
+              })
 }
 
 pub fn cache() -> Arc<Cache> {

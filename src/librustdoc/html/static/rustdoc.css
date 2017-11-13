@@ -945,3 +945,9 @@ pre.rust {
 #titles > div:hover {
 	border-bottom: 3px solid #0089ff;
 }
+
+#titles > div > div.count {
+	display: inline-block;
+	color: #888;
+	font-size: 16px;
+}
