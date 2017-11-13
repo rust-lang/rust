@@ -48,7 +48,19 @@ pub fn rewrite_closure(
     let body_shape = shape.offset_left(extra_offset)?;
 
     if let ast::ExprKind::Block(ref block) = body.node {
-        try_rewrite_without_block(block, fn_decl, &prefix, context, shape, body_shape).or_else(|| {
+        // The body of the closure is an empty block.
+        if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
+            return Some(format!("{} {{}}", prefix));
+        }
+
+        let result = match fn_decl.output {
+            ast::FunctionRetTy::Default(_) => {
+                try_rewrite_without_block(body, &prefix, context, shape, body_shape)
+            }
+            _ => None,
+        };
+
+        result.or_else(|| {
             // Either we require a block, or tried without and failed.
             rewrite_closure_block(block, &prefix, context, body_shape)
         })
@@ -62,43 +74,36 @@ pub fn rewrite_closure(
 }
 
 fn try_rewrite_without_block(
-    block: &ast::Block,
-    fn_decl: &ast::FnDecl,
+    expr: &ast::Expr,
     prefix: &str,
     context: &RewriteContext,
     shape: Shape,
     body_shape: Shape,
 ) -> Option<String> {
-    // The body of the closure is an empty block.
-    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
-        return Some(format!("{} {{}}", prefix));
-    }
+    let expr = get_inner_expr(expr, prefix, context);
 
-    match fn_decl.output {
-        ast::FunctionRetTy::Default(_) => {}
-        _ => return None,
+    if is_block_closure_forced(expr) {
+        rewrite_closure_with_block(expr, prefix, context, shape)
+    } else {
+        rewrite_closure_expr(expr, prefix, context, body_shape)
     }
-
-    get_inner_expr(block, prefix, context).and_then(|expr| {
-        return if is_block_closure_forced(expr) {
-            rewrite_closure_with_block(expr, prefix, context, shape)
-        } else {
-            rewrite_closure_expr(expr, prefix, context, body_shape)
-        };
-    })
 }
 
 fn get_inner_expr<'a>(
-    block: &'a ast::Block,
+    expr: &'a ast::Expr,
     prefix: &str,
     context: &RewriteContext,
-) -> Option<&'a ast::Expr> {
-    if !needs_block(block, prefix, context) {
-        // block.stmts.len() == 1
-        stmt_expr(&block.stmts[0])
-    } else {
-        None
+) -> &'a ast::Expr {
+    if let ast::ExprKind::Block(ref block) = expr.node {
+        if !needs_block(block, prefix, context) {
+            // block.stmts.len() == 1
+            if let Some(expr) = stmt_expr(&block.stmts[0]) {
+                return get_inner_expr(expr, prefix, context);
+            }
+        }
     }
+
+    expr
 }
 
 // Figure out if a block is necessary.
