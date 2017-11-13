@@ -19,7 +19,7 @@
 use hir::def_id::{DefId, CrateNum};
 use middle::const_val::ByteArray;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_serialize::{Decodable, Decoder, Encoder, Encodable};
+use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
 use std::intrinsics;
 use ty::{self, Ty, TyCtxt};
@@ -51,6 +51,13 @@ impl<'tcx> EncodableWithShorthand for ty::Predicate<'tcx> {
 
 pub trait TyEncoder: Encoder {
     fn position(&self) -> usize;
+}
+
+impl<'buf> TyEncoder for opaque::Encoder<'buf> {
+    #[inline]
+    fn position(&self) -> usize {
+        self.position()
+    }
 }
 
 /// Encode the given value or a previously cached shorthand.
@@ -113,6 +120,8 @@ pub trait TyDecoder<'a, 'tcx: 'a>: Decoder {
 
     fn peek_byte(&self) -> u8;
 
+    fn position(&self) -> usize;
+
     fn cached_ty_for_shorthand<F>(&mut self,
                                   shorthand: usize,
                                   or_insert_with: F)
@@ -142,7 +151,6 @@ pub fn decode_ty<'a, 'tcx, D>(decoder: &mut D) -> Result<Ty<'tcx>, D::Error>
           'tcx: 'a,
 {
     // Handle shorthands first, if we have an usize > 0x80.
-    // if self.opaque.data[self.opaque.position()] & 0x80 != 0 {
     if decoder.positioned_at_shorthand() {
         let pos = decoder.read_usize()?;
         assert!(pos >= SHORTHAND_OFFSET);

@@ -217,12 +217,19 @@ impl<'doc, 'tcx> Decoder for DecodeContext<'doc, 'tcx> {
 
 impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
 
+    #[inline]
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx.expect("missing TyCtxt in DecodeContext")
     }
 
+    #[inline]
     fn peek_byte(&self) -> u8 {
         self.opaque.data[self.opaque.position()]
+    }
+
+    #[inline]
+    fn position(&self) -> usize {
+        self.opaque.position()
     }
 
     fn cached_ty_for_shorthand<F>(&mut self,
