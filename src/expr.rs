@@ -616,6 +616,8 @@ fn rewrite_closure(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
+    debug!("rewrite_closure {:?}", body);
+
     let (prefix, extra_offset) =
         rewrite_closure_fn_decl(capture, fn_decl, body, span, context, shape)?;
     // 1 = space between `|...|` and body.
@@ -627,25 +629,26 @@ fn rewrite_closure(
             return Some(format!("{} {{}}", prefix));
         }
 
+        let no_return_type = match fn_decl.output {
+            ast::FunctionRetTy::Default(_) => true,
+            _ => false,
+        };
+
         // Figure out if the block is necessary.
         let needs_block = is_unsafe_block(block) || block.stmts.len() > 1 || context.inside_macro
             || block_contains_comment(block, context.codemap)
             || prefix.contains('\n');
 
-        let no_return_type = if let ast::FunctionRetTy::Default(_) = fn_decl.output {
-            true
-        } else {
-            false
-        };
         if no_return_type && !needs_block {
             // block.stmts.len() == 1
             if let Some(expr) = stmt_expr(&block.stmts[0]) {
-                if let Some(rw) = if is_block_closure_forced(expr) {
-                    rewrite_closure_with_block(context, shape, &prefix, expr)
+                let result = if is_block_closure_forced(expr) {
+                    rewrite_closure_with_block(expr, &prefix, context, shape)
                 } else {
                     rewrite_closure_expr(expr, &prefix, context, body_shape)
-                } {
-                    return Some(rw);
+                };
+                if result.is_some() {
+                    return result;
                 }
             }
         }
@@ -656,17 +659,17 @@ fn rewrite_closure(
         rewrite_closure_expr(body, &prefix, context, body_shape).or_else(|| {
             // The closure originally had a non-block expression, but we can't fit on
             // one line, so we'll insert a block.
-            rewrite_closure_with_block(context, body_shape, &prefix, body)
+            rewrite_closure_with_block(body, &prefix, context, body_shape)
         })
     }
 }
 
 // Rewrite closure with a single expression wrapping its body with block.
 fn rewrite_closure_with_block(
+    body: &ast::Expr,
+    prefix: &str,
     context: &RewriteContext,
     shape: Shape,
-    prefix: &str,
-    body: &ast::Expr,
 ) -> Option<String> {
     let block = ast::Block {
         stmts: vec![
@@ -2254,7 +2257,7 @@ fn rewrite_last_closure(
 
         // We force to use block for the body of the closure for certain kinds of expressions.
         if is_block_closure_forced(body) {
-            return rewrite_closure_with_block(context, body_shape, &prefix, body).and_then(
+            return rewrite_closure_with_block(body, &prefix, context, body_shape).and_then(
                 |body_str| {
                     // If the expression can fit in a single line, we need not force block closure.
                     if body_str.lines().count() <= 7 {
@@ -2279,7 +2282,7 @@ fn rewrite_last_closure(
             .map(|cond| cond.contains('\n') || cond.len() > body_shape.width)
             .unwrap_or(false);
         if is_multi_lined_cond {
-            return rewrite_closure_with_block(context, body_shape, &prefix, body);
+            return rewrite_closure_with_block(body, &prefix, context, body_shape);
         }
 
         // Seems fine, just format the closure in usual manner.
