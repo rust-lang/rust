@@ -15,7 +15,7 @@ use rustfmt::{run, Input};
 use rustfmt::config;
 
 
-fn prune_files<'a>(files: Vec<&'a str>) -> Vec<&'a str> {
+fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
         .iter()
         .filter(|f| f.ends_with("mod.rs") || f.ends_with("lib.rs"))
@@ -23,10 +23,10 @@ fn prune_files<'a>(files: Vec<&'a str>) -> Vec<&'a str> {
         .collect();
 
     let mut pruned_prefixes = vec![];
-    for p1 in prefixes.into_iter() {
+    for p1 in prefixes {
         let mut include = true;
         if !p1.starts_with("src/bin/") {
-            for p2 in pruned_prefixes.iter() {
+            for p2 in &pruned_prefixes {
                 if p1.starts_with(p2) {
                     include = false;
                     break;
@@ -46,7 +46,7 @@ fn prune_files<'a>(files: Vec<&'a str>) -> Vec<&'a str> {
             if f.ends_with("mod.rs") || f.ends_with("lib.rs") || f.starts_with("src/bin/") {
                 return true;
             }
-            for pp in pruned_prefixes.iter() {
+            for pp in &pruned_prefixes {
                 if f.starts_with(pp) {
                     include = false;
                     break;
@@ -57,7 +57,7 @@ fn prune_files<'a>(files: Vec<&'a str>) -> Vec<&'a str> {
         .collect()
 }
 
-fn git_diff(commits: String) -> String {
+fn git_diff(commits: &str) -> String {
     let mut cmd = Command::new("git");
     cmd.arg("diff");
     if commits != "0" {
@@ -109,7 +109,7 @@ fn check_uncommitted() {
     debug!("uncommitted files: {:?}", uncommitted);
     if !uncommitted.is_empty() {
         println!("Found untracked changes:");
-        for f in uncommitted.iter() {
+        for f in &uncommitted {
             println!("  {}", f);
         }
         println!("Commit your work, or run with `-u`.");
@@ -165,7 +165,7 @@ impl Config {
         }
         if matches.free.len() == 1 {
             let commits = matches.free[0].trim();
-            if let Err(_) = u32::from_str(&commits) {
+            if u32::from_str(commits).is_err() {
                 panic!("Couldn't parse number of commits");
             }
             config.commits = commits.to_owned();
@@ -187,7 +187,7 @@ fn main() {
         check_uncommitted();
     }
 
-    let stdout = git_diff(config.commits);
+    let stdout = git_diff(&config.commits);
     let files = get_files(&stdout);
     debug!("files: {:?}", files);
     let files = prune_files(files);
