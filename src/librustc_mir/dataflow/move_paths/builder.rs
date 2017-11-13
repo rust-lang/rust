@@ -137,21 +137,21 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             // move out of union - always move the entire union
             ty::TyAdt(adt, _) if adt.is_union() =>
                 return Err(MoveError::UnionMove { path: base }),
-            ty::TySlice(elem_ty) =>
+            ty::TySlice(_) =>
                 return Err(MoveError::cannot_move_out_of(
                     mir.source_info(self.loc).span,
-                    InteriorOfSlice {
-                        elem_ty, is_index: match proj.elem {
+                    InteriorOfSliceOrArray {
+                        ty: lv_ty, is_index: match proj.elem {
                             ProjectionElem::Index(..) => true,
                             _ => false
                         },
                     })),
-            ty::TyArray(elem_ty, _num_elems) => match proj.elem {
+            ty::TyArray(..) => match proj.elem {
                 ProjectionElem::Index(..) =>
                     return Err(MoveError::cannot_move_out_of(
                         mir.source_info(self.loc).span,
-                        InteriorOfArray {
-                            elem_ty, is_index: true
+                        InteriorOfSliceOrArray {
+                            ty: lv_ty, is_index: true
                         })),
                 _ => {
                     // FIXME: still badly broken
