@@ -58,10 +58,10 @@ impl<'sess> OnDiskCache<'sess> {
     /// so far) will eagerly deserialize the complete cache. Once we are
     /// dealing with larger amounts of data (i.e. cached query results),
     /// deserialization will need to happen lazily.
-    pub fn new(sess: &'sess Session, data: &[u8]) -> OnDiskCache<'sess> {
+    pub fn new(sess: &'sess Session, data: &[u8], start_pos: usize) -> OnDiskCache<'sess> {
         debug_assert!(sess.opts.incremental.is_some());
 
-        let mut decoder = opaque::Decoder::new(&data[..], 0);
+        let mut decoder = opaque::Decoder::new(&data[..], start_pos);
         let header = Header::decode(&mut decoder).unwrap();
 
         let prev_diagnostics: FxHashMap<_, _> = {
