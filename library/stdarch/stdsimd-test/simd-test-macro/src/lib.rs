@@ -33,7 +33,17 @@ pub fn simd_test(
         TokenNode::Op('=', _) => {}
         _ => panic!("expected #[simd_test = \"feature\"]"),
     }
-    let target_feature = &tokens[1];
+    let target_features = match tokens[1].kind {
+        TokenNode::Literal(ref l) => l.to_string(),
+        _ => panic!("expected #[simd_test = \"feature\"]"),
+    };
+    let target_features: Vec<String> = target_features
+        .replace('"', "")
+        .replace('+', "")
+        .split(',')
+        .map(|v| String::from(v))
+        .collect();
+
     let enable_feature = match tokens[1].kind {
         TokenNode::Literal(ref l) => l.to_string(),
         _ => panic!("expected #[simd_test = \"feature\"]"),
@@ -41,17 +51,29 @@ pub fn simd_test(
     let enable_feature = enable_feature
         .trim_left_matches('"')
         .trim_right_matches('"');
-    let enable_feature = string(&format!("+{}", enable_feature));
+    let enable_feature =
+        string(&(format!("+{}", enable_feature).replace(',', ",+")));
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
 
     let name: TokenStream = name.as_str().parse().unwrap();
 
+    let mut cfg_target_features = quote::Tokens::new();
+    use quote::ToTokens;
+    for feature in target_features {
+        let q = quote! {
+            cfg_feature_enabled!(#feature) &&
+        };
+        q.to_tokens(&mut cfg_target_features);
+    }
+    let q = quote!{ true };
+    q.to_tokens(&mut cfg_target_features);
+
     let ret: TokenStream = quote! {
         #[allow(non_snake_case)]
         #[test]
         fn #name() {
-            if cfg_feature_enabled!(#target_feature) {
+            if #cfg_target_features {
                 return unsafe { #name() };
             } else {
                 ::stdsimd_test::assert_skip_test_ok(stringify!(#name));
