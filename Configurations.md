@@ -266,40 +266,6 @@ let files = fs::read_dir("tests/coverage/source")
 
 See also [`chain_width`](#chain_width).
 
-## `closure_block_indent_threshold`
-
-How many lines a closure must have before it is block indented. -1 means never use block indent.
-
-- **Default value**: `7`
-- **Possible values**: `-1`, or any positive integer
-
-#### Closures shorter than `closure_block_indent_threshold`:
-```rust
-lorem_ipsum(|| {
-                println!("lorem");
-                println!("ipsum");
-                println!("dolor");
-                println!("sit");
-                println!("amet");
-            });
-```
-
-#### Closures longer than `closure_block_indent_threshold`:
-```rust
-lorem_ipsum(|| {
-    println!("lorem");
-    println!("ipsum");
-    println!("dolor");
-    println!("sit");
-    println!("amet");
-    println!("consectetur");
-    println!("adipiscing");
-    println!("elit");
-});
-```
-
-**Note**: This option only takes effect when `fn_call_indent` is set to `"Visual"`.
-
 ## `combine_control_expr`
 
 Combine control expressions with function calls.

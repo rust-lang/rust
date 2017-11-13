@@ -621,9 +621,6 @@ create_config! {
                                     indentation level as the match keyword";
     match_pattern_separator_break_point: SeparatorPlace, SeparatorPlace::Back, false,
         "Put a match sub-patterns' separator in front or back.";
-    closure_block_indent_threshold: isize, 7, false,
-        "How many lines a closure must have before it is block indented. \
-        -1 means never use block indent.";
     space_before_type_annotation: bool, false, false,
         "Leave a space before the colon in a type annotation";
     space_after_type_annotation_colon: bool, true, false,

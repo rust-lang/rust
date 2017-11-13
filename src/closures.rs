@@ -13,8 +13,7 @@ use syntax::codemap::Span;
 use syntax::parse::classify;
 
 use codemap::SpanUtils;
-use expr::{block_contains_comment, is_simple_block, is_unsafe_block, need_block_indent,
-           rewrite_cond, ToExpr};
+use expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond, ToExpr};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
             ListTactic, Separator, SeparatorPlace, SeparatorTactic};
@@ -22,7 +21,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use utils::{last_line_width, left_most_sub_expr, stmt_expr};
 
-// This functions is pretty messy because of the rules around closures and blocks:
+// This module is pretty messy because of the rules around closures and blocks:
 // FIXME - the below is probably no longer true in full.
 //   * if there is a return type, then there must be braces,
 //   * given a closure with braces, whether that is parsed to give an inner block
@@ -31,6 +30,8 @@ use utils::{last_line_width, left_most_sub_expr, stmt_expr};
 //   * if the first expression in the body ends with a block (i.e., is a
 //     statement without needing a semi-colon), then adding or removing braces
 //     can change whether it is treated as an expression or statement.
+
+
 pub fn rewrite_closure(
     capture: ast::CaptureBy,
     fn_decl: &ast::FnDecl,
@@ -137,21 +138,6 @@ fn rewrite_closure_block(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    // Start with visual indent, then fall back to block indent if the
-    // closure is large.
-    let block_threshold = context.config.closure_block_indent_threshold();
-    if block_threshold >= 0 {
-        if let Some(block_str) = block.rewrite(context, shape) {
-            if block_str.matches('\n').count() <= block_threshold as usize
-                && !need_block_indent(&block_str, shape)
-            {
-                return Some(format!("{} {}", prefix, block_str));
-            }
-        }
-    }
-
-    // The body of the closure is big enough to be block indented, that
-    // means we must re-format.
     let block_shape = shape.block();
     let block_str = block.rewrite(context, block_shape)?;
     Some(format!("{} {}", prefix, block_str))
