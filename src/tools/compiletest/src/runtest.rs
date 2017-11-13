@@ -69,7 +69,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
-    let base_props = TestProps::from_file(&testpaths.file, &config);
+    let base_props = TestProps::from_file(&testpaths.file, None, &config);
 
     let base_cx = TestCx { config: &config,
                            props: &base_props,
@@ -81,8 +81,9 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         base_cx.run_revision()
     } else {
         for revision in &base_props.revisions {
-            let mut revision_props = base_props.clone();
-            revision_props.load_from(&testpaths.file, Some(revision), &config);
+            let revision_props = TestProps::from_file(&testpaths.file,
+                                                      Some(revision),
+                                                      &config);
             let rev_cx = TestCx {
                 config: &config,
                 props: &revision_props,
