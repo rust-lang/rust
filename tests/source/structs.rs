@@ -272,3 +272,4 @@ pub struct ReadinessCheckRegistry(Mutex<HashMap<Arc<String>, Box<Fn() -> Readine
 
 // #2144 unit struct with generics
 struct MyBox<T:?Sized>;
+struct MyBoxx<T, S> where T: ?Sized, S: Clone;
