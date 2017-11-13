@@ -416,7 +416,7 @@ mod tests {
         // first one is zero:
         assert_eq!(i.intern("dog"), Symbol(0));
         // re-use gets the same entry:
-        assert_eq!(i.intern ("dog"), Symbol(0));
+        assert_eq!(i.intern("dog"), Symbol(0));
         // different string gets a different #:
         assert_eq!(i.intern("cat"), Symbol(1));
         assert_eq!(i.intern("cat"), Symbol(1));
