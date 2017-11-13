@@ -1095,8 +1095,20 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent) -> Option<String> {
     let header_str = format_header(p.prefix, p.ident, p.vis);
     let generics_str = if let Some(generics) = p.generics {
-        let shape = Shape::indented(offset, context.config).offset_left(header_str.len())?;
-        rewrite_generics(context, generics, shape, generics.span)?
+        let hi = if generics.where_clause.predicates.is_empty() {
+            generics.span.hi()
+        } else {
+            generics.where_clause.span.hi()
+        };
+        format_generics(
+            context,
+            generics,
+            context.config.item_brace_style(),
+            BracePos::None,
+            offset,
+            mk_sp(generics.span.lo(), hi),
+            last_line_width(&header_str),
+        )?
     } else {
         String::new()
     };
