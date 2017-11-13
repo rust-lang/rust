@@ -205,7 +205,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let Some(otherwise_block) = otherwise_block {
                     targets.push(otherwise_block);
                 } else {
-                    let unreachable_block = self.cfg.start_new_block();
+                    let unreachable_block = self.unreachable_block();
                     targets.push(unreachable_block);
                     target_blocks.push(unreachable_block);
                 }
