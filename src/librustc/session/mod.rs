@@ -164,11 +164,13 @@ enum DiagnosticBuilderMethod {
     // add more variants as needed to support one-time diagnostics
 }
 
-/// Diagnostic message id - used in order to avoid emitting the same message more than once
+/// Diagnostic message ID—used by `Session.one_time_diagnostics` to avoid
+/// emitting the same message more than once
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticMessageId {
+    ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
-    StabilityId(u32)
+    StabilityId(u32) // issue number
 }
 
 impl Session {
