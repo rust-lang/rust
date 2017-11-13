@@ -36,6 +36,7 @@ use middle::const_val;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast;
+use session::DiagnosticMessageId;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
@@ -219,13 +220,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            let mut diag = struct_span_err!(
-                self.tcx.sess, obligation.cause.span, E0271,
-                "type mismatch resolving `{}`", predicate
-            );
-            self.note_type_err(&mut diag, &obligation.cause, None, values, err);
-            self.note_obligation_cause(&mut diag, obligation);
-            diag.emit();
+            let msg = format!("type mismatch resolving `{}`", predicate);
+            let error_id = (DiagnosticMessageId::ErrorId(271),
+                            Some(obligation.cause.span), msg.clone());
+            let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
+            if fresh {
+                let mut diag = struct_span_err!(
+                    self.tcx.sess, obligation.cause.span, E0271,
+                    "type mismatch resolving `{}`", predicate
+                );
+                self.note_type_err(&mut diag, &obligation.cause, None, values, err);
+                self.note_obligation_cause(&mut diag, obligation);
+                diag.emit();
+            }
         });
     }
 

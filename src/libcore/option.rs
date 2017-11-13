@@ -634,16 +634,12 @@ impl<T> Option<T> {
     #[inline]
     #[unstable(feature = "option_filter", issue = "45860")]
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
-        match self {
-            Some(x) => {
-                if predicate(&x) {
-                    Some(x)
-                } else {
-                    None
-                }
+        if let Some(x) = self {
+            if predicate(&x) {
+                return Some(x)
             }
-            None => None,
         }
+        None
     }
 
     /// Returns the option if it contains a value, otherwise returns `optb`.

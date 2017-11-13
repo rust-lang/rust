@@ -437,8 +437,7 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
-    ::sys_common::util::dumb_print(format_args!("Link\n"));
-    unimplemented!();
+    Err(Error::from_raw_os_error(syscall::ENOSYS))
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
