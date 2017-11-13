@@ -10,8 +10,9 @@
 
 //! misc. type-system utilities too small to deserve their own file
 
+use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
-use hir::map::DefPathData;
+use hir::map::{DefPathData, Node};
 use hir;
 use ich::NodeIdHashingMode;
 use middle::const_val::ConstVal;
@@ -646,6 +647,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(val as u32)),
             ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(val as u64)),
             _ => bug!(),
+        }
+    }
+
+    /// Check if the node pointed to by def_id is a mutable static item
+    pub fn is_static_mut(&self, def_id: DefId) -> bool {
+        if let Some(node) = self.hir.get_if_local(def_id) {
+            match node {
+                Node::NodeItem(&hir::Item {
+                    node: hir::ItemStatic(_, hir::MutMutable, _), ..
+                }) => true,
+                Node::NodeForeignItem(&hir::ForeignItem {
+                    node: hir::ForeignItemStatic(_, mutbl), ..
+                }) => mutbl,
+                _ => false
+            }
+        } else {
+            match self.describe_def(def_id) {
+                Some(Def::Static(_, mutbl)) => mutbl,
+                _ => false
+            }
         }
     }
 }
