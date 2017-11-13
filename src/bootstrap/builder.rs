@@ -261,7 +261,8 @@ impl<'a> Builder<'a> {
                 doc::Reference, doc::Rustdoc, doc::CargoBook),
             Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
                 dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
-                dist::Rls, dist::Extended, dist::HashSign, dist::DontDistWithMiriEnabled),
+                dist::Rls, dist::Rustfmt, dist::Extended, dist::HashSign,
+                dist::DontDistWithMiriEnabled),
             Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
                 install::Analysis, install::Src, install::Rustc),
         }

@@ -39,6 +39,8 @@ pub fn pkgname(build: &Build, component: &str) -> String {
         format!("{}-{}", component, build.cargo_package_vers())
     } else if component == "rls" {
         format!("{}-{}", component, build.rls_package_vers())
+    } else if component == "rustfmt" {
+        format!("{}-{}", component, build.rustfmt_package_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, build.rust_package_vers())
@@ -1113,6 +1115,92 @@ impl Step for Rls {
 
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Rustfmt {
+    pub stage: u32,
+    pub target: Interned<String>,
+}
+
+impl Step for Rustfmt {
+    type Output = Option<PathBuf>;
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("rustfmt")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustfmt {
+            stage: run.builder.top_stage,
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
+        let build = builder.build;
+        let stage = self.stage;
+        let target = self.target;
+        assert!(build.config.extended);
+
+        if !builder.config.toolstate.rustfmt.testing() {
+            println!("skipping Dist Rustfmt stage{} ({})", stage, target);
+            return None
+        }
+
+        println!("Dist Rustfmt stage{} ({})", stage, target);
+        let src = build.src.join("src/tools/rustfmt");
+        let release_num = build.release_num("rustfmt");
+        let name = pkgname(build, "rustfmt");
+        let version = build.rustfmt_info.version(build, &release_num);
+
+        let tmp = tmpdir(build);
+        let image = tmp.join("rustfmt-image");
+        drop(fs::remove_dir_all(&image));
+        t!(fs::create_dir_all(&image));
+
+        // Prepare the image directory
+        // We expect RLS to build, because we've exited this step above if tool
+        // state for RLS isn't testing.
+        let rustfmt = builder.ensure(tool::Rustfmt {
+            compiler: builder.compiler(stage, build.build),
+            target
+        }).expect("Rustfmt to build: toolstate is testing");
+        install(&rustfmt, &image.join("bin"), 0o755);
+        let doc = image.join("share/doc/rustfmt");
+        install(&src.join("README.md"), &doc, 0o644);
+        install(&src.join("LICENSE-MIT"), &doc, 0o644);
+        install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+
+        // Prepare the overlay
+        let overlay = tmp.join("rustfmt-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        t!(fs::create_dir_all(&overlay));
+        install(&src.join("README.md"), &overlay, 0o644);
+        install(&src.join("LICENSE-MIT"), &overlay, 0o644);
+        install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
+        t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rust")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=rustfmt-ready-to-fmt.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(build))
+           .arg("--output-dir").arg(&distdir(build))
+           .arg("--non-installed-overlay").arg(&overlay)
+           .arg(format!("--package-name={}-{}", name, target))
+           .arg("--legacy-manifest-dirs=rustlib,cargo")
+           .arg("--component-name=rustfmt-preview");
+
+        build.run(&mut cmd);
+        Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct DontDistWithMiriEnabled;
 
 impl Step for DontDistWithMiriEnabled {
@@ -1606,6 +1694,7 @@ impl Step for HashSign {
         cmd.arg(build.rust_package_vers());
         cmd.arg(build.package_vers(&build.release_num("cargo")));
         cmd.arg(build.package_vers(&build.release_num("rls")));
+        cmd.arg(build.package_vers(&build.release_num("rustfmt")));
         cmd.arg(addr);
 
         t!(fs::create_dir_all(distdir(build)));

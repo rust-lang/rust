@@ -168,18 +168,24 @@ struct Builder {
     rust_release: String,
     cargo_release: String,
     rls_release: String,
+    rustfmt_release: String,
+
     input: PathBuf,
     output: PathBuf,
     gpg_passphrase: String,
     digests: BTreeMap<String, String>,
     s3_address: String,
     date: String,
+
     rust_version: Option<String>,
     cargo_version: Option<String>,
     rls_version: Option<String>,
+    rustfmt_version: Option<String>,
+
     rust_git_commit_hash: Option<String>,
     cargo_git_commit_hash: Option<String>,
     rls_git_commit_hash: Option<String>,
+    rustfmt_git_commit_hash: Option<String>,
 }
 
 fn main() {
@@ -190,6 +196,7 @@ fn main() {
     let rust_release = args.next().unwrap();
     let cargo_release = args.next().unwrap();
     let rls_release = args.next().unwrap();
+    let rustfmt_release = args.next().unwrap();
     let s3_address = args.next().unwrap();
     let mut passphrase = String::new();
     t!(io::stdin().read_to_string(&mut passphrase));
@@ -198,18 +205,24 @@ fn main() {
         rust_release,
         cargo_release,
         rls_release,
+        rustfmt_release,
+
         input,
         output,
         gpg_passphrase: passphrase,
         digests: BTreeMap::new(),
         s3_address,
         date,
+
         rust_version: None,
         cargo_version: None,
         rls_version: None,
+        rustfmt_version: None,
+
         rust_git_commit_hash: None,
         cargo_git_commit_hash: None,
         rls_git_commit_hash: None,
+        rustfmt_git_commit_hash: None,
     }.build();
 }
 
@@ -218,9 +231,12 @@ impl Builder {
         self.rust_version = self.version("rust", "x86_64-unknown-linux-gnu");
         self.cargo_version = self.version("cargo", "x86_64-unknown-linux-gnu");
         self.rls_version = self.version("rls", "x86_64-unknown-linux-gnu");
+        self.rustfmt_version = self.version("rustfmt", "x86_64-unknown-linux-gnu");
+
         self.rust_git_commit_hash = self.git_commit_hash("rust", "x86_64-unknown-linux-gnu");
         self.cargo_git_commit_hash = self.git_commit_hash("cargo", "x86_64-unknown-linux-gnu");
         self.rls_git_commit_hash = self.git_commit_hash("rls", "x86_64-unknown-linux-gnu");
+        self.rustfmt_git_commit_hash = self.git_commit_hash("rustfmt", "x86_64-unknown-linux-gnu");
 
         self.digest_and_sign();
         let manifest = self.build_manifest();
@@ -255,9 +271,11 @@ impl Builder {
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
         self.package("rls-preview", &mut manifest.pkg, HOSTS);
+        self.package("rustfmt-preview", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
 
         let rls_present = manifest.pkg.contains_key("rls-preview");
+        let rustfmt_present = manifest.pkg.contains_key("rustfmt-preview");
 
         if rls_present {
             manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
@@ -303,6 +321,12 @@ impl Builder {
             if rls_present {
                 extensions.push(Component {
                     pkg: "rls-preview".to_string(),
+                    target: host.to_string(),
+                });
+            }
+            if rustfmt_present {
+                extensions.push(Component {
+                    pkg: "rustfmt-preview".to_string(),
                     target: host.to_string(),
                 });
             }
@@ -391,6 +415,8 @@ impl Builder {
             format!("cargo-{}-{}.tar.gz", self.cargo_release, target)
         } else if component == "rls" || component == "rls-preview" {
             format!("rls-{}-{}.tar.gz", self.rls_release, target)
+        } else if component == "rustfmt" || component == "rustfmt-preview" {
+            format!("rustfmt-{}-{}.tar.gz", self.rustfmt_release, target)
         } else {
             format!("{}-{}-{}.tar.gz", component, self.rust_release, target)
         }
@@ -401,6 +427,8 @@ impl Builder {
             &self.cargo_version
         } else if component == "rls" || component == "rls-preview" {
             &self.rls_version
+        } else if component == "rustfmt" || component == "rustfmt-preview" {
+            &self.rustfmt_version
         } else {
             &self.rust_version
         }
@@ -411,6 +439,8 @@ impl Builder {
             &self.cargo_git_commit_hash
         } else if component == "rls" || component == "rls-preview" {
             &self.rls_git_commit_hash
+        } else if component == "rustfmt" || component == "rustfmt-preview" {
+            &self.rustfmt_git_commit_hash
         } else {
             &self.rust_git_commit_hash
         }
