@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[inline(always)] //~ ERROR E0518
-struct Foo;       //~ not a function
+#[inline(always)] //~ ERROR: E0518
+struct Foo;       //~ NOTE: not a function
 
-#[inline(never)] //~ ERROR E0518
-impl Foo {       //~ not a function
+#[inline(never)] //~ ERROR: E0518
+impl Foo {       //~ NOTE: not a function
 }
 
 fn main() {
