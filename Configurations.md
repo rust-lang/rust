@@ -610,13 +610,6 @@ let (lorem, ipsum, _, _) = (1, 2, 3, 4);
 let (lorem, ipsum, ..) = (1, 2, 3, 4);
 ```
 
-## `indent_style`
-
-Indent style for control flow statements
-
-- **Default value**: `"Rfc"`
-- **Possible values**: `"Rfc"`, `"Legacy"`
-
 ## `control_brace_style`
 
 Brace style for control flow constructs
