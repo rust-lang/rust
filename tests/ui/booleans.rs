@@ -51,4 +51,6 @@ fn methods_with_negation() {
     let _ = !b.is_err();
     let _ = b.is_ok();
     let _ = !b.is_ok();
+    let c = false;
+    let _ = !(a.is_some() && !c);
 }
