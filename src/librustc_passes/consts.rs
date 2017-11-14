@@ -37,7 +37,6 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::{queries, Providers};
 use rustc::ty::subst::Substs;
@@ -184,9 +183,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         self.in_fn = false;
         self.in_static = false;
 
-        match MirSource::from_node(self.tcx, item_id) {
-            MirSource::Fn(_) => self.in_fn = true,
-            MirSource::Static(_, _) => self.in_static = true,
+        match self.tcx.hir.body_owner_kind(item_id) {
+            hir::BodyOwnerKind::Fn => self.in_fn = true,
+            hir::BodyOwnerKind::Static(_) => self.in_static = true,
             _ => {}
         };
 

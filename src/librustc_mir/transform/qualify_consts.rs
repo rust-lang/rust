@@ -26,7 +26,6 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
@@ -38,6 +37,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::usize;
 
+use transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
 bitflags! {
@@ -961,25 +961,27 @@ impl MirPass for QualifyAndPromoteConstants {
             return;
         }
 
-        let id = src.item_id();
-        let def_id = tcx.hir.local_def_id(id);
+        if src.promoted.is_some() {
+            return;
+        }
+
+        let def_id = src.def_id;
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
         let mut const_promoted_temps = None;
-        let mode = match src {
-            MirSource::Fn(_) => {
+        let mode = match tcx.hir.body_owner_kind(id) {
+            hir::BodyOwnerKind::Fn => {
                 if tcx.is_const_fn(def_id) {
                     Mode::ConstFn
                 } else {
                     Mode::Fn
                 }
             }
-            MirSource::Const(_) => {
+            hir::BodyOwnerKind::Const => {
                 const_promoted_temps = Some(tcx.mir_const_qualif(def_id).1);
                 Mode::Const
             }
-            MirSource::Static(_, hir::MutImmutable) => Mode::Static,
-            MirSource::Static(_, hir::MutMutable) => Mode::StaticMut,
-            MirSource::GeneratorDrop(_) |
-            MirSource::Promoted(..) => return
+            hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
+            hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
         };
 
         if mode == Mode::Fn || mode == Mode::ConstFn {

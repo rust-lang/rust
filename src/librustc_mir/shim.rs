@@ -13,7 +13,6 @@ use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
-use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
@@ -826,7 +825,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
                                       ctor_id: ast::NodeId,
                                       fields: &[hir::StructField],
                                       span: Span)
-                                      -> (Mir<'tcx>, MirSource)
+                                      -> Mir<'tcx>
 {
     let tcx = infcx.tcx;
     let def_id = tcx.hir.local_def_id(ctor_id);
@@ -875,7 +874,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         is_cleanup: false
     };
 
-    let mir = Mir::new(
+    Mir::new(
         IndexVec::from_elem_n(start_block, 1),
         IndexVec::from_elem_n(
             VisibilityScopeData { span: span, parent_scope: None }, 1
@@ -888,6 +887,5 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         sig.inputs().len(),
         vec![],
         span
-    );
-    (mir, MirSource::Fn(ctor_id))
+    )
 }

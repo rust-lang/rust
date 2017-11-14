@@ -448,6 +448,28 @@ impl<'hir> Map<'hir> {
         })
     }
 
+    pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
+        // Handle constants in enum discriminants, types, and repeat expressions.
+        let def_id = self.local_def_id(id);
+        let def_key = self.def_key(def_id);
+        if def_key.disambiguated_data.data == DefPathData::Initializer {
+            return BodyOwnerKind::Const;
+        }
+
+        match self.get(id) {
+            NodeItem(&Item { node: ItemConst(..), .. }) |
+            NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
+            NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
+                BodyOwnerKind::Const
+            }
+            NodeItem(&Item { node: ItemStatic(_, m, _), .. }) => {
+                BodyOwnerKind::Static(m)
+            }
+            // Default to function if it's not a constant or static.
+            _ => BodyOwnerKind::Fn
+        }
+    }
+
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
             NodeItem(&Item { node: ItemTrait(..), .. }) => id,

@@ -41,9 +41,9 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor, Visitor, LvalueContext};
 use std::borrow::Cow;
+use transform::{MirPass, MirSource};
 
 pub struct SimplifyCfg { label: String }
 

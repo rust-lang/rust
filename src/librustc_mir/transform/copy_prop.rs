@@ -29,10 +29,11 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
+use rustc::hir;
 use rustc::mir::{Constant, Local, LocalKind, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
+use transform::{MirPass, MirSource};
 use util::def_use::DefUseAnalysis;
 
 pub struct CopyPropagation;
@@ -42,25 +43,22 @@ impl MirPass for CopyPropagation {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        match source {
-            MirSource::Const(_) => {
-                // Don't run on constants, because constant qualification might reject the
-                // optimized IR.
-                return
-            }
-            MirSource::Static(..) | MirSource::Promoted(..) => {
-                // Don't run on statics and promoted statics, because trans might not be able to
-                // evaluate the optimized IR.
-                return
-            }
-            MirSource::Fn(function_node_id) => {
-                if tcx.is_const_fn(tcx.hir.local_def_id(function_node_id)) {
+        // Don't run on constant MIR, because trans might not be able to
+        // evaluate the modified MIR.
+        // FIXME(eddyb) Remove check after miri is merged.
+        let id = tcx.hir.as_local_node_id(source.def_id).unwrap();
+        match (tcx.hir.body_owner_kind(id), source.promoted) {
+            (_, Some(_)) |
+            (hir::BodyOwnerKind::Const, _) |
+            (hir::BodyOwnerKind::Static(_), _) => return,
+
+            (hir::BodyOwnerKind::Fn, _) => {
+                if tcx.is_const_fn(source.def_id) {
                     // Don't run on const functions, as, again, trans might not be able to evaluate
                     // the optimized IR.
                     return
                 }
             }
-            MirSource::GeneratorDrop(_) => (),
         }
 
         // We only run when the MIR optimization level is > 1.

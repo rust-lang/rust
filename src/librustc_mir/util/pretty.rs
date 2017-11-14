@@ -11,7 +11,6 @@
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
-use rustc::mir::transform::{MirSuite, MirPassIndex, MirSource};
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
@@ -21,6 +20,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{PathBuf, Path};
 use super::graphviz::write_mir_fn_graphviz;
+use transform::MirSource;
 
 const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -57,7 +57,7 @@ pub enum PassWhere {
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
 pub fn dump_mir<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                   pass_num: Option<(MirSuite, MirPassIndex)>,
+                                   pass_num: Option<&Display>,
                                    pass_name: &str,
                                    disambiguator: &Display,
                                    source: MirSource,
@@ -71,7 +71,7 @@ where
     }
 
     let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
-        tcx.item_path_str(tcx.hir.local_def_id(source.item_id()))
+        tcx.item_path_str(source.def_id)
     });
     dump_matched_mir_node(tcx, pass_num, pass_name, &node_path,
                           disambiguator, source, mir, extra_data);
@@ -85,9 +85,8 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         None => return false,
         Some(ref filters) => filters,
     };
-    let node_id = source.item_id();
     let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
-        tcx.item_path_str(tcx.hir.local_def_id(node_id))
+        tcx.item_path_str(source.def_id)
     });
     filters.split("&")
            .any(|filter| {
@@ -102,7 +101,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 // run while we are already attempting to evaluate `type_of`.
 
 fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            pass_num: Option<(MirSuite, MirPassIndex)>,
+                                            pass_num: Option<&Display>,
                                             pass_name: &str,
                                             node_path: &str,
                                             disambiguator: &Display,
@@ -112,10 +111,9 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 where
     F: FnMut(PassWhere, &mut Write) -> io::Result<()>
 {
-    let promotion_id = match source {
-        MirSource::Promoted(_, id) => format!("-{:?}", id),
-        MirSource::GeneratorDrop(_) => format!("-drop"),
-        _ => String::new()
+    let promotion_id = match source.promoted {
+        Some(id) => format!("-{:?}", id),
+        None => String::new()
     };
 
     let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
@@ -123,7 +121,7 @@ where
     } else {
         match pass_num {
             None => format!(".-------"),
-            Some((suite, pass_num)) => format!(".{:03}-{:03}", suite.0, pass_num.0),
+            Some(pass_num) => format!(".{}", pass_num),
         }
     };
 
@@ -134,11 +132,9 @@ where
     };
 
     let _ = fs::create_dir_all(&file_path);
-    let function_name  = tcx.hir.def_path_from_id(source.item_id())
-        .map(|d| d.to_filename_friendly_no_crate())
-        .unwrap_or(format!("node{}", source.item_id()));
+    let item_name = tcx.hir.def_path(source.def_id).to_filename_friendly_no_crate();
     let file_name = format!("rustc.{}{}{}.{}.{}.mir",
-                            function_name, promotion_id, pass_num, pass_name, disambiguator);
+                            item_name, promotion_id, pass_num, pass_name, disambiguator);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|mut file| {
         writeln!(file, "// MIR for `{}`", node_path)?;
@@ -158,7 +154,7 @@ where
     if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
         file_path.set_extension("dot");
         let _ = fs::File::create(&file_path).and_then(|mut file| {
-            write_mir_fn_graphviz(tcx, source.item_id(), mir, &mut file)?;
+            write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;
             Ok(())
         });
     }
@@ -184,13 +180,15 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             writeln!(w, "")?;
         }
 
-        let id = tcx.hir.as_local_node_id(def_id).unwrap();
-        let src = MirSource::from_node(tcx, id);
-        write_mir_fn(tcx, src, mir, &mut |_, _| Ok(()), w)?;
+        write_mir_fn(tcx, MirSource::item(def_id), mir, &mut |_, _| Ok(()), w)?;
 
         for (i, mir) in mir.promoted.iter_enumerated() {
             writeln!(w, "")?;
-            write_mir_fn(tcx, MirSource::Promoted(id, i), mir, &mut |_, _| Ok(()), w)?;
+            let src = MirSource {
+                def_id,
+                promoted: Some(i)
+            };
+            write_mir_fn(tcx, src, mir, &mut |_, _| Ok(()), w)?;
         }
     }
     Ok(())
@@ -368,21 +366,22 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
                  -> io::Result<()>
 {
-    match src {
-        MirSource::Fn(_) => write!(w, "fn")?,
-        MirSource::Const(_) => write!(w, "const")?,
-        MirSource::Static(_, hir::MutImmutable) => write!(w, "static")?,
-        MirSource::Static(_, hir::MutMutable) => write!(w, "static mut")?,
-        MirSource::Promoted(_, i) => write!(w, "{:?} in", i)?,
-        MirSource::GeneratorDrop(_) => write!(w, "drop_glue")?,
+    let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
+    let body_owner_kind = tcx.hir.body_owner_kind(id);
+    match (body_owner_kind, src.promoted) {
+        (_, Some(i)) => write!(w, "{:?} in", i)?,
+        (hir::BodyOwnerKind::Fn, _) => write!(w, "fn")?,
+        (hir::BodyOwnerKind::Const, _) => write!(w, "const")?,
+        (hir::BodyOwnerKind::Static(hir::MutImmutable), _) => write!(w, "static")?,
+        (hir::BodyOwnerKind::Static(hir::MutMutable), _) => write!(w, "static mut")?,
     }
 
     item_path::with_forced_impl_filename_line(|| { // see notes on #41697 elsewhere
-        write!(w, " {}", tcx.node_path_str(src.item_id()))
+        write!(w, " {}", tcx.item_path_str(src.def_id))
     })?;
 
-    match src {
-        MirSource::Fn(_) | MirSource::GeneratorDrop(_) => {
+    match (body_owner_kind, src.promoted) {
+        (hir::BodyOwnerKind::Fn, None) => {
             write!(w, "(")?;
 
             // fn argument types.
@@ -395,9 +394,9 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
 
             write!(w, ") -> {}", mir.return_ty)
         }
-        MirSource::Const(..) |
-        MirSource::Static(..) |
-        MirSource::Promoted(..) => {
+        (hir::BodyOwnerKind::Const, _) |
+        (hir::BodyOwnerKind::Static(_), _) |
+        (_, Some(_)) => {
             assert_eq!(mir.arg_count, 0);
             write!(w, ": {} =", mir.return_ty)
         }

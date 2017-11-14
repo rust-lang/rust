@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_vec::Idx;
+use transform::{MirPass, MirSource};
 
 pub struct Deaggregator;
 
@@ -20,16 +21,21 @@ impl MirPass for Deaggregator {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let node_id = source.item_id();
-        let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
+        let node_path = tcx.item_path_str(source.def_id);
         debug!("running on: {:?}", node_path);
         // we only run when mir_opt_level > 2
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 2 {
             return;
         }
 
-        // Do not trigger on constants.  Could be revised in future
-        if let MirSource::Fn(_) = source {} else { return; }
+        // Don't run on constant MIR, because trans might not be able to
+        // evaluate the modified MIR.
+        // FIXME(eddyb) Remove check after miri is merged.
+        let id = tcx.hir.as_local_node_id(source.def_id).unwrap();
+        match (tcx.hir.body_owner_kind(id), source.promoted) {
+            (hir::BodyOwnerKind::Fn, None) => {},
+            _ => return
+        }
         // In fact, we might not want to trigger in other cases.
         // Ex: when we could use SROA.  See issue #35259
 

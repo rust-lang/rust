@@ -17,8 +17,8 @@
 use rustc::ty::{self, TyCtxt, RegionKind};
 use rustc::hir;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::middle::region;
+use transform::{MirPass, MirSource};
 
 pub struct AddValidation;
 
@@ -106,8 +106,9 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
         }
     }
 
-    let fn_like = match src {
-        MirSource::Fn(node_id) => {
+    let node_id = tcx.hir.as_local_node_id(src.def_id).unwrap();
+    let fn_like = match tcx.hir.body_owner_kind(node_id) {
+        hir::BodyOwnerKind::Fn => {
             match FnLikeNode::from_node(tcx.hir.get(node_id)) {
                 Some(fn_like) => fn_like,
                 None => return false, // e.g. struct ctor shims -- such auto-generated code cannot

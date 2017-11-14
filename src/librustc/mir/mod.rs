@@ -41,7 +41,6 @@ use syntax_pos::Span;
 mod cache;
 pub mod tcx;
 pub mod visit;
-pub mod transform;
 pub mod traversal;
 
 /// Types for locals

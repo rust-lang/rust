@@ -10,18 +10,19 @@
 
 //! Inlining pass for MIR functions
 
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
 use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
+use transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
 use syntax::{attr};
@@ -77,12 +78,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env;
+        let param_env = self.tcx.param_env(self.source.def_id);
 
         // Only do inlining into fn bodies.
-        if let MirSource::Fn(caller_id) = self.source {
-            let caller_def_id = self.tcx.hir.local_def_id(caller_id);
-            param_env = self.tcx.param_env(caller_def_id);
+        let id = self.tcx.hir.as_local_node_id(self.source.def_id).unwrap();
+        let body_owner_kind = self.tcx.hir.body_owner_kind(id);
+        if let (hir::BodyOwnerKind::Fn, None) = (body_owner_kind, self.source.promoted) {
 
             for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
                 // Don't inline calls that are in cleanup blocks.
@@ -251,8 +252,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let def_id = tcx.hir.local_def_id(self.source.item_id());
-        let param_env = tcx.param_env(def_id);
+        let param_env = tcx.param_env(self.source.def_id);
 
         let mut first_block = true;
         let mut cost = 0;

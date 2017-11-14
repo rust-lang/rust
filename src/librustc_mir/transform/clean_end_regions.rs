@@ -22,10 +22,10 @@
 use rustc_data_structures::fx::FxHashSet;
 
 use rustc::middle::region;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::{BasicBlock, Location, Mir, Rvalue, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, Visitor, TyContext};
 use rustc::ty::{Ty, RegionKind, TyCtxt};
+use transform::{MirPass, MirSource};
 
 pub struct CleanEndRegions;
 

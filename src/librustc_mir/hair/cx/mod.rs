@@ -15,7 +15,6 @@
 //!
 
 use hair::*;
-use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::{ConstEvalErr, ConstVal};
 use rustc_const_eval::ConstContext;
@@ -51,8 +50,8 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// `const`, or the body of a `const fn`.
     constness: hir::Constness,
 
-    /// What are we compiling?
-    pub src: MirSource,
+    /// What kind of body is being compiled.
+    pub body_owner_kind: hir::BodyOwnerKind,
 
     /// True if this constant/function needs overflow checks.
     check_overflow: bool,
@@ -60,21 +59,19 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               src: MirSource) -> Cx<'a, 'gcx, 'tcx> {
-        let constness = match src {
-            MirSource::Const(_) |
-            MirSource::Static(..) => hir::Constness::Const,
-            MirSource::GeneratorDrop(..) => hir::Constness::NotConst,
-            MirSource::Fn(id) => {
-                let fn_like = FnLikeNode::from_node(infcx.tcx.hir.get(id));
+               src_id: ast::NodeId) -> Cx<'a, 'gcx, 'tcx> {
+        let tcx = infcx.tcx;
+        let src_def_id = tcx.hir.local_def_id(src_id);
+        let body_owner_kind = tcx.hir.body_owner_kind(src_id);
+
+        let constness = match body_owner_kind {
+            hir::BodyOwnerKind::Const |
+            hir::BodyOwnerKind::Static(_) => hir::Constness::Const,
+            hir::BodyOwnerKind::Fn => {
+                let fn_like = FnLikeNode::from_node(infcx.tcx.hir.get(src_id));
                 fn_like.map_or(hir::Constness::NotConst, |f| f.constness())
             }
-            MirSource::Promoted(..) => bug!(),
         };
-
-        let tcx = infcx.tcx;
-        let src_id = src.item_id();
-        let src_def_id = tcx.hir.local_def_id(src_id);
 
         let attrs = tcx.hir.attrs(src_id);
 
@@ -100,7 +97,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables: tcx.typeck_tables_of(src_def_id),
             constness,
-            src,
+            body_owner_kind,
             check_overflow,
         }
     }

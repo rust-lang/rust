@@ -14,9 +14,9 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+use transform::{MirPass, MirSource};
 
 use dataflow::do_dataflow;
 use dataflow::MoveDataParamEnv;
@@ -34,8 +34,8 @@ pub struct SanityCheck;
 impl MirPass for SanityCheck {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource, mir: &mut Mir<'tcx>) {
-        let id = src.item_id();
-        let def_id = tcx.hir.local_def_id(id);
+        let def_id = src.def_id;
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
         if !tcx.has_attr(def_id, "rustc_mir_borrowck") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
             return;

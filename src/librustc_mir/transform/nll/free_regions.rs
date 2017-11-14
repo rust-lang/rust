@@ -22,9 +22,9 @@
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
 
+use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::mir::transform::MirSource;
 use rustc::ty;
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::FxHashMap;
@@ -43,12 +43,9 @@ pub struct FreeRegions<'tcx> {
 
 pub fn free_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    source: MirSource,
+    item_def_id: DefId,
 ) -> FreeRegions<'tcx> {
-    debug!("free_regions(source={:?})", source);
-
-    let item_id = source.item_id();
-    let item_def_id = infcx.tcx.hir.local_def_id(item_id);
+    debug!("free_regions(item_def_id={:?})", item_def_id);
 
     let mut indices = FxHashMap();
 
@@ -63,6 +60,7 @@ pub fn free_regions<'a, 'gcx, 'tcx>(
     // Extract the late-bound regions. Use the liberated fn sigs,
     // where the late-bound regions will have been converted into free
     // regions, and add them to the map.
+    let item_id = infcx.tcx.hir.as_local_node_id(item_def_id).unwrap();
     let fn_hir_id = infcx.tcx.hir.node_to_hir_id(item_id);
     let tables = infcx.tcx.typeck_tables_of(item_def_id);
     let fn_sig = tables.liberated_fn_sigs()[fn_hir_id].clone();

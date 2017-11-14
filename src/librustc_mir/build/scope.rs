@@ -91,9 +91,9 @@ use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use hair::LintLevel;
 use rustc::middle::region;
 use rustc::ty::{Ty, TyCtxt};
+use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::mir::*;
-use rustc::mir::transform::MirSource;
 use syntax_pos::{Span};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fx::FxHashMap;
@@ -596,16 +596,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// When building statics/constants, returns `None` since
     /// intermediate values do not have to be dropped in that case.
     pub fn local_scope(&self) -> Option<region::Scope> {
-        match self.hir.src {
-            MirSource::Const(_) |
-            MirSource::Static(..) =>
+        match self.hir.body_owner_kind {
+            hir::BodyOwnerKind::Const |
+            hir::BodyOwnerKind::Static(_) =>
                 // No need to free storage in this context.
                 None,
-            MirSource::Fn(_) =>
+            hir::BodyOwnerKind::Fn =>
                 Some(self.topmost_scope()),
-            MirSource::Promoted(..) |
-            MirSource::GeneratorDrop(..) =>
-                bug!(),
         }
     }
 

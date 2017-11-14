@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::{self, RegionKind};
+use rustc::hir::def_id::DefId;
 use rustc::mir::Mir;
-use rustc::mir::transform::MirSource;
 use rustc::infer::InferCtxt;
+use rustc::ty::{self, RegionKind};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
+use transform::MirSource;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
 use util as mir_util;
@@ -34,11 +35,11 @@ mod renumber;
 /// This may result in errors being reported.
 pub fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    source: MirSource,
+    def_id: DefId,
     mir: &mut Mir<'tcx>,
 ) -> RegionInferenceContext<'tcx> {
     // Compute named region information.
-    let free_regions = &free_regions::free_regions(infcx, source);
+    let free_regions = &free_regions::free_regions(infcx, def_id);
 
     // Replace all regions with fresh inference variables.
     let num_region_variables = renumber::renumber_mir(infcx, free_regions, mir);
@@ -65,12 +66,13 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
     // Create the region inference context, generate the constraints,
     // and then solve them.
     let mut regioncx = RegionInferenceContext::new(free_regions, num_region_variables, mir);
-    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, source, liveness);
+    let param_env = infcx.tcx.param_env(def_id);
+    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, param_env, liveness);
     regioncx.solve(infcx, &mir);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests.
-    dump_mir_results(infcx, liveness, source, &mir, &regioncx);
+    dump_mir_results(infcx, liveness, MirSource::item(def_id), &mir, &regioncx);
 
     regioncx
 }

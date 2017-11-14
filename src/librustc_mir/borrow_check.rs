@@ -18,7 +18,6 @@ use rustc::ty::maps::Providers;
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue, Local};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::transform::MirSource;
 use transform::nll;
 
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
@@ -50,8 +49,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let input_mir = tcx.mir_validated(def_id);
-    let src = MirSource::from_local_def_id(tcx, def_id);
-    debug!("run query mir_borrowck: {}", tcx.node_path_str(src.item_id()));
+    debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
     if {
         !tcx.has_attr(def_id, "rustc_mir_borrowck") &&
@@ -63,21 +61,20 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 
     tcx.infer_ctxt().enter(|infcx| {
         let input_mir: &Mir = &input_mir.borrow();
-        do_mir_borrowck(&infcx, input_mir, def_id, src);
+        do_mir_borrowck(&infcx, input_mir, def_id);
     });
     debug!("mir_borrowck done");
 }
 
 fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                    input_mir: &Mir<'gcx>,
-                                   def_id: DefId,
-                                   src: MirSource)
+                                   def_id: DefId)
 {
     let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
-
-    let id = src.item_id();
+    let id = tcx.hir.as_local_node_id(def_id)
+        .expect("do_mir_borrowck: non-local DefId");
 
     let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx, param_env) {
         Ok(move_data) => move_data,
@@ -117,7 +114,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let opt_regioncx = if !tcx.sess.opts.debugging_opts.nll {
         None
     } else {
-        Some(nll::compute_regions(infcx, src, mir))
+        Some(nll::compute_regions(infcx, def_id, mir))
     };
 
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };

@@ -15,13 +15,14 @@ use dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
 use dataflow::MoveDataParamEnv;
 use dataflow;
+use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
 use util::elaborate_drops::{DropFlagState, Unwind, elaborate_drop};
 use util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
@@ -39,12 +40,16 @@ impl MirPass for ElaborateDrops {
                           mir: &mut Mir<'tcx>)
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
-        match src {
-            MirSource::Fn(..) => {},
+
+        // Don't run on constant MIR, because trans might not be able to
+        // evaluate the modified MIR.
+        // FIXME(eddyb) Remove check after miri is merged.
+        let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
+        match (tcx.hir.body_owner_kind(id), src.promoted) {
+            (hir::BodyOwnerKind::Fn, None) => {},
             _ => return
         }
-        let id = src.item_id();
-        let param_env = tcx.param_env(tcx.hir.local_def_id(id));
+        let param_env = tcx.param_env(src.def_id);
         let move_data = MoveData::gather_moves(mir, tcx, param_env).unwrap();
         let elaborate_patch = {
             let mir = &*mir;

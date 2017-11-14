@@ -1028,6 +1028,18 @@ impl Body {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum BodyOwnerKind {
+    /// Functions and methods.
+    Fn,
+
+    /// Constants and associated constants.
+    Const,
+
+    /// Initializer of a `static` item.
+    Static(Mutability),
+}
+
 /// An expression
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Expr {

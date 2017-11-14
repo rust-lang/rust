@@ -18,11 +18,11 @@ use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::Visitor;
 use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
+use transform::{MirPass, MirSource};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
@@ -794,8 +794,8 @@ impl MirPass for TypeckMir {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let item_id = src.item_id();
-        let def_id = tcx.hir.local_def_id(item_id);
+        let def_id = src.def_id;
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
         debug!("run_pass: {:?}", def_id);
 
         if tcx.sess.err_count() > 0 {
@@ -805,7 +805,7 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let mut checker = TypeChecker::new(&infcx, item_id, param_env);
+            let mut checker = TypeChecker::new(&infcx, id, param_env);
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);
                 verifier.visit_mir(mir);

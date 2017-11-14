@@ -10,19 +10,17 @@
 
 use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::Mir;
-use rustc::mir::transform::{MirPassIndex, MirSuite, MirSource,
-                            MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED};
+use rustc::mir::{Mir, Promoted};
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::ty::steal::Steal;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::util::nodemap::DefIdSet;
+use std::borrow::Cow;
 use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
-use transform;
 
 pub mod add_validation;
 pub mod clean_end_regions;
@@ -109,26 +107,112 @@ fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     tcx.alloc_steal_mir(mir)
 }
 
+/// Where a specific Mir comes from.
+#[derive(Debug, Copy, Clone)]
+pub struct MirSource {
+    pub def_id: DefId,
+
+    /// If `Some`, this is a promoted rvalue within the parent function.
+    pub promoted: Option<Promoted>,
+}
+
+impl MirSource {
+    pub fn item(def_id: DefId) -> Self {
+        MirSource {
+            def_id,
+            promoted: None
+        }
+    }
+}
+
+/// Generates a default name for the pass based on the name of the
+/// type `T`.
+pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
+    let name = unsafe { ::std::intrinsics::type_name::<T>() };
+    if let Some(tail) = name.rfind(":") {
+        Cow::from(&name[tail+1..])
+    } else {
+        Cow::from(name)
+    }
+}
+
+/// A streamlined trait that you can implement to create a pass; the
+/// pass will be named after the type, and it will consist of a main
+/// loop that goes over each available MIR and applies `run_pass`.
+pub trait MirPass {
+    fn name<'a>(&'a self) -> Cow<'a, str> {
+        default_name::<Self>()
+    }
+
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          source: MirSource,
+                          mir: &mut Mir<'tcx>);
+}
+
+pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $($pass:expr,)*) {{
+    let suite_index: usize = $suite_index;
+    let run_passes = |mir: &mut _, promoted| {
+        let source = MirSource {
+            def_id: $def_id,
+            promoted
+        };
+        let mut index = 0;
+        let mut run_pass = |pass: &MirPass| {
+            let run_hooks = |mir: &_, index, is_after| {
+                dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", suite_index, index),
+                                      &pass.name(), source, mir, is_after);
+            };
+            run_hooks(mir, index, false);
+            pass.run_pass($tcx, source, mir);
+            run_hooks(mir, index, true);
+
+            index += 1;
+        };
+        $(run_pass(&$pass);)*
+    };
+
+    run_passes(&mut $mir, None);
+
+    for (index, promoted_mir) in $mir.promoted.iter_enumerated_mut() {
+        run_passes(promoted_mir, Some(index));
+
+        // Let's make sure we don't miss any nested instances
+        assert!(promoted_mir.promoted.is_empty());
+    }
+}}
+
 fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
-    let source = MirSource::from_local_def_id(tcx, def_id);
     let mut mir = tcx.mir_built(def_id).steal();
-    transform::run_suite(tcx, source, MIR_CONST, &mut mir);
+    run_passes![tcx, mir, def_id, 0;
+        // Remove all `EndRegion` statements that are not involved in borrows.
+        clean_end_regions::CleanEndRegions,
+
+        // What we need to do constant evaluation.
+        simplify::SimplifyCfg::new("initial"),
+        type_check::TypeckMir,
+        rustc_peek::SanityCheck,
+    ];
     tcx.alloc_steal_mir(mir)
 }
 
 fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    if let MirSource::Const(_) = source {
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(node_id) {
         // Ensure that we compute the `mir_const_qualif` for constants at
         // this point, before we steal the mir-const result.
         let _ = tcx.mir_const_qualif(def_id);
     }
 
     let mut mir = tcx.mir_const(def_id).steal();
-    transform::run_suite(tcx, source, MIR_VALIDATED, &mut mir);
+    run_passes![tcx, mir, def_id, 1;
+        // What we need to run borrowck etc.
+        qualify_consts::QualifyAndPromoteConstants,
+        simplify::SimplifyCfg::new("qualify-consts"),
+    ];
     tcx.alloc_steal_mir(mir)
 }
 
@@ -139,37 +223,34 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     let _ = tcx.borrowck(def_id);
 
     let mut mir = tcx.mir_validated(def_id).steal();
-    let source = MirSource::from_local_def_id(tcx, def_id);
-    transform::run_suite(tcx, source, MIR_OPTIMIZED, &mut mir);
+    run_passes![tcx, mir, def_id, 2;
+        no_landing_pads::NoLandingPads,
+        simplify_branches::SimplifyBranches::new("initial"),
+
+        // These next passes must be executed together
+        add_call_guards::CriticalCallEdges,
+        elaborate_drops::ElaborateDrops,
+        no_landing_pads::NoLandingPads,
+        // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
+        // an AllCallEdges pass right before it.
+        add_call_guards::AllCallEdges,
+        add_validation::AddValidation,
+        simplify::SimplifyCfg::new("elaborate-drops"),
+        // No lifetime analysis based on borrowing can be done from here on out.
+
+        // From here on out, regions are gone.
+        erase_regions::EraseRegions,
+
+        // Optimizations begin.
+        inline::Inline,
+        instcombine::InstCombine,
+        deaggregator::Deaggregator,
+        copy_prop::CopyPropagation,
+        simplify::SimplifyLocals,
+
+        generator::StateTransform,
+        add_call_guards::CriticalCallEdges,
+        dump_mir::Marker("PreTrans"),
+    ];
     tcx.alloc_mir(mir)
-}
-
-fn run_suite<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       source: MirSource,
-                       suite: MirSuite,
-                       mir: &mut Mir<'tcx>)
-{
-    let passes = tcx.mir_passes.passes(suite);
-
-    for (pass, index) in passes.iter().zip(0..) {
-        let pass_num = MirPassIndex(index);
-
-        for hook in tcx.mir_passes.hooks() {
-            hook.on_mir_pass(tcx, suite, pass_num, &pass.name(), source, &mir, false);
-        }
-
-        pass.run_pass(tcx, source, mir);
-
-        for (index, promoted_mir) in mir.promoted.iter_enumerated_mut() {
-            let promoted_source = MirSource::Promoted(source.item_id(), index);
-            pass.run_pass(tcx, promoted_source, promoted_mir);
-
-            // Let's make sure we don't miss any nested instances
-            assert!(promoted_mir.promoted.is_empty());
-        }
-
-        for hook in tcx.mir_passes.hooks() {
-            hook.on_mir_pass(tcx, suite, pass_num, &pass.name(), source, &mir, true);
-        }
-    }
 }

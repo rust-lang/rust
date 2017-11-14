@@ -11,12 +11,12 @@
 //! Performs various peephole optimizations.
 
 use rustc::mir::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 use std::mem;
+use transform::{MirPass, MirSource};
 
 pub struct InstCombine;
 

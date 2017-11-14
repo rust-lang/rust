@@ -63,7 +63,6 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, GeneratorInterior};
 use rustc::ty::subst::{Kind, Substs};
@@ -76,6 +75,7 @@ use std::collections::HashMap;
 use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
+use transform::{MirPass, MirSource};
 use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
 use dataflow::{self, MaybeStorageLive, state_for_location};
@@ -338,7 +338,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                (liveness::LocalSet,
                                                 HashMap<BasicBlock, liveness::LocalSet>) {
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
-    let node_id = source.item_id();
+    let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
     let analysis = MaybeStorageLive::new(mir);
     let storage_live =
         dataflow::do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
@@ -763,8 +763,8 @@ impl MirPass for StateTransform {
 
         assert!(mir.generator_drop.is_none());
 
-        let node_id = source.item_id();
-        let def_id = tcx.hir.local_def_id(source.item_id());
+        let def_id = source.def_id;
+        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
         let hir_id = tcx.hir.node_to_hir_id(node_id);
 
         // Get the interior types which typeck computed
