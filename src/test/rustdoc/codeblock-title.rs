@@ -12,8 +12,8 @@
 
 // ignore-tidy-linelength
 
-// @has foo/fn.bar.html '//*[@class="tooltip compile_fail"]/span' "This code doesn't compile so be extra careful!"
-// @has foo/fn.bar.html '//*[@class="tooltip ignore"]/span' "Be careful when using this code, it's not being tested!"
+// @has foo/fn.bar.html '//*[@class="tooltip compile_fail"]/span' "This example deliberately fails to compile"
+// @has foo/fn.bar.html '//*[@class="tooltip ignore"]/span' "This example is not tested"
 
 /// foo
 ///

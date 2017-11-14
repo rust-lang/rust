@@ -76,9 +76,12 @@ pub trait FromStr: Sized {
 
     /// Parses a string `s` to return a value of this type.
     ///
-    /// If parsing succeeds, return the value inside `Ok`, otherwise
+    /// If parsing succeeds, return the value inside [`Ok`], otherwise
     /// when the string is ill-formatted return an error specific to the
-    /// inside `Err`. The error type is specific to implementation of the trait.
+    /// inside [`Err`]. The error type is specific to implementation of the trait.
+    ///
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
