@@ -9,12 +9,10 @@
 // except according to those terms.
 
 #[inline(always)] //~ ERROR E0518
-                  //~| requires a function
-struct Foo;
+struct Foo;       //~ not a function
 
 #[inline(never)] //~ ERROR E0518
-                 //~| requires a function
-impl Foo {
+impl Foo {       //~ not a function
 }
 
 fn main() {

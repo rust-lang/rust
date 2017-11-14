@@ -14,6 +14,6 @@
 fn f() {}
 
 #[inline] //~ ERROR: attribute should be applied to function
-struct S;
+struct S; //~ not a function
 
 fn main() {}

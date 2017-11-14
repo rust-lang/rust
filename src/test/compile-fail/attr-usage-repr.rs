@@ -13,7 +13,7 @@
 #![feature(repr_simd)]
 
 #[repr(C)] //~ ERROR: attribute should be applied to struct, enum or union
-fn f() {}
+fn f() {}  //~ not a struct, enum or union
 
 #[repr(C)]
 struct SExtern(f64, f64);
@@ -25,19 +25,19 @@ struct SPacked(f64, f64);
 struct SSimd(f64, f64);
 
 #[repr(i8)] //~ ERROR: attribute should be applied to enum
-struct SInt(f64, f64);
+struct SInt(f64, f64); //~ not an enum
 
 #[repr(C)]
 enum EExtern { A, B }
 
 #[repr(align(8))] //~ ERROR: attribute should be applied to struct
-enum EAlign { A, B }
+enum EAlign { A, B } // not a struct
 
 #[repr(packed)] //~ ERROR: attribute should be applied to struct
-enum EPacked { A, B }
+enum EPacked { A, B } // not a struct
 
 #[repr(simd)] //~ ERROR: attribute should be applied to struct
-enum ESimd { A, B }
+enum ESimd { A, B } // not a struct
 
 #[repr(i8)]
 enum EInt { A, B }

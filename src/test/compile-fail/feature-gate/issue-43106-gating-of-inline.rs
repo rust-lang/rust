@@ -21,17 +21,28 @@
 #[inline = "2100"]
 //~^ ERROR attribute should be applied to function
 mod inline {
-    mod inner { #![inline="2100"] }
-    //~^ ERROR attribute should be applied to function
+//~^ not a function
+    mod inner {
+    //~^ not a function
+        #![inline="2100"]
+        //~^ ERROR attribute should be applied to function
+    }
 
-    #[inline = "2100"] fn f() { }
+    #[inline = "2100"]
+    fn f() { }
 
-    #[inline = "2100"] struct S;
+    #[inline = "2100"]
     //~^ ERROR attribute should be applied to function
+    struct S;
+    //~^ not a function
 
-    #[inline = "2100"] type T = S;
+    #[inline = "2100"]
     //~^ ERROR attribute should be applied to function
+    type T = S;
+    //~^ not a function
 
-    #[inline = "2100"] impl S { }
+    #[inline = "2100"]
     //~^ ERROR attribute should be applied to function
+    impl S { }
+    //~^ not a function
 }

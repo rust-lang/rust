@@ -9,20 +9,16 @@
 // except according to those terms.
 
 #[repr(C)] //~ ERROR E0517
-           //~| requires a struct, enum or union
-type Foo = u8;
+type Foo = u8; //~ not a struct, enum or union
 
 #[repr(packed)] //~ ERROR E0517
-                //~| requires a struct
-enum Foo2 {Bar, Baz}
+enum Foo2 {Bar, Baz} //~ not a struct
 
 #[repr(u8)] //~ ERROR E0517
-            //~| requires an enum
-struct Foo3 {bar: bool, baz: bool}
+struct Foo3 {bar: bool, baz: bool} //~ not an enum
 
 #[repr(C)] //~ ERROR E0517
-           //~| requires a struct, enum or union
-impl Foo3 {
+impl Foo3 { //~ not a struct, enum or union
 }
 
 fn main() {
