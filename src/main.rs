@@ -49,12 +49,6 @@ fn show_version() {
 }
 
 pub fn main() {
-    use std::env;
-
-    if env::var("CLIPPY_DOGFOOD").is_ok() {
-        panic!("yummy");
-    }
-
     // Check for version and help flags even when invoked as 'cargo-clippy'
     if std::env::args().any(|a| a == "--help" || a == "-h") {
         show_help();

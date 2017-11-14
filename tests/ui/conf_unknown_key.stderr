@@ -1,8 +1,8 @@
 error: compiler plugins are experimental and possibly buggy (see issue #29597)
  --> $DIR/conf_unknown_key.rs:4:1
   |
-4 | #![plugin(clippy(conf_file="./tests/auxiliary/conf_unknown_key.toml"))]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+4 | #![plugin(clippy(conf_file="../auxiliary/conf_unknown_key.toml"))]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = help: add #![feature(plugin)] to the crate attributes to enable
 

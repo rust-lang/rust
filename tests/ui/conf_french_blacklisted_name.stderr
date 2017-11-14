@@ -1,8 +1,8 @@
 error: compiler plugins are experimental and possibly buggy (see issue #29597)
  --> $DIR/conf_french_blacklisted_name.rs:2:1
   |
-2 | #![plugin(clippy(conf_file="./tests/auxiliary/conf_french_blacklisted_name.toml"))]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2 | #![plugin(clippy(conf_file="../auxiliary/conf_french_blacklisted_name.toml"))]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = help: add #![feature(plugin)] to the crate attributes to enable
 

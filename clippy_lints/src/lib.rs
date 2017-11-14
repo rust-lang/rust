@@ -183,17 +183,28 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
                 match utils::conf::lookup_conf_file() {
                     Ok(path) => path,
                     Err(error) => {
-                        reg.sess.struct_err(&format!("error reading Clippy's configuration file: {}", error)).emit();
+                        reg.sess.struct_err(&format!("error finding Clippy's configuration file: {}", error)).emit();
                         None
                     }
                 }
             };
 
+            let file_name = file_name.map(|file_name| if file_name.is_relative() {
+                reg.sess
+                    .local_crate_source_file
+                    .as_ref()
+                    .and_then(|file| std::path::Path::new(&file).parent().map(std::path::Path::to_path_buf))
+                    .unwrap_or_default()
+                    .join(file_name)
+            } else {
+                file_name
+            });
+
             let (conf, errors) = utils::conf::read(file_name.as_ref().map(|p| p.as_ref()));
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {
-                reg.sess.struct_err(&format!("error reading Clippy's configuration file: {}", error)).emit();
+                reg.sess.struct_err(&format!("error reading Clippy's configuration file `{}`: {}", file_name.as_ref().and_then(|p| p.to_str()).unwrap_or(""), error)).emit();
             }
 
             conf

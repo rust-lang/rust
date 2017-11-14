@@ -1,2 +1,2 @@
 #![feature(plugin)]
-#![plugin(clippy(conf_file = "./tests/auxiliary/conf_whitelisted.toml"))]
+#![plugin(clippy(conf_file = "./auxiliary/conf_whitelisted.toml"))]
