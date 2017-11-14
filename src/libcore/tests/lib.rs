@@ -16,6 +16,7 @@
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
 #![feature(decode_utf8)]
+#![feature(enumerate_from)]
 #![feature(exact_size_is_empty)]
 #![feature(fixed_size_array)]
 #![feature(flt2dec)]

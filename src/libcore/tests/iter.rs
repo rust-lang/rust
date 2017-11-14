@@ -277,6 +277,15 @@ fn test_iterator_enumerate() {
 }
 
 #[test]
+fn test_iterator_enumerate_from() {
+    let xs = [2, 3, 4, 5];
+    let it = xs.iter().enumerate_from(2);
+    for (i, &x) in it {
+        assert_eq!(i, x);
+    }
+}
+
+#[test]
 fn test_iterator_enumerate_nth() {
     let xs = [0, 1, 2, 3, 4, 5];
     for (i, &x) in xs.iter().enumerate() {
