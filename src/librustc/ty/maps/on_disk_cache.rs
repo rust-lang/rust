@@ -49,6 +49,7 @@ pub struct OnDiskCache<'sess> {
 
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     cnum_map: RefCell<Option<IndexVec<CrateNum, Option<CrateNum>>>>,
+    prev_def_path_tables: Vec<DefPathTable>,
 
     _prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
     codemap: &'sess CodeMap,
@@ -73,9 +74,12 @@ impl<'sess> OnDiskCache<'sess> {
         debug_assert!(sess.opts.incremental.is_some());
 
         let mut decoder = opaque::Decoder::new(&data[..], start_pos);
+
+
+        // Decode the header
         let header = Header::decode(&mut decoder).unwrap();
 
-        let prev_diagnostics = {
+        let (prev_diagnostics, prev_def_path_tables) = {
             let mut decoder = CacheDecoder {
                 tcx: None,
                 opaque: decoder,
@@ -85,6 +89,7 @@ impl<'sess> OnDiskCache<'sess> {
                 prev_def_path_tables: &Vec::new(),
             };
 
+            // Decode Diagnostics
             let prev_diagnostics: FxHashMap<_, _> = {
                 let diagnostics = EncodedPrevDiagnostics::decode(&mut decoder)
                     .expect("Error while trying to decode prev. diagnostics \
@@ -92,7 +97,12 @@ impl<'sess> OnDiskCache<'sess> {
                 diagnostics.into_iter().collect()
             };
 
-            prev_diagnostics
+            // Decode DefPathTables
+            let prev_def_path_tables: Vec<DefPathTable> =
+                Decodable::decode(&mut decoder)
+                    .expect("Error while trying to decode cached DefPathTables");
+
+            (prev_diagnostics, prev_def_path_tables)
         };
 
         OnDiskCache {
@@ -100,6 +110,7 @@ impl<'sess> OnDiskCache<'sess> {
             _prev_filemap_starts: header.prev_filemap_starts,
             prev_cnums: header.prev_cnums,
             cnum_map: RefCell::new(None),
+            prev_def_path_tables,
             codemap: sess.codemap(),
             current_diagnostics: RefCell::new(FxHashMap()),
         }
@@ -111,6 +122,7 @@ impl<'sess> OnDiskCache<'sess> {
             _prev_filemap_starts: BTreeMap::new(),
             prev_cnums: vec![],
             cnum_map: RefCell::new(None),
+            prev_def_path_tables: Vec::new(),
             codemap,
             current_diagnostics: RefCell::new(FxHashMap()),
         }
@@ -165,6 +177,22 @@ impl<'sess> OnDiskCache<'sess> {
                 .collect();
 
         diagnostics.encode(&mut encoder)?;
+
+
+        // Encode all DefPathTables
+        let upstream_def_path_tables = tcx.all_crate_nums(LOCAL_CRATE)
+                                          .iter()
+                                          .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
+                                          .collect::<FxHashMap<_,_>>();
+        let def_path_tables: Vec<&DefPathTable> = sorted_cnums.into_iter().map(|cnum| {
+            if cnum == LOCAL_CRATE {
+                tcx.hir.definitions().def_path_table()
+            } else {
+                &*upstream_def_path_tables[&cnum]
+            }
+        }).collect();
+
+        def_path_tables.encode(&mut encoder)?;
 
         return Ok(());
 
