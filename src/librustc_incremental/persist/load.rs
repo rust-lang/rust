@@ -207,7 +207,7 @@ pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess
     }
 
     if let Some((bytes, start_pos)) = load_data(sess, &query_cache_path(sess)) {
-        OnDiskCache::new(sess, &bytes[..], start_pos)
+        OnDiskCache::new(sess, bytes, start_pos)
     } else {
         OnDiskCache::new_empty(sess.codemap())
     }

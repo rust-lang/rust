@@ -20,7 +20,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
-                      UseSpecializedDecodable};
+                      UseSpecializedDecodable, UseSpecializedEncodable};
 use session::{CrateDisambiguator, Session};
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -30,7 +30,7 @@ use syntax::ast::NodeId;
 use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
 use ty;
-use ty::codec::{self as ty_codec, TyDecoder};
+use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use ty::context::TyCtxt;
 use ty::subst::Substs;
 
@@ -38,12 +38,17 @@ use ty::subst::Substs;
 // basically random numbers.
 const PREV_DIAGNOSTICS_TAG: u64 = 0x1234_5678_A1A1_A1A1;
 const DEF_PATH_TABLE_TAG: u64 = 0x1234_5678_B2B2_B2B2;
+const QUERY_RESULT_INDEX_TAG: u64 = 0x1234_5678_C3C3_C3C3;
 
 /// `OnDiskCache` provides an interface to incr. comp. data cached from the
 /// previous compilation session. This data will eventually include the results
 /// of a few selected queries (like `typeck_tables_of` and `mir_optimized`) and
 /// any diagnostics that have been emitted during a query.
 pub struct OnDiskCache<'sess> {
+
+    // The complete cache data in serialized form.
+    serialized_data: Vec<u8>,
+
     // The diagnostics emitted during the previous compilation session.
     prev_diagnostics: FxHashMap<SerializedDepNodeIndex, Vec<Diagnostic>>,
 
@@ -56,8 +61,12 @@ pub struct OnDiskCache<'sess> {
     cnum_map: RefCell<Option<IndexVec<CrateNum, Option<CrateNum>>>>,
     prev_def_path_tables: Vec<DefPathTable>,
 
-    _prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
+    prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
     codemap: &'sess CodeMap,
+
+    // A map from dep-node to the position of the cached query result in
+    // `serialized_data`.
+    query_result_index: FxHashMap<SerializedDepNodeIndex, usize>,
 }
 
 // This type is used only for (de-)serialization.
@@ -68,26 +77,25 @@ struct Header {
 }
 
 type EncodedPrevDiagnostics = Vec<(SerializedDepNodeIndex, Vec<Diagnostic>)>;
+type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, usize)>;
 
 impl<'sess> OnDiskCache<'sess> {
     /// Create a new OnDiskCache instance from the serialized data in `data`.
-    /// Note that the current implementation (which only deals with diagnostics
-    /// so far) will eagerly deserialize the complete cache. Once we are
-    /// dealing with larger amounts of data (i.e. cached query results),
-    /// deserialization will need to happen lazily.
-    pub fn new(sess: &'sess Session, data: &[u8], start_pos: usize) -> OnDiskCache<'sess> {
+    pub fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> OnDiskCache<'sess> {
         debug_assert!(sess.opts.incremental.is_some());
 
-        let mut decoder = opaque::Decoder::new(&data[..], start_pos);
-
-
         // Decode the header
-        let header = Header::decode(&mut decoder).unwrap();
+        let (header, post_header_pos) = {
+            let mut decoder = opaque::Decoder::new(&data[..], start_pos);
+            let header = Header::decode(&mut decoder)
+                .expect("Error while trying to decode incr. comp. cache header.");
+            (header, decoder.position())
+        };
 
-        let (prev_diagnostics, prev_def_path_tables) = {
+        let (prev_diagnostics, prev_def_path_tables, query_result_index) = {
             let mut decoder = CacheDecoder {
                 tcx: None,
-                opaque: decoder,
+                opaque: opaque::Decoder::new(&data[..], post_header_pos),
                 codemap: sess.codemap(),
                 prev_filemap_starts: &header.prev_filemap_starts,
                 cnum_map: &IndexVec::new(),
@@ -100,38 +108,56 @@ impl<'sess> OnDiskCache<'sess> {
                     decode_tagged(&mut decoder, PREV_DIAGNOSTICS_TAG)
                         .expect("Error while trying to decode previous session \
                                  diagnostics from incr. comp. cache.");
-
                 diagnostics.into_iter().collect()
             };
 
             // Decode DefPathTables
             let prev_def_path_tables: Vec<DefPathTable> =
                 decode_tagged(&mut decoder, DEF_PATH_TABLE_TAG)
-                    .expect("Error while trying to decode cached DefPathTables");
+                    .expect("Error while trying to decode cached DefPathTables.");
 
-            (prev_diagnostics, prev_def_path_tables)
+            // Decode the *position* of the query result index
+            let query_result_index_pos = {
+                let pos_pos = data.len() - IntEncodedWithFixedSize::ENCODED_SIZE;
+                decoder.with_position(pos_pos, |decoder| {
+                    IntEncodedWithFixedSize::decode(decoder)
+                }).expect("Error while trying to decode query result index position.")
+                .0 as usize
+            };
+
+            // Decode the query result index itself
+            let query_result_index: EncodedQueryResultIndex =
+                decoder.with_position(query_result_index_pos, |decoder| {
+                    decode_tagged(decoder, QUERY_RESULT_INDEX_TAG)
+                }).expect("Error while trying to decode query result index.");
+
+            (prev_diagnostics, prev_def_path_tables, query_result_index)
         };
 
         OnDiskCache {
+            serialized_data: data,
             prev_diagnostics,
-            _prev_filemap_starts: header.prev_filemap_starts,
+            prev_filemap_starts: header.prev_filemap_starts,
             prev_cnums: header.prev_cnums,
             cnum_map: RefCell::new(None),
             prev_def_path_tables,
             codemap: sess.codemap(),
             current_diagnostics: RefCell::new(FxHashMap()),
+            query_result_index: query_result_index.into_iter().collect(),
         }
     }
 
     pub fn new_empty(codemap: &'sess CodeMap) -> OnDiskCache<'sess> {
         OnDiskCache {
+            serialized_data: Vec::new(),
             prev_diagnostics: FxHashMap(),
-            _prev_filemap_starts: BTreeMap::new(),
+            prev_filemap_starts: BTreeMap::new(),
             prev_cnums: vec![],
             cnum_map: RefCell::new(None),
             prev_def_path_tables: Vec::new(),
             codemap,
             current_diagnostics: RefCell::new(FxHashMap()),
+            query_result_index: FxHashMap(),
         }
     }
 
@@ -201,6 +227,20 @@ impl<'sess> OnDiskCache<'sess> {
 
         encoder.encode_tagged(DEF_PATH_TABLE_TAG, &def_path_tables)?;
 
+
+        // Encode query results
+        let query_result_index = EncodedQueryResultIndex::new();
+        // ... we don't encode anything yet, actually
+
+
+        // Encode query result index
+        let query_result_index_pos = encoder.position() as u64;
+        encoder.encode_tagged(QUERY_RESULT_INDEX_TAG, &query_result_index)?;
+
+        // Encode the position of the query result index as the last 8 bytes of
+        // file so we know where to look for it.
+        IntEncodedWithFixedSize(query_result_index_pos).encode(&mut encoder)?;
+
         return Ok(());
 
         fn sorted_cnums_including_local_crate(cstore: &CrateStore) -> Vec<CrateNum> {
@@ -229,6 +269,38 @@ impl<'sess> OnDiskCache<'sess> {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
         let prev = current_diagnostics.insert(dep_node_index, diagnostics);
         debug_assert!(prev.is_none());
+    }
+
+    pub fn load_query_result<'a, 'tcx, T>(&self,
+                                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                          dep_node_index: SerializedDepNodeIndex)
+                                          -> T
+        where T: Decodable
+    {
+        let pos = self.query_result_index[&dep_node_index];
+
+        let mut cnum_map = self.cnum_map.borrow_mut();
+        if cnum_map.is_none() {
+            *cnum_map = Some(Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
+        }
+
+        let mut decoder = CacheDecoder {
+            tcx: Some(tcx),
+            opaque: opaque::Decoder::new(&self.serialized_data[..], pos),
+            codemap: self.codemap,
+            prev_filemap_starts: &self.prev_filemap_starts,
+            cnum_map: cnum_map.as_ref().unwrap(),
+            prev_def_path_tables: &self.prev_def_path_tables,
+        };
+
+        match decode_tagged(&mut decoder, dep_node_index) {
+            Ok(value) => {
+                value
+            }
+            Err(e) => {
+                bug!("Could not decode cached query result: {}", e)
+            }
+        }
     }
 
     /// Store a diagnostic emitted during computation of an anonymous query.
@@ -700,3 +772,45 @@ impl<'enc, 'tcx, E> Encoder for CacheEncoder<'enc, 'tcx, E>
     }
 }
 
+// An integer that will always encode to 8 bytes.
+struct IntEncodedWithFixedSize(u64);
+
+impl IntEncodedWithFixedSize {
+    pub const ENCODED_SIZE: usize = 8;
+}
+
+impl UseSpecializedEncodable for IntEncodedWithFixedSize {}
+impl UseSpecializedDecodable for IntEncodedWithFixedSize {}
+
+impl<'enc, 'tcx, E> SpecializedEncoder<IntEncodedWithFixedSize>
+for CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, x: &IntEncodedWithFixedSize) -> Result<(), Self::Error> {
+        let start_pos = self.position();
+        for i in 0 .. IntEncodedWithFixedSize::ENCODED_SIZE {
+            ((x.0 >> i * 8) as u8).encode(self)?;
+        }
+        let end_pos = self.position();
+        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+        Ok(())
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<IntEncodedWithFixedSize>
+for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<IntEncodedWithFixedSize, Self::Error> {
+        let mut value: u64 = 0;
+        let start_pos = self.position();
+
+        for i in 0 .. IntEncodedWithFixedSize::ENCODED_SIZE {
+            let byte: u8 = Decodable::decode(self)?;
+            value |= (byte as u64) << (i * 8);
+        }
+
+        let end_pos = self.position();
+        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+
+        Ok(IntEncodedWithFixedSize(value))
+    }
+}
