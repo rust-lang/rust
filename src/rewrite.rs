@@ -43,7 +43,7 @@ impl<'a> RewriteContext<'a> {
 
     /// Return true if we should use block indent style for rewriting function call.
     pub fn use_block_indent(&self) -> bool {
-        self.config.fn_call_indent() == IndentStyle::Block || self.use_block
+        self.config.indent_style() == IndentStyle::Block || self.use_block
     }
 
     pub fn budget(&self, used_width: usize) -> usize {

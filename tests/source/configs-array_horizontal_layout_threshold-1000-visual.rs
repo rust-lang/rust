@@ -1,5 +1,5 @@
 // rustfmt-array_horizontal_layout_threshold: 1000
-// rustfmt-array_indent: Visual
+// rustfmt-indent_style: Visual
 
 const ARRAY: [u8; 2048] =
     [99, 72, 48, 104, 44, 112, 38, 62, 40, 93, 23, 24, 32, 21, 102, 76, 65, 29, 116,

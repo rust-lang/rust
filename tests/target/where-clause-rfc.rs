@@ -1,5 +1,4 @@
-// rustfmt-fn_args_indent: Block
-// rustfmt-where_style: Rfc
+// rustfmt-indent_style: Block
 
 fn reflow_list_node_with_rule(node: &CompoundNode, rule: &Rule, args: &[Arg], shape: &Shape)
 where

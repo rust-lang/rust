@@ -1,4 +1,4 @@
-// rustfmt-where_pred_indent: Block
+// rustfmt-indent_style: Block
 // rustfmt-where_density: Compressed
 // Test different indents.
 

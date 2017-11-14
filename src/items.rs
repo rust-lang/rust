@@ -22,7 +22,7 @@ use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
-use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
+use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
@@ -815,9 +815,9 @@ fn format_impl_ref_and_type(
             result.push_str("for ");
         }
         let budget = context.budget(last_line_width(&result));
-        let type_offset = match context.config.where_style() {
-            Style::Legacy => new_line_offset + trait_ref_overhead,
-            Style::Rfc => new_line_offset,
+        let type_offset = match context.config.indent_style() {
+            IndentStyle::Visual => new_line_offset + trait_ref_overhead,
+            IndentStyle::Block => new_line_offset,
         };
         result.push_str(&*self_ty
             .rewrite(context, Shape::legacy(budget, type_offset))?);
@@ -974,8 +974,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let has_body = !trait_items.is_empty();
 
         let where_density = if (context.config.where_density() == Density::Compressed
-            && (!result.contains('\n') || context.config.fn_args_indent() == IndentStyle::Block))
-            || (context.config.fn_args_indent() == IndentStyle::Block && result.is_empty())
+            && (!result.contains('\n') || context.config.indent_style() == IndentStyle::Block))
+            || (context.config.indent_style() == IndentStyle::Block && result.is_empty())
             || (context.config.where_density() == Density::CompressedIfEmpty && !has_body
                 && !result.contains('\n'))
         {
@@ -1880,13 +1880,13 @@ fn rewrite_fn_base(
         } else if context.config.fn_args_paren_newline() {
             result.push('\n');
             result.push_str(&arg_indent.to_string(context.config));
-            if context.config.fn_args_indent() == IndentStyle::Visual {
+            if context.config.indent_style() == IndentStyle::Visual {
                 arg_indent = arg_indent + 1; // extra space for `(`
             }
             result.push('(');
         } else {
             result.push_str("(");
-            if context.config.fn_args_indent() == IndentStyle::Visual {
+            if context.config.indent_style() == IndentStyle::Visual {
                 result.push('\n');
                 result.push_str(&arg_indent.to_string(context.config));
             }
@@ -1933,7 +1933,7 @@ fn rewrite_fn_base(
         generics_str.contains('\n'),
     )?;
 
-    let put_args_in_block = match context.config.fn_args_indent() {
+    let put_args_in_block = match context.config.indent_style() {
         IndentStyle::Block => arg_str.contains('\n') || arg_str.len() > one_line_budget,
         _ => false,
     } && !fd.inputs.is_empty();
@@ -1974,7 +1974,7 @@ fn rewrite_fn_base(
 
     // Return type.
     if let ast::FunctionRetTy::Ty(..) = fd.output {
-        let ret_should_indent = match context.config.fn_args_indent() {
+        let ret_should_indent = match context.config.indent_style() {
             // If our args are block layout then we surely must have space.
             IndentStyle::Block if put_args_in_block || fd.inputs.is_empty() => false,
             _ if args_last_line_contains_comment => false,
@@ -2266,7 +2266,7 @@ fn rewrite_args(
         .and_then(|item| item.post_comment.as_ref())
         .map_or(false, |s| s.trim().starts_with("//"));
 
-    let (indent, trailing_comma) = match context.config.fn_args_indent() {
+    let (indent, trailing_comma) = match context.config.indent_style() {
         IndentStyle::Block if fits_in_one_line => {
             (indent.block_indent(context.config), SeparatorTactic::Never)
         }
@@ -2303,7 +2303,7 @@ fn rewrite_args(
         },
         separator_place: SeparatorPlace::Back,
         shape: Shape::legacy(budget, indent),
-        ends_with_newline: tactic.ends_with_newline(context.config.fn_args_indent()),
+        ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
         config: context.config,
     };
@@ -2353,7 +2353,7 @@ fn compute_budgets_for_args(
 
         if one_line_budget > 0 {
             // 4 = "() {".len()
-            let (indent, multi_line_budget) = match context.config.fn_args_indent() {
+            let (indent, multi_line_budget) = match context.config.indent_style() {
                 IndentStyle::Block => {
                     let indent = indent.block_indent(context.config);
                     (indent, context.budget(indent.width() + 1))
@@ -2371,7 +2371,7 @@ fn compute_budgets_for_args(
 
     // Didn't work. we must force vertical layout and put args on a newline.
     let new_indent = indent.block_indent(context.config);
-    let used_space = match context.config.fn_args_indent() {
+    let used_space = match context.config.indent_style() {
         // 1 = `,`
         IndentStyle::Block => new_indent.width() + 1,
         // Account for `)` and possibly ` {`.
@@ -2464,7 +2464,7 @@ fn rewrite_generics_inner(
 }
 
 pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) -> Option<Shape> {
-    match config.generics_indent() {
+    match config.indent_style() {
         IndentStyle::Visual => shape.visual_indent(1 + offset).sub_width(offset + 2),
         IndentStyle::Block => {
             // 1 = ","
@@ -2497,14 +2497,14 @@ where
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: if context.config.generics_indent() == IndentStyle::Visual {
+        trailing_separator: if context.config.indent_style() == IndentStyle::Visual {
             SeparatorTactic::Never
         } else {
             context.config.trailing_comma()
         },
         separator_place: SeparatorPlace::Back,
         shape: shape,
-        ends_with_newline: tactic.ends_with_newline(context.config.generics_indent()),
+        ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
         config: context.config,
     };
@@ -2523,7 +2523,7 @@ pub fn wrap_generics_with_angle_brackets(
     list_str: &str,
     list_offset: Indent,
 ) -> String {
-    if context.config.generics_indent() == IndentStyle::Block
+    if context.config.indent_style() == IndentStyle::Block
         && (list_str.contains('\n') || list_str.ends_with(','))
     {
         format!(
@@ -2674,7 +2674,7 @@ fn rewrite_where_clause(
         return Some(String::new());
     }
 
-    if context.config.where_style() == Style::Rfc {
+    if context.config.indent_style() == IndentStyle::Block {
         return rewrite_where_clause_rfc_style(
             context,
             where_clause,
@@ -2689,12 +2689,12 @@ fn rewrite_where_clause(
 
     let extra_indent = Indent::new(context.config.tab_spaces(), 0);
 
-    let offset = match context.config.where_pred_indent() {
+    let offset = match context.config.indent_style() {
         IndentStyle::Block => shape.indent + extra_indent.block_indent(context.config),
         // 6 = "where ".len()
         IndentStyle::Visual => shape.indent + extra_indent + 6,
     };
-    // FIXME: if where_pred_indent != Visual, then the budgets below might
+    // FIXME: if indent_style != Visual, then the budgets below might
     // be out by a char or two.
 
     let budget = context.config.max_width() - offset.width();
@@ -2737,7 +2737,7 @@ fn rewrite_where_clause(
         trailing_separator: comma_tactic,
         separator_place: SeparatorPlace::Back,
         shape: Shape::legacy(budget, offset),
-        ends_with_newline: tactic.ends_with_newline(context.config.where_pred_indent()),
+        ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
         config: context.config,
     };

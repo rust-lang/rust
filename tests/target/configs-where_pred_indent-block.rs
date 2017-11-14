@@ -1,4 +1,4 @@
-// rustfmt-where_pred_indent: Block
+// rustfmt-indent_style: Block
 // Where predicate indent
 
 fn lorem<Ipsum, Dolor, Sit, Amet>() -> T

@@ -1,4 +1,4 @@
-// rustfmt-array_indent: Visual
+// rustfmt-indent_style: Visual
 // Array layout
 
 fn main() {

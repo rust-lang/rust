@@ -21,7 +21,7 @@ use closures;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               rewrite_comment, rewrite_missing_comment, FindUncommented};
-use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
+use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
@@ -366,11 +366,11 @@ where
 
     // We have to use multiple lines.
     // Re-evaluate the rhs because we have more space now:
-    let mut rhs_shape = match context.config.control_style() {
-        Style::Legacy => shape
+    let mut rhs_shape = match context.config.indent_style() {
+        IndentStyle::Visual => shape
             .sub_width(pp.suffix.len() + pp.prefix.len())?
             .visual_indent(pp.prefix.len()),
-        Style::Rfc => {
+        IndentStyle::Block => {
             // Try to calculate the initial constraint on the right hand side.
             let rhs_overhead = shape.rhs_overhead(context.config);
             Shape::indented(shape.indent.block_indent(context.config), context.config)
@@ -415,7 +415,7 @@ where
         1 // "["
     };
 
-    let nested_shape = match context.config.array_indent() {
+    let nested_shape = match context.config.indent_style() {
         IndentStyle::Block => shape
             .block()
             .block_indent(context.config.tab_spaces())
@@ -450,7 +450,7 @@ where
         .iter()
         .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
 
-    let mut tactic = match context.config.array_indent() {
+    let mut tactic = match context.config.indent_style() {
         IndentStyle::Block => {
             // FIXME wrong shape in one-line case
             match shape.width.checked_sub(2 * bracket_size) {
@@ -473,7 +473,7 @@ where
             DefinitiveListTactic::Mixed
         },
     };
-    let ends_with_newline = tactic.ends_with_newline(context.config.array_indent());
+    let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
     if context.config.array_horizontal_layout_threshold() > 0
         && items.len() > context.config.array_horizontal_layout_threshold()
     {
@@ -485,7 +485,7 @@ where
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
-        } else if context.inside_macro || context.config.array_indent() == IndentStyle::Visual {
+        } else if context.inside_macro || context.config.indent_style() == IndentStyle::Visual {
             SeparatorTactic::Never
         } else {
             SeparatorTactic::Vertical
@@ -498,7 +498,7 @@ where
     };
     let list_str = write_list(&items, &fmt)?;
 
-    let result = if context.config.array_indent() == IndentStyle::Visual
+    let result = if context.config.indent_style() == IndentStyle::Visual
         || tactic == DefinitiveListTactic::Horizontal
     {
         if context.config.spaces_within_square_brackets() && !list_str.is_empty() {
@@ -677,9 +677,9 @@ pub fn rewrite_cond(context: &RewriteContext, expr: &ast::Expr, shape: Shape) ->
     match expr.node {
         ast::ExprKind::Match(ref cond, _) => {
             // `match `cond` {`
-            let cond_shape = match context.config.control_style() {
-                Style::Legacy => shape.shrink_left(6).and_then(|s| s.sub_width(2))?,
-                Style::Rfc => shape.offset_left(8)?,
+            let cond_shape = match context.config.indent_style() {
+                IndentStyle::Visual => shape.shrink_left(6).and_then(|s| s.sub_width(2))?,
+                IndentStyle::Block => shape.offset_left(8)?,
             };
             cond.rewrite(context, cond_shape)
         }
@@ -922,9 +922,9 @@ impl<'a> ControlFlow<'a> {
 
         let pat_expr_string = match self.cond {
             Some(cond) => {
-                let cond_shape = match context.config.control_style() {
-                    Style::Legacy => constr_shape.shrink_left(offset)?,
-                    Style::Rfc => constr_shape.offset_left(offset)?,
+                let cond_shape = match context.config.indent_style() {
+                    IndentStyle::Visual => constr_shape.shrink_left(offset)?,
+                    IndentStyle::Block => constr_shape.offset_left(offset)?,
                 };
                 rewrite_pat_expr(
                     context,
@@ -951,7 +951,7 @@ impl<'a> ControlFlow<'a> {
             .max_width()
             .checked_sub(constr_shape.used_width() + offset + brace_overhead)
             .unwrap_or(0);
-        let force_newline_brace = context.config.control_style() == Style::Rfc
+        let force_newline_brace = context.config.indent_style() == IndentStyle::Block
             && (pat_expr_string.contains('\n') || pat_expr_string.len() > one_line_budget)
             && !last_line_extendable(&pat_expr_string);
 
@@ -1236,9 +1236,9 @@ fn rewrite_match(
         ..shape
     };
     // 6 = `match `
-    let cond_shape = match context.config.control_style() {
-        Style::Legacy => cond_shape.shrink_left(6)?,
-        Style::Rfc => cond_shape.offset_left(6)?,
+    let cond_shape = match context.config.indent_style() {
+        IndentStyle::Visual => cond_shape.shrink_left(6)?,
+        IndentStyle::Block => cond_shape.offset_left(6)?,
     };
     let cond_str = cond.rewrite(context, cond_shape)?;
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
@@ -1809,7 +1809,7 @@ where
     let used_width = extra_offset(callee_str, shape);
     let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
 
-    let nested_shape = shape_from_fn_call_indent(
+    let nested_shape = shape_from_indent_style(
         context,
         shape,
         used_width + 2 * paren_overhead,
@@ -2058,7 +2058,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
     match expr.node {
         ast::ExprKind::Match(..) => {
             (context.use_block_indent() && args_len == 1)
-                || (context.config.fn_call_indent() == IndentStyle::Visual && args_len > 1)
+                || (context.config.indent_style() == IndentStyle::Visual && args_len > 1)
         }
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
@@ -2070,7 +2070,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         }
         ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
             context.use_block_indent()
-                || context.config.fn_call_indent() == IndentStyle::Visual && args_len > 1
+                || context.config.indent_style() == IndentStyle::Visual && args_len > 1
         }
         ast::ExprKind::Array(..) |
         ast::ExprKind::Call(..) |
@@ -2319,7 +2319,7 @@ fn rewrite_struct_lit<'a>(
     let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
     Some(format!("{} {{{}}}", path_str, fields_str))
 
-    // FIXME if context.config.struct_lit_indent() == Visual, but we run out
+    // FIXME if context.config.indent_style() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
 
@@ -2330,7 +2330,7 @@ pub fn wrap_struct_field(
     nested_shape: Shape,
     one_line_width: usize,
 ) -> String {
-    if context.config.struct_lit_indent() == IndentStyle::Block
+    if context.config.indent_style() == IndentStyle::Block
         && (fields_str.contains('\n')
             || context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti
             || fields_str.len() > one_line_width)
@@ -2401,7 +2401,7 @@ pub fn rewrite_field(
     }
 }
 
-fn shape_from_fn_call_indent(
+fn shape_from_indent_style(
     context: &RewriteContext,
     shape: Shape,
     overhead: usize,

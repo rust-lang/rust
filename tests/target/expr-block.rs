@@ -1,6 +1,4 @@
-// rustfmt-array_indent: Block
-// rustfmt-fn_call_indent: Block
-// rustfmt-control_style: Rfc
+// rustfmt-indent_style: Block
 // Test expressions with block formatting.
 
 fn arrays() {

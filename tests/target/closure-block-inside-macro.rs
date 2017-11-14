@@ -1,4 +1,4 @@
-// rustfmt-fn_call_indent: Block
+// rustfmt-indent_style: Block
 
 // #1547
 fuzz_target!(|data: &[u8]| if let Some(first) = data.first() {
