@@ -1313,7 +1313,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            -> Result<(), E::Error>
         where E: ty::codec::TyEncoder
     {
-        self.on_disk_query_result_cache.serialize(self, encoder)
+        self.on_disk_query_result_cache.serialize(self, self.cstore, encoder)
     }
 
 }

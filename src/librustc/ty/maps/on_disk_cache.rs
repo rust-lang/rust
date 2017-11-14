@@ -15,12 +15,13 @@ use hir::def_id::{CrateNum, DefIndex, DefId, RESERVED_FOR_INCR_COMP_CACHE,
                   LOCAL_CRATE};
 use hir::map::definitions::{Definitions, DefPathTable};
 use middle::const_val::ByteArray;
+use middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
                       UseSpecializedDecodable};
-use session::Session;
+use session::{CrateDisambiguator, Session};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -45,8 +46,10 @@ pub struct OnDiskCache<'sess> {
     // compilation session.
     current_diagnostics: RefCell<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
-    // This will eventually be needed for creating Decoders that can rebase
-    // spans.
+
+    prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
+    cnum_map: RefCell<Option<IndexVec<CrateNum, Option<CrateNum>>>>,
+
     _prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
     codemap: &'sess CodeMap,
 }
@@ -55,6 +58,7 @@ pub struct OnDiskCache<'sess> {
 #[derive(RustcEncodable, RustcDecodable)]
 struct Header {
     prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
+    prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
 }
 
 type EncodedPrevDiagnostics = Vec<(SerializedDepNodeIndex, Vec<Diagnostic>)>;
@@ -94,6 +98,8 @@ impl<'sess> OnDiskCache<'sess> {
         OnDiskCache {
             prev_diagnostics,
             _prev_filemap_starts: header.prev_filemap_starts,
+            prev_cnums: header.prev_cnums,
+            cnum_map: RefCell::new(None),
             codemap: sess.codemap(),
             current_diagnostics: RefCell::new(FxHashMap()),
         }
@@ -103,6 +109,8 @@ impl<'sess> OnDiskCache<'sess> {
         OnDiskCache {
             prev_diagnostics: FxHashMap(),
             _prev_filemap_starts: BTreeMap::new(),
+            prev_cnums: vec![],
+            cnum_map: RefCell::new(None),
             codemap,
             current_diagnostics: RefCell::new(FxHashMap()),
         }
@@ -110,6 +118,7 @@ impl<'sess> OnDiskCache<'sess> {
 
     pub fn serialize<'a, 'gcx, 'lcx, E>(&self,
                                         tcx: TyCtxt<'a, 'gcx, 'lcx>,
+                                        cstore: &CrateStore,
                                         encoder: &mut E)
                                         -> Result<(), E::Error>
         where E: ty_codec::TyEncoder
@@ -124,6 +133,8 @@ impl<'sess> OnDiskCache<'sess> {
             definitions: tcx.hir.definitions(),
         };
 
+
+        // Encode the file header
         let prev_filemap_starts: BTreeMap<_, _> = self
             .codemap
             .files()
@@ -131,8 +142,21 @@ impl<'sess> OnDiskCache<'sess> {
             .map(|fm| (fm.start_pos, StableFilemapId::new(fm)))
             .collect();
 
-        Header { prev_filemap_starts }.encode(&mut encoder)?;
+        let sorted_cnums = sorted_cnums_including_local_crate(cstore);
 
+        let prev_cnums: Vec<_> = sorted_cnums.iter().map(|&cnum| {
+            let crate_name = tcx.original_crate_name(cnum).as_str().to_string();
+            let crate_disambiguator = tcx.crate_disambiguator(cnum);
+            (cnum.as_u32(), crate_name, crate_disambiguator)
+        }).collect();
+
+        Header {
+            prev_filemap_starts,
+            prev_cnums,
+        }.encode(&mut encoder)?;
+
+
+        // Encode Diagnostics
         let diagnostics: EncodedPrevDiagnostics =
             self.current_diagnostics
                 .borrow()
@@ -142,7 +166,16 @@ impl<'sess> OnDiskCache<'sess> {
 
         diagnostics.encode(&mut encoder)?;
 
-        Ok(())
+        return Ok(());
+
+        fn sorted_cnums_including_local_crate(cstore: &CrateStore) -> Vec<CrateNum> {
+            let mut cnums = vec![LOCAL_CRATE];
+            cnums.extend_from_slice(&cstore.crates_untracked()[..]);
+            cnums.sort_unstable();
+            // Just to be sure...
+            cnums.dedup();
+            cnums
+        }
     }
 
     /// Load a diagnostic emitted during the previous compilation session.
@@ -177,6 +210,40 @@ impl<'sess> OnDiskCache<'sess> {
         });
 
         x.extend(diagnostics.into_iter());
+    }
+
+    // This function builds mapping from previous-session-CrateNum to
+    // current-session-CrateNum. There might be CrateNums from the previous
+    // Session that don't occur in the current one. For these, the mapping
+    // maps to None.
+    fn compute_cnum_map(tcx: TyCtxt,
+                        prev_cnums: &[(u32, String, CrateDisambiguator)])
+                        -> IndexVec<CrateNum, Option<CrateNum>>
+    {
+        let _in_ignore = tcx.dep_graph.in_ignore();
+
+        let current_cnums = tcx.all_crate_nums(LOCAL_CRATE).iter().map(|&cnum| {
+            let crate_name = tcx.original_crate_name(cnum)
+                                .as_str()
+                                .to_string();
+            let crate_disambiguator = tcx.crate_disambiguator(cnum);
+            ((crate_name, crate_disambiguator), cnum)
+        }).collect::<FxHashMap<_,_>>();
+
+        let map_size = prev_cnums.iter()
+                                 .map(|&(cnum, ..)| cnum)
+                                 .max()
+                                 .unwrap_or(0) + 1;
+        let mut map = IndexVec::new();
+        map.resize(map_size as usize, None);
+
+        for &(prev_cnum, ref crate_name, crate_disambiguator) in prev_cnums {
+            let key = (crate_name.clone(), crate_disambiguator);
+            map[CrateNum::from_u32(prev_cnum)] = current_cnums.get(&key).cloned();
+        }
+
+        map[LOCAL_CRATE] = Some(LOCAL_CRATE);
+        map
     }
 }
 
