@@ -1001,7 +1001,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .chain(univ_impl_trait_info.iter().enumerate().map(|(i, info)| {
             ty::TypeParameterDef {
                 index: other_type_start + i as u32,
-                name: keywords::Invalid.name() /* FIXME(chrisvittal) maybe make not Invalid */,
+                name: Symbol::intern(&tcx.hir.node_to_pretty_string(info.id)),
                 def_id: info.def_id,
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
@@ -1732,6 +1732,7 @@ fn is_auto_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 struct ImplTraitUniversalInfo<'hir> {
+    id: ast::NodeId,
     def_id: DefId,
     span: Span,
     bounds: &'hir [hir::TyParamBound],
@@ -1767,6 +1768,7 @@ fn extract_universal_impl_trait_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     visitor.items.into_iter().map(|ty| if let hir::TyImplTraitUniversal(_, ref bounds) = ty.node {
         ImplTraitUniversalInfo {
+            id: ty.id,
             def_id: tcx.hir.local_def_id(ty.id),
             span: ty.span,
             bounds: bounds
