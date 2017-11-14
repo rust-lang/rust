@@ -64,35 +64,35 @@ struct Foo< 'a > {
 }
 
 enum E< T > {
-    T(T),
+    T( T ),
 }
 
 enum E< T, S > {
-    T(T),
-    S(S),
+    T( T ),
+    S( S ),
 }
 
-fn foo< T >(a: T) {
-    foo::< u32 >(10);
+fn foo< T >( a: T ) {
+    foo::< u32 >( 10 );
 }
 
-fn foo< T, E >(a: T, b: E) {
-    foo::< u32, str >(10, "bar");
+fn foo< T, E >( a: T, b: E ) {
+    foo::< u32, str >( 10, "bar" );
 }
 
-fn foo< T: Send, E: Send >(a: T, b: E) {
-    foo::< u32, str >(10, "bar");
+fn foo< T: Send, E: Send >( a: T, b: E ) {
+    foo::< u32, str >( 10, "bar" );
 
     let opt: Option< u32 >;
     let res: Result< u32, String >;
 }
 
-fn foo< 'a >(a: &'a str) {
-    foo("foo");
+fn foo< 'a >( a: &'a str ) {
+    foo( "foo" );
 }
 
-fn foo< 'a, 'b >(a: &'a str, b: &'b str) {
-    foo("foo", "bar");
+fn foo< 'a, 'b >( a: &'a str, b: &'b str ) {
+    foo( "foo", "bar" );
 }
 
 impl Foo {
@@ -105,7 +105,7 @@ trait MyTrait< A, D > {}
 impl< A: Send, D: Send > MyTrait< A, D > for Foo {}
 
 fn foo()
-    where
+where
     for< 'a > u32: 'a,
 {
 }
@@ -115,7 +115,7 @@ fn main() {
     let arr: [ i32; 500 ] = [ 0; 500 ];
 
     let v = vec![ 1, 2, 3 ];
-    assert_eq!(arr, [ 1, 2, 3 ]);
+    assert_eq!( arr, [ 1, 2, 3 ] );
 
     let i = arr[ 0 ];
 
@@ -142,4 +142,4 @@ fn main() {
         vec![ 1, 2 ];
 }
 
-fn f(slice: &[ i32 ]) {}
+fn f( slice: &[ i32 ] ) {}
