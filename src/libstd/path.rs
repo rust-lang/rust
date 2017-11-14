@@ -86,6 +86,8 @@ use hash::{Hash, Hasher};
 use io;
 use iter::{self, FusedIterator};
 use ops::{self, Deref};
+use rc::Rc;
+use sync::Arc;
 
 use ffi::{OsStr, OsString};
 
@@ -1452,6 +1454,42 @@ impl<'a> From<PathBuf> for Cow<'a, Path> {
     }
 }
 
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl From<PathBuf> for Arc<Path> {
+    #[inline]
+    fn from(s: PathBuf) -> Arc<Path> {
+        let arc: Arc<OsStr> = Arc::from(s.into_os_string());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Path) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl<'a> From<&'a Path> for Arc<Path> {
+    #[inline]
+    fn from(s: &Path) -> Arc<Path> {
+        let arc: Arc<OsStr> = Arc::from(s.as_os_str());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Path) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl From<PathBuf> for Rc<Path> {
+    #[inline]
+    fn from(s: PathBuf) -> Rc<Path> {
+        let rc: Rc<OsStr> = Rc::from(s.into_os_string());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Path) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl<'a> From<&'a Path> for Rc<Path> {
+    #[inline]
+    fn from(s: &Path) -> Rc<Path> {
+        let rc: Rc<OsStr> = Rc::from(s.as_os_str());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Path) }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for Path {
     type Owned = PathBuf;
@@ -2567,6 +2605,9 @@ impl Error for StripPrefixError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use rc::Rc;
+    use sync::Arc;
 
     macro_rules! t(
         ($path:expr, iter: $iter:expr) => (
@@ -3969,5 +4010,22 @@ mod tests {
     fn display_format_flags() {
         assert_eq!(format!("a{:#<5}b", Path::new("").display()), "a#####b");
         assert_eq!(format!("a{:#<5}b", Path::new("a").display()), "aa####b");
+    }
+
+    #[test]
+    fn into_rc() {
+        let orig = "hello/world";
+        let path = Path::new(orig);
+        let rc: Rc<Path> = Rc::from(path);
+        let arc: Arc<Path> = Arc::from(path);
+
+        assert_eq!(&*rc, path);
+        assert_eq!(&*arc, path);
+
+        let rc2: Rc<Path> = Rc::from(path.to_owned());
+        let arc2: Arc<Path> = Arc::from(path.to_owned());
+
+        assert_eq!(&*rc2, path);
+        assert_eq!(&*arc2, path);
     }
 }
