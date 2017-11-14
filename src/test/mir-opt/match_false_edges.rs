@@ -54,24 +54,24 @@ fn main() {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      _5 = discriminant(_2);
-//      switchInt(_5) -> [0isize: bb5, otherwise: bb3];
+//      switchInt(_5) -> [0isize: bb5, 1isize: bb3, otherwise: bb7];
 //  }
 //  bb1: { // arm1
 //      StorageLive(_7);
 //      _7 = _3;
 //      _1 = (const 1i32, _7);
 //      StorageDead(_7);
-//      goto -> bb11;
+//      goto -> bb12;
 //  }
 //  bb2: { // binding3(empty) and arm3
 //      _1 = (const 3i32, const 3i32);
-//      goto -> bb11;
+//      goto -> bb12;
 //  }
 //  bb3: {
-//      falseEdges -> [real: bb7, imaginary: bb4]; //pre_binding1
+//      falseEdges -> [real: bb8, imaginary: bb4]; //pre_binding1
 //  }
 //  bb4: {
-//      falseEdges -> [real: bb10, imaginary: bb5]; //pre_binding2
+//      falseEdges -> [real: bb11, imaginary: bb5]; //pre_binding2
 //  }
 //  bb5: {
 //      falseEdges -> [real: bb2, imaginary: bb6]; //pre_binding3
@@ -79,28 +79,31 @@ fn main() {
 //  bb6: {
 //      unreachable;
 //  }
-//  bb7: { // binding1 and guard
+//  bb7: {
+//      unreachable;
+//  }
+//  bb8: { // binding1 and guard
 //      StorageLive(_3);
 //      _3 = ((_2 as Some).0: i32);
 //      StorageLive(_6);
-//      _6 = const guard() -> bb8;
+//      _6 = const guard() -> bb9;
 //  }
-//  bb8: { // end of guard
-//      switchInt(_6) -> [0u8: bb9, otherwise: bb1];
+//  bb9: { // end of guard
+//      switchInt(_6) -> [0u8: bb10, otherwise: bb1];
 //  }
-//  bb9: { // to pre_binding2
+//  bb10: { // to pre_binding2
 //      falseEdges -> [real: bb4, imaginary: bb4];
 //  }
-//  bb10: { // bindingNoLandingPads.before.mir2 and arm2
+//  bb11: { // bindingNoLandingPads.before.mir2 and arm2
 //      StorageLive(_4);
 //      _4 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
 //      _8 = _4;
 //      _1 = (const 2i32, _8);
 //      StorageDead(_8);
-//      goto -> bb11;
+//      goto -> bb12;
 //  }
-//  bb11: {
+//  bb12: {
 //      ...
 //      return;
 //  }
@@ -111,53 +114,56 @@ fn main() {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      _5 = discriminant(_2);
-//      switchInt(_5) -> [0isize: bb4, otherwise: bb3];
+//      switchInt(_5) -> [0isize: bb4, 1isize: bb3, otherwise: bb7];
 //  }
 //  bb1: { // arm1
 //      StorageLive(_7);
 //      _7 = _3;
 //      _1 = (const 1i32, _7);
 //      StorageDead(_7);
-//      goto -> bb11;
+//      goto -> bb12;
 //  }
 //  bb2: { // binding3(empty) and arm3
 //      _1 = (const 3i32, const 3i32);
-//      goto -> bb11;
+//      goto -> bb12;
 //  }
 //  bb3: {
-//      falseEdges -> [real: bb7, imaginary: bb4]; //pre_binding1
+//      falseEdges -> [real: bb8, imaginary: bb4]; //pre_binding1
 //  }
 //  bb4: {
 //      falseEdges -> [real: bb2, imaginary: bb5]; //pre_binding2
 //  }
 //  bb5: {
-//      falseEdges -> [real: bb10, imaginary: bb6]; //pre_binding3
+//      falseEdges -> [real: bb11, imaginary: bb6]; //pre_binding3
 //  }
 //  bb6: {
 //      unreachable;
 //  }
-//  bb7: { // binding1 and guard
+//  bb7: {
+//      unreachable;
+//  }
+//  bb8: { // binding1 and guard
 //      StorageLive(_3);
 //      _3 = ((_2 as Some).0: i32);
 //      StorageLive(_6);
-//      _6 = const guard() -> bb8;
+//      _6 = const guard() -> bb9;
 //  }
-//  bb8: { // end of guard
-//      switchInt(_6) -> [0u8: bb9, otherwise: bb1];
+//  bb9: { // end of guard
+//      switchInt(_6) -> [0u8: bb10, otherwise: bb1];
 //  }
-//  bb9: { // to pre_binding2
+//  bb10: { // to pre_binding2
 //      falseEdges -> [real: bb5, imaginary: bb4];
 //  }
-//  bb10: { // binding2 and arm2
+//  bb11: { // binding2 and arm2
 //      StorageLive(_4);
 //      _4 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
 //      _8 = _4;
 //      _1 = (const 2i32, _8);
 //      StorageDead(_8);
-//      goto -> bb11;
+//      goto -> bb12;
 //  }
-//  bb11: {
+//  bb12: {
 //      ...
 //      return;
 //  }

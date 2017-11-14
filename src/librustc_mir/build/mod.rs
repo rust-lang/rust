@@ -307,6 +307,8 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     cached_resume_block: Option<BasicBlock>,
     /// cached block with the RETURN terminator
     cached_return_block: Option<BasicBlock>,
+    /// cached block with the UNREACHABLE terminator
+    cached_unreachable_block: Option<BasicBlock>,
 }
 
 struct CFG<'tcx> {
@@ -400,6 +402,11 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                               TerminatorKind::Goto { target: return_block });
         builder.cfg.terminate(return_block, source_info,
                               TerminatorKind::Return);
+        // Attribute any unreachable codepaths to the function's closing brace
+        if let Some(unreachable_block) = builder.cached_unreachable_block {
+            builder.cfg.terminate(unreachable_block, source_info,
+                                  TerminatorKind::Unreachable);
+        }
         return_block.unit()
     }));
     assert_eq!(block, builder.return_block());
@@ -502,7 +509,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             var_indices: NodeMap(),
             unit_temp: None,
             cached_resume_block: None,
-            cached_return_block: None
+            cached_return_block: None,
+            cached_unreachable_block: None,
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -628,6 +636,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let rb = self.cfg.start_new_block();
                 self.cached_return_block = Some(rb);
                 rb
+            }
+        }
+    }
+
+    fn unreachable_block(&mut self) -> BasicBlock {
+        match self.cached_unreachable_block {
+            Some(ub) => ub,
+            None => {
+                let ub = self.cfg.start_new_block();
+                self.cached_unreachable_block = Some(ub);
+                ub
             }
         }
     }

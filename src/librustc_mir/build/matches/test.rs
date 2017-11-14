@@ -205,7 +205,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let Some(otherwise_block) = otherwise_block {
                     targets.push(otherwise_block);
                 } else {
-                    values.pop();
+                    targets.push(self.unreachable_block());
                 }
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
