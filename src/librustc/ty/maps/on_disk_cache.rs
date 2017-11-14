@@ -9,21 +9,29 @@
 // except according to those terms.
 
 use dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
 use errors::Diagnostic;
+use hir;
+use hir::def_id::{CrateNum, DefIndex, DefId, RESERVED_FOR_INCR_COMP_CACHE,
+                  LOCAL_CRATE};
+use hir::map::definitions::{Definitions, DefPathTable};
+use middle::const_val::ByteArray;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
-                      SpecializedDecoder, SpecializedEncoder};
+                      SpecializedDecoder, SpecializedEncoder,
+                      UseSpecializedDecodable};
 use session::Session;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
+use syntax::ast::NodeId;
 use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
 use ty;
-use ty::codec::{self as ty_codec};
+use ty::codec::{self as ty_codec, TyDecoder};
 use ty::context::TyCtxt;
+use ty::subst::Substs;
 
 /// `OnDiskCache` provides an interface to incr. comp. data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -65,9 +73,12 @@ impl<'sess> OnDiskCache<'sess> {
 
         let prev_diagnostics = {
             let mut decoder = CacheDecoder {
+                tcx: None,
                 opaque: decoder,
                 codemap: sess.codemap(),
                 prev_filemap_starts: &header.prev_filemap_starts,
+                cnum_map: &IndexVec::new(),
+                prev_def_path_tables: &Vec::new(),
             };
 
             let prev_diagnostics: FxHashMap<_, _> = {
@@ -110,6 +121,7 @@ impl<'sess> OnDiskCache<'sess> {
             encoder,
             type_shorthands: FxHashMap(),
             predicate_shorthands: FxHashMap(),
+            definitions: tcx.hir.definitions(),
         };
 
         let prev_filemap_starts: BTreeMap<_, _> = self
@@ -174,13 +186,16 @@ impl<'sess> OnDiskCache<'sess> {
 /// A decoder that can read the incr. comp. cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and
 /// eventually will also handle things that contain `Ty` instances.
-struct CacheDecoder<'a> {
-    opaque: opaque::Decoder<'a>,
-    codemap: &'a CodeMap,
-    prev_filemap_starts: &'a BTreeMap<BytePos, StableFilemapId>,
+struct CacheDecoder<'a, 'tcx: 'a, 'x> {
+    tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
+    opaque: opaque::Decoder<'x>,
+    codemap: &'x CodeMap,
+    prev_filemap_starts: &'x BTreeMap<BytePos, StableFilemapId>,
+    cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
+    prev_def_path_tables: &'x Vec<DefPathTable>,
 }
 
-impl<'a> CacheDecoder<'a> {
+impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
     fn find_filemap_prev_bytepos(&self,
                                  prev_bytepos: BytePos)
                                  -> Option<(BytePos, StableFilemapId)> {
@@ -200,7 +215,7 @@ macro_rules! decoder_methods {
     }
 }
 
-impl<'sess> Decoder for CacheDecoder<'sess> {
+impl<'a, 'tcx, 'x> Decoder for CacheDecoder<'a, 'tcx, 'x> {
     type Error = String;
 
     decoder_methods! {
@@ -232,7 +247,65 @@ impl<'sess> Decoder for CacheDecoder<'sess> {
     }
 }
 
-impl<'a> SpecializedDecoder<Span> for CacheDecoder<'a> {
+impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 'x> {
+
+    #[inline]
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.tcx.expect("missing TyCtxt in CacheDecoder")
+    }
+
+    #[inline]
+    fn position(&self) -> usize {
+        self.opaque.position()
+    }
+
+    #[inline]
+    fn peek_byte(&self) -> u8 {
+        self.opaque.data[self.opaque.position()]
+    }
+
+    fn cached_ty_for_shorthand<F>(&mut self,
+                                  shorthand: usize,
+                                  or_insert_with: F)
+                                  -> Result<ty::Ty<'tcx>, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<ty::Ty<'tcx>, Self::Error>
+    {
+        let tcx = self.tcx();
+
+        let cache_key = ty::CReaderCacheKey {
+            cnum: RESERVED_FOR_INCR_COMP_CACHE,
+            pos: shorthand,
+        };
+
+        if let Some(&ty) = tcx.rcache.borrow().get(&cache_key) {
+            return Ok(ty);
+        }
+
+        let ty = or_insert_with(self)?;
+        tcx.rcache.borrow_mut().insert(cache_key, ty);
+        Ok(ty)
+    }
+
+    fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
+        where F: FnOnce(&mut Self) -> R
+    {
+        debug_assert!(pos < self.opaque.data.len());
+
+        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
+        let old_opaque = mem::replace(&mut self.opaque, new_opaque);
+        let r = f(self);
+        self.opaque = old_opaque;
+        r
+    }
+
+    fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
+        self.cnum_map[cnum].unwrap_or_else(|| {
+            bug!("Could not find new CrateNum for {:?}", cnum)
+        })
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
         let lo = BytePos::decode(self)?;
         let hi = BytePos::decode(self)?;
@@ -249,6 +322,142 @@ impl<'a> SpecializedDecoder<Span> for CacheDecoder<'a> {
     }
 }
 
+impl<'a, 'tcx, 'x> SpecializedDecoder<CrateNum> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<CrateNum, Self::Error> {
+        let cnum = CrateNum::from_u32(u32::decode(self)?);
+        let mapped = self.map_encoded_cnum_to_current(cnum);
+        Ok(mapped)
+    }
+}
+
+// This impl makes sure that we get a runtime error when we try decode a
+// DefIndex that is not contained in a DefId. Such a case would be problematic
+// because we would not know how to transform the DefIndex to the current
+// context.
+impl<'a, 'tcx, 'x> SpecializedDecoder<DefIndex> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
+        bug!("Trying to decode DefIndex outside the context of a DefId")
+    }
+}
+
+// Both the CrateNum and the DefIndex of a DefId can change in between two
+// compilation sessions. We use the DefPathHash, which is stable across
+// sessions, to map the old DefId to the new one.
+impl<'a, 'tcx, 'x> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<DefId, Self::Error> {
+        // Decode the unmapped CrateNum
+        let prev_cnum = CrateNum::default_decode(self)?;
+
+        // Decode the unmapped DefIndex
+        let def_index = DefIndex::default_decode(self)?;
+
+        // Unmapped CrateNum and DefIndex are valid keys for the *cached*
+        // DefPathTables, so we use them to look up the DefPathHash.
+        let def_path_hash = self.prev_def_path_tables[prev_cnum.index()]
+                                .def_path_hash(def_index);
+
+        // Using the DefPathHash, we can lookup the new DefId
+        Ok(self.tcx().def_path_hash_to_def_id.as_ref().unwrap()[&def_path_hash])
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<hir::HirId, Self::Error> {
+        // Decode the unmapped DefIndex of the HirId.
+        let def_index = DefIndex::default_decode(self)?;
+
+        // Use the unmapped DefIndex to look up the DefPathHash in the cached
+        // DefPathTable. For HirIds we know that we always have to look in the
+        // *local* DefPathTable.
+        let def_path_hash = self.prev_def_path_tables[LOCAL_CRATE.index()]
+                                .def_path_hash(def_index);
+
+        // Use the DefPathHash to map to the current DefId.
+        let def_id = self.tcx()
+                         .def_path_hash_to_def_id
+                         .as_ref()
+                         .unwrap()[&def_path_hash];
+
+        // The ItemLocalId needs no remapping.
+        let local_id = hir::ItemLocalId::decode(self)?;
+
+        // Reconstruct the HirId and look up the corresponding NodeId in the
+        // context of the current session.
+        Ok(hir::HirId {
+            owner: def_id.index,
+            local_id
+        })
+    }
+}
+
+// NodeIds are not stable across compilation sessions, so we store them in their
+// HirId representation. This allows use to map them to the current NodeId.
+impl<'a, 'tcx, 'x> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<NodeId, Self::Error> {
+        let hir_id = hir::HirId::decode(self)?;
+        Ok(self.tcx().hir.hir_to_node_id(hir_id))
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<ty::Ty<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<ty::Ty<'tcx>, Self::Error> {
+        ty_codec::decode_ty(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<ty::GenericPredicates<'tcx>>
+for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<ty::GenericPredicates<'tcx>, Self::Error> {
+        ty_codec::decode_predicates(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx Substs<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
+        ty_codec::decode_substs(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<ty::Region<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<ty::Region<'tcx>, Self::Error> {
+        ty_codec::decode_region(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::Slice<ty::Ty<'tcx>>>
+for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<&'tcx ty::Slice<ty::Ty<'tcx>>, Self::Error> {
+        ty_codec::decode_ty_slice(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::AdtDef> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
+        ty_codec::decode_adt_def(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>
+    for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self)
+        -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
+        ty_codec::decode_existential_predicate_slice(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<ByteArray<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<ByteArray<'tcx>, Self::Error> {
+        ty_codec::decode_byte_array(self)
+    }
+}
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::Const<'tcx>>
+for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        ty_codec::decode_const(self)
+    }
+}
+
 
 //- ENCODING -------------------------------------------------------------------
 
@@ -258,6 +467,7 @@ struct CacheEncoder<'enc, 'tcx, E>
     encoder: &'enc mut E,
     type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+    definitions: &'enc Definitions,
 }
 
 impl<'enc, 'tcx, E> ty_codec::TyEncoder for CacheEncoder<'enc, 'tcx, E>
@@ -286,6 +496,17 @@ impl<'enc, 'tcx, E> SpecializedEncoder<ty::GenericPredicates<'tcx>>
                           -> Result<(), Self::Error> {
         ty_codec::encode_predicates(self, predicates,
             |encoder| &mut encoder.predicate_shorthands)
+    }
+}
+
+// NodeIds are not stable across compilation sessions, so we store them in their
+// HirId representation. This allows use to map them to the current NodeId.
+impl<'enc, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, node_id: &NodeId) -> Result<(), Self::Error> {
+        let hir_id = self.definitions.node_to_hir_id(*node_id);
+        hir_id.encode(self)
     }
 }
 

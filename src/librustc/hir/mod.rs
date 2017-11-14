@@ -45,6 +45,7 @@ use ty::AdtKind;
 
 use rustc_data_structures::indexed_vec;
 
+use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -85,12 +86,36 @@ pub mod svh;
 /// the local_id part of the HirId changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
-         RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct HirId {
     pub owner: DefIndex,
     pub local_id: ItemLocalId,
 }
+
+impl serialize::UseSpecializedEncodable for HirId {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        let HirId {
+            owner,
+            local_id,
+        } = *self;
+
+        owner.encode(s)?;
+        local_id.encode(s)
+    }
+}
+
+impl serialize::UseSpecializedDecodable for HirId {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<HirId, D::Error> {
+        let owner = DefIndex::decode(d)?;
+        let local_id = ItemLocalId::decode(d)?;
+
+        Ok(HirId {
+            owner,
+            local_id
+        })
+    }
+}
+
 
 /// An `ItemLocalId` uniquely identifies something within a given "item-like",
 /// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no

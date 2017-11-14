@@ -32,6 +32,10 @@ newtype_index!(CrateNum
 
         /// A CrateNum value that indicates that something is wrong.
         const INVALID_CRATE = u32::MAX - 1,
+
+        /// A special CrateNum that we use for the tcx.rcache when decoding from
+        /// the incr. comp. cache.
+        const RESERVED_FOR_INCR_COMP_CACHE = u32::MAX - 2,
     });
 
 impl CrateNum {
