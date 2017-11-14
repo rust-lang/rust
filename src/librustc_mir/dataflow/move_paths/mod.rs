@@ -239,8 +239,7 @@ pub(crate) enum IllegalMoveOriginKind<'tcx> {
     Static,
     BorrowedContent,
     InteriorOfTypeWithDestructor { container_ty: ty::Ty<'tcx> },
-    InteriorOfSlice { elem_ty: ty::Ty<'tcx>, is_index: bool, },
-    InteriorOfArray { elem_ty: ty::Ty<'tcx>, is_index: bool, },
+    InteriorOfSliceOrArray { ty: ty::Ty<'tcx>, is_index: bool, },
 }
 
 #[derive(Debug)]
