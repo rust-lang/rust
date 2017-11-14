@@ -227,9 +227,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 ))
             });
             let tooltip = if ignore {
-                Some(("Be careful when using this code, it's not being tested!", "ignore"))
+                Some(("This example is not tested", "ignore"))
             } else if compile_fail {
-                Some(("This code doesn't compile so be extra careful!", "compile_fail"))
+                Some(("This example deliberately fails to compile", "compile_fail"))
             } else {
                 None
             };
@@ -638,9 +638,9 @@ pub fn render(w: &mut fmt::Formatter,
                     ))
                 });
                 let tooltip = if ignore {
-                    Some(("Be careful when using this code, it's not being tested!", "ignore"))
+                    Some(("This example is not tested", "ignore"))
                 } else if compile_fail {
-                    Some(("This code doesn't compile so be extra careful!", "compile_fail"))
+                    Some(("This example deliberately fails to compile", "compile_fail"))
                 } else {
                     None
                 };
