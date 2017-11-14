@@ -840,12 +840,14 @@ fn lorem
 }
 ```
 
-## `fn_brace_style`
+## `brace_style`
 
-Brace style for functions
+Brace style for items
 
 - **Default value**: `"SameLineWhere"`
 - **Possible values**: `"AlwaysNextLine"`, `"PreferSameLine"`, `"SameLineWhere"`
+
+### Functions
 
 #### `"SameLineWhere"` (default):
 
@@ -902,6 +904,50 @@ fn lorem<T>(ipsum: T)
 where
     T: Add + Sub + Mul + Div, {
     // body
+}
+```
+
+### Structs and enums
+
+#### `"SameLineWhere"` (default):
+
+```rust
+struct Lorem {
+    ipsum: bool,
+}
+
+struct Dolor<T>
+    where T: Eq
+{
+    sit: T,
+}
+```
+
+#### `"AlwaysNextLine"`:
+
+```rust
+struct Lorem
+{
+    ipsum: bool,
+}
+
+struct Dolor<T>
+    where T: Eq
+{
+    sit: T,
+}
+```
+
+#### `"PreferSameLine"`:
+
+```rust
+struct Lorem {
+    ipsum: bool,
+}
+
+struct Dolor<T>
+    where T: Eq {
+    sit: T,
 }
 ```
 
@@ -1125,7 +1171,7 @@ impl Lorem {
 }
 ```
 
-See also [`item_brace_style`](#item_brace_style).
+See also [`brace_style`](#brace_style).
 
 ## `indent_match_arms`
 
@@ -1237,55 +1283,6 @@ use foo::{aaa,
           ddd,
           eee,
           fff};
-```
-
-## `item_brace_style`
-
-Brace style for structs and enums
-
-- **Default value**: `"SameLineWhere"`
-- **Possible values**: `"AlwaysNextLine"`, `"PreferSameLine"`, `"SameLineWhere"`
-
-#### `"SameLineWhere"` (default):
-
-```rust
-struct Lorem {
-    ipsum: bool,
-}
-
-struct Dolor<T>
-    where T: Eq
-{
-    sit: T,
-}
-```
-
-#### `"AlwaysNextLine"`:
-
-```rust
-struct Lorem
-{
-    ipsum: bool,
-}
-
-struct Dolor<T>
-    where T: Eq
-{
-    sit: T,
-}
-```
-
-#### `"PreferSameLine"`:
-
-```rust
-struct Lorem {
-    ipsum: bool,
-}
-
-struct Dolor<T>
-    where T: Eq {
-    sit: T,
-}
 ```
 
 ## `match_arm_forces_newline`
