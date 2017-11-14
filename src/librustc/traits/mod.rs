@@ -511,7 +511,6 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            unnormalized_env.reveal);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let body_id = cause.body_id;
         let predicates = match fully_normalize(
             &infcx,
             cause,
@@ -546,7 +545,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // properly, and that code is currently largely confined to
         // regionck (though I made some efforts to extract it
         // out). -nmatsakis
-        let _ = infcx.ignore_region_obligations(body_id);
+        let _ = infcx.ignore_region_obligations();
 
         infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {

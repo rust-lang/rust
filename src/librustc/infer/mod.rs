@@ -35,7 +35,7 @@ use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
-use util::nodemap::{NodeMap, FxHashMap};
+use util::nodemap::FxHashMap;
 use arena::DroplessArena;
 
 use self::combine::CombineFields;
@@ -179,7 +179,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // for each body-id in this map, which will process the
     // obligations within. This is expected to be done 'late enough'
     // that all type inference variables have been bound and so forth.
-    region_obligations: RefCell<NodeMap<Vec<RegionObligation<'tcx>>>>,
+    region_obligations: RefCell<Vec<(ast::NodeId, RegionObligation<'tcx>)>>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -450,7 +450,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
-            region_obligations: RefCell::new(NodeMap()),
+            region_obligations: RefCell::new(vec![]),
         }))
     }
 }
@@ -478,6 +478,7 @@ pub struct CombinedSnapshot<'a, 'tcx:'a> {
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
     region_constraints_snapshot: RegionSnapshot,
+    region_obligations_snapshot: usize,
     was_in_snapshot: bool,
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
@@ -786,6 +787,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_constraints_snapshot: self.borrow_region_constraints().start_snapshot(),
+            region_obligations_snapshot: self.region_obligations.borrow().len(),
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e. during typeck)
             // to ban writes from within a snapshot to them.
@@ -802,6 +804,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_constraints_snapshot,
+                               region_obligations_snapshot,
                                was_in_snapshot,
                                _in_progress_tables } = snapshot;
 
@@ -819,6 +822,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.float_unification_table
             .borrow_mut()
             .rollback_to(float_snapshot);
+        self.region_obligations
+            .borrow_mut()
+            .truncate(region_obligations_snapshot);
         self.borrow_region_constraints()
             .rollback_to(region_constraints_snapshot);
     }
@@ -830,6 +836,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_constraints_snapshot,
+                               region_obligations_snapshot: _,
                                was_in_snapshot,
                                _in_progress_tables } = snapshot;
 

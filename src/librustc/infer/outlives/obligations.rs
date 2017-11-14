@@ -86,9 +86,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) {
         self.region_obligations
             .borrow_mut()
-            .entry(body_id)
-            .or_insert(vec![])
-            .push(obligation);
+            .push((body_id, obligation));
     }
 
     /// Process the region obligations that must be proven (during
@@ -131,10 +129,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         body_id: ast::NodeId,
     ) {
-        let region_obligations = match self.region_obligations.borrow_mut().remove(&body_id) {
-            None => vec![],
-            Some(vec) => vec,
-        };
+        assert!(!self.in_snapshot.get(), "cannot process registered region obligations in a snapshot");
+
+        // pull out the region obligations with the given `body_id` (leaving the rest)
+        let mut my_region_obligations = Vec::with_capacity(self.region_obligations.borrow().len());
+        {
+            let mut r_o = self.region_obligations.borrow_mut();
+            for (_, obligation) in r_o.drain_filter(|(ro_body_id, _)| *ro_body_id == body_id) {
+                my_region_obligations.push(obligation);
+            }
+        }
 
         let outlives =
             TypeOutlives::new(self, region_bound_pairs, implicit_region_bound, param_env);
@@ -143,7 +147,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             sup_type,
             sub_region,
             cause,
-        } in region_obligations
+        } in my_region_obligations
         {
             let origin = SubregionOrigin::from_obligation_cause(
                 &cause,
@@ -170,11 +174,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         outlives.type_must_outlive(origin, ty, region);
     }
 
-    /// Ignore the region obligations for a given `body_id`, not bothering to
-    /// prove them. This function should not really exist; it is used to accommodate some older
-    /// code for the time being.
-    pub fn ignore_region_obligations(&self, body_id: ast::NodeId) {
-        self.region_obligations.borrow_mut().remove(&body_id);
+    /// Ignore the region obligations, not bothering to prove
+    /// them. This function should not really exist; it is used to
+    /// accommodate some older code for the time being.
+    pub fn ignore_region_obligations(&self) {
+        assert!(!self.in_snapshot.get(), "cannot ignore registered region obligations in a snapshot");
+
+        self.region_obligations.borrow_mut().clear();
     }
 }
 
