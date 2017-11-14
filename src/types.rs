@@ -399,8 +399,8 @@ where
 
 fn type_bound_colon(context: &RewriteContext) -> &'static str {
     colon_spaces(
-        context.config.space_before_bound(),
-        context.config.space_after_bound_colon(),
+        context.config.space_before_colon(),
+        context.config.space_after_colon(),
     )
 }
 

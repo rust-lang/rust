@@ -39,10 +39,7 @@ use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
 fn type_annotation_separator(config: &Config) -> &str {
-    colon_spaces(
-        config.space_before_type_annotation(),
-        config.space_after_type_annotation_colon(),
-    )
+    colon_spaces(config.space_before_colon(), config.space_after_colon())
 }
 
 // Statements of the form
@@ -1405,16 +1402,8 @@ pub fn rewrite_type_alias(
 
 fn type_annotation_spacing(config: &Config) -> (&str, &str) {
     (
-        if config.space_before_type_annotation() {
-            " "
-        } else {
-            ""
-        },
-        if config.space_after_type_annotation_colon() {
-            " "
-        } else {
-            ""
-        },
+        if config.space_before_colon() { " " } else { "" },
+        if config.space_after_colon() { " " } else { "" },
     )
 }
 
@@ -1581,8 +1570,8 @@ fn rewrite_static(
     offset: Indent,
 ) -> Option<String> {
     let colon = colon_spaces(
-        context.config.space_before_type_annotation(),
-        context.config.space_after_type_annotation_colon(),
+        context.config.space_before_colon(),
+        context.config.space_after_colon(),
     );
     let prefix = format!(
         "{}{} {}{}{}",
@@ -1701,11 +1690,11 @@ impl Rewrite for ast::Arg {
                 .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
 
             if !is_empty_infer(context, &*self.ty) {
-                if context.config.space_before_type_annotation() {
+                if context.config.space_before_colon() {
                     result.push_str(" ");
                 }
                 result.push_str(":");
-                if context.config.space_after_type_annotation_colon() {
+                if context.config.space_after_colon() {
                     result.push_str(" ");
                 }
                 let overhead = last_line_width(&result);
