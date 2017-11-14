@@ -616,11 +616,8 @@ create_config! {
     space_before_colon: bool, false, false, "Leave a space before the colon";
     space_after_colon: bool, true, false, "Leave a space after the colon";
     spaces_around_ranges: bool, false, false, "Put spaces around the  .. and ... range operators";
-    spaces_within_angle_brackets: bool, false, false,
-        "Put spaces within non-empty generic arguments";
-    spaces_within_square_brackets: bool, false, false,
-        "Put spaces within non-empty square brackets";
-    spaces_within_parens: bool, false, false, "Put spaces within non-empty parentheses";
+    spaces_within_parens_and_brackets: bool, false, false,
+        "Put spaces within non-empty parentheses or brackets";
     use_try_shorthand: bool, false, false, "Replace uses of the try! macro by the ? shorthand";
     write_mode: WriteMode, WriteMode::Overwrite, false,
         "What Write Mode to use when none is supplied: \

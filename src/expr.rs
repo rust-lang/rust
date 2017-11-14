@@ -202,7 +202,7 @@ pub fn format_expr(
             rewrite_index(&**expr, &**index, context, shape)
         }
         ast::ExprKind::Repeat(ref expr, ref repeats) => {
-            let (lbr, rbr) = if context.config.spaces_within_square_brackets() {
+            let (lbr, rbr) = if context.config.spaces_within_parens_and_brackets() {
                 ("[ ", " ]")
             } else {
                 ("[", "]")
@@ -409,7 +409,7 @@ pub fn rewrite_array<'a, I>(
 where
     I: Iterator<Item = &'a ast::Expr>,
 {
-    let bracket_size = if context.config.spaces_within_square_brackets() {
+    let bracket_size = if context.config.spaces_within_parens_and_brackets() {
         2 // "[ "
     } else {
         1 // "["
@@ -439,7 +439,7 @@ where
     ).collect::<Vec<_>>();
 
     if items.is_empty() {
-        if context.config.spaces_within_square_brackets() {
+        if context.config.spaces_within_parens_and_brackets() {
             return Some("[ ]".to_string());
         } else {
             return Some("[]".to_string());
@@ -501,7 +501,7 @@ where
     let result = if context.config.indent_style() == IndentStyle::Visual
         || tactic == DefinitiveListTactic::Horizontal
     {
-        if context.config.spaces_within_square_brackets() && !list_str.is_empty() {
+        if context.config.spaces_within_parens_and_brackets() && !list_str.is_empty() {
             format!("[ {} ]", list_str)
         } else {
             format!("[{}]", list_str)
@@ -1801,7 +1801,7 @@ where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
     // 2 = `( `, 1 = `(`
-    let paren_overhead = if context.config.spaces_within_parens() {
+    let paren_overhead = if context.config.spaces_within_parens_and_brackets() {
         2
     } else {
         1
@@ -2098,7 +2098,7 @@ pub fn wrap_args_with_parens(
         || (context.inside_macro && !args_str.contains('\n')
             && args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
     {
-        if context.config.spaces_within_parens() && !args_str.is_empty() {
+        if context.config.spaces_within_parens_and_brackets() && !args_str.is_empty() {
             format!("( {} )", args_str)
         } else {
             format!("({})", args_str)
@@ -2141,11 +2141,12 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) ->
         .offset_left(paren_overhead)
         .and_then(|s| s.sub_width(paren_overhead))?;
 
-    let paren_wrapper = |s: &str| if context.config.spaces_within_parens() && !s.is_empty() {
-        format!("( {} )", s)
-    } else {
-        format!("({})", s)
-    };
+    let paren_wrapper =
+        |s: &str| if context.config.spaces_within_parens_and_brackets() && !s.is_empty() {
+            format!("( {} )", s)
+        } else {
+            format!("({})", s)
+        };
 
     let subexpr_str = subexpr.rewrite(context, sub_shape)?;
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
@@ -2167,7 +2168,7 @@ fn rewrite_index(
 ) -> Option<String> {
     let expr_str = expr.rewrite(context, shape)?;
 
-    let (lbr, rbr) = if context.config.spaces_within_square_brackets() {
+    let (lbr, rbr) = if context.config.spaces_within_parens_and_brackets() {
         ("[ ", " ]")
     } else {
         ("[", "]")
@@ -2436,7 +2437,7 @@ where
             .unwrap()
             .rewrite(context, nested_shape)
             .map(|s| {
-                if context.config.spaces_within_parens() {
+                if context.config.spaces_within_parens_and_brackets() {
                     format!("( {}, )", s)
                 } else {
                     format!("({},)", s)
@@ -2476,7 +2477,7 @@ where
     };
     let list_str = write_list(&item_vec, &fmt)?;
 
-    if context.config.spaces_within_parens() && !list_str.is_empty() {
+    if context.config.spaces_within_parens_and_brackets() && !list_str.is_empty() {
         Some(format!("( {} )", list_str))
     } else {
         Some(format!("({})", list_str))

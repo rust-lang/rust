@@ -219,7 +219,7 @@ pub fn rewrite_macro(
             let mac_shape = shape.offset_left(macro_name.len())?;
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
-                let (lbr, rbr) = if context.config.spaces_within_square_brackets() {
+                let (lbr, rbr) = if context.config.spaces_within_parens_and_brackets() {
                     ("[ ", " ]")
                 } else {
                     ("[", "]")

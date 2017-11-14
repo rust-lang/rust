@@ -1882,7 +1882,9 @@ fn rewrite_fn_base(
     } else {
         result.push('(');
     }
-    if context.config.spaces_within_parens() && !fd.inputs.is_empty() && result.ends_with('(') {
+    if context.config.spaces_within_parens_and_brackets() && !fd.inputs.is_empty()
+        && result.ends_with('(')
+    {
         result.push(' ')
     }
 
@@ -1943,7 +1945,7 @@ fn rewrite_fn_base(
         if fd.inputs.is_empty() && used_width + 1 > context.config.max_width() {
             result.push('\n');
         }
-        if context.config.spaces_within_parens() && !fd.inputs.is_empty() {
+        if context.config.spaces_within_parens_and_brackets() && !fd.inputs.is_empty() {
             result.push(' ')
         }
         // If the last line of args contains comment, we cannot put the closing paren
@@ -2522,7 +2524,7 @@ pub fn wrap_generics_with_angle_brackets(
                 .block_unindent(context.config)
                 .to_string(context.config)
         )
-    } else if context.config.spaces_within_angle_brackets() {
+    } else if context.config.spaces_within_parens_and_brackets() {
         format!("< {} >", list_str)
     } else {
         format!("<{}>", list_str)
