@@ -23,6 +23,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate syntax;
 extern crate term;
+extern crate time;
 extern crate unicode_segmentation;
 
 use std::collections::HashMap;
@@ -616,6 +617,8 @@ pub fn format_input<T: Write>(
         }
     };
 
+    summary.mark_parse_time();
+
     if parse_session.span_diagnostic.has_errors() {
         summary.add_parsing_error();
     }
@@ -630,7 +633,7 @@ pub fn format_input<T: Write>(
 
     let mut report = FormatReport::new();
 
-    match format_ast(
+    let format_result = format_ast(
         &krate,
         &mut parse_session,
         &main_file,
@@ -647,7 +650,19 @@ pub fn format_input<T: Write>(
             }
             Ok(false)
         },
-    ) {
+    );
+
+    summary.mark_format_time();
+
+    if config.verbose() {
+        println!(
+            "Spent {} in the parsing phase, and {} in the formatting phase",
+            summary.get_parse_time().unwrap(),
+            summary.get_format_time().unwrap(),
+        );
+    }
+
+    match format_result {
         Ok((file_map, has_diff)) => {
             if report.has_warnings() {
                 summary.add_formatting_error();

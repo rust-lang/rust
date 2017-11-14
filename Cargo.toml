@@ -44,6 +44,7 @@ env_logger = "0.4"
 getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.4"
+time = "0.1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.11"
