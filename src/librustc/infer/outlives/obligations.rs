@@ -55,15 +55,19 @@
 //! type-check the closure body (e.g., here it informs us that `T`
 //! outlives the late-bound region `'a`).
 //!
-//! > That said, in writing this, I have come to wonder: this
-//!   inference dependency, I think, is only interesting for
-//!   late-bound regions in the closure -- if the region appears free
-//!   in the closure signature, then the relationship must be known to
-//!   the caller (here, `foo`), and hence could be verified earlier
-//!   up. Moreover, we infer late-bound regions quite early on right
-//!   now, i.e., only when the expected signature is known.  So we
-//!   *may* be able to sidestep this. Regardless, once the NLL
-//!   transition is complete, this concern will be gone. -nmatsakis
+//! Note that by delaying the gathering of implied bounds until all
+//! inference information is known, we may find relationships between
+//! bound regions and other regions in the environment. For example,
+//! when we first check a closure like the one expected as argument
+//! to `foo`:
+//!
+//! ```
+//! fn foo<U, F: for<'a> FnMut(&'a U)>(_f: F) {}
+//! ```
+//!
+//! the type of the closure's first argument would be `&'a ?U`.  We
+//! might later infer `?U` to something like `&'b u32`, which would
+//! imply that `'b: 'a`.
 
 use hir::def_id::DefId;
 use infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
