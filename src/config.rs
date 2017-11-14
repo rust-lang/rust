@@ -147,6 +147,15 @@ configuration_option_enum! { WriteMode:
     Checkstyle,
 }
 
+configuration_option_enum! { Color:
+    // Always use color, whether it is a piped or terminal output
+    Always,
+    // Never use color
+    Never,
+    // Automatically use color, if supported by terminal
+    Auto,
+}
+
 /// Trait for types that can be used in `Config`.
 pub trait ConfigType: Sized {
     /// Returns hint text for use in `Config::print_docs()`. For enum types, this is a
@@ -628,6 +637,8 @@ create_config! {
     write_mode: WriteMode, WriteMode::Overwrite, false,
         "What Write Mode to use when none is supplied: \
          Replace, Overwrite, Display, Plain, Diff, Coverage";
+    color: Color, Color::Auto, false,
+        "What Color option to use when none is supplied: Always, Never, Auto";
     condense_wildcard_suffixes: bool, false, false, "Replace strings of _ wildcards by a single .. \
                                               in tuple patterns";
     combine_control_expr: bool, true, false, "Combine control expressions with function calls.";

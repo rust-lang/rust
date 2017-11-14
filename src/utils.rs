@@ -15,6 +15,7 @@ use syntax::ast::{self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMet
                   NestedMetaItemKind, Path, Visibility};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 
+use config::Color;
 use rewrite::RewriteContext;
 use shape::Shape;
 
@@ -481,6 +482,14 @@ pub fn isatty() -> bool {
         let handle = kernel32::GetStdHandle(winapi::winbase::STD_OUTPUT_HANDLE);
         let mut out = 0;
         kernel32::GetConsoleMode(handle, &mut out) != 0
+    }
+}
+
+pub fn use_colored_tty(color: Color) -> bool {
+    match color {
+        Color::Always => true,
+        Color::Never => false,
+        Color::Auto => isatty(),
     }
 }
 
