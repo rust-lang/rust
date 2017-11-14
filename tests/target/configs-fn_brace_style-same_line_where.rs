@@ -1,4 +1,4 @@
-// rustfmt-fn_brace_style: SameLineWhere
+// rustfmt-brace_style: SameLineWhere
 // Function brace style
 
 fn lorem() {

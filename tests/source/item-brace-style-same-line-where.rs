@@ -1,4 +1,4 @@
-// rustfmt-item_brace_style: SameLineWhere
+// rustfmt-brace_style: SameLineWhere
 
 mod M {
     enum A

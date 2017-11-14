@@ -314,7 +314,7 @@ impl<'a> FmtVisitor<'a> {
             rewrite_fn_base(&context, indent, ident, fn_sig, span, newline_brace, true)?;
 
         // 2 = ` {`
-        if self.config.fn_brace_style() == BraceStyle::AlwaysNextLine || force_newline_brace
+        if self.config.brace_style() == BraceStyle::AlwaysNextLine || force_newline_brace
             || last_line_width(&result) + 2 > self.shape().width
         {
             newline_brace = true;
@@ -440,7 +440,7 @@ impl<'a> FmtVisitor<'a> {
         let generics_str = format_generics(
             &self.get_context(),
             generics,
-            self.config.item_brace_style(),
+            self.config.brace_style(),
             if enum_def.variants.is_empty() {
                 BracePos::ForceSameLine
             } else {
@@ -595,7 +595,7 @@ pub fn format_impl(
         let where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
-            context.config.item_brace_style(),
+            context.config.brace_style(),
             Shape::legacy(where_budget, offset.block_only()),
             context.config.where_density(),
             "{",
@@ -641,7 +641,7 @@ pub fn format_impl(
         }
         result.push_str(&where_clause_str);
 
-        match context.config.item_brace_style() {
+        match context.config.brace_style() {
             _ if last_line_contains_single_line_comment(&result) => result.push_str(&sep),
             BraceStyle::AlwaysNextLine => result.push_str(&sep),
             BraceStyle::PreferSameLine => result.push(' '),
@@ -784,7 +784,7 @@ fn format_impl_ref_and_type(
         let curly_brace_overhead = if generics.where_clause.predicates.is_empty() {
             // If there is no where clause adapt budget for type formatting to take space and curly
             // brace into account.
-            match context.config.item_brace_style() {
+            match context.config.brace_style() {
                 BraceStyle::AlwaysNextLine => 0,
                 _ => 2,
             }
@@ -994,7 +994,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
-            context.config.item_brace_style(),
+            context.config.brace_style(),
             Shape::legacy(where_budget, offset.block_only()),
             where_density,
             "{",
@@ -1038,7 +1038,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             }
         }
 
-        match context.config.item_brace_style() {
+        match context.config.brace_style() {
             _ if last_line_contains_single_line_comment(&result) => {
                 result.push('\n');
                 result.push_str(&offset.to_string(context.config));
@@ -1103,7 +1103,7 @@ fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent)
         format_generics(
             context,
             generics,
-            context.config.item_brace_style(),
+            context.config.brace_style(),
             BracePos::None,
             offset,
             mk_sp(generics.span.lo(), hi),
@@ -1135,7 +1135,7 @@ pub fn format_struct_struct(
         Some(g) => format_generics(
             context,
             g,
-            context.config.item_brace_style(),
+            context.config.brace_style(),
             if fields.is_empty() {
                 BracePos::ForceSameLine
             } else {
@@ -1148,8 +1148,7 @@ pub fn format_struct_struct(
         None => {
             // 3 = ` {}`, 2 = ` {`.
             let overhead = if fields.is_empty() { 3 } else { 2 };
-            if (context.config.item_brace_style() == BraceStyle::AlwaysNextLine
-                && !fields.is_empty())
+            if (context.config.brace_style() == BraceStyle::AlwaysNextLine && !fields.is_empty())
                 || context.config.max_width() < overhead + result.len()
             {
                 format!("\n{}{{", offset.block_only().to_string(context.config))
@@ -1279,7 +1278,7 @@ fn format_tuple_struct(
             rewrite_where_clause(
                 context,
                 &generics.where_clause,
-                context.config.item_brace_style(),
+                context.config.brace_style(),
                 Shape::legacy(where_budget, offset.block_only()),
                 Density::Compressed,
                 ";",
@@ -1365,7 +1364,7 @@ pub fn rewrite_type_alias(
     let where_clause_str = rewrite_where_clause(
         context,
         &generics.where_clause,
-        context.config.item_brace_style(),
+        context.config.brace_style(),
         Shape::legacy(where_budget, indent),
         context.config.where_density(),
         "=",
@@ -2071,7 +2070,7 @@ fn rewrite_fn_base(
         if let Some(where_clause_str) = rewrite_where_clause(
             context,
             where_clause,
-            context.config.fn_brace_style(),
+            context.config.brace_style(),
             Shape::legacy(budget, indent),
             Density::Compressed,
             "{",
@@ -2090,7 +2089,7 @@ fn rewrite_fn_base(
     let where_clause_str = rewrite_where_clause(
         context,
         where_clause,
-        context.config.fn_brace_style(),
+        context.config.brace_style(),
         Shape::indented(indent, context.config),
         Density::Tall,
         "{",
@@ -2386,7 +2385,7 @@ fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause, has_body:
     if config.where_single_line() && predicate_count == 1 {
         return false;
     }
-    match (config.fn_brace_style(), config.where_density()) {
+    match (config.brace_style(), config.where_density()) {
         (BraceStyle::AlwaysNextLine, _) => true,
         (_, Density::Compressed) if predicate_count == 1 => false,
         (_, Density::CompressedIfEmpty) if predicate_count == 1 && !has_body => false,
