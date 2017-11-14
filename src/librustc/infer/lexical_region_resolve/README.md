@@ -9,15 +9,15 @@ Note that we use the terms region and lifetime interchangeably.
 See the [general inference README](../README.md) for an overview of
 how lexical-region-solving fits into the bigger picture.
 
-Region constraint collect uses a somewhat more involved algorithm than
-type inference. It is not the most efficient thing ever written though
-it seems to work well enough in practice (famous last words).  The
-reason that we use a different algorithm is because, unlike with
-types, it is impractical to hand-annotate with regions (in some cases,
-there aren't even the requisite syntactic forms).  So we have to get
-it right, and it's worth spending more time on a more involved
-analysis.  Moreover, regions are a simpler case than types: they don't
-have aggregate structure, for example.
+Region inference uses a somewhat more involved algorithm than type
+inference. It is not the most efficient thing ever written though it
+seems to work well enough in practice (famous last words).  The reason
+that we use a different algorithm is because, unlike with types, it is
+impractical to hand-annotate with regions (in some cases, there aren't
+even the requisite syntactic forms).  So we have to get it right, and
+it's worth spending more time on a more involved analysis.  Moreover,
+regions are a simpler case than types: they don't have aggregate
+structure, for example.
 
 ## The problem
 
