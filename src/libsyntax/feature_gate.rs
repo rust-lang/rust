@@ -386,7 +386,7 @@ declare_features! (
     (active, match_beginning_vert, "1.21.0", Some(44101)),
 
     // allow irrefutable patterns in if-let and while-let statements (RFC 2086)
-    (active, irrefutable_let_pattern, "1.22.0", Some(44495)),
+    (active, irrefutable_let_pattern, "1.23.0", Some(44495)),
 
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
     (active, non_exhaustive, "1.22.0", Some(44109)),
