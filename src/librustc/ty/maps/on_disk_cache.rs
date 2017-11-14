@@ -34,6 +34,11 @@ use ty::codec::{self as ty_codec, TyDecoder};
 use ty::context::TyCtxt;
 use ty::subst::Substs;
 
+// Some magic values used for verifying that encoding and decoding. These are
+// basically random numbers.
+const PREV_DIAGNOSTICS_TAG: u64 = 0x1234_5678_A1A1_A1A1;
+const DEF_PATH_TABLE_TAG: u64 = 0x1234_5678_B2B2_B2B2;
+
 /// `OnDiskCache` provides an interface to incr. comp. data cached from the
 /// previous compilation session. This data will eventually include the results
 /// of a few selected queries (like `typeck_tables_of` and `mir_optimized`) and
@@ -91,15 +96,17 @@ impl<'sess> OnDiskCache<'sess> {
 
             // Decode Diagnostics
             let prev_diagnostics: FxHashMap<_, _> = {
-                let diagnostics = EncodedPrevDiagnostics::decode(&mut decoder)
-                    .expect("Error while trying to decode prev. diagnostics \
-                             from incr. comp. cache.");
+                let diagnostics: EncodedPrevDiagnostics =
+                    decode_tagged(&mut decoder, PREV_DIAGNOSTICS_TAG)
+                        .expect("Error while trying to decode previous session \
+                                 diagnostics from incr. comp. cache.");
+
                 diagnostics.into_iter().collect()
             };
 
             // Decode DefPathTables
             let prev_def_path_tables: Vec<DefPathTable> =
-                Decodable::decode(&mut decoder)
+                decode_tagged(&mut decoder, DEF_PATH_TABLE_TAG)
                     .expect("Error while trying to decode cached DefPathTables");
 
             (prev_diagnostics, prev_def_path_tables)
@@ -176,7 +183,7 @@ impl<'sess> OnDiskCache<'sess> {
                 .map(|(k, v)| (SerializedDepNodeIndex::new(k.index()), v.clone()))
                 .collect();
 
-        diagnostics.encode(&mut encoder)?;
+        encoder.encode_tagged(PREV_DIAGNOSTICS_TAG, &diagnostics)?;
 
 
         // Encode all DefPathTables
@@ -192,7 +199,7 @@ impl<'sess> OnDiskCache<'sess> {
             }
         }).collect();
 
-        def_path_tables.encode(&mut encoder)?;
+        encoder.encode_tagged(DEF_PATH_TABLE_TAG, &def_path_tables)?;
 
         return Ok(());
 
@@ -341,6 +348,30 @@ impl<'a, 'tcx, 'x> Decoder for CacheDecoder<'a, 'tcx, 'x> {
         self.opaque.error(err)
     }
 }
+
+// Decode something that was encoded with encode_tagged() and verify that the
+// tag matches and the correct amount of bytes was read.
+fn decode_tagged<'a, 'tcx, D, T, V>(decoder: &mut D,
+                                    expected_tag: T)
+                                    -> Result<V, D::Error>
+    where T: Decodable + Eq + ::std::fmt::Debug,
+          V: Decodable,
+          D: Decoder + ty_codec::TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    let start_pos = decoder.position();
+
+    let actual_tag = T::decode(decoder)?;
+    assert_eq!(actual_tag, expected_tag);
+    let value = V::decode(decoder)?;
+    let end_pos = decoder.position();
+
+    let expected_len: u64 = Decodable::decode(decoder)?;
+    assert_eq!((end_pos - start_pos) as u64, expected_len);
+
+    Ok(value)
+}
+
 
 impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 'x> {
 
@@ -565,6 +596,30 @@ struct CacheEncoder<'enc, 'tcx, E>
     definitions: &'enc Definitions,
 }
 
+impl<'enc, 'tcx, E> CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    /// Encode something with additional information that allows to do some
+    /// sanity checks when decoding the data again. This method will first
+    /// encode the specified tag, then the given value, then the number of
+    /// bytes taken up by tag and value. On decoding, we can then verify that
+    /// we get the expected tag and read the expected number of bytes.
+    fn encode_tagged<T: Encodable, V: Encodable>(&mut self,
+                                                 tag: T,
+                                                 value: &V)
+                                                 -> Result<(), E::Error>
+    {
+        use ty::codec::TyEncoder;
+        let start_pos = self.position();
+
+        tag.encode(self)?;
+        value.encode(self)?;
+
+        let end_pos = self.position();
+        ((end_pos - start_pos) as u64).encode(self)
+    }
+}
+
 impl<'enc, 'tcx, E> ty_codec::TyEncoder for CacheEncoder<'enc, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
@@ -644,3 +699,4 @@ impl<'enc, 'tcx, E> Encoder for CacheEncoder<'enc, 'tcx, E>
         emit_str(&str);
     }
 }
+
