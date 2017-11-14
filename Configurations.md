@@ -1719,9 +1719,9 @@ Don't reformat out of line modules
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
 
-## `space_after_bound_colon`
+## `space_after_colon`
 
-Leave a space after the colon in a trait or lifetime bound
+Leave a space after the colon.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -1730,19 +1730,56 @@ Leave a space after the colon in a trait or lifetime bound
 
 ```rust
 fn lorem<T: Eq>(t: T) {
-    // body
+    let lorem: Dolor = Lorem {
+        ipsum: dolor,
+        sit: amet,
+    };
 }
 ```
 
 #### `false`:
 
 ```rust
-fn lorem<T:Eq>(t: T) {
-    // body
+fn lorem<T:Eq>(t:T) {
+    let lorem:Dolor = Lorem {
+        ipsum:dolor,
+        sit:amet,
+    };
 }
 ```
 
-See also: [`space_before_bound`](#space_before_bound).
+See also: [`space_before_colon`](#space_before_colon).
+
+## `space_before_colon`
+
+Leave a space before the colon.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+
+#### `false` (default):
+
+```rust
+fn lorem<T: Eq>(t: T) {
+    let lorem: Dolor = Lorem {
+        ipsum: dolor,
+        sit: amet,
+    };
+}
+```
+
+#### `true`:
+
+```rust
+fn lorem<T : Eq>(t : T) {
+    let lorem : Dolor = Lorem {
+        ipsum : dolor,
+        sit : amet,
+    };
+}
+```
+
+See also: [`space_after_colon`](#space_after_colon).
 
 ## `struct_field_align_threshold`
 
@@ -1771,134 +1808,7 @@ struct Foo {
 }
 ```
 
-## `space_after_struct_lit_field_colon`
-
-Leave a space after the colon in a struct literal field
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-
-#### `true` (default):
-
-```rust
-let lorem = Lorem {
-    ipsum: dolor,
-    sit: amet,
-};
 ```
-
-#### `false`:
-
-```rust
-let lorem = Lorem {
-    ipsum:dolor,
-    sit:amet,
-};
-```
-
-See also: [`space_before_struct_lit_field_colon`](#space_before_struct_lit_field_colon).
-
-## `space_after_type_annotation_colon`
-
-Leave a space after the colon in a type annotation
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-
-#### `true` (default):
-
-```rust
-fn lorem<T: Eq>(t: T) {
-    let ipsum: Dolor = sit;
-}
-```
-
-#### `false`:
-
-```rust
-fn lorem<T: Eq>(t:T) {
-    let ipsum:Dolor = sit;
-}
-```
-
-See also: [`space_before_type_annotation`](#space_before_type_annotation).
-
-## `space_before_bound`
-
-Leave a space before the colon in a trait or lifetime bound
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-#### `false` (default):
-
-```rust
-fn lorem<T: Eq>(t: T) {
-    let ipsum: Dolor = sit;
-}
-```
-
-#### `true`:
-
-```rust
-fn lorem<T : Eq>(t: T) {
-    let ipsum: Dolor = sit;
-}
-```
-
-See also: [`space_after_bound_colon`](#space_after_bound_colon).
-
-## `space_before_struct_lit_field_colon`
-
-Leave a space before the colon in a struct literal field
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-#### `false` (default):
-
-```rust
-let lorem = Lorem {
-    ipsum: dolor,
-    sit: amet,
-};
-```
-
-#### `true`:
-
-```rust
-let lorem = Lorem {
-    ipsum : dolor,
-    sit : amet,
-};
-```
-
-See also: [`space_after_struct_lit_field_colon`](#space_after_struct_lit_field_colon).
-
-## `space_before_type_annotation`
-
-Leave a space before the colon in a type annotation
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-#### `false` (default):
-
-```rust
-fn lorem<T: Eq>(t: T) {
-    let ipsum: Dolor = sit;
-}
-```
-
-#### `true`:
-
-```rust
-fn lorem<T: Eq>(t : T) {
-    let ipsum : Dolor = sit;
-}
-```
-
-See also: [`space_after_type_annotation_colon`](#space_after_type_annotation_colon).
 
 ## `spaces_around_ranges`
 
@@ -1919,7 +1829,7 @@ let lorem = 0..10;
 let lorem = 0 .. 10;
 ```
 
-## `spaces_within_angle_brackets`
+## `spaces_within_parens_and_brackets`
 
 Put spaces within non-empty generic arguments
 
@@ -1942,9 +1852,9 @@ fn lorem< T: Eq >(t: T) {
 }
 ```
 
-See also: [`spaces_within_parens`](#spaces_within_parens), [`spaces_within_square_brackets`](#spaces_within_square_brackets).
+See also: [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets), [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets).
 
-## `spaces_within_parens`
+## `spaces_within_parens_and_brackets`
 
 Put spaces within non-empty parentheses
 
@@ -1967,9 +1877,9 @@ fn lorem<T: Eq>( t: T ) {
 }
 ```
 
-See also: [`spaces_within_angle_brackets`](#spaces_within_angle_brackets), [`spaces_within_square_brackets`](#spaces_within_square_brackets).
+See also: [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets), [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets).
 
-## `spaces_within_square_brackets`
+## `spaces_within_parens_and_brackets`
 
 Put spaces within non-empty square brackets
 
@@ -1988,7 +1898,7 @@ let lorem: [usize; 2] = [ipsum, dolor];
 let lorem: [ usize; 2 ] = [ ipsum, dolor ];
 ```
 
-See also: [`spaces_within_parens`](#spaces_within_parens), [`spaces_within_angle_brackets`](#spaces_within_angle_brackets).
+See also: [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets), [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets).
 
 ## `struct_lit_multiline_style`
 
