@@ -133,7 +133,7 @@ error: you don't need to add `&` to all patterns
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
 138 |         match *v { .. }
-    |         ^^^^^^^^^^^^^^^
+    |
 
 error: you don't need to add `&` to all patterns
    --> $DIR/matches.rs:148:5
@@ -147,7 +147,7 @@ error: you don't need to add `&` to all patterns
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
 148 |     match *tup { .. }
-    |     ^^^^^^^^^^^^^^^^^
+    |
 
 error: you don't need to add `&` to both the expression and the patterns
    --> $DIR/matches.rs:154:5
@@ -169,7 +169,7 @@ error: you don't need to add `&` to all patterns
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
 165 |     if let .. = *a { .. }
-    |     ^^^^^^^^^^^^^^^^^^^^^
+    |
 
 error: you don't need to add `&` to both the expression and the patterns
    --> $DIR/matches.rs:170:5
