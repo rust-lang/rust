@@ -159,8 +159,16 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 }
 
-fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
-    fn recurse(brackets: bool, cx: &LateContext, suggestion: &Bool, terminals: &[&Expr], mut s: String) -> String {
+// The boolean part of the return indicates whether some simplifications have been applied.
+fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> (String, bool) {
+    fn recurse(
+        brackets: bool,
+        cx: &LateContext,
+        suggestion: &Bool,
+        terminals: &[&Expr],
+        mut s: String,
+        simplified: &mut bool,
+    ) -> String {
         use quine_mc_cluskey::Bool::*;
         let snip = |e: &Expr| snippet_opt(cx, e.span).expect("don't try to improve booleans created by macros");
         match *suggestion {
@@ -175,7 +183,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
             Not(ref inner) => match **inner {
                 And(_) | Or(_) => {
                     s.push('!');
-                    recurse(true, cx, inner, terminals, s)
+                    recurse(true, cx, inner, terminals, s, simplified)
                 },
                 Term(n) => match terminals[n as usize].node {
                     ExprBinary(binop, ref lhs, ref rhs) => {
@@ -188,9 +196,10 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                             BiGe => " < ",
                             _ => {
                                 s.push('!');
-                                return recurse(true, cx, inner, terminals, s);
+                                return recurse(true, cx, inner, terminals, s, simplified);
                             },
                         };
+                        *simplified = true;
                         s.push_str(&snip(lhs));
                         s.push_str(op);
                         s.push_str(&snip(rhs));
@@ -202,6 +211,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                             .flat_map(|(a, b)| vec![(a, b), (b, a)])
                             .find(|&(a, _)| a == path.name.as_str());
                         if let Some((_, negation_method)) = negation {
+                            *simplified = true;
                             s.push_str(&snip(&args[0]));
                             s.push('.');
                             s.push_str(negation_method);
@@ -209,17 +219,17 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                             s
                         } else {
                             s.push('!');
-                            recurse(false, cx, inner, terminals, s)
+                            recurse(false, cx, inner, terminals, s, simplified)
                         }
                     },
                     _ => {
                         s.push('!');
-                        recurse(false, cx, inner, terminals, s)
+                        recurse(false, cx, inner, terminals, s, simplified)
                     },
                 },
                 _ => {
                     s.push('!');
-                    recurse(false, cx, inner, terminals, s)
+                    recurse(false, cx, inner, terminals, s, simplified)
                 },
             },
             And(ref v) => {
@@ -227,16 +237,16 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                     s.push('(');
                 }
                 if let Or(_) = v[0] {
-                    s = recurse(true, cx, &v[0], terminals, s);
+                    s = recurse(true, cx, &v[0], terminals, s, simplified);
                 } else {
-                    s = recurse(false, cx, &v[0], terminals, s);
+                    s = recurse(false, cx, &v[0], terminals, s, simplified);
                 }
                 for inner in &v[1..] {
                     s.push_str(" && ");
                     if let Or(_) = *inner {
-                        s = recurse(true, cx, inner, terminals, s);
+                        s = recurse(true, cx, inner, terminals, s, simplified);
                     } else {
-                        s = recurse(false, cx, inner, terminals, s);
+                        s = recurse(false, cx, inner, terminals, s, simplified);
                     }
                 }
                 if brackets {
@@ -248,10 +258,10 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 if brackets {
                     s.push('(');
                 }
-                s = recurse(false, cx, &v[0], terminals, s);
+                s = recurse(false, cx, &v[0], terminals, s, simplified);
                 for inner in &v[1..] {
                     s.push_str(" || ");
-                    s = recurse(false, cx, inner, terminals, s);
+                    s = recurse(false, cx, inner, terminals, s, simplified);
                 }
                 if brackets {
                     s.push(')');
@@ -274,7 +284,9 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
             },
         }
     }
-    recurse(false, cx, suggestion, terminals, String::new())
+    let mut simplified = false;
+    let s = recurse(false, cx, suggestion, terminals, String::new(), &mut simplified);
+    (s, simplified)
 }
 
 fn simple_negate(b: Bool) -> Bool {
@@ -384,7 +396,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                 db.span_suggestion(
                                     e.span,
                                     "it would look like the following",
-                                    suggest(self.cx, suggestion, &h2q.terminals),
+                                    suggest(self.cx, suggestion, &h2q.terminals).0,
                                 );
                             },
                         );
@@ -401,22 +413,26 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     improvements.push(suggestion);
                 }
             }
-            if !improvements.is_empty() {
+            let nonminimal_bool_lint = |suggestions| {
                 span_lint_and_then(
                     self.cx,
                     NONMINIMAL_BOOL,
                     e.span,
                     "this boolean expression can be simplified",
-                    |db| {
-                        db.span_suggestions(
-                            e.span,
-                            "try",
-                            improvements
-                                .into_iter()
-                                .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals))
-                                .collect(),
-                        );
-                    },
+                    |db| { db.span_suggestions(e.span, "try", suggestions); },
+                );
+            };
+            if improvements.is_empty() {
+                let suggest = suggest(self.cx, &expr, &h2q.terminals);
+                if suggest.1 {
+                    nonminimal_bool_lint(vec![suggest.0])
+                }
+            } else {
+                nonminimal_bool_lint(
+                    improvements
+                        .into_iter()
+                        .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals).0)
+                        .collect()
                 );
             }
         }
