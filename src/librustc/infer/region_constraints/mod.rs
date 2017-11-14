@@ -296,12 +296,54 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         (self.var_origins, self.data)
     }
 
-    /// Takes (and clears) the current set of constraints. Note that the set of
-    /// variables remains intact.
+    /// Takes (and clears) the current set of constraints. Note that
+    /// the set of variables remains intact, but all relationships
+    /// between them are reset.  This is used during NLL checking to
+    /// grab the set of constraints that arose from a particular
+    /// operation.
+    ///
+    /// We don't want to leak relationships between variables between
+    /// points because just because (say) `r1 == r2` was true at some
+    /// point P in the graph doesn't imply that it will be true at
+    /// some other point Q, in NLL.
     ///
     /// Not legal during a snapshot.
     pub fn take_and_reset_data(&mut self) -> RegionConstraintData<'tcx> {
-        mem::replace(&mut self.data, RegionConstraintData::default())
+        assert!(!self.in_snapshot());
+
+        // If you add a new field to `RegionConstraintCollector`, you
+        // should think carefully about whether it needs to be cleared
+        // or updated in some way.
+        let RegionConstraintCollector {
+            var_origins,
+            data,
+            lubs,
+            glbs,
+            skolemization_count,
+            bound_count: _,
+            undo_log: _,
+            unification_table,
+        } = self;
+
+        assert_eq!(*skolemization_count, 0);
+
+        // Clear the tables of (lubs, glbs), so that we will create
+        // fresh regions if we do a LUB operation. As it happens,
+        // LUB/GLB are not performed by the MIR type-checker, which is
+        // the one that uses this method, but it's good to be correct.
+        lubs.clear();
+        glbs.clear();
+
+        // Clear all unifications and recreate the variables a "now
+        // un-unified" state. Note that when we unify `a` and `b`, we
+        // also insert `a <= b` and a `b <= a` edges, so the
+        // `RegionConstraintData` contains the relationship here.
+        *unification_table = UnificationTable::new();
+        for vid in var_origins.indices() {
+            unification_table.new_key(unify_key::RegionVidKey { min_vid: vid });
+        }
+
+        mem::replace(data, RegionConstraintData::default())
     }
 
     fn in_snapshot(&self) -> bool {
@@ -904,7 +946,11 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
 impl<'tcx> RegionConstraintData<'tcx> {
     /// True if this region constraint data contains no constraints.
     pub fn is_empty(&self) -> bool {
-        let RegionConstraintData { constraints, verifys, givens } = self;
+        let RegionConstraintData {
+            constraints,
+            verifys,
+            givens,
+        } = self;
         constraints.is_empty() && verifys.is_empty() && givens.is_empty()
     }
 }
