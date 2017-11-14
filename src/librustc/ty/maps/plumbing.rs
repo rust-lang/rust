@@ -25,8 +25,8 @@ use std::marker::PhantomData;
 use std::mem;
 use syntax_pos::Span;
 
-pub(super) struct QueryMap<D: QueryDescription> {
-    phantom: PhantomData<D>,
+pub(super) struct QueryMap<'tcx, D: QueryDescription<'tcx>> {
+    phantom: PhantomData<(D, &'tcx ())>,
     pub(super) map: FxHashMap<D::Key, QueryValue<D::Value>>,
 }
 
@@ -46,8 +46,8 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<M: QueryDescription> QueryMap<M> {
-    pub(super) fn new() -> QueryMap<M> {
+impl<'tcx, M: QueryDescription<'tcx>> QueryMap<'tcx, M> {
+    pub(super) fn new() -> QueryMap<'tcx, M> {
         QueryMap {
             phantom: PhantomData,
             map: FxHashMap(),
@@ -547,7 +547,7 @@ macro_rules! define_map_struct {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])*  $name: RefCell<QueryMap<queries::$name<$tcx>>>,)*
+            $($(#[$attr])*  $name: RefCell<QueryMap<$tcx, queries::$name<$tcx>>>,)*
         }
     };
 }
