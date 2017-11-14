@@ -104,7 +104,7 @@ pub fn add_else_branch(x: bool) -> u32 {
     let mut ret = 1;
 
     if x {
-        ret += 1;
+        ret = 2;
     }
 
     ret
@@ -119,7 +119,7 @@ pub fn add_else_branch(x: bool) -> u32 {
     let mut ret = 1;
 
     if x {
-        ret += 1;
+        ret = 2;
     } else {
     }
 
@@ -209,7 +209,7 @@ pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
     let mut ret = 1;
 
     if let Some(x) = x {
-        ret += x;
+        ret = x;
     }
 
     ret
@@ -224,7 +224,7 @@ pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
     let mut ret = 1;
 
     if let Some(x) = x {
-        ret += x;
+        ret = x;
     } else {
     }
 
