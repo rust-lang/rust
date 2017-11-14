@@ -455,6 +455,7 @@ define_dep_nodes!( <'tcx>
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
     [] MirConstQualif(DefId),
+    [] MirBuilt(DefId),
     [] MirConst(DefId),
     [] MirValidated(DefId),
     [] MirOptimized(DefId),
@@ -463,7 +464,7 @@ define_dep_nodes!( <'tcx>
     [] BorrowCheckKrate,
     [] BorrowCheck(DefId),
     [] MirBorrowCheck(DefId),
-    [] UnsafetyViolations(DefId),
+    [] UnsafetyCheckResult(DefId),
 
     [] Reachability,
     [] MirKeys,
@@ -781,4 +782,3 @@ impl WorkProductId {
 impl_stable_hash_for!(struct ::dep_graph::WorkProductId {
     hash
 });
-
