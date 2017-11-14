@@ -1,7 +1,7 @@
 // rustfmt-normalize_comments: true
 // rustfmt-indent_style: Block
 // rustfmt-fn_args_density: Vertical
-// rustfmt-fn_brace_style: AlwaysNextLine
+// rustfmt-brace_style: AlwaysNextLine
 
 // Case with only one variable.
 fn foo(a: u8) -> u8 {

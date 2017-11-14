@@ -538,9 +538,7 @@ create_config! {
         "Maximum width in the body of a struct variant before falling back to vertical formatting";
     force_explicit_abi: bool, true, false, "Always print the abi for extern items";
     newline_style: NewlineStyle, NewlineStyle::Unix, false, "Unix or Windows line endings";
-    fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for functions";
-    item_brace_style: BraceStyle, BraceStyle::SameLineWhere, false,
-        "Brace style for structs and enums";
+    brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for items";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
         "Brace style for control flow constructs";
     impl_empty_single_line: bool, true, false, "Put empty-body implementations on a single line";

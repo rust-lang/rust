@@ -1,4 +1,4 @@
-// rustfmt-fn_brace_style: PreferSameLine
+// rustfmt-brace_style: PreferSameLine
 // Function brace style
 
 fn lorem() {

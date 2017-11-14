@@ -1,4 +1,4 @@
-// rustfmt-item_brace_style: AlwaysNextLine
+// rustfmt-brace_style: AlwaysNextLine
 // Item brace style
 
 enum Foo {}
@@ -21,5 +21,7 @@ where
 mod tests
 {
     #[test]
-    fn it_works() {}
+    fn it_works()
+    {
+    }
 }

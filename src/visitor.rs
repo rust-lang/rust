@@ -666,7 +666,7 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.push_str(&ident.to_string());
 
         if is_internal {
-            match self.config.item_brace_style() {
+            match self.config.brace_style() {
                 BraceStyle::AlwaysNextLine => self.buffer
                     .push_str(&format!("\n{}{{", self.block_indent.to_string(self.config))),
                 _ => self.buffer.push_str(" {"),

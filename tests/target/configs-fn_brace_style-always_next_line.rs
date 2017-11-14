@@ -1,4 +1,4 @@
-// rustfmt-fn_brace_style: AlwaysNextLine
+// rustfmt-brace_style: AlwaysNextLine
 // Function brace style
 
 fn lorem()
