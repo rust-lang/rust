@@ -187,7 +187,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let num_enum_variants = self.hir.num_variants(adt_def);
                 let used_variants = variants.count();
                 let mut otherwise_block = None;
-                let mut target_blocks = Vec::with_capacity(num_enum_variants + 1);
+                let mut target_blocks = Vec::with_capacity(num_enum_variants);
                 let mut targets = Vec::with_capacity(used_variants + 1);
                 let mut values = Vec::with_capacity(used_variants);
                 let tcx = self.hir.tcx();
@@ -205,9 +205,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let Some(otherwise_block) = otherwise_block {
                     targets.push(otherwise_block);
                 } else {
-                    let unreachable_block = self.unreachable_block();
-                    targets.push(unreachable_block);
-                    target_blocks.push(unreachable_block);
+                    targets.push(self.unreachable_block());
                 }
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
