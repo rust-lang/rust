@@ -18,35 +18,24 @@ fn main() {
 
 fn foo<T: Copy>(_t: T, q: i32) -> i32 {
     let x = |_t, _q| _t;
-    x(q*2, q*3)
+    x(q, q)
 }
 
 // END RUST SOURCE
 // START rustc.foo.Inline.after.mir
 // ...
 // bb0: {
-//     StorageLive(_3);
+//     ...
 //     _3 = [closure@NodeId(28)];
-//     StorageLive(_4);
+//     ...
 //     _4 = &_3;
-//     StorageLive(_5);
-//     StorageLive(_6);
-//     StorageLive(_7);
+//     ...
+//     _6 = _2;
+//     ...
 //     _7 = _2;
-//     _6 = Mul(_7, const 2i32);
-//     StorageDead(_7);
-//     StorageLive(_8);
-//     StorageLive(_9);
-//     _9 = _2;
-//     _8 = Mul(_9, const 3i32);
-//     StorageDead(_9);
-//     _5 = (_6, _8);
+//     _5 = (_6, _7);
 //     _0 = (_5.0: i32);
-//     StorageDead(_5);
-//     StorageDead(_8);
-//     StorageDead(_6);
-//     StorageDead(_4);
-//     StorageDead(_3);
+//     ...
 //     return;
 // }
 // ...
