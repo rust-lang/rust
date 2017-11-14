@@ -1763,9 +1763,13 @@ fn extract_universal_impl_trait_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let mut visitor = ImplTraitUniversalVisitor { items: Vec::new() };
-    opt_inputs.map(|inputs| for t in inputs.iter() {
-        visitor.visit_ty(t);
-    });
+
+    if let Some(inputs) = opt_inputs {
+        for t in inputs.iter() {
+            visitor.visit_ty(t);
+        }
+    }
+
     visitor.items.into_iter().map(|ty| if let hir::TyImplTraitUniversal(_, ref bounds) = ty.node {
         ImplTraitUniversalInfo {
             id: ty.id,

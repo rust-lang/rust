@@ -1130,11 +1130,19 @@ impl<'a> LoweringContext<'a> {
         }).collect()
     }
 
+
     fn lower_fn_decl(&mut self,
                      decl: &FnDecl,
                      fn_def_id: Option<DefId>,
                      impl_trait_return_allow: bool)
                      -> P<hir::FnDecl> {
+        // NOTE: The two last paramters here have to do with impl Trait. If fn_def_id is Some,
+        //       then impl Trait arguments are lowered into generic paramters on the given
+        //       fn_def_id, otherwise impl Trait is disallowed. (for now)
+        //
+        //       Furthermore, if impl_trait_return_allow is true, then impl Trait may be used in
+        //       return positions as well. This guards against trait declarations and their impls
+        //       where impl Trait is disallowed. (again for now)
         P(hir::FnDecl {
             inputs: decl.inputs.iter()
                 .map(|arg| if let Some(def_id) = fn_def_id {
@@ -1143,9 +1151,9 @@ impl<'a> LoweringContext<'a> {
                     self.lower_ty(&arg.ty, ImplTraitContext::Disallowed)
                 }).collect(),
             output: match decl.output {
-                FunctionRetTy::Ty(ref ty) => match (impl_trait_return_allow, fn_def_id) {
-                    (false, _) => hir::Return(self.lower_ty(ty, ImplTraitContext::Disallowed)),
-                    (_, Some(_)) => hir::Return(self.lower_ty(ty, ImplTraitContext::Existential)),
+                FunctionRetTy::Ty(ref ty) => match fn_def_id {
+                    Some(_) if impl_trait_return_allow =>
+                        hir::Return(self.lower_ty(ty, ImplTraitContext::Existential)),
                     _ => hir::Return(self.lower_ty(ty, ImplTraitContext::Disallowed)),
                 },
                 FunctionRetTy::Default(span) => hir::DefaultReturn(span),
@@ -1730,7 +1738,8 @@ impl<'a> LoweringContext<'a> {
                             this.expr_block(body, ThinVec::new())
                         });
                         let impl_trait_return_allow = !this.is_in_trait_impl;
-                        hir::ImplItemKind::Method(this.lower_method_sig(sig, fn_def_id,
+                        hir::ImplItemKind::Method(this.lower_method_sig(sig,
+                                                                        fn_def_id,
                                                                         impl_trait_return_allow),
                                                   body_id)
                     }
@@ -1833,8 +1842,8 @@ impl<'a> LoweringContext<'a> {
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
                     ForeignItemKind::Fn(ref fdec, ref generics) => {
-                        let fn_def_id = this.resolver.definitions().opt_local_def_id(i.id);
-                        hir::ForeignItemFn(this.lower_fn_decl(fdec, fn_def_id, true),
+                        // Disallow impl Trait in foreign items
+                        hir::ForeignItemFn(this.lower_fn_decl(fdec, None, false),
                                            this.lower_fn_args_to_names(fdec),
                                            this.lower_generics(generics))
                     }

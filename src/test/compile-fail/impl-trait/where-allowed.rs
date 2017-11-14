@@ -144,11 +144,9 @@ impl DummyType {
 extern "C" {
     fn in_foreign_parameters(_: impl Debug);
     //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
-    // FIXME currently allowed
 
     fn in_foreign_return() -> impl Debug;
     //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
-    // FIXME currently allowed
 }
 
 // Allowed
