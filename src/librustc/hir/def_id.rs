@@ -184,7 +184,7 @@ impl DefIndexAddressSpace {
 
 /// A DefId identifies a particular *definition*, by combining a crate
 /// index and a def index.
-#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, Hash, Copy)]
 pub struct DefId {
     pub krate: CrateNum,
     pub index: DefIndex,

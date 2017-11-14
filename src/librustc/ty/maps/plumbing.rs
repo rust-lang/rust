@@ -379,18 +379,26 @@ macro_rules! define_maps {
             {
                 debug_assert!(tcx.dep_graph.is_green(dep_node_index));
 
-                // We don't do any caching yet, so recompute.
-                // The diagnostics for this query have already been promoted to
-                // the current session during try_mark_green(), so we can ignore
-                // them here.
-                let (result, _) = tcx.cycle_check(span, Query::$name(key), || {
-                    tcx.sess.diagnostic().track_diagnostics(|| {
-                        // The dep-graph for this computation is already in place
-                        tcx.dep_graph.with_ignore(|| {
-                            Self::compute_result(tcx, key)
+                let result = if tcx.sess.opts.debugging_opts.incremental_queries &&
+                                Self::cache_on_disk(key) {
+                    let prev_dep_node_index =
+                        tcx.dep_graph.prev_dep_node_index_of(dep_node);
+                    Self::load_from_disk(tcx.global_tcx(), prev_dep_node_index)
+                } else {
+                    let (result, _ ) = tcx.cycle_check(span, Query::$name(key), || {
+                        // The diagnostics for this query have already been
+                        // promoted to the current session during
+                        // try_mark_green(), so we can ignore them here.
+                        tcx.sess.diagnostic().track_diagnostics(|| {
+                            // The dep-graph for this computation is already in
+                            // place
+                            tcx.dep_graph.with_ignore(|| {
+                                Self::compute_result(tcx, key)
+                            })
                         })
-                    })
-                })?;
+                    })?;
+                    result
+                };
 
                 // If -Zincremental-verify-ich is specified, re-hash results from
                 // the cache and make sure that they have the expected fingerprint.

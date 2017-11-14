@@ -32,6 +32,7 @@ use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
 use ty;
 use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use ty::context::TyCtxt;
+use ty::maps::config::QueryDescription;
 use ty::subst::Substs;
 
 // Some magic values used for verifying that encoding and decoding. These are
@@ -229,9 +230,22 @@ impl<'sess> OnDiskCache<'sess> {
 
 
         // Encode query results
-        let query_result_index = EncodedQueryResultIndex::new();
-        // ... we don't encode anything yet, actually
+        let mut query_result_index = EncodedQueryResultIndex::new();
 
+        // Encode TypeckTables
+        for (def_id, entry) in tcx.maps.typeck_tables_of.borrow().map.iter() {
+            if ty::maps::queries::typeck_tables_of::cache_on_disk(*def_id) {
+                let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+
+                // Record position of the cache entry
+                query_result_index.push((dep_node, encoder.position()));
+
+                // Encode the type check tables with the SerializedDepNodeIndex
+                // as tag.
+                let typeck_tables: &ty::TypeckTables<'gcx> = &entry.value;
+                encoder.encode_tagged(dep_node, typeck_tables)?;
+            }
+        }
 
         // Encode query result index
         let query_result_index_pos = encoder.position() as u64;
@@ -522,9 +536,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
 
 impl<'a, 'tcx, 'x> SpecializedDecoder<CrateNum> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<CrateNum, Self::Error> {
-        let cnum = CrateNum::from_u32(u32::decode(self)?);
-        let mapped = self.map_encoded_cnum_to_current(cnum);
-        Ok(mapped)
+        ty_codec::decode_cnum(self)
     }
 }
 
@@ -575,6 +587,8 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx, 'x>
                          .def_path_hash_to_def_id
                          .as_ref()
                          .unwrap()[&def_path_hash];
+
+        debug_assert!(def_id.is_local());
 
         // The ItemLocalId needs no remapping.
         let local_id = hir::ItemLocalId::decode(self)?;
@@ -718,6 +732,20 @@ impl<'enc, 'tcx, E> SpecializedEncoder<ty::GenericPredicates<'tcx>>
                           -> Result<(), Self::Error> {
         ty_codec::encode_predicates(self, predicates,
             |encoder| &mut encoder.predicate_shorthands)
+    }
+}
+
+impl<'enc, 'tcx, E> SpecializedEncoder<hir::HirId> for CacheEncoder<'enc, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, id: &hir::HirId) -> Result<(), Self::Error> {
+        let hir::HirId {
+            owner,
+            local_id,
+        } = *id;
+
+        owner.encode(self)?;
+        local_id.encode(self)
     }
 }
 

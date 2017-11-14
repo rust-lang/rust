@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use dep_graph::SerializedDepNodeIndex;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use ty::{self, Ty, TyCtxt};
 use ty::maps::queries;
@@ -25,6 +26,16 @@ pub trait QueryConfig {
 
 pub(super) trait QueryDescription<'tcx>: QueryConfig {
     fn describe(tcx: TyCtxt, key: Self::Key) -> String;
+
+    fn cache_on_disk(_: Self::Key) -> bool {
+        false
+    }
+
+    fn load_from_disk<'a>(_: TyCtxt<'a, 'tcx, 'tcx>,
+                          _: SerializedDepNodeIndex)
+                          -> Self::Value {
+        bug!("QueryDescription::load_from_disk() called for unsupport query.")
+    }
 }
 
 impl<'tcx, M: QueryConfig<Key=DefId>> QueryDescription<'tcx> for M {
@@ -538,3 +549,19 @@ impl<'tcx> QueryDescription<'tcx> for queries::fully_normalize_monormophic_ty<'t
         format!("normalizing types")
     }
 }
+
+impl<'tcx> QueryDescription<'tcx> for queries::typeck_tables_of<'tcx> {
+    #[inline]
+    fn cache_on_disk(def_id: Self::Key) -> bool {
+        def_id.is_local()
+    }
+
+    fn load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          id: SerializedDepNodeIndex)
+                          -> Self::Value {
+        let typeck_tables: ty::TypeckTables<'tcx> = tcx.on_disk_query_result_cache
+                                                       .load_query_result(tcx, id);
+        tcx.alloc_tables(typeck_tables)
+    }
+}
+
