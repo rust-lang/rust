@@ -20,6 +20,7 @@ use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
 use transform::nll;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
 
@@ -136,6 +137,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         node_id: id,
         move_data: &mdpe.move_data,
         param_env: param_env,
+        storage_drop_or_dead_error_reported: FxHashSet(),
     };
 
     let mut state = InProgress::new(flow_borrows,
@@ -153,6 +155,10 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     node_id: ast::NodeId,
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
+    /// This field keeps track of when storage drop or dead errors are reported
+    /// in order to stop duplicate error reporting and identify the conditions required
+    /// for a "temporary value dropped here while still borrowed" error. See #45360.
+    storage_drop_or_dead_error_reported: FxHashSet<Local>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
@@ -281,10 +287,12 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             }
 
             StatementKind::StorageDead(local) => {
-                self.access_lvalue(ContextKind::StorageDead.new(location),
-                                   (&Lvalue::Local(local), span),
-                                   (Shallow(None), Write(WriteKind::StorageDead)),
-                                   flow_state);
+                if self.storage_drop_or_dead_error_reported.insert(local) {
+                    self.access_lvalue(ContextKind::StorageDead.new(location),
+                                       (&Lvalue::Local(local), span),
+                                       (Shallow(None), Write(WriteKind::StorageDead)),
+                                       flow_state);
+                }
             }
         }
     }
@@ -604,12 +612,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let erased_ty = gcx.lift(&self.tcx.erase_regions(&ty)).unwrap();
         let moves_by_default = erased_ty.moves_by_default(gcx, self.param_env, DUMMY_SP);
 
-        if moves_by_default {
-            // move of lvalue: check if this is move of already borrowed path
-            self.access_lvalue(context, lvalue_span, (Deep, Write(WriteKind::Move)), flow_state);
-        } else {
-            // copy of lvalue: check if this is "copy of frozen path" (FIXME: see check_loans.rs)
-            self.access_lvalue(context, lvalue_span, (Deep, Read(ReadKind::Copy)), flow_state);
+        // Check if error has already been reported to stop duplicate reporting.
+        let has_storage_drop_or_dead_error_reported = match *lvalue {
+            Lvalue::Local(local) => self.storage_drop_or_dead_error_reported.insert(local),
+            _ => false,
+        };
+
+        if !has_storage_drop_or_dead_error_reported {
+            if moves_by_default {
+                // move of lvalue: check if this is move of already borrowed path
+                self.access_lvalue(context, lvalue_span, (Deep, Write(WriteKind::Move)),
+                                   flow_state);
+            } else {
+                // copy of lvalue: check if this is "copy of frozen path"
+                // (FIXME: see check_loans.rs)
+                self.access_lvalue(context, lvalue_span, (Deep, Read(ReadKind::Copy)),
+                                   flow_state);
+            }
         }
 
         // Finally, check if path was already moved.
