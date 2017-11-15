@@ -35,6 +35,7 @@ use dataflow::{MovingOutStatements};
 use dataflow::{Borrows, BorrowData, BorrowIndex};
 use dataflow::move_paths::{MoveError, IllegalMoveOriginKind};
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult, MoveOutIndex};
+use dataflow::abs_domain::Lift;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
 use self::MutateMode::{JustWrite, WriteAndRead};
@@ -841,7 +842,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             -> Result<MovePathIndex, NoMovePathFound>
     {
         let mut last_prefix = lvalue;
-        for prefix in self.prefixes(lvalue, PrefixSet::All) {
+        for prefix in self.prefixes(lvalue) {
             if let Some(mpi) = self.move_path_for_lvalue(prefix) {
                 return Ok(mpi);
             }
@@ -849,7 +850,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
         match *last_prefix {
             Lvalue::Local(_) => panic!("should have move path for every Local"),
-            Lvalue::Projection(_) => panic!("PrefixSet::All meant dont stop for Projection"),
+            Lvalue::Projection(_) => panic!("`prefixes` meant dont stop for Projection"),
             Lvalue::Static(_) => return Err(NoMovePathFound::ReachedStatic),
         }
     }
@@ -1093,6 +1094,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         where F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>, &Lvalue<'tcx>) -> Control
     {
         let (access, lvalue) = access_lvalue;
+        debug!(
+            "each_borrow_involving_path({:?}, {:?})",
+            access,
+            self.describe_lvalue(lvalue)
+        );
+
+        let mut ps = vec![];
+        let mut base = lvalue;
+        while let Lvalue::Projection(ref proj) = *base {
+            ps.push(proj.elem.lift());
+            base = &proj.base;
+        }
+        debug!("base = {:?}, projections = {:?}", base, ps);
 
         // FIXME: analogous code in check_loans first maps `lvalue` to
         // its base_path.
@@ -1105,49 +1119,84 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         'next_borrow: for i in flow_state.borrows.elems_incoming() {
             let borrowed = &data[i];
 
-            // Is `lvalue` (or a prefix of it) already borrowed? If
-            // so, that's relevant.
-            //
+            debug!("borrowed = {:?}", borrowed);
+
             // FIXME: Differs from AST-borrowck; includes drive-by fix
             // to #38899. Will probably need back-compat mode flag.
-            for accessed_prefix in self.prefixes(lvalue, PrefixSet::All) {
-                if *accessed_prefix == borrowed.lvalue {
+            if base == &borrowed.base_lvalue {
+                let bps = &borrowed.projections;
+
+                // Is `lvalue` (or a prefix of it) already borrowed? If
+                // so, that's relevant.
+                if ps.ends_with(bps) {
+                    let accessed_prefix = {
+                        let mut lv = lvalue;
+                        for _ in 0..ps.len() - bps.len() {
+                            if let Lvalue::Projection(ref proj) = *lv {
+                                lv = &proj.base;
+                            } else {
+                                unreachable!()
+                            }
+                        }
+                        lv
+                    };
+                    debug!("accessed_prefix = {:?}", accessed_prefix);
                     // FIXME: pass in enum describing case we are in?
                     let ctrl = op(self, i, borrowed, accessed_prefix);
-                    if ctrl == Control::Break { return; }
+                    if ctrl == Control::Break {
+                        return;
+                    }
                 }
-            }
 
-            // Is `lvalue` a prefix (modulo access type) of the
-            // `borrowed.lvalue`? If so, that's relevant.
+                // Is `lvalue` a prefix (modulo access type) of the
+                // `borrowed.lvalue`? If so, that's relevant.
 
-            let prefix_kind = match access {
-                Shallow(Some(ArtificialField::Discriminant)) |
-                Shallow(Some(ArtificialField::ArrayLength)) => {
-                    // The discriminant and array length are like
-                    // additional fields on the type; they do not
-                    // overlap any existing data there. Furthermore,
-                    // they cannot actually be a prefix of any
-                    // borrowed lvalue (at least in MIR as it is
-                    // currently.)
-                    continue 'next_borrow;
-                }
-                Shallow(None) => PrefixSet::Shallow,
-                Deep => PrefixSet::Supporting,
-            };
+                let shallow = match access {
+                    Shallow(Some(ArtificialField::Discriminant)) |
+                    Shallow(Some(ArtificialField::ArrayLength)) => {
+                        // The discriminant and array length are like
+                        // additional fields on the type; they do not
+                        // overlap any existing data there. Furthermore,
+                        // they cannot actually be a prefix of any
+                        // borrowed lvalue (at least in MIR as it is
+                        // currently.)
+                        continue 'next_borrow;
+                    }
+                    Shallow(None) => true,
+                    Deep => false,
+                };
+                let bps = if shallow {
+                    &bps[borrowed.shallow_projections_len..]
+                } else {
+                    bps
+                };
 
-            for borrowed_prefix in self.prefixes(&borrowed.lvalue, prefix_kind) {
-                if borrowed_prefix == lvalue {
+                if bps.len() != ps.len() &&
+                    bps.ends_with(&ps)
+                {
+                    let borrowed_prefix = {
+                        let mut lv = &borrowed.lvalue;
+                        for _ in 0..bps.len() - ps.len() {
+                            if let Lvalue::Projection(ref proj) = *lv {
+                                lv = &proj.base;
+                            } else {
+                                unreachable!()
+                            }
+                        }
+                        lv
+                    };
+                    debug!("borrowed_prefix = {:?}", borrowed_prefix);
                     // FIXME: pass in enum describing case we are in?
                     let ctrl = op(self, i, borrowed, borrowed_prefix);
-                    if ctrl == Control::Break { return; }
+                    if ctrl == Control::Break {
+                        return;
+                    }
                 }
             }
         }
     }
 }
 
-use self::prefixes::PrefixSet;
 
 /// From the NLL RFC: "The deep [aka 'supporting'] prefixes for an
 /// lvalue are formed by stripping away fields and derefs, except that
@@ -1158,11 +1207,9 @@ use self::prefixes::PrefixSet;
 /// is borrowed. But: writing `a` is legal if `*a` is borrowed,
 /// whether or not `a` is a shared or mutable reference. [...] "
 mod prefixes {
-    use super::{MirBorrowckCtxt};
+    use super::MirBorrowckCtxt;
 
-    use rustc::hir;
-    use rustc::ty::{self, TyCtxt};
-    use rustc::mir::{Lvalue, Mir, ProjectionElem};
+    use rustc::mir::{Lvalue, ProjectionElem};
 
     pub trait IsPrefixOf<'tcx> {
         fn is_prefix_of(&self, other: &Lvalue<'tcx>) -> bool;
@@ -1188,22 +1235,8 @@ mod prefixes {
     }
 
 
-    pub(super) struct Prefixes<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-        mir: &'cx Mir<'tcx>,
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        kind: PrefixSet,
+    pub(super) struct Prefixes<'cx, 'tcx: 'cx> {
         next: Option<&'cx Lvalue<'tcx>>,
-    }
-
-    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-    pub(super) enum PrefixSet {
-        /// Doesn't stop until it returns the base case (a Local or
-        /// Static prefix).
-        All,
-        /// Stops at any dereference.
-        Shallow,
-        /// Stops at the deref of a shared reference.
-        Supporting,
     }
 
     impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
@@ -1211,15 +1244,14 @@ mod prefixes {
         /// (inclusive) from longest to smallest, potentially
         /// terminating the iteration early based on `kind`.
         pub(super) fn prefixes(&self,
-                               lvalue: &'cx Lvalue<'tcx>,
-                               kind: PrefixSet)
-                               -> Prefixes<'cx, 'gcx, 'tcx>
+                               lvalue: &'cx Lvalue<'tcx>)
+                               -> Prefixes<'cx, 'tcx>
         {
-            Prefixes { next: Some(lvalue), kind, mir: self.mir, tcx: self.tcx }
+            Prefixes { next: Some(lvalue) }
         }
     }
 
-    impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
+    impl<'cx, 'tcx: 'cx> Iterator for Prefixes<'cx, 'tcx> {
         type Item = &'cx Lvalue<'tcx>;
         fn next(&mut self) -> Option<Self::Item> {
             let mut cursor = match self.next {
@@ -1246,8 +1278,6 @@ mod prefixes {
                 match proj.elem {
                     ProjectionElem::Field(_/*field*/, _/*ty*/) => {
                         // FIXME: add union handling
-                        self.next = Some(&proj.base);
-                        return Some(cursor);
                     }
                     ProjectionElem::Downcast(..) |
                     ProjectionElem::Subslice { .. } |
@@ -1256,58 +1286,10 @@ mod prefixes {
                         cursor = &proj.base;
                         continue 'cursor;
                     }
-                    ProjectionElem::Deref => {
-                        // (handled below)
-                    }
+                    _ => {}
                 }
-
-                assert_eq!(proj.elem, ProjectionElem::Deref);
-
-                match self.kind {
-                    PrefixSet::Shallow => {
-                        // shallow prefixes are found by stripping away
-                        // fields, but stop at *any* dereference.
-                        // So we can just stop the traversal now.
-                        self.next = None;
-                        return Some(cursor);
-                    }
-                    PrefixSet::All => {
-                        // all prefixes: just blindly enqueue the base
-                        // of the projection
-                        self.next = Some(&proj.base);
-                        return Some(cursor);
-                    }
-                    PrefixSet::Supporting => {
-                        // fall through!
-                    }
-                }
-
-                assert_eq!(self.kind, PrefixSet::Supporting);
-                // supporting prefixes: strip away fields and
-                // derefs, except we stop at the deref of a shared
-                // reference.
-
-                let ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                match ty.sty {
-                    ty::TyRawPtr(_) |
-                    ty::TyRef(_/*rgn*/, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
-                        // don't continue traversing over derefs of raw pointers or shared borrows.
-                        self.next = None;
-                        return Some(cursor);
-                    }
-
-                    ty::TyRef(_/*rgn*/, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
-                        self.next = Some(&proj.base);
-                        return Some(cursor);
-                    }
-
-                    ty::TyAdt(..) if ty.is_box() => {
-                        self.next = Some(&proj.base);
-                        return Some(cursor);
-                    }
-
-                    _ => panic!("unknown type fed to Projection Deref."),
-                }
+                self.next = Some(&proj.base);
+                return Some(cursor);
             }
         }
     }

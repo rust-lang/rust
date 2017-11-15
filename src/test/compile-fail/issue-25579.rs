@@ -31,6 +31,8 @@ fn causes_ice(mut l: &mut Sexpression) {
                              //[mir]~| ERROR (Mir) [E0499]
         }
     }}
+    //[mir]~^ ERROR (Mir) [E0597]
+    // FIXME
 }
 
 fn main() {

@@ -20,6 +20,7 @@ use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::{IndexVec};
 
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
+use dataflow::abs_domain::{AbstractElem, Lift};
 pub use dataflow::indexes::BorrowIndex;
 use transform::nll::region_infer::RegionInferenceContext;
 use transform::nll::ToRegionVid;
@@ -44,13 +45,19 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
 // temporarily allow some dead fields: `kind` and `region` will be
 // needed by borrowck; `lvalue` will probably be a MovePathIndex when
 // that is extended to include borrowed data paths.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct BorrowData<'tcx> {
     pub(crate) location: Location,
     pub(crate) kind: mir::BorrowKind,
     pub(crate) region: Region<'tcx>,
     pub(crate) lvalue: mir::Lvalue<'tcx>,
+
+    /// Projections in outermost-first order (e.g. `a[1].foo` => `[Field, Index]`).
+    pub(crate) projections: Vec<AbstractElem<'tcx>>,
+    /// The base lvalue of projections.
+    pub(crate) base_lvalue: mir::Lvalue<'tcx>,
+    /// Number of projections outside the outermost dereference.
+    pub(crate) shallow_projections_len: usize,
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
@@ -77,7 +84,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             idx_vec: IndexVec::new(),
             location_map: FxHashMap(),
             region_map: FxHashMap(),
-            region_span_map: FxHashMap()
+            region_span_map: FxHashMap(),
         };
         visitor.visit_mir(mir);
         return Borrows { tcx: tcx,
@@ -96,16 +103,38 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
             region_span_map: FxHashMap<RegionKind, Span>,
         }
-
-        impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
+        impl<'a, 'gcx: 'tcx, 'tcx: 'a> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             fn visit_rvalue(&mut self,
                             rvalue: &mir::Rvalue<'tcx>,
                             location: mir::Location) {
                 if let mir::Rvalue::Ref(region, kind, ref lvalue) = *rvalue {
                     if is_unsafe_lvalue(self.tcx, self.mir, lvalue) { return; }
+                    let mut base_lvalue = lvalue;
+                    let mut projections = vec![];
+                    let mut shallow_projections_len = None;
+
+                    while let mir::Lvalue::Projection(ref proj) = *base_lvalue {
+                        projections.push(proj.elem.lift());
+                        base_lvalue = &proj.base;
+
+                        if let mir::ProjectionElem::Deref = proj.elem {
+                            if shallow_projections_len.is_none() {
+                                shallow_projections_len = Some(projections.len());
+                            }
+                        }
+                    }
+
+                    let shallow_projections_len =
+                        shallow_projections_len.unwrap_or(projections.len());
 
                     let borrow = BorrowData {
-                        location: location, kind: kind, region: region, lvalue: lvalue.clone(),
+                        location,
+                        kind,
+                        region,
+                        lvalue: lvalue.clone(),
+                        projections,
+                        base_lvalue: base_lvalue.clone(),
+                        shallow_projections_len,
                     };
                     let idx = self.idx_vec.push(borrow);
                     self.location_map.insert(location, idx);

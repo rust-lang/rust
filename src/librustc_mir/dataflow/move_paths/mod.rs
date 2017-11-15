@@ -18,9 +18,7 @@ use syntax_pos::{Span};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
-use self::abs_domain::{AbstractElem, Lift};
-
-mod abs_domain;
+use super::abs_domain::{AbstractElem, Lift};
 
 // This submodule holds some newtype'd Index wrappers that are using
 // NonZero to ensure that Option<Index> occupies only a single word.
