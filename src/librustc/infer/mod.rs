@@ -55,6 +55,7 @@ mod higher_ranked;
 pub mod lattice;
 mod lub;
 pub mod region_inference;
+mod lexical_region_resolve;
 mod outlives;
 pub mod resolve;
 mod freshen;
