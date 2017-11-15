@@ -2605,17 +2605,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     };
 }
 
-pub fn provide_extern(providers: &mut ty::maps::Providers) {
-    *providers = ty::maps::Providers {
-        adt_sized_constraint,
-        adt_dtorck_constraint,
-        trait_impls_of: trait_def::trait_impls_of_provider,
-        param_env,
-        ..*providers
-    };
-}
-
-
 /// A map for the local crate mapping each type to a vector of its
 /// inherent impls. This is not meant to be used outside of coherence;
 /// rather, you should request the vector for a specific type via

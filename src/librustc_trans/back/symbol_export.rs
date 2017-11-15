@@ -60,7 +60,7 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType])
     }
 }
 
-pub fn provide_local(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers) {
     providers.exported_symbol_ids = |tcx, cnum| {
         let export_threshold = threshold(tcx);
         Rc::new(tcx.exported_symbols(cnum)

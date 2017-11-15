@@ -227,7 +227,9 @@ impl PpSourceMode {
                 f(&annotation, hir_map.forest.krate())
             }
             PpmTyped => {
-                abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                let control = &driver::CompileController::basic();
+                abort_on_err(driver::phase_3_run_analysis_passes(control,
+                                                                 sess,
                                                                  cstore,
                                                                  hir_map.clone(),
                                                                  analysis.clone(),
@@ -1036,7 +1038,9 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
 
     let mut out = Vec::new();
 
-    abort_on_err(driver::phase_3_run_analysis_passes(sess,
+    let control = &driver::CompileController::basic();
+    abort_on_err(driver::phase_3_run_analysis_passes(control,
+                                                     sess,
                                                      cstore,
                                                      hir_map.clone(),
                                                      analysis.clone(),

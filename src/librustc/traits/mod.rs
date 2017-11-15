@@ -842,14 +842,3 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         ..*providers
     };
 }
-
-pub fn provide_extern(providers: &mut ty::maps::Providers) {
-    *providers = ty::maps::Providers {
-        is_object_safe: object_safety::is_object_safe_provider,
-        specialization_graph_of: specialize::specialization_graph_provider,
-        specializes: specialize::specializes,
-        trans_fulfill_obligation: trans::trans_fulfill_obligation,
-        vtable_methods,
-        ..*providers
-    };
-}

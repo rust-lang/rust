@@ -51,7 +51,7 @@ pub trait TransCrate {
     type TranslatedCrate;
 
     fn metadata_loader() -> Box<MetadataLoaderTrait>;
-    fn provide_local(_providers: &mut Providers);
+    fn provide(_providers: &mut Providers);
     fn provide_extern(_providers: &mut Providers);
     fn trans_crate<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -77,8 +77,8 @@ impl TransCrate for DummyTransCrate {
         box DummyMetadataLoader(())
     }
 
-    fn provide_local(_providers: &mut Providers) {
-        bug!("DummyTransCrate::provide_local");
+    fn provide(_providers: &mut Providers) {
+        bug!("DummyTransCrate::provide");
     }
 
     fn provide_extern(_providers: &mut Providers) {
@@ -185,7 +185,7 @@ impl TransCrate for MetadataOnlyTransCrate {
         box NoLlvmMetadataLoader
     }
 
-    fn provide_local(_providers: &mut Providers) {}
+    fn provide(_providers: &mut Providers) {}
     fn provide_extern(_providers: &mut Providers) {}
 
     fn trans_crate<'a, 'tcx>(

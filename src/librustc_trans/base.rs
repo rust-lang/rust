@@ -1384,7 +1384,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn provide_local(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_translation_items =
         collect_and_partition_translation_items;
 
@@ -1398,10 +1398,6 @@ pub fn provide_local(providers: &mut Providers) {
             .expect(&format!("failed to find cgu with name {:?}", name))
     };
     providers.compile_codegen_unit = compile_codegen_unit;
-}
-
-pub fn provide_extern(providers: &mut Providers) {
-    providers.is_translated_function = is_translated_function;
 }
 
 pub fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {

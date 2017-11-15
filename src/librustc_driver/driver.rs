@@ -206,7 +206,8 @@ pub fn compile_input(sess: &Session,
             None
         };
 
-        phase_3_run_analysis_passes(sess,
+        phase_3_run_analysis_passes(control,
+                                    sess,
                                     cstore,
                                     hir_map,
                                     analysis,
@@ -347,6 +348,13 @@ pub struct CompileController<'a> {
     pub keep_ast: bool,
     // -Zcontinue-parse-after-error
     pub continue_parse_after_error: bool,
+
+    /// Allows overriding default rustc query providers,
+    /// after `default_provide` has installed them.
+    pub provide: Box<Fn(&mut ty::maps::Providers) + 'a>,
+    /// Same as `provide`, but only for non-local crates,
+    /// applied after `default_provide_extern`.
+    pub provide_extern: Box<Fn(&mut ty::maps::Providers) + 'a>,
 }
 
 impl<'a> CompileController<'a> {
@@ -361,6 +369,8 @@ impl<'a> CompileController<'a> {
             make_glob_map: MakeGlobMap::No,
             keep_ast: false,
             continue_parse_after_error: false,
+            provide: box |_| {},
+            provide_extern: box |_| {},
         }
     }
 }
@@ -906,10 +916,33 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })
 }
 
+pub fn default_provide(providers: &mut ty::maps::Providers) {
+    borrowck::provide(providers);
+    mir::provide(providers);
+    reachable::provide(providers);
+    rustc_privacy::provide(providers);
+    DefaultTransCrate::provide(providers);
+    typeck::provide(providers);
+    ty::provide(providers);
+    traits::provide(providers);
+    reachable::provide(providers);
+    rustc_const_eval::provide(providers);
+    rustc_passes::provide(providers);
+    middle::region::provide(providers);
+    cstore::provide(providers);
+    lint::provide(providers);
+}
+
+pub fn default_provide_extern(providers: &mut ty::maps::Providers) {
+    cstore::provide_extern(providers);
+    DefaultTransCrate::provide_extern(providers);
+}
+
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
+pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
+                                               sess: &'tcx Session,
                                                cstore: &'tcx CrateStore,
                                                hir_map: hir_map::Map<'tcx>,
                                                mut analysis: ty::CrateAnalysis,
@@ -965,28 +998,12 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
               || static_recursion::check_crate(sess, &hir_map))?;
 
     let mut local_providers = ty::maps::Providers::default();
-    borrowck::provide(&mut local_providers);
-    mir::provide(&mut local_providers);
-    reachable::provide(&mut local_providers);
-    rustc_privacy::provide(&mut local_providers);
-    DefaultTransCrate::provide_local(&mut local_providers);
-    typeck::provide(&mut local_providers);
-    ty::provide(&mut local_providers);
-    traits::provide(&mut local_providers);
-    reachable::provide(&mut local_providers);
-    rustc_const_eval::provide(&mut local_providers);
-    rustc_passes::provide(&mut local_providers);
-    middle::region::provide(&mut local_providers);
-    cstore::provide_local(&mut local_providers);
-    lint::provide(&mut local_providers);
+    default_provide(&mut local_providers);
+    (control.provide)(&mut local_providers);
 
-    let mut extern_providers = ty::maps::Providers::default();
-    cstore::provide(&mut extern_providers);
-    DefaultTransCrate::provide_extern(&mut extern_providers);
-    ty::provide_extern(&mut extern_providers);
-    traits::provide_extern(&mut extern_providers);
-    // FIXME(eddyb) get rid of this once we replace const_eval with miri.
-    rustc_const_eval::provide(&mut extern_providers);
+    let mut extern_providers = local_providers;
+    default_provide_extern(&mut extern_providers);
+    (control.provide_extern)(&mut extern_providers);
 
     let (tx, rx) = mpsc::channel();
 
