@@ -128,15 +128,13 @@ fn issue339() {
         h => {
             // comment above block
         }
-        i => {}
-        // comment below block
+        i => {} // comment below block
         j => {
             // comment inside block
         }
         j2 => {
             // comments inside...
-        }
-        // ... and after
+        } // ... and after
         // TODO uncomment when vertical whitespace is handled better
         // k => {
         //
