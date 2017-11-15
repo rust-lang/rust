@@ -130,3 +130,33 @@ help: try
 39 |     let _ = !(a == b && c == d);
    |             ^^^^^^^^^^^^^^^^^^^
 
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:47:13
+   |
+47 |     let _ = !a.is_some();
+   |             ^^^^^^^^^^^^ help: try: `a.is_none()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:49:13
+   |
+49 |     let _ = !a.is_none();
+   |             ^^^^^^^^^^^^ help: try: `a.is_some()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:51:13
+   |
+51 |     let _ = !b.is_err();
+   |             ^^^^^^^^^^^ help: try: `b.is_ok()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:53:13
+   |
+53 |     let _ = !b.is_ok();
+   |             ^^^^^^^^^^ help: try: `b.is_err()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:55:13
+   |
+55 |     let _ = !(a.is_some() && !c);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `c || a.is_none()`
+
