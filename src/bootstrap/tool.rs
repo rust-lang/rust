@@ -451,6 +451,7 @@ macro_rules! tool_extended {
 }
 
 tool_extended!((self, builder),
+    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
     Clippy, clippy, "src/tools/clippy", "clippy-driver", {
         // Clippy depends on procedural macros (serde), which requires a full host
         // compiler to be available, so we need to depend on that.
