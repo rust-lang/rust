@@ -69,11 +69,13 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 |e| encode_query_cache(tcx, e));
     });
 
-    time(sess.time_passes(), "persist dep-graph", || {
-        save_in(sess,
-                dep_graph_path(sess),
-                |e| encode_dep_graph(tcx, e));
-    });
+    if tcx.sess.opts.debugging_opts.incremental_queries {
+        time(sess.time_passes(), "persist dep-graph", || {
+            save_in(sess,
+                    dep_graph_path(sess),
+                    |e| encode_dep_graph(tcx, e));
+        });
+    }
 
     dirty_clean::check_dirty_clean_annotations(tcx);
     dirty_clean::check_dirty_clean_metadata(tcx,

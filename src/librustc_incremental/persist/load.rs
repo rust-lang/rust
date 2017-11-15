@@ -202,7 +202,8 @@ pub fn load_dep_graph(sess: &Session) -> PreviousDepGraph {
 }
 
 pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess> {
-    if sess.opts.incremental.is_none() {
+    if sess.opts.incremental.is_none() ||
+       !sess.opts.debugging_opts.incremental_queries {
         return OnDiskCache::new_empty(sess.codemap());
     }
 
