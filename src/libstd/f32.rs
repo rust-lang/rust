@@ -998,10 +998,13 @@ impl f32 {
 
     /// Raw transmutation to `u32`.
     ///
-    /// Converts the `f32` into its raw memory representation,
-    /// similar to the `transmute` function.
+    /// This is currently identical to `transmute::<f32, u32>(self)` on all platforms.
     ///
-    /// Note that this function is distinct from casting.
+    /// See `from_bits` for some discussion of the portability of this operation
+    /// (there are almost no issues).
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
     ///
     /// # Examples
     ///
@@ -1018,17 +1021,33 @@ impl f32 {
 
     /// Raw transmutation from `u32`.
     ///
-    /// Converts the given `u32` containing the float's raw memory
-    /// representation into the `f32` type, similar to the
-    /// `transmute` function.
+    /// This is currently identical to `transmute::<u32, f32>(v)` on all platforms.
+    /// It turns out this is incredibly portable, for two reasons:
     ///
-    /// There is only one difference to a bare `transmute`:
-    /// Due to the implications onto Rust's safety promises being
-    /// uncertain, if the representation of a signaling NaN "sNaN" float
-    /// is passed to the function, the implementation is allowed to
-    /// return a quiet NaN instead.
+    /// * Floats and Ints have the same endianess on all supported platforms.
+    /// * IEEE-754 very precisely specifies the bit layout of floats.
     ///
-    /// Note that this function is distinct from casting.
+    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
+    /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
+    /// (notably x86 and ARM) picked the interpretation that was ultimately
+    /// standardized in 2008, but some didn't (notably MIPS). As a result, all
+    /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
+    ///
+    /// Rather than trying to preserve signaling-ness cross-platform, this
+    /// implementation favours preserving the exact bits. This means that
+    /// any payloads encoded in NaNs will be preserved even if the result of
+    /// this method is sent over the network from an x86 machine to a MIPS one.
+    ///
+    /// If the results of this method are only manipulated by the same
+    /// architecture that produced them, then there is no portability concern.
+    ///
+    /// If the input isn't NaN, then there is no portability concern.
+    ///
+    /// If you don't care about signalingness (very likely), then there is no
+    /// portability concern.
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
     ///
     /// # Examples
     ///
@@ -1037,25 +1056,11 @@ impl f32 {
     /// let v = f32::from_bits(0x41480000);
     /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
-    /// // Example for a signaling NaN value:
-    /// let snan = 0x7F800001;
-    /// assert_ne!(f32::from_bits(snan).to_bits(), snan);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
-    pub fn from_bits(mut v: u32) -> Self {
-        const EXP_MASK: u32   = 0x7F800000;
-        const FRACT_MASK: u32 = 0x007FFFFF;
-        if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
-            // While IEEE 754-2008 specifies encodings for quiet NaNs
-            // and signaling ones, certain MIPS and PA-RISC
-            // CPUs treat signaling NaNs differently.
-            // Therefore to be safe, we pass a known quiet NaN
-            // if v is any kind of NaN.
-            // The check above only assumes IEEE 754-1985 to be
-            // valid.
-            v = unsafe { ::mem::transmute(NAN) };
-        }
+    pub fn from_bits(v: u32) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { ::mem::transmute(v) }
     }
 }
@@ -1646,25 +1651,15 @@ mod tests {
         assert_approx_eq!(f32::from_bits(0x41480000), 12.5);
         assert_approx_eq!(f32::from_bits(0x44a72000), 1337.0);
         assert_approx_eq!(f32::from_bits(0xc1640000), -14.25);
-    }
-    #[test]
-    fn test_snan_masking() {
-        // NOTE: this test assumes that our current platform
-        // implements IEEE 754-2008 that specifies the difference
-        // in encoding of quiet and signaling NaNs.
-        // If you are porting Rust to a platform that does not
-        // implement IEEE 754-2008 (but e.g. IEEE 754-1985, which
-        // only says that "Signaling NaNs shall be reserved operands"
-        // but doesn't specify the actual setup), feel free to
-        // cfg out this test.
-        let snan: u32 = 0x7F801337;
-        const QNAN_MASK: u32  = 0x00400000;
-        let nan_masked_fl = f32::from_bits(snan);
-        let nan_masked = nan_masked_fl.to_bits();
-        // Ensure that signaling NaNs don't stay the same
-        assert_ne!(nan_masked, snan);
-        // Ensure that we have a quiet NaN
-        assert_ne!(nan_masked & QNAN_MASK, 0);
-        assert!(nan_masked_fl.is_nan());
+
+        // Check that NaNs roundtrip their bits regardless of signalingness
+        // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
+        let masked_nan1 = f32::NAN.to_bits() ^ 0x002A_AAAA;
+        let masked_nan2 = f32::NAN.to_bits() ^ 0x0055_5555;
+        assert!(f32::from_bits(masked_nan1).is_nan());
+        assert!(f32::from_bits(masked_nan2).is_nan());
+
+        assert_eq!(f32::from_bits(masked_nan1).to_bits(), masked_nan1);
+        assert_eq!(f32::from_bits(masked_nan2).to_bits(), masked_nan2);
     }
 }
