@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax_pos::DUMMY_SP;
-
 use rustc::mir::{self, Mir, Location};
 use rustc::ty::{self, TyCtxt};
 use util::elaborate_drops::DropFlagState;
@@ -187,22 +185,12 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
     where F: FnMut(MovePathIndex, DropFlagState)
 {
     let move_data = &ctxt.move_data;
-    let param_env = ctxt.param_env;
     debug!("drop_flag_effects_for_location({:?})", loc);
 
     // first, move out of the RHS
     for mi in &move_data.loc_map[loc] {
         let path = mi.move_path_index(move_data);
         debug!("moving out of path {:?}", move_data.move_paths[path]);
-
-        // don't move out of non-Copy things
-        let lvalue = &move_data.move_paths[path].lvalue;
-        let ty = lvalue.ty(mir, tcx).to_ty(tcx);
-        let gcx = tcx.global_tcx();
-        let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
-        if !erased_ty.moves_by_default(gcx, param_env, DUMMY_SP) {
-            continue;
-        }
 
         on_all_children_bits(tcx, mir, move_data,
                              path,

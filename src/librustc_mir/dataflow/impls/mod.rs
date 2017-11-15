@@ -456,14 +456,24 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         let path_map = &move_data.path_map;
         let rev_lookup = &move_data.rev_lookup;
 
-        debug!("stmt {:?} at loc {:?} moves out of move_indexes {:?}",
-               stmt, location, &loc_map[location]);
-        for move_index in &loc_map[location] {
-            // Every path deinitialized by a *particular move*
-            // has corresponding bit, "gen'ed" (i.e. set)
-            // here, in dataflow vector
-            zero_to_one(sets.gen_set.words_mut(), *move_index);
+        match stmt.kind {
+            // this analysis only tries to find moves explicitly
+            // written by the user, so we ignore the move-outs
+            // created by `StorageDead` and at the beginning
+            // of a function.
+            mir::StatementKind::StorageDead(_) => {}
+            _ => {
+                debug!("stmt {:?} at loc {:?} moves out of move_indexes {:?}",
+                       stmt, location, &loc_map[location]);
+                for move_index in &loc_map[location] {
+                    // Every path deinitialized by a *particular move*
+                    // has corresponding bit, "gen'ed" (i.e. set)
+                    // here, in dataflow vector
+                    zero_to_one(sets.gen_set.words_mut(), *move_index);
+                }
+            }
         }
+
         let bits_per_block = self.bits_per_block();
         match stmt.kind {
             mir::StatementKind::SetDiscriminant { .. } => {

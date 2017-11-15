@@ -250,8 +250,10 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 }
                 self.gather_rvalue(rval);
             }
-            StatementKind::StorageLive(_) |
-            StatementKind::StorageDead(_) => {}
+            StatementKind::StorageLive(_) => {}
+            StatementKind::StorageDead(local) => {
+                self.gather_move(&Lvalue::Local(local), true);
+            }
             StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
@@ -309,7 +311,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {
-                self.gather_move(&Lvalue::Local(RETURN_POINTER));
+                self.gather_move(&Lvalue::Local(RETURN_POINTER), false);
             }
 
             TerminatorKind::Assert { .. } |
@@ -322,7 +324,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             }
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
-                self.gather_move(location);
+                self.gather_move(location, false);
             }
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
@@ -344,19 +346,19 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         match *operand {
             Operand::Constant(..) => {} // not-a-move
             Operand::Consume(ref lval) => { // a move
-                self.gather_move(lval);
+                self.gather_move(lval, false);
             }
         }
     }
 
-    fn gather_move(&mut self, lval: &Lvalue<'tcx>) {
+    fn gather_move(&mut self, lval: &Lvalue<'tcx>, force: bool) {
         debug!("gather_move({:?}, {:?})", self.loc, lval);
 
         let tcx = self.builder.tcx;
         let gcx = tcx.global_tcx();
         let lv_ty = lval.ty(self.builder.mir, tcx).to_ty(tcx);
         let erased_ty = gcx.lift(&tcx.erase_regions(&lv_ty)).unwrap();
-        if !erased_ty.moves_by_default(gcx, self.builder.param_env, DUMMY_SP) {
+        if !force && !erased_ty.moves_by_default(gcx, self.builder.param_env, DUMMY_SP) {
             debug!("gather_move({:?}, {:?}) - {:?} is Copy. skipping", self.loc, lval, lv_ty);
             return
         }
