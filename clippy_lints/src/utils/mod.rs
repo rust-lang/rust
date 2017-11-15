@@ -9,7 +9,6 @@ use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::mir::transform::MirSource;
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
@@ -48,9 +47,9 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 
 pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
     let parent_id = cx.tcx.hir.get_parent(id);
-    match MirSource::from_node(cx.tcx, parent_id) {
-        MirSource::GeneratorDrop(_) | MirSource::Fn(_) => false,
-        MirSource::Const(_) | MirSource::Static(..) | MirSource::Promoted(..) => true,
+    match cx.tcx.hir.body_owner_kind(parent_id) {
+        hir::BodyOwnerKind::Fn => false,
+        hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(..) => true,
     }
 }
 
