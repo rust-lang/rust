@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+
 enum Sexpression {
     Num(()),
     Cons(&'static mut Sexpression)
@@ -15,9 +18,18 @@ enum Sexpression {
 
 fn causes_ice(mut l: &mut Sexpression) {
     loop { match l {
-        &mut Sexpression::Num(ref mut n) => {},
-        &mut Sexpression::Cons(ref mut expr) => { //~ ERROR cannot borrow `l.0`
-            l = &mut **expr; //~ ERROR cannot assign to `l`
+        &mut Sexpression::Num(ref mut n) => {}, //[mir]~ ERROR (Mir) [E0384]
+        &mut Sexpression::Cons(ref mut expr) => { //[ast]~ ERROR [E0499]
+                                                  //[mir]~^ ERROR (Ast) [E0499]
+                                                  //[mir]~| ERROR (Mir) [E0506]
+                                                  //[mir]~| ERROR (Mir) [E0384]
+                                                  //[mir]~| ERROR (Mir) [E0499]
+            l = &mut **expr; //[ast]~ ERROR [E0506]
+                             //[mir]~^ ERROR (Ast) [E0506]
+                             //[mir]~| ERROR (Mir) [E0506]
+                             //[mir]~| ERROR (Mir) [E0506]
+                             //[mir]~| ERROR (Mir) [E0499]
+                             //[mir]~| ERROR (Mir) [E0499]
         }
     }}
 }
