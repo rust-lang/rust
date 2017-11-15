@@ -434,3 +434,11 @@ impl<'tcx> Const<'tcx> {
         };
     }
 }
+
+// #2152
+fn issue_2152() {
+    match m {
+        "aaaaaaaaaaaaa" | "bbbbbbbbbbbbb" | "cccccccccccccccccccccccccccccccccccccccccccc" if true => {}
+        "bind" | "writev" | "readv" | "sendmsg" | "recvmsg" if android && (aarch64 || x86_64) => true,
+    }
+}
