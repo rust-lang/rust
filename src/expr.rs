@@ -1691,7 +1691,7 @@ fn rewrite_pat_expr(
 pub fn rewrite_literal(context: &RewriteContext, l: &ast::Lit, shape: Shape) -> Option<String> {
     match l.node {
         ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
-        _ => Some(context.snippet(l.span)),
+        _ => wrap_str(context.snippet(l.span), context.config.max_width(), shape),
     }
 }
 
