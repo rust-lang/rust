@@ -109,7 +109,7 @@ impl Rewrite for Pat {
                 let pats = pats?;
 
                 // Unwrap all the sub-strings and join them with commas.
-                let result = if context.config.spaces_within_square_brackets() {
+                let result = if context.config.spaces_within_parens_and_brackets() {
                     format!("[ {} ]", pats.join(", "))
                 } else {
                     format!("[{}]", pats.join(", "))

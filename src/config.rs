@@ -613,24 +613,11 @@ create_config! {
                                     indentation level as the match keyword";
     match_pattern_separator_break_point: SeparatorPlace, SeparatorPlace::Back, false,
         "Put a match sub-patterns' separator in front or back.";
-    space_before_type_annotation: bool, false, false,
-        "Leave a space before the colon in a type annotation";
-    space_after_type_annotation_colon: bool, true, false,
-        "Leave a space after the colon in a type annotation";
-    space_before_struct_lit_field_colon: bool, false, false,
-        "Leave a space before the colon in a struct literal field";
-    space_after_struct_lit_field_colon: bool, true, false,
-        "Leave a space after the colon in a struct literal field";
-    space_before_bound: bool, false, false,
-        "Leave a space before the colon in a trait or lifetime bound";
-    space_after_bound_colon: bool, true, false,
-        "Leave a space after the colon in a trait or lifetime bound";
+    space_before_colon: bool, false, false, "Leave a space before the colon";
+    space_after_colon: bool, true, false, "Leave a space after the colon";
     spaces_around_ranges: bool, false, false, "Put spaces around the  .. and ... range operators";
-    spaces_within_angle_brackets: bool, false, false,
-        "Put spaces within non-empty generic arguments";
-    spaces_within_square_brackets: bool, false, false,
-        "Put spaces within non-empty square brackets";
-    spaces_within_parens: bool, false, false, "Put spaces within non-empty parentheses";
+    spaces_within_parens_and_brackets: bool, false, false,
+        "Put spaces within non-empty parentheses or brackets";
     use_try_shorthand: bool, false, false, "Replace uses of the try! macro by the ? shorthand";
     write_mode: WriteMode, WriteMode::Overwrite, false,
         "What Write Mode to use when none is supplied: \

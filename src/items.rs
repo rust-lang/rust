@@ -39,10 +39,7 @@ use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
 fn type_annotation_separator(config: &Config) -> &str {
-    colon_spaces(
-        config.space_before_type_annotation(),
-        config.space_after_type_annotation_colon(),
-    )
+    colon_spaces(config.space_before_colon(), config.space_after_colon())
 }
 
 // Statements of the form
@@ -1405,16 +1402,8 @@ pub fn rewrite_type_alias(
 
 fn type_annotation_spacing(config: &Config) -> (&str, &str) {
     (
-        if config.space_before_type_annotation() {
-            " "
-        } else {
-            ""
-        },
-        if config.space_after_type_annotation_colon() {
-            " "
-        } else {
-            ""
-        },
+        if config.space_before_colon() { " " } else { "" },
+        if config.space_after_colon() { " " } else { "" },
     )
 }
 
@@ -1581,8 +1570,8 @@ fn rewrite_static(
     offset: Indent,
 ) -> Option<String> {
     let colon = colon_spaces(
-        context.config.space_before_type_annotation(),
-        context.config.space_after_type_annotation_colon(),
+        context.config.space_before_colon(),
+        context.config.space_after_colon(),
     );
     let prefix = format!(
         "{}{} {}{}{}",
@@ -1701,11 +1690,11 @@ impl Rewrite for ast::Arg {
                 .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
 
             if !is_empty_infer(context, &*self.ty) {
-                if context.config.space_before_type_annotation() {
+                if context.config.space_before_colon() {
                     result.push_str(" ");
                 }
                 result.push_str(":");
-                if context.config.space_after_type_annotation_colon() {
+                if context.config.space_after_colon() {
                     result.push_str(" ");
                 }
                 let overhead = last_line_width(&result);
@@ -1893,7 +1882,9 @@ fn rewrite_fn_base(
     } else {
         result.push('(');
     }
-    if context.config.spaces_within_parens() && !fd.inputs.is_empty() && result.ends_with('(') {
+    if context.config.spaces_within_parens_and_brackets() && !fd.inputs.is_empty()
+        && result.ends_with('(')
+    {
         result.push(' ')
     }
 
@@ -1954,7 +1945,7 @@ fn rewrite_fn_base(
         if fd.inputs.is_empty() && used_width + 1 > context.config.max_width() {
             result.push('\n');
         }
-        if context.config.spaces_within_parens() && !fd.inputs.is_empty() {
+        if context.config.spaces_within_parens_and_brackets() && !fd.inputs.is_empty() {
             result.push(' ')
         }
         // If the last line of args contains comment, we cannot put the closing paren
@@ -2533,7 +2524,7 @@ pub fn wrap_generics_with_angle_brackets(
                 .block_unindent(context.config)
                 .to_string(context.config)
         )
-    } else if context.config.spaces_within_angle_brackets() {
+    } else if context.config.spaces_within_parens_and_brackets() {
         format!("< {} >", list_str)
     } else {
         format!("<{}>", list_str)

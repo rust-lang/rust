@@ -441,7 +441,7 @@ pub fn colon_spaces(before: bool, after: bool) -> &'static str {
 
 #[inline]
 pub fn paren_overhead(context: &RewriteContext) -> usize {
-    if context.config.spaces_within_parens() {
+    if context.config.spaces_within_parens_and_brackets() {
         4
     } else {
         2
