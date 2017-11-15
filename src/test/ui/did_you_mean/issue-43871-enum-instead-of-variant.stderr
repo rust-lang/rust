@@ -1,0 +1,21 @@
+error[E0423]: expected function, found enum `Option`
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:12:13
+   |
+12 |     let x = Option(1);
+   |             ^^^^^^ not a function
+   = note: did you mean to use one of the following variants?
+           - `std::prelude::v1::Option::None`
+           - `std::prelude::v1::Option::Some`
+
+error[E0532]: expected tuple struct/variant, found enum `Option`
+  --> $DIR/issue-43871-enum-instead-of-variant.rs:14:12
+   |
+14 |     if let Option(_) = x {
+   |            ^^^^^^
+   |
+   = note: did you mean to use one of the following variants?
+           - `std::prelude::v1::Option::None`
+           - `std::prelude::v1::Option::Some`
+
+error: aborting due to previous error
+
