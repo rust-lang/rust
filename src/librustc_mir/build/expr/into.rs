@@ -247,13 +247,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     let args: Vec<_> =
                         args.into_iter()
-                            .map(|arg| {
-                                let scope = this.local_scope();
-                                // Function arguments are owned by the callee, so we need as_temp()
-                                // instead of as_operand() to enforce copies
-                                let operand = unpack!(block = this.as_temp(block, scope, arg));
-                                Operand::Consume(Lvalue::Local(operand))
-                            })
+                            .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
                             .collect();
 
                     let success = this.cfg.start_new_block();

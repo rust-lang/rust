@@ -524,7 +524,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         }
                     }
 
-                    let op = self.trans_operand(&bcx, arg);
+                    let mut op = self.trans_operand(&bcx, arg);
+
+                    // The callee needs to own the argument memory if we pass it
+                    // by-ref, so make a local copy of non-immediate constants.
+                    if let (&mir::Operand::Constant(_), Ref(..)) = (arg, op.val) {
+                        let tmp = LvalueRef::alloca(&bcx, op.ty, "const");
+                        self.store_operand(&bcx, tmp.llval, tmp.alignment.to_align(), op);
+                        op.val = Ref(tmp.llval, tmp.alignment);
+                    }
+
                     self.trans_argument(&bcx, op, &mut llargs, &fn_ty,
                                         &mut idx, &mut llfn, &def);
                 }
