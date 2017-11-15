@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --error-format=short
+// compile-flags: --error-format=short -Zunstable-options
 
 fn foo(_: u32) {}
 
