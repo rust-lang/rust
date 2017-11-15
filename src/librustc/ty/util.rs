@@ -621,9 +621,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
+    pub fn is_closure(self, def_id: DefId) -> bool {
+        self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+    }
+
     pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
-        while self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr {
+        while self.is_closure(def_id) {
             def_id = self.parent_def_id(def_id).unwrap_or_else(|| {
                 bug!("closure {:?} has no parent", def_id);
             });
