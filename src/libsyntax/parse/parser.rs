@@ -6236,7 +6236,58 @@ impl<'a> Parser<'a> {
             return Ok(Some(macro_def));
         }
 
-        self.parse_macro_use_or_failure(attrs,macros_allowed,attributes_allowed,lo,visibility)
+        // Verify wether we have encountered a struct or method definition where the user forgot to
+        // add the `struct` or `fn` keyword after writing `pub`: `pub S {}`
+        if visibility == Visibility::Public && self.check_ident() {
+            // Keep the current state of the parser to rollback after an unsuccessful attempt to
+            // parse an entire method or struct body.
+            let parser_snapshot = self.clone();
+
+            // Space between `pub` keyword and the identifier
+            //
+            //     pub   S {}
+            //        ^^^ `sp` points here
+            let sp = self.prev_span.between(self.span);
+            if self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) {
+                // possible public struct definition where `struct` was forgotten
+                let ident = self.parse_ident().unwrap();
+                match self.parse_record_struct_body() {
+                    Err(mut err) => {
+                        // couldn't parse a struct body, continue parsing as if it were a macro
+                        err.cancel();
+                        mem::replace(self, parser_snapshot);
+                    }
+                    Ok(_) => {
+                        let msg = format!("add `struct` here to parse `{}` as a public struct",
+                                          ident);
+                        let mut err = self.diagnostic()
+                            .struct_span_err(sp, "missing `struct` for struct definition");
+                        err.span_suggestion_short(sp, &msg, " struct ".into());
+                        return Err(err);
+                    }
+                }
+            } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
+                // possible public method definition where `fn` was forgotten
+                let ident = self.parse_ident().unwrap();
+                match self.parse_fn_decl(false)
+                    .and_then(|_| self.parse_where_clause())
+                    .and_then(|_| self.parse_inner_attrs_and_block()) {
+                    Err(mut err) => {
+                        // couldn't parse method arguments or body, continue parsing
+                        err.cancel();
+                        mem::replace(self, parser_snapshot);
+                    }
+                    Ok(_) => {
+                        let msg = format!("add `fn` here to parse `{}` as a public method", ident);
+                        let mut err = self.diagnostic()
+                            .struct_span_err(sp, "missing `fn` for method definition");
+                        err.span_suggestion_short(sp, &msg, " fn ".into());
+                        return Err(err);
+                    }
+                }
+            }
+        }
+        self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, visibility)
     }
 
     /// Parse a foreign item.
