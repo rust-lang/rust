@@ -373,7 +373,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTrait(..) = ty.node {
+        if let hir::TyImplTraitExistential(..) = ty.node {
             if self.get(ty.id).is_some() {
                 // Reach the (potentially private) type and the API being exposed.
                 self.reach(ty.id).ty().predicates();
@@ -1557,7 +1557,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTrait(..) = ty.node {
+        if let hir::TyImplTraitExistential(..) = ty.node {
             // Check the traits being exposed, as they're separate,
             // e.g. `impl Iterator<Item=T>` has two predicates,
             // `X: Iterator` and `<X as Iterator>::Item == T`,

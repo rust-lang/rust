@@ -30,6 +30,7 @@ use util::nodemap::FxHashSet;
 
 use std::iter;
 use syntax::{abi, ast};
+use syntax::symbol::Symbol;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::Span;
 
@@ -1033,53 +1034,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
             }
-            hir::TyImplTrait(_) => {
-                // Figure out if we can allow an `impl Trait` here, by walking up
-                // to a `fn` or inherent `impl` method, going only through `Ty`
-                // or `TraitRef` nodes (as nothing else should be in types) and
-                // ensuring that we reach the `fn`/method signature's return type.
-                let mut node_id = ast_ty.id;
-                let fn_decl = loop {
-                    let parent = tcx.hir.get_parent_node(node_id);
-                    match tcx.hir.get(parent) {
-                        hir::map::NodeItem(&hir::Item {
-                            node: hir::ItemFn(ref fn_decl, ..), ..
-                        }) => break Some(fn_decl),
-
-                        hir::map::NodeImplItem(&hir::ImplItem {
-                            node: hir::ImplItemKind::Method(ref sig, _), ..
-                        }) => {
-                            match tcx.hir.expect_item(tcx.hir.get_parent(parent)).node {
-                                hir::ItemImpl(.., None, _, _) => {
-                                    break Some(&sig.decl)
-                                }
-                                _ => break None
-                            }
-                        }
-
-                        hir::map::NodeTy(_) | hir::map::NodeTraitRef(_) => {}
-
-                        _ => break None
-                    }
-                    node_id = parent;
-                };
-                let allow = fn_decl.map_or(false, |fd| {
-                    match fd.output {
-                        hir::DefaultReturn(_) => false,
-                        hir::Return(ref ty) => ty.id == node_id
-                    }
-                });
-
-                // Create the anonymized type.
-                if allow {
-                    let def_id = tcx.hir.local_def_id(ast_ty.id);
-                    tcx.mk_anon(def_id, Substs::identity_for_item(tcx, def_id))
-                } else {
-                    span_err!(tcx.sess, ast_ty.span, E0562,
-                              "`impl Trait` not allowed outside of function \
-                               and inherent method return types");
-                    tcx.types.err
-                }
+            hir::TyImplTraitExistential(_) => {
+                let def_id = tcx.hir.local_def_id(ast_ty.id);
+                tcx.mk_anon(def_id, Substs::identity_for_item(tcx, def_id))
+            }
+            hir::TyImplTraitUniversal(fn_def_id, _) => {
+                let impl_trait_def_id = tcx.hir.local_def_id(ast_ty.id);
+                let generics = tcx.generics_of(fn_def_id);
+                let index = generics.type_param_to_index[&impl_trait_def_id.index];
+                tcx.mk_param(index,
+                             Symbol::intern(&tcx.hir.node_to_pretty_string(ast_ty.id)))
             }
             hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);

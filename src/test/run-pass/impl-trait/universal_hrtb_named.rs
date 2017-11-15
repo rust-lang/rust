@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:xcrate.rs
+#![feature(universal_impl_trait)]
 
-extern crate xcrate;
+fn hrtb(f: impl for<'a> Fn(&'a u32) -> &'a u32) -> u32 {
+    f(&22) + f(&44)
+}
 
 fn main() {
-//  NOTE line below commeted out due to issue #45994
-//  assert_eq!(xcrate::fourway_add(1)(2)(3)(4), 10);
-    xcrate::return_closure_accessing_internal_fn()();
+    let sum = hrtb(|x| x);
+    assert_eq!(sum, 22 + 44);
 }

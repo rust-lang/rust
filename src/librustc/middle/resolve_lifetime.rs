@@ -1604,6 +1604,17 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     walk_list!(&mut appears_in_where_clause,
                visit_where_predicate,
                &generics.where_clause.predicates);
+    // We need to collect argument impl Trait lifetimes as well,
+    // we do so here.
+    walk_list!(&mut appears_in_where_clause,
+               visit_ty,
+               decl.inputs.iter().filter(|ty| {
+                   if let hir::TyImplTraitUniversal(..) = ty.node {
+                       true
+                   } else {
+                       false
+                   }
+               }));
     for lifetime_def in &generics.lifetimes {
         if !lifetime_def.bounds.is_empty() {
             // `'a: 'b` means both `'a` and `'b` are referenced
@@ -1698,7 +1709,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
         }
 
         fn visit_ty(&mut self, ty: &hir::Ty) {
-            if let hir::TyImplTrait(_) = ty.node {
+            if let hir::TyImplTraitExistential(_) = ty.node {
                 self.impl_trait = true;
             }
             intravisit::walk_ty(self, ty);

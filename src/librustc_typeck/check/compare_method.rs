@@ -67,6 +67,14 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
+    if let Err(ErrorReported) = compare_synthetic_generics(tcx,
+                                                           impl_m,
+                                                           impl_m_span,
+                                                           trait_m,
+                                                           trait_item_span) {
+        return;
+    }
+
     if let Err(ErrorReported) = compare_predicate_entailment(tcx,
                                                              impl_m,
                                                              impl_m_span,
@@ -706,6 +714,45 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     Ok(())
+}
+
+fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        impl_m: &ty::AssociatedItem,
+                                        _impl_m_span: Span, // FIXME necessary?
+                                        trait_m: &ty::AssociatedItem,
+                                        _trait_item_span: Option<Span>) // FIXME necessary?
+                                        -> Result<(), ErrorReported> {
+    // FIXME(chrisvittal) Clean up this function, list of FIXME items:
+    //     1. Better messages for the span lables
+    //     2. Explanation as to what is going on
+    //     3. Correct the function signature for what we actually use
+    // If we get here, we already have the same number of generics, so the zip will
+    // be okay.
+    let mut error_found = false;
+    let impl_m_generics = tcx.generics_of(impl_m.def_id);
+    let trait_m_generics = tcx.generics_of(trait_m.def_id);
+    for (impl_ty, trait_ty) in impl_m_generics.types.iter().zip(trait_m_generics.types.iter()) {
+        if impl_ty.synthetic != trait_ty.synthetic {
+            let impl_node_id = tcx.hir.as_local_node_id(impl_ty.def_id).unwrap();
+            let impl_span = tcx.hir.span(impl_node_id);
+            let trait_node_id = tcx.hir.as_local_node_id(trait_ty.def_id).unwrap();
+            let trait_span = tcx.hir.span(trait_node_id);
+            let mut err = struct_span_err!(tcx.sess,
+                                           impl_span,
+                                           E0643,
+                                           "method `{}` has incompatible signature for trait",
+                                           trait_m.name);
+            err.span_label(trait_span, "annotation in trait");
+            err.span_label(impl_span, "annotation in impl");
+            err.emit();
+            error_found = true;
+        }
+    }
+    if error_found {
+        Err(ErrorReported)
+    } else {
+        Ok(())
+    }
 }
 
 pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

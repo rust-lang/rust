@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait)]
+#![feature(universal_impl_trait)]
+use std::fmt::Debug;
 
-fn main() {
-    let _: impl Fn() = || {};
-    //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
-    let _ = || -> impl Fn() { || {} };
-    //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+trait Foo {
+    fn foo<A: Debug>(&self, a: &A, b: &impl Debug);
 }
+
+impl Foo for () {
+    fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
+    //~^ ERROR method `foo` has an incompatible type for trait
+}
+
+fn main() {}
