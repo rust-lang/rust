@@ -1624,7 +1624,9 @@
     }
 
     onEach(document.getElementById('main').getElementsByClassName('docblock'), function(e) {
-        e.parentNode.insertBefore(createToggle(), e);
+        if (e.parentNode.id === "main") {
+            e.parentNode.insertBefore(createToggle(), e);
+        }
     });
 
     onEach(document.getElementsByClassName('docblock'), function(e) {
@@ -1709,6 +1711,19 @@
                 e.previousElementSibling.childNodes[0].style.color = '';
             });
         }
+    });
+
+    function showModal(content) {
+        var modal = document.createElement('div');
+        addClass(modal, 'modal');
+        modal.innerHTML = '<div class="modal-content">' + content + "</div>";
+        document.getElementsByTagName('body')[0].appendChild(modal);
+    }
+
+    onEach(document.getElementsByClassName('important-traits'), function(e) {
+        e.onclick = function() {
+            showModal(e.firstElementChild.innerHTML);
+        };
     });
 
     var search_input = document.getElementsByClassName("search-input")[0];

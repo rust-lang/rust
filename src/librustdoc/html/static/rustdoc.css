@@ -954,3 +954,34 @@ pre.rust {
 	color: #888;
 	font-size: 16px;
 }
+
+h4 > .important-traits {
+	position: absolute;
+	left: -44px;
+	top: 2px;
+	cursor: pointer;
+}
+
+.modal {
+	position: fixed;
+	width: 100vw;
+	height: 100vh;
+	background-color: rgba(0,0,0,0.3);
+	z-index: 10000;
+	top: 0;
+	left: 0;
+}
+
+.modal-content {
+	display: block;
+	max-width: 60%;
+	min-width: 200px;
+	background-color: white;
+	padding: 5px;
+	top: 10%;
+	position: absolute;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	border: 1px solid #999;
+	border-radius: 4px;
+}

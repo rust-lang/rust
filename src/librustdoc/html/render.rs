@@ -1816,8 +1816,7 @@ fn plain_summary_line(s: Option<&str>) -> String {
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     document_stability(w, cx, item)?;
-    let mut prefix = render_assoc_const_value(item);
-    prefix.push_str(&render_spotlight_traits(item)?);
+    let prefix = render_assoc_const_value(item);
     document_full(w, item, cx, &prefix)?;
     Ok(())
 }
@@ -2267,10 +2266,15 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                            AbiSpace(f.abi),
                            it.name.as_ref().unwrap(),
                            f.generics).len();
+    let mut extra = render_spotlight_traits(it)?;
+    if !extra.is_empty() {
+        extra.insert_str(0, "<div class=\"important-traits\">ⓘ<div class=\"content hidden\">");
+        extra.push_str("</div></div>");
+    };
     write!(w, "<pre class='rust fn'>")?;
     render_attributes(w, it)?;
     write!(w, "{vis}{constness}{unsafety}{abi}fn \
-               {name}{generics}{decl}{where_clause}</pre>",
+               {name}{generics}{decl}{where_clause}</pre>{extra}",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(f.constness),
            unsafety = UnsafetySpace(f.unsafety),
@@ -2282,7 +2286,8 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                decl: &f.decl,
                name_len,
                indent: 0,
-           })?;
+           },
+           extra = extra)?;
     document(w, cx, it)
 }
 
@@ -3266,7 +3271,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                     if out.is_empty() {
                         out.push_str("<span class=\"docblock autohide\">");
                         out.push_str(&format!("<h3>Important traits for {}</h3>", impl_.for_));
-                        out.push_str("<code class=\"spotlight\">");
+                        out.push_str("<code class=\"content\">");
                     }
 
                     //use the "where" class here to make it small
@@ -3287,7 +3292,8 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
     }
 
     if !out.is_empty() {
-        out.push_str("</code></span>");
+        out.insert_str(0, "<div class=\"important-traits\">ⓘ<div class=\"content hidden\">");
+        out.push_str("</code></span></div></div>");
     }
 
     Ok(out)
@@ -3327,7 +3333,6 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                      trait_: Option<&clean::Trait>, show_def_docs: bool) -> fmt::Result {
         let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
-        let mut method_prefix: Option<String> = None;
 
         let render_method_item: bool = match render_mode {
             RenderMode::Normal => true,
@@ -3342,6 +3347,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     let id = derive_id(format!("{}.{}", item_type, name));
                     let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
                     write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
+                    write!(w, "{}", spotlight_decl(decl)?)?;
                     write!(w, "<span id='{}' class='invisible'>", ns_id)?;
                     write!(w, "<code>")?;
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
@@ -3356,7 +3362,6 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     }
                     write!(w, "</span></h4>\n")?;
-                    method_prefix = Some(spotlight_decl(decl)?);
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
@@ -3388,11 +3393,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
 
         if render_method_item || render_mode == RenderMode::Normal {
-            let mut prefix = render_assoc_const_value(item);
-
-            if let Some(method_prefix) = method_prefix {
-                prefix.push_str(&method_prefix);
-            }
+            let prefix = render_assoc_const_value(item);
 
             if !is_default_item {
                 if let Some(t) = trait_ {
