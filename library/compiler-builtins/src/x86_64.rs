@@ -29,7 +29,7 @@ pub unsafe fn ___chkstk_ms() {
         test   %rcx,(%rcx)
         pop    %rax
         pop    %rcx
-        ret");
+        ret" ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -38,7 +38,8 @@ pub unsafe fn ___chkstk_ms() {
 #[no_mangle]
 pub unsafe fn __alloca() {
     asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx
-          jmp    ___chkstk  // Jump to ___chkstk since fallthrough may be unreliable");
+          jmp    ___chkstk  // Jump to ___chkstk since fallthrough may be unreliable"
+         ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -46,7 +47,8 @@ pub unsafe fn __alloca() {
 #[naked]
 #[no_mangle]
 pub unsafe fn ___chkstk() {
-    asm!("
+    asm!(
+        "
         push   %rcx
         cmp    $$0x1000,%rax
         lea    16(%rsp),%rcx  // rsp before calling this routine -> rcx
@@ -66,6 +68,8 @@ pub unsafe fn ___chkstk() {
         mov    -8(%rax),%rcx  // restore rcx
         push   (%rax)         // push return address onto the stack
         sub    %rsp,%rax      // restore the original value in rax
-        ret");
+        ret"
+        ::: "memory" : "volatile"
+    );
     intrinsics::unreachable();
 }
