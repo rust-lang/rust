@@ -41,6 +41,8 @@ pub struct Frame {
     pub exact_position: *const u8,
     /// Address of the enclosing function.
     pub symbol_addr: *const u8,
+    /// Which inlined function is this frame referring to
+    pub inline_context: u32,
 }
 
 /// Max number of frames to print.
@@ -64,6 +66,7 @@ fn _print(w: &mut Write, format: PrintFormat, entry_point: usize) -> io::Result<
     let mut frames = [Frame {
         exact_position: ptr::null(),
         symbol_addr: ptr::null(),
+        inline_context: 0,
     }; MAX_NB_FRAMES];
     let (nb_frames, context) = unwind_backtrace(&mut frames)?;
     let (skipped_before, skipped_after) =
@@ -101,6 +104,8 @@ fn filter_frames(frames: &[Frame],
         return (0, 0);
     }
 
+    // Look for the first occurence of a panic entry point
+    // Skip all frames before that
     let skipped_before = frames.iter().position(|frame| {
         let mut addr = None;
         let _ = resolve_symname(*frame, |syminfo| {
@@ -110,16 +115,19 @@ fn filter_frames(frames: &[Frame],
         addr == Some(entry_point)
     }).map(|p| p + 1).unwrap_or(0);
 
-    let skipped_after = frames.iter().rev().position(|frame| {
+    // Look for the first occurence of `mark_start`
+    // There can be multiple in one backtrace
+    // Skip all frames after that
+    let skipped_after = frames.len() - frames.iter().position(|frame| {
         let mut is_marker = false;
         let _ = resolve_symname(*frame, |syminfo| {
-            if syminfo.map(|i| i.1) == Some(MARK_START.0 as usize) {
+            if syminfo.map(|i| i.1) == Some(MARK_START as usize) {
                 is_marker = true;
             }
             Ok(())
         }, context);
         is_marker
-    }).map(|p| p + 1).unwrap_or(0);
+    }).unwrap_or(frames.len());
 
     if skipped_before + skipped_after >= frames.len() {
         // Avoid showing completely empty backtraces
@@ -129,14 +137,11 @@ fn filter_frames(frames: &[Frame],
     (skipped_before, skipped_after)
 }
 
-#[derive(Eq, PartialEq)]
-struct Function(*const ());
-unsafe impl Sync for Function {}
-
-static MARK_START: Function = Function(mark_start as *const ());
+static MARK_START: fn(&mut FnMut()) = mark_start;
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`
 #[inline(never)]
+#[unstable(feature = "rt", reason = "this is only exported for use in libtest", issue = "0")]
 pub fn mark_start(f: &mut FnMut()) {
     f();
     unsafe {
