@@ -1018,7 +1018,7 @@ impl<'a> LoweringContext<'a> {
                 }
                 PathParameters::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok =>
-                        self.lower_parenthesized_parameter_data(data, itctx),
+                        self.lower_parenthesized_parameter_data(data),
                     ParenthesizedGenericArgs::Warn => {
                         self.sess.buffer_lint(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                                               CRATE_NODE_ID, data.span, msg.into());
@@ -1063,8 +1063,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_parenthesized_parameter_data(&mut self,
-                                          data: &ParenthesizedParameterData,
-                                          itctx: ImplTraitContext)
+                                          data: &ParenthesizedParameterData)
                                           -> (hir::PathParameters, bool) {
         const DISALLOWED: ImplTraitContext = ImplTraitContext::Disallowed;
         let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
@@ -1080,7 +1079,7 @@ impl<'a> LoweringContext<'a> {
             bindings: hir_vec![hir::TypeBinding {
                 id: self.next_id().node_id,
                 name: Symbol::intern(FN_OUTPUT_NAME),
-                ty: output.as_ref().map(|ty| self.lower_ty(&ty, itctx))
+                ty: output.as_ref().map(|ty| self.lower_ty(&ty, DISALLOWED))
                                    .unwrap_or_else(|| mk_tup(self, hir::HirVec::new(), span)),
                 span: output.as_ref().map_or(span, |ty| ty.span),
             }],
