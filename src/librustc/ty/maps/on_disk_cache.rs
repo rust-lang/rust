@@ -32,7 +32,6 @@ use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
 use ty;
 use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use ty::context::TyCtxt;
-use ty::maps::config::QueryDescription;
 use ty::subst::Substs;
 
 // Some magic values used for verifying that encoding and decoding. These are
@@ -162,11 +161,11 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'a, 'gcx, 'lcx, E>(&self,
-                                        tcx: TyCtxt<'a, 'gcx, 'lcx>,
-                                        cstore: &CrateStore,
-                                        encoder: &mut E)
-                                        -> Result<(), E::Error>
+    pub fn serialize<'a, 'tcx, E>(&self,
+                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  cstore: &CrateStore,
+                                  encoder: &mut E)
+                                  -> Result<(), E::Error>
         where E: ty_codec::TyEncoder
      {
         // Serializing the DepGraph should not modify it:
@@ -232,19 +231,13 @@ impl<'sess> OnDiskCache<'sess> {
         // Encode query results
         let mut query_result_index = EncodedQueryResultIndex::new();
 
-        // Encode TypeckTables
-        for (def_id, entry) in tcx.maps.typeck_tables_of.borrow().map.iter() {
-            if ty::maps::queries::typeck_tables_of::cache_on_disk(*def_id) {
-                let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+        {
+            use ty::maps::queries::*;
+            let enc = &mut encoder;
+            let qri = &mut query_result_index;
 
-                // Record position of the cache entry
-                query_result_index.push((dep_node, encoder.position()));
-
-                // Encode the type check tables with the SerializedDepNodeIndex
-                // as tag.
-                let typeck_tables: &ty::TypeckTables<'gcx> = &entry.value;
-                encoder.encode_tagged(dep_node, typeck_tables)?;
-            }
+            // Encode TypeckTables
+            encode_query_results::<typeck_tables_of, _>(tcx, enc, qri)?;
         }
 
         // Encode query result index
@@ -841,4 +834,28 @@ for CacheDecoder<'a, 'tcx, 'x> {
 
         Ok(IntEncodedWithFixedSize(value))
     }
+}
+
+fn encode_query_results<'x, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                            encoder: &mut CacheEncoder<'x, 'tcx, E>,
+                                            query_result_index: &mut EncodedQueryResultIndex)
+                                            -> Result<(), E::Error>
+    where Q: super::plumbing::GetCacheInternal<'tcx>,
+          E: 'x + TyEncoder,
+          Q::Value: Encodable,
+{
+    for (key, entry) in Q::get_cache_internal(tcx).map.iter() {
+        if Q::cache_on_disk(key.clone()) {
+            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+
+            // Record position of the cache entry
+            query_result_index.push((dep_node, encoder.position()));
+
+            // Encode the type check tables with the SerializedDepNodeIndex
+            // as tag.
+            encoder.encode_tagged(dep_node, &entry.value)?;
+        }
+    }
+
+    Ok(())
 }

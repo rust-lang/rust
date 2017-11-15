@@ -20,7 +20,7 @@ use ty::maps::config::QueryDescription;
 use ty::item_path;
 
 use rustc_data_structures::fx::{FxHashMap};
-use std::cell::RefMut;
+use std::cell::{Ref, RefMut};
 use std::marker::PhantomData;
 use std::mem;
 use syntax_pos::Span;
@@ -53,6 +53,11 @@ impl<'tcx, M: QueryDescription<'tcx>> QueryMap<'tcx, M> {
             map: FxHashMap(),
         }
     }
+}
+
+pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
+    fn get_cache_internal<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                              -> Ref<'a, QueryMap<'tcx, Self>>;
 }
 
 pub(super) struct CycleError<'a, 'tcx: 'a> {
@@ -240,6 +245,13 @@ macro_rules! define_maps {
         $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
+        }
+
+        impl<$tcx> GetCacheInternal<$tcx> for queries::$name<$tcx> {
+            fn get_cache_internal<'a>(tcx: TyCtxt<'a, $tcx, $tcx>)
+                                      -> ::std::cell::Ref<'a, QueryMap<$tcx, Self>> {
+                tcx.maps.$name.borrow()
+            }
         }
 
         impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
