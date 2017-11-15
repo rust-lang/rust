@@ -1683,7 +1683,7 @@ impl<'a> Item<'a> {
             format!("{}-{}", self.item.source.loline, self.item.source.hiline)
         };
         Some(format!("{root}src/{krate}/{path}#{lines}",
-                     root = root,
+                     root = Escape(&root),
                      krate = krate,
                      path = path,
                      lines = lines))
