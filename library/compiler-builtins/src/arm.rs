@@ -11,7 +11,7 @@ pub unsafe fn __aeabi_uidivmod() {
           bl __udivmodsi4
           ldr r1, [sp]
           add sp, sp, #4
-          pop {pc}");
+          pop {pc}" ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -26,7 +26,7 @@ pub unsafe fn __aeabi_uldivmod() {
           ldr r2, [sp, #8]
           ldr r3, [sp, #12]
           add sp, sp, #16
-          pop {r4, pc}");
+          pop {r4, pc}" ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -38,7 +38,7 @@ pub unsafe fn __aeabi_idivmod() {
           pop {r1, r2}
           muls r2, r2, r0
           subs r1, r1, r2
-          pop {r4, pc}");
+          pop {r4, pc}" ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -53,7 +53,7 @@ pub unsafe fn __aeabi_ldivmod() {
           ldr r2, [sp, #8]
           ldr r3, [sp, #12]
           add sp, sp, #16
-          pop {r4, pc}");
+          pop {r4, pc}" ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 

@@ -82,7 +82,7 @@ pub unsafe extern fn __rust_probestack() {
         add    %rax,%rsp
 
         ret
-    ");
+    " ::: "memory" : "volatile");
     ::core::intrinsics::unreachable();
 }
 
@@ -111,6 +111,6 @@ pub unsafe extern fn __rust_probestack() {
         add    %eax,%esp
         pop    %ecx
         ret
-    ");
+    " ::: "memory" : "volatile");
     ::core::intrinsics::unreachable();
 }

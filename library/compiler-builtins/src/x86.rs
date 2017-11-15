@@ -29,7 +29,7 @@ pub unsafe fn ___chkstk_ms() {
         test   %ecx,(%ecx)
         pop    %eax
         pop    %ecx
-        ret");
+        ret" ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -38,7 +38,8 @@ pub unsafe fn ___chkstk_ms() {
 #[naked]
 #[no_mangle]
 pub unsafe fn __alloca() {
-    asm!("jmp ___chkstk   // Jump to ___chkstk since fallthrough may be unreliable");
+    asm!("jmp ___chkstk   // Jump to ___chkstk since fallthrough may be unreliable"
+         ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -66,6 +67,6 @@ pub unsafe fn ___chkstk() {
         mov    -4(%eax),%ecx    // restore ecx
         push   (%eax)           // push return address onto the stack
         sub    %esp,%eax        // restore the original value in eax
-        ret");
+        ret" ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
