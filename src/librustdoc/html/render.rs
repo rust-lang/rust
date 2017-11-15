@@ -1257,7 +1257,7 @@ impl DocFolder for Cache {
             clean::FunctionItem(..) | clean::ModuleItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
             clean::ConstantItem(..) | clean::StaticItem(..) |
-            clean::UnionItem(..)
+            clean::UnionItem(..) | clean::ForeignTypeItem
             if !self.stripped_mod => {
                 // Reexported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
@@ -1292,7 +1292,7 @@ impl DocFolder for Cache {
         // Maintain the parent stack
         let orig_parent_is_trait_impl = self.parent_is_trait_impl;
         let parent_pushed = match item.inner {
-            clean::TraitItem(..) | clean::EnumItem(..) |
+            clean::TraitItem(..) | clean::EnumItem(..) | clean::ForeignTypeItem |
             clean::StructItem(..) | clean::UnionItem(..) => {
                 self.parent_stack.push(item.def_id);
                 self.parent_is_trait_impl = false;
@@ -1711,6 +1711,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
+            clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -1775,6 +1776,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
                 item_static(fmt, self.cx, self.item, i),
             clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
+            clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -3429,6 +3431,21 @@ fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
+fn item_foreign_type(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item) -> fmt::Result {
+    writeln!(w, "<pre class='rust foreigntype'>extern {{")?;
+    render_attributes(w, it)?;
+    write!(
+        w,
+        "    {}type {};\n}}</pre>",
+        VisSpace(&it.visibility),
+        it.name.as_ref().unwrap(),
+    )?;
+
+    document(w, cx, it)?;
+
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+}
+
 impl<'a> fmt::Display for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
@@ -3446,6 +3463,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 clean::UnionItem(..) => write!(fmt, "Union ")?,
                 clean::EnumItem(..) => write!(fmt, "Enum ")?,
                 clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
+                clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
                 clean::ModuleItem(..) => if it.is_crate() {
                     write!(fmt, "Crate ")?;
                 } else {
@@ -3474,6 +3492,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
                 clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
                 clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
+                clean::ForeignTypeItem => sidebar_foreign_type(fmt, it)?,
                 _ => (),
             }
         }
@@ -3893,6 +3912,14 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
 
     if !sidebar.is_empty() {
         write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_foreign_type(fmt: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
+    let sidebar = sidebar_assoc_items(it);
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
     }
     Ok(())
 }

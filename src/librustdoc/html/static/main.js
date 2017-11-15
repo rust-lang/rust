@@ -37,7 +37,8 @@
                      "associatedtype",
                      "constant",
                      "associatedconstant",
-                     "union"];
+                     "union",
+                     "foreigntype"];
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -1445,6 +1446,7 @@
         block("trait", "Traits");
         block("fn", "Functions");
         block("type", "Type Definitions");
+        block("foreigntype", "Foreign Types");
     }
 
     window.initSidebarItems = initSidebarItems;
