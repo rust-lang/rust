@@ -168,7 +168,7 @@ impl Quote for Term {
 
 impl Quote for Span {
     fn quote(self) -> TokenStream {
-        quote!(::Span::default())
+        quote!(::Span::def_site())
     }
 }
 

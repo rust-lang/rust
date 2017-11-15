@@ -177,9 +177,10 @@ impl TokenStream {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Span(syntax_pos::Span);
 
-#[unstable(feature = "proc_macro", issue = "38356")]
-impl Default for Span {
-    fn default() -> Span {
+impl Span {
+    /// A span that resolves at the macro definition site.
+    #[unstable(feature = "proc_macro", issue = "38356")]
+    pub fn def_site() -> Span {
         ::__internal::with_sess(|(_, mark)| {
             let call_site = mark.expn_info().unwrap().call_site;
             Span(call_site.with_ctxt(SyntaxContext::empty().apply_mark(mark)))
@@ -351,7 +352,7 @@ pub struct TokenTree {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl From<TokenNode> for TokenTree {
     fn from(kind: TokenNode) -> TokenTree {
-        TokenTree { span: Span::default(), kind: kind }
+        TokenTree { span: Span::def_site(), kind: kind }
     }
 }
 
