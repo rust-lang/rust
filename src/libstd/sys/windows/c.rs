@@ -619,7 +619,7 @@ pub struct ADDRESS64 {
 
 #[repr(C)]
 #[cfg(feature = "backtrace")]
-pub struct STACKFRAME64 {
+pub struct STACKFRAME_EX {
     pub AddrPC: ADDRESS64,
     pub AddrReturn: ADDRESS64,
     pub AddrFrame: ADDRESS64,
@@ -631,6 +631,8 @@ pub struct STACKFRAME64 {
     pub Virtual: BOOL,
     pub Reserved: [u64; 3],
     pub KdHelp: KDHELP64,
+    pub StackFrameSize: DWORD,
+    pub InlineFrameContext: DWORD,
 }
 
 #[repr(C)]

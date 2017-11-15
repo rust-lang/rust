@@ -62,10 +62,7 @@ type Pos = (&'static str, u32);
 // this goes to stdout and each line has to be occurred
 // in the following backtrace to stderr with a correct order.
 fn dump_filelines(filelines: &[Pos]) {
-    // Skip top frame for MSVC, because it sees the macro rather than
-    // the containing function.
-    let skip = if cfg!(target_env = "msvc") {1} else {0};
-    for &(file, line) in filelines.iter().rev().skip(skip) {
+    for &(file, line) in filelines.iter().rev() {
         // extract a basename
         let basename = file.split(&['/', '\\'][..]).last().unwrap();
         println!("{}:{}", basename, line);
@@ -84,9 +81,7 @@ fn inner(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     });
 }
 
-// LLVM does not yet output the required debug info to support showing inlined
-// function calls in backtraces when targeting MSVC, so disable inlining in
-// this case.
+// We emit the wrong location for the caller here when inlined on MSVC
 #[cfg_attr(not(target_env = "msvc"), inline(always))]
 #[cfg_attr(target_env = "msvc", inline(never))]
 fn inner_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
@@ -136,9 +131,6 @@ fn check_trace(output: &str, error: &str) {
 fn run_test(me: &str) {
     use std::str;
     use std::process::Command;
-
-    let mut template = Command::new(me);
-    template.env("RUST_BACKTRACE", "full");
 
     let mut i = 0;
     loop {

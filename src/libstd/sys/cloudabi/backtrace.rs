@@ -77,6 +77,7 @@ extern "C" fn trace_fn(
         cx.frames[cx.idx] = Frame {
             symbol_addr: symaddr as *mut u8,
             exact_position: ip as *mut u8,
+            inline_context: 0,
         };
         cx.idx += 1;
     }
