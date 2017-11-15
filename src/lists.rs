@@ -602,7 +602,11 @@ where
                         // Match arms may not have trailing comma. In any case, for match arms,
                         // we will assume that the post comment belongs to the next arm if they
                         // do not end with trailing comma.
-                        1
+                        if let Some(newline_index) = newline_index {
+                            newline_index + 1
+                        } else {
+                            0
+                        }
                     }
                 }
                 None => post_snippet

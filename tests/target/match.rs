@@ -128,15 +128,13 @@ fn issue339() {
         h => {
             // comment above block
         }
-        i => {}
-        // comment below block
+        i => {} // comment below block
         j => {
             // comment inside block
         }
         j2 => {
             // comments inside...
-        }
-        // ... and after
+        } // ... and after
         // TODO uncomment when vertical whitespace is handled better
         // k => {
         //
@@ -473,6 +471,14 @@ impl<'tcx> Const<'tcx> {
                 cv
             ),
         };
+    }
+}
+
+// #2151
+fn issue_2151() {
+    match either {
+        x => {}
+        y => (),
     }
 }
 

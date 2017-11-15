@@ -435,6 +435,15 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
+// #2151
+fn issue_2151() {
+    match either {
+        x => {
+
+        }y => ()
+    }
+}
+
 // #2152
 fn issue_2152() {
     match m {
