@@ -624,9 +624,7 @@ impl<'a> Builder<'a> {
                 cargo.arg("--release");
             }
 
-            if mode != Mode::Libstd && // FIXME(#45320)
-               mode != Mode::Libtest && // FIXME(#45511)
-               self.config.rust_codegen_units.is_none() &&
+            if self.config.rust_codegen_units.is_none() &&
                self.build.is_rust_llvm(compiler.host)
             {
                 cargo.env("RUSTC_THINLTO", "1");
