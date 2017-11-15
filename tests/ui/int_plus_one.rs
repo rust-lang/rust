@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[allow(no_effect, unnecessary_operation)]
 #[warn(int_plus_one)]

@@ -1,5 +1,3 @@
-warning: running cargo clippy on a crate that also imports the clippy plugin
-
 error: Unnecessary `>= y + 1` or `x - 1 >=`
   --> $DIR/int_plus_one.rs:10:5
    |

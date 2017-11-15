@@ -1,5 +1,5 @@
 #![allow(unused)]
-//#![feature(plugin)]#![plugin(clippy)]
+
 use std::collections::{HashMap, HashSet};
 use std::cmp::Eq;
 use std::hash::{Hash, BuildHasher};

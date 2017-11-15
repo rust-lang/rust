@@ -1,5 +1,3 @@
-warning: running cargo clippy on a crate that also imports the clippy plugin
-
 error: reference to zeroed memory
   --> $DIR/invalid_ref.rs:27:24
    |

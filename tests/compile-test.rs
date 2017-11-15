@@ -1,6 +1,9 @@
-extern crate compiletest_rs as compiletest;
+#![feature(test)]
 
-use std::path::PathBuf;
+extern crate compiletest_rs as compiletest;
+extern crate test;
+
+use std::path::{PathBuf, Path};
 use std::env::{set_var, var};
 
 fn clippy_driver_path() -> PathBuf {
@@ -11,15 +14,36 @@ fn clippy_driver_path() -> PathBuf {
     }
 }
 
-fn run_mode(dir: &'static str, mode: &'static str) {
+fn host_libs() -> PathBuf {
+    if let Some(path) = option_env!("HOST_LIBS") {
+        PathBuf::from(path)
+    } else {
+        Path::new("target").join(env!("PROFILE"))
+    }
+}
+
+fn rustc_test_suite() -> Option<PathBuf> {
+    option_env!("RUSTC_TEST_SUITE").map(PathBuf::from)
+}
+
+fn rustc_lib_path() -> PathBuf {
+    option_env!("RUSTC_LIB_PATH").unwrap().into()
+}
+
+fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
     let mut config = compiletest::Config::default();
 
     let cfg_mode = mode.parse().expect("Invalid mode");
-    config.target_rustcflags = Some("-L target/debug/ -L target/debug/deps -Dwarnings".to_owned());
     if let Ok(name) = var::<&str>("TESTNAME") {
         let s: String = name.to_owned();
         config.filter = Some(s)
     }
+
+    if rustc_test_suite().is_some() {
+        config.run_lib_path = rustc_lib_path();
+        config.compile_lib_path = rustc_lib_path();
+    }
+    config.target_rustcflags = Some(format!("-L {0} -L {0}/deps -Dwarnings", host_libs().display()));
 
     config.mode = cfg_mode;
     config.build_base = {
@@ -29,8 +53,11 @@ fn run_mode(dir: &'static str, mode: &'static str) {
     };
     config.src_base = PathBuf::from(format!("tests/{}", dir));
     config.rustc_path = clippy_driver_path();
+    config
+}
 
-    compiletest::run_tests(&config);
+fn run_mode(dir: &'static str, mode: &'static str) {
+    compiletest::run_tests(&config(dir, mode));
 }
 
 fn prepare_env() {
@@ -44,4 +71,22 @@ fn compile_test() {
     prepare_env();
     run_mode("run-pass", "run-pass");
     run_mode("ui", "ui");
+}
+
+#[test]
+fn dogfood() {
+    prepare_env();
+    let files = ["src/main.rs", "src/driver.rs", "src/lib.rs", "clippy_lints/src/lib.rs"];
+    let mut config = config("dogfood", "ui");
+    config.target_rustcflags = config.target_rustcflags.map(|flags| format!("{} -Dclippy -Dclippy_pedantic -Dclippy_internal", flags));
+
+    for file in &files {
+        let paths = test::TestPaths {
+            base: PathBuf::new(),
+            file: PathBuf::from(file),
+            relative_dir: PathBuf::new(),
+        };
+
+        compiletest::runtest::run(config.clone(), &paths);
+    }
 }

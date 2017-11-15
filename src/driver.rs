@@ -129,33 +129,29 @@ fn show_version() {
 pub fn main() {
     use std::env;
 
-    if env::var("CLIPPY_DOGFOOD").is_ok() {
-        panic!("yummy");
-    }
-
     if std::env::args().any(|a| a == "--version" || a == "-V") {
         show_version();
         return;
     }
 
-    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
-    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-    let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
-        format!("{}/toolchains/{}", home, toolchain)
-    } else {
-        option_env!("SYSROOT")
-            .map(|s| s.to_owned())
-            .or_else(|| {
-                Command::new("rustc")
-                    .arg("--print")
-                    .arg("sysroot")
-                    .output()
-                    .ok()
-                    .and_then(|out| String::from_utf8(out.stdout).ok())
-                    .map(|s| s.trim().to_owned())
-            })
-            .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
-    };
+    let sys_root = option_env!("SYSROOT")
+        .map(String::from)
+        .or_else(|| std::env::var("SYSROOT").ok())
+        .or_else(|| {
+            let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
+            let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
+            home.and_then(|home| toolchain.map(|toolchain| format!("{}/toolchains/{}", home, toolchain)))
+        })
+        .or_else(|| {
+            Command::new("rustc")
+                .arg("--print")
+                .arg("sysroot")
+                .output()
+                .ok()
+                .and_then(|out| String::from_utf8(out.stdout).ok())
+                .map(|s| s.trim().to_owned())
+        })
+        .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust");
 
     rustc_driver::in_rustc_thread(|| {
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
