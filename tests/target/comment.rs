@@ -86,3 +86,10 @@ fn some_fn4()
 // some comment
 {
 }
+
+// #1603
+pub enum Foo {
+    A, // `/** **/`
+    B, // `/*!`
+    C,
+}
