@@ -156,6 +156,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub SAFE_PACKED_BORROWS,
+    Warn,
+    "safe borrows of fields of packed structs were was erroneously allowed"
+}
+
+declare_lint! {
     pub PATTERNS_IN_FNS_WITHOUT_BODY,
     Warn,
     "patterns in functions without body were erroneously allowed"
@@ -247,6 +253,7 @@ impl LintPass for HardwiredLints {
             RENAMED_AND_REMOVED_LINTS,
             RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
+            SAFE_PACKED_BORROWS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
             LEGACY_DIRECTORY_OWNERSHIP,
             LEGACY_IMPORTS,

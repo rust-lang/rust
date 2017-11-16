@@ -15,7 +15,7 @@ use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::lint::builtin::{SAFE_EXTERN_STATICS, UNUSED_UNSAFE};
+use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, Visitor};
 
@@ -140,7 +140,14 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     location: Location) {
         if let LvalueContext::Borrow { .. } = context {
             if util::is_disaligned(self.tcx, self.mir, self.param_env, lvalue) {
-                self.require_unsafe("borrow of packed field")
+                let source_info = self.source_info;
+                let lint_root =
+                    self.visibility_scope_info[source_info.scope].lint_root;
+                self.register_violations(&[UnsafetyViolation {
+                    source_info,
+                    description: "borrow of packed field",
+                    kind: UnsafetyViolationKind::BorrowPacked(lint_root)
+                }], &[]);
             }
         }
 
@@ -203,7 +210,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
                         description: "use of extern static",
-                        lint_node_id: Some(lint_root)
+                        kind: UnsafetyViolationKind::ExternStatic(lint_root)
                     }], &[]);
                 }
             }
@@ -218,7 +225,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
-            source_info, description, lint_node_id: None
+            source_info, description, kind: UnsafetyViolationKind::General
         }], &[]);
     }
 
@@ -380,21 +387,31 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     } = tcx.unsafety_check_result(def_id);
 
     for &UnsafetyViolation {
-        source_info, description, lint_node_id
+        source_info, description, kind
     } in violations.iter() {
         // Report an error.
-        if let Some(lint_node_id) = lint_node_id {
-            tcx.lint_node(SAFE_EXTERN_STATICS,
-                          lint_node_id,
-                          source_info.span,
-                          &format!("{} requires unsafe function or \
-                                    block (error E0133)", description));
-        } else {
-            struct_span_err!(
-                tcx.sess, source_info.span, E0133,
-                "{} requires unsafe function or block", description)
-                .span_label(source_info.span, description)
-                .emit();
+        match kind {
+            UnsafetyViolationKind::General => {
+                struct_span_err!(
+                    tcx.sess, source_info.span, E0133,
+                    "{} requires unsafe function or block", description)
+                    .span_label(source_info.span, description)
+                    .emit();
+            }
+            UnsafetyViolationKind::ExternStatic(lint_node_id) => {
+                tcx.lint_node(SAFE_EXTERN_STATICS,
+                              lint_node_id,
+                              source_info.span,
+                              &format!("{} requires unsafe function or \
+                                        block (error E0133)", description));
+            }
+            UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
+                tcx.lint_node(SAFE_PACKED_BORROWS,
+                              lint_node_id,
+                              source_info.span,
+                              &format!("{} requires unsafe function or \
+                                        block (error E0133)", description));
+            }
         }
     }
 

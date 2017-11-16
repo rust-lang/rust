@@ -20,7 +20,8 @@ pub struct JustArray {
     array: [u32]
 }
 
-#[deny(safe_packed_borrows)]
+// kill this test when that turns to a hard error
+#[allow(safe_packed_borrows)]
 fn main() {
     let good = Good {
         data: &0,
@@ -33,10 +34,8 @@ fn main() {
         let _ = &good.data2[0]; // ok
     }
 
-    let _ = &good.data; //~ ERROR borrow of packed field requires unsafe
-                        //~| hard error
-    let _ = &good.data2[0]; //~ ERROR borrow of packed field requires unsafe
-                            //~| hard error
+    let _ = &good.data;
+    let _ = &good.data2[0];
     let _ = &*good.data; // ok, behind a pointer
     let _ = &good.aligned; // ok, has align 1
     let _ = &good.aligned[2]; // ok, has align 1
