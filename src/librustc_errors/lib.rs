@@ -53,20 +53,6 @@ mod lock;
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
 
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
-pub enum RenderSpan {
-    /// A FullSpan renders with both with an initial line for the
-    /// message, prefixed by file:linenum, followed by a summary of
-    /// the source code covered by the span.
-    FullSpan(MultiSpan),
-
-    /// A suggestion renders with both with an initial line for the
-    /// message, prefixed by file:linenum, followed by a summary
-    /// of hypothetical source code, where each `String` is spliced
-    /// into the lines in place of the code covered by each span.
-    Suggestion(CodeSuggestion),
-}
-
-#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
     /// applicable suggestions

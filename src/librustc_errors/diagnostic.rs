@@ -12,7 +12,6 @@ use CodeSuggestion;
 use SubstitutionPart;
 use Substitution;
 use Level;
-use RenderSpan;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
@@ -40,7 +39,7 @@ pub struct SubDiagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
     pub span: MultiSpan,
-    pub render_span: Option<RenderSpan>,
+    pub render_span: Option<MultiSpan>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -307,7 +306,7 @@ impl Diagnostic {
            level: Level,
            message: &str,
            span: MultiSpan,
-           render_span: Option<RenderSpan>) {
+           render_span: Option<MultiSpan>) {
         let sub = SubDiagnostic {
             level,
             message: vec![(message.to_owned(), Style::NoStyle)],
@@ -323,7 +322,7 @@ impl Diagnostic {
                            level: Level,
                            message: Vec<(String, Style)>,
                            span: MultiSpan,
-                           render_span: Option<RenderSpan>) {
+                           render_span: Option<MultiSpan>) {
         let sub = SubDiagnostic {
             level,
             message,

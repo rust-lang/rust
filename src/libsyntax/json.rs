@@ -22,7 +22,7 @@
 use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
 use errors::DiagnosticId;
 use errors::emitter::Emitter;
 
@@ -188,7 +188,7 @@ impl Diagnostic {
             code: None,
             level: db.level.to_str(),
             spans: db.render_span.as_ref()
-                     .map(|sp| DiagnosticSpan::from_render_span(sp, je))
+                     .map(|sp| DiagnosticSpan::from_multispan(sp, je))
                      .unwrap_or_else(|| DiagnosticSpan::from_multispan(&db.span, je)),
             children: vec![],
             rendered: None,
@@ -299,16 +299,6 @@ impl DiagnosticSpan {
                           })
                       })
                       .collect()
-    }
-
-    fn from_render_span(rsp: &RenderSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
-        match *rsp {
-            RenderSpan::FullSpan(ref msp) =>
-                DiagnosticSpan::from_multispan(msp, je),
-            // regular diagnostics don't produce this anymore
-            // FIXME(oli_obk): remove it entirely
-            RenderSpan::Suggestion(_) => unreachable!(),
-        }
     }
 }
 

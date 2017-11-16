@@ -12,7 +12,6 @@ error[E0425]: cannot find function `Apple` in this scope
    |
 23 |     Apple(5)
    |     ^^^^^ not found in this scope
-   |
 help: possible candidate is found in another module, you can import it into scope
    |
 12 | use Fruit::Apple;
@@ -32,7 +31,6 @@ error[E0425]: cannot find function `Apple` in this scope
    |
 31 |     Apple(5)
    |     ^^^^^ not found in this scope
-   |
 help: possible candidate is found in another module, you can import it into scope
    |
 12 | use Fruit::Apple;

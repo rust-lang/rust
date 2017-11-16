@@ -13,7 +13,6 @@ use self::Destination::*;
 use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan};
 
 use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper, DiagnosticId};
-use RenderSpan::*;
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
@@ -35,6 +34,7 @@ impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
+        let mut suggestions: &[_] = &[];
 
         if let Some((sugg, rest)) = db.suggestions.split_first() {
             if rest.is_empty() &&
@@ -60,14 +60,7 @@ impl Emitter for EmitterWriter {
                 // to be consistent. We could try to figure out if we can
                 // make one (or the first one) inline, but that would give
                 // undue importance to a semi-random suggestion
-                for sugg in &db.suggestions {
-                    children.push(SubDiagnostic {
-                        level: Level::Help,
-                        message: Vec::new(),
-                        span: MultiSpan::new(),
-                        render_span: Some(Suggestion(sugg.clone())),
-                    });
-                }
+                suggestions = &db.suggestions;
             }
         }
 
@@ -76,7 +69,8 @@ impl Emitter for EmitterWriter {
                                    &db.styled_message(),
                                    &db.code,
                                    &primary_span,
-                                   &children);
+                                   &children,
+                                   &suggestions);
     }
 }
 
@@ -1179,7 +1173,8 @@ impl EmitterWriter {
                              message: &Vec<(String, Style)>,
                              code: &Option<DiagnosticId>,
                              span: &MultiSpan,
-                             children: &Vec<SubDiagnostic>) {
+                             children: &Vec<SubDiagnostic>,
+                             suggestions: &[CodeSuggestion]) {
         let max_line_num = self.get_max_line_num(span, children);
         let max_line_num_len = max_line_num.to_string().len();
 
@@ -1198,37 +1193,23 @@ impl EmitterWriter {
                 }
                 if !self.short_message {
                     for child in children {
-                        match child.render_span {
-                            Some(FullSpan(ref msp)) => {
-                                match self.emit_message_default(msp,
-                                                                &child.styled_message(),
-                                                                &None,
-                                                                &child.level,
-                                                                max_line_num_len,
-                                                                true) {
-                                    Err(e) => panic!("failed to emit error: {}", e),
-                                    _ => ()
-                                }
-                            }
-                            Some(Suggestion(ref cs)) => {
-                                match self.emit_suggestion_default(cs,
-                                                                   &child.level,
-                                                                   max_line_num_len) {
-                                    Err(e) => panic!("failed to emit error: {}", e),
-                                    _ => ()
-                                }
-                            }
-                            None => {
-                                match self.emit_message_default(&child.span,
-                                                                &child.styled_message(),
-                                                                &None,
-                                                                &child.level,
-                                                                max_line_num_len,
-                                                                true) {
-                                    Err(e) => panic!("failed to emit error: {}", e),
-                                    _ => (),
-                                }
-                            }
+                        let span = child.render_span.as_ref().unwrap_or(&child.span);
+                        match self.emit_message_default(&span,
+                                                        &child.styled_message(),
+                                                        &None,
+                                                        &child.level,
+                                                        max_line_num_len,
+                                                        true) {
+                            Err(e) => panic!("failed to emit error: {}", e),
+                            _ => ()
+                        }
+                    }
+                    for sugg in suggestions {
+                        match self.emit_suggestion_default(sugg,
+                                                           &Level::Help,
+                                                           max_line_num_len) {
+                            Err(e) => panic!("failed to emit error: {}", e),
+                            _ => ()
                         }
                     }
                 }
