@@ -44,7 +44,9 @@ enum StructLikeVariants {
         // Pre-comment
         #[Attr50] y: SomeType, // Aanother Comment
     },
-    SL { a: A },
+    SL {
+        a: A,
+    },
 }
 
 enum X {
@@ -65,7 +67,10 @@ pub enum EnumWithAttributes {
     SkippedItem(String,String,), // Post-comment
     #[another_attr]
     #[attr2]
-    ItemStruct { x: usize, y: usize }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
+    ItemStruct {
+        x: usize,
+        y: usize,
+    }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
     // And another
     ForcedPreflight, /* AAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                       * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
