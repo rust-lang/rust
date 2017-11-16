@@ -99,12 +99,12 @@ pub fn format_expr(
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, &ptr_vec_to_ref_vec(items), expr.span, shape)
         }
-        ast::ExprKind::If(..) |
-        ast::ExprKind::IfLet(..) |
-        ast::ExprKind::ForLoop(..) |
-        ast::ExprKind::Loop(..) |
-        ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
+        ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
         ast::ExprKind::Block(ref block) => {
             match expr_type {
@@ -161,10 +161,10 @@ pub fn format_expr(
         ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
             closures::rewrite_closure(capture, fn_decl, body, expr.span, context, shape)
         }
-        ast::ExprKind::Try(..) |
-        ast::ExprKind::Field(..) |
-        ast::ExprKind::TupField(..) |
-        ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
+        ast::ExprKind::Try(..)
+        | ast::ExprKind::Field(..)
+        | ast::ExprKind::TupField(..)
+        | ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
         ast::ExprKind::Mac(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
@@ -2060,29 +2060,29 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
             (context.use_block_indent() && args_len == 1)
                 || (context.config.indent_style() == IndentStyle::Visual && args_len > 1)
         }
-        ast::ExprKind::If(..) |
-        ast::ExprKind::IfLet(..) |
-        ast::ExprKind::ForLoop(..) |
-        ast::ExprKind::Loop(..) |
-        ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) => {
+        ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..) => {
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
         ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
             context.use_block_indent()
                 || context.config.indent_style() == IndentStyle::Visual && args_len > 1
         }
-        ast::ExprKind::Array(..) |
-        ast::ExprKind::Call(..) |
-        ast::ExprKind::Mac(..) |
-        ast::ExprKind::MethodCall(..) |
-        ast::ExprKind::Struct(..) |
-        ast::ExprKind::Tup(..) => context.use_block_indent() && args_len == 1,
-        ast::ExprKind::AddrOf(_, ref expr) |
-        ast::ExprKind::Box(ref expr) |
-        ast::ExprKind::Try(ref expr) |
-        ast::ExprKind::Unary(_, ref expr) |
-        ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
+        ast::ExprKind::Array(..)
+        | ast::ExprKind::Call(..)
+        | ast::ExprKind::Mac(..)
+        | ast::ExprKind::MethodCall(..)
+        | ast::ExprKind::Struct(..)
+        | ast::ExprKind::Tup(..) => context.use_block_indent() && args_len == 1,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
         _ => false,
     }
 }

@@ -240,10 +240,10 @@ pub fn semicolon_for_expr(context: &RewriteContext, expr: &ast::Expr) -> bool {
 pub fn semicolon_for_stmt(context: &RewriteContext, stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Semi(ref expr) => match expr.node {
-            ast::ExprKind::While(..) |
-            ast::ExprKind::WhileLet(..) |
-            ast::ExprKind::Loop(..) |
-            ast::ExprKind::ForLoop(..) => false,
+            ast::ExprKind::While(..)
+            | ast::ExprKind::WhileLet(..)
+            | ast::ExprKind::Loop(..)
+            | ast::ExprKind::ForLoop(..) => false,
             ast::ExprKind::Break(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Ret(..) => {
                 context.config.trailing_semicolon()
             }
@@ -450,18 +450,18 @@ pub fn paren_overhead(context: &RewriteContext) -> usize {
 
 pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
     match e.node {
-        ast::ExprKind::InPlace(ref e, _) |
-        ast::ExprKind::Call(ref e, _) |
-        ast::ExprKind::Binary(_, ref e, _) |
-        ast::ExprKind::Cast(ref e, _) |
-        ast::ExprKind::Type(ref e, _) |
-        ast::ExprKind::Assign(ref e, _) |
-        ast::ExprKind::AssignOp(_, ref e, _) |
-        ast::ExprKind::Field(ref e, _) |
-        ast::ExprKind::TupField(ref e, _) |
-        ast::ExprKind::Index(ref e, _) |
-        ast::ExprKind::Range(Some(ref e), _, _) |
-        ast::ExprKind::Try(ref e) => left_most_sub_expr(e),
+        ast::ExprKind::InPlace(ref e, _)
+        | ast::ExprKind::Call(ref e, _)
+        | ast::ExprKind::Binary(_, ref e, _)
+        | ast::ExprKind::Cast(ref e, _)
+        | ast::ExprKind::Type(ref e, _)
+        | ast::ExprKind::Assign(ref e, _)
+        | ast::ExprKind::AssignOp(_, ref e, _)
+        | ast::ExprKind::Field(ref e, _)
+        | ast::ExprKind::TupField(ref e, _)
+        | ast::ExprKind::Index(ref e, _)
+        | ast::ExprKind::Range(Some(ref e), _, _)
+        | ast::ExprKind::Try(ref e) => left_most_sub_expr(e),
         _ => e,
     }
 }

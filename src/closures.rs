@@ -328,17 +328,17 @@ where
 
 fn is_block_closure_forced(expr: &ast::Expr) -> bool {
     match expr.node {
-        ast::ExprKind::If(..) |
-        ast::ExprKind::IfLet(..) |
-        ast::ExprKind::Loop(..) |
-        ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) |
-        ast::ExprKind::ForLoop(..) => true,
-        ast::ExprKind::AddrOf(_, ref expr) |
-        ast::ExprKind::Box(ref expr) |
-        ast::ExprKind::Try(ref expr) |
-        ast::ExprKind::Unary(_, ref expr) |
-        ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced(expr),
+        ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..)
+        | ast::ExprKind::ForLoop(..) => true,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced(expr),
         _ => false,
     }
 }

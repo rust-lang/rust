@@ -350,19 +350,19 @@ fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool
         ast::ExprKind::Mac(..) | ast::ExprKind::Call(..) => {
             context.use_block_indent() && repr.contains('\n')
         }
-        ast::ExprKind::Struct(..) |
-        ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) |
-        ast::ExprKind::If(..) |
-        ast::ExprKind::IfLet(..) |
-        ast::ExprKind::Block(..) |
-        ast::ExprKind::Loop(..) |
-        ast::ExprKind::ForLoop(..) |
-        ast::ExprKind::Match(..) => repr.contains('\n'),
-        ast::ExprKind::Paren(ref expr) |
-        ast::ExprKind::Binary(_, _, ref expr) |
-        ast::ExprKind::Index(_, ref expr) |
-        ast::ExprKind::Unary(_, ref expr) => is_block_expr(context, expr, repr),
+        ast::ExprKind::Struct(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..)
+        | ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Match(..) => repr.contains('\n'),
+        ast::ExprKind::Paren(ref expr)
+        | ast::ExprKind::Binary(_, _, ref expr)
+        | ast::ExprKind::Index(_, ref expr)
+        | ast::ExprKind::Unary(_, ref expr) => is_block_expr(context, expr, repr),
         _ => false,
     }
 }
@@ -396,9 +396,9 @@ fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Exp
         ast::ExprKind::MethodCall(_, ref expressions) => {
             Some(convert_try(&expressions[0], context))
         }
-        ast::ExprKind::TupField(ref subexpr, _) |
-        ast::ExprKind::Field(ref subexpr, _) |
-        ast::ExprKind::Try(ref subexpr) => Some(convert_try(subexpr, context)),
+        ast::ExprKind::TupField(ref subexpr, _)
+        | ast::ExprKind::Field(ref subexpr, _)
+        | ast::ExprKind::Try(ref subexpr) => Some(convert_try(subexpr, context)),
         _ => None,
     }
 }
