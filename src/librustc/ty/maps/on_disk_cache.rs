@@ -11,9 +11,9 @@
 use dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use errors::Diagnostic;
 use hir;
-use hir::def_id::{CrateNum, DefIndex, DefId, RESERVED_FOR_INCR_COMP_CACHE,
-                  LOCAL_CRATE};
-use hir::map::definitions::{Definitions, DefPathTable};
+use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
+                  RESERVED_FOR_INCR_COMP_CACHE, LOCAL_CRATE};
+use hir::map::definitions::DefPathHash;
 use middle::const_val::ByteArray;
 use middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashMap;
@@ -37,7 +37,6 @@ use ty::subst::Substs;
 // Some magic values used for verifying that encoding and decoding. These are
 // basically random numbers.
 const PREV_DIAGNOSTICS_TAG: u64 = 0x1234_5678_A1A1_A1A1;
-const DEF_PATH_TABLE_TAG: u64 = 0x1234_5678_B2B2_B2B2;
 const QUERY_RESULT_INDEX_TAG: u64 = 0x1234_5678_C3C3_C3C3;
 
 /// `OnDiskCache` provides an interface to incr. comp. data cached from the
@@ -56,10 +55,8 @@ pub struct OnDiskCache<'sess> {
     // compilation session.
     current_diagnostics: RefCell<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
-
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     cnum_map: RefCell<Option<IndexVec<CrateNum, Option<CrateNum>>>>,
-    prev_def_path_tables: Vec<DefPathTable>,
 
     prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
     codemap: &'sess CodeMap,
@@ -92,14 +89,13 @@ impl<'sess> OnDiskCache<'sess> {
             (header, decoder.position())
         };
 
-        let (prev_diagnostics, prev_def_path_tables, query_result_index) = {
+        let (prev_diagnostics, query_result_index) = {
             let mut decoder = CacheDecoder {
                 tcx: None,
                 opaque: opaque::Decoder::new(&data[..], post_header_pos),
                 codemap: sess.codemap(),
                 prev_filemap_starts: &header.prev_filemap_starts,
                 cnum_map: &IndexVec::new(),
-                prev_def_path_tables: &Vec::new(),
             };
 
             // Decode Diagnostics
@@ -110,11 +106,6 @@ impl<'sess> OnDiskCache<'sess> {
                                  diagnostics from incr. comp. cache.");
                 diagnostics.into_iter().collect()
             };
-
-            // Decode DefPathTables
-            let prev_def_path_tables: Vec<DefPathTable> =
-                decode_tagged(&mut decoder, DEF_PATH_TABLE_TAG)
-                    .expect("Error while trying to decode cached DefPathTables.");
 
             // Decode the *position* of the query result index
             let query_result_index_pos = {
@@ -131,7 +122,7 @@ impl<'sess> OnDiskCache<'sess> {
                     decode_tagged(decoder, QUERY_RESULT_INDEX_TAG)
                 }).expect("Error while trying to decode query result index.");
 
-            (prev_diagnostics, prev_def_path_tables, query_result_index)
+            (prev_diagnostics, query_result_index)
         };
 
         OnDiskCache {
@@ -140,7 +131,6 @@ impl<'sess> OnDiskCache<'sess> {
             prev_filemap_starts: header.prev_filemap_starts,
             prev_cnums: header.prev_cnums,
             cnum_map: RefCell::new(None),
-            prev_def_path_tables,
             codemap: sess.codemap(),
             current_diagnostics: RefCell::new(FxHashMap()),
             query_result_index: query_result_index.into_iter().collect(),
@@ -154,7 +144,6 @@ impl<'sess> OnDiskCache<'sess> {
             prev_filemap_starts: BTreeMap::new(),
             prev_cnums: vec![],
             cnum_map: RefCell::new(None),
-            prev_def_path_tables: Vec::new(),
             codemap,
             current_diagnostics: RefCell::new(FxHashMap()),
             query_result_index: FxHashMap(),
@@ -172,10 +161,10 @@ impl<'sess> OnDiskCache<'sess> {
         let _in_ignore = tcx.dep_graph.in_ignore();
 
         let mut encoder = CacheEncoder {
+            tcx,
             encoder,
             type_shorthands: FxHashMap(),
             predicate_shorthands: FxHashMap(),
-            definitions: tcx.hir.definitions(),
         };
 
 
@@ -210,22 +199,6 @@ impl<'sess> OnDiskCache<'sess> {
                 .collect();
 
         encoder.encode_tagged(PREV_DIAGNOSTICS_TAG, &diagnostics)?;
-
-
-        // Encode all DefPathTables
-        let upstream_def_path_tables = tcx.all_crate_nums(LOCAL_CRATE)
-                                          .iter()
-                                          .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
-                                          .collect::<FxHashMap<_,_>>();
-        let def_path_tables: Vec<&DefPathTable> = sorted_cnums.into_iter().map(|cnum| {
-            if cnum == LOCAL_CRATE {
-                tcx.hir.definitions().def_path_table()
-            } else {
-                &*upstream_def_path_tables[&cnum]
-            }
-        }).collect();
-
-        encoder.encode_tagged(DEF_PATH_TABLE_TAG, &def_path_tables)?;
 
 
         // Encode query results
@@ -297,7 +270,6 @@ impl<'sess> OnDiskCache<'sess> {
             codemap: self.codemap,
             prev_filemap_starts: &self.prev_filemap_starts,
             cnum_map: cnum_map.as_ref().unwrap(),
-            prev_def_path_tables: &self.prev_def_path_tables,
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -373,7 +345,6 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     codemap: &'x CodeMap,
     prev_filemap_starts: &'x BTreeMap<BytePos, StableFilemapId>,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
-    prev_def_path_tables: &'x Vec<DefPathTable>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
@@ -548,32 +519,24 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<DefIndex> for CacheDecoder<'a, 'tcx, 'x> {
 // sessions, to map the old DefId to the new one.
 impl<'a, 'tcx, 'x> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<DefId, Self::Error> {
-        // Decode the unmapped CrateNum
-        let prev_cnum = CrateNum::default_decode(self)?;
-
-        // Decode the unmapped DefIndex
-        let def_index = DefIndex::default_decode(self)?;
-
-        // Unmapped CrateNum and DefIndex are valid keys for the *cached*
-        // DefPathTables, so we use them to look up the DefPathHash.
-        let def_path_hash = self.prev_def_path_tables[prev_cnum.index()]
-                                .def_path_hash(def_index);
+        // Load the DefPathHash which is was we encoded the DefId as.
+        let def_path_hash = DefPathHash::decode(self)?;
 
         // Using the DefPathHash, we can lookup the new DefId
         Ok(self.tcx().def_path_hash_to_def_id.as_ref().unwrap()[&def_path_hash])
     }
 }
 
+impl<'a, 'tcx, 'x> SpecializedDecoder<LocalDefId> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
+        Ok(LocalDefId::from_def_id(DefId::decode(self)?))
+    }
+}
+
 impl<'a, 'tcx, 'x> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<hir::HirId, Self::Error> {
-        // Decode the unmapped DefIndex of the HirId.
-        let def_index = DefIndex::default_decode(self)?;
-
-        // Use the unmapped DefIndex to look up the DefPathHash in the cached
-        // DefPathTable. For HirIds we know that we always have to look in the
-        // *local* DefPathTable.
-        let def_path_hash = self.prev_def_path_tables[LOCAL_CRATE.index()]
-                                .def_path_hash(def_index);
+        // Load the DefPathHash which is was we encoded the DefIndex as.
+        let def_path_hash = DefPathHash::decode(self)?;
 
         // Use the DefPathHash to map to the current DefId.
         let def_id = self.tcx()
@@ -666,16 +629,17 @@ for CacheDecoder<'a, 'tcx, 'x> {
 
 //- ENCODING -------------------------------------------------------------------
 
-struct CacheEncoder<'enc, 'tcx, E>
-    where E: 'enc + ty_codec::TyEncoder
+struct CacheEncoder<'enc, 'a, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder,
+          'tcx: 'a,
 {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     encoder: &'enc mut E,
     type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    definitions: &'enc Definitions,
 }
 
-impl<'enc, 'tcx, E> CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     /// Encode something with additional information that allows to do some
@@ -699,7 +663,7 @@ impl<'enc, 'tcx, E> CacheEncoder<'enc, 'tcx, E>
     }
 }
 
-impl<'enc, 'tcx, E> ty_codec::TyEncoder for CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> ty_codec::TyEncoder for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     fn position(&self) -> usize {
@@ -707,7 +671,7 @@ impl<'enc, 'tcx, E> ty_codec::TyEncoder for CacheEncoder<'enc, 'tcx, E>
     }
 }
 
-impl<'enc, 'tcx, E> SpecializedEncoder<ty::Ty<'tcx>> for CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<ty::Ty<'tcx>> for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     fn specialized_encode(&mut self, ty: &ty::Ty<'tcx>) -> Result<(), Self::Error> {
@@ -716,8 +680,8 @@ impl<'enc, 'tcx, E> SpecializedEncoder<ty::Ty<'tcx>> for CacheEncoder<'enc, 'tcx
     }
 }
 
-impl<'enc, 'tcx, E> SpecializedEncoder<ty::GenericPredicates<'tcx>>
-    for CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<ty::GenericPredicates<'tcx>>
+    for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     fn specialized_encode(&mut self,
@@ -728,7 +692,7 @@ impl<'enc, 'tcx, E> SpecializedEncoder<ty::GenericPredicates<'tcx>>
     }
 }
 
-impl<'enc, 'tcx, E> SpecializedEncoder<hir::HirId> for CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<hir::HirId> for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     fn specialized_encode(&mut self, id: &hir::HirId) -> Result<(), Self::Error> {
@@ -737,18 +701,46 @@ impl<'enc, 'tcx, E> SpecializedEncoder<hir::HirId> for CacheEncoder<'enc, 'tcx, 
             local_id,
         } = *id;
 
-        owner.encode(self)?;
+        let def_path_hash = self.tcx.hir.definitions().def_path_hash(owner);
+
+        def_path_hash.encode(self)?;
         local_id.encode(self)
+    }
+}
+
+
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<DefId> for CacheEncoder<'enc, 'a, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, id: &DefId) -> Result<(), Self::Error> {
+        let def_path_hash = self.tcx.def_path_hash(*id);
+        def_path_hash.encode(self)
+    }
+}
+
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<LocalDefId> for CacheEncoder<'enc, 'a, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, id: &LocalDefId) -> Result<(), Self::Error> {
+        id.to_def_id().encode(self)
+    }
+}
+
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<DefIndex> for CacheEncoder<'enc, 'a, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, _: &DefIndex) -> Result<(), Self::Error> {
+        bug!("Encoding DefIndex without context.")
     }
 }
 
 // NodeIds are not stable across compilation sessions, so we store them in their
 // HirId representation. This allows use to map them to the current NodeId.
-impl<'enc, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     fn specialized_encode(&mut self, node_id: &NodeId) -> Result<(), Self::Error> {
-        let hir_id = self.definitions.node_to_hir_id(*node_id);
+        let hir_id = self.tcx.hir.node_to_hir_id(*node_id);
         hir_id.encode(self)
     }
 }
@@ -761,7 +753,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'enc, 'tcx, E> Encoder for CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> Encoder for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     type Error = E::Error;
@@ -803,8 +795,8 @@ impl IntEncodedWithFixedSize {
 impl UseSpecializedEncodable for IntEncodedWithFixedSize {}
 impl UseSpecializedDecodable for IntEncodedWithFixedSize {}
 
-impl<'enc, 'tcx, E> SpecializedEncoder<IntEncodedWithFixedSize>
-for CacheEncoder<'enc, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<IntEncodedWithFixedSize>
+for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     fn specialized_encode(&mut self, x: &IntEncodedWithFixedSize) -> Result<(), Self::Error> {
@@ -836,12 +828,12 @@ for CacheDecoder<'a, 'tcx, 'x> {
     }
 }
 
-fn encode_query_results<'x, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                            encoder: &mut CacheEncoder<'x, 'tcx, E>,
-                                            query_result_index: &mut EncodedQueryResultIndex)
-                                            -> Result<(), E::Error>
+fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                              encoder: &mut CacheEncoder<'enc, 'a, 'tcx, E>,
+                                              query_result_index: &mut EncodedQueryResultIndex)
+                                              -> Result<(), E::Error>
     where Q: super::plumbing::GetCacheInternal<'tcx>,
-          E: 'x + TyEncoder,
+          E: 'enc + TyEncoder,
           Q::Value: Encodable,
 {
     for (key, entry) in Q::get_cache_internal(tcx).map.iter() {
