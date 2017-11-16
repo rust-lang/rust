@@ -198,7 +198,7 @@ impl DefId {
         self.krate == LOCAL_CRATE
     }
 
-     #[inline]
+    #[inline]
     pub fn to_local(self) -> LocalDefId {
         LocalDefId::from_def_id(self)
     }
@@ -207,7 +207,12 @@ impl DefId {
 impl serialize::UseSpecializedEncodable for DefId {}
 impl serialize::UseSpecializedDecodable for DefId {}
 
-
+/// A LocalDefId is equivalent to a DefId with `krate == LOCAL_CRATE`. Since
+/// we encode this information in the type, we can ensure at compile time that
+/// no DefIds from upstream crates get thrown into the mix. There are quite a
+/// few cases where we know that only DefIds from the local crate are expected
+/// and a DefId from a different crate would signify a bug somewhere. This
+/// is when LocalDefId comes in handy.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct LocalDefId(DefIndex);
 
