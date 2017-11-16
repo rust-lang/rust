@@ -300,18 +300,8 @@ fn issue494() {
 fn issue386() {
     match foo {
         BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
-        BiAnd
-        | BiOr
-        | BiAdd
-        | BiSub
-        | BiMul
-        | BiDiv
-        | BiRem
-        | BiBitXor
-        | BiBitAnd
-        | BiBitOr
-        | BiShl
-        | BiShr => false,
+        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem | BiBitXor | BiBitAnd | BiBitOr
+        | BiShl | BiShr => false,
     }
 }
 
