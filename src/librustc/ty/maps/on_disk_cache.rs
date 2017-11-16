@@ -14,7 +14,6 @@ use hir;
 use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
                   RESERVED_FOR_INCR_COMP_CACHE, LOCAL_CRATE};
 use hir::map::definitions::DefPathHash;
-use middle::const_val::ByteArray;
 use middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -22,7 +21,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
                       UseSpecializedDecodable, UseSpecializedEncodable};
 use session::{CrateDisambiguator, Session};
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
@@ -32,7 +30,6 @@ use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
 use ty;
 use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use ty::context::TyCtxt;
-use ty::subst::Substs;
 
 // Some magic values used for verifying that encoding and decoding. These are
 // basically random numbers.
@@ -359,46 +356,6 @@ impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
     }
 }
 
-macro_rules! decoder_methods {
-    ($($name:ident -> $ty:ty;)*) => {
-        $(fn $name(&mut self) -> Result<$ty, Self::Error> {
-            self.opaque.$name()
-        })*
-    }
-}
-
-impl<'a, 'tcx, 'x> Decoder for CacheDecoder<'a, 'tcx, 'x> {
-    type Error = String;
-
-    decoder_methods! {
-        read_nil -> ();
-
-        read_u128 -> u128;
-        read_u64 -> u64;
-        read_u32 -> u32;
-        read_u16 -> u16;
-        read_u8 -> u8;
-        read_usize -> usize;
-
-        read_i128 -> i128;
-        read_i64 -> i64;
-        read_i32 -> i32;
-        read_i16 -> i16;
-        read_i8 -> i8;
-        read_isize -> isize;
-
-        read_bool -> bool;
-        read_f64 -> f64;
-        read_f32 -> f32;
-        read_char -> char;
-        read_str -> Cow<str>;
-    }
-
-    fn error(&mut self, err: &str) -> Self::Error {
-        self.opaque.error(err)
-    }
-}
-
 // Decode something that was encoded with encode_tagged() and verify that the
 // tag matches and the correct amount of bytes was read.
 fn decode_tagged<'a, 'tcx, D, T, V>(decoder: &mut D,
@@ -481,6 +438,8 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
     }
 }
 
+implement_ty_decoder!( CacheDecoder<'a, 'tcx, 'x> );
+
 impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
         let lo = BytePos::decode(self)?;
@@ -495,12 +454,6 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
         }
 
         Ok(DUMMY_SP)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<CrateNum> for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<CrateNum, Self::Error> {
-        ty_codec::decode_cnum(self)
     }
 }
 
@@ -566,66 +519,6 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx, 'x> {
         Ok(self.tcx().hir.hir_to_node_id(hir_id))
     }
 }
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<ty::Ty<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<ty::Ty<'tcx>, Self::Error> {
-        ty_codec::decode_ty(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<ty::GenericPredicates<'tcx>>
-for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<ty::GenericPredicates<'tcx>, Self::Error> {
-        ty_codec::decode_predicates(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx Substs<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
-        ty_codec::decode_substs(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<ty::Region<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<ty::Region<'tcx>, Self::Error> {
-        ty_codec::decode_region(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::Slice<ty::Ty<'tcx>>>
-for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<&'tcx ty::Slice<ty::Ty<'tcx>>, Self::Error> {
-        ty_codec::decode_ty_slice(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::AdtDef> for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
-        ty_codec::decode_adt_def(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>
-    for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self)
-        -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
-        ty_codec::decode_existential_predicate_slice(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<ByteArray<'tcx>> for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<ByteArray<'tcx>, Self::Error> {
-        ty_codec::decode_byte_array(self)
-    }
-}
-
-impl<'a, 'tcx, 'x> SpecializedDecoder<&'tcx ty::Const<'tcx>>
-for CacheDecoder<'a, 'tcx, 'x> {
-    fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-        ty_codec::decode_const(self)
-    }
-}
-
 
 //- ENCODING -------------------------------------------------------------------
 
