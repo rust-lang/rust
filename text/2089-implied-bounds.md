@@ -67,7 +67,7 @@ However what we know is that if `Cow<'a, B>` is well-formed, then `B` *has* to i
 
 Currently, impls and functions have to prove that their arguments are well-formed. Under this proposal, they would *assume* that their arguments are well-formed, leaving the responsibility for proving well-formedness to the caller. Hence we would be able to drop the `B: ToOwned` bounds in the previous examples.
 
-Beside reducing repeated constraints, it would also provide a clearer separation between what bounds a type needs so that it is is well-formed, and what additional bounds an `fn` or an `impl` actually needs:
+Beside reducing repeated constraints, it would also provide a clearer separation between what bounds a type needs so that it is well-formed, and what additional bounds an `fn` or an `impl` actually needs:
 
 ```rust
 struct Set<K> where K: Hash + Eq { ... }
