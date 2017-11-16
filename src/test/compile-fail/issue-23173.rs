@@ -14,5 +14,7 @@ enum Token { LeftParen, RightParen, Plus, Minus, /* etc */ }
 fn use_token(token: &Token) { unimplemented!() }
 
 fn main() {
-    use_token(&Token::Homura); //~ ERROR no variant named `Homura`
+    use_token(&Token::Homura);
+    //~^ ERROR no variant named `Homura`
+    //~| NOTE variant not found in `Token`
 }

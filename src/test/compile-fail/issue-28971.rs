@@ -18,6 +18,7 @@ fn main(){
         match Foo::Bar(1) {
             Foo::Baz(..) => (),
             //~^ ERROR no variant named `Baz` found for type `Foo`
+            //~| NOTE variant not found in `Foo`
             _ => (),
         }
     });

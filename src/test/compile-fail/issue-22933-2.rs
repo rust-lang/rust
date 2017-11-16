@@ -13,6 +13,7 @@ enum Delicious { //~ NOTE variant `PIE` not found here
     Apple    = 0x2,
     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
     //~^ ERROR no variant named `PIE` found for type `Delicious`
+    //~| NOTE variant not found in `Delicious`
 }
 
 fn main() {}

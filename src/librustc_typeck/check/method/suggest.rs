@@ -176,7 +176,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
                 let ty_string = self.ty_to_string(actual);
-                let type_str = if mode == Mode::MethodCall {
+                let is_method = mode == Mode::MethodCall;
+                let type_str = if is_method {
                     "method"
                 } else if actual.is_enum() {
                     "variant"
@@ -207,16 +208,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
 
                 if let Some(def) =  actual.ty_adt_def() {
-                    let full_sp = tcx.def_span(def.did);
-                    let def_sp = tcx.sess.codemap().def_span(full_sp);
-                    err.span_label(def_sp, format!("{} `{}` not found {}",
-                                                   type_str,
-                                                   item_name,
-                                                   if def.is_enum() {
-                                                       "here"
-                                                   } else {
-                                                       "for this"
-                                                   }));
+                    if let Some(full_sp) = tcx.hir.span_if_local(def.did) {
+                        let def_sp = tcx.sess.codemap().def_span(full_sp);
+                        err.span_label(def_sp, format!("{} `{}` not found {}",
+                                                       type_str,
+                                                       item_name,
+                                                       if def.is_enum() && !is_method {
+                                                           "here"
+                                                       } else {
+                                                           "for this"
+                                                       }));
+                    }
                 }
 
                 // If the method name is the name of a field with a function or closure type,
