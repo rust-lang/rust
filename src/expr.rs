@@ -1457,13 +1457,20 @@ fn rewrite_match_pattern(
         .map(|p| p.rewrite(context, pat_shape))
         .collect::<Option<Vec<_>>>()?;
 
+    let use_mixed_layout = pats.iter()
+        .zip(pat_strs.iter())
+        .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
     let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = definitive_tactic(
-        &items,
-        ListTactic::HorizontalVertical,
-        Separator::VerticalBar,
-        pat_shape.width,
-    );
+    let tactic = if use_mixed_layout {
+        DefinitiveListTactic::Mixed
+    } else {
+        definitive_tactic(
+            &items,
+            ListTactic::HorizontalVertical,
+            Separator::VerticalBar,
+            pat_shape.width,
+        )
+    };
     let fmt = ListFormatting {
         tactic: tactic,
         separator: " |",
