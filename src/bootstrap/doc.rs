@@ -133,6 +133,52 @@ impl Step for UnstableBook {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct CargoBook {
+    target: Interned<String>,
+    name: Interned<String>,
+}
+
+impl Step for CargoBook {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.path("src/tools/cargo/src/doc/book").default_condition(builder.build.config.docs)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(CargoBook {
+            target: run.target,
+            name: INTERNER.intern_str("cargo"),
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+
+        let target = self.target;
+        let name = self.name;
+        let src = PathBuf::from("src/tools/cargo/src/doc/book");
+
+        let out = build.doc_out(target);
+        t!(fs::create_dir_all(&out));
+
+        let out = out.join(name);
+
+        println!("Cargo Book ({}) - {}", target, name);
+
+        let _ = fs::remove_dir_all(&out);
+
+        build.run(builder.tool_cmd(Tool::Rustbook)
+                       .arg("build")
+                       .arg(&src)
+                       .arg("-d")
+                       .arg(out));
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct RustbookSrc {
     target: Interned<String>,
     name: Interned<String>,
@@ -237,51 +283,6 @@ impl Step for TheBook {
 
             invoke_rustdoc(builder, self.compiler, target, path);
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CargoBook {
-    target: Interned<String>,
-}
-
-impl Step for CargoBook {
-    type Output = ();
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        let builder = run.builder;
-        run.path("src/doc/cargo").default_condition(builder.build.config.docs)
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(CargoBook {
-            target: run.target,
-        });
-    }
-
-    /// Create a placeholder for the cargo documentation so that doc.rust-lang.org/cargo will
-    /// redirect to doc.crates.io. We want to publish doc.rust-lang.org/cargo in the paper
-    /// version of the book, but we don't want to rush the process of switching cargo's docs
-    /// over to mdbook and deploying them. When the cargo book is ready, this implementation
-    /// should build the mdbook instead of this redirect page.
-    fn run(self, builder: &Builder) {
-        let build = builder.build;
-        let out = build.doc_out(self.target);
-
-        let cargo_dir = out.join("cargo");
-        t!(fs::create_dir_all(&cargo_dir));
-
-        let index = cargo_dir.join("index.html");
-        let redirect_html = r#"
-            <html>
-                <head>
-                    <meta http-equiv="refresh" content="0; URL='http://doc.crates.io'" />
-                </head>
-            </html>"#;
-
-        println!("Creating cargo book redirect page");
-        t!(t!(File::create(&index)).write_all(redirect_html.as_bytes()));
     }
 }
 
