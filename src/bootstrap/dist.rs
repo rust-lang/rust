@@ -1159,8 +1159,6 @@ impl Step for Rustfmt {
         t!(fs::create_dir_all(&image));
 
         // Prepare the image directory
-        // We expect RLS to build, because we've exited this step above if tool
-        // state for RLS isn't testing.
         let rustfmt = builder.ensure(tool::Rustfmt {
             compiler: builder.compiler(stage, build.build),
             target
@@ -1262,6 +1260,7 @@ impl Step for Extended {
             compiler: builder.compiler(stage, target),
         });
         let cargo_installer = builder.ensure(Cargo { stage, target });
+        let rustfmt_installer = builder.ensure(Rustfmt { stage, target });
         let rls_installer = builder.ensure(Rls { stage, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
@@ -1299,6 +1298,7 @@ impl Step for Extended {
         tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
+        tarballs.extend(rustfmt_installer.clone());
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
         if build.config.docs {
@@ -1365,6 +1365,9 @@ impl Step for Extended {
             t!(t!(File::open(p)).read_to_string(&mut contents));
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
+            }
+            if rustfmt_installer.is_none() {
+                contents = filter(&contents, "rustfmt");
             }
             let ret = tmp.join(p.file_name().unwrap());
             t!(t!(File::create(&ret)).write_all(contents.as_bytes()));
