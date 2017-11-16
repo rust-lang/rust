@@ -59,6 +59,15 @@ macro_rules! down_cast_data {
     };
 }
 
+macro_rules! access_from {
+    ($save_ctxt:expr, $item:expr) => {
+        Access {
+            public: $item.vis == ast::Visibility::Public,
+            reachable: $save_ctxt.analysis.access_levels.is_reachable($item.id),
+        }
+    }
+}
+
 pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
@@ -416,13 +425,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            self.dumper.dump_def(
-                &Access {
-                    public: field.vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(field.id),
-                },
-                field_data,
-            );
+            self.dumper.dump_def(&access_from!(self.save_ctxt, field), field_data);
         }
     }
 
@@ -482,13 +485,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 |v| v.process_formals(&decl.inputs, &fn_data.qualname),
             );
             self.process_generic_params(ty_params, item.span, &fn_data.qualname, item.id);
-            self.dumper.dump_def(
-                &Access {
-                    public: item.vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-                },
-                fn_data,
-            );
+            self.dumper.dump_def(&access_from!(self.save_ctxt, item), fn_data);
         }
 
         for arg in &decl.inputs {
@@ -511,13 +508,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         self.nest_tables(item.id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
-                v.dumper.dump_def(
-                    &Access {
-                        public: item.vis == ast::Visibility::Public,
-                        reachable: v.save_ctxt.analysis.access_levels.is_reachable(item.id),
-                    },
-                    var_data,
-                );
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item), var_data);
             }
             v.visit_ty(&typ);
             v.visit_expr(expr);
@@ -623,10 +614,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         if !self.span.filter_generated(sub_span, item.span) {
             let span = self.span_from_span(sub_span.expect("No span found for struct"));
             self.dumper.dump_def(
-                &Access {
-                    public: item.vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-                },
+                &access_from!(self.save_ctxt, item),
                 Def {
                     kind,
                     id: ::id_from_node_id(item.id, &self.save_ctxt),
@@ -665,10 +653,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         };
         down_cast_data!(enum_data, DefData, item.span);
 
-        let access = Access {
-            public: item.vis == ast::Visibility::Public,
-            reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-        };
+        let access = access_from!(self.save_ctxt, item);
 
         for variant in &enum_definition.variants {
             let name = variant.node.name.name.to_string();
@@ -817,10 +802,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 .map(|i| ::id_from_node_id(i.id, &self.save_ctxt))
                 .collect();
             self.dumper.dump_def(
-                &Access {
-                    public: item.vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-                },
+                &access_from!(self.save_ctxt, item),
                 Def {
                     kind: DefKind::Trait,
                     id,
@@ -883,13 +865,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_mod(&mut self, item: &ast::Item) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, DefData, item.span);
-            self.dumper.dump_def(
-                &Access {
-                    public: item.vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-                },
-                mod_data,
-            );
+            self.dumper.dump_def(&access_from!(self.save_ctxt, item), mod_data);
         }
     }
 
@@ -1300,10 +1276,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         self.process_macro_use(item.span);
         match item.node {
             Use(ref use_item) => {
-                let access = Access {
-                    public: item.vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-                };
+                let access = access_from!(self.save_ctxt, item);
 
                 match use_item.node {
                     ast::ViewPathSimple(ident, ref path) => {
@@ -1432,10 +1405,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     let id = ::id_from_node_id(item.id, &self.save_ctxt);
 
                     self.dumper.dump_def(
-                        &Access {
-                            public: item.vis == ast::Visibility::Public,
-                            reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-                        },
+                        &access_from!(self.save_ctxt, item),
                         Def {
                             kind: DefKind::Type,
                             id,
@@ -1727,10 +1697,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
     }
 
     fn visit_foreign_item(&mut self, item: &'l ast::ForeignItem) {
-        let access = Access {
-            public: item.vis == ast::Visibility::Public,
-            reachable: self.save_ctxt.analysis.access_levels.is_reachable(item.id),
-        };
+        let access = access_from!(self.save_ctxt, item);
 
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
