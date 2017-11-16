@@ -45,7 +45,9 @@ enum Operation {
     /// Print detailed configuration help.
     ConfigHelp,
     /// Output default config to a file, or stdout if None
-    ConfigOutputDefault { path: Option<String> },
+    ConfigOutputDefault {
+        path: Option<String>,
+    },
     /// No file specified, read from stdin
     Stdin {
         input: String,

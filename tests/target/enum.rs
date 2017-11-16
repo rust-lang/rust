@@ -44,7 +44,9 @@ enum StructLikeVariants {
         // Pre-comment
         #[Attr50] y: SomeType, // Aanother Comment
     },
-    SL { a: A },
+    SL {
+        a: A,
+    },
 }
 
 enum X {
@@ -65,7 +67,10 @@ pub enum EnumWithAttributes {
     SkippedItem(String,String,), // Post-comment
     #[another_attr]
     #[attr2]
-    ItemStruct { x: usize, y: usize }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
+    ItemStruct {
+        x: usize,
+        y: usize,
+    }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
     // And another
     ForcedPreflight, /* AAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                       * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
@@ -182,4 +187,31 @@ pub enum ForegroundColor {
 // #2098
 pub enum E<'a> {
     V(<std::slice::Iter<'a, Xxxxxxxxxxxxxx> as Iterator>::Item),
+}
+
+// #1809
+enum State {
+    TryRecv {
+        pos: usize,
+        lap: u8,
+        closed_count: usize,
+    },
+    Subscribe {
+        pos: usize,
+    },
+    IsReady {
+        pos: usize,
+        ready: bool,
+    },
+    Unsubscribe {
+        pos: usize,
+        lap: u8,
+        id_woken: usize,
+    },
+    FinalTryRecv {
+        pos: usize,
+        id_woken: usize,
+    },
+    TimedOut,
+    Disconnected,
 }
