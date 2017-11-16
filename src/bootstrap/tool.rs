@@ -436,13 +436,14 @@ macro_rules! tool_extended {
 
             fn run($sel, $builder: &Builder) -> Option<PathBuf> {
                 $extra_deps
+                let toolstate = $builder.build.config.toolstate.$toolstate;
                 $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
                     mode: Mode::Librustc,
                     path: $path,
-                    expectation: $builder.build.config.toolstate.$toolstate.passes(ToolState::Compiling),
+                    expectation: toolstate.passes(ToolState::Compiling),
                 })
             }
         }
