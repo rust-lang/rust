@@ -196,6 +196,7 @@ pub fn target_machine_factory(sess: &Session)
     let cpu = CString::new(cpu.as_bytes()).unwrap();
     let features = CString::new(target_feature(sess).as_bytes()).unwrap();
     let is_pie_binary = is_pie_binary(sess);
+    let trap_unreachable = sess.target.target.options.trap_unreachable;
 
     Arc::new(move || {
         let tm = unsafe {
@@ -208,6 +209,7 @@ pub fn target_machine_factory(sess: &Session)
                 is_pie_binary,
                 ffunction_sections,
                 fdata_sections,
+                trap_unreachable,
             )
         };
 

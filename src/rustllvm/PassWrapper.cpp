@@ -366,7 +366,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool PositionIndependentExecutable, bool FunctionSections,
-    bool DataSections) {
+    bool DataSections, bool TrapUnreachable) {
 
   auto CM = fromRust(RustCM);
   auto OptLevel = fromRust(RustOptLevel);
@@ -397,6 +397,14 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
+
+  if (TrapUnreachable) {
+    // Tell LLVM to translate `unreachable` into an explicit trap instruction.
+    // This limits the extent of possible undefined behavior in some cases, as
+    // it prevents control flow from "falling through" into whatever code
+    // happens to be laid out next in memory.
+    Options.TrapUnreachable = true;
+  }
 
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), RealCPU, Feature, Options, RM, CM, OptLevel);
