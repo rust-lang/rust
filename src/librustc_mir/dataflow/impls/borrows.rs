@@ -10,7 +10,7 @@
 
 use rustc::mir::{self, Location, Mir};
 use rustc::mir::visit::Visitor;
-use rustc::ty::{Region, TyCtxt};
+use rustc::ty::{self, Region, TyCtxt};
 use rustc::ty::RegionKind;
 use rustc::ty::RegionKind::ReScope;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -71,10 +71,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                mir: &'a Mir<'tcx>,
                nonlexical_regioncx: Option<&'a RegionInferenceContext<'tcx>>)
                -> Self {
-        let mut visitor = GatherBorrows { idx_vec: IndexVec::new(),
-                                          location_map: FxHashMap(),
-                                          region_map: FxHashMap(),
-                                          region_span_map: FxHashMap()};
+        let mut visitor = GatherBorrows {
+            tcx,
+            mir,
+            idx_vec: IndexVec::new(),
+            location_map: FxHashMap(),
+            region_map: FxHashMap(),
+            region_span_map: FxHashMap()
+        };
         visitor.visit_mir(mir);
         return Borrows { tcx: tcx,
                          mir: mir,
@@ -84,17 +88,22 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                          region_span_map: visitor.region_span_map,
                          nonlexical_regioncx };
 
-        struct GatherBorrows<'tcx> {
+        struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
+            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+            mir: &'a Mir<'tcx>,
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
             location_map: FxHashMap<Location, BorrowIndex>,
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
             region_span_map: FxHashMap<RegionKind, Span>,
         }
-        impl<'tcx> Visitor<'tcx> for GatherBorrows<'tcx> {
+
+        impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             fn visit_rvalue(&mut self,
                             rvalue: &mir::Rvalue<'tcx>,
                             location: mir::Location) {
                 if let mir::Rvalue::Ref(region, kind, ref lvalue) = *rvalue {
+                    if is_unsafe_lvalue(self.tcx, self.mir, lvalue) { return; }
+
                     let borrow = BorrowData {
                         location: location, kind: kind, region: region, lvalue: lvalue.clone(),
                     };
@@ -197,7 +206,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             }
 
             mir::StatementKind::Assign(_, ref rhs) => {
-                if let mir::Rvalue::Ref(region, _, _) = *rhs {
+                if let mir::Rvalue::Ref(region, _, ref lvalue) = *rhs {
+                    if is_unsafe_lvalue(self.tcx, self.mir, lvalue) { return; }
                     let index = self.location_map.get(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
@@ -246,5 +256,37 @@ impl<'a, 'gcx, 'tcx> DataflowOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no Rvalue::Refs are active by default
+    }
+}
+
+fn is_unsafe_lvalue<'a, 'gcx: 'tcx, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    mir: &'a Mir<'tcx>,
+    lvalue: &mir::Lvalue<'tcx>
+) -> bool {
+    use self::mir::Lvalue::*;
+    use self::mir::ProjectionElem;
+
+    match *lvalue {
+        Local(_) => false,
+        Static(ref static_) => tcx.is_static_mut(static_.def_id),
+        Projection(ref proj) => {
+            match proj.elem {
+                ProjectionElem::Field(..) |
+                ProjectionElem::Downcast(..) |
+                ProjectionElem::Subslice { .. } |
+                ProjectionElem::ConstantIndex { .. } |
+                ProjectionElem::Index(_) => {
+                    is_unsafe_lvalue(tcx, mir, &proj.base)
+                }
+                ProjectionElem::Deref => {
+                    let ty = proj.base.ty(mir, tcx).to_ty(tcx);
+                    match ty.sty {
+                        ty::TyRawPtr(..) => true,
+                        _ => is_unsafe_lvalue(tcx, mir, &proj.base),
+                    }
+                }
+            }
+        }
     }
 }
