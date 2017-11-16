@@ -318,13 +318,15 @@ macro_rules! implement_ty_decoder {
             // the caller to pick any lifetime for 'tcx, including 'static,
             // by using the unspecialized proxies to them.
 
-            impl<$($typaram),*> SpecializedDecoder<CrateNum> for $DecoderName<$($typaram),*> {
+            impl<$($typaram),*> SpecializedDecoder<CrateNum>
+            for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<CrateNum, Self::Error> {
                     decode_cnum(self)
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<ty::Ty<'tcx>> for $DecoderName<$($typaram),*> {
+            impl<$($typaram),*> SpecializedDecoder<ty::Ty<'tcx>>
+            for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<ty::Ty<'tcx>, Self::Error> {
                     decode_ty(self)
                 }
@@ -332,18 +334,21 @@ macro_rules! implement_ty_decoder {
 
             impl<$($typaram),*> SpecializedDecoder<ty::GenericPredicates<'tcx>>
             for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<ty::GenericPredicates<'tcx>, Self::Error> {
+                fn specialized_decode(&mut self)
+                                      -> Result<ty::GenericPredicates<'tcx>, Self::Error> {
                     decode_predicates(self)
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx Substs<'tcx>> for $DecoderName<$($typaram),*> {
+            impl<$($typaram),*> SpecializedDecoder<&'tcx Substs<'tcx>>
+            for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
                     decode_substs(self)
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<ty::Region<'tcx>> for $DecoderName<$($typaram),*> {
+            impl<$($typaram),*> SpecializedDecoder<ty::Region<'tcx>>
+            for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<ty::Region<'tcx>, Self::Error> {
                     decode_region(self)
                 }
@@ -351,12 +356,14 @@ macro_rules! implement_ty_decoder {
 
             impl<$($typaram),*> SpecializedDecoder<&'tcx ty::Slice<ty::Ty<'tcx>>>
             for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<&'tcx ty::Slice<ty::Ty<'tcx>>, Self::Error> {
+                fn specialized_decode(&mut self)
+                                      -> Result<&'tcx ty::Slice<ty::Ty<'tcx>>, Self::Error> {
                     decode_ty_slice(self)
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::AdtDef> for $DecoderName<$($typaram),*> {
+            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::AdtDef>
+            for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
                     decode_adt_def(self)
                 }
@@ -370,7 +377,8 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<ByteArray<'tcx>> for $DecoderName<$($typaram),*> {
+            impl<$($typaram),*> SpecializedDecoder<ByteArray<'tcx>>
+            for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<ByteArray<'tcx>, Self::Error> {
                     decode_byte_array(self)
                 }
