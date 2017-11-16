@@ -2266,15 +2266,10 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                            AbiSpace(f.abi),
                            it.name.as_ref().unwrap(),
                            f.generics).len();
-    let mut extra = render_spotlight_traits(it)?;
-    if !extra.is_empty() {
-        extra.insert_str(0, "<div class=\"important-traits\">ⓘ<div class=\"content hidden\">");
-        extra.push_str("</div></div>");
-    };
-    write!(w, "<pre class='rust fn'>")?;
+    write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
     write!(w, "{vis}{constness}{unsafety}{abi}fn \
-               {name}{generics}{decl}{where_clause}</pre>{extra}",
+               {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(f.constness),
            unsafety = UnsafetySpace(f.unsafety),
@@ -2286,8 +2281,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                decl: &f.decl,
                name_len,
                indent: 0,
-           },
-           extra = extra)?;
+           })?;
     document(w, cx, it)
 }
 
@@ -3269,8 +3263,9 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                 if impl_.trait_.def_id().and_then(|d| c.traits.get(&d))
                                         .map_or(false, |t| t.is_spotlight) {
                     if out.is_empty() {
-                        out.push_str("<span class=\"docblock autohide\">");
-                        out.push_str(&format!("<h3>Important traits for {}</h3>", impl_.for_));
+                        out.push_str(
+                            &format!("<h3 class=\"important\">Important traits for {}</h3>",
+                                     impl_.for_));
                         out.push_str("<code class=\"content\">");
                     }
 

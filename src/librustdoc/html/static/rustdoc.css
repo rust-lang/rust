@@ -89,7 +89,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -955,11 +955,14 @@ pre.rust {
 	font-size: 16px;
 }
 
+.important-traits {
+	cursor: pointer;
+}
+
 h4 > .important-traits {
 	position: absolute;
 	left: -44px;
 	top: 2px;
-	cursor: pointer;
 }
 
 .modal {
@@ -976,12 +979,70 @@ h4 > .important-traits {
 	display: block;
 	max-width: 60%;
 	min-width: 200px;
-	background-color: white;
-	padding: 5px;
-	top: 10%;
+	background-color: #eee;
+	padding: 8px;
+	top: 40%;
 	position: absolute;
 	left: 50%;
-	transform: translate(-50%, -50%);
+	transform: translate(-50%, -40%);
 	border: 1px solid #999;
 	border-radius: 4px;
+	border-top-right-radius: 0;
+}
+
+.modal-content > .docblock {
+	margin: 0;
+}
+
+h3.important {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+}
+
+.modal-content > .docblock > code.content {
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
+}
+
+.modal-content > .close {
+	position: absolute;
+	font-weight: 900;
+	right: -25px;
+	top: -1px;
+	font-size: 18px;
+	background-color: #eee;
+	width: 25px;
+	padding-right: 2px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+	text-align: center;
+	border: 1px solid #999;
+	border-right: 0;
+	cursor: pointer;
+}
+
+.modal-content > .close:hover {
+	background-color: #ff1f1f;
+	color: white;
+}
+
+.modal-content > .whiter {
+	height: 25px;
+	position: absolute;
+	width: 3px;
+	background-color: #eee;
+	right: -2px;
+	top: 0px;
+}
+
+.modal-content > .close:hover + .whiter {
+	background-color: #ff1f1f;
+}
+
+#main > div.important-traits {
+	position: absolute;
+	left: -24px;
+	margin-top: 16px;
 }
