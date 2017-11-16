@@ -194,6 +194,7 @@ fn rewrite_closure_fn_decl(
         context.codemap,
         fn_decl.inputs.iter(),
         "|",
+        ",",
         |arg| span_lo_for_arg(arg),
         |arg| span_hi_for_arg(context, arg),
         |arg| arg.rewrite(context, arg_shape),

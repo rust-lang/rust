@@ -489,6 +489,7 @@ impl<'a> FmtVisitor<'a> {
                 self.codemap,
                 enum_def.variants.iter(),
                 "}",
+                ",",
                 |f| if !f.node.attrs.is_empty() {
                     f.node.attrs[0].span.lo()
                 } else {
@@ -2226,6 +2227,7 @@ fn rewrite_args(
                 .map(ArgumentKind::Regular)
                 .chain(variadic_arg),
             ")",
+            ",",
             |arg| match *arg {
                 ArgumentKind::Regular(arg) => span_lo_for_arg(arg),
                 ArgumentKind::Variadic(start) => start,
@@ -2447,6 +2449,7 @@ fn rewrite_generics_inner(
         context.codemap,
         generics_args,
         ">",
+        ",",
         |arg| arg.span().lo(),
         |arg| arg.span().hi(),
         |arg| arg.rewrite(context, shape),
@@ -2589,6 +2592,7 @@ fn rewrite_where_clause_rfc_style(
         context.codemap,
         where_clause.predicates.iter(),
         terminator,
+        ",",
         |pred| pred.span().lo(),
         |pred| pred.span().hi(),
         |pred| pred.rewrite(context, clause_shape),
@@ -2702,6 +2706,7 @@ fn rewrite_where_clause(
         context.codemap,
         where_clause.predicates.iter(),
         terminator,
+        ",",
         |pred| pred.span().lo(),
         |pred| pred.span().hi(),
         |pred| pred.rewrite(context, Shape::legacy(budget, offset)),

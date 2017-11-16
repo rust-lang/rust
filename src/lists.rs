@@ -509,6 +509,7 @@ where
     prev_span_end: BytePos,
     next_span_start: BytePos,
     terminator: &'a str,
+    separator: &'a str,
     leave_last: bool,
 }
 
@@ -581,7 +582,7 @@ where
                         }
                     }
                     let newline_index = post_snippet.find('\n');
-                    if let Some(separator_index) = post_snippet.find_uncommented(",") {
+                    if let Some(separator_index) = post_snippet.find_uncommented(self.separator) {
                         match (block_open_index, newline_index) {
                             // Separator before comment, with the next item on same line.
                             // Comment belongs to next item.
@@ -677,6 +678,7 @@ pub fn itemize_list<'a, T, I, F1, F2, F3>(
     codemap: &'a CodeMap,
     inner: I,
     terminator: &'a str,
+    separator: &'a str,
     get_lo: F1,
     get_hi: F2,
     get_item_string: F3,
@@ -699,6 +701,7 @@ where
         prev_span_end: prev_span_end,
         next_span_start: next_span_start,
         terminator: terminator,
+        separator: separator,
         leave_last: leave_last,
     }
 }

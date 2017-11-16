@@ -230,6 +230,7 @@ fn rewrite_segment(
                     context.codemap,
                     param_list.into_iter(),
                     ">",
+                    ",",
                     |param| param.get_span().lo(),
                     |param| param.get_span().hi(),
                     |seg| seg.rewrite(context, generics_shape),
@@ -321,6 +322,7 @@ where
             .map(|i| ArgumentKind::Regular(Box::new(i)))
             .chain(variadic_arg),
         ")",
+        ",",
         |arg| match *arg {
             ArgumentKind::Regular(ref ty) => ty.span().lo(),
             ArgumentKind::Variadic(start) => start,

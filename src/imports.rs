@@ -212,6 +212,7 @@ fn rewrite_imports(
         context.codemap,
         use_items.iter(),
         "",
+        ";",
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| {
@@ -442,6 +443,7 @@ fn rewrite_use_list(
             context.codemap,
             path_list.iter(),
             "}",
+            ",",
             |vpi| vpi.span.lo(),
             |vpi| vpi.span.hi(),
             rewrite_path_item,
