@@ -26,6 +26,7 @@ use rustc::lint;
 use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
+use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
@@ -48,19 +49,57 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
 
         let def_id = self.tcx.hir.local_def_id(id);
 
-        MatchVisitor {
-            tcx: self.tcx,
-            tables: self.tcx.body_tables(b),
-            region_scope_tree: &self.tcx.region_scope_tree(def_id),
-            param_env: self.tcx.param_env(def_id),
-            identity_substs: Substs::identity_for_item(self.tcx, def_id),
-        }.visit_body(self.tcx.hir.body(b));
+        check_body(self.tcx, def_id, b);
     }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
+        intravisit::walk_item(self, item);
+        match item.node {
+            hir::ItemStatic(.., body_id) | hir::ItemConst(.., body_id) => {
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                check_body(self.tcx, def_id, body_id);
+            }
+            _ => (),
+        }
+    }
+
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
+        intravisit::walk_impl_item(self, ii);
+        if let hir::ImplItemKind::Const(_, body_id) = ii.node {
+            let def_id = self.tcx.hir.local_def_id(ii.id);
+            check_body(self.tcx, def_id, body_id);
+        }
+    }
+
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
+        intravisit::walk_trait_item(self, ti);
+        if let hir::TraitItemKind::Const(_, Some(body_id)) = ti.node {
+            let def_id = self.tcx.hir.local_def_id(ti.id);
+            check_body(self.tcx, def_id, body_id);
+        }
+    }
+
+    // Enum variants and types (e.g. `[T; { .. }]`) may have bodies too,
+    // but they are const-evaluated during typeck.
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
+}
+
+pub(crate) fn check_body<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    body_id: hir::BodyId,
+) {
+    MatchVisitor {
+        tcx,
+        tables: tcx.body_tables(body_id),
+        region_scope_tree: &tcx.region_scope_tree(def_id),
+        param_env: tcx.param_env(def_id),
+        identity_substs: Substs::identity_for_item(tcx, def_id),
+    }.visit_body(tcx.hir.body(body_id));
 }
 
 fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> DiagnosticBuilder<'a> {
