@@ -1290,6 +1290,8 @@ pub struct Resolver<'a> {
     ambiguity_errors: Vec<AmbiguityError<'a>>,
     /// `use` injections are delayed for better placement and deduplication
     use_injections: Vec<UseError<'a>>,
+    /// `use` injections for proc macros wrongly imported with #[macro_use]
+    proc_mac_errors: Vec<macros::ProcMacError>,
 
     gated_errors: FxHashSet<Span>,
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
@@ -1498,6 +1500,7 @@ impl<'a> Resolver<'a> {
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
             use_injections: Vec::new(),
+            proc_mac_errors: Vec::new(),
             gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
 
@@ -3551,6 +3554,7 @@ impl<'a> Resolver<'a> {
     fn report_errors(&mut self, krate: &Crate) {
         self.report_shadowing_errors();
         self.report_with_use_injections(krate);
+        self.report_proc_macro_import(krate);
         let mut reported_spans = FxHashSet();
 
         for &AmbiguityError { span, name, b1, b2, lexical, legacy } in &self.ambiguity_errors {
