@@ -133,7 +133,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         body_id: ast::NodeId,
     ) {
-        assert!(!self.in_snapshot.get(), "cannot process registered region obligations in a snapshot");
+        assert!(
+            !self.in_snapshot.get(),
+            "cannot process registered region obligations in a snapshot"
+        );
 
         // pull out the region obligations with the given `body_id` (leaving the rest)
         let mut my_region_obligations = Vec::with_capacity(self.region_obligations.borrow().len());
@@ -182,7 +185,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// them. This function should not really exist; it is used to
     /// accommodate some older code for the time being.
     pub fn ignore_region_obligations(&self) {
-        assert!(!self.in_snapshot.get(), "cannot ignore registered region obligations in a snapshot");
+        assert!(
+            !self.in_snapshot.get(),
+            "cannot ignore registered region obligations in a snapshot"
+        );
 
         self.region_obligations.borrow_mut().clear();
     }
@@ -496,10 +502,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         // dubious for projections, but it will work for simple cases
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
-        let mut param_bounds =
-            self.collect_outlives_from_predicate_list(
-                generic.to_ty(tcx),
-                self.param_env.caller_bounds);
+        let mut param_bounds = self.collect_outlives_from_predicate_list(generic.to_ty(tcx), self.param_env.caller_bounds);
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -588,7 +591,8 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates.predicates))
+            traits::elaborate_predicates(tcx, trait_predicates.predicates),
+        )
     }
 
     /// Searches through a predicate list for a predicate `T: 'a`.
