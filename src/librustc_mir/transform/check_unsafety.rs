@@ -127,7 +127,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     let UnsafetyCheckResult {
                         violations, unsafe_blocks
                     } = self.tcx.unsafety_check_result(def_id);
-                    self.inherited_blocks.extend(unsafe_blocks.iter().cloned());
                     self.register_violations(&violations, &unsafe_blocks);
                 }
             }
