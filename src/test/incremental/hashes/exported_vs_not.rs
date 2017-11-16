@@ -26,10 +26,8 @@ pub fn body_not_exported_to_metadata() -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub fn body_not_exported_to_metadata() -> u32 {
@@ -49,10 +47,8 @@ pub fn body_exported_to_metadata_because_of_inline() -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 #[inline]
@@ -73,10 +69,8 @@ pub fn body_exported_to_metadata_because_of_generic() -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 #[inline]

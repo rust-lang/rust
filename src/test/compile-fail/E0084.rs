@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[repr(i32)]
-enum Foo {}
-//~^ ERROR E0084
-//~| unsupported enum representation
+#[repr(i32)] //~ ERROR: E0084
+enum Foo {} //~ NOTE: zero-variant enum
 
 fn main() {
 }

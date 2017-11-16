@@ -1471,8 +1471,15 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             Some("human") => ErrorOutputType::HumanReadable(color),
             Some("json")  => ErrorOutputType::Json(false),
             Some("pretty-json") => ErrorOutputType::Json(true),
-            Some("short") => ErrorOutputType::Short(color),
-
+            Some("short") => {
+                if nightly_options::is_unstable_enabled(matches) {
+                    ErrorOutputType::Short(color)
+                } else {
+                    early_error(ErrorOutputType::default(),
+                                &format!("the `-Z unstable-options` flag must also be passed to \
+                                          enable the short error message option"));
+                }
+            }
             None => ErrorOutputType::HumanReadable(color),
 
             Some(arg) => {
