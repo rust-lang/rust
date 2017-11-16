@@ -92,6 +92,7 @@ impl serialize::UseSpecializedDecodable for CrateNum {
 /// don't have to care about these ranges.
 newtype_index!(DefIndex
     {
+        ENCODABLE = custom
         DEBUG_FORMAT = custom,
 
         /// The start of the "high" range of DefIndexes.
@@ -208,12 +209,19 @@ impl fmt::Debug for DefId {
 
 impl DefId {
     /// Make a local `DefId` with the given index.
+    #[inline]
     pub fn local(index: DefIndex) -> DefId {
         DefId { krate: LOCAL_CRATE, index: index }
     }
 
-    pub fn is_local(&self) -> bool {
+    #[inline]
+    pub fn is_local(self) -> bool {
         self.krate == LOCAL_CRATE
+    }
+
+     #[inline]
+    pub fn to_local(self) -> LocalDefId {
+        LocalDefId::from_def_id(self)
     }
 }
 
@@ -242,3 +250,33 @@ impl serialize::UseSpecializedDecodable for DefId {
         })
     }
 }
+
+
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct LocalDefId(DefIndex);
+
+impl LocalDefId {
+
+    #[inline]
+    pub fn from_def_id(def_id: DefId) -> LocalDefId {
+        assert!(def_id.is_local());
+        LocalDefId(def_id.index)
+    }
+
+    #[inline]
+    pub fn to_def_id(self) -> DefId {
+        DefId {
+            krate: LOCAL_CRATE,
+            index: self.0
+        }
+    }
+}
+
+impl fmt::Debug for LocalDefId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_def_id().fmt(f)
+    }
+}
+
+impl serialize::UseSpecializedEncodable for LocalDefId {}
+impl serialize::UseSpecializedDecodable for LocalDefId {}

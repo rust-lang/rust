@@ -769,7 +769,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
                 };
                 let closure_def_id = DefId {
                     krate: local_id_root.krate,
-                    index: closure_expr_id,
+                    index: closure_expr_id.to_def_id().index,
                 };
                 (hcx.def_path_hash(var_owner_def_id),
                  var_id.local_id,

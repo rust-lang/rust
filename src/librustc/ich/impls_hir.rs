@@ -13,7 +13,7 @@
 
 use hir;
 use hir::map::DefPathHash;
-use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
+use hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
 use ich::{StableHashingContext, NodeIdHashingMode};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
@@ -35,6 +35,24 @@ impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for DefId {
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'gcx>) -> DefPathHash {
         hcx.def_path_hash(*self)
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for LocalDefId {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        hcx.def_path_hash(self.to_def_id()).hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for LocalDefId {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'gcx>) -> DefPathHash {
+        hcx.def_path_hash(self.to_def_id())
     }
 }
 

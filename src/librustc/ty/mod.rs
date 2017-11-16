@@ -17,7 +17,7 @@ pub use self::fold::TypeFoldable;
 
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
-use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
 use ich::StableHashingContext;
 use middle::const_val::ConstVal;
@@ -573,7 +573,7 @@ impl<T> Slice<T> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
     pub var_id: hir::HirId,
-    pub closure_expr_id: DefIndex,
+    pub closure_expr_id: LocalDefId,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
