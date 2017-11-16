@@ -95,7 +95,7 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> 
 ```
 This RFC proposes to extend this sort of logic beyond these special cases and use it uniformly for both trait bounds and lifetime bounds.
 
-¹Actually only a few types in the standard library have bounds, for example `HashSet<T>` does not have a `T: Hash + Eq` on the type declaration, but on the impl declaration rather. Wether we should prefer bounds on types or on impls is related, but beyond the scope of this RFC.
+¹Actually only a few types in the standard library have bounds, for example `HashSet<T>` does not have a `T: Hash + Eq` on the type declaration, but on the impl declaration rather. Whether we should prefer bounds on types or on impls is related, but beyond the scope of this RFC.
 
 ## Traits
 
