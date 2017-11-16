@@ -29,6 +29,7 @@ use std_inject;
 use symbol::Symbol;
 use symbol::keywords;
 use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::hygiene::ExpnFormat;
 use tokenstream::{TokenStream, TokenTree};
 use util::small_vector::SmallVector;
 use visit::Visitor;
@@ -149,6 +150,26 @@ impl ExpansionKind {
             _ => unreachable!(),
         }
     }
+}
+
+fn macro_bang_format(path: &ast::Path) -> ExpnFormat {
+    // We don't want to format a path using pretty-printing,
+    // `format!("{}", path)`, because that tries to insert
+    // line-breaks and is slow.
+    let mut path_str = String::with_capacity(64);
+    for (i, segment) in path.segments.iter().enumerate() {
+        if i != 0 {
+            path_str.push_str("::");
+        }
+
+        if segment.identifier.name != keywords::CrateRoot.name() &&
+            segment.identifier.name != keywords::DollarCrate.name()
+        {
+            path_str.push_str(&segment.identifier.name.as_str())
+        }
+    }
+
+    MacroBang(Symbol::intern(&path_str))
 }
 
 pub struct Invocation {
@@ -517,7 +538,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             mark.set_expn_info(ExpnInfo {
                 call_site: span,
                 callee: NameAndSpan {
-                    format: MacroBang(Symbol::intern(&format!("{}", path))),
+                    format: macro_bang_format(path),
                     span: def_site_span,
                     allow_internal_unstable,
                     allow_internal_unsafe,
@@ -564,7 +585,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(ExpnInfo {
                     call_site: span,
                     callee: NameAndSpan {
-                        format: MacroBang(Symbol::intern(&format!("{}", path))),
+                        format: macro_bang_format(path),
                         span: tt_span,
                         allow_internal_unstable,
                         allow_internal_unsafe: false,
@@ -600,7 +621,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(ExpnInfo {
                     call_site: span,
                     callee: NameAndSpan {
-                        format: MacroBang(Symbol::intern(&format!("{}", path))),
+                        format: macro_bang_format(path),
                         // FIXME procedural macros do not have proper span info
                         // yet, when they do, we should use it here.
                         span: None,
