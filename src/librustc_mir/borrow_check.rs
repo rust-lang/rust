@@ -640,10 +640,12 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         Mutability::Mut => return,
                     }
                 }
-                Lvalue::Static(_) => {
+                Lvalue::Static(ref static_) => {
                     // mutation of non-mut static is always illegal,
                     // independent of dataflow.
-                    self.report_assignment_to_static(context, (lvalue, span));
+                    if !self.tcx.is_static_mut(static_.def_id) {
+                        self.report_assignment_to_static(context, (lvalue, span));
+                    }
                     return;
                 }
             }
