@@ -705,8 +705,20 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let tables = tcx.typeck_tables_of(def_id);
     let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+        let body_id = tcx.hir.body_owned_by(id);
+
+        // Do match-check before building MIR
+        tcx.sess
+            .track_errors(|| super::check_match::check_body(tcx, def_id, body_id))
+            .map_err(|_| {
+                ConstEvalErr {
+                    span: tcx.def_span(key.value.0),
+                    kind: MatchCheckError,
+                }
+            })?;
+
         tcx.mir_const_qualif(def_id);
-        tcx.hir.body(tcx.hir.body_owned_by(id))
+        tcx.hir.body(body_id)
     } else {
         tcx.extern_const_body(def_id).body
     };
