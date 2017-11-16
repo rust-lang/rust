@@ -26,7 +26,7 @@
 miri = "Broken"
 
 # ping @Manishearth @llogiq @mcarton @oli-obk
-clippy = "Broken"
+clippy = "Testing"
 
 # ping @nrc
 rls = "Testing"
