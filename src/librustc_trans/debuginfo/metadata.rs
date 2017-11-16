@@ -18,6 +18,7 @@ use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align
 use super::namespace::mangled_name_of_item;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
+use abi;
 use context::SharedCrateContext;
 
 use llvm::{self, ValueRef};
@@ -438,11 +439,38 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let trait_llvm_type = type_of::type_of(cx, trait_object_type);
     let file_metadata = unknown_file_metadata(cx);
 
+
+    let ptr_type = cx.tcx().mk_ptr(ty::TypeAndMut {
+        ty: cx.tcx().types.u8,
+        mutbl: hir::MutImmutable
+    });
+    let ptr_type_metadata = type_metadata(cx, ptr_type, syntax_pos::DUMMY_SP);
+    let llvm_type = type_of::type_of(cx, ptr_type);
+
+    assert_eq!(abi::FAT_PTR_ADDR, 0);
+    assert_eq!(abi::FAT_PTR_EXTRA, 1);
+    let member_descriptions = [
+        MemberDescription {
+            name: "pointer".to_string(),
+            llvm_type: llvm_type,
+            type_metadata: ptr_type_metadata,
+            offset: ComputedMemberOffset,
+            flags: DIFlags::FlagArtificial,
+        },
+        MemberDescription {
+            name: "vtable".to_string(),
+            llvm_type: llvm_type,
+            type_metadata: ptr_type_metadata,
+            offset: ComputedMemberOffset,
+            flags: DIFlags::FlagArtificial,
+        },
+    ];
+
     composite_type_metadata(cx,
                             trait_llvm_type,
                             &trait_type_name[..],
                             unique_type_id,
-                            &[],
+                            &member_descriptions,
                             containing_scope,
                             file_metadata,
                             syntax_pos::DUMMY_SP)
@@ -1856,5 +1884,67 @@ pub fn extend_scope_to_file(ccx: &CrateContext,
             DIB(ccx),
             scope_metadata,
             file_metadata)
+    }
+}
+
+/// Creates debug information for the given vtable, which is for the
+/// given type.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+pub fn create_vtable_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                        ty: ty::Ty<'tcx>,
+                                        vtable: ValueRef) {
+    if cx.dbg_cx().is_none() {
+        return;
+    }
+
+    let type_metadata = type_metadata(cx, ty, syntax_pos::DUMMY_SP);
+    let llvm_vtable_type = Type::vtable_ptr(cx).element_type();
+    let (struct_size, struct_align) = size_and_align_of(cx, llvm_vtable_type);
+
+    unsafe {
+        // LLVMRustDIBuilderCreateStructType() wants an empty array. A null
+        // pointer will lead to hard to trace and debug LLVM assertions
+        // later on in llvm/lib/IR/Value.cpp.
+        let empty_array = create_DIArray(DIB(cx), &[]);
+
+        let name = CString::new("vtable").unwrap();
+
+        // Create a new one each time.  We don't want metadata caching
+        // here, because each vtable will refer to a unique containing
+        // type.
+        let vtable_type = llvm::LLVMRustDIBuilderCreateStructType(
+            DIB(cx),
+            NO_SCOPE_METADATA,
+            name.as_ptr(),
+            unknown_file_metadata(cx),
+            UNKNOWN_LINE_NUMBER,
+            bytes_to_bits(struct_size),
+            bytes_to_bits(struct_align),
+            DIFlags::FlagArtificial,
+            ptr::null_mut(),
+            empty_array,
+            0,
+            type_metadata,
+            name.as_ptr()
+        );
+
+        llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
+                                                    NO_SCOPE_METADATA,
+                                                    name.as_ptr(),
+                                                    // LLVM 3.9
+                                                    // doesn't accept
+                                                    // null here, so
+                                                    // pass the name
+                                                    // as the linkage
+                                                    // name.
+                                                    name.as_ptr(),
+                                                    unknown_file_metadata(cx),
+                                                    UNKNOWN_LINE_NUMBER,
+                                                    vtable_type,
+                                                    true,
+                                                    vtable,
+                                                    ptr::null_mut(),
+                                                    0);
     }
 }

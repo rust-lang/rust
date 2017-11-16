@@ -150,6 +150,14 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     &actual_version[..] < min_version
+                } else if line.starts_with("min-system-llvm-version") {
+                    let min_version = line.trim_right()
+                        .rsplit(' ')
+                        .next()
+                        .expect("Malformed llvm version directive");
+                    // Ignore if using system LLVM and actual version
+                    // is smaller the minimum required version
+                    !(config.system_llvm && &actual_version[..] < min_version)
                 } else {
                     false
                 }
