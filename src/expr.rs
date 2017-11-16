@@ -1411,6 +1411,38 @@ fn rewrite_match_arm(
     )
 }
 
+/// Returns true if the given pattern is short. A short pattern is defined by the following grammer:
+///
+/// [small, ntp]:
+///     - single token
+///     - `&[single-line, ntp]`
+///
+/// [small]:
+///     - `[small, ntp]`
+///     - unary tuple constructor `([small, ntp])`
+///     - `&[small]`
+fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
+    // We also require that the pattern is reasonably 'small' with its literal width.
+    pat_str.len() <= 20 && !pat_str.contains("\n") && is_short_pattern_inner(pat)
+}
+
+fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
+    match pat.node {
+        ast::PatKind::Wild | ast::PatKind::Lit(_) => true,
+        ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
+        ast::PatKind::Struct(..)
+        | ast::PatKind::Mac(..)
+        | ast::PatKind::Slice(..)
+        | ast::PatKind::Path(..)
+        | ast::PatKind::Range(..) => false,
+        ast::PatKind::Tuple(ref subpats, _) => subpats.len() <= 1,
+        ast::PatKind::TupleStruct(ref path, ref subpats, _) => {
+            path.segments.len() <= 1 && subpats.len() <= 1
+        }
+        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) => is_short_pattern_inner(&*p),
+    }
+}
+
 fn rewrite_match_pattern(
     context: &RewriteContext,
     pats: &[ptr::P<ast::Pat>],
