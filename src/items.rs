@@ -484,21 +484,30 @@ impl<'a> FmtVisitor<'a> {
         let indentation = self.block_indent.to_string(self.config);
         result.push_str(&indentation);
 
-        let items = itemize_list(
-            self.codemap,
-            enum_def.variants.iter(),
-            "}",
-            |f| if !f.node.attrs.is_empty() {
-                f.node.attrs[0].span.lo()
-            } else {
-                f.span.lo()
-            },
-            |f| f.span.hi(),
-            |f| self.format_variant(f),
-            body_lo,
-            body_hi,
-            false,
-        );
+        let itemize_list_with = |one_line_width: usize| {
+            itemize_list(
+                self.codemap,
+                enum_def.variants.iter(),
+                "}",
+                |f| if !f.node.attrs.is_empty() {
+                    f.node.attrs[0].span.lo()
+                } else {
+                    f.span.lo()
+                },
+                |f| f.span.hi(),
+                |f| self.format_variant(f, one_line_width),
+                body_lo,
+                body_hi,
+                false,
+            ).collect()
+        };
+        let mut items: Vec<_> = itemize_list_with(self.config.struct_variant_width());
+        // If one of the variants use multiple lines, use multi-lined formatting for all variants.
+        let has_multiline_variant = items.iter().any(|item| item.inner_as_ref().contains("\n"));
+        let has_single_line_variant = items.iter().any(|item| !item.inner_as_ref().contains("\n"));
+        if has_multiline_variant && has_single_line_variant {
+            items = itemize_list_with(0);
+        }
 
         let shape = self.shape().sub_width(2).unwrap();
         let fmt = ListFormatting {
@@ -512,14 +521,14 @@ impl<'a> FmtVisitor<'a> {
             config: self.config,
         };
 
-        let list = write_list(&items.collect::<Vec<_>>(), &fmt)?;
+        let list = write_list(&items, &fmt)?;
         result.push_str(&list);
         result.push('\n');
         Some(result)
     }
 
     // Variant of an enum.
-    fn format_variant(&self, field: &ast::Variant) -> Option<String> {
+    fn format_variant(&self, field: &ast::Variant, one_line_width: usize) -> Option<String> {
         if contains_skip(&field.node.attrs) {
             let lo = field.node.attrs[0].span.lo();
             let span = mk_sp(lo, field.span.hi());
@@ -544,7 +553,7 @@ impl<'a> FmtVisitor<'a> {
                     &context,
                     &StructParts::from_variant(field),
                     indent,
-                    Some(self.config.struct_variant_width()),
+                    Some(one_line_width),
                 )?
             }
             ast::VariantData::Unit(..) => if let Some(ref expr) = field.node.disr_expr {
