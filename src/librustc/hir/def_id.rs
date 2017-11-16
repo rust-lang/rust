@@ -11,8 +11,7 @@
 use ty;
 
 use rustc_data_structures::indexed_vec::Idx;
-use serialize::{self, Encoder, Decoder, Decodable, Encodable};
-
+use serialize;
 use std::fmt;
 use std::u32;
 
@@ -65,17 +64,8 @@ impl fmt::Display for CrateNum {
     }
 }
 
-impl serialize::UseSpecializedEncodable for CrateNum {
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.0)
-    }
-}
-
-impl serialize::UseSpecializedDecodable for CrateNum {
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<CrateNum, D::Error> {
-        d.read_u32().map(CrateNum)
-    }
-}
+impl serialize::UseSpecializedEncodable for CrateNum {}
+impl serialize::UseSpecializedDecodable for CrateNum {}
 
 /// A DefIndex is an index into the hir-map for a crate, identifying a
 /// particular definition. It should really be considered an interned
@@ -151,19 +141,8 @@ impl DefIndex {
     }
 }
 
-impl serialize::UseSpecializedEncodable for DefIndex {
-    #[inline]
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.0)
-    }
-}
-
-impl serialize::UseSpecializedDecodable for DefIndex {
-    #[inline]
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<DefIndex, D::Error> {
-        d.read_u32().map(DefIndex)
-    }
-}
+impl serialize::UseSpecializedEncodable for DefIndex {}
+impl serialize::UseSpecializedDecodable for DefIndex {}
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum DefIndexAddressSpace {
@@ -225,31 +204,8 @@ impl DefId {
     }
 }
 
-impl serialize::UseSpecializedEncodable for DefId {
-    #[inline]
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        let DefId {
-            krate,
-            index,
-        } = *self;
-
-        krate.encode(s)?;
-        index.encode(s)
-    }
-}
-
-impl serialize::UseSpecializedDecodable for DefId {
-    #[inline]
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<DefId, D::Error> {
-        let krate = CrateNum::decode(d)?;
-        let index = DefIndex::decode(d)?;
-
-        Ok(DefId {
-            krate,
-            index
-        })
-    }
-}
+impl serialize::UseSpecializedEncodable for DefId {}
+impl serialize::UseSpecializedDecodable for DefId {}
 
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]

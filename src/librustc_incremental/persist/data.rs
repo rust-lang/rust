@@ -11,7 +11,6 @@
 //! The data that we will serialize and deserialize.
 
 use rustc::dep_graph::{WorkProduct, WorkProductId};
-use rustc::hir::def_id::DefIndex;
 use rustc::hir::map::DefPathHash;
 use rustc::middle::cstore::EncodedMetadataHash;
 use rustc_data_structures::fx::FxHashMap;
@@ -58,5 +57,5 @@ pub struct SerializedMetadataHashes {
     /// is only populated if -Z query-dep-graph is specified. It will be
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
-    pub index_map: FxHashMap<DefIndex, DefPathHash>
+    pub index_map: FxHashMap<u32, DefPathHash>
 }

@@ -246,6 +246,27 @@ impl<'a, 'tcx, T> SpecializedDecoder<LazySeq<T>> for DecodeContext<'a, 'tcx> {
     }
 }
 
+
+impl<'a, 'tcx> SpecializedDecoder<DefId> for DecodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_decode(&mut self) -> Result<DefId, Self::Error> {
+        let krate = CrateNum::decode(self)?;
+        let index = DefIndex::decode(self)?;
+
+        Ok(DefId {
+            krate,
+            index,
+        })
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
+        Ok(DefIndex::from_u32(self.read_u32()?))
+    }
+}
+
 impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
         let lo = BytePos::decode(self)?;
