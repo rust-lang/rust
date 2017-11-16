@@ -438,10 +438,11 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div { margin-left: 40px; }
+.content .methods > div:not(.important-traits) { margin-left: 40px; }
 
 .content .impl-items .docblock, .content .impl-items .stability {
 	margin-left: 40px;
+	margin-bottom: .6em;
 }
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 	margin-left: 20px;
@@ -1045,4 +1046,10 @@ h3.important {
 	position: absolute;
 	left: -24px;
 	margin-top: 16px;
+}
+
+.content > .methods > div.important-traits {
+	position: absolute;
+	left: -42px;
+	margin-top: 2px;
 }
