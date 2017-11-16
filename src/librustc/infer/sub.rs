@@ -137,7 +137,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         // from the "cause" field, we could perhaps give more tailored
         // error messages.
         let origin = SubregionOrigin::Subtype(self.fields.trace.clone());
-        self.fields.infcx.region_vars.make_subregion(origin, a, b);
+        self.fields.infcx.borrow_region_constraints()
+                         .make_subregion(origin, a, b);
 
         Ok(a)
     }

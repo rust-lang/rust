@@ -25,17 +25,18 @@
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::ty;
+use rustc::ty::{self, RegionVid};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::indexed_vec::Idx;
 
 #[derive(Debug)]
 pub struct FreeRegions<'tcx> {
     /// Given a free region defined on this function (either early- or
-    /// late-bound), this maps it to its internal region index. The
-    /// corresponding variable will be "capped" so that it cannot
-    /// grow.
-    pub indices: FxHashMap<ty::Region<'tcx>, usize>,
+    /// late-bound), this maps it to its internal region index. When
+    /// the region context is created, the first N variables will be
+    /// created based on these indices.
+    pub indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
 
     /// The map from the typeck tables telling us how to relate free regions.
     pub free_region_map: &'tcx FreeRegionMap<'tcx>,
@@ -48,6 +49,9 @@ pub fn free_regions<'a, 'gcx, 'tcx>(
     debug!("free_regions(item_def_id={:?})", item_def_id);
 
     let mut indices = FxHashMap();
+
+    // `'static` is always free.
+    insert_free_region(&mut indices, infcx.tcx.types.re_static);
 
     // Extract the early regions.
     let item_substs = Substs::identity_for_item(infcx.tcx, item_def_id);
@@ -78,9 +82,9 @@ pub fn free_regions<'a, 'gcx, 'tcx>(
 }
 
 fn insert_free_region<'tcx>(
-    free_regions: &mut FxHashMap<ty::Region<'tcx>, usize>,
+    free_regions: &mut FxHashMap<ty::Region<'tcx>, RegionVid>,
     region: ty::Region<'tcx>,
 ) {
-    let len = free_regions.len();
-    free_regions.entry(region).or_insert(len);
+    let next = RegionVid::new(free_regions.len());
+    free_regions.entry(region).or_insert(next);
 }

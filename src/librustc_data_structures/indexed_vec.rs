@@ -385,6 +385,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn pop(&mut self) -> Option<T> {
+        self.raw.pop()
+    }
+
+    #[inline]
     pub fn len(&self) -> usize {
         self.raw.len()
     }
@@ -411,7 +416,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated(&self) -> Enumerated<I, slice::Iter<T>>
+    pub fn iter_enumerated(&self) -> Enumerated<I, slice::Iter<'_, T>>
     {
         self.raw.iter().enumerate().map(IntoIdx { _marker: PhantomData })
     }
@@ -427,7 +432,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<T>>
+    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<'_, T>>
     {
         self.raw.iter_mut().enumerate().map(IntoIdx { _marker: PhantomData })
     }

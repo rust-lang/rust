@@ -67,7 +67,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                b);
 
         let origin = Subtype(self.fields.trace.clone());
-        Ok(self.fields.infcx.region_vars.glb_regions(origin, a, b))
+        Ok(self.fields.infcx.borrow_region_constraints().glb_regions(self.tcx(), origin, a, b))
     }
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)

@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::indexed_vec::Idx;
-use rustc::ty::subst::{Kind, Substs};
-use rustc::ty::{self, ClosureSubsts, RegionKind, RegionVid, Ty, TypeFoldable};
-use rustc::mir::{BasicBlock, Local, Location, Mir, Rvalue, Statement, StatementKind};
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, ClosureSubsts, RegionVid, Ty, TypeFoldable};
+use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, TyContext};
-use rustc::infer::{self as rustc_infer, InferCtxt};
-use syntax_pos::DUMMY_SP;
-use std::collections::HashMap;
+use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
+use super::ToRegionVid;
 use super::free_regions::FreeRegions;
 
 /// Replaces all free regions appearing in the MIR with fresh
@@ -25,33 +24,35 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     free_regions: &FreeRegions<'tcx>,
     mir: &mut Mir<'tcx>,
-) -> usize {
+) {
     // Create inference variables for each of the free regions
     // declared on the function signature.
     let free_region_inference_vars = (0..free_regions.indices.len())
-        .map(|_| {
-            infcx.next_region_var(rustc_infer::MiscVariable(DUMMY_SP))
+        .map(RegionVid::new)
+        .map(|vid_expected| {
+            let r = infcx.next_nll_region_var(NLLRegionVariableOrigin::FreeRegion);
+            assert_eq!(vid_expected, r.to_region_vid());
+            r
         })
         .collect();
 
+    debug!("renumber_mir()");
+    debug!("renumber_mir: free_regions={:#?}", free_regions);
+    debug!("renumber_mir: mir.arg_count={:?}", mir.arg_count);
+
     let mut visitor = NLLVisitor {
         infcx,
-        lookup_map: HashMap::new(),
-        num_region_variables: free_regions.indices.len(),
         free_regions,
         free_region_inference_vars,
         arg_count: mir.arg_count,
     };
     visitor.visit_mir(mir);
-    visitor.num_region_variables
 }
 
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    lookup_map: HashMap<RegionVid, TyContext>,
-    num_region_variables: usize,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     free_regions: &'a FreeRegions<'tcx>,
-    free_region_inference_vars: Vec<ty::Region<'tcx>>,
+    free_region_inference_vars: IndexVec<RegionVid, ty::Region<'tcx>>,
     arg_count: usize,
 }
 
@@ -59,16 +60,17 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
     /// Replaces all regions appearing in `value` with fresh inference
     /// variables. This is what we do for almost the entire MIR, with
     /// the exception of the declared types of our arguments.
-    fn renumber_regions<T>(&mut self, value: &T) -> T
+    fn renumber_regions<T>(&mut self, ty_context: TyContext, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!("renumber_regions(value={:?})", value);
+
         self.infcx
             .tcx
             .fold_regions(value, &mut false, |_region, _depth| {
-                self.num_region_variables += 1;
-                self.infcx
-                    .next_region_var(rustc_infer::MiscVariable(DUMMY_SP))
+                let origin = NLLRegionVariableOrigin::Inferred(ty_context);
+                self.infcx.next_nll_region_var(origin)
             })
     }
 
@@ -78,32 +80,14 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!("renumber_free_regions(value={:?})", value);
+
         self.infcx
             .tcx
             .fold_regions(value, &mut false, |region, _depth| {
                 let index = self.free_regions.indices[&region];
                 self.free_region_inference_vars[index]
             })
-    }
-
-    fn store_region(&mut self, region: &RegionKind, lookup: TyContext) {
-        if let RegionKind::ReVar(rid) = *region {
-            self.lookup_map.entry(rid).or_insert(lookup);
-        }
-    }
-
-    fn store_ty_regions(&mut self, ty: &Ty<'tcx>, ty_context: TyContext) {
-        for region in ty.regions() {
-            self.store_region(region, ty_context);
-        }
-    }
-
-    fn store_kind_regions(&mut self, kind: &'tcx Kind, ty_context: TyContext) {
-        if let Some(ty) = kind.as_type() {
-            self.store_ty_regions(&ty, ty_context);
-        } else if let Some(region) = kind.as_region() {
-            self.store_region(region, ty_context);
-        }
     }
 
     fn is_argument_or_return_slot(&self, local: Local) -> bool {
@@ -116,56 +100,55 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         let is_arg = match ty_context {
             TyContext::LocalDecl { local, .. } => self.is_argument_or_return_slot(local),
-            _ => false,
+            TyContext::ReturnTy(..) => true,
+            TyContext::Location(..) => false,
         };
+        debug!(
+            "visit_ty(ty={:?}, is_arg={:?}, ty_context={:?})",
+            ty,
+            is_arg,
+            ty_context
+        );
 
         let old_ty = *ty;
         *ty = if is_arg {
             self.renumber_free_regions(&old_ty)
         } else {
-            self.renumber_regions(&old_ty)
+            self.renumber_regions(ty_context, &old_ty)
         };
-        self.store_ty_regions(ty, ty_context);
+        debug!("visit_ty: ty={:?}", ty);
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
-        *substs = self.renumber_regions(&{ *substs });
+        debug!("visit_substs(substs={:?}, location={:?})", substs, location);
+
         let ty_context = TyContext::Location(location);
-        for kind in *substs {
-            self.store_kind_regions(kind, ty_context);
-        }
+        *substs = self.renumber_regions(ty_context, &{ *substs });
+
+        debug!("visit_substs: substs={:?}", substs);
     }
 
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        match *rvalue {
-            Rvalue::Ref(ref mut r, _, _) => {
-                let old_r = *r;
-                *r = self.renumber_regions(&old_r);
-                let ty_context = TyContext::Location(location);
-                self.store_region(r, ty_context);
-            }
-            Rvalue::Use(..) |
-            Rvalue::Repeat(..) |
-            Rvalue::Len(..) |
-            Rvalue::Cast(..) |
-            Rvalue::BinaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) |
-            Rvalue::UnaryOp(..) |
-            Rvalue::Discriminant(..) |
-            Rvalue::NullaryOp(..) |
-            Rvalue::Aggregate(..) => {
-                // These variants don't contain regions.
-            }
-        }
-        self.super_rvalue(rvalue, location);
+    fn visit_region(&mut self, region: &mut ty::Region<'tcx>, location: Location) {
+        debug!("visit_region(region={:?}, location={:?})", region, location);
+
+        let old_region = *region;
+        let ty_context = TyContext::Location(location);
+        *region = self.renumber_regions(ty_context, &old_region);
+
+        debug!("visit_region: region={:?}", region);
     }
 
     fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {
-        *substs = self.renumber_regions(substs);
+        debug!(
+            "visit_closure_substs(substs={:?}, location={:?})",
+            substs,
+            location
+        );
+
         let ty_context = TyContext::Location(location);
-        for kind in substs.substs {
-            self.store_kind_regions(kind, ty_context);
-        }
+        *substs = self.renumber_regions(ty_context, substs);
+
+        debug!("visit_closure_substs: substs={:?}", substs);
     }
 
     fn visit_statement(

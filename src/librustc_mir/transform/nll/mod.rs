@@ -11,19 +11,19 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::Mir;
 use rustc::infer::InferCtxt;
-use rustc::ty::{self, RegionKind};
+use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
 use transform::MirSource;
+use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 
 use util as mir_util;
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+mod subtype_constraint_generation;
 mod free_regions;
-mod subtype;
 
 pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
@@ -36,13 +36,24 @@ mod renumber;
 pub fn compute_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     def_id: DefId,
+    param_env: ty::ParamEnv<'gcx>,
     mir: &mut Mir<'tcx>,
 ) -> RegionInferenceContext<'tcx> {
     // Compute named region information.
     let free_regions = &free_regions::free_regions(infcx, def_id);
 
     // Replace all regions with fresh inference variables.
-    let num_region_variables = renumber::renumber_mir(infcx, free_regions, mir);
+    renumber::renumber_mir(infcx, free_regions, mir);
+
+    // Run the MIR type-checker.
+    let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
+    let constraint_sets = &type_check::type_check(infcx, mir_node_id, param_env, mir);
+
+    // Create the region inference context, taking ownership of the region inference
+    // data that was contained in `infcx`.
+    let var_origins = infcx.take_region_var_origins();
+    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
+    subtype_constraint_generation::generate(&mut regioncx, free_regions, mir, constraint_sets);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -63,11 +74,10 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
         ),
     };
 
-    // Create the region inference context, generate the constraints,
-    // and then solve them.
-    let mut regioncx = RegionInferenceContext::new(free_regions, num_region_variables, mir);
-    let param_env = infcx.tcx.param_env(def_id);
+    // Generate non-subtyping constraints.
     constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, param_env, liveness);
+
+    // Solve the region constraints.
     regioncx.solve(infcx, &mir);
 
     // Dump MIR results into a file, if that is enabled. This let us
@@ -123,12 +133,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => for region in regioncx.regions() {
-                writeln!(
-                    out,
-                    "| {:?}: {:?}",
-                    region,
-                    regioncx.region_value(region)
-                )?;
+                writeln!(out, "| {:?}: {:?}", region, regioncx.region_value(region))?;
             },
 
             // Before each basic block, dump out the values
@@ -152,23 +157,19 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     });
 }
 
-newtype_index!(RegionIndex {
-    DEBUG_FORMAT = "'_#{}r",
-});
-
 /// Right now, we piggy back on the `ReVar` to store our NLL inference
-/// regions. These are indexed with `RegionIndex`. This method will
-/// assert that the region is a `ReVar` and convert the internal index
-/// into a `RegionIndex`. This is reasonable because in our MIR we
-/// replace all free regions with inference variables.
-pub trait ToRegionIndex {
-    fn to_region_index(&self) -> RegionIndex;
+/// regions. These are indexed with `RegionVid`. This method will
+/// assert that the region is a `ReVar` and extract its interal index.
+/// This is reasonable because in our MIR we replace all free regions
+/// with inference variables.
+pub trait ToRegionVid {
+    fn to_region_vid(&self) -> RegionVid;
 }
 
-impl ToRegionIndex for RegionKind {
-    fn to_region_index(&self) -> RegionIndex {
+impl ToRegionVid for RegionKind {
+    fn to_region_vid(&self) -> RegionVid {
         if let &ty::ReVar(vid) = self {
-            RegionIndex::new(vid.index as usize)
+            vid
         } else {
             bug!("region is not an ReVar: {:?}", self)
         }

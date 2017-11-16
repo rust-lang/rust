@@ -30,7 +30,7 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
-pub use self::fulfill::{FulfillmentContext, RegionObligation};
+pub use self::fulfill::FulfillmentContext;
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, Normalized};
 pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal};
@@ -152,7 +152,6 @@ pub enum ObligationCauseCode<'tcx> {
         item_name: ast::Name,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
-        lint_id: Option<ast::NodeId>,
     },
 
     /// Checking that this expression can be assigned where it needs to be
@@ -537,6 +536,17 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let region_scope_tree = region::ScopeTree::default();
         let free_regions = FreeRegionMap::new();
+
+        // FIXME. We should really... do something with these region
+        // obligations. But this call just continues the older
+        // behavior (i.e., doesn't cause any new bugs), and it would
+        // take some further refactoring to actually solve them. In
+        // particular, we would have to handle implied bounds
+        // properly, and that code is currently largely confined to
+        // regionck (though I made some efforts to extract it
+        // out). -nmatsakis
+        let _ = infcx.ignore_region_obligations();
+
         infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,

@@ -348,7 +348,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let indented_retptr = format!("{}let mut {:?}: {};",
                                   INDENT,
                                   RETURN_POINTER,
-                                  mir.return_ty);
+                                  mir.local_decls[RETURN_POINTER].ty);
     writeln!(w, "{0:1$} // return pointer",
              indented_retptr,
              ALIGN)?;

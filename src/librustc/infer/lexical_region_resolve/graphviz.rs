@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! This module provides linkage between libgraphviz traits and
-//! `rustc::middle::typeck::infer::region_inference`, generating a
+//! `rustc::middle::typeck::infer::region_constraints`, generating a
 //! rendering of the graph represented by the list of `Constraint`
 //! instances (which make up the edges of the graph), as well as the
 //! origin for each constraint (which are attached to the labels on
@@ -25,7 +25,7 @@ use middle::free_region::RegionRelations;
 use middle::region;
 use super::Constraint;
 use infer::SubregionOrigin;
-use infer::region_inference::RegionVarBindings;
+use infer::region_constraints::RegionConstraintData;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
@@ -57,12 +57,13 @@ graphs will be printed.                                                     \n\
 }
 
 pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
-    region_vars: &RegionVarBindings<'a, 'gcx, 'tcx>,
+    region_data: &RegionConstraintData<'tcx>,
     region_rels: &RegionRelations<'a, 'gcx, 'tcx>)
 {
+    let tcx = region_rels.tcx;
     let context = region_rels.context;
 
-    if !region_vars.tcx.sess.opts.debugging_opts.print_region_graph {
+    if !tcx.sess.opts.debugging_opts.print_region_graph {
         return;
     }
 
@@ -112,12 +113,11 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         }
     };
 
-    let constraints = &*region_vars.constraints.borrow();
-    match dump_region_constraints_to(region_rels, constraints, &output_path) {
+    match dump_region_data_to(region_rels, &region_data.constraints, &output_path) {
         Ok(()) => {}
         Err(e) => {
             let msg = format!("io error dumping region constraints: {}", e);
-            region_vars.tcx.sess.err(&msg)
+            tcx.sess.err(&msg)
         }
     }
 }
@@ -212,13 +212,13 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 
 fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
     match *c {
-        Constraint::ConstrainVarSubVar(rv_1, rv_2) =>
+        Constraint::VarSubVar(rv_1, rv_2) =>
             (Node::RegionVid(rv_1), Node::RegionVid(rv_2)),
-        Constraint::ConstrainRegSubVar(r_1, rv_2) =>
+        Constraint::RegSubVar(r_1, rv_2) =>
             (Node::Region(*r_1), Node::RegionVid(rv_2)),
-        Constraint::ConstrainVarSubReg(rv_1, r_2) =>
+        Constraint::VarSubReg(rv_1, r_2) =>
             (Node::RegionVid(rv_1), Node::Region(*r_2)),
-        Constraint::ConstrainRegSubReg(r_1, r_2) =>
+        Constraint::RegSubReg(r_1, r_2) =>
             (Node::Region(*r_1), Node::Region(*r_2)),
     }
 }
@@ -267,15 +267,15 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 
 pub type ConstraintMap<'tcx> = BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
-fn dump_region_constraints_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-                                              map: &ConstraintMap<'tcx>,
-                                              path: &str)
-                                              -> io::Result<()> {
-    debug!("dump_region_constraints map (len: {}) path: {}",
+fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+                                       map: &ConstraintMap<'tcx>,
+                                       path: &str)
+                                       -> io::Result<()> {
+    debug!("dump_region_data map (len: {}) path: {}",
            map.len(),
            path);
-    let g = ConstraintGraph::new(format!("region_constraints"), region_rels, map);
-    debug!("dump_region_constraints calling render");
+    let g = ConstraintGraph::new(format!("region_data"), region_rels, map);
+    debug!("dump_region_data calling render");
     let mut v = Vec::new();
     dot::render(&g, &mut v).unwrap();
     File::create(path).and_then(|mut f| f.write_all(&v))

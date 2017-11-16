@@ -162,12 +162,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub EXTRA_REQUIREMENT_IN_IMPL,
-    Deny,
-    "detects extra requirements in impls that were erroneously allowed"
-}
-
-declare_lint! {
     pub LEGACY_DIRECTORY_OWNERSHIP,
     Deny,
     "non-inline, non-`#[path]` modules (e.g. `mod foo;`) were erroneously allowed in some files \
@@ -254,7 +248,6 @@ impl LintPass for HardwiredLints {
             RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
-            EXTRA_REQUIREMENT_IN_IMPL,
             LEGACY_DIRECTORY_OWNERSHIP,
             LEGACY_IMPORTS,
             LEGACY_CONSTRUCTOR_VISIBILITY,

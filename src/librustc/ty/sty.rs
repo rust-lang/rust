@@ -14,6 +14,7 @@ use hir::def_id::DefId;
 
 use middle::const_val::ConstVal;
 use middle::region;
+use rustc_data_structures::indexed_vec::Idx;
 use ty::subst::{Substs, Subst};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
@@ -898,6 +899,18 @@ pub struct RegionVid {
     pub index: u32,
 }
 
+// FIXME: We could convert this to use `newtype_index!`
+impl Idx for RegionVid {
+    fn new(value: usize) -> Self {
+        assert!(value < ::std::u32::MAX as usize);
+        RegionVid { index: value as u32 }
+    }
+
+    fn index(self) -> usize {
+        self.index as usize
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
 pub struct SkolemizedRegionVid {
     pub index: u32,
@@ -1036,6 +1049,35 @@ impl RegionKind {
         debug!("type_flags({:?}) = {:?}", self, flags);
 
         flags
+    }
+
+    /// Given an early-bound or free region, returns the def-id where it was bound.
+    /// For example, consider the regions in this snippet of code:
+    ///
+    /// ```
+    /// impl<'a> Foo {
+    ///      ^^ -- early bound, declared on an impl
+    ///
+    ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
+    ///            ^^  ^^     ^ anonymous, late-bound
+    ///            |   early-bound, appears in where-clauses
+    ///            late-bound, appears only in fn args
+    ///     {..}
+    /// }
+    /// ```
+    ///
+    /// Here, `free_region_binding_scope('a)` would return the def-id
+    /// of the impl, and for all the other highlighted regions, it
+    /// would return the def-id of the function. In other cases (not shown), this
+    /// function might return the def-id of a closure.
+    pub fn free_region_binding_scope(&self, tcx: TyCtxt<'_, '_, '_>) -> DefId {
+        match self {
+            ty::ReEarlyBound(br) => {
+                tcx.parent_def_id(br.def_id).unwrap()
+            }
+            ty::ReFree(fr) => fr.scope,
+            _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
+        }
     }
 }
 

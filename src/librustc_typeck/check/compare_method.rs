@@ -10,8 +10,6 @@
 
 use rustc::hir::{self, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
-use rustc::middle::free_region::FreeRegionMap;
-use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::util::ExplicitSelf;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
@@ -38,8 +36,7 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_m_span: Span,
                                      trait_m: &ty::AssociatedItem,
                                      impl_trait_ref: ty::TraitRef<'tcx>,
-                                     trait_item_span: Option<Span>,
-                                     old_broken_mode: bool) {
+                                     trait_item_span: Option<Span>) {
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
@@ -79,8 +76,7 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                              impl_m,
                                                              impl_m_span,
                                                              trait_m,
-                                                             impl_trait_ref,
-                                                             old_broken_mode) {
+                                                             impl_trait_ref) {
         return;
     }
 }
@@ -89,8 +85,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           impl_m: &ty::AssociatedItem,
                                           impl_m_span: Span,
                                           trait_m: &ty::AssociatedItem,
-                                          impl_trait_ref: ty::TraitRef<'tcx>,
-                                          old_broken_mode: bool)
+                                          impl_trait_ref: ty::TraitRef<'tcx>)
                                           -> Result<(), ErrorReported> {
     let trait_to_impl_substs = impl_trait_ref.substs;
 
@@ -106,7 +101,6 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             item_name: impl_m.name,
             impl_item_def_id: impl_m.def_id,
             trait_item_def_id: trait_m.def_id,
-            lint_id: if !old_broken_mode { Some(impl_m_node_id) } else { None },
         },
     };
 
@@ -342,22 +336,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        if old_broken_mode {
-            // FIXME(#18937) -- this is how the code used to
-            // work. This is buggy because the fulfillment cx creates
-            // region obligations that get overlooked.  The right
-            // thing to do is the code below. But we keep this old
-            // pass around temporarily.
-            let region_scope_tree = region::ScopeTree::default();
-            let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
-            infcx.resolve_regions_and_report_errors(impl_m.def_id,
-                                                    &region_scope_tree,
-                                                    &free_regions);
-        } else {
-            let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
-            fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
-        }
+        let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
+        fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
 
         Ok(())
     })

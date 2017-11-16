@@ -57,8 +57,8 @@
 
 use infer;
 use super::{InferCtxt, TypeTrace, SubregionOrigin, RegionVariableOrigin, ValuePairs};
-use super::region_inference::{RegionResolutionError, ConcreteFailure, SubSupConflict,
-                              GenericBoundFailure, GenericKind};
+use super::region_constraints::GenericKind;
+use super::lexical_region_resolve::RegionResolutionError;
 
 use std::fmt;
 use hir;
@@ -177,13 +177,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             ty::ReEarlyBound(_) |
             ty::ReFree(_) => {
-                let scope = match *region {
-                    ty::ReEarlyBound(ref br) => {
-                        self.parent_def_id(br.def_id).unwrap()
-                    }
-                    ty::ReFree(ref fr) => fr.scope,
-                    _ => bug!()
-                };
+                let scope = region.free_region_binding_scope(self);
                 let prefix = match *region {
                     ty::ReEarlyBound(ref br) => {
                         format!("the lifetime {} as defined on", br.name)
@@ -293,33 +287,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             debug!("report_region_errors: error = {:?}", error);
 
             if !self.try_report_named_anon_conflict(&error) &&
-               !self.try_report_anon_anon_conflict(&error) {
+                !self.try_report_anon_anon_conflict(&error)
+            {
+                match error.clone() {
+                    // These errors could indicate all manner of different
+                    // problems with many different solutions. Rather
+                    // than generate a "one size fits all" error, what we
+                    // attempt to do is go through a number of specific
+                    // scenarios and try to find the best way to present
+                    // the error. If all of these fails, we fall back to a rather
+                    // general bit of code that displays the error information
+                    RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
+                        self.report_concrete_failure(region_scope_tree, origin, sub, sup).emit();
+                    }
 
-               match error.clone() {
-                  // These errors could indicate all manner of different
-                  // problems with many different solutions. Rather
-                  // than generate a "one size fits all" error, what we
-                  // attempt to do is go through a number of specific
-                  // scenarios and try to find the best way to present
-                  // the error. If all of these fails, we fall back to a rather
-                  // general bit of code that displays the error information
-                  ConcreteFailure(origin, sub, sup) => {
-                      self.report_concrete_failure(region_scope_tree, origin, sub, sup).emit();
-                  }
+                    RegionResolutionError::GenericBoundFailure(kind, param_ty, sub) => {
+                        self.report_generic_bound_failure(region_scope_tree, kind, param_ty, sub);
+                    }
 
-                  GenericBoundFailure(kind, param_ty, sub) => {
-                      self.report_generic_bound_failure(region_scope_tree, kind, param_ty, sub);
-                  }
-
-                  SubSupConflict(var_origin, sub_origin, sub_r, sup_origin, sup_r) => {
+                    RegionResolutionError::SubSupConflict(var_origin,
+                                                          sub_origin,
+                                                          sub_r,
+                                                          sup_origin,
+                                                          sup_r) => {
                         self.report_sub_sup_conflict(region_scope_tree,
                                                      var_origin,
                                                      sub_origin,
                                                      sub_r,
                                                      sup_origin,
                                                      sup_r);
-                  }
-               }
+                    }
+                }
             }
         }
     }
@@ -351,9 +349,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // the only thing in the list.
 
         let is_bound_failure = |e: &RegionResolutionError<'tcx>| match *e {
-            ConcreteFailure(..) => false,
-            SubSupConflict(..) => false,
-            GenericBoundFailure(..) => true,
+            RegionResolutionError::GenericBoundFailure(..) => true,
+            RegionResolutionError::ConcreteFailure(..) |
+            RegionResolutionError::SubSupConflict(..) => false,
         };
 
 
@@ -365,9 +363,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // sort the errors by span, for better error message stability.
         errors.sort_by_key(|u| match *u {
-            ConcreteFailure(ref sro, _, _) => sro.span(),
-            GenericBoundFailure(ref sro, _, _) => sro.span(),
-            SubSupConflict(ref rvo, _, _, _, _) => rvo.span(),
+            RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
+            RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
+            RegionResolutionError::SubSupConflict(ref rvo, _, _, _, _) => rvo.span(),
         });
         errors
     }
@@ -880,14 +878,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let SubregionOrigin::CompareImplMethodObligation {
-            span, item_name, impl_item_def_id, trait_item_def_id, lint_id
+            span, item_name, impl_item_def_id, trait_item_def_id,
         } = origin {
             self.report_extra_impl_obligation(span,
                                               item_name,
                                               impl_item_def_id,
                                               trait_item_def_id,
-                                              &format!("`{}: {}`", bound_kind, sub),
-                                              lint_id)
+                                              &format!("`{}: {}`", bound_kind, sub))
                 .emit();
             return;
         }
@@ -1026,6 +1023,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let var_name = self.tcx.hir.name(var_node_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
+            infer::NLL(..) => bug!("NLL variable found in lexical phase"),
         };
 
         struct_span_err!(self.tcx.sess, var_origin.span(), E0495,

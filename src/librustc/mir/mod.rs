@@ -555,6 +555,15 @@ pub struct UpvarDecl {
 
 newtype_index!(BasicBlock { DEBUG_FORMAT = "bb{}" });
 
+impl BasicBlock {
+    pub fn start_location(self) -> Location {
+        Location {
+            block: self,
+            statement_index: 0,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
 
@@ -638,7 +647,32 @@ pub enum TerminatorKind<'tcx> {
         unwind: Option<BasicBlock>
     },
 
-    /// Drop the Lvalue and assign the new value over it
+    /// Drop the Lvalue and assign the new value over it. This ensures
+    /// that the assignment to LV occurs *even if* the destructor for
+    /// lvalue unwinds. Its semantics are best explained by by the
+    /// elaboration:
+    ///
+    /// ```
+    /// BB0 {
+    ///   DropAndReplace(LV <- RV, goto BB1, unwind BB2)
+    /// }
+    /// ```
+    ///
+    /// becomes
+    ///
+    /// ```
+    /// BB0 {
+    ///   Drop(LV, goto BB1, unwind BB2)
+    /// }
+    /// BB1 {
+    ///   // LV is now unitialized
+    ///   LV <- RV
+    /// }
+    /// BB2 {
+    ///   // LV is now unitialized -- its dtor panicked
+    ///   LV <- RV
+    /// }
+    /// ```
     DropAndReplace {
         location: Lvalue<'tcx>,
         value: Operand<'tcx>,

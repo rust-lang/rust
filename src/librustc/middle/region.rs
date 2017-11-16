@@ -12,7 +12,7 @@
 //! the parent links in the region hierarchy.
 //!
 //! Most of the documentation on regions can be found in
-//! `middle/infer/region_inference/README.md`
+//! `middle/infer/region_constraints/README.md`
 
 use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -320,7 +320,7 @@ pub struct ScopeTree {
     /// hierarchy based on their lexical mapping. This is used to
     /// handle the relationships between regions in a fn and in a
     /// closure defined by that fn. See the "Modeling closures"
-    /// section of the README in infer::region_inference for
+    /// section of the README in infer::region_constraints for
     /// more details.
     closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
 
@@ -407,7 +407,7 @@ pub struct Context {
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in infer::region_inference for more
+    /// the README in infer::region_constraints for more
     /// details.
     root_id: Option<hir::ItemLocalId>,
 
@@ -646,7 +646,7 @@ impl<'tcx> ScopeTree {
             // different functions.  Compare those fn for lexical
             // nesting. The reasoning behind this is subtle.  See the
             // "Modeling closures" section of the README in
-            // infer::region_inference for more details.
+            // infer::region_constraints for more details.
             let a_root_scope = a_ancestors[a_index];
             let b_root_scope = a_ancestors[a_index];
             return match (a_root_scope.data(), b_root_scope.data()) {
