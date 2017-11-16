@@ -588,6 +588,18 @@ struct UsePlacementFinder {
     found_use: bool,
 }
 
+impl UsePlacementFinder {
+    fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
+        let mut finder = UsePlacementFinder {
+            target_module,
+            span: None,
+            found_use: false,
+        };
+        visit::walk_crate(&mut finder, krate);
+        (finder.span, finder.found_use)
+    }
+}
+
 impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     fn visit_mod(
         &mut self,
@@ -3588,14 +3600,9 @@ impl<'a> Resolver<'a> {
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
         for UseError { mut err, candidates, node_id, better } in self.use_injections.drain(..) {
-            let mut finder = UsePlacementFinder {
-                target_module: node_id,
-                span: None,
-                found_use: false,
-            };
-            visit::walk_crate(&mut finder, krate);
+            let (span, found_use) = UsePlacementFinder::check(krate, node_id);
             if !candidates.is_empty() {
-                show_candidates(&mut err, finder.span, &candidates, better, finder.found_use);
+                show_candidates(&mut err, span, &candidates, better, found_use);
             }
             err.emit();
         }
