@@ -111,7 +111,7 @@ impl Rewrite for ast::Local {
             // 1 = trailing semicolon;
             let nested_shape = shape.sub_width(1)?;
 
-            result = rewrite_assign_rhs(context, result, ex, nested_shape)?;
+            result = rewrite_assign_rhs(context, result, &**ex, nested_shape)?;
         }
 
         result.push(';');
@@ -550,7 +550,7 @@ impl<'a> FmtVisitor<'a> {
             ast::VariantData::Unit(..) => if let Some(ref expr) = field.node.disr_expr {
                 let lhs = format!("{} =", field.node.name);
                 // 1 = ','
-                rewrite_assign_rhs(&context, lhs, expr, shape.sub_width(1)?)?
+                rewrite_assign_rhs(&context, lhs, &**expr, shape.sub_width(1)?)?
             } else {
                 field.node.name.to_string()
             },
@@ -1593,7 +1593,7 @@ fn rewrite_static(
         rewrite_assign_rhs(
             context,
             lhs,
-            expr,
+            &**expr,
             Shape::legacy(remaining_width, offset.block_only()),
         ).and_then(|res| {
             recover_comment_removed(res, static_parts.span, context)
@@ -1613,10 +1613,9 @@ pub fn rewrite_associated_type(
 ) -> Option<String> {
     let prefix = format!("type {}", ident);
 
-    let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
+    let type_bounds_str = if let Some(ref bounds) = ty_param_bounds_opt {
         // 2 = ": ".len()
         let shape = Shape::indented(indent, context.config).offset_left(prefix.len() + 2)?;
-        let bounds: &[_] = ty_param_bounds;
         let bound_str = bounds
             .iter()
             .map(|ty_bound| ty_bound.rewrite(context, shape))
@@ -1631,14 +1630,10 @@ pub fn rewrite_associated_type(
     };
 
     if let Some(ty) = ty_opt {
-        let ty_str = ty.rewrite(
-            context,
-            Shape::legacy(
-                context.budget(indent.block_indent + prefix.len() + 2),
-                indent.block_only(),
-            ),
-        )?;
-        Some(format!("{}{} = {};", prefix, type_bounds_str, ty_str))
+        // 1 = `;`
+        let shape = Shape::indented(indent, context.config).sub_width(1)?;
+        let lhs = format!("{}{} =", prefix, type_bounds_str);
+        rewrite_assign_rhs(context, lhs, &**ty, shape).map(|s| s + ";")
     } else {
         Some(format!("{}{};", prefix, type_bounds_str))
     }
