@@ -171,6 +171,15 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
+    pub fn basic_blocks_and_local_decls_mut(&mut self) -> (
+        &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+        &mut LocalDecls<'tcx>,
+    ) {
+        self.cache.invalidate();
+        (&mut self.basic_blocks, &mut self.local_decls)
+    }
+
+    #[inline]
     pub fn predecessors(&self) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         self.cache.predecessors(self)
     }
