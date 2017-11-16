@@ -502,7 +502,9 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         // dubious for projections, but it will work for simple cases
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
-        let mut param_bounds = self.collect_outlives_from_predicate_list(generic.to_ty(tcx), self.param_env.caller_bounds);
+        let generic_ty = generic.to_ty(tcx);
+        let c_b = self.param_env.caller_bounds;
+        let mut param_bounds = self.collect_outlives_from_predicate_list(generic_ty, c_b);
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
