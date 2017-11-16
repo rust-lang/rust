@@ -159,35 +159,11 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 }
 
-// A very simple expression type used for straightforward simplifications.
-enum BinaryOrCall<'a> {
-    Binary(&'a str, &'a Expr, &'a Expr),
-    MethodCall(&'a str, &'a Expr),
-}
-
-impl<'a> BinaryOrCall<'a> {
-    fn to_string(&self, cx: &LateContext, s: &mut String) {
-        let snip = |e: &Expr| snippet_opt(cx, e.span).expect("don't try to improve booleans created by macros");
-        match *self {
-            BinaryOrCall::Binary(op, lhs, rhs) => {
-                s.push_str(&snip(lhs));
-                s.push_str(op);
-                s.push_str(&snip(rhs));
-            }
-            BinaryOrCall::MethodCall(method, arg) => {
-                s.push_str(&snip(arg));
-                s.push('.');
-                s.push_str(method);
-                s.push_str("()");
-            }
-        }
-    }
-}
-
-fn simplify_not(expr: &Expr) -> Option<BinaryOrCall> {
+fn simplify_not(expr: &Expr, cx: &LateContext) -> Option<String> {
+    let snip = |e: &Expr| snippet_opt(cx, e.span).expect("don't try to improve booleans created by macros");
     match expr.node {
         ExprBinary(binop, ref lhs, ref rhs) => {
-            let neg_op = match binop.node {
+            match binop.node {
                 BiEq => Some(" != "),
                 BiNe => Some(" == "),
                 BiLt => Some(" >= "),
@@ -195,15 +171,14 @@ fn simplify_not(expr: &Expr) -> Option<BinaryOrCall> {
                 BiLe => Some(" > "),
                 BiGe => Some(" < "),
                 _ => None,
-            };
-            neg_op.map(|op| BinaryOrCall::Binary(op,  lhs, rhs))
+            }.map(|op| format!("{}{}{}", &snip(lhs), op, &snip(rhs)))
         },
         ExprMethodCall(ref path, _, ref args) if args.len() == 1 => {
             METHODS_WITH_NEGATION
                 .iter().cloned()
                 .flat_map(|(a, b)| vec![(a, b), (b, a)])
                 .find(|&(a, _)| a == path.name.as_str())
-                .map(|(_, neg_method)| BinaryOrCall::MethodCall(neg_method, &args[0]))
+                .map(|(_, neg_method)| format!("{}.{}()", &snip(&args[0]), neg_method))
         },
         _ => None,
     }
@@ -234,9 +209,9 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> (String,
                     recurse(true, cx, inner, terminals, s, simplified)
                 },
                 Term(n) => {
-                    if let Some(binary_or_call) = simplify_not(terminals[n as usize]) {
+                    if let Some(str) = simplify_not(terminals[n as usize], cx) {
                         *simplified = true;
-                        binary_or_call.to_string(cx, s)
+                        s.push_str(&str)
                     } else {
                         s.push('!');
                         recurse(false, cx, inner, terminals, s, simplified)
