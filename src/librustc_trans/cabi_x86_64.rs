@@ -27,8 +27,8 @@ enum Class {
 #[derive(Clone, Copy, Debug)]
 struct Memory;
 
-// Currently supported vector size (AVX).
-const LARGEST_VECTOR_SIZE: usize = 256;
+// Currently supported vector size (AVX-512).
+const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
 fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
