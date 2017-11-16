@@ -2578,10 +2578,10 @@ fn rewrite_assignment(
 
 // The left hand side must contain everything up to, and including, the
 // assignment operator.
-pub fn rewrite_assign_rhs<S: Into<String>>(
+pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
     context: &RewriteContext,
     lhs: S,
-    ex: &ast::Expr,
+    ex: &R,
     shape: Shape,
 ) -> Option<String> {
     let lhs = lhs.into();
@@ -2596,9 +2596,9 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
     Some(lhs + &rhs)
 }
 
-fn choose_rhs(
+fn choose_rhs<R: Rewrite>(
     context: &RewriteContext,
-    expr: &ast::Expr,
+    expr: &R,
     shape: Shape,
     orig_rhs: Option<String>,
 ) -> Option<String> {
