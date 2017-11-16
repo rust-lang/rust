@@ -27,5 +27,5 @@ fn main() {
     let &mut ref x = foo;
     *foo += 1; //[ast]~ ERROR cannot assign to `*foo` because it is borrowed
                //[mir]~^ ERROR cannot assign to `*foo` because it is borrowed (Ast)
-               //[mir]~| ERROR cannot assign to `(*foo)` because it is borrowed (Mir)
+               //[mir]~| ERROR cannot assign to `*foo` because it is borrowed (Mir)
 }

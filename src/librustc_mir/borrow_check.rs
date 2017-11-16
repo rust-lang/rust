@@ -1601,9 +1601,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         if autoderef {
                             self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
                         } else {
-                            buf.push_str(&"(*");
+                            buf.push_str(&"*");
                             self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
-                            buf.push_str(&")");
                         }
                     },
                     ProjectionElem::Downcast(..) => {
