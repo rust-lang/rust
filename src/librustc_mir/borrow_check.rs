@@ -1577,7 +1577,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // End-user visible description of `lvalue`
     fn describe_lvalue(&self, lvalue: &Lvalue<'tcx>) -> String {
         let mut buf = String::new();
-        self.append_lvalue_to_string(lvalue, &mut buf, None);
+        self.append_lvalue_to_string(lvalue, &mut buf, false);
         buf
     }
 
@@ -1585,7 +1585,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn append_lvalue_to_string(&self,
                                lvalue: &Lvalue<'tcx>,
                                buf: &mut String,
-                               autoderef: Option<bool>) {
+                               mut autoderef: bool) {
         match *lvalue {
             Lvalue::Local(local) => {
                 self.append_local_to_string(local, buf, "_");
@@ -1594,19 +1594,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
             }
             Lvalue::Projection(ref proj) => {
-                let mut autoderef = autoderef.unwrap_or(false);
-
                 match proj.elem {
                     ProjectionElem::Deref => {
                         if autoderef {
-                            self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                            self.append_lvalue_to_string(&proj.base, buf, autoderef);
                         } else {
                             buf.push_str(&"*");
-                            self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                            self.append_lvalue_to_string(&proj.base, buf, autoderef);
                         }
                     },
                     ProjectionElem::Downcast(..) => {
-                        self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
                     },
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
@@ -1617,14 +1615,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         if is_projection_from_ty_closure {
                             buf.push_str(&format!("{}", field_name));
                         } else {
-                            self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                            self.append_lvalue_to_string(&proj.base, buf, autoderef);
                             buf.push_str(&format!(".{}", field_name));
                         }
                     },
                     ProjectionElem::Index(index) => {
                         autoderef = true;
 
-                        self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
                         buf.push_str("[");
                         self.append_local_to_string(index, buf, "..");
                         buf.push_str("]");
@@ -1634,7 +1632,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // Since it isn't possible to borrow an element on a particular index and
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
-                        self.append_lvalue_to_string(&proj.base, buf, Some(autoderef));
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
                         buf.push_str(&"[..]");
                     },
                 };
