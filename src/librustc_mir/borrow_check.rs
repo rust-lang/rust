@@ -271,6 +271,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         self.access_lvalue(context,
                                            (output, span),
                                            (Deep, Read(ReadKind::Copy)),
+                                           LocalMutationIsAllowed::No,
                                            flow_state);
                         self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
                                                     (output, span), flow_state);
@@ -300,7 +301,9 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             StatementKind::StorageDead(local) => {
                 self.access_lvalue(ContextKind::StorageDead.new(location),
                     (&Lvalue::Local(local), span),
-                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)), flow_state);
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                    LocalMutationIsAllowed::Yes,
+                    flow_state);
             }
         }
     }
@@ -322,6 +325,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 self.access_lvalue(ContextKind::Drop.new(loc),
                                    (drop_lvalue, span),
                                    (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                                   LocalMutationIsAllowed::Yes,
                                    flow_state);
             }
             TerminatorKind::DropAndReplace { location: ref drop_lvalue,
@@ -391,6 +395,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                                 ContextKind::StorageDead.new(loc),
                                 (&root_lvalue, self.mir.source_info(borrow.location).span),
                                 (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                                LocalMutationIsAllowed::Yes,
                                 flow_state
                             );
                         }
@@ -399,6 +404,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                                 ContextKind::StorageDead.new(loc),
                                 (&root_lvalue, self.mir.source_info(borrow.location).span),
                                 (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                                LocalMutationIsAllowed::Yes,
                                 flow_state
                             );
                         }
@@ -445,6 +451,8 @@ enum ShallowOrDeep {
     Deep,
 }
 
+/// Kind of access to a value: read or write
+/// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ReadOrWrite {
     /// From the RFC: "A *read* means that the existing data may be
@@ -457,18 +465,36 @@ enum ReadOrWrite {
     Write(WriteKind),
 }
 
+/// Kind of read access to a value
+/// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ReadKind {
     Borrow(BorrowKind),
     Copy,
 }
 
+/// Kind of write access to a value
+/// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteKind {
     StorageDeadOrDrop,
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
+}
+
+/// When checking permissions for an lvalue access, this flag is used to indicate that an immutable
+/// local lvalue can be mutated.
+///
+/// FIXME: @nikomatsakis suggested that this flag could be removed with the following modifications:
+/// - Merge `check_access_permissions()` and `check_if_reassignment_to_immutable_state()`
+/// - Split `is_mutable()` into `is_assignable()` (can be directly assigned) and
+///   `is_declared_mutable()`
+/// - Take flow state into consideration in `is_assignable()` for local variables
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum LocalMutationIsAllowed {
+    Yes,
+    No
 }
 
 #[derive(Copy, Clone)]
@@ -510,6 +536,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      context: Context,
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
+                     is_local_mutation_allowed: LocalMutationIsAllowed,
                      flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         let (sd, rw) = kind;
 
@@ -526,9 +553,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // Check permissions
-        self.check_access_permissions(lvalue_span, rw);
+        let mut error_reported = self.check_access_permissions(lvalue_span,
+                                                               rw,
+                                                               is_local_mutation_allowed);
 
-        let mut error_reported = false;
         self.each_borrow_involving_path(
             context, (sd, lvalue_span.0), flow_state, |this, _index, borrow, common_prefix| {
                 match (rw, borrow.kind) {
@@ -614,7 +642,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        self.access_lvalue(context, lvalue_span, (kind, Write(WriteKind::Mutate)), flow_state);
+        self.access_lvalue(context,
+                           lvalue_span,
+                           (kind, Write(WriteKind::Mutate)),
+                           LocalMutationIsAllowed::Yes,
+                           flow_state);
 
         // check for reassignments to immutable local variables
         self.check_if_reassignment_to_immutable_state(context, lvalue_span, flow_state);
@@ -632,7 +664,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Unique |
                     BorrowKind::Mut => (Deep, Write(WriteKind::MutableBorrow(bk))),
                 };
-                self.access_lvalue(context, (lvalue, span), access_kind, flow_state);
+                self.access_lvalue(context,
+                                   (lvalue, span),
+                                   access_kind,
+                                   LocalMutationIsAllowed::No,
+                                   flow_state);
                 self.check_if_path_is_moved(context, InitializationRequiringAction::Borrow,
                                             (lvalue, span), flow_state);
             }
@@ -651,8 +687,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Rvalue::Discriminant(..) => ArtificialField::Discriminant,
                     _ => unreachable!(),
                 };
-                self.access_lvalue(
-                    context, (lvalue, span), (Shallow(Some(af)), Read(ReadKind::Copy)), flow_state);
+                self.access_lvalue(context,
+                                   (lvalue, span),
+                                   (Shallow(Some(af)), Read(ReadKind::Copy)),
+                                   LocalMutationIsAllowed::No,
+                                   flow_state);
                 self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
                                             (lvalue, span), flow_state);
             }
@@ -690,6 +729,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.access_lvalue(context,
                                    (lvalue, span),
                                    (Deep, Read(ReadKind::Copy)),
+                                   LocalMutationIsAllowed::No,
                                    flow_state);
 
                 // Finally, check if path was already moved.
@@ -701,6 +741,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.access_lvalue(context,
                                    (lvalue, span),
                                    (Deep, Write(WriteKind::Move)),
+                                   LocalMutationIsAllowed::Yes,
                                    flow_state);
 
                 // Finally, check if path was already moved.
@@ -735,9 +776,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
                 Lvalue::Static(ref static_) => {
                     // mutation of non-mut static is always illegal,
-                    // independent of dataflow.
+                    // independent of dataflow. However it will be catched by
+                    // `check_access_permissions()`, we call delay_span_bug here
+                    // to be sure that no case has been missed
                     if !self.tcx.is_static_mut(static_.def_id) {
-                        self.report_assignment_to_static(context, (lvalue, span));
+                        let item_msg = match self.describe_lvalue(lvalue) {
+                            Some(name) => format!("immutable static item `{}`", name),
+                            None => "immutable static item".to_owned()
+                        };
+                        self.tcx.sess.delay_span_bug(span,
+                            &format!("cannot assign to {}, should have been caught by \
+                            `check_access_permissions()`", item_msg));
                     }
                     return;
                 }
@@ -949,41 +998,101 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Check the permissions for the given lvalue and read or write kind
-    fn check_access_permissions(&self, (lvalue, span): (&Lvalue<'tcx>, Span), kind: ReadOrWrite) {
+    ///
+    /// Returns true if an error is reported, false otherwise.
+    fn check_access_permissions(&self,
+                                (lvalue, span): (&Lvalue<'tcx>, Span),
+                                kind: ReadOrWrite,
+                                is_local_mutation_allowed: LocalMutationIsAllowed)
+                                -> bool {
+        debug!("check_access_permissions({:?}, {:?}, {:?})",
+               lvalue, kind, is_local_mutation_allowed);
+        let mut error_reported = false;
         match kind {
             Write(WriteKind::MutableBorrow(BorrowKind::Unique)) => {
                 if let Err(_lvalue_err) = self.is_unique(lvalue) {
-                    span_bug!(span, "&unique borrow for `{}` should not fail",
-                        self.describe_lvalue(lvalue));
+                    span_bug!(span, "&unique borrow for {:?} should not fail", lvalue);
                 }
             },
             Write(WriteKind::MutableBorrow(BorrowKind::Mut)) => {
-                if let Err(lvalue_err) = self.is_mutable(lvalue) {
+                if let Err(lvalue_err) = self.is_mutable(lvalue, is_local_mutation_allowed) {
+                    error_reported = true;
+
+                    let item_msg = match self.describe_lvalue(lvalue) {
+                        Some(name) => format!("immutable item `{}`", name),
+                        None => "immutable item".to_owned()
+                    };
+
                     let mut err = self.tcx.cannot_borrow_path_as_mutable(span,
-                        &format!("immutable item `{}`",
-                                  self.describe_lvalue(lvalue)),
+                        &item_msg,
                         Origin::Mir);
                     err.span_label(span, "cannot borrow as mutable");
 
                     if lvalue != lvalue_err {
-                        err.note(&format!("Value not mutable causing this error: `{}`",
-                            self.describe_lvalue(lvalue_err)));
+                        if let Some(name) = self.describe_lvalue(lvalue_err) {
+                            err.note(&format!("Value not mutable causing this error: `{}`", name));
+                        }
                     }
 
                     err.emit();
                 }
             },
-            _ => {}// Access authorized
+            Write(WriteKind::Mutate) => {
+                if let Err(lvalue_err) = self.is_mutable(lvalue, is_local_mutation_allowed) {
+                    error_reported = true;
+
+                    let item_msg = match self.describe_lvalue(lvalue) {
+                        Some(name) => format!("immutable item `{}`", name),
+                        None => "immutable item".to_owned()
+                    };
+
+                    let mut err = self.tcx.cannot_assign(span,
+                        &item_msg,
+                        Origin::Mir);
+                    err.span_label(span, "cannot mutate");
+
+                    if lvalue != lvalue_err {
+                        if let Some(name) = self.describe_lvalue(lvalue_err) {
+                            err.note(&format!("Value not mutable causing this error: `{}`", name));
+                        }
+                    }
+
+                    err.emit();
+                }
+            },
+            Write(WriteKind::Move) |
+            Write(WriteKind::StorageDeadOrDrop) |
+            Write(WriteKind::MutableBorrow(BorrowKind::Shared)) => {
+                if let Err(_lvalue_err) = self.is_mutable(lvalue, is_local_mutation_allowed) {
+                    self.tcx.sess.delay_span_bug(span,
+                        &format!("Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
+                            lvalue,
+                            kind));
+                }
+            },
+            Read(ReadKind::Borrow(BorrowKind::Unique)) |
+            Read(ReadKind::Borrow(BorrowKind::Mut)) |
+            Read(ReadKind::Borrow(BorrowKind::Shared)) |
+            Read(ReadKind::Copy) => {} // Access authorized
         }
+
+        error_reported
     }
 
     /// Can this value be written or borrowed mutably
-    fn is_mutable<'d>(&self, lvalue: &'d Lvalue<'tcx>) -> Result<(), &'d Lvalue<'tcx>> {
+    fn is_mutable<'d>(&self,
+                      lvalue: &'d Lvalue<'tcx>,
+                      is_local_mutation_allowed: LocalMutationIsAllowed)
+                      -> Result<(), &'d Lvalue<'tcx>> {
         match *lvalue {
             Lvalue::Local(local) => {
                 let local = &self.mir.local_decls[local];
                 match local.mutability {
-                    Mutability::Not => Err(lvalue),
+                    Mutability::Not =>
+                        match is_local_mutation_allowed {
+                            LocalMutationIsAllowed::Yes => Ok(()),
+                            LocalMutationIsAllowed::No => Err(lvalue),
+                        },
                     Mutability::Mut => Ok(())
                 }
             },
@@ -1001,7 +1110,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                         // `Box<T>` owns its content, so mutable if its location is mutable
                         if base_ty.is_box() {
-                            return self.is_mutable(&proj.base);
+                            return self.is_mutable(&proj.base, LocalMutationIsAllowed::No);
                         }
 
                         // Otherwise we check the kind of deref to decide
@@ -1035,7 +1144,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ProjectionElem::ConstantIndex{..} |
                     ProjectionElem::Subslice{..} |
                     ProjectionElem::Downcast(..) =>
-                        self.is_mutable(&proj.base)
+                        self.is_mutable(&proj.base, LocalMutationIsAllowed::No)
                 }
             }
         }
@@ -1602,14 +1711,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             };
             err.span_label(assigned_span, format!("first assignment to {}", value_msg));
         }
-        err.emit();
-    }
-
-    fn report_assignment_to_static(&mut self,
-                                   _context: Context,
-                                   (lvalue, span): (&Lvalue<'tcx>, Span)) {
-        let mut err = self.tcx.cannot_assign_static(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
         err.emit();
     }
 }
