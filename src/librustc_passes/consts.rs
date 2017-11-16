@@ -312,6 +312,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                 Err(ConstEvalErr {
                     kind: LayoutError(ty::layout::LayoutError::Unknown(_)), ..
                 }) => {}
+                Err(ConstEvalErr { kind: Math(_), .. }) if self.tcx.sess.overflow_checks() => {}
+                // ^ Disable overflow errors since they will be emitted again in librustc_trans
+                //   so we avoid double-linting the same expression (the one in librustc_trans is
+                //   more accurate).
                 Err(msg) => {
                     self.tcx.lint_node(CONST_ERR,
                                        ex.id,

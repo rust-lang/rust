@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef, BasicBlockRef};
+use rustc::lint::builtin::CONST_ERR;
 use rustc::middle::lang_items;
 use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
 use rustc::ty::{self, Ty, TypeFoldable};
@@ -403,10 +404,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 if const_cond == Some(!expected) {
                     if let Some(err) = const_err {
                         let err = ConstEvalErr{ span: span, kind: err };
-                        let mut diag = bcx.tcx().sess.struct_span_warn(
-                            span, "this expression will panic at run-time");
-                        err.note(bcx.tcx(), span, "expression", &mut diag);
-                        diag.emit();
+                        // FIXME: Can only #[allow] at function level :(
+                        let node_id = bcx.tcx().hir.def_index_to_node_id(self.instance_def_index);
+                        bcx.tcx().lint_node(
+                            CONST_ERR,
+                            node_id,
+                            span,
+                            &err.description().into_oneline(),
+                        );
                     }
                 }
 
