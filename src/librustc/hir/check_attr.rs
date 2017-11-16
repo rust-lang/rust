@@ -47,27 +47,27 @@ struct CheckAttrVisitor<'a> {
 
 impl<'a> CheckAttrVisitor<'a> {
     /// Check any attribute.
-    fn check_attribute(&self, attr: &ast::Attribute, target: Target) {
+    fn check_attribute(&self, attr: &ast::Attribute, item: &ast::Item, target: Target) {
         if let Some(name) = attr.name() {
             match &*name.as_str() {
-                "inline" => self.check_inline(attr, target),
-                "repr" => self.check_repr(attr, target),
+                "inline" => self.check_inline(attr, item, target),
+                "repr" => self.check_repr(attr, item, target),
                 _ => (),
             }
         }
     }
 
     /// Check if an `#[inline]` is applied to a function.
-    fn check_inline(&self, attr: &ast::Attribute, target: Target) {
+    fn check_inline(&self, attr: &ast::Attribute, item: &ast::Item, target: Target) {
         if target != Target::Fn {
             struct_span_err!(self.sess, attr.span, E0518, "attribute should be applied to function")
-                .span_label(attr.span, "requires a function")
+                .span_label(item.span, "not a function")
                 .emit();
         }
     }
 
     /// Check if an `#[repr]` attr is valid.
-    fn check_repr(&self, attr: &ast::Attribute, target: Target) {
+    fn check_repr(&self, attr: &ast::Attribute, item: &ast::Item, target: Target) {
         let words = match attr.meta_item_list() {
             Some(words) => words,
             None => {
@@ -139,7 +139,7 @@ impl<'a> CheckAttrVisitor<'a> {
                 _ => continue,
             };
             struct_span_err!(self.sess, attr.span, E0517, "{}", message)
-                .span_label(attr.span, format!("requires {}", label))
+                .span_label(item.span, format!("not {}", label))
                 .emit();
         }
         if conflicting_reprs > 1 {
@@ -153,7 +153,7 @@ impl<'a> Visitor<'a> for CheckAttrVisitor<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         let target = Target::from_item(item);
         for attr in &item.attrs {
-            self.check_attribute(attr, target);
+            self.check_attribute(attr, item, target);
         }
         visit::walk_item(self, item);
     }

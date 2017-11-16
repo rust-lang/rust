@@ -8,21 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[repr(C)] //~ ERROR E0517
-           //~| requires a struct, enum or union
-type Foo = u8;
+#[repr(C)] //~ ERROR: E0517
+type Foo = u8; //~ NOTE: not a struct, enum or union
 
-#[repr(packed)] //~ ERROR E0517
-                //~| requires a struct
-enum Foo2 {Bar, Baz}
+#[repr(packed)] //~ ERROR: E0517
+enum Foo2 {Bar, Baz} //~ NOTE: not a struct
 
-#[repr(u8)] //~ ERROR E0517
-            //~| requires an enum
-struct Foo3 {bar: bool, baz: bool}
+#[repr(u8)] //~ ERROR: E0517
+struct Foo3 {bar: bool, baz: bool} //~ NOTE: not an enum
 
-#[repr(C)] //~ ERROR E0517
-           //~| requires a struct, enum or union
-impl Foo3 {
+#[repr(C)] //~ ERROR: E0517
+impl Foo3 { //~ NOTE: not a struct, enum or union
 }
 
 fn main() {

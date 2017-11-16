@@ -117,6 +117,7 @@ use std::mem::replace;
 use std::ops::{self, Deref};
 use syntax::abi::Abi;
 use syntax::ast;
+use syntax::attr;
 use syntax::codemap::{self, original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
@@ -1561,12 +1562,15 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
-    if vs.is_empty() && tcx.has_attr(def_id, "repr") {
-        struct_span_err!(
-            tcx.sess, sp, E0084,
-            "unsupported representation for zero-variant enum")
-            .span_label(sp, "unsupported enum representation")
-            .emit();
+    if vs.is_empty() {
+        let attributes = tcx.get_attrs(def_id);
+        if let Some(attr) = attr::find_by_name(&attributes, "repr") {
+            struct_span_err!(
+                tcx.sess, attr.span, E0084,
+                "unsupported representation for zero-variant enum")
+                .span_label(sp, "zero-variant enum")
+                .emit();
+        }
     }
 
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
