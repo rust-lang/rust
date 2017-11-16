@@ -4,7 +4,7 @@
 use stdsimd_test::assert_instr;
 
 use std::mem;
-use std::os::raw::c_void;
+use super::c_void;
 use std::ptr;
 
 use simd_llvm::{simd_cast, simd_shuffle16, simd_shuffle2, simd_shuffle4,
@@ -2242,7 +2242,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use std::os::raw::c_void;
+    use super::c_void;
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
 

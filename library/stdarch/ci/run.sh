@@ -19,3 +19,6 @@ echo "RUSTFLAGS=${RUSTFLAGS}"
 
 cargo test --target $TARGET --features "strict"
 cargo test --release --target $TARGET --features "strict"
+
+cargo test --target $TARGET --features "strict,std"
+cargo test --release --target $TARGET --features "strict,std"

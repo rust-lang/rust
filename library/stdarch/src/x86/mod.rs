@@ -41,3 +41,14 @@ mod abm;
 mod bmi;
 mod bmi2;
 mod tbm;
+
+#[allow(non_camel_case_types)]
+#[cfg(not(feature = "std"))]
+#[repr(u8)]
+pub enum c_void {
+    #[doc(hidden)] __variant1,
+    #[doc(hidden)] __variant2,
+}
+
+#[cfg(feature = "std")]
+use std::os::raw::c_void;

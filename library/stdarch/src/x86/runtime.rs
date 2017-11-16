@@ -283,6 +283,7 @@ pub fn __unstable_detect_feature(x: __Feature) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "std")]
     #[test]
     fn runtime_detection_x86_nocapture() {
         println!("sse: {:?}", cfg_feature_enabled!("sse"));

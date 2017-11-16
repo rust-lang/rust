@@ -128,6 +128,10 @@
                   cast_possible_truncation, cast_precision_loss,
                   shadow_reuse, cyclomatic_complexity, similar_names,
                   doc_markdown, many_single_char_names))]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate core as std;
 
 #[cfg(test)]
 extern crate stdsimd_test;

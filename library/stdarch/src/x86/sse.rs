@@ -3,7 +3,7 @@
 use simd_llvm::simd_shuffle4;
 use v128::*;
 use v64::f32x2;
-use std::os::raw::c_void;
+use super::c_void;
 use std::mem;
 use std::ptr;
 
