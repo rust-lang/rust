@@ -9,6 +9,7 @@
 // except according to those terms.
 
 enum Token { LeftParen, RightParen, Plus, Minus, /* etc */ }
+//~^ NOTE variant `Homura` not found here
 
 fn use_token(token: &Token) { unimplemented!() }
 

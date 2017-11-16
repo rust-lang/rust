@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Delicious {
+enum Delicious { //~ NOTE variant `PIE` not found here
     Pie      = 0x1,
     Apple    = 0x2,
     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,

@@ -10,6 +10,7 @@
 
 
 enum color { rgb(isize, isize, isize), rgba(isize, isize, isize, isize), }
+//~^ NOTE variant `hsl` not found here
 
 fn main() {
     let red: color = color::rgb(255, 0, 0);

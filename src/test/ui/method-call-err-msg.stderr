@@ -28,6 +28,9 @@ error[E0061]: this function takes 2 parameters but 1 parameter was supplied
 error[E0599]: no method named `take` found for type `Foo` in the current scope
   --> $DIR/method-call-err-msg.rs:34:7
    |
+13 | pub struct Foo;
+   | --------------- method `take` not found for this
+...
 34 |      .take()    //~ ERROR no method named `take` found for type `Foo` in the current scope
    |       ^^^^
    |

@@ -33,6 +33,9 @@ note: candidate #3 is defined in the trait `UnusedTrait`
 error[E0599]: no method named `fff` found for type `Myisize` in the current scope
   --> $DIR/issue-7575.rs:74:30
    |
+48 | struct Myisize(isize);
+   | ---------------------- method `fff` not found for this
+...
 74 |     u.f8(42) + u.f9(342) + m.fff(42)
    |                              ^^^
    |

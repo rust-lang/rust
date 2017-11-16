@@ -10,7 +10,7 @@
 
 // This should not cause an ICE
 
-enum Foo {
+enum Foo { //~ NOTE variant `Baz` not found here
     Bar(u8)
 }
 fn main(){

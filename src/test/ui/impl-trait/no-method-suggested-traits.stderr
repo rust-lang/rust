@@ -12,17 +12,22 @@ error[E0599]: no method named `method` found for type `u32` in the current scope
            candidate #4: `use no_method_suggested_traits::Reexported;`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&u32>>` in the current scope
-  --> $DIR/no-method-suggested-traits.rs:38:44
-   |
-38 |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
-   |                                            ^^^^^^
-   |
-   = help: items from traits can only be used if the trait is in scope
-   = note: the following traits are implemented but not in scope, perhaps add a `use` for one of them:
-           candidate #1: `use foo::Bar;`
-           candidate #2: `use no_method_suggested_traits::foo::PubPub;`
-           candidate #3: `use no_method_suggested_traits::qux::PrivPub;`
-           candidate #4: `use no_method_suggested_traits::Reexported;`
+   --> $DIR/no-method-suggested-traits.rs:38:44
+    |
+38  |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
+    |                                            ^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method` not found for this
+    |
+    = help: items from traits can only be used if the trait is in scope
+    = note: the following traits are implemented but not in scope, perhaps add a `use` for one of them:
+            candidate #1: `use foo::Bar;`
+            candidate #2: `use no_method_suggested_traits::foo::PubPub;`
+            candidate #3: `use no_method_suggested_traits::qux::PrivPub;`
+            candidate #4: `use no_method_suggested_traits::Reexported;`
 
 error[E0599]: no method named `method` found for type `char` in the current scope
   --> $DIR/no-method-suggested-traits.rs:44:9
@@ -35,14 +40,19 @@ error[E0599]: no method named `method` found for type `char` in the current scop
            candidate #1: `use foo::Bar;`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&char>>` in the current scope
-  --> $DIR/no-method-suggested-traits.rs:48:43
-   |
-48 |     std::rc::Rc::new(&mut Box::new(&'a')).method();
-   |                                           ^^^^^^
-   |
-   = help: items from traits can only be used if the trait is in scope
-   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
-           candidate #1: `use foo::Bar;`
+   --> $DIR/no-method-suggested-traits.rs:48:43
+    |
+48  |     std::rc::Rc::new(&mut Box::new(&'a')).method();
+    |                                           ^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method` not found for this
+    |
+    = help: items from traits can only be used if the trait is in scope
+    = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
+            candidate #1: `use foo::Bar;`
 
 error[E0599]: no method named `method` found for type `i32` in the current scope
   --> $DIR/no-method-suggested-traits.rs:53:10
@@ -55,18 +65,25 @@ error[E0599]: no method named `method` found for type `i32` in the current scope
            candidate #1: `use no_method_suggested_traits::foo::PubPub;`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&i32>>` in the current scope
-  --> $DIR/no-method-suggested-traits.rs:57:44
-   |
-57 |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
-   |                                            ^^^^^^
-   |
-   = help: items from traits can only be used if the trait is in scope
-   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
-           candidate #1: `use no_method_suggested_traits::foo::PubPub;`
+   --> $DIR/no-method-suggested-traits.rs:57:44
+    |
+57  |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method` not found for this
+    |
+    = help: items from traits can only be used if the trait is in scope
+    = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
+            candidate #1: `use no_method_suggested_traits::foo::PubPub;`
 
 error[E0599]: no method named `method` found for type `Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:62:9
    |
+14 | struct Foo;
+   | ----------- method `method` not found for this
+...
 62 |     Foo.method();
    |         ^^^^^^
    |
@@ -80,19 +97,24 @@ error[E0599]: no method named `method` found for type `Foo` in the current scope
            candidate #6: `no_method_suggested_traits::Reexported`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&Foo>>` in the current scope
-  --> $DIR/no-method-suggested-traits.rs:71:43
-   |
-71 |     std::rc::Rc::new(&mut Box::new(&Foo)).method();
-   |                                           ^^^^^^
-   |
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `method`, perhaps you need to implement one of them:
-           candidate #1: `foo::Bar`
-           candidate #2: `no_method_suggested_traits::foo::PubPub`
-           candidate #3: `no_method_suggested_traits::bar::PubPriv`
-           candidate #4: `no_method_suggested_traits::qux::PrivPub`
-           candidate #5: `no_method_suggested_traits::quz::PrivPriv`
-           candidate #6: `no_method_suggested_traits::Reexported`
+   --> $DIR/no-method-suggested-traits.rs:71:43
+    |
+71  |     std::rc::Rc::new(&mut Box::new(&Foo)).method();
+    |                                           ^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method` not found for this
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `method`, perhaps you need to implement one of them:
+            candidate #1: `foo::Bar`
+            candidate #2: `no_method_suggested_traits::foo::PubPub`
+            candidate #3: `no_method_suggested_traits::bar::PubPriv`
+            candidate #4: `no_method_suggested_traits::qux::PrivPub`
+            candidate #5: `no_method_suggested_traits::quz::PrivPriv`
+            candidate #6: `no_method_suggested_traits::Reexported`
 
 error[E0599]: no method named `method2` found for type `u64` in the current scope
   --> $DIR/no-method-suggested-traits.rs:81:10
@@ -105,40 +127,60 @@ error[E0599]: no method named `method2` found for type `u64` in the current scop
            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&u64>>` in the current scope
-  --> $DIR/no-method-suggested-traits.rs:85:44
-   |
-85 |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
-   |                                            ^^^^^^^
-   |
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+   --> $DIR/no-method-suggested-traits.rs:85:44
+    |
+85  |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
+    |                                            ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method2` not found for this
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `method2`, perhaps you need to implement it:
+            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `no_method_suggested_traits::Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:90:37
    |
 90 |     no_method_suggested_traits::Foo.method2();
    |                                     ^^^^^^^
+   | 
+  ::: $DIR/auxiliary/no_method_suggested_traits.rs
+   |
+13 | pub struct Foo;
+   | --------------- method `method2` not found for this
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
-  --> $DIR/no-method-suggested-traits.rs:94:71
-   |
-94 |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
-   |                                                                       ^^^^^^^
-   |
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `method2`, perhaps you need to implement it:
-           candidate #1: `foo::Bar`
+   --> $DIR/no-method-suggested-traits.rs:94:71
+    |
+94  |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
+    |                                                                       ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method2` not found for this
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `method2`, perhaps you need to implement it:
+            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `no_method_suggested_traits::Bar` in the current scope
   --> $DIR/no-method-suggested-traits.rs:98:40
    |
 98 |     no_method_suggested_traits::Bar::X.method2();
    |                                        ^^^^^^^
+   | 
+  ::: $DIR/auxiliary/no_method_suggested_traits.rs
+   |
+14 | pub enum Bar { X }
+   | ------------ method `method2` not found here
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `method2`, perhaps you need to implement it:
@@ -149,6 +191,11 @@ error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::bo
     |
 102 |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
     |                                                                          ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method2` not found for this
     |
     = help: items from traits can only be used if the trait is implemented and in scope
     = note: the following trait defines an item `method2`, perhaps you need to implement it:
@@ -157,6 +204,9 @@ error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::bo
 error[E0599]: no method named `method3` found for type `Foo` in the current scope
    --> $DIR/no-method-suggested-traits.rs:107:9
     |
+14  | struct Foo;
+    | ----------- method `method3` not found for this
+...
 107 |     Foo.method3();
     |         ^^^^^^^
     |
@@ -169,6 +219,11 @@ error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::bo
     |
 111 |     std::rc::Rc::new(&mut Box::new(&Foo)).method3();
     |                                           ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method3` not found for this
     |
     = help: items from traits can only be used if the trait is implemented and in scope
     = note: the following trait defines an item `method3`, perhaps you need to implement it:
@@ -177,6 +232,9 @@ error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::bo
 error[E0599]: no method named `method3` found for type `Bar` in the current scope
    --> $DIR/no-method-suggested-traits.rs:115:12
     |
+15  | enum Bar { X }
+    | -------- method `method3` not found here
+...
 115 |     Bar::X.method3();
     |            ^^^^^^^
     |
@@ -189,6 +247,11 @@ error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::bo
     |
 119 |     std::rc::Rc::new(&mut Box::new(&Bar::X)).method3();
     |                                              ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method3` not found for this
     |
     = help: items from traits can only be used if the trait is implemented and in scope
     = note: the following trait defines an item `method3`, perhaps you need to implement it:
@@ -205,30 +268,55 @@ error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::bo
     |
 126 |     std::rc::Rc::new(&mut Box::new(&1_usize)).method3(); //~ ERROR no method named
     |                                               ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method3` not found for this
 
 error[E0599]: no method named `method3` found for type `no_method_suggested_traits::Foo` in the current scope
    --> $DIR/no-method-suggested-traits.rs:127:37
     |
 127 |     no_method_suggested_traits::Foo.method3();  //~ ERROR no method named
     |                                     ^^^^^^^
+    | 
+   ::: $DIR/auxiliary/no_method_suggested_traits.rs
+    |
+13  | pub struct Foo;
+    | --------------- method `method3` not found for this
 
 error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
    --> $DIR/no-method-suggested-traits.rs:128:71
     |
 128 |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method3();
     |                                                                       ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method3` not found for this
 
 error[E0599]: no method named `method3` found for type `no_method_suggested_traits::Bar` in the current scope
    --> $DIR/no-method-suggested-traits.rs:130:40
     |
 130 |     no_method_suggested_traits::Bar::X.method3();  //~ ERROR no method named
     |                                        ^^^^^^^
+    | 
+   ::: $DIR/auxiliary/no_method_suggested_traits.rs
+    |
+14  | pub enum Bar { X }
+    | ------------ method `method3` not found here
 
 error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>` in the current scope
    --> $DIR/no-method-suggested-traits.rs:131:74
     |
 131 |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method3();
     |                                                                          ^^^^^^^
+    | 
+   ::: /checkout/src/liballoc/rc.rs
+    |
+284 | pub struct Rc<T: ?Sized> {
+    | ------------------------ method `method3` not found for this
 
 error: aborting due to 24 previous errors
 
