@@ -164,12 +164,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         match error {
-            MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
-                                               unsatisfied_predicates,
-                                               out_of_scope_traits,
-                                               lev_candidate,
-                                               mode,
-                                               .. }) => {
+            MethodError::NoMatch(NoMatchData {
+                static_candidates: static_sources,
+                unsatisfied_predicates,
+                out_of_scope_traits,
+                lev_candidate,
+                mode,
+                ..
+            }) => {
                 let tcx = self.tcx;
 
                 let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
@@ -179,18 +181,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       current scope",
                                      if mode == Mode::MethodCall {
                                          "method"
+                                     } else if actual.is_enum() {
+                                         "variant"
                                      } else {
-                                         match item_name.as_str().chars().next() {
-                                             Some(name) => {
-                                                 if name.is_lowercase() {
-                                                     "function or associated item"
-                                                 } else {
-                                                     "associated item"
-                                                 }
-                                             },
-                                             None => {
-                                                 ""
-                                             },
+                                         let fresh_ty = actual.is_fresh_ty();
+                                         match (item_name.as_str().chars().next(), fresh_ty) {
+                                             (Some(name), false) if name.is_lowercase() => {
+                                                 "function or associated item"
+                                             }
+                                             (Some(_), false) => "associated item",
+                                             (Some(_), true) | (None, false) => {
+                                                 "variant or associated item"
+                                             }
+                                             (None, true) => "variant",
                                          }
                                      },
                                      item_name,

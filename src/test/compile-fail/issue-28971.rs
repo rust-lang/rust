@@ -16,7 +16,8 @@ enum Foo {
 fn main(){
     foo(|| {
         match Foo::Bar(1) {
-            Foo::Baz(..) => (), //~ ERROR no associated
+            Foo::Baz(..) => (),
+            //~^ ERROR no variant named `Baz` found for type `Foo`
             _ => (),
         }
     });

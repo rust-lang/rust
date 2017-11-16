@@ -1219,6 +1219,15 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_enum(&self) -> bool {
+        match self.sty {
+            TyAdt(adt_def, _) => {
+                adt_def.is_enum()
+            }
+            _ => false,
+        }
+    }
+
     pub fn is_closure(&self) -> bool {
         match self.sty {
             TyClosure(..) => true,
@@ -1230,6 +1239,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             TyInfer(IntVar(_)) | TyInt(_) | TyUint(_) => true,
             _ => false
+        }
+    }
+
+    pub fn is_fresh_ty(&self) -> bool {
+        match self.sty {
+            TyInfer(FreshTy(_)) => true,
+            _ => false,
         }
     }
 
