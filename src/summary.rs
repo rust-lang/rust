@@ -1,4 +1,4 @@
-use time::{precise_time_ns, Duration};
+use std::time::{Duration, Instant};
 use std::default::Default;
 
 #[must_use]
@@ -33,8 +33,8 @@ impl Summary {
     pub fn get_parse_time(&self) -> Option<Duration> {
         match self.timer {
             Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
-                // This should never underflow since `precise_time_ns()` guarantees monotonicity.
-                Some(Duration::nanoseconds((parse_time - init) as i64))
+                // This should never underflow since `Instant::now()` guarantees monotonicity.
+                Some(parse_time.duration_since(init))
             }
             Timer::Initialized(..) => None,
         }
@@ -45,7 +45,7 @@ impl Summary {
     pub fn get_format_time(&self) -> Option<Duration> {
         match self.timer {
             Timer::DoneFormatting(_init, parse_time, format_time) => {
-                Some(Duration::nanoseconds((format_time - parse_time) as i64))
+                Some(format_time.duration_since(parse_time))
             }
             Timer::DoneParsing(..) | Timer::Initialized(..) => None,
         }
@@ -104,21 +104,21 @@ impl Summary {
 
 #[derive(Clone, Copy, Debug)]
 enum Timer {
-    Initialized(u64),
-    DoneParsing(u64, u64),
-    DoneFormatting(u64, u64, u64),
+    Initialized(Instant),
+    DoneParsing(Instant, Instant),
+    DoneFormatting(Instant, Instant, Instant),
 }
 
 impl Default for Timer {
     fn default() -> Self {
-        Timer::Initialized(precise_time_ns())
+        Timer::Initialized(Instant::now())
     }
 }
 
 impl Timer {
     fn done_parsing(self) -> Self {
         match self {
-            Timer::Initialized(init_time) => Timer::DoneParsing(init_time, precise_time_ns()),
+            Timer::Initialized(init_time) => Timer::DoneParsing(init_time, Instant::now()),
             _ => panic!("Timer can only transition to DoneParsing from Initialized state"),
         }
     }
@@ -126,7 +126,7 @@ impl Timer {
     fn done_formatting(self) -> Self {
         match self {
             Timer::DoneParsing(init_time, parse_time) => {
-                Timer::DoneFormatting(init_time, parse_time, precise_time_ns())
+                Timer::DoneFormatting(init_time, parse_time, Instant::now())
             }
             _ => panic!("Timer can only transition to DoneFormatting from DoneParsing state"),
         }
