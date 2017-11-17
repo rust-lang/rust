@@ -1368,6 +1368,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_generator(&self) -> bool {
+        match self.sty {
+            TyGenerator(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_integral(&self) -> bool {
         match self.sty {
             TyInfer(IntVar(_)) | TyInt(_) | TyUint(_) => true,

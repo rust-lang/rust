@@ -423,7 +423,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             FloatMismatch(x) => FloatMismatch(x),
             Traits(x) => Traits(x),
             VariadicMismatch(x) => VariadicMismatch(x),
-            CyclicTy => CyclicTy,
+            CyclicTy(t) => return tcx.lift(&t).map(|t| CyclicTy(t)),
             ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
 
@@ -1173,7 +1173,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             FloatMismatch(x) => FloatMismatch(x),
             Traits(x) => Traits(x),
             VariadicMismatch(x) => VariadicMismatch(x),
-            CyclicTy => CyclicTy,
+            CyclicTy(t) => CyclicTy(t.fold_with(folder)),
             ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
             Sorts(x) => Sorts(x.fold_with(folder)),
@@ -1200,6 +1200,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             OldStyleLUB(ref x) => x.visit_with(visitor),
             TyParamDefaultMismatch(ref x) => x.visit_with(visitor),
             ExistentialMismatch(x) => x.visit_with(visitor),
+            CyclicTy(t) => t.visit_with(visitor),
             Mismatch |
             Mutability |
             TupleSize(_) |
@@ -1209,7 +1210,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             FloatMismatch(_) |
             Traits(_) |
             VariadicMismatch(_) |
-            CyclicTy |
             ProjectionMismatched(_) |
             ProjectionBoundsLength(_) => false,
         }

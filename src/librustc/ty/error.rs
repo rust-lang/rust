@@ -49,7 +49,11 @@ pub enum TypeError<'tcx> {
     FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
-    CyclicTy,
+
+    /// Instantiating a type variable with the given type would have
+    /// created a cycle (because it appears somewhere within that
+    /// type).
+    CyclicTy(Ty<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
@@ -84,7 +88,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
         }
 
         match *self {
-            CyclicTy => write!(f, "cyclic type of infinite size"),
+            CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn",
@@ -303,6 +307,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 db.note("for more information, see https://github.com/rust-lang/rust/issues/45852");
 
                 self.note_and_explain_type_err(db, &err, sp);
+            }
+            CyclicTy(ty) => {
+                // Watch out for various cases of cyclic types and try to explain.
+                if ty.is_closure() || ty.is_generator() {
+                    db.note("closures cannot capture themselves or take themselves as argument;\n\
+                             this error may be the result of a recent compiler bug-fix,\n\
+                             see https://github.com/rust-lang/rust/issues/46062 for more details");
+                }
             }
             _ => {}
         }
