@@ -70,11 +70,11 @@ fn query() -> bool { true }
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = std::option::Option<&'35_0rs S<'35_0rs>>::None;
-//         _3 = const <std::cell::Cell<T>>::new(_4) -> bb2;
+//         _3 = const <std::cell::Cell<T>>::new(move _4) -> bb2;
 //     }
 //     bb2: {
 //         StorageDead(_4);
-//         _2 = S<'35_0rs> { r: _3 };
+//         _2 = S<'35_0rs> { r: move _3 };
 //         StorageDead(_3);
 //         StorageLive(_6);
 //         _6 = &'16s (_2.0: std::cell::Cell<std::option::Option<&'35_0rs S<'35_0rs>>>);
@@ -83,9 +83,9 @@ fn query() -> bool { true }
 //         StorageLive(_9);
 //         _9 = &'35_0rs _2;
 //         _8 = &'35_0rs (*_9);
-//         _7 = std::option::Option<&'35_0rs S<'35_0rs>>::Some(_8,);
+//         _7 = std::option::Option<&'35_0rs S<'35_0rs>>::Some(move _8,);
 //         StorageDead(_8);
-//         _5 = const <std::cell::Cell<T>>::set(_6, _7) -> bb3;
+//         _5 = const <std::cell::Cell<T>>::set(move _6, move _7) -> bb3;
 //     }
 //     bb3: {
 //         EndRegion('16s);
@@ -96,7 +96,7 @@ fn query() -> bool { true }
 //         _11 = const query() -> bb4;
 //     }
 //     bb4: {
-//         switchInt(_11) -> [0u8: bb6, otherwise: bb5];
+//         switchInt(move _11) -> [0u8: bb6, otherwise: bb5];
 //     }
 //     bb5: {
 //         _0 = ();
@@ -115,9 +115,9 @@ fn query() -> bool { true }
 //         StorageLive(_17);
 //         _17 = &'35_0rs _2;
 //         _16 = &'35_0rs (*_17);
-//         _15 = std::option::Option<&'35_0rs S<'35_0rs>>::Some(_16,);
+//         _15 = std::option::Option<&'35_0rs S<'35_0rs>>::Some(move _16,);
 //         StorageDead(_16);
-//         _13 = const <std::cell::Cell<T>>::set(_14, _15) -> bb7;
+//         _13 = const <std::cell::Cell<T>>::set(move _14, move_15) -> bb7;
 //     }
 //     bb7: {
 //         EndRegion('33s);

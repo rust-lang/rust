@@ -47,7 +47,7 @@ fn main() {
 //         _5 = &ReErased mut (*_6);
 //         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(10)))]);
 //         Validate(Release, [_2: (), _3: &ReScope(Node(ItemLocalId(10))) Test, _5: &ReScope(Node(ItemLocalId(10))) mut i32]);
-//         _2 = const Test::foo(_3, _5) -> bb1;
+//         _2 = const Test::foo(move _3, move _5) -> bb1;
 //     }
 //
 //     bb1: {
@@ -69,7 +69,7 @@ fn main() {
 //         Validate(Acquire, [(*_3): i32/ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })) (imm)]);
 //         StorageLive(_4);
 //         _4 = (*_3);
-//         _0 = _4;
+//         _0 = move _4;
 //         StorageDead(_4);
 //         EndRegion(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })));
 //         StorageDead(_3);

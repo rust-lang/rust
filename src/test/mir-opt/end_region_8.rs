@@ -46,9 +46,9 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //        StorageLive(_4);
 //        StorageLive(_5);
 //        _5 = _2;
-//        _4 = [closure@NodeId(22)] { r: _5 };
+//        _4 = [closure@NodeId(22)] { r: move _5 };
 //        StorageDead(_5);
-//        _3 = const foo(_4) -> [return: bb1, unwind: bb3];
+//        _3 = const foo(move _4) -> [return: bb1, unwind: bb3];
 //    }
 //    bb1: {
 //        StorageDead(_4);
@@ -79,7 +79,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     bb0: {
 //         StorageLive(_2);
 //         _2 = ((*(_1.0: &'21_1rs D)).0: i32);
-//         _0 = _2;
+//         _0 = move _2;
 //         StorageDead(_2);
 //         return;
 //     }

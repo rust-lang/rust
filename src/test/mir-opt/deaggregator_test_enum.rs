@@ -30,7 +30,7 @@ fn main() {
 // bb0: {
 //     StorageLive(_2);
 //     _2 = _1;
-//     _0 = Baz::Foo { x: _2 };
+//     _0 = Baz::Foo { x: move _2 };
 //     StorageDead(_2);
 //     return;
 // }
@@ -39,7 +39,7 @@ fn main() {
 // bb0: {
 //     StorageLive(_2);
 //     _2 = _1;
-//     ((_0 as Foo).0: usize) = _2;
+//     ((_0 as Foo).0: usize) = move _2;
 //     discriminant(_0) = 1;
 //     StorageDead(_2);
 //     return;

@@ -43,11 +43,11 @@ fn main() {
 //     StorageLive(_2);
 //     StorageLive(_3);
 //     _3 = _1;
-//     _2 = const dummy(_3) -> bb1;
+//     _2 = const dummy(move _3) -> bb1;
 // }
 // bb1: {
 //     StorageDead(_3);
-//     _1 = _2;
+//     _1 = move _2;
 //     StorageDead(_2);
 //     _0 = ();
 //     return;
@@ -58,11 +58,11 @@ fn main() {
 //     StorageLive(_2);
 //     nop;
 //     nop;
-//     _2 = const dummy(_1) -> bb1;
+//     _2 = const dummy(move _1) -> bb1;
 // }
 // bb1: {
 //     nop;
-//     _1 = _2;
+//     _1 = move _2;
 //     StorageDead(_2);
 //     _0 = ();
 //     return;
@@ -72,7 +72,7 @@ fn main() {
 // bb0: {
 //     StorageLive(_3);
 //     _3 = _1;
-//     _2 = const dummy(_3) -> bb1;
+//     _2 = const dummy(move _3) -> bb1;
 // }
 // bb1: {
 //     StorageDead(_3);
@@ -85,7 +85,7 @@ fn main() {
 // bb0: {
 //     nop;
 //     nop;
-//     _2 = const dummy(_1) -> bb1;
+//     _2 = const dummy(move _1) -> bb1;
 // }
 // bb1: {
 //     nop;
@@ -98,7 +98,7 @@ fn main() {
 // bb0: {
 //     StorageLive(_2);
 //     _2 = _1;
-//     _1 = _2;
+//     _1 = move _2;
 //     StorageDead(_2);
 //     _0 = ();
 //     return;

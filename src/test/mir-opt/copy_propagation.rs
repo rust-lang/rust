@@ -24,10 +24,10 @@ fn main() {
 //      ...
 //      _3 = _1;
 //      ...
-//      _2 = _3;
+//      _2 = move _3;
 //      ...
 //      _4 = _2;
-//      _0 = _4;
+//      _0 = move _4;
 //      ...
 //      return;
 //  }
@@ -35,7 +35,7 @@ fn main() {
 // START rustc.test.CopyPropagation.after.mir
 //  bb0: {
 //      ...
-//      _0 = _1;
+//      _0 = move _1;
 //      ...
 //      return;
 //  }

@@ -40,10 +40,10 @@ impl Drop for Droppy {
 //     bb0: {
 //         StorageLive(_1);
 //         ...
-//         _1 = Packed::{{constructor}}(_2,);
+//         _1 = Packed::{{constructor}}(move _2,);
 //         ...
 //         StorageLive(_6);
-//         _6 = (_1.0: Aligned);
+//         _6 = move (_1.0: Aligned);
 //         drop(_6) -> [return: bb4, unwind: bb3];
 //     }
 //     bb1: {
@@ -54,12 +54,12 @@ impl Drop for Droppy {
 //         return;
 //     }
 //     bb3: {
-//         (_1.0: Aligned) = _4;
+//         (_1.0: Aligned) = move _4;
 //         drop(_1) -> bb1;
 //     }
 //     bb4: {
 //         StorageDead(_6);
-//         (_1.0: Aligned) = _4;
+//         (_1.0: Aligned) = move _4;
 //         StorageDead(_4);
 //         _0 = ();
 //         drop(_1) -> bb2;

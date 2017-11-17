@@ -46,7 +46,7 @@ impl Drop for S {
 //     }
 //
 //     bb1: {
-//         _1 = _2;
+//         _1 = move _2;
 //         drop(_2) -> bb4;
 //     }
 //
@@ -61,8 +61,8 @@ impl Drop for S {
 //     bb4: {
 //         StorageDead(_2);
 //         StorageLive(_4);
-//         _4 = _1;
-//         _3 = const std::mem::drop(_4) -> [return: bb5, unwind: bb7];
+//         _4 = move _1;
+//         _3 = const std::mem::drop(move _4) -> [return: bb5, unwind: bb7];
 //     }
 //
 //     bb5: {

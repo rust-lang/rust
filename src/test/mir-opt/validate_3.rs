@@ -48,7 +48,7 @@ fn main() {
 //         _4 = &ReErased (*_5);
 //         Validate(Acquire, [(*_4): i32/ReScope(Node(ItemLocalId(17))) (imm)]);
 //         Validate(Release, [_3: (), _4: &ReScope(Node(ItemLocalId(17))) i32]);
-//         _3 = const foo(_4) -> bb1;
+//         _3 = const foo(move _4) -> bb1;
 //     }
 //     bb1: {
 //         Validate(Acquire, [_3: ()]);

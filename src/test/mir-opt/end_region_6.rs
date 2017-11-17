@@ -41,9 +41,9 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = &'19s _1;
-//         _3 = [closure@NodeId(22)] { d: _4 };
+//         _3 = [closure@NodeId(22)] { d: move _4 };
 //         StorageDead(_4);
-//         _2 = const foo(_3) -> [return: bb1, unwind: bb3];
+//         _2 = const foo(move _3) -> [return: bb1, unwind: bb3];
 //     }
 //     bb1: {
 //         EndRegion('19s);
@@ -76,7 +76,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         _2 = &'15_0rs (*(_1.0: &'19s D));
 //         StorageLive(_3);
 //         _3 = ((*_2).0: i32);
-//         _0 = _3;
+//         _0 = move _3;
 //         StorageDead(_3);
 //         EndRegion('15_0rs);
 //         StorageDead(_2);

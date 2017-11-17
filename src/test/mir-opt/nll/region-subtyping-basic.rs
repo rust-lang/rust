@@ -45,5 +45,5 @@ fn main() {
 // ...
 // _7 = _2;
 // ...
-// _6 = _7;
+// _6 = move _7;
 // END rustc.main.nll.0.mir
