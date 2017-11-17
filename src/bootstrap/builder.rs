@@ -264,7 +264,7 @@ impl<'a> Builder<'a> {
                 dist::Rls, dist::Rustfmt, dist::Extended, dist::HashSign,
                 dist::DontDistWithMiriEnabled),
             Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
-                install::Analysis, install::Src, install::Rustc),
+                install::Rustfmt, install::Analysis, install::Src, install::Rustc),
         }
     }
 
