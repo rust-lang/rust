@@ -456,7 +456,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     // needs to generate the cast.
                     // FIXME: we should probably just generate correct MIR in the first place...
 
-                    let arg = if let Operand::Consume(ref lval) = args[0] {
+                    let arg = if let Operand::Move(ref lval) = args[0] {
                         lval.clone()
                     } else {
                         bug!("Constant arg to \"box_free\"");
@@ -535,7 +535,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         };
         let ptr_ty = self.tcx.mk_mut_ptr(pointee_ty);
 
-        let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Consume(ref_tmp), ptr_ty);
+        let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Move(ref_tmp), ptr_ty);
 
         let cast_tmp = LocalDecl::new_temp(ptr_ty, callsite.location.span);
         let cast_tmp = caller_mir.local_decls.push(cast_tmp);
@@ -602,7 +602,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let tuple_tmp_args =
                 tuple_tys.iter().enumerate().map(|(i, ty)| {
                     // This is e.g. `tuple_tmp.0` in our example above.
-                    let tuple_field = Operand::Consume(tuple.clone().field(Field::new(i), ty));
+                    let tuple_field = Operand::Move(tuple.clone().field(Field::new(i), ty));
 
                     // Spill to a local to make e.g. `tmp0`.
                     self.create_temp_if_necessary(tuple_field, callsite, caller_mir)
@@ -627,7 +627,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Consume(Lvalue::Local(local)) = arg {
+        if let Operand::Move(Lvalue::Local(local)) = arg {
             if caller_mir.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
                 return local;

@@ -105,7 +105,7 @@ impl Lower128Bit {
                                 rhs,
                                 rhs_override_ty.unwrap())),
                     });
-                    rhs = Operand::Consume(Lvalue::Local(local));
+                    rhs = Operand::Move(Lvalue::Local(local));
                 }
 
                 let call_did = check_lang_item_type(

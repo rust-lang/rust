@@ -45,7 +45,7 @@ impl MirPass for SanityCheck {
 
         let attributes = tcx.get_attrs(def_id);
         let param_env = tcx.param_env(def_id);
-        let move_data = MoveData::gather_moves(mir, tcx, param_env).unwrap();
+        let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
         let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
         let flow_inits =
@@ -124,7 +124,8 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     assert!(args.len() == 1);
     let peek_arg_lval = match args[0] {
-        mir::Operand::Consume(ref lval @ mir::Lvalue::Local(_)) => Some(lval),
+        mir::Operand::Copy(ref lval @ mir::Lvalue::Local(_)) |
+        mir::Operand::Move(ref lval @ mir::Lvalue::Local(_)) => Some(lval),
         _ => None,
     };
 

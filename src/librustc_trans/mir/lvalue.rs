@@ -487,7 +487,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         tr_base.project_field(bcx, field.index())
                     }
                     mir::ProjectionElem::Index(index) => {
-                        let index = &mir::Operand::Consume(mir::Lvalue::Local(index));
+                        let index = &mir::Operand::Copy(mir::Lvalue::Local(index));
                         let index = self.trans_operand(bcx, index);
                         let llindex = index.immediate();
                         tr_base.project_index(bcx, llindex)

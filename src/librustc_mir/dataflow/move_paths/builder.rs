@@ -14,8 +14,6 @@ use rustc::mir::tcx::RvalueInitializationState;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 
-use syntax::codemap::DUMMY_SP;
-
 use std::collections::hash_map::Entry;
 use std::mem;
 
@@ -28,16 +26,12 @@ use super::IllegalMoveOriginKind::*;
 struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    param_env: ty::ParamEnv<'gcx>,
     data: MoveData<'tcx>,
     errors: Vec<MoveError<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
-    fn new(mir: &'a Mir<'tcx>,
-           tcx: TyCtxt<'a, 'gcx, 'tcx>,
-           param_env: ty::ParamEnv<'gcx>)
-           -> Self {
+    fn new(mir: &'a Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
@@ -45,7 +39,6 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
         MoveDataBuilder {
             mir,
             tcx,
-            param_env,
             errors: Vec::new(),
             data: MoveData {
                 moves: IndexVec::new(),
@@ -213,12 +206,10 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>,
-                                           tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                           param_env: ty::ParamEnv<'gcx>)
+pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                                            -> Result<MoveData<'tcx>,
                                                      (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
-    let mut builder = MoveDataBuilder::new(mir, tcx, param_env);
+    let mut builder = MoveDataBuilder::new(mir, tcx);
 
     builder.gather_args();
 
@@ -289,7 +280,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                self.gather_move(&Lvalue::Local(local), true);
+                self.gather_move(&Lvalue::Local(local));
             }
             StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span,
@@ -348,7 +339,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {
-                self.gather_move(&Lvalue::Local(RETURN_POINTER), false);
+                self.gather_move(&Lvalue::Local(RETURN_POINTER));
             }
 
             TerminatorKind::Assert { .. } |
@@ -361,7 +352,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             }
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
-                self.gather_move(location, false);
+                self.gather_move(location);
             }
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
@@ -383,24 +374,16 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
 
     fn gather_operand(&mut self, operand: &Operand<'tcx>) {
         match *operand {
-            Operand::Constant(..) => {} // not-a-move
-            Operand::Consume(ref lval) => { // a move
-                self.gather_move(lval, false);
+            Operand::Constant(..) |
+            Operand::Copy(..) => {} // not-a-move
+            Operand::Move(ref lval) => { // a move
+                self.gather_move(lval);
             }
         }
     }
 
-    fn gather_move(&mut self, lval: &Lvalue<'tcx>, force: bool) {
+    fn gather_move(&mut self, lval: &Lvalue<'tcx>) {
         debug!("gather_move({:?}, {:?})", self.loc, lval);
-
-        let tcx = self.builder.tcx;
-        let gcx = tcx.global_tcx();
-        let lv_ty = lval.ty(self.builder.mir, tcx).to_ty(tcx);
-        let erased_ty = gcx.lift(&tcx.erase_regions(&lv_ty)).unwrap();
-        if !force && !erased_ty.moves_by_default(gcx, self.builder.param_env, DUMMY_SP) {
-            debug!("gather_move({:?}, {:?}) - {:?} is Copy. skipping", self.loc, lval, lv_ty);
-            return
-        }
 
         let path = match self.move_path_for(lval) {
             Ok(path) | Err(MoveError::UnionMove { path }) => path,

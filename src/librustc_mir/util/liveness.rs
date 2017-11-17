@@ -273,7 +273,8 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
             LvalueContext::Borrow { .. } |
 
             LvalueContext::Inspect |
-            LvalueContext::Consume |
+            LvalueContext::Copy |
+            LvalueContext::Move |
             LvalueContext::Validate => {
                 if self.mode.include_regular_use {
                     self.defs_uses.add_use(local);

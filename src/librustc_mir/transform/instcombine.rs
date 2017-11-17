@@ -59,7 +59,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
-            *rvalue = Rvalue::Use(Operand::Consume(new_lvalue))
+            *rvalue = Rvalue::Use(Operand::Copy(new_lvalue))
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {

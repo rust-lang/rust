@@ -132,7 +132,7 @@ fn add_move_for_packed_drop<'a, 'tcx>(
     patch.add_statement(
         loc, StatementKind::StorageLive(temp));
     patch.add_assign(loc, Lvalue::Local(temp),
-                     Rvalue::Use(Operand::Consume(location.clone())));
+                     Rvalue::Use(Operand::Move(location.clone())));
     patch.patch_terminator(loc.block, TerminatorKind::Drop {
         location: Lvalue::Local(temp),
         target: storage_dead_block,

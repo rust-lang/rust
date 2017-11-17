@@ -308,7 +308,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_operand(operand={:?})", operand);
 
         match *operand {
-            mir::Operand::Consume(ref lvalue) => {
+            mir::Operand::Copy(ref lvalue) |
+            mir::Operand::Move(ref lvalue) => {
                 self.trans_consume(bcx, lvalue)
             }
 

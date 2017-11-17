@@ -517,7 +517,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
                             match *arg {
-                                mir::Operand::Consume(_) => {
+                                mir::Operand::Copy(_) |
+                                mir::Operand::Move(_) => {
                                     span_bug!(span, "shuffle indices must be constant");
                                 }
                                 mir::Operand::Constant(ref constant) => {
@@ -573,10 +574,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                     // The callee needs to own the argument memory if we pass it
                     // by-ref, so make a local copy of non-immediate constants.
-                    if let (&mir::Operand::Constant(_), Ref(..)) = (arg, op.val) {
-                        let tmp = LvalueRef::alloca(&bcx, op.layout, "const");
-                        op.val.store(&bcx, tmp);
-                        op.val = Ref(tmp.llval, tmp.alignment);
+                    match (arg, op.val) {
+                        (&mir::Operand::Copy(_), Ref(..)) |
+                        (&mir::Operand::Constant(_), Ref(..)) => {
+                            let tmp = LvalueRef::alloca(&bcx, op.layout, "const");
+                            op.val.store(&bcx, tmp);
+                            op.val = Ref(tmp.llval, tmp.alignment);
+                        }
+                        _ => {}
                     }
 
                     self.trans_argument(&bcx, op, &mut llargs, &fn_ty.args[i]);

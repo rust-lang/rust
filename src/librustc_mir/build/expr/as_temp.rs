@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match Category::of(&expr.kind).unwrap() {
             Category::Lvalue => {
                 let lvalue = unpack!(block = this.as_lvalue(block, expr));
-                let rvalue = Rvalue::Use(Operand::Consume(lvalue));
+                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(lvalue));
                 this.cfg.push_assign(block, source_info, &Lvalue::Local(temp), rvalue);
             }
             _ => {

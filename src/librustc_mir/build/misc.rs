@@ -19,7 +19,7 @@ use rustc::ty::{self, Ty};
 
 use rustc::mir::*;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Add a new temporary value of type `ty` storing the result of
@@ -132,5 +132,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 literal: self.hir.usize_literal(value),
             });
         temp
+    }
+
+    pub fn consume_by_copy_or_move(&self, lvalue: Lvalue<'tcx>) -> Operand<'tcx> {
+        let tcx = self.hir.tcx();
+        let ty = lvalue.ty(&self.local_decls, tcx).to_ty(tcx);
+        if self.hir.type_moves_by_default(ty, DUMMY_SP) {
+            Operand::Move(lvalue)
+        } else {
+            Operand::Copy(lvalue)
+        }
     }
 }

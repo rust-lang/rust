@@ -1283,7 +1283,17 @@ pub struct VisibilityScopeData {
 /// being nested in one another.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Operand<'tcx> {
-    Consume(Lvalue<'tcx>),
+    /// Copy: The value must be available for use afterwards.
+    ///
+    /// This implies that the type of the lvalue must be `Copy`; this is true
+    /// by construction during build, but also checked by the MIR type checker.
+    Copy(Lvalue<'tcx>),
+    /// Move: The value (including old borrows of it) will not be used again.
+    ///
+    /// Safe for values of all types (modulo future developments towards `?Move`).
+    /// Correct usage patterns are enforced by the borrow checker for safe code.
+    /// `Copy` may be converted to `Move` to enable "last-use" optimizations.
+    Move(Lvalue<'tcx>),
     Constant(Box<Constant<'tcx>>),
 }
 
@@ -1292,7 +1302,8 @@ impl<'tcx> Debug for Operand<'tcx> {
         use self::Operand::*;
         match *self {
             Constant(ref a) => write!(fmt, "{:?}", a),
-            Consume(ref lv) => write!(fmt, "{:?}", lv),
+            Copy(ref lv) => write!(fmt, "{:?}", lv),
+            Move(ref lv) => write!(fmt, "move {:?}", lv),
         }
     }
 }
@@ -2089,14 +2100,16 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            Operand::Consume(ref lval) => Operand::Consume(lval.fold_with(folder)),
+            Operand::Copy(ref lval) => Operand::Copy(lval.fold_with(folder)),
+            Operand::Move(ref lval) => Operand::Move(lval.fold_with(folder)),
             Operand::Constant(ref c) => Operand::Constant(c.fold_with(folder)),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            Operand::Consume(ref lval) => lval.visit_with(visitor),
+            Operand::Copy(ref lval) |
+            Operand::Move(ref lval) => lval.visit_with(visitor),
             Operand::Constant(ref c) => c.visit_with(visitor)
         }
     }

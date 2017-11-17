@@ -121,7 +121,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
-                if let mir::Operand::Consume(ref lvalue) = args[0] {
+                if let mir::Operand::Move(ref lvalue) = args[0] {
                     self.visit_lvalue(lvalue, LvalueContext::Drop, location);
                 }
             }
@@ -140,7 +140,11 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
             // Allow uses of projections that are ZSTs or from scalar fields.
-            if let LvalueContext::Consume = context {
+            let is_consume = match context {
+                LvalueContext::Copy | LvalueContext::Move => true,
+                _ => false
+            };
+            if is_consume {
                 let base_ty = proj.base.ty(self.cx.mir, ccx.tcx());
                 let base_ty = self.cx.monomorphize(&base_ty);
 
@@ -154,10 +158,10 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 if let mir::ProjectionElem::Field(..) = proj.elem {
                     let layout = ccx.layout_of(base_ty.to_ty(ccx.tcx()));
                     if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
-                        // Recurse as a `Consume` instead of `Projection`,
+                        // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
                         // which would trigger `mark_as_lvalue` on locals.
-                        self.visit_lvalue(&proj.base, LvalueContext::Consume, location);
+                        self.visit_lvalue(&proj.base, context, location);
                         return;
                     }
                 }
@@ -165,7 +169,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
             // A deref projection only reads the pointer, never needs the lvalue.
             if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_lvalue(&proj.base, LvalueContext::Consume, location);
+                return self.visit_lvalue(&proj.base, LvalueContext::Copy, location);
             }
         }
 
@@ -184,7 +188,8 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
             LvalueContext::StorageLive |
             LvalueContext::StorageDead |
             LvalueContext::Validate |
-            LvalueContext::Consume => {}
+            LvalueContext::Copy |
+            LvalueContext::Move => {}
 
             LvalueContext::Inspect |
             LvalueContext::Store |

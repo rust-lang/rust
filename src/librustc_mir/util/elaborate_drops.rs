@@ -498,7 +498,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
-                    discr: Operand::Consume(discr),
+                    discr: Operand::Move(discr),
                     switch_ty: discr_ty,
                     values: From::from(values.to_owned()),
                     targets: blocks,
@@ -536,7 +536,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(tcx, drop_fn.def_id, substs,
                                                    self.source_info.span),
-                    args: vec![Operand::Consume(Lvalue::Local(ref_lvalue))],
+                    args: vec![Operand::Move(Lvalue::Local(ref_lvalue))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind.into_option(),
                 },
@@ -572,7 +572,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                  ptr_based: bool)
                  -> BasicBlock
     {
-        let use_ = |lv: &Lvalue<'tcx>| Operand::Consume(lv.clone());
+        let copy = |lv: &Lvalue<'tcx>| Operand::Copy(lv.clone());
+        let move_ = |lv: &Lvalue<'tcx>| Operand::Move(lv.clone());
         let tcx = self.tcx();
 
         let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
@@ -584,14 +585,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (Rvalue::Use(use_(&Lvalue::Local(cur))),
-             Rvalue::BinaryOp(BinOp::Offset, use_(&Lvalue::Local(cur)), one))
+            (Rvalue::Use(copy(&Lvalue::Local(cur))),
+             Rvalue::BinaryOp(BinOp::Offset, copy(&Lvalue::Local(cur)), one))
         } else {
             (Rvalue::Ref(
                  tcx.types.re_erased,
                  BorrowKind::Mut,
                  self.lvalue.clone().index(cur)),
-             Rvalue::BinaryOp(BinOp::Add, use_(&Lvalue::Local(cur)), one))
+             Rvalue::BinaryOp(BinOp::Add, copy(&Lvalue::Local(cur)), one))
         };
 
         let drop_block = BasicBlockData {
@@ -611,13 +612,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let loop_block = BasicBlockData {
             statements: vec![
                 self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
-                                                     use_(&Lvalue::Local(cur)),
-                                                     use_(length_or_end)))
+                                                     copy(&Lvalue::Local(cur)),
+                                                     copy(length_or_end)))
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::if_(tcx, use_(can_go), succ, drop_block)
+                kind: TerminatorKind::if_(tcx, move_(can_go), succ, drop_block)
             })
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
@@ -642,14 +643,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let tcx = self.tcx();
 
-        let use_ = |lv: &Lvalue<'tcx>| Operand::Consume(lv.clone());
+        let move_ = |lv: &Lvalue<'tcx>| Operand::Move(lv.clone());
         let size = &Lvalue::Local(self.new_temp(tcx.types.usize));
         let size_is_zero = &Lvalue::Local(self.new_temp(tcx.types.bool));
         let base_block = BasicBlockData {
             statements: vec![
                 self.assign(size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
                 self.assign(size_is_zero, Rvalue::BinaryOp(BinOp::Eq,
-                                                           use_(size),
+                                                           move_(size),
                                                            self.constant_usize(0)))
             ],
             is_cleanup: self.unwind.is_cleanup(),
@@ -657,7 +658,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 source_info: self.source_info,
                 kind: TerminatorKind::if_(
                     tcx,
-                    use_(size_is_zero),
+                    move_(size_is_zero),
                     self.drop_loop_pair(ety, false),
                     self.drop_loop_pair(ety, true)
                 )
@@ -718,11 +719,11 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone()
             )));
             drop_block_stmts.push(self.assign(&cur, Rvalue::Cast(
-                CastKind::Misc, Operand::Consume(tmp.clone()), iter_ty
+                CastKind::Misc, Operand::Move(tmp.clone()), iter_ty
             )));
             drop_block_stmts.push(self.assign(&length_or_end,
                 Rvalue::BinaryOp(BinOp::Offset,
-                     Operand::Consume(cur.clone()), Operand::Consume(length.clone())
+                     Operand::Copy(cur.clone()), Operand::Move(length.clone())
             )));
         } else {
             // index = 0 (length already pushed)
@@ -854,7 +855,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let call = TerminatorKind::Call {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
-            args: vec![Operand::Consume(self.lvalue.clone())],
+            args: vec![Operand::Move(self.lvalue.clone())],
             destination: Some((unit_temp, target)),
             cleanup: None
         }; // FIXME(#6393)

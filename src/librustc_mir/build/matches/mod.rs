@@ -773,7 +773,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.schedule_drop_for_binding(binding.var_id, binding.span);
             let rvalue = match binding.binding_mode {
                 BindingMode::ByValue =>
-                    Rvalue::Use(Operand::Consume(binding.source)),
+                    Rvalue::Use(self.consume_by_copy_or_move(binding.source)),
                 BindingMode::ByRef(region, borrow_kind) =>
                     Rvalue::Ref(region, borrow_kind, binding.source),
             };
