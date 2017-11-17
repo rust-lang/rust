@@ -1031,13 +1031,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn aggregate_field_ty(
         &mut self,
-        ak: &Box<AggregateKind<'tcx>>,
+        ak: &AggregateKind<'tcx>,
         field_index: usize,
         location: Location,
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
 
-        match **ak {
+        match *ak {
             AggregateKind::Adt(def, variant_index, substs, active_field_index) => {
                 let variant = &def.variants[variant_index];
                 let adj_field_index = active_field_index.unwrap_or(field_index);
@@ -1069,56 +1069,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            AggregateKind::Array(ty) => {
-                Ok(ty)
-            }
+            AggregateKind::Array(ty) => Ok(ty),
             AggregateKind::Tuple => {
                 unreachable!("This should have been covered in check_rvalues");
             }
         }
     }
 
-    fn check_rvalue(&mut self, mir: &Mir<'tcx>, rv: &Rvalue<'tcx>, location: Location) {
-        let tcx = self.tcx();
-        match rv {
+    fn check_rvalue(&mut self, mir: &Mir<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+        match rvalue {
             Rvalue::Aggregate(ak, ops) => {
-                match **ak {
-                    // tuple rvalue field type is always the type of the op. Nothing to check here.
-                    AggregateKind::Tuple => {}
-                    _ => {
-                        for (i, op) in ops.iter().enumerate() {
-                            let field_ty = match self.aggregate_field_ty(ak, i, location) {
-                                Ok(field_ty) => field_ty,
-                                Err(FieldAccessError::OutOfRange { field_count }) => {
-                                    span_mirbug!(
-                                        self,
-                                        rv,
-                                        "accessed field #{} but variant only has {}",
-                                        i,
-                                        field_count
-                                    );
-                                    continue;
-                                }
-                            };
-                            let op_ty = op.ty(mir, tcx);
-                            if let Err(terr) = self.sub_types(
-                                op_ty,
-                                field_ty,
-                                location.at_successor_within_block(),
-                            )
-                                {
-                                    span_mirbug!(
-                                    self,
-                                    rv,
-                                    "{:?} is not a subtype of {:?}: {:?}",
-                                    op_ty,
-                                    field_ty,
-                                    terr
-                                );
-                                }
-                        }
-                    }
-                }
+                self.check_aggregate_rvalue(mir, rvalue, ak, ops, location)
             }
             // FIXME: These other cases have to be implemented in future PRs
             Rvalue::Use(..) |
@@ -1131,6 +1092,52 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             Rvalue::UnaryOp(..) |
             Rvalue::Discriminant(..) |
             Rvalue::NullaryOp(..) => {}
+        }
+    }
+
+    fn check_aggregate_rvalue(
+        &mut self,
+        mir: &Mir<'tcx>,
+        rvalue: &Rvalue<'tcx>,
+        aggregate_kind: &AggregateKind<'tcx>,
+        operands: &[Operand<'tcx>],
+        location: Location,
+    ) {
+        match aggregate_kind {
+            // tuple rvalue field type is always the type of the op. Nothing to check here.
+            AggregateKind::Tuple => return,
+            _ => {}
+        }
+
+        let tcx = self.tcx();
+
+        for (i, operand) in operands.iter().enumerate() {
+            let field_ty = match self.aggregate_field_ty(aggregate_kind, i, location) {
+                Ok(field_ty) => field_ty,
+                Err(FieldAccessError::OutOfRange { field_count }) => {
+                    span_mirbug!(
+                        self,
+                        rvalue,
+                        "accessed field #{} but variant only has {}",
+                        i,
+                        field_count
+                    );
+                    continue;
+                }
+            };
+            let operand_ty = operand.ty(mir, tcx);
+            if let Err(terr) =
+                self.sub_types(operand_ty, field_ty, location.at_successor_within_block())
+            {
+                span_mirbug!(
+                    self,
+                    rvalue,
+                    "{:?} is not a subtype of {:?}: {:?}",
+                    operand_ty,
+                    field_ty,
+                    terr
+                );
+            }
         }
     }
 
