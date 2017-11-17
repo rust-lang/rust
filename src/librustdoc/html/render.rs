@@ -3255,6 +3255,7 @@ fn render_spotlight_traits(item: &clean::Item) -> Result<String, fmt::Error> {
 
 fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
     let mut out = String::new();
+    let mut trait_ = String::new();
 
     if let Some(did) = decl.output.def_id() {
         let c = cache();
@@ -3265,9 +3266,10 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                                         .map_or(false, |t| t.is_spotlight) {
                     if out.is_empty() {
                         out.push_str(
-                            &format!("<h3 class=\"important\">Important traits for {}</h3>",
+                            &format!("<h3 class=\"important\">Important traits for {}</h3>\
+                                      <code class=\"content\">",
                                      impl_.for_));
-                        out.push_str("<code class=\"content\">");
+                        trait_.push_str(&format!("{}", impl_.for_));
                     }
 
                     //use the "where" class here to make it small
@@ -3288,8 +3290,11 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
     }
 
     if !out.is_empty() {
-        out.insert_str(0, "<div class=\"important-traits\">ⓘ<div class=\"content hidden\">");
-        out.push_str("</code></span></div></div>");
+        out.insert_str(0, &format!("<div class=\"important-traits\"><div class='tooltip'>ⓘ\
+                                    <span class='tooltiptext'>Important traits for {}</span></div>\
+                                    <div class=\"content hidden\">",
+                                   trait_));
+        out.push_str("</code></div></div>");
     }
 
     Ok(out)

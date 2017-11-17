@@ -1737,7 +1737,7 @@
 
     onEach(document.getElementsByClassName('important-traits'), function(e) {
         e.onclick = function() {
-            showModal(e.firstElementChild.innerHTML);
+            showModal(e.lastElementChild.innerHTML);
         };
     });
 

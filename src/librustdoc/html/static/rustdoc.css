@@ -958,6 +958,7 @@ pre.rust {
 
 .important-traits {
 	cursor: pointer;
+	z-index: 2;
 }
 
 h4 > .important-traits {
