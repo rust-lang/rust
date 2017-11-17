@@ -18,7 +18,6 @@ use rustc::ty::maps::Providers;
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Local, Location, Place};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
-use transform::nll;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
@@ -39,6 +38,7 @@ use util::borrowck_errors::{BorrowckErrors, Origin};
 
 use self::MutateMode::{JustWrite, WriteAndRead};
 
+pub(crate) mod nll;
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -77,7 +77,21 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         .as_local_node_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
-    let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx) {
+    // Make our own copy of the MIR. This copy will be modified (in place) to
+    // contain non-lexical lifetimes. It will have a lifetime tied
+    // to the inference context.
+    let mut mir: Mir<'tcx> = input_mir.clone();
+    let free_regions = if !tcx.sess.opts.debugging_opts.nll {
+        None
+    } else {
+        let mir = &mut mir;
+
+        // Replace all regions with fresh inference variables.
+        Some(nll::replace_regions_in_mir(infcx, def_id, mir))
+    };
+    let mir = &mir;
+
+    let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx) {
         Ok(move_data) => move_data,
         Err((move_data, move_errors)) => {
             for move_error in move_errors {
@@ -110,34 +124,12 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         }
     };
 
-    // Make our own copy of the MIR. This copy will be modified (in place) to
-    // contain non-lexical lifetimes. It will have a lifetime tied
-    // to the inference context.
-    let mut mir: Mir<'tcx> = input_mir.clone();
-    let mir = &mut mir;
-
-    // If we are in non-lexical mode, compute the non-lexical lifetimes.
-    let opt_regioncx = if !tcx.sess.opts.debugging_opts.nll {
-        None
-    } else {
-        Some(nll::compute_regions(infcx, def_id, param_env, mir))
-    };
-
     let mdpe = MoveDataParamEnv {
         move_data: move_data,
         param_env: param_env,
     };
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
-    let flow_borrows = do_dataflow(
-        tcx,
-        mir,
-        id,
-        &attributes,
-        &dead_unwinds,
-        Borrows::new(tcx, mir, opt_regioncx.as_ref()),
-        |bd, i| bd.location(i),
-    );
-    let flow_inits = do_dataflow(
+    let mut flow_inits = FlowInProgress::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -145,8 +137,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &dead_unwinds,
         MaybeInitializedLvals::new(tcx, mir, &mdpe),
         |bd, i| &bd.move_data().move_paths[i],
-    );
-    let flow_uninits = do_dataflow(
+    ));
+    let flow_uninits = FlowInProgress::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -154,8 +146,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &dead_unwinds,
         MaybeUninitializedLvals::new(tcx, mir, &mdpe),
         |bd, i| &bd.move_data().move_paths[i],
-    );
-    let flow_move_outs = do_dataflow(
+    ));
+    let flow_move_outs = FlowInProgress::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -163,8 +155,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &dead_unwinds,
         MovingOutStatements::new(tcx, mir, &mdpe),
         |bd, i| &bd.move_data().moves[i],
-    );
-    let flow_ever_inits = do_dataflow(
+    ));
+    let flow_ever_inits = FlowInProgress::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -172,7 +164,24 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &dead_unwinds,
         EverInitializedLvals::new(tcx, mir, &mdpe),
         |bd, i| &bd.move_data().inits[i],
-    );
+    ));
+
+    // If we are in non-lexical mode, compute the non-lexical lifetimes.
+    let opt_regioncx = if let Some(free_regions) = free_regions {
+        Some(nll::compute_regions(
+            infcx,
+            def_id,
+            free_regions,
+            mir,
+            param_env,
+            &mut flow_inits,
+            &mdpe.move_data,
+        ))
+    } else {
+        assert!(!tcx.sess.opts.debugging_opts.nll);
+        None
+    };
+    let flow_inits = flow_inits; // remove mut
 
     let mut mbcx = MirBorrowckCtxt {
         tcx: tcx,
@@ -182,6 +191,16 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         param_env: param_env,
         storage_dead_or_drop_error_reported: FxHashSet(),
     };
+
+    let flow_borrows = FlowInProgress::new(do_dataflow(
+        tcx,
+        mir,
+        id,
+        &attributes,
+        &dead_unwinds,
+        Borrows::new(tcx, mir, opt_regioncx),
+        |bd, i| bd.location(i),
+    ));
 
     let mut state = InProgress::new(
         flow_borrows,
@@ -2318,19 +2337,19 @@ impl ContextKind {
 }
 
 impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
-    pub(super) fn new(
-        borrows: DataflowResults<Borrows<'b, 'gcx, 'tcx>>,
-        inits: DataflowResults<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
-        uninits: DataflowResults<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
-        move_out: DataflowResults<MovingOutStatements<'b, 'gcx, 'tcx>>,
-        ever_inits: DataflowResults<EverInitializedLvals<'b, 'gcx, 'tcx>>,
+    fn new(
+        borrows: FlowInProgress<Borrows<'b, 'gcx, 'tcx>>,
+        inits: FlowInProgress<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
+        uninits: FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
+        move_outs: FlowInProgress<MovingOutStatements<'b, 'gcx, 'tcx>>,
+        ever_inits: FlowInProgress<EverInitializedLvals<'b, 'gcx, 'tcx>>,
     ) -> Self {
         InProgress {
-            borrows: FlowInProgress::new(borrows),
-            inits: FlowInProgress::new(inits),
-            uninits: FlowInProgress::new(uninits),
-            move_outs: FlowInProgress::new(move_out),
-            ever_inits: FlowInProgress::new(ever_inits),
+            borrows,
+            inits,
+            uninits,
+            move_outs,
+            ever_inits,
         }
     }
 
@@ -2436,8 +2455,11 @@ impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'b, 'gcx, 'tcx> FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>> {
-    fn has_any_child_of(&self, mpi: MovePathIndex) -> Option<MovePathIndex> {
+impl<'tcx, T> FlowInProgress<T>
+where
+    T: HasMoveData<'tcx> + BitDenotation<Idx = MovePathIndex>,
+{
+    fn has_any_child_of(&self, mpi: T::Idx) -> Option<T::Idx> {
         let move_data = self.base_results.operator().move_data();
 
         let mut todo = vec![mpi];

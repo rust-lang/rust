@@ -263,6 +263,10 @@ impl<'tcx> MovePathLookup<'tcx> {
             }
         }
     }
+
+    pub fn find_local(&self, local: Local) -> MovePathIndex {
+        self.locals[local]
+    }
 }
 
 #[derive(Debug)]
