@@ -33,7 +33,7 @@ where
 {
     if mode == WriteMode::Checkstyle {
         let mut xml_tail = String::new();
-        xml_tail.push_str("</checkstyle>");
+        xml_tail.push_str("</checkstyle>\n");
         write!(out, "{}", xml_tail)?;
     }
     Ok(())
