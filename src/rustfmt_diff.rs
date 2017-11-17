@@ -234,4 +234,20 @@ mod test {
             ]
         );
     }
+
+    #[test]
+    fn diff_trailing_newline() {
+        let src = "one\ntwo\nthree\nfour\nfive";
+        let dest = "one\ntwo\nthree\nfour\nfive\n";
+        let diff = make_diff(src, dest, 1);
+        assert_eq!(
+            diff,
+            vec![
+                Mismatch {
+                    line_number: 5,
+                    lines: vec![Context("five".into()), Expected("".into())],
+                },
+            ]
+        );
+    }
 }
