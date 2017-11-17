@@ -11,10 +11,24 @@
 use io;
 use libc;
 use sys::fd::FileDesc;
+use sys::fs::{File, OpenOptions};
+use ffi::CStr;
 
 pub struct Stdin(());
 pub struct Stdout(());
 pub struct Stderr(());
+
+// FIXME: This duplicates code from process_common.rs.
+fn open_null_device (readable: bool) -> io::Result<FileDesc> {
+    let mut opts = OpenOptions::new();
+    opts.read(readable);
+    opts.write(!readable);
+    let path = unsafe {
+        CStr::from_ptr("/dev/null\0".as_ptr() as *const _)
+    };
+    let fd = File::open_c(&path, &opts)?;
+    Ok(fd.into_fd())
+}
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
@@ -24,6 +38,21 @@ impl Stdin {
         let ret = fd.read(data);
         fd.into_raw();
         ret
+    }
+
+    pub fn close() -> io::Result<()> {
+        // To close stdin, what we actually do is change its well-known
+        // file descriptor number to refer to a file open on the null
+        // device.  This protects against code (perhaps in third-party
+        // libraries) that assumes STDIN_FILENO is always open and always
+        // refers to the same thing as stdin.
+        let mut fd = FileDesc::new(libc::STDIN_FILENO);
+        // If this step succeeds, the "previous" file descriptor returned
+        // by `fd.replace` is dropped and thus closed.
+        fd.replace(open_null_device(true)?)?;
+        // Don't close STDIN_FILENO itself, though!
+        fd.into_raw();
+        Ok(())
     }
 }
 
@@ -40,6 +69,15 @@ impl Stdout {
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
+
+    pub fn close() -> io::Result<()> {
+        // See commentary for Stdin::close.
+
+        let mut fd = FileDesc::new(libc::STDOUT_FILENO);
+        fd.replace(open_null_device(false)?)?;
+        fd.into_raw();
+        Ok(())
+    }
 }
 
 impl Stderr {
@@ -53,6 +91,15 @@ impl Stderr {
     }
 
     pub fn flush(&self) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn close() -> io::Result<()> {
+        // See commentary for Stdin::close.
+
+        let mut fd = FileDesc::new(libc::STDERR_FILENO);
+        fd.replace(open_null_device(false)?)?;
+        fd.into_raw();
         Ok(())
     }
 }
