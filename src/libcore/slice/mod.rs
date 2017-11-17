@@ -40,7 +40,7 @@ use cmp;
 use fmt;
 use intrinsics::assume;
 use iter::*;
-use ops::{FnMut, self};
+use ops::{FnMut, Try, self};
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;
@@ -1165,62 +1165,37 @@ macro_rules! iterator {
                 self.next_back()
             }
 
-            fn all<F>(&mut self, mut predicate: F) -> bool
-                where F: FnMut(Self::Item) -> bool,
+            #[inline]
+            fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
             {
-                self.search_while(true, move |elt| {
-                    if predicate(elt) {
-                        SearchWhile::Continue
-                    } else {
-                        SearchWhile::Done(false)
+                // manual unrolling is needed when there are conditional exits from the loop
+                let mut accum = init;
+                unsafe {
+                    while ptrdistance(self.ptr, self.end) >= 4 {
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
                     }
-                })
+                    while self.ptr != self.end {
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                    }
+                }
+                Try::from_ok(accum)
             }
 
-            fn any<F>(&mut self, mut predicate: F) -> bool
-                where F: FnMut(Self::Item) -> bool,
+            #[inline]
+            fn fold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
+                where Fold: FnMut(Acc, Self::Item) -> Acc,
             {
-                !self.all(move |elt| !predicate(elt))
-            }
-
-            fn find<F>(&mut self, mut predicate: F) -> Option<Self::Item>
-                where F: FnMut(&Self::Item) -> bool,
-            {
-                self.search_while(None, move |elt| {
-                    if predicate(&elt) {
-                        SearchWhile::Done(Some(elt))
-                    } else {
-                        SearchWhile::Continue
-                    }
-                })
-            }
-
-            fn position<F>(&mut self, mut predicate: F) -> Option<usize>
-                where F: FnMut(Self::Item) -> bool,
-            {
-                let mut index = 0;
-                self.search_while(None, move |elt| {
-                    if predicate(elt) {
-                        SearchWhile::Done(Some(index))
-                    } else {
-                        index += 1;
-                        SearchWhile::Continue
-                    }
-                })
-            }
-
-            fn rposition<F>(&mut self, mut predicate: F) -> Option<usize>
-                where F: FnMut(Self::Item) -> bool,
-            {
-                let mut index = self.len();
-                self.rsearch_while(None, move |elt| {
-                    index -= 1;
-                    if predicate(elt) {
-                        SearchWhile::Done(Some(index))
-                    } else {
-                        SearchWhile::Continue
-                    }
-                })
+                // Let LLVM unroll this, rather than using the default
+                // impl that would force the manual unrolling above
+                let mut accum = init;
+                while let Some(x) = self.next() {
+                    accum = f(accum, x);
+                }
+                accum
             }
         }
 
@@ -1242,59 +1217,37 @@ macro_rules! iterator {
                 }
             }
 
-            fn rfind<F>(&mut self, mut predicate: F) -> Option<Self::Item>
-                where F: FnMut(&Self::Item) -> bool,
-            {
-                self.rsearch_while(None, move |elt| {
-                    if predicate(&elt) {
-                        SearchWhile::Done(Some(elt))
-                    } else {
-                        SearchWhile::Continue
-                    }
-                })
-            }
-
-        }
-
-        // search_while is a generalization of the internal iteration methods.
-        impl<'a, T> $name<'a, T> {
-            // search through the iterator's element using the closure `g`.
-            // if no element was found, return `default`.
-            fn search_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
-                where Self: Sized,
-                      G: FnMut($elem) -> SearchWhile<Acc>
+            #[inline]
+            fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
+                let mut accum = init;
                 unsafe {
                     while ptrdistance(self.ptr, self.end) >= 4 {
-                        search_while!(g($mkref!(self.ptr.post_inc())));
-                        search_while!(g($mkref!(self.ptr.post_inc())));
-                        search_while!(g($mkref!(self.ptr.post_inc())));
-                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
                     }
                     while self.ptr != self.end {
-                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
                     }
                 }
-                default
+                Try::from_ok(accum)
             }
 
-            fn rsearch_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
-                where Self: Sized,
-                      G: FnMut($elem) -> SearchWhile<Acc>
+            #[inline]
+            fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
+                where Fold: FnMut(Acc, Self::Item) -> Acc,
             {
-                unsafe {
-                    while ptrdistance(self.ptr, self.end) >= 4 {
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                    }
-                    while self.ptr != self.end {
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                    }
+                // Let LLVM unroll this, rather than using the default
+                // impl that would force the manual unrolling above
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x);
                 }
-                default
+                accum
             }
         }
     }
@@ -1326,24 +1279,6 @@ macro_rules! make_mut_slice {
             unsafe { from_raw_parts_mut(start, len) }
         }
     }}
-}
-
-// An enum used for controlling the execution of `.search_while()`.
-enum SearchWhile<T> {
-    // Continue searching
-    Continue,
-    // Fold is complete and will return this value
-    Done(T),
-}
-
-// helper macro for search while's control flow
-macro_rules! search_while {
-    ($e:expr) => {
-        match $e {
-            SearchWhile::Continue => { }
-            SearchWhile::Done(done) => return done,
-        }
-    }
 }
 
 /// Immutable slice iterator

@@ -9,7 +9,9 @@
 // except according to those terms.
 
 use cmp::Ordering;
+use ops::Try;
 
+use super::{AlwaysOk, LoopState};
 use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
@@ -251,12 +253,8 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self {
-            if n == 0 { return Some(x) }
-            n -= 1;
-        }
-        None
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.spec_nth(n)
     }
 
     /// Creates an iterator starting at the same point, but stepping by
@@ -1337,6 +1335,78 @@ pub trait Iterator {
         (left, right)
     }
 
+    /// An iterator method that applies a function as long as it returns
+    /// successfully, producing a single, final value.
+    ///
+    /// `try_fold()` takes two arguments: an initial value, and a closure with
+    /// two arguments: an 'accumulator', and an element. The closure either
+    /// returns successfully, with the value that the accumulator should have
+    /// for the next iteration, or it returns failure, with an error value that
+    /// is propagated back to the caller immediately (short-circuiting).
+    ///
+    /// The initial value is the value the accumulator will have on the first
+    /// call.  If applying the closure succeeded against every element of the
+    /// iterator, `try_fold()` returns the final accumulator as success.
+    ///
+    /// Folding is useful whenever you have a collection of something, and want
+    /// to produce a single value from it.
+    ///
+    /// # Note to Implementors
+    ///
+    /// Most of the other (forward) methods have default implementations in
+    /// terms of this one, so try to implement this explicitly if it can
+    /// do something better than the default `for` loop implementation.
+    ///
+    /// In particular, try to have this call `try_fold()` on the internal parts
+    /// from which this iterator is composed.  If multiple calls are needed,
+    /// the `?` operator be convenient for chaining the accumulator value along,
+    /// but beware any invariants that need to be upheld before those early
+    /// returns.  This is a `&mut self` method, so iteration needs to be
+    /// resumable after hitting an error here.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_try_fold)]
+    /// let a = [1, 2, 3];
+    ///
+    /// // the checked sum of all of the elements of the array
+    /// let sum = a.iter()
+    ///            .try_fold(0i8, |acc, &x| acc.checked_add(x));
+    ///
+    /// assert_eq!(sum, Some(6));
+    /// ```
+    ///
+    /// Short-circuiting:
+    ///
+    /// ```
+    /// #![feature(iterator_try_fold)]
+    /// let a = [10, 20, 30, 100, 40, 50];
+    /// let mut it = a.iter();
+    ///
+    /// // This sum overflows when adding the 100 element
+    /// let sum = it.try_fold(0i8, |acc, &x| acc.checked_add(x));
+    /// assert_eq!(sum, None);
+    ///
+    /// // Because it short-circuited, the remaining elements are still
+    /// // available through the iterator.
+    /// assert_eq!(it.len(), 2);
+    /// assert_eq!(it.next(), Some(&40));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x)?;
+        }
+        Try::from_ok(accum)
+    }
+
     /// An iterator method that applies a function, producing a single, final value.
     ///
     /// `fold()` takes two arguments: an initial value, and a closure with two
@@ -1361,7 +1431,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// // the sum of all of the elements of a
+    /// // the sum of all of the elements of the array
     /// let sum = a.iter()
     ///            .fold(0, |acc, &x| acc + x);
     ///
@@ -1403,14 +1473,10 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(self, init: B, mut f: F) -> B where
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        for x in self {
-            accum = f(accum, x);
-        }
-        accum
+        self.try_fold(init, move |acc, x| AlwaysOk(f(acc, x))).0
     }
 
     /// Tests if every element of the iterator matches a predicate.
@@ -1455,12 +1521,10 @@ pub trait Iterator {
     fn all<F>(&mut self, mut f: F) -> bool where
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
-        for x in self {
-            if !f(x) {
-                return false;
-            }
-        }
-        true
+        self.try_fold((), move |(), x| {
+            if f(x) { LoopState::Continue(()) }
+            else { LoopState::Break(()) }
+        }) == LoopState::Continue(())
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -1506,12 +1570,10 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(Self::Item) -> bool
     {
-        for x in self {
-            if f(x) {
-                return true;
-            }
-        }
-        false
+        self.try_fold((), move |(), x| {
+            if f(x) { LoopState::Break(()) }
+            else { LoopState::Continue(()) }
+        }) == LoopState::Break(())
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -1562,10 +1624,10 @@ pub trait Iterator {
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        for x in self {
-            if predicate(&x) { return Some(x) }
-        }
-        None
+        self.try_fold((), move |(), x| {
+            if predicate(&x) { LoopState::Break(x) }
+            else { LoopState::Continue(()) }
+        }).break_value()
     }
 
     /// Searches for an element in an iterator, returning its index.
@@ -1623,18 +1685,17 @@ pub trait Iterator {
     ///
     /// ```
     #[inline]
+    #[rustc_inherit_overflow_checks]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
         Self: Sized,
         P: FnMut(Self::Item) -> bool,
     {
-        // `enumerate` might overflow.
-        for (i, x) in self.enumerate() {
-            if predicate(x) {
-                return Some(i);
-            }
-        }
-        None
+        // The addition might panic on overflow
+        self.try_fold(0, move |i, x| {
+            if predicate(x) { LoopState::Break(i) }
+            else { LoopState::Continue(i + 1) }
+        }).break_value()
     }
 
     /// Searches for an element in an iterator from the right, returning its
@@ -1681,17 +1742,14 @@ pub trait Iterator {
         P: FnMut(Self::Item) -> bool,
         Self: Sized + ExactSizeIterator + DoubleEndedIterator
     {
-        let mut i = self.len();
-
-        while let Some(v) = self.next_back() {
-            // No need for an overflow check here, because `ExactSizeIterator`
-            // implies that the number of elements fits into a `usize`.
-            i -= 1;
-            if predicate(v) {
-                return Some(i);
-            }
-        }
-        None
+        // No need for an overflow check here, because `ExactSizeIterator`
+        // implies that the number of elements fits into a `usize`.
+        let n = self.len();
+        self.try_rfold(n, move |i, x| {
+            let i = i - 1;
+            if predicate(x) { LoopState::Break(i) }
+            else { LoopState::Continue(i) }
+        }).break_value()
     }
 
     /// Returns the maximum element of an iterator.
@@ -1922,10 +1980,10 @@ pub trait Iterator {
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        for (t, u) in self {
+        self.for_each(|(t, u)| {
             ts.extend(Some(t));
             us.extend(Some(u));
-        }
+        });
 
         (ts, us)
     }
@@ -2300,17 +2358,17 @@ fn select_fold1<I, B, FProj, FCmp>(mut it: I,
     // start with the first element as our selection. This avoids
     // having to use `Option`s inside the loop, translating to a
     // sizeable performance gain (6x in one case).
-    it.next().map(|mut sel| {
-        let mut sel_p = f_proj(&sel);
+    it.next().map(|first| {
+        let first_p = f_proj(&first);
 
-        for x in it {
+        it.fold((first_p, first), |(sel_p, sel), x| {
             let x_p = f_proj(&x);
             if f_cmp(&sel_p, &sel, &x_p, &x) {
-                sel = x;
-                sel_p = x_p;
+                (x_p, x)
+            } else {
+                (sel_p, sel)
             }
-        }
-        (sel_p, sel)
+        })
     })
 }
 
@@ -2322,4 +2380,28 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
     }
+}
+
+
+trait SpecIterator : Iterator {
+    fn spec_nth(&mut self, n: usize) -> Option<Self::Item>;
+}
+
+impl<I: Iterator + ?Sized> SpecIterator for I {
+    default fn spec_nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        for x in self {
+            if n == 0 { return Some(x) }
+            n -= 1;
+        }
+        None
+   }
+}
+
+impl<I: Iterator + Sized> SpecIterator for I {
+    fn spec_nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.try_fold(n, move |i, x| {
+            if i == 0 { LoopState::Break(x) }
+            else { LoopState::Continue(i - 1) }
+        }).break_value()
+   }
 }

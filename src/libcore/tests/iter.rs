@@ -664,6 +664,7 @@ fn test_iterator_skip_last() {
 fn test_iterator_skip_fold() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
     let ys = [13, 15, 16, 17, 19, 20, 30];
+
     let it = xs.iter().skip(5);
     let i = it.fold(0, |i, &x| {
         assert_eq!(x, ys[i]);
@@ -678,6 +679,24 @@ fn test_iterator_skip_fold() {
         i + 1
     });
     assert_eq!(i, ys.len());
+
+    let it = xs.iter().skip(5);
+    let i = it.rfold(ys.len(), |i, &x| {
+        let i = i - 1;
+        assert_eq!(x, ys[i]);
+        i
+    });
+    assert_eq!(i, 0);
+
+    let mut it = xs.iter().skip(5);
+    assert_eq!(it.next(), Some(&ys[0])); // process skips before folding
+    let i = it.rfold(ys.len(), |i, &x| {
+        let i = i - 1;
+        assert_eq!(x, ys[i]);
+        i
+    });
+    assert_eq!(i, 1);
+
 }
 
 #[test]
@@ -1477,4 +1496,208 @@ fn test_step_replace_no_between() {
     let y = x.replace_one();
     assert_eq!(x, 1);
     assert_eq!(y, 5);
+}
+
+#[test]
+fn test_rev_try_folds() {
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((1..10).rev().try_fold(7, f), (1..10).try_rfold(7, f));
+    assert_eq!((1..10).rev().try_rfold(7, f), (1..10).try_fold(7, f));
+
+    let a = [10, 20, 30, 40, 100, 60, 70, 80, 90];
+    let mut iter = a.iter().rev();
+    assert_eq!(iter.try_fold(0_i8, |acc, &x| acc.checked_add(x)), None);
+    assert_eq!(iter.next(), Some(&70));
+    let mut iter = a.iter().rev();
+    assert_eq!(iter.try_rfold(0_i8, |acc, &x| acc.checked_add(x)), None);
+    assert_eq!(iter.next_back(), Some(&60));
+}
+
+#[test]
+fn test_cloned_try_folds() {
+    let a = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    let f_ref = &|acc, &x| i32::checked_add(2*acc, x);
+    assert_eq!(a.iter().cloned().try_fold(7, f), a.iter().try_fold(7, f_ref));
+    assert_eq!(a.iter().cloned().try_rfold(7, f), a.iter().try_rfold(7, f_ref));
+
+    let a = [10, 20, 30, 40, 100, 60, 70, 80, 90];
+    let mut iter = a.iter().cloned();
+    assert_eq!(iter.try_fold(0_i8, |acc, x| acc.checked_add(x)), None);
+    assert_eq!(iter.next(), Some(60));
+    let mut iter = a.iter().cloned();
+    assert_eq!(iter.try_rfold(0_i8, |acc, x| acc.checked_add(x)), None);
+    assert_eq!(iter.next_back(), Some(70));
+}
+
+#[test]
+fn test_chain_try_folds() {
+    let c = || (0..10).chain(10..20);
+
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!(c().try_fold(7, f), (0..20).try_fold(7, f));
+    assert_eq!(c().try_rfold(7, f), (0..20).rev().try_fold(7, f));
+
+    let mut iter = c();
+    assert_eq!(iter.position(|x| x == 5), Some(5));
+    assert_eq!(iter.next(), Some(6), "stopped in front, state Both");
+    assert_eq!(iter.position(|x| x == 13), Some(6));
+    assert_eq!(iter.next(), Some(14), "stopped in back, state Back");
+    assert_eq!(iter.try_fold(0, |acc, x| Some(acc+x)), Some((15..20).sum()));
+
+    let mut iter = c().rev(); // use rev to access try_rfold
+    assert_eq!(iter.position(|x| x == 15), Some(4));
+    assert_eq!(iter.next(), Some(14), "stopped in back, state Both");
+    assert_eq!(iter.position(|x| x == 5), Some(8));
+    assert_eq!(iter.next(), Some(4), "stopped in front, state Front");
+    assert_eq!(iter.try_fold(0, |acc, x| Some(acc+x)), Some((0..4).sum()));
+
+    let mut iter = c();
+    iter.by_ref().rev().nth(14); // skip the last 15, ending in state Front
+    assert_eq!(iter.try_fold(7, f), (0..5).try_fold(7, f));
+
+    let mut iter = c();
+    iter.nth(14); // skip the first 15, ending in state Back
+    assert_eq!(iter.try_rfold(7, f), (15..20).try_rfold(7, f));
+}
+
+#[test]
+fn test_map_try_folds() {
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((0..10).map(|x| x+3).try_fold(7, f), (3..13).try_fold(7, f));
+    assert_eq!((0..10).map(|x| x+3).try_rfold(7, f), (3..13).try_rfold(7, f));
+
+    let mut iter = (0..40).map(|x| x+10);
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(20));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(46));
+}
+
+#[test]
+fn test_filter_try_folds() {
+    fn p(&x: &i32) -> bool { 0 <= x && x < 10 }
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((-10..20).filter(p).try_fold(7, f), (0..10).try_fold(7, f));
+    assert_eq!((-10..20).filter(p).try_rfold(7, f), (0..10).try_rfold(7, f));
+
+    let mut iter = (0..40).filter(|&x| x % 2 == 1);
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(25));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(31));
+}
+
+#[test]
+fn test_filter_map_try_folds() {
+    let mp = &|x| if 0 <= x && x < 10 { Some(x*2) } else { None };
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((-9..20).filter_map(mp).try_fold(7, f), (0..10).map(|x| 2*x).try_fold(7, f));
+    assert_eq!((-9..20).filter_map(mp).try_rfold(7, f), (0..10).map(|x| 2*x).try_rfold(7, f));
+
+    let mut iter = (0..40).filter_map(|x| if x%2 == 1 { None } else { Some(x*2 + 10) });
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(38));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(78));
+}
+
+#[test]
+fn test_enumerate_try_folds() {
+    let f = &|acc, (i, x)| usize::checked_add(2*acc, x/(i+1) + i);
+    assert_eq!((9..18).enumerate().try_fold(7, f), (0..9).map(|i| (i, i+9)).try_fold(7, f));
+    assert_eq!((9..18).enumerate().try_rfold(7, f), (0..9).map(|i| (i, i+9)).try_rfold(7, f));
+
+    let mut iter = (100..200).enumerate();
+    let f = &|acc, (i, x)| u8::checked_add(acc, u8::checked_div(x, i as u8 + 1)?);
+    assert_eq!(iter.try_fold(0, f), None);
+    assert_eq!(iter.next(), Some((7, 107)));
+    assert_eq!(iter.try_rfold(0, f), None);
+    assert_eq!(iter.next_back(), Some((11, 111)));
+}
+
+#[test]
+fn test_peek_try_fold() {
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((1..20).peekable().try_fold(7, f), (1..20).try_fold(7, f));
+    let mut iter = (1..20).peekable();
+    assert_eq!(iter.peek(), Some(&1));
+    assert_eq!(iter.try_fold(7, f), (1..20).try_fold(7, f));
+
+    let mut iter = [100, 20, 30, 40, 50, 60, 70].iter().cloned().peekable();
+    assert_eq!(iter.peek(), Some(&100));
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.peek(), Some(&40));
+}
+
+#[test]
+fn test_skip_while_try_fold() {
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    fn p(&x: &i32) -> bool { (x % 10) <= 5 }
+    assert_eq!((1..20).skip_while(p).try_fold(7, f), (6..20).try_fold(7, f));
+    let mut iter = (1..20).skip_while(p);
+    assert_eq!(iter.nth(5), Some(11));
+    assert_eq!(iter.try_fold(7, f), (12..20).try_fold(7, f));
+
+    let mut iter = (0..50).skip_while(|&x| (x % 20) < 15);
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(23));
+}
+
+#[test]
+fn test_take_while_folds() {
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((1..20).take_while(|&x| x != 10).try_fold(7, f), (1..10).try_fold(7, f));
+    let mut iter = (1..20).take_while(|&x| x != 10);
+    assert_eq!(iter.try_fold(0, |x, y| Some(x+y)), Some((1..10).sum()));
+    assert_eq!(iter.next(), None, "flag should be set");
+    let iter = (1..20).take_while(|&x| x != 10);
+    assert_eq!(iter.fold(0, |x, y| x+y), (1..10).sum());
+
+    let mut iter = (10..50).take_while(|&x| x != 40);
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(20));
+}
+
+#[test]
+fn test_skip_try_folds() {
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((1..20).skip(9).try_fold(7, f), (10..20).try_fold(7, f));
+    assert_eq!((1..20).skip(9).try_rfold(7, f), (10..20).try_rfold(7, f));
+
+    let mut iter = (0..30).skip(10);
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(20));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(24));
+}
+
+#[test]
+fn test_take_try_folds() {
+    let f = &|acc, x| i32::checked_add(2*acc, x);
+    assert_eq!((10..30).take(10).try_fold(7, f), (10..20).try_fold(7, f));
+    //assert_eq!((10..30).take(10).try_rfold(7, f), (10..20).try_rfold(7, f));
+
+    let mut iter = (10..30).take(20);
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(20));
+    //assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    //assert_eq!(iter.next_back(), Some(24));
+}
+
+#[test]
+fn test_flat_map_try_folds() {
+    let f = &|acc, x| i32::checked_add(acc*2/3, x);
+    let mr = &|x| (5*x)..(5*x + 5);
+    assert_eq!((0..10).flat_map(mr).try_fold(7, f), (0..50).try_fold(7, f));
+    assert_eq!((0..10).flat_map(mr).try_rfold(7, f), (0..50).try_rfold(7, f));
+    let mut iter = (0..10).flat_map(mr);
+    iter.next(); iter.next_back(); // have front and back iters in progress
+    assert_eq!(iter.try_rfold(7, f), (1..49).try_rfold(7, f));
+
+    let mut iter = (0..10).flat_map(|x| (4*x)..(4*x + 4));
+    assert_eq!(iter.try_fold(0, i8::checked_add), None);
+    assert_eq!(iter.next(), Some(17));
+    assert_eq!(iter.try_rfold(0, i8::checked_add), None);
+    assert_eq!(iter.next_back(), Some(35));
 }

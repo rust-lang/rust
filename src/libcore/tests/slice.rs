@@ -276,6 +276,23 @@ fn test_find_rfind() {
 }
 
 #[test]
+fn test_iter_folds() {
+    let a = [1, 2, 3, 4, 5]; // len>4 so the unroll is used
+    assert_eq!(a.iter().fold(0, |acc, &x| 2*acc + x), 57);
+    assert_eq!(a.iter().rfold(0, |acc, &x| 2*acc + x), 129);
+    let fold = |acc: i32, &x| acc.checked_mul(2)?.checked_add(x);
+    assert_eq!(a.iter().try_fold(0, &fold), Some(57));
+    assert_eq!(a.iter().try_rfold(0, &fold), Some(129));
+
+    // short-circuiting try_fold, through other methods
+    let a = [0, 1, 2, 3, 5, 5, 5, 7, 8, 9];
+    let mut iter = a.iter();
+    assert_eq!(iter.position(|&x| x == 3), Some(3));
+    assert_eq!(iter.rfind(|&&x| x == 5), Some(&5));
+    assert_eq!(iter.len(), 2);
+}
+
+#[test]
 fn test_rotate() {
     const N: usize = 600;
     let a: &mut [_] = &mut [0; N];
