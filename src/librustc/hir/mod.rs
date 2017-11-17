@@ -222,6 +222,10 @@ pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: HirVec<Lifetime>,
     pub pure_wrt_drop: bool,
+    // Indicates that the lifetime definition was synthetically added
+    // as a result of an in-band lifetime usage like
+    // `fn foo(x: &'a u8) -> &'a u8 { x }`
+    pub in_band: bool,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:

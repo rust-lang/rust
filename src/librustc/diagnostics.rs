@@ -2051,4 +2051,6 @@ register_diagnostics! {
     E0631, // type mismatch in closure arguments
     E0637, // "'_" is not a valid lifetime bound
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
+    E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
+    E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
 }

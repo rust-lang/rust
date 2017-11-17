@@ -110,7 +110,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.types.re_static
             }
 
-            Some(rl::Region::LateBound(debruijn, id)) => {
+            Some(rl::Region::LateBound(debruijn, id, _)) => {
                 let name = lifetime_name(id);
                 tcx.mk_region(ty::ReLateBound(debruijn,
                     ty::BrNamed(id, name)))
@@ -120,7 +120,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
             }
 
-            Some(rl::Region::EarlyBound(index, id)) => {
+            Some(rl::Region::EarlyBound(index, id, _)) => {
                 let name = lifetime_name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                     def_id: id,

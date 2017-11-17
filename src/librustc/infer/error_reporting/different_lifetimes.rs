@@ -281,7 +281,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
-                    (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
+                    (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
                         debug!("EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
                                         def_id={:?}", id, def_id);
                         if id == def_id {
@@ -293,7 +293,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
-                    (Some(rl::Region::LateBound(debruijn_index, id)), ty::BrNamed(def_id, _)) => {
+                    (
+                     Some(rl::Region::LateBound(debruijn_index, id, _)),
+                     ty::BrNamed(def_id, _)
+                    ) => {
                         debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                                debruijn_index.depth);
                         debug!("self.infcx.tcx.hir.local_def_id(id)={:?}", id);
@@ -306,8 +309,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
                     (Some(rl::Region::Static), _) |
                     (Some(rl::Region::Free(_, _)), _) |
-                    (Some(rl::Region::EarlyBound(_, _)), _) |
-                    (Some(rl::Region::LateBound(_, _)), _) |
+                    (Some(rl::Region::EarlyBound(_, _, _)), _) |
+                    (Some(rl::Region::LateBound(_, _, _)), _) |
                     (Some(rl::Region::LateBoundAnon(_, _)), _) |
                     (None, _) => {
                         debug!("no arg found");
@@ -368,7 +371,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
+            (Some(rl::Region::EarlyBound(_, id, _)), ty::BrNamed(def_id, _)) => {
                 debug!("EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
                                         def_id={:?}", id, def_id);
                 if id == def_id {
@@ -377,7 +380,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            (Some(rl::Region::LateBound(debruijn_index, id)), ty::BrNamed(def_id, _)) => {
+            (Some(rl::Region::LateBound(debruijn_index, id, _)), ty::BrNamed(def_id, _)) => {
                 debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                        debruijn_index.depth);
                 debug!("id={:?}", id);
@@ -389,8 +392,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
             }
 
             (Some(rl::Region::Static), _) |
-            (Some(rl::Region::EarlyBound(_, _)), _) |
-            (Some(rl::Region::LateBound(_, _)), _) |
+            (Some(rl::Region::EarlyBound(_, _, _)), _) |
+            (Some(rl::Region::LateBound(_, _, _)), _) |
             (Some(rl::Region::LateBoundAnon(_, _)), _) |
             (Some(rl::Region::Free(_, _)), _) |
             (None, _) => {
