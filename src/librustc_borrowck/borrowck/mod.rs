@@ -29,7 +29,7 @@ use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
 use rustc::middle::borrowck::BorrowCheckResult;
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -376,9 +376,9 @@ pub enum LoanPathElem<'tcx> {
     LpInterior(Option<DefId>, InteriorKind),
 }
 
-fn closure_to_block(closure_id: DefIndex,
+fn closure_to_block(closure_id: LocalDefId,
                     tcx: TyCtxt) -> ast::NodeId {
-    let closure_id = tcx.hir.def_index_to_node_id(closure_id);
+    let closure_id = tcx.hir.local_def_id_to_node_id(closure_id);
     match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(.., body_id, _, _) => {
@@ -1101,7 +1101,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 } else {
                     "consider changing this closure to take self by mutable reference"
                 };
-                let node_id = self.tcx.hir.def_index_to_node_id(id);
+                let node_id = self.tcx.hir.local_def_id_to_node_id(id);
                 let help_span = self.tcx.hir.span(node_id);
                 self.cannot_act_on_capture_in_sharable_fn(span,
                                                           prefix,
@@ -1297,7 +1297,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
                 if kind == ty::ClosureKind::Fn {
                     let closure_node_id =
-                        self.tcx.hir.def_index_to_node_id(upvar_id.closure_expr_id);
+                        self.tcx.hir.local_def_id_to_node_id(upvar_id.closure_expr_id);
                     db.span_help(self.tcx.hir.span(closure_node_id),
                                  "consider changing this closure to take \
                                   self by mutable reference");

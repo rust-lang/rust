@@ -327,6 +327,7 @@ impl DepGraph {
         }
     }
 
+    #[inline]
     pub fn fingerprint_of(&self, dep_node: &DepNode) -> Fingerprint {
         match self.fingerprints.borrow().get(dep_node) {
             Some(&fingerprint) => fingerprint,
@@ -338,6 +339,11 @@ impl DepGraph {
 
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
+    }
+
+    #[inline]
+    pub fn prev_dep_node_index_of(&self, dep_node: &DepNode) -> SerializedDepNodeIndex {
+        self.data.as_ref().unwrap().previous.node_to_index(dep_node)
     }
 
     /// Indicates that a previous work product exists for `v`. This is

@@ -24,7 +24,7 @@
 
 use hir;
 use hir::def;
-use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DefPathTable};
 use hir::svh::Svh;
@@ -180,7 +180,7 @@ impl EncodedMetadata {
 /// upstream crate.
 #[derive(Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub struct EncodedMetadataHash {
-    pub def_index: DefIndex,
+    pub def_index: u32,
     pub hash: ich::Fingerprint,
 }
 

@@ -11,8 +11,7 @@
 use ty;
 
 use rustc_data_structures::indexed_vec::Idx;
-use serialize::{self, Encoder, Decoder};
-
+use serialize;
 use std::fmt;
 use std::u32;
 
@@ -32,6 +31,10 @@ newtype_index!(CrateNum
 
         /// A CrateNum value that indicates that something is wrong.
         const INVALID_CRATE = u32::MAX - 1,
+
+        /// A special CrateNum that we use for the tcx.rcache when decoding from
+        /// the incr. comp. cache.
+        const RESERVED_FOR_INCR_COMP_CACHE = u32::MAX - 2,
     });
 
 impl CrateNum {
@@ -61,17 +64,8 @@ impl fmt::Display for CrateNum {
     }
 }
 
-impl serialize::UseSpecializedEncodable for CrateNum {
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.0)
-    }
-}
-
-impl serialize::UseSpecializedDecodable for CrateNum {
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<CrateNum, D::Error> {
-        d.read_u32().map(CrateNum)
-    }
-}
+impl serialize::UseSpecializedEncodable for CrateNum {}
+impl serialize::UseSpecializedDecodable for CrateNum {}
 
 /// A DefIndex is an index into the hir-map for a crate, identifying a
 /// particular definition. It should really be considered an interned
@@ -88,6 +82,7 @@ impl serialize::UseSpecializedDecodable for CrateNum {
 /// don't have to care about these ranges.
 newtype_index!(DefIndex
     {
+        ENCODABLE = custom
         DEBUG_FORMAT = custom,
 
         /// The start of the "high" range of DefIndexes.
@@ -146,6 +141,9 @@ impl DefIndex {
     }
 }
 
+impl serialize::UseSpecializedEncodable for DefIndex {}
+impl serialize::UseSpecializedDecodable for DefIndex {}
+
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum DefIndexAddressSpace {
     Low = 0,
@@ -166,7 +164,7 @@ impl DefIndexAddressSpace {
 
 /// A DefId identifies a particular *definition*, by combining a crate
 /// index and a def index.
-#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, Hash, Copy)]
 pub struct DefId {
     pub krate: CrateNum,
     pub index: DefIndex,
@@ -188,14 +186,58 @@ impl fmt::Debug for DefId {
     }
 }
 
-
 impl DefId {
     /// Make a local `DefId` with the given index.
+    #[inline]
     pub fn local(index: DefIndex) -> DefId {
         DefId { krate: LOCAL_CRATE, index: index }
     }
 
-    pub fn is_local(&self) -> bool {
+    #[inline]
+    pub fn is_local(self) -> bool {
         self.krate == LOCAL_CRATE
     }
+
+    #[inline]
+    pub fn to_local(self) -> LocalDefId {
+        LocalDefId::from_def_id(self)
+    }
 }
+
+impl serialize::UseSpecializedEncodable for DefId {}
+impl serialize::UseSpecializedDecodable for DefId {}
+
+/// A LocalDefId is equivalent to a DefId with `krate == LOCAL_CRATE`. Since
+/// we encode this information in the type, we can ensure at compile time that
+/// no DefIds from upstream crates get thrown into the mix. There are quite a
+/// few cases where we know that only DefIds from the local crate are expected
+/// and a DefId from a different crate would signify a bug somewhere. This
+/// is when LocalDefId comes in handy.
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct LocalDefId(DefIndex);
+
+impl LocalDefId {
+
+    #[inline]
+    pub fn from_def_id(def_id: DefId) -> LocalDefId {
+        assert!(def_id.is_local());
+        LocalDefId(def_id.index)
+    }
+
+    #[inline]
+    pub fn to_def_id(self) -> DefId {
+        DefId {
+            krate: LOCAL_CRATE,
+            index: self.0
+        }
+    }
+}
+
+impl fmt::Debug for LocalDefId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_def_id().fmt(f)
+    }
+}
+
+impl serialize::UseSpecializedEncodable for LocalDefId {}
+impl serialize::UseSpecializedDecodable for LocalDefId {}

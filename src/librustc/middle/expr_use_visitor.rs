@@ -20,7 +20,7 @@ use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
 use hir::def::Def;
-use hir::def_id::{DefId};
+use hir::def_id::DefId;
 use infer::InferCtxt;
 use middle::mem_categorization as mc;
 use middle::region;
@@ -915,7 +915,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
                 let upvar_id = ty::UpvarId {
                     var_id: var_hir_id,
-                    closure_expr_id: closure_def_id.index
+                    closure_expr_id: closure_def_id.to_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,

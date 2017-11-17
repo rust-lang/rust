@@ -13,7 +13,7 @@ use build;
 use hair::cx::Cx;
 use hair::LintLevel;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, TyContext};
@@ -422,10 +422,10 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         freevars.iter().map(|fv| {
             let var_id = fv.var_id();
             let var_hir_id = tcx.hir.node_to_hir_id(var_id);
-            let closure_expr_id = tcx.hir.local_def_id(fn_id).index;
+            let closure_expr_id = tcx.hir.local_def_id(fn_id);
             let capture = hir.tables().upvar_capture(ty::UpvarId {
                 var_id: var_hir_id,
-                closure_expr_id,
+                closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
             });
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,

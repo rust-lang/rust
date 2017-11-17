@@ -42,9 +42,9 @@ pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     let work_products_path = work_products_path(tcx.sess);
-    if let Some(work_products_data) = load_data(tcx.sess, &work_products_path) {
+    if let Some((work_products_data, start_pos)) = load_data(tcx.sess, &work_products_path) {
         // Decode the list of work_products
-        let mut work_product_decoder = Decoder::new(&work_products_data[..], 0);
+        let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
         let work_products: Vec<SerializedWorkProduct> =
             RustcDecodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
                 let msg = format!("Error decoding `work-products` from incremental \
@@ -77,9 +77,9 @@ pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
-fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
+fn load_data(sess: &Session, path: &Path) -> Option<(Vec<u8>, usize)> {
     match file_format::read_file(sess, path) {
-        Ok(Some(data)) => return Some(data),
+        Ok(Some(data_and_pos)) => return Some(data_and_pos),
         Ok(None) => {
             // The file either didn't exist or was produced by an incompatible
             // compiler version. Neither is an error.
@@ -126,8 +126,8 @@ pub fn load_prev_metadata_hashes(tcx: TyCtxt) -> DefIdMap<Fingerprint> {
 
     debug!("load_prev_metadata_hashes() - File: {}", file_path.display());
 
-    let data = match file_format::read_file(tcx.sess, &file_path) {
-        Ok(Some(data)) => data,
+    let (data, start_pos) = match file_format::read_file(tcx.sess, &file_path) {
+        Ok(Some(data_and_pos)) => data_and_pos,
         Ok(None) => {
             debug!("load_prev_metadata_hashes() - File produced by incompatible \
                     compiler version: {}", file_path.display());
@@ -141,7 +141,7 @@ pub fn load_prev_metadata_hashes(tcx: TyCtxt) -> DefIdMap<Fingerprint> {
     };
 
     debug!("load_prev_metadata_hashes() - Decoding hashes");
-    let mut decoder = Decoder::new(&data, 0);
+    let mut decoder = Decoder::new(&data, start_pos);
     let _ = Svh::decode(&mut decoder).unwrap();
     let serialized_hashes = SerializedMetadataHashes::decode(&mut decoder).unwrap();
 
@@ -171,8 +171,8 @@ pub fn load_dep_graph(sess: &Session) -> PreviousDepGraph {
         return empty
     }
 
-    if let Some(bytes) = load_data(sess, &dep_graph_path(sess)) {
-        let mut decoder = Decoder::new(&bytes, 0);
+    if let Some((bytes, start_pos)) = load_data(sess, &dep_graph_path(sess)) {
+        let mut decoder = Decoder::new(&bytes, start_pos);
         let prev_commandline_args_hash = u64::decode(&mut decoder)
             .expect("Error reading commandline arg hash from cached dep-graph");
 
@@ -183,6 +183,10 @@ pub fn load_dep_graph(sess: &Session) -> PreviousDepGraph {
             }
             // We can't reuse the cache, purge it.
             debug!("load_dep_graph_new: differing commandline arg hashes");
+
+            delete_all_session_dir_contents(sess)
+                .expect("Failed to delete invalidated incr. comp. session \
+                         directory contents.");
 
             // No need to do any further work
             return empty
@@ -198,12 +202,13 @@ pub fn load_dep_graph(sess: &Session) -> PreviousDepGraph {
 }
 
 pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess> {
-    if sess.opts.incremental.is_none() {
+    if sess.opts.incremental.is_none() ||
+       !sess.opts.debugging_opts.incremental_queries {
         return OnDiskCache::new_empty(sess.codemap());
     }
 
-    if let Some(bytes) = load_data(sess, &query_cache_path(sess)) {
-        OnDiskCache::new(sess, &bytes[..])
+    if let Some((bytes, start_pos)) = load_data(sess, &query_cache_path(sess)) {
+        OnDiskCache::new(sess, bytes, start_pos)
     } else {
         OnDiskCache::new_empty(sess.codemap())
     }

@@ -70,7 +70,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use middle::region;
-use hir::def_id::{DefId, DefIndex};
+use hir::def_id::{DefId, LocalDefId};
 use hir::map as hir_map;
 use infer::InferCtxt;
 use hir::def::{Def, CtorKind};
@@ -191,7 +191,7 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 pub enum ImmutabilityBlame<'tcx> {
     ImmLocal(ast::NodeId),
-    ClosureEnv(DefIndex),
+    ClosureEnv(LocalDefId),
     LocalDeref(ast::NodeId),
     AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
 }
@@ -759,11 +759,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ref t => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", t),
         };
 
-        let closure_expr_def_index = self.tcx.hir.local_def_id(fn_node_id).index;
+        let closure_expr_def_id = self.tcx.hir.local_def_id(fn_node_id);
         let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
             var_id: var_hir_id,
-            closure_expr_id: closure_expr_def_index
+            closure_expr_id: closure_expr_def_id.to_local(),
         };
 
         let var_ty = self.node_ty(var_hir_id)?;
@@ -838,7 +838,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: DefId::local(upvar_id.closure_expr_id),
+            scope: upvar_id.closure_expr_id.to_def_id(),
             bound_region: ty::BrEnv
         }));
 

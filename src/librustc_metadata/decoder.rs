@@ -15,8 +15,6 @@ use schema::*;
 
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
-
-use rustc::middle::const_val::ByteArray;
 use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
                             ExternBodyNestedBodies};
 use rustc::hir::def::{self, Def, CtorKind};
@@ -25,19 +23,15 @@ use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::codec::{self as ty_codec, TyDecoder};
-use rustc::ty::subst::Substs;
+use rustc::ty::codec::TyDecoder;
 use rustc::util::nodemap::DefIdSet;
-
 use rustc::mir::Mir;
 
-use std::borrow::Cow;
 use std::cell::Ref;
 use std::collections::BTreeMap;
 use std::io;
 use std::mem;
 use std::rc::Rc;
-use std::str;
 use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
@@ -174,55 +168,21 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 }
 
-macro_rules! decoder_methods {
-    ($($name:ident -> $ty:ty;)*) => {
-        $(fn $name(&mut self) -> Result<$ty, Self::Error> {
-            self.opaque.$name()
-        })*
-    }
-}
-
-impl<'doc, 'tcx> Decoder for DecodeContext<'doc, 'tcx> {
-    type Error = <opaque::Decoder<'doc> as Decoder>::Error;
-
-    decoder_methods! {
-        read_nil -> ();
-
-        read_u128 -> u128;
-        read_u64 -> u64;
-        read_u32 -> u32;
-        read_u16 -> u16;
-        read_u8 -> u8;
-        read_usize -> usize;
-
-        read_i128 -> i128;
-        read_i64 -> i64;
-        read_i32 -> i32;
-        read_i16 -> i16;
-        read_i8 -> i8;
-        read_isize -> isize;
-
-        read_bool -> bool;
-        read_f64 -> f64;
-        read_f32 -> f32;
-        read_char -> char;
-        read_str -> Cow<str>;
-    }
-
-    fn error(&mut self, err: &str) -> Self::Error {
-        self.opaque.error(err)
-    }
-}
-
-
 impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
 
+    #[inline]
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx.expect("missing TyCtxt in DecodeContext")
     }
 
+    #[inline]
     fn peek_byte(&self) -> u8 {
         self.opaque.data[self.opaque.position()]
+    }
+
+    #[inline]
+    fn position(&self) -> usize {
+        self.opaque.position()
     }
 
     fn cached_ty_for_shorthand<F>(&mut self,
@@ -286,14 +246,24 @@ impl<'a, 'tcx, T> SpecializedDecoder<LazySeq<T>> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpecializedDecoder<CrateNum> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<CrateNum, Self::Error> {
-        let cnum = CrateNum::from_u32(u32::decode(self)?);
-        if cnum == LOCAL_CRATE {
-            Ok(self.cdata().cnum)
-        } else {
-            Ok(self.cdata().cnum_map.borrow()[cnum])
-        }
+
+impl<'a, 'tcx> SpecializedDecoder<DefId> for DecodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_decode(&mut self) -> Result<DefId, Self::Error> {
+        let krate = CrateNum::decode(self)?;
+        let index = DefIndex::decode(self)?;
+
+        Ok(DefId {
+            krate,
+            index,
+        })
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
+        Ok(DefIndex::from_u32(self.read_u32()?))
     }
 }
 
@@ -357,65 +327,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     }
 }
 
-// FIXME(#36588) These impls are horribly unsound as they allow
-// the caller to pick any lifetime for 'tcx, including 'static,
-// by using the unspecialized proxies to them.
-
-impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<Ty<'tcx>, Self::Error> {
-        ty_codec::decode_ty(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<ty::GenericPredicates<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<ty::GenericPredicates<'tcx>, Self::Error> {
-        ty_codec::decode_predicates(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
-        ty_codec::decode_substs(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<ty::Region<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<ty::Region<'tcx>, Self::Error> {
-        ty_codec::decode_region(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<Ty<'tcx>>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<&'tcx ty::Slice<Ty<'tcx>>, Self::Error> {
-        ty_codec::decode_ty_slice(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::AdtDef> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
-        ty_codec::decode_adt_def(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>
-    for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self)
-        -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
-        ty_codec::decode_existential_predicate_slice(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<ByteArray<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<ByteArray<'tcx>, Self::Error> {
-        ty_codec::decode_byte_array(self)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Const<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-        ty_codec::decode_const(self)
-    }
-}
+implement_ty_decoder!( DecodeContext<'a, 'tcx> );
 
 impl<'a, 'tcx> MetadataBlob {
     pub fn is_compatible(&self) -> bool {

@@ -116,6 +116,33 @@ impl<'a, 'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, cnum: &CrateNum) -> Result<(), Self::Error> {
+        self.emit_u32(cnum.as_u32())
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
+        let DefId {
+            krate,
+            index,
+        } = *def_id;
+
+        krate.encode(self)?;
+        index.encode(self)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
+        self.emit_u32(def_index.as_u32())
+    }
+}
+
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
         ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
@@ -213,7 +240,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         if let Some(fingerprint) = fingerprint {
             this.metadata_hashes.hashes.push(EncodedMetadataHash {
-                def_index,
+                def_index: def_index.as_u32(),
                 hash: fingerprint,
             })
         }
@@ -395,7 +422,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let total_bytes = self.position();
 
         self.metadata_hashes.hashes.push(EncodedMetadataHash {
-            def_index: global_metadata_def_index(GlobalMetaDataKind::Krate),
+            def_index: global_metadata_def_index(GlobalMetaDataKind::Krate).as_u32(),
             hash: Fingerprint::from_smaller_hash(link_meta.crate_hash.as_u64())
         });
 

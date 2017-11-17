@@ -20,13 +20,13 @@ use ty::maps::config::QueryDescription;
 use ty::item_path;
 
 use rustc_data_structures::fx::{FxHashMap};
-use std::cell::RefMut;
+use std::cell::{Ref, RefMut};
 use std::marker::PhantomData;
 use std::mem;
 use syntax_pos::Span;
 
-pub(super) struct QueryMap<D: QueryDescription> {
-    phantom: PhantomData<D>,
+pub(super) struct QueryMap<'tcx, D: QueryDescription<'tcx>> {
+    phantom: PhantomData<(D, &'tcx ())>,
     pub(super) map: FxHashMap<D::Key, QueryValue<D::Value>>,
 }
 
@@ -46,13 +46,18 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<M: QueryDescription> QueryMap<M> {
-    pub(super) fn new() -> QueryMap<M> {
+impl<'tcx, M: QueryDescription<'tcx>> QueryMap<'tcx, M> {
+    pub(super) fn new() -> QueryMap<'tcx, M> {
         QueryMap {
             phantom: PhantomData,
             map: FxHashMap(),
         }
     }
+}
+
+pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
+    fn get_cache_internal<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                              -> Ref<'a, QueryMap<'tcx, Self>>;
 }
 
 pub(super) struct CycleError<'a, 'tcx: 'a> {
@@ -242,6 +247,13 @@ macro_rules! define_maps {
             type Value = $V;
         }
 
+        impl<$tcx> GetCacheInternal<$tcx> for queries::$name<$tcx> {
+            fn get_cache_internal<'a>(tcx: TyCtxt<'a, $tcx, $tcx>)
+                                      -> ::std::cell::Ref<'a, QueryMap<$tcx, Self>> {
+                tcx.maps.$name.borrow()
+            }
+        }
+
         impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
 
             #[allow(unused)]
@@ -379,18 +391,26 @@ macro_rules! define_maps {
             {
                 debug_assert!(tcx.dep_graph.is_green(dep_node_index));
 
-                // We don't do any caching yet, so recompute.
-                // The diagnostics for this query have already been promoted to
-                // the current session during try_mark_green(), so we can ignore
-                // them here.
-                let (result, _) = tcx.cycle_check(span, Query::$name(key), || {
-                    tcx.sess.diagnostic().track_diagnostics(|| {
-                        // The dep-graph for this computation is already in place
-                        tcx.dep_graph.with_ignore(|| {
-                            Self::compute_result(tcx, key)
+                let result = if tcx.sess.opts.debugging_opts.incremental_queries &&
+                                Self::cache_on_disk(key) {
+                    let prev_dep_node_index =
+                        tcx.dep_graph.prev_dep_node_index_of(dep_node);
+                    Self::load_from_disk(tcx.global_tcx(), prev_dep_node_index)
+                } else {
+                    let (result, _ ) = tcx.cycle_check(span, Query::$name(key), || {
+                        // The diagnostics for this query have already been
+                        // promoted to the current session during
+                        // try_mark_green(), so we can ignore them here.
+                        tcx.sess.diagnostic().track_diagnostics(|| {
+                            // The dep-graph for this computation is already in
+                            // place
+                            tcx.dep_graph.with_ignore(|| {
+                                Self::compute_result(tcx, key)
+                            })
                         })
-                    })
-                })?;
+                    })?;
+                    result
+                };
 
                 // If -Zincremental-verify-ich is specified, re-hash results from
                 // the cache and make sure that they have the expected fingerprint.
@@ -547,7 +567,7 @@ macro_rules! define_map_struct {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])*  $name: RefCell<QueryMap<queries::$name<$tcx>>>,)*
+            $($(#[$attr])*  $name: RefCell<QueryMap<$tcx, queries::$name<$tcx>>>,)*
         }
     };
 }

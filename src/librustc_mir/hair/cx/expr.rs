@@ -20,6 +20,7 @@ use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
+use rustc::hir::def_id::LocalDefId;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
@@ -783,7 +784,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // point we need an implicit deref
             let upvar_id = ty::UpvarId {
                 var_id: var_hir_id,
-                closure_expr_id: closure_def_id.index,
+                closure_expr_id: LocalDefId::from_def_id(closure_def_id),
             };
             match cx.tables().upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue => field_kind,
@@ -897,7 +898,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let var_hir_id = cx.tcx.hir.node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
         var_id: var_hir_id,
-        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).index,
+        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
