@@ -25,7 +25,7 @@ use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
 
 use syntax::ast::{self};
-use syntax_pos::{DUMMY_SP, Span, MultiSpan};
+use syntax_pos::{DUMMY_SP, Span};
 
 use dataflow::{do_dataflow};
 use dataflow::{MoveDataParamEnv};
@@ -1525,9 +1525,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => span
         };
 
-        let mut err = self.tcx.path_does_not_live_long_enough(proper_span,
-                                                              "borrowed value", Origin::Mir);
-        err.span = MultiSpan::from_span(proper_span);
+        let mut err = self.tcx.path_does_not_live_long_enough(span, "borrowed value", Origin::Mir);
         err.span_label(proper_span, "temporary value created here");
         err.span_label(span, "temporary value dropped here while still borrowed");
         err.note("consider using a `let` binding to increase its lifetime");
