@@ -583,26 +583,66 @@ pub unsafe fn _mm256_cvtepi8_epi32(a: i8x16) -> i32x8 {
     simd_cast::<::v64::i8x8, _>(simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]))
 }
 
-/// An i8x4 type is pretty useless, but we need it as an intermediate type in
-/// _mm256_cvtepi8_epi64.
-#[repr(simd)]
-#[allow(non_camel_case_types)]
-struct i8x4(i8, i8, i8, i8);
-
 /// Sign-extend 8-bit integers to 64-bit integers.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpmovsxbq))]
 pub unsafe fn _mm256_cvtepi8_epi64(a: i8x16) -> i64x4 {
-    simd_cast::<i8x4, _>(simd_shuffle4(a, a, [0, 1, 2, 3]))
+    simd_cast::<::v32::i8x4, _>(simd_shuffle4(a, a, [0, 1, 2, 3]))
 }
 
-// TODO _mm256_cvtepu16_epi32
-// TODO _mm256_cvtepu16_epi64
-// TODO _mm256_cvtepu32_epi64
-// TODO _mm256_cvtepu8_epi16
-// TODO _mm256_cvtepu8_epi32
-// TODO _mm256_cvtepu8_epi64
+/// Zero-extend the lower four unsigned 16-bit integers in `a` to 32-bit
+/// integers. The upper four elements of `a` are unused.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovzxwd))]
+pub unsafe fn _mm256_cvtepu16_epi32(a: u16x8) -> i32x8 {
+    simd_cast(a)
+}
+
+/// Zero-extend the lower four unsigned 16-bit integers in `a` to 64-bit
+/// integers. The upper four elements of `a` are unused.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovzxwq))]
+pub unsafe fn _mm256_cvtepu16_epi64(a: u16x8) -> i64x4 {
+    simd_cast::<::v64::u16x4, _>(simd_shuffle4(a, a, [0, 1, 2, 3]))
+}
+
+/// Zero-extend unsigned 32-bit integers in `a` to 64-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovzxdq))]
+pub unsafe fn _mm256_cvtepu32_epi64(a: u32x4) -> i64x4 {
+    simd_cast(a)
+}
+
+/// Zero-extend unsigned 8-bit integers in `a` to 16-bit integers.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovzxbw))]
+pub unsafe fn _mm256_cvtepu8_epi16(a: u8x16) -> i16x16 {
+    simd_cast(a)
+}
+
+/// Zero-extend the lower eight unsigned 8-bit integers in `a` to 32-bit
+/// integers. The upper eight elements of `a` are unused.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovzxbd))]
+pub unsafe fn _mm256_cvtepu8_epi32(a: u8x16) -> i32x8 {
+    simd_cast::<::v64::u8x8, _>(simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]))
+}
+
+/// Zero-extend the lower four unsigned 8-bit integers in `a` to 64-bit
+/// integers. The upper twelve elements of `a` are unused.
+#[inline(always)]
+#[target_feature = "+avx2"]
+#[cfg_attr(test, assert_instr(vpmovzxbq))]
+pub unsafe fn _mm256_cvtepu8_epi64(a: u8x16) -> i64x4 {
+    simd_cast::<::v32::u8x4, _>(simd_shuffle4(a, a, [0, 1, 2, 3]))
+}
+
 // TODO _m128i _mm256_extracti128_si256
 
 /// Horizontally add adjacent pairs of 16-bit integers in `a` and `b`.
@@ -2736,6 +2776,52 @@ mod tests {
         let a = i32x4::new(0, 0, -1, 1);
         let r = i64x4::new(0, 0, -1, 1);
         assert_eq!(r, avx2::_mm256_cvtepi32_epi64(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepu16_epi32() {
+        let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = i32x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        assert_eq!(r, avx2::_mm256_cvtepu16_epi32(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepu16_epi64() {
+        let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = i64x4::new(0, 1, 2, 3);
+        assert_eq!(r, avx2::_mm256_cvtepu16_epi64(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepu32_epi64() {
+        let a = u32x4::new(0, 1, 2, 3);
+        let r = i64x4::new(0, 1, 2, 3);
+        assert_eq!(r, avx2::_mm256_cvtepu32_epi64(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepu8_epi16() {
+        let a =
+            u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r =
+            i16x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        assert_eq!(r, avx2::_mm256_cvtepu8_epi16(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepu8_epi32() {
+        let a =
+            u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = i32x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        assert_eq!(r, avx2::_mm256_cvtepu8_epi32(a));
+    }
+
+    #[simd_test = "avx2"]
+    unsafe fn _mm256_cvtepu8_epi64() {
+        let a =
+            u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = i64x4::new(0, 1, 2, 3);
+        assert_eq!(r, avx2::_mm256_cvtepu8_epi64(a));
     }
 
     #[simd_test = "avx2"]

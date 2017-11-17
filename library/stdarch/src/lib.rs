@@ -173,6 +173,9 @@ mod v32 {
     define_ty! { i8x4, i8, i8, i8, i8 }
     define_impl! { i8x4, i8, 4, i8x4, x0, x1, x2, x3 }
 
+    define_ty! { u8x4, u8, u8, u8, u8 }
+    define_impl! { u8x4, u8, 4, i8x4, x0, x1, x2, x3 }
+
     define_casts!((i8x4, i32x4, as_i32x4), (i16x2, i64x2, as_i64x2));
 }
 
