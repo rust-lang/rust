@@ -218,13 +218,8 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                         self.output.push_str(&str)
                     } else {
                         self.output.push('!');
-                        if let ExprBinary(..) = terminal.node {
-                            self.output.push('(');
-                        }
-                        self.recurse(inner);
-                        if let ExprBinary(..) = terminal.node {
-                            self.output.push(';');
-                        }
+                        let snip = self.snip(terminal);
+                        self.output.push_str(&snip);
                     }
                 },
                 True | False | Not(_) => {

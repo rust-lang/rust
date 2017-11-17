@@ -160,3 +160,9 @@ error: this boolean expression can be simplified
 55 |     let _ = !(a.is_some() && !c);
    |             ^^^^^^^^^^^^^^^^^^^^ help: try: `c || a.is_none()`
 
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:56:13
+   |
+56 |     let _ = !(!c ^ c) || !a.is_some();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!(!c ^ c) || a.is_none()`
+
