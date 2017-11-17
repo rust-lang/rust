@@ -54,6 +54,8 @@ pub enum TypeError<'tcx> {
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
+
+    OldStyleLUB(Box<TypeError<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -169,6 +171,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ExistentialMismatch(ref values) => {
                 report_maybe_different(f, format!("trait `{}`", values.expected),
                                        format!("trait `{}`", values.found))
+            }
+            OldStyleLUB(ref err) => {
+                write!(f, "{}", err)
             }
         }
     }
@@ -292,6 +297,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                 db.span_note(found.origin_span,
                              "...that also applies to the same type variable here");
+            }
+            OldStyleLUB(err) => {
+                db.note("this was previously accepted by the compiler but has been phased out");
+                db.note("for more information, see https://github.com/rust-lang/rust/issues/45852");
+
+                self.note_and_explain_type_err(db, &err, sp);
             }
             _ => {}
         }

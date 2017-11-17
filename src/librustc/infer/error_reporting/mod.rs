@@ -762,9 +762,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.note_error_origin(diag, &cause);
         self.check_and_note_conflicting_crates(diag, terr, span);
         self.tcx.note_and_explain_type_err(diag, terr, span);
+
+        // It reads better to have the error origin as the final
+        // thing.
+        self.note_error_origin(diag, &cause);
     }
 
     pub fn report_and_explain_type_error(&self,
@@ -772,6 +775,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          terr: &TypeError<'tcx>)
                                          -> DiagnosticBuilder<'tcx>
     {
+        debug!("report_and_explain_type_error(trace={:?}, terr={:?})",
+               trace,
+               terr);
+
         let span = trace.cause.span;
         let failure_str = trace.cause.as_failure_str();
         let mut diag = match trace.cause.code {

@@ -43,7 +43,8 @@ use middle::const_val::ConstVal;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use std::fmt;
-use util::nodemap::{FxHashMap, FxHashSet};
+use std::collections::BTreeMap;
+use util::nodemap::FxHashSet;
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
@@ -324,14 +325,14 @@ struct RegionReplacer<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     current_depth: u32,
     fld_r: &'a mut (FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
-    map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>
+    map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn replace_late_bound_regions<T,F>(self,
         value: &Binder<T>,
         mut f: F)
-        -> (T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
+        -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F : FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               T : TypeFoldable<'tcx>,
     {
@@ -438,7 +439,7 @@ impl<'a, 'gcx, 'tcx> RegionReplacer<'a, 'gcx, 'tcx> {
             tcx,
             current_depth: 1,
             fld_r,
-            map: FxHashMap()
+            map: BTreeMap::default()
         }
     }
 }

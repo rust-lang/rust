@@ -428,7 +428,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             TyParamDefaultMismatch(ref x) => {
                 return tcx.lift(x).map(TyParamDefaultMismatch)
             }
-            ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch)
+            ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
+            OldStyleLUB(ref x) => return tcx.lift(x).map(OldStyleLUB),
         })
     }
 }
@@ -1174,6 +1175,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             Sorts(x) => Sorts(x.fold_with(folder)),
             TyParamDefaultMismatch(ref x) => TyParamDefaultMismatch(x.fold_with(folder)),
             ExistentialMismatch(x) => ExistentialMismatch(x.fold_with(folder)),
+            OldStyleLUB(ref x) => OldStyleLUB(x.fold_with(folder)),
         }
     }
 
@@ -1191,6 +1193,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
                 b.visit_with(visitor)
             },
             Sorts(x) => x.visit_with(visitor),
+            OldStyleLUB(ref x) => x.visit_with(visitor),
             TyParamDefaultMismatch(ref x) => x.visit_with(visitor),
             ExistentialMismatch(x) => x.visit_with(visitor),
             Mismatch |
