@@ -50,8 +50,9 @@ mod bmi2;
 #[cfg(not(feature = "intel_sde"))]
 mod tbm;
 
-#[allow(non_camel_case_types)]
+/// `C`'s `void` type.
 #[cfg(not(feature = "std"))]
+#[allow(non_camel_case_types)]
 #[repr(u8)]
 pub enum c_void {
     #[doc(hidden)] __variant1,
