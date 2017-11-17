@@ -57,9 +57,19 @@ pub enum PassWhere {
 /// where `<filter>` takes the following forms:
 ///
 /// - `all` -- dump MIR for all fns, all passes, all everything
-/// - `substring1&substring2,...` -- `&`-separated list of substrings
-///   that can appear in the pass-name or the `item_path_str` for the given
-///   node-id. If any one of the substrings match, the data is dumped out.
+/// - a filter defined by a set of substrings combined with `&` and `|`
+///   (`&` has higher precedence). At least one of the `|`-separated groups
+///   must match; an `|`-separated group matches if all of its `&`-separated
+///   substrings are matched.
+///
+/// Example:
+///
+/// - `nll` == match if `nll` appears in the name
+/// - `foo & nll` == match if `foo` and `nll` both appear in the name
+/// - `foo & nll | typeck` == match if `foo` and `nll` both appear in the name
+///   or `typeck` appears in the name.
+/// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
+///   or `typeck` and `bar` both appear in the name.
 pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pass_num: Option<&Display>,
@@ -104,8 +114,10 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
         // see notes on #41697 below
         tcx.item_path_str(source.def_id)
     });
-    filters.split("&").any(|filter| {
-        filter == "all" || pass_name.contains(filter) || node_path.contains(filter)
+    filters.split("|").any(|or_filter| {
+        or_filter.split("&").all(|and_filter| {
+            and_filter == "all" || pass_name.contains(and_filter) || node_path.contains(and_filter)
+        })
     })
 }
 
@@ -357,7 +369,8 @@ fn write_extra<'cx, 'gcx, 'tcx, F>(
     write: &mut Write,
     mut visit_op: F,
 ) -> io::Result<()>
-where F: FnMut(&mut ExtraComments<'cx, 'gcx, 'tcx>)
+where
+    F: FnMut(&mut ExtraComments<'cx, 'gcx, 'tcx>),
 {
     let mut extra_comments = ExtraComments {
         _tcx: tcx,
