@@ -643,9 +643,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => false,
         };
 
-        // If the error has been reported already, then we don't need the access_lvalue call and we
-        // can set error_reported to false.
-        if !has_storage_drop_or_dead_error_reported {
+        // If the error has been reported already, then we don't need the access_lvalue call.
+        if !has_storage_drop_or_dead_error_reported || consume_via_drop != ConsumeKind::Drop {
             let error_reported;
 
             if moves_by_default {
@@ -653,6 +652,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ConsumeKind::Drop => WriteKind::StorageDeadOrDrop,
                     _ => WriteKind::Move,
                 };
+
                 // move of lvalue: check if this is move of already borrowed path
                 error_reported = self.access_lvalue(context, lvalue_span,
                                                     (Deep, Write(kind)), flow_state);
@@ -663,7 +663,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                                     (Deep, Read(ReadKind::Copy)), flow_state);
             }
 
-            if error_reported {
+            // If there was an error, then we keep track of it so as to deduplicate it.
+            // We only do this on ConsumeKind::Drop.
+            if error_reported && consume_via_drop == ConsumeKind::Drop {
                 if let Lvalue::Local(local) = *lvalue {
                     self.storage_drop_or_dead_error_reported.insert(local);
                 }
