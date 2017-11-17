@@ -195,7 +195,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
         }
     }
 
-    fn recurse(&mut self, brackets: bool, suggestion: &Bool) {
+    fn recurse(&mut self, suggestion: &Bool) {
         use quine_mc_cluskey::Bool::*;
         match *suggestion {
             True => {
@@ -207,67 +207,56 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
             Not(ref inner) => match **inner {
                 And(_) | Or(_) => {
                     self.output.push('!');
-                    self.recurse(true, inner)
+                    self.output.push('(');
+                    self.recurse(inner);
+                    self.output.push(')');
                 },
                 Term(n) => {
-                    if let Some(str) = self.simplify_not(self.terminals[n as usize]) {
+                    let terminal = self.terminals[n as usize];
+                    if let Some(str) = self.simplify_not(terminal) {
                         self.simplified = true;
                         self.output.push_str(&str)
                     } else {
                         self.output.push('!');
-                        self.recurse(false, inner)
+                        if let ExprBinary(..) = terminal.node {
+                            self.output.push('(');
+                        }
+                        self.recurse(inner);
+                        if let ExprBinary(..) = terminal.node {
+                            self.output.push(';');
+                        }
                     }
                 },
                 True | False | Not(_) => {
                     self.output.push('!');
-                    self.recurse(false, inner)
+                    self.recurse(inner)
                 },
             },
             And(ref v) => {
-                if brackets {
-                    self.output.push('(');
-                }
                 for (index, inner) in v.iter().enumerate() {
                     if index > 0 {
                         self.output.push_str(" && ");
                     }
                     if let Or(_) = *inner {
-                        self.recurse(true, inner);
+                        self.output.push('(');
+                        self.recurse(inner);
+                        self.output.push(')');
                     } else {
-                        self.recurse(false, inner);
+                        self.recurse(inner);
                     }
-                }
-                if brackets {
-                    self.output.push(')');
                 }
             },
             Or(ref v) => {
-                if brackets {
-                    self.output.push('(');
-                }
                 for (index, inner) in v.iter().enumerate() {
                     if index > 0 {
                         self.output.push_str(" || ");
                     }
-                    self.recurse(false, inner);
-                }
-                if brackets {
-                    self.output.push(')');
+                    self.recurse(inner);
                 }
             },
             Term(n) => {
-                let brackets = brackets && match self.terminals[n as usize].node {
-                    ExprBinary(..) => true,
-                    _ => false,
-                };
-                if brackets {
-                    self.output.push('(');
-                }
                 let snip = self.snip(self.terminals[n as usize]);
                 self.output.push_str(&snip);
-                if brackets {
-                    self.output.push(')');
-                }
             },
         }
     }
@@ -281,7 +270,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> (String,
         output: String::new(),
         simplified: false,
     };
-    suggest_context.recurse(false, suggestion);
+    suggest_context.recurse(suggestion);
     (suggest_context.output, suggest_context.simplified)
 }
 
