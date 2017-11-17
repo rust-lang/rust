@@ -337,24 +337,36 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 }
 
                 ty::TyGenerator(..) => {
-                    // the types in a closure or generator are always the types of
-                    // local variables (or possibly references to local
-                    // variables), we'll walk those.
-                    //
-                    // (Though, local variables are probably not
-                    // needed, as they are separately checked w/r/t
-                    // WFedness.)
+                    // Walk ALL the types in the generator: this will
+                    // include the upvar types as well as the yield
+                    // type. Note that this is mildly distinct from
+                    // the closure case, where we have to be careful
+                    // about the signature of the closure. We don't
+                    // have the problem of implied bounds here since
+                    // generators don't take arguments.
                 }
 
                 ty::TyClosure(def_id, substs) => {
-                    // Just check the upvar types for WF. This is
-                    // needed because we capture the signature and it
-                    // may not be WF without the implied
-                    // bounds. Consider a closure like `|x: &'a T|` --
-                    // it may be that `T: 'a` is not known to hold in
-                    // the creator's context (and indeed the closure
-                    // may not be invoked by its creator, but rather
-                    // turned to someone who *can* verify that).
+                    // Only check the upvar types for WF, not the rest
+                    // of the types within. This is needed because we
+                    // capture the signature and it may not be WF
+                    // without the implied bounds. Consider a closure
+                    // like `|x: &'a T|` -- it may be that `T: 'a` is
+                    // not known to hold in the creator's context (and
+                    // indeed the closure may not be invoked by its
+                    // creator, but rather turned to someone who *can*
+                    // verify that).
+                    //
+                    // The special treatment of closures here really
+                    // ought not to be necessary either; the problem
+                    // is related to #25860 -- there is no way for us
+                    // to express a fn type complete with the implied
+                    // bounds that it is assuming. I think in reality
+                    // the WF rules around fn are a bit messed up, and
+                    // that is the rot problem: `fn(&'a T)` should
+                    // probably always be WF, because it should be
+                    // shorthand for something like `where(T: 'a) {
+                    // fn(&'a T) }`, as discussed in #25860.
                     subtys.skip_current_subtree(); // subtree handled by compute_projection
                     for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
                         self.compute(upvar_ty);
