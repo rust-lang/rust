@@ -7,7 +7,7 @@ before_install:
   - git --version
 script:
   - rev=$(git rev-parse --short HEAD)
-  - (cargo install mdbook --git https://github.com/azerupi/mdBook.git --force || true)
+  - (cargo install mdbook --vers 0.0.26 --force || true)
   - ./generate-book.sh
   - cd book
   - git init
