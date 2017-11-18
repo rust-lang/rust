@@ -77,6 +77,11 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
             ret.extend(build_impls(cx, did));
             clean::EnumItem(build_enum(cx, did))
         }
+        Def::TyForeign(did) => {
+            record_extern_fqn(cx, did, clean::TypeKind::Foreign);
+            ret.extend(build_impls(cx, did));
+            clean::ForeignTypeItem
+        }
         // Never inline enum variants but leave them shown as reexports.
         Def::Variant(..) => return None,
         // Assume that enum variants and struct types are reexported next to
