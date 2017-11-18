@@ -360,8 +360,6 @@ pub struct TypeckTables<'tcx> {
     /// not all closures are present in the map.
     closure_kind_origins: ItemLocalMap<(Span, ast::Name)>,
 
-    generator_interiors: ItemLocalMap<ty::GeneratorInterior<'tcx>>,
-
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
     /// (including late-bound regions) are replaced with free
@@ -406,7 +404,6 @@ impl<'tcx> TypeckTables<'tcx> {
             pat_binding_modes: ItemLocalMap(),
             pat_adjustments: ItemLocalMap(),
             upvar_capture_map: FxHashMap(),
-            generator_interiors: ItemLocalMap(),
             closure_kind_origins: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
@@ -657,24 +654,6 @@ impl<'tcx> TypeckTables<'tcx> {
             data: &mut self.cast_kinds
         }
     }
-
-    pub fn generator_interiors(&self)
-        -> LocalTableInContext<ty::GeneratorInterior<'tcx>>
-    {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.generator_interiors,
-        }
-    }
-
-    pub fn generator_interiors_mut(&mut self)
-        -> LocalTableInContextMut<ty::GeneratorInterior<'tcx>>
-    {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.generator_interiors,
-        }
-    }
 }
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
@@ -699,7 +678,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
-            ref generator_interiors,
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -735,7 +713,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             liberated_fn_sigs.hash_stable(hcx, hasher);
             fru_field_types.hash_stable(hcx, hasher);
             cast_kinds.hash_stable(hcx, hasher);
-            generator_interiors.hash_stable(hcx, hasher);
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
