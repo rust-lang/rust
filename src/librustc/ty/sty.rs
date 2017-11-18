@@ -335,16 +335,20 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Return the "generator signature", which consists of its yield
     /// and return types.
     ///
-    /// NB. We treat this as a `PolyGenSig`, but since it only
-    /// contains associated types of the generator, at present it
-    /// never binds any regions.
+    /// NB. Some bits of the code prefers to see this wrapped in a
+    /// binder, but it never contains bound regions. Probably this
+    /// function should be removed.
     pub fn generator_poly_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> PolyGenSig<'tcx> {
-        ty::Binder(
-            ty::GenSig {
-                yield_ty: self.generator_yield_ty(def_id, tcx),
-                return_ty: self.generator_return_ty(def_id, tcx),
-            }
-        )
+        ty::Binder(self.generator_sig(def_id, tcx))
+    }
+
+    /// Return the "generator signature", which consists of its yield
+    /// and return types.
+    pub fn generator_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> GenSig<'tcx> {
+        ty::GenSig {
+            yield_ty: self.generator_yield_ty(def_id, tcx),
+            return_ty: self.generator_return_ty(def_id, tcx),
+        }
     }
 }
 

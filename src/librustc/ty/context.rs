@@ -360,8 +360,6 @@ pub struct TypeckTables<'tcx> {
     /// not all closures are present in the map.
     closure_kind_origins: ItemLocalMap<(Span, ast::Name)>,
 
-    generator_sigs: ItemLocalMap<Option<ty::GenSig<'tcx>>>,
-
     generator_interiors: ItemLocalMap<ty::GeneratorInterior<'tcx>>,
 
     /// For each fn, records the "liberated" types of its arguments
@@ -408,7 +406,6 @@ impl<'tcx> TypeckTables<'tcx> {
             pat_binding_modes: ItemLocalMap(),
             pat_adjustments: ItemLocalMap(),
             upvar_capture_map: FxHashMap(),
-            generator_sigs: ItemLocalMap(),
             generator_interiors: ItemLocalMap(),
             closure_kind_origins: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
@@ -661,24 +658,6 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn generator_sigs(&self)
-        -> LocalTableInContext<Option<ty::GenSig<'tcx>>>
-    {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.generator_sigs,
-        }
-    }
-
-    pub fn generator_sigs_mut(&mut self)
-        -> LocalTableInContextMut<Option<ty::GenSig<'tcx>>>
-    {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.generator_sigs,
-        }
-    }
-
     pub fn generator_interiors(&self)
         -> LocalTableInContext<ty::GeneratorInterior<'tcx>>
     {
@@ -720,7 +699,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
-            ref generator_sigs,
             ref generator_interiors,
         } = *self;
 
@@ -757,7 +735,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             liberated_fn_sigs.hash_stable(hcx, hasher);
             fru_field_types.hash_stable(hcx, hasher);
             cast_kinds.hash_stable(hcx, hasher);
-            generator_sigs.hash_stable(hcx, hasher);
             generator_interiors.hash_stable(hcx, hasher);
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);

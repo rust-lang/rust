@@ -1037,21 +1037,14 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
     let gen_ty = if can_be_generator && body.is_generator {
-        let gen_sig = ty::GenSig {
-            yield_ty: fcx.yield_ty.unwrap(),
-            return_ty: ret_ty,
-        };
-        inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, Some(gen_sig));
-
         let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), witness));
         let interior = ty::GeneratorInterior::new(witness);
 
         inherited.tables.borrow_mut().generator_interiors_mut().insert(fn_hir_id, interior);
 
-        Some(GeneratorTypes { yield_ty: gen_sig.yield_ty, interior: interior })
+        Some(GeneratorTypes { yield_ty: fcx.yield_ty.unwrap(), interior: interior })
     } else {
-        inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, None);
         None
     };
     inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
