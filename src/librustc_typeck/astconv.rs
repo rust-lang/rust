@@ -370,7 +370,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         poly_projections.extend(assoc_bindings.iter().filter_map(|binding| {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
-                self.ast_type_binding_to_poly_projection_predicate(poly_trait_ref, binding);
+                self.ast_type_binding_to_poly_projection_predicate(trait_ref.ref_id, poly_trait_ref,
+                                                                   binding);
             predicate.ok() // ok to ignore Err() because ErrorReported (see above)
         }));
 
@@ -442,6 +443,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
+        ref_id: ast::NodeId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
@@ -494,30 +496,30 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 .emit();
         }
 
-        // Simple case: X is defined in the current trait.
-        if self.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
-            return Ok(trait_ref.map_bound(|trait_ref| {
-                ty::ProjectionPredicate {
-                    projection_ty: ty::ProjectionTy::from_ref_and_name(
-                        tcx,
-                        trait_ref,
-                        binding.item_name,
-                    ),
-                    ty: binding.ty,
-                }
-            }));
+        let candidate = if self.trait_defines_associated_type_named(trait_ref.def_id(),
+                                                                    binding.item_name) {
+            // Simple case: X is defined in the current trait.
+            Ok(trait_ref)
+        } else {
+            // Otherwise, we have to walk through the supertraits to find
+            // those that do.
+            let candidates = traits::supertraits(tcx, trait_ref).filter(|r| {
+                self.trait_defines_associated_type_named(r.def_id(), binding.item_name)
+            });
+            self.one_bound_for_assoc_type(candidates, &trait_ref.to_string(),
+                                          binding.item_name, binding.span)
+        }?;
+
+        let (assoc_ident, def_scope) = tcx.adjust(binding.item_name, candidate.def_id(), ref_id);
+        let assoc_ty = tcx.associated_items(candidate.def_id()).find(|i| {
+            i.kind == ty::AssociatedKind::Type && i.name.to_ident() == assoc_ident
+        }).expect("missing associated type");
+
+        if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
+            let msg = format!("associated type `{}` is private", binding.item_name);
+            tcx.sess.span_err(binding.span, &msg);
         }
-
-        // Otherwise, we have to walk through the supertraits to find
-        // those that do.
-        let candidates =
-            traits::supertraits(tcx, trait_ref.clone())
-            .filter(|r| self.trait_defines_associated_type_named(r.def_id(), binding.item_name));
-
-        let candidate = self.one_bound_for_assoc_type(candidates,
-                                                      &trait_ref.to_string(),
-                                                      binding.item_name,
-                                                      binding.span)?;
+        tcx.check_stability(assoc_ty.def_id, ref_id, binding.span);
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {

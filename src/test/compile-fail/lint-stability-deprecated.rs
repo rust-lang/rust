@@ -108,6 +108,11 @@ mod cross_crate {
         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
         //~^ WARN use of deprecated item 'lint_stability::TraitWithAssociatedTypes::TypeDeprecated': text
+        type A = TraitWithAssociatedTypes<
+            TypeUnstable = u8,
+            TypeDeprecated = u16,
+            //~^ WARN use of deprecated item 'lint_stability::TraitWithAssociatedTypes::TypeDeprecated'
+        >;
 
         let _ = DeprecatedStruct { //~ WARN use of deprecated item 'lint_stability::DeprecatedStruct'
             i: 0 //~ WARN use of deprecated item 'lint_stability::DeprecatedStruct::i'
