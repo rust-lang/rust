@@ -25,7 +25,8 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTac
             SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
-use utils::{colon_spaces, extra_offset, format_abi, format_mutability, last_line_width, mk_sp};
+use utils::{colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,
+            last_line_width, mk_sp};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {
@@ -365,7 +366,8 @@ where
     let list_str = write_list(&item_vec, &fmt)?;
 
     let ty_shape = match context.config.indent_style() {
-        IndentStyle::Block => shape.block().block_indent(context.config.tab_spaces()),
+        // 4 = " -> "
+        IndentStyle::Block => shape.offset_left(4)?,
         IndentStyle::Visual => shape.block_left(4)?,
     };
     let output = match *output {
@@ -376,24 +378,23 @@ where
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let shape = shape.sub_width(output.len())?;
-    let extendable = !list_str.contains('\n') || list_str.is_empty();
+    let extendable = (!list_str.contains('\n') || list_str.is_empty()) && !output.contains("\n");
     let args = wrap_args_with_parens(
         context,
         &list_str,
         extendable,
-        shape,
+        shape.sub_width(first_line_width(&output))?,
         Shape::indented(offset, context.config),
     );
-    if last_line_width(&args) + output.len() > shape.width {
+    if last_line_width(&args) + first_line_width(&output) <= shape.width {
+        Some(format!("{}{}", args, output))
+    } else {
         Some(format!(
             "{}\n{}{}",
             args,
             offset.to_string(context.config),
             output.trim_left()
         ))
-    } else {
-        Some(format!("{}{}", args, output))
     }
 }
 
