@@ -48,5 +48,15 @@ pub mod pattern;
 
 pub use eval::*;
 
+use rustc::ty::maps::Providers;
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        const_eval: eval::const_eval,
+        check_match: check_match::check_match,
+        ..*providers
+    };
+}
+
 // Build the diagnostics array at the end so that the metadata includes error use sites.
 __build_diagnostic_array! { librustc_const_eval, DIAGNOSTICS }

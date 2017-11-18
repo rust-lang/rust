@@ -24,6 +24,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::lint;
 use rustc_errors::DiagnosticBuilder;
+use rustc::util::common::ErrorReported;
 
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
@@ -47,17 +48,14 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
                 b: hir::BodyId, s: Span, id: ast::NodeId) {
         intravisit::walk_fn(self, fk, fd, b, s, id);
 
-        let def_id = self.tcx.hir.local_def_id(id);
-
-        check_body(self.tcx, def_id, b);
+        check_body(self.tcx, b);
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         intravisit::walk_item(self, item);
         match item.node {
             hir::ItemStatic(.., body_id) | hir::ItemConst(.., body_id) => {
-                let def_id = self.tcx.hir.local_def_id(item.id);
-                check_body(self.tcx, def_id, body_id);
+                check_body(self.tcx, body_id);
             }
             _ => (),
         }
@@ -66,16 +64,14 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         intravisit::walk_impl_item(self, ii);
         if let hir::ImplItemKind::Const(_, body_id) = ii.node {
-            let def_id = self.tcx.hir.local_def_id(ii.id);
-            check_body(self.tcx, def_id, body_id);
+            check_body(self.tcx, body_id);
         }
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         intravisit::walk_trait_item(self, ti);
         if let hir::TraitItemKind::Const(_, Some(body_id)) = ti.node {
-            let def_id = self.tcx.hir.local_def_id(ti.id);
-            check_body(self.tcx, def_id, body_id);
+            check_body(self.tcx, body_id);
         }
     }
 
@@ -83,23 +79,38 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     // but they are const-evaluated during typeck.
 }
 
+fn check_body<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    body_id: hir::BodyId,
+) {
+    let def_id = tcx.hir.body_owner_def_id(body_id);
+    let _ = tcx.check_match(def_id);
+}
+
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
-pub(crate) fn check_body<'a, 'tcx>(
+pub(crate) fn check_match<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    body_id: hir::BodyId,
-) {
-    MatchVisitor {
-        tcx,
-        tables: tcx.body_tables(body_id),
-        region_scope_tree: &tcx.region_scope_tree(def_id),
-        param_env: tcx.param_env(def_id),
-        identity_substs: Substs::identity_for_item(tcx, def_id),
-    }.visit_body(tcx.hir.body(body_id));
+) -> Result<(), ErrorReported> {
+    let body_id = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+        tcx.hir.body_owned_by(id)
+    } else {
+        return Ok(());
+    };
+
+    tcx.sess.track_errors(|| {
+        MatchVisitor {
+            tcx,
+            tables: tcx.body_tables(body_id),
+            region_scope_tree: &tcx.region_scope_tree(def_id),
+            param_env: tcx.param_env(def_id),
+            identity_substs: Substs::identity_for_item(tcx, def_id),
+        }.visit_body(tcx.hir.body(body_id));
+    })
 }
 
 fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> DiagnosticBuilder<'a> {

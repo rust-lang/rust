@@ -18,7 +18,6 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::LayoutOf;
-use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::{Substs, Subst};
 use rustc::util::common::ErrorReported;
@@ -684,14 +683,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        const_eval,
-        ..*providers
-    };
-}
-
-fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                         -> EvalResult<'tcx> {
     let (def_id, substs) = if let Some(resolved) = lookup_const_by_id(tcx, key) {
@@ -708,14 +700,12 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let body_id = tcx.hir.body_owned_by(id);
 
         // Do match-check before building MIR
-        tcx.sess
-            .track_errors(|| super::check_match::check_body(tcx, def_id, body_id))
-            .map_err(|_| {
-                ConstEvalErr {
-                    span: tcx.def_span(key.value.0),
-                    kind: MatchCheckError,
-                }
-            })?;
+        if tcx.check_match(def_id).is_err() {
+            return Err(ConstEvalErr {
+                span: tcx.def_span(key.value.0),
+                kind: MatchCheckError,
+            });
+        }
 
         tcx.mir_const_qualif(def_id);
         tcx.hir.body(body_id)

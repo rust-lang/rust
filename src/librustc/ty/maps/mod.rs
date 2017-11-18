@@ -37,7 +37,7 @@ use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
-use util::common::{profq_msg, ProfileQueriesMsg};
+use util::common::{profq_msg, ErrorReported, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_back::PanicStrategy;
@@ -204,6 +204,9 @@ define_maps! { <'tcx>
     /// other items (such as enum variant explicit discriminants).
     [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
         -> const_val::EvalResult<'tcx>,
+
+    [] fn check_match: CheckMatch(DefId)
+        -> Result<(), ErrorReported>,
 
     /// Performs the privacy check and computes "access levels".
     [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
