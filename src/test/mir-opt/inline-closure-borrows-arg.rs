@@ -10,14 +10,18 @@
 
 // compile-flags: -Z span_free_formats
 
-// Tests that MIR inliner can handle closure arguments. (#45894)
+// Tests that MIR inliner can handle closure arguments,
+// even when (#45894)
 
 fn main() {
-    println!("{}", foo(0, 14));
+    println!("{}", foo(0, &14));
 }
 
-fn foo<T: Copy>(_t: T, q: i32) -> i32 {
-    let x = |_t, _q| _t;
+fn foo<T: Copy>(_t: T, q: &i32) -> i32 {
+    let x = |r: &i32, _s: &i32| {
+        let variable = &*r;
+        *variable
+    };
     x(q, q)
 }
 
@@ -26,16 +30,18 @@ fn foo<T: Copy>(_t: T, q: i32) -> i32 {
 // ...
 // bb0: {
 //     ...
-//     _3 = [closure@NodeId(28)];
+//     _3 = [closure@NodeId(39)];
 //     ...
 //     _4 = &_3;
 //     ...
-//     _6 = _2;
+//     _6 = &(*_2);
 //     ...
-//     _7 = _2;
+//     _7 = &(*_2);
 //     _5 = (_6, _7);
-//     _8 = (_5.0: i32);
-//     _9 = (_5.1: i32);
+//     _9 = (_5.0: &i32);
+//     _10 = (_5.1: &i32);
+//     StorageLive(_8);
+//     _8 = (*_9);
 //     _0 = _8;
 //     ...
 //     return;
