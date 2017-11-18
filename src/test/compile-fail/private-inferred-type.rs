@@ -15,6 +15,7 @@
 
 mod m {
     fn priv_fn() {}
+    static PRIV_STATIC: u8 = 0;
     enum PrivEnum { Variant }
     pub enum PubEnum { Variant }
     trait PrivTrait { fn method() {} }
@@ -47,6 +48,7 @@ mod m {
 
     pub macro m() {
         priv_fn; //~ ERROR type `fn() {m::priv_fn}` is private
+        PRIV_STATIC; // OK, not cross-crate
         PrivEnum::Variant; //~ ERROR type `m::PrivEnum` is private
         PubEnum::Variant; // OK
         <u8 as PrivTrait>::method; //~ ERROR type `fn() {<u8 as m::PrivTrait>::method}` is private

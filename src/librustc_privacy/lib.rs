@@ -783,11 +783,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 
     // Prohibit access to associated items with insufficient nominal visibility.
+    //
+    // Additionally, until better reachability analysis for macros 2.0 is available,
+    // we prohibit access to private statics from other crates, this allows to give
+    // more code internal visibility at link time. (Access to private functions
+    // is already prohibited by type privacy for funciton types.)
     fn visit_qpath(&mut self, qpath: &'tcx hir::QPath, id: ast::NodeId, span: Span) {
         let def = match *qpath {
             hir::QPath::Resolved(_, ref path) => match path.def {
                 Def::Method(..) | Def::AssociatedConst(..) |
-                Def::AssociatedTy(..) => Some(path.def),
+                Def::AssociatedTy(..) | Def::Static(..) => Some(path.def),
                 _ => None,
             }
             hir::QPath::TypeRelative(..) => {
@@ -797,7 +802,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         };
         if let Some(def) = def {
             let def_id = def.def_id();
-            if !self.item_is_accessible(def_id) {
+            let is_local_static = if let Def::Static(..) = def { def_id.is_local() } else { false };
+            if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
                     hir::QPath::Resolved(_, ref path) => format!("{}", path),
                     hir::QPath::TypeRelative(_, ref segment) => segment.name.to_string(),
