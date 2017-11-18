@@ -103,6 +103,26 @@ to it in the docs. But if you include this:
 
 it will not.
 
+### `test(no_crate_inject)`
+
+By default, `rustdoc` will automatically add a line with `extern crate my_crate;` into each doctest.
+But if you include this:
+
+```rust,ignore
+#![doc(test(no_crate_inject))]
+```
+
+it will not.
+
+### `test(attr(...))`
+
+This form of the `doc` attribute allows you to add arbitrary attributes to all your doctests. For
+example, if you want your doctests to fail if they produce any warnings, you could add this:
+
+```rust,ignore
+#![doc(test(attr(deny(warnings))))]
+```
+
 ## At the item level
 
 These forms of the `#[doc]` attribute are used on individual items, to control how
