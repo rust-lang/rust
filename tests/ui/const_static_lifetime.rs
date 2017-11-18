@@ -17,6 +17,12 @@ const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"]
 
 const VAR_HEIGHT: &'static Foo = &Foo {};
 
+const VAR_SLICE: &'static [u8] = b"Test constant #1"; // ERROR Consider removing 'static.
+
+const VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing 'static.
+
+const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
+
 fn main() {
     let false_positive: &'static str = "test";
     println!("{}", VAR_ONE);
