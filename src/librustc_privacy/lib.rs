@@ -1313,6 +1313,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     min_visibility: ty::Visibility,
     has_pub_restricted: bool,
     has_old_errors: bool,
+    in_assoc_ty: bool,
 }
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
@@ -1373,11 +1374,11 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
                 self.min_visibility = vis;
             }
             if !vis.is_at_least(self.required_visibility, self.tcx) {
-                if self.has_pub_restricted || self.has_old_errors {
+                if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
                     struct_span_err!(self.tcx.sess, self.span, E0445,
                                      "private trait `{}` in public interface", trait_ref)
                         .span_label(self.span, format!(
-                                    "private trait can't be public"))
+                                    "can't leak private trait"))
                         .emit();
                 } else {
                     self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC,
@@ -1428,7 +1429,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                     self.min_visibility = vis;
                 }
                 if !vis.is_at_least(self.required_visibility, self.tcx) {
-                    if self.has_pub_restricted || self.has_old_errors {
+                    if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
                         let mut err = struct_span_err!(self.tcx.sess, self.span, E0446,
                             "private type `{}` in public interface", ty);
                         err.span_label(self.span, "can't leak private type");
@@ -1489,6 +1490,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             required_visibility,
             has_pub_restricted: self.has_pub_restricted,
             has_old_errors,
+            in_assoc_ty: false,
         }
     }
 }
@@ -1529,6 +1531,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 
                 for trait_item_ref in trait_item_refs {
                     let mut check = self.check(trait_item_ref.id.node_id, item_visibility);
+                    check.in_assoc_ty = trait_item_ref.kind == hir::AssociatedItemKind::Type;
                     check.generics().predicates();
 
                     if trait_item_ref.kind == hir::AssociatedItemKind::Type &&
@@ -1579,10 +1582,10 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
-                    let impl_item_vis =
-                        ty::Visibility::from_hir(&impl_item.vis, item.id, tcx);
-                    self.check(impl_item.id, min(impl_item_vis, ty_vis))
-                        .generics().predicates().ty();
+                    let impl_item_vis = ty::Visibility::from_hir(&impl_item.vis, item.id, tcx);
+                    let mut check = self.check(impl_item.id, min(impl_item_vis, ty_vis));
+                    check.in_assoc_ty = impl_item_ref.kind == hir::AssociatedItemKind::Type;
+                    check.generics().predicates().ty();
 
                     // Recurse for e.g. `impl Trait` (see `visit_ty`).
                     self.inner_visibility = impl_item_vis;
@@ -1597,7 +1600,9 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.id, vis).generics().predicates();
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
-                    self.check(impl_item.id, vis).generics().predicates().ty();
+                    let mut check = self.check(impl_item.id, vis);
+                    check.in_assoc_ty = impl_item_ref.kind == hir::AssociatedItemKind::Type;
+                    check.generics().predicates().ty();
 
                     // Recurse for e.g. `impl Trait` (see `visit_ty`).
                     self.inner_visibility = vis;
