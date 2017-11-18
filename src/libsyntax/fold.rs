@@ -551,6 +551,7 @@ pub fn noop_fold_meta_item<T: Folder>(mi: MetaItem, fld: &mut T) -> MetaItem {
                 MetaItemKind::List(mis.move_map(|e| fld.fold_meta_list_item(e)))
             },
             MetaItemKind::NameValue(s) => MetaItemKind::NameValue(s),
+            MetaItemKind::TokenStream(tts) => MetaItemKind::TokenStream(fld.fold_tts(tts)),
         },
         span: fld.new_span(mi.span)
     }

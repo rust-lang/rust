@@ -589,8 +589,9 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                          -> bool
     where F: FnMut(&ast::MetaItem) -> bool
 {
+    use ast::MetaItemKind::*;
     match cfg.node {
-        ast::MetaItemKind::List(ref mis) => {
+        List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
                     handle_errors(&sess.span_diagnostic, mi.span, AttrError::UnsupportedLiteral);
@@ -621,7 +622,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                 }
             }
         },
-        ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) => {
+        Word | NameValue(..) | TokenStream(..) => {
             eval(cfg)
         }
     }
@@ -1154,6 +1155,12 @@ impl MetaItemKind {
                     tts: TokenStream::concat(tokens).into(),
                 }).into()
             }
+            MetaItemKind::TokenStream(ref stream) => {
+                TokenTree::Delimited(span, Delimited {
+                    delim: token::Paren,
+                    tts: stream.clone().into(),
+                }).into()
+            }
         }
     }
 
@@ -1177,16 +1184,16 @@ impl MetaItemKind {
             _ => return Some(MetaItemKind::Word),
         };
 
-        let mut tokens = delimited.into_trees().peekable();
+        let mut tokens = delimited.trees().peekable();
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
             match NestedMetaItemKind::from_tokens(&mut tokens) {
                 Some(item) => result.push(respan(item.span(), item)),
-                None => return None,
+                None => return Some(MetaItemKind::TokenStream(delimited)),
             }
             match tokens.next() {
                 None | Some(TokenTree::Token(_, Token::Comma)) => {}
-                _ => return None,
+                _ => return Some(MetaItemKind::TokenStream(delimited)),
             }
         }
         Some(MetaItemKind::List(result))
