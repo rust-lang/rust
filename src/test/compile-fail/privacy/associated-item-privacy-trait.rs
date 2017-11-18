@@ -31,17 +31,16 @@ mod priv_trait {
         Pub.method();
         //~^ ERROR type `for<'r> fn(&'r Self) {<Self as priv_trait::PrivTr>::method}` is private
         <Pub as PrivTr>::CONST;
-        //FIXME ERROR associated constant `path(PrivTr::CONST)` is private
+        //~^ ERROR associated constant `PrivTr::CONST` is private
         let _: <Pub as PrivTr>::AssocTy;
         //~^ ERROR trait `priv_trait::PrivTr` is private
         //~| ERROR trait `priv_trait::PrivTr` is private
         pub type InSignatureTy = <Pub as PrivTr>::AssocTy;
         //~^ ERROR trait `priv_trait::PrivTr` is private
-        //~| ERROR trait `path(PrivTr)` is private
         pub trait InSignatureTr: PrivTr {}
-        //FIXME ERROR trait `priv_trait::PrivTr` is private
+        //~^ ERROR trait `priv_trait::PrivTr` is private
         impl PrivTr for u8 {}
-        //FIXME ERROR trait `priv_trait::PrivTr` is private
+        //~^ ERROR trait `priv_trait::PrivTr` is private
     }
 }
 fn priv_trait() {
@@ -142,7 +141,7 @@ mod priv_parent_substs {
         pub type InSignatureTy2 = <Priv as PubTr<Pub>>::AssocTy;
         //~^ ERROR type `priv_parent_substs::Priv` is private
         impl PubTr for u8 {}
-        //FIXME ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR type `priv_parent_substs::Priv` is private
     }
 }
 fn priv_parent_substs() {

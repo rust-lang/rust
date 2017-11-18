@@ -347,13 +347,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub fn instantiate_poly_trait_ref(&self,
-        ast_trait_ref: &hir::PolyTraitRef,
+    pub(super) fn instantiate_poly_trait_ref_inner(&self,
+        trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>,
-        poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+        poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>,
+        speculative: bool)
         -> ty::PolyTraitRef<'tcx>
     {
-        let trait_ref = &ast_trait_ref.trait_ref;
         let trait_def_id = self.trait_def_id(trait_ref);
 
         debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
@@ -371,13 +371,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(trait_ref.ref_id, poly_trait_ref,
-                                                                   binding);
+                                                                   binding, speculative);
             predicate.ok() // ok to ignore Err() because ErrorReported (see above)
         }));
 
         debug!("ast_path_to_poly_trait_ref({:?}, projections={:?}) -> {:?}",
                trait_ref, poly_projections, poly_trait_ref);
         poly_trait_ref
+    }
+
+    pub fn instantiate_poly_trait_ref(&self,
+        poly_trait_ref: &hir::PolyTraitRef,
+        self_ty: Ty<'tcx>,
+        poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+        -> ty::PolyTraitRef<'tcx>
+    {
+        self.instantiate_poly_trait_ref_inner(&poly_trait_ref.trait_ref, self_ty,
+                                              poly_projections, false)
     }
 
     fn ast_path_to_mono_trait_ref(&self,
@@ -445,55 +455,59 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         &self,
         ref_id: ast::NodeId,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        binding: &ConvertedBinding<'tcx>)
+        binding: &ConvertedBinding<'tcx>,
+        speculative: bool)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
     {
         let tcx = self.tcx();
 
-        // Given something like `U : SomeTrait<T=X>`, we want to produce a
-        // predicate like `<U as SomeTrait>::T = X`. This is somewhat
-        // subtle in the event that `T` is defined in a supertrait of
-        // `SomeTrait`, because in that case we need to upcast.
-        //
-        // That is, consider this case:
-        //
-        // ```
-        // trait SubTrait : SuperTrait<int> { }
-        // trait SuperTrait<A> { type T; }
-        //
-        // ... B : SubTrait<T=foo> ...
-        // ```
-        //
-        // We want to produce `<B as SuperTrait<int>>::T == foo`.
+        if !speculative {
+            // Given something like `U : SomeTrait<T=X>`, we want to produce a
+            // predicate like `<U as SomeTrait>::T = X`. This is somewhat
+            // subtle in the event that `T` is defined in a supertrait of
+            // `SomeTrait`, because in that case we need to upcast.
+            //
+            // That is, consider this case:
+            //
+            // ```
+            // trait SubTrait : SuperTrait<int> { }
+            // trait SuperTrait<A> { type T; }
+            //
+            // ... B : SubTrait<T=foo> ...
+            // ```
+            //
+            // We want to produce `<B as SuperTrait<int>>::T == foo`.
 
-        // Find any late-bound regions declared in `ty` that are not
-        // declared in the trait-ref. These are not wellformed.
-        //
-        // Example:
-        //
-        //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
-        //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
-        let late_bound_in_trait_ref = tcx.collect_constrained_late_bound_regions(&trait_ref);
-        let late_bound_in_ty = tcx.collect_referenced_late_bound_regions(&ty::Binder(binding.ty));
-        debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
-        debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
-        for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
-            let br_name = match *br {
-                ty::BrNamed(_, name) => name,
-                _ => {
-                    span_bug!(
-                        binding.span,
-                        "anonymous bound region {:?} in binding but not trait ref",
-                        br);
-                }
-            };
-            struct_span_err!(tcx.sess,
-                             binding.span,
-                             E0582,
-                             "binding for associated type `{}` references lifetime `{}`, \
-                              which does not appear in the trait input types",
-                             binding.item_name, br_name)
-                .emit();
+            // Find any late-bound regions declared in `ty` that are not
+            // declared in the trait-ref. These are not wellformed.
+            //
+            // Example:
+            //
+            //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+            //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+            let late_bound_in_trait_ref = tcx.collect_constrained_late_bound_regions(&trait_ref);
+            let late_bound_in_ty =
+                tcx.collect_referenced_late_bound_regions(&ty::Binder(binding.ty));
+            debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
+            debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
+            for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
+                let br_name = match *br {
+                    ty::BrNamed(_, name) => name,
+                    _ => {
+                        span_bug!(
+                            binding.span,
+                            "anonymous bound region {:?} in binding but not trait ref",
+                            br);
+                    }
+                };
+                struct_span_err!(tcx.sess,
+                                binding.span,
+                                E0582,
+                                "binding for associated type `{}` references lifetime `{}`, \
+                                which does not appear in the trait input types",
+                                binding.item_name, br_name)
+                    .emit();
+            }
         }
 
         let candidate = if self.trait_defines_associated_type_named(trait_ref.def_id(),

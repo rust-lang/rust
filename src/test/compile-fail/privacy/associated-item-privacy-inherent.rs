@@ -27,7 +27,7 @@ mod priv_nominal {
         Pub.method();
         //~^ ERROR type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
         Pub::CONST;
-        //FIXME ERROR associated constant `CONST` is private
+        //~^ ERROR associated constant `CONST` is private
         // let _: Pub::AssocTy;
         // pub type InSignatureTy = Pub::AssocTy;
     }

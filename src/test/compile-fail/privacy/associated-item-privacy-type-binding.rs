@@ -24,7 +24,7 @@ mod priv_trait {
         type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
         //~^ ERROR type `priv_trait::PubTr<AssocTy=u8> + 'static` is private
         trait InSignatureTr2: PubTr<AssocTy = u8> {}
-        //FIXME ERROR trait `priv_trait::PrivTr` is private
+        //~^ ERROR trait `priv_trait::PrivTr` is private
     }
     pub macro mac2() {
         let _: Box<PrivTr<AssocTy = u8>>;
@@ -32,9 +32,8 @@ mod priv_trait {
         //~| ERROR type `priv_trait::PrivTr<AssocTy=u8> + '<empty>` is private
         type InSignatureTy1 = Box<PrivTr<AssocTy = u8>>;
         //~^ ERROR type `priv_trait::PrivTr<AssocTy=u8> + 'static` is private
-        //~| ERROR trait `path(PrivTr<AssocTy = u8>)` is private
         trait InSignatureTr1: PrivTr<AssocTy = u8> {}
-        //FIXME ERROR trait `priv_trait::PrivTr` is private
+        //~^ ERROR trait `priv_trait::PrivTr` is private
     }
 }
 fn priv_trait1() {
@@ -63,9 +62,9 @@ mod priv_parent_substs {
         pub type InSignatureTy2 = Box<PubTr<AssocTy = u8>>;
         //~^ ERROR type `priv_parent_substs::Priv` is private
         trait InSignatureTr1: PubTrWithParam<AssocTy = u8> {}
-        //FIXME ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR type `priv_parent_substs::Priv` is private
         trait InSignatureTr2: PubTr<AssocTy = u8> {}
-        //FIXME ERROR type `priv_parent_substs::Priv` is private
+        //~^ ERROR type `priv_parent_substs::Priv` is private
     }
 }
 fn priv_parent_substs() {
