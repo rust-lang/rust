@@ -20,6 +20,7 @@ use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
 use transform::nll;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
 
@@ -136,6 +137,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         node_id: id,
         move_data: &mdpe.move_data,
         param_env: param_env,
+        storage_drop_or_dead_error_reported: FxHashSet(),
     };
 
     let mut state = InProgress::new(flow_borrows,
@@ -153,6 +155,10 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     node_id: ast::NodeId,
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
+    /// This field keeps track of when storage drop or dead errors are reported
+    /// in order to stop duplicate error reporting and identify the conditions required
+    /// for a "temporary value dropped here while still borrowed" error. See #45360.
+    storage_drop_or_dead_error_reported: FxHashSet<Local>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
@@ -281,10 +287,15 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             }
 
             StatementKind::StorageDead(local) => {
-                self.access_lvalue(ContextKind::StorageDead.new(location),
-                                   (&Lvalue::Local(local), span),
-                                   (Shallow(None), Write(WriteKind::StorageDead)),
-                                   flow_state);
+                if !self.storage_drop_or_dead_error_reported.contains(&local) {
+                    let error_reported = self.access_lvalue(ContextKind::StorageDead.new(location),
+                        (&Lvalue::Local(local), span),
+                        (Shallow(None), Write(WriteKind::StorageDeadOrDrop)), flow_state);
+
+                    if error_reported {
+                        self.storage_drop_or_dead_error_reported.insert(local);
+                    }
+                }
             }
         }
     }
@@ -427,24 +438,30 @@ enum ReadKind {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteKind {
-    StorageDead,
+    StorageDeadOrDrop,
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+    /// Checks an access to the given lvalue to see if it is allowed. Examines the set of borrows
+    /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
+    /// lvalue is initialized and (b) it is not borrowed in some way that would prevent this
+    /// access.
+    ///
+    /// Returns true if an error is reported, false otherwise.
     fn access_lvalue(&mut self,
                      context: Context,
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
-                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
-
+                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) -> bool {
         let (sd, rw) = kind;
 
         // Check permissions
         self.check_access_permissions(lvalue_span, rw);
 
+        let mut error_reported = false;
         self.each_borrow_involving_path(
             context, (sd, lvalue_span.0), flow_state, |this, _index, borrow, common_prefix| {
                 match (rw, borrow.kind) {
@@ -454,13 +471,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     (Read(kind), BorrowKind::Unique) |
                     (Read(kind), BorrowKind::Mut) => {
                         match kind {
-                            ReadKind::Copy =>
+                            ReadKind::Copy => {
+                                error_reported = true;
                                 this.report_use_while_mutably_borrowed(
-                                    context, lvalue_span, borrow),
+                                    context, lvalue_span, borrow)
+                            },
                             ReadKind::Borrow(bk) => {
                                 let end_issued_loan_span =
                                     flow_state.borrows.base_results.operator().opt_region_end_span(
                                         &borrow.region);
+                                error_reported = true;
                                 this.report_conflicting_borrow(
                                     context, common_prefix, lvalue_span, bk,
                                     &borrow, end_issued_loan_span)
@@ -474,22 +494,35 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 let end_issued_loan_span =
                                     flow_state.borrows.base_results.operator().opt_region_end_span(
                                         &borrow.region);
+                                error_reported = true;
                                 this.report_conflicting_borrow(
                                     context, common_prefix, lvalue_span, bk,
                                     &borrow, end_issued_loan_span)
                             }
-                            WriteKind::StorageDead |
-                            WriteKind::Mutate =>
+                             WriteKind::StorageDeadOrDrop => {
+                                let end_span =
+                                    flow_state.borrows.base_results.operator().opt_region_end_span(
+                                        &borrow.region);
+                                error_reported = true;
+                                this.report_borrowed_value_does_not_live_long_enough(
+                                    context, lvalue_span, end_span)
+                            },
+                            WriteKind::Mutate => {
+                                error_reported = true;
                                 this.report_illegal_mutation_of_borrowed(
-                                    context, lvalue_span, borrow),
-                            WriteKind::Move =>
+                                    context, lvalue_span, borrow)
+                            },
+                            WriteKind::Move => {
+                                error_reported = true;
                                 this.report_move_out_while_borrowed(
-                                    context, lvalue_span, &borrow),
+                                    context, lvalue_span, &borrow)
+                            },
                         }
                         Control::Break
                     }
                 }
             });
+        error_reported
     }
 
     fn mutate_lvalue(&mut self,
@@ -604,12 +637,39 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let erased_ty = gcx.lift(&self.tcx.erase_regions(&ty)).unwrap();
         let moves_by_default = erased_ty.moves_by_default(gcx, self.param_env, DUMMY_SP);
 
-        if moves_by_default {
-            // move of lvalue: check if this is move of already borrowed path
-            self.access_lvalue(context, lvalue_span, (Deep, Write(WriteKind::Move)), flow_state);
-        } else {
-            // copy of lvalue: check if this is "copy of frozen path" (FIXME: see check_loans.rs)
-            self.access_lvalue(context, lvalue_span, (Deep, Read(ReadKind::Copy)), flow_state);
+        // Check if error has already been reported to stop duplicate reporting.
+        let has_storage_drop_or_dead_error_reported = match *lvalue {
+            Lvalue::Local(local) => self.storage_drop_or_dead_error_reported.contains(&local),
+            _ => false,
+        };
+
+        // If the error has been reported already, then we don't need the access_lvalue call.
+        if !has_storage_drop_or_dead_error_reported || consume_via_drop != ConsumeKind::Drop {
+            let error_reported;
+
+            if moves_by_default {
+                let kind = match consume_via_drop {
+                    ConsumeKind::Drop => WriteKind::StorageDeadOrDrop,
+                    _ => WriteKind::Move,
+                };
+
+                // move of lvalue: check if this is move of already borrowed path
+                error_reported = self.access_lvalue(context, lvalue_span,
+                                                    (Deep, Write(kind)), flow_state);
+            } else {
+                // copy of lvalue: check if this is "copy of frozen path"
+                // (FIXME: see check_loans.rs)
+                error_reported = self.access_lvalue(context, lvalue_span,
+                                                    (Deep, Read(ReadKind::Copy)), flow_state);
+            }
+
+            // If there was an error, then we keep track of it so as to deduplicate it.
+            // We only do this on ConsumeKind::Drop.
+            if error_reported && consume_via_drop == ConsumeKind::Drop {
+                if let Lvalue::Local(local) = *lvalue {
+                    self.storage_drop_or_dead_error_reported.insert(local);
+                }
+            }
         }
 
         // Finally, check if path was already moved.
@@ -1453,6 +1513,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 var_span,
                 format!("borrow occurs due to use of `{}` in closure", desc_lvalue),
             );
+        }
+
+        err.emit();
+    }
+
+    fn report_borrowed_value_does_not_live_long_enough(&mut self,
+                                                       _: Context,
+                                                       (lvalue, span): (&Lvalue, Span),
+                                                       end_span: Option<Span>) {
+        let proper_span = match *lvalue {
+            Lvalue::Local(local) => self.mir.local_decls[local].source_info.span,
+            _ => span
+        };
+
+        let mut err = self.tcx.path_does_not_live_long_enough(span, "borrowed value", Origin::Mir);
+        err.span_label(proper_span, "temporary value created here");
+        err.span_label(span, "temporary value dropped here while still borrowed");
+        err.note("consider using a `let` binding to increase its lifetime");
+
+        if let Some(end) = end_span {
+            err.span_label(end, "temporary value needs to live until here");
         }
 
         err.emit();
