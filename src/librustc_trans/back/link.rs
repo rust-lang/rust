@@ -661,9 +661,9 @@ fn link_natively(sess: &Session,
         let mut out = output.stderr.clone();
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
-        let msg = "clang: error: unable to execute command: \
-                   Segmentation fault: 11";
-        if !out.contains(msg) {
+        let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
+        let msg_bus  = "clang: error: unable to execute command: Bus error: 10";
+        if !(out.contains(msg_segv) || out.contains(msg_bus)) {
             break
         }
 

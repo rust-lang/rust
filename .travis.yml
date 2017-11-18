@@ -254,11 +254,11 @@ after_failure:
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
-  - find $HOME/Library/Logs/DiagnosticReports/ ! \(
-      -name '*.stage2-*.crash'
-      -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
-    \)
-      -exec echo -e travis_fold":start:crashlog\n\033[31;1m" {} "\033[0m" \;
+  - find $HOME/Library/Logs/DiagnosticReports
+      -type f
+      -not -name '*.stage2-*.crash'
+      -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
+      -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
       -exec echo travis_fold":"end:crashlog \;
 
