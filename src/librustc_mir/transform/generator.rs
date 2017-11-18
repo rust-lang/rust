@@ -557,7 +557,6 @@ fn create_generator_drop_shim<'a, 'tcx>(
     }
 
     // Replace the return variable
-    mir.return_ty = tcx.mk_nil();
     mir.local_decls[RETURN_POINTER] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_nil(),
@@ -777,7 +776,7 @@ impl MirPass for StateTransform {
         let state_did = tcx.lang_items().gen_state().unwrap();
         let state_adt_ref = tcx.adt_def(state_did);
         let state_substs = tcx.mk_substs([Kind::from(yield_ty),
-            Kind::from(mir.return_ty)].iter());
+            Kind::from(mir.return_ty())].iter());
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
         // We rename RETURN_POINTER which has type mir.return_ty to new_ret_local
@@ -808,7 +807,6 @@ impl MirPass for StateTransform {
         transform.visit_mir(mir);
 
         // Update our MIR struct to reflect the changed we've made
-        mir.return_ty = ret_ty;
         mir.yield_ty = None;
         mir.arg_count = 1;
         mir.spread_arg = None;

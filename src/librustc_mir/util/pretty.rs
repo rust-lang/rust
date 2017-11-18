@@ -392,13 +392,13 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
                 write!(w, "{:?}: {}", Lvalue::Local(arg), mir.local_decls[arg].ty)?;
             }
 
-            write!(w, ") -> {}", mir.return_ty)
+            write!(w, ") -> {}", mir.return_ty())
         }
         (hir::BodyOwnerKind::Const, _) |
         (hir::BodyOwnerKind::Static(_), _) |
         (_, Some(_)) => {
             assert_eq!(mir.arg_count, 0);
-            write!(w, ": {} =", mir.return_ty)
+            write!(w, ": {} =", mir.return_ty())
         }
     }
 }

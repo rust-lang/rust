@@ -82,9 +82,6 @@ pub struct Mir<'tcx> {
     /// in scope, but a separate set of locals.
     pub promoted: IndexVec<Promoted, Mir<'tcx>>,
 
-    /// Return type of the function.
-    pub return_ty: Ty<'tcx>,
-
     /// Yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
@@ -135,7 +132,6 @@ impl<'tcx> Mir<'tcx> {
                visibility_scope_info: ClearOnDecode<IndexVec<VisibilityScope,
                                                              VisibilityScopeInfo>>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
-               return_ty: Ty<'tcx>,
                yield_ty: Option<Ty<'tcx>>,
                local_decls: IndexVec<Local, LocalDecl<'tcx>>,
                arg_count: usize,
@@ -145,14 +141,12 @@ impl<'tcx> Mir<'tcx> {
         // We need `arg_count` locals, and one for the return pointer
         assert!(local_decls.len() >= arg_count + 1,
             "expected at least {} locals, got {}", arg_count + 1, local_decls.len());
-        assert_eq!(local_decls[RETURN_POINTER].ty, return_ty);
 
         Mir {
             basic_blocks,
             visibility_scopes,
             visibility_scope_info,
             promoted,
-            return_ty,
             yield_ty,
             generator_drop: None,
             generator_layout: None,
@@ -273,6 +267,11 @@ impl<'tcx> Mir<'tcx> {
             &block.terminator().source_info
         }
     }
+
+    /// Return the return type, it always return first element from `local_decls` array
+    pub fn return_ty(&self) -> Ty<'tcx> {
+        self.local_decls[RETURN_POINTER].ty
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -299,7 +298,6 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     visibility_scopes,
     visibility_scope_info,
     promoted,
-    return_ty,
     yield_ty,
     generator_drop,
     generator_layout,
@@ -1744,7 +1742,6 @@ impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
             visibility_scopes: self.visibility_scopes.clone(),
             visibility_scope_info: self.visibility_scope_info.clone(),
             promoted: self.promoted.fold_with(folder),
-            return_ty: self.return_ty.fold_with(folder),
             yield_ty: self.yield_ty.fold_with(folder),
             generator_drop: self.generator_drop.fold_with(folder),
             generator_layout: self.generator_layout.fold_with(folder),
@@ -1763,7 +1760,6 @@ impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
         self.generator_layout.visit_with(visitor) ||
         self.yield_ty.visit_with(visitor) ||
         self.promoted.visit_with(visitor)     ||
-        self.return_ty.visit_with(visitor)    ||
         self.local_decls.visit_with(visitor)
     }
 }
