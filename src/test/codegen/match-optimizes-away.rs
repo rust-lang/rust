@@ -12,11 +12,9 @@
 // compile-flags: -O
 #![crate_type="lib"]
 
-pub enum Three { First, Second, Third }
-use Three::*;
+pub enum Three { A, B, C }
 
-pub enum Four { First, Second, Third, Fourth }
-use Four::*;
+pub enum Four { A, B, C, D }
 
 #[no_mangle]
 pub fn three_valued(x: Three) -> Three {
@@ -24,9 +22,9 @@ pub fn three_valued(x: Three) -> Three {
     // CHECK-NEXT: {{^.*:$}}
     // CHECK-NEXT: ret i8 %0
     match x {
-        First => First,
-        Second => Second,
-        Third => Third,
+        Three::A => Three::A,
+        Three::B => Three::B,
+        Three::C => Three::C,
     }
 }
 
@@ -36,9 +34,9 @@ pub fn four_valued(x: Four) -> Four {
     // CHECK-NEXT: {{^.*:$}}
     // CHECK-NEXT: ret i8 %0
     match x {
-        First => First,
-        Second => Second,
-        Third => Third,
-        Fourth => Fourth,
+        Four::A => Four::A,
+        Four::B => Four::B,
+        Four::C => Four::C,
+        Four::D => Four::D,
     }
 }
