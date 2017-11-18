@@ -382,13 +382,6 @@
                 }
             }
 
-            function min(a, b) {
-                if (a < b) {
-                    return a;
-                }
-                return b;
-            }
-
             function extractGenerics(val) {
                 val = val.toLowerCase();
                 if (val.indexOf('<') !== -1) {
@@ -426,7 +419,7 @@
                             }
                             if (lev.pos !== -1) {
                                 elems.splice(lev.pos, 1);
-                                lev_distance = min(lev.lev, lev_distance);
+                                lev_distance = Math.min(lev.lev, lev_distance);
                             } else {
                                 return MAX_LEV_DISTANCE + 1;
                             }
@@ -489,11 +482,12 @@
                 var new_lev = levenshtein(obj.name, val.name);
                 if (new_lev < lev_distance) {
                     if ((lev = checkGenerics(obj, val)) <= MAX_LEV_DISTANCE) {
-                        lev_distance = min(min(new_lev, lev), lev_distance);
+                        lev_distance = Math.min(Math.min(new_lev, lev), lev_distance);
                     }
                 } else if (obj.generics && obj.generics.length > 0) {
                     for (var x = 0; x < obj.generics.length; ++x) {
-                        lev_distance = min(levenshtein(obj.generics[x], val.name), lev_distance);
+                        lev_distance = Math.min(levenshtein(obj.generics[x], val.name),
+                                                lev_distance);
                     }
                 }
                 // Now whatever happens, the returned distance is "less good" so we should mark it
@@ -510,7 +504,7 @@
                         if (literalSearch === true && tmp === true) {
                             return true;
                         }
-                        lev_distance = min(tmp, lev_distance);
+                        lev_distance = Math.min(tmp, lev_distance);
                         if (lev_distance === 0) {
                             return 0;
                         }
@@ -527,7 +521,7 @@
                     if (literalSearch === true && tmp === true) {
                         return true;
                     }
-                    lev_distance = min(tmp, lev_distance);
+                    lev_distance = Math.min(tmp, lev_distance);
                     if (lev_distance === 0) {
                         return 0;
                     }
@@ -568,18 +562,20 @@
                     var in_args = findArg(searchIndex[i], val, true);
                     var returned = checkReturned(searchIndex[i], val, true);
                     var ty = searchIndex[i];
+                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
+
                     if (searchWords[i] === val.name) {
                         // filter type: ... queries
                         if (typePassesFilter(typeFilter, searchIndex[i].ty) &&
-                            results[ty.path + ty.name] === undefined)
+                            results[fullId] === undefined)
                         {
-                            results[ty.path + ty.name] = {id: i, index: -1};
+                            results[fullId] = {id: i, index: -1};
                             results_length += 1;
                         }
                     } else if ((in_args === true || returned === true) &&
                                typePassesFilter(typeFilter, searchIndex[i].ty)) {
-                        if (results[ty.path + ty.name] === undefined) {
-                            results[ty.path + ty.name] = {
+                        if (results[fullId] === undefined) {
+                            results[fullId] = {
                                 id: i,
                                 index: -1,
                                 dontValidate: true,
@@ -589,10 +585,10 @@
                             results_length += 1;
                         } else {
                             if (in_args === true) {
-                                results[ty.path + ty.name].in_args = true;
+                                results[fullId].in_args = true;
                             }
                             if (returned === true) {
-                                results[ty.path + ty.name].returned = true;
+                                results[fullId].returned = true;
                             }
                         }
                     }
@@ -621,6 +617,7 @@
                     if (!type) {
                         continue;
                     }
+                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
 
                     // allow searching for void (no output) functions as well
                     var typeOutput = type.output ? type.output.name : "";
@@ -639,15 +636,15 @@
                             in_args = allFound;
                         }
                         if (in_args === true || returned === true || module === true) {
-                            if (results[ty.path + ty.name] !== undefined) {
+                            if (results[fullId] !== undefined) {
                                 if (returned === true) {
-                                    results[ty.path + ty.name].returned = true;
+                                    results[fullId].returned = true;
                                 }
                                 if (in_args === true) {
-                                    results[ty.path + ty.name].in_args = true;
+                                    results[fullId].in_args = true;
                                 }
                             } else {
-                                results[ty.path + ty.name] = {
+                                results[fullId] = {
                                     id: i,
                                     index: -1,
                                     dontValidate: true,
@@ -682,48 +679,49 @@
                         var index = -1;
                         // we want lev results to go lower than others
                         var lev = MAX_LEV_DISTANCE;
+                        var fullId = itemTypes[ty.ty] + ty.path + ty.name;
 
                         if (searchWords[j].indexOf(split[i]) > -1 ||
                             searchWords[j].indexOf(val) > -1 ||
                             searchWords[j].replace(/_/g, "").indexOf(val) > -1)
                         {
                             // filter type: ... queries
-                            if (typePassesFilter(typeFilter, searchIndex[j].ty) &&
-                                results[ty.path + ty.name] === undefined) {
+                            if (typePassesFilter(typeFilter, ty) &&
+                                results[fullId] === undefined) {
                                 index = searchWords[j].replace(/_/g, "").indexOf(val);
                             }
                         }
                         if ((lev_distance = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, searchIndex[j].ty) &&
-                                (results[ty.path + ty.name] === undefined ||
-                                 results[ty.path + ty.name].lev > lev_distance)) {
-                                lev = min(lev, lev_distance);
-                                index = 0;
+                            if (typePassesFilter(typeFilter, ty) &&
+                                (results[fullId] === undefined ||
+                                 results[fullId].lev > lev_distance)) {
+                                lev = Math.min(lev, lev_distance);
+                                index = Math.max(0, index);
                             }
                         }
                         if ((lev_distance = findArg(searchIndex[j], valGenerics))
                             <= MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, searchIndex[j].ty) &&
-                                (results[ty.path + ty.name] === undefined ||
-                                 results[ty.path + ty.name].lev > lev_distance)) {
+                            if (typePassesFilter(typeFilter, ty) &&
+                                (results[fullId] === undefined ||
+                                 results[fullId].lev > lev_distance)) {
                                 in_args = true;
-                                lev = min(lev_distance, lev);
-                                index = 0;
+                                lev = Math.min(lev_distance, lev);
+                                index = Math.max(0, index);
                             }
                         }
                         if ((lev_distance = checkReturned(searchIndex[j], valGenerics)) <=
                             MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, searchIndex[j].ty) &&
-                                (results[ty.path + ty.name] === undefined ||
-                                 results[ty.path + ty.name].lev > lev_distance)) {
+                            if (typePassesFilter(typeFilter, ty) &&
+                                (results[fullId] === undefined ||
+                                 results[fullId].lev > lev_distance)) {
                                 returned = true;
-                                lev = min(lev_distance, lev);
-                                index = 0;
+                                lev = Math.min(lev_distance, lev);
+                                index = Math.max(0, index);
                             }
                         }
                         if (index !== -1) {
-                            if (results[ty.path + ty.name] === undefined) {
-                                results[ty.path + ty.name] = {
+                            if (results[fullId] === undefined) {
+                                results[fullId] = {
                                     id: j,
                                     index: index,
                                     lev: lev,
@@ -732,14 +730,14 @@
                                 };
                                 results_length += 1;
                             } else {
-                                if (results[ty.path + ty.name].lev > lev) {
-                                    results[ty.path + ty.name].lev = lev;
+                                if (results[fullId].lev > lev) {
+                                    results[fullId].lev = lev;
                                 }
                                 if (in_args === true) {
-                                    results[ty.path + ty.name].in_args = true;
+                                    results[fullId].in_args = true;
                                 }
                                 if (returned === true) {
-                                    results[ty.path + ty.name].returned = true;
+                                    results[fullId].returned = true;
                                 }
                             }
                         }

@@ -444,7 +444,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         }).collect()
     });
 
-    let mut mir = builder.finish(upvar_decls, return_ty, yield_ty);
+    let mut mir = builder.finish(upvar_decls, yield_ty);
     mir.spread_arg = spread_arg;
     mir
 }
@@ -469,7 +469,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     // Constants can't `return` so a return block should not be created.
     assert_eq!(builder.cached_return_block, None);
 
-    builder.finish(vec![], ty, None)
+    builder.finish(vec![], None)
 }
 
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
@@ -481,7 +481,7 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    builder.finish(vec![], ty, None)
+    builder.finish(vec![], None)
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -524,7 +524,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn finish(self,
               upvar_decls: Vec<UpvarDecl>,
-              return_ty: Ty<'tcx>,
               yield_ty: Option<Ty<'tcx>>)
               -> Mir<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
@@ -537,7 +536,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                  self.visibility_scopes,
                  ClearOnDecode::Set(self.visibility_scope_info),
                  IndexVec::new(),
-                 return_ty,
                  yield_ty,
                  self.local_decls,
                  self.arg_count,

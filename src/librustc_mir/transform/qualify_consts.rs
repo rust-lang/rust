@@ -380,7 +380,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         // conservative type qualification instead.
         if self.qualif.intersects(Qualif::CONST_ERROR) {
             self.qualif = Qualif::empty();
-            let return_ty = mir.return_ty;
+            let return_ty = mir.return_ty();
             self.add_type(return_ty);
         }
 
@@ -938,7 +938,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // performing the steal.
     let mir = &tcx.mir_const(def_id).borrow();
 
-    if mir.return_ty.references_error() {
+    if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
         return (Qualif::NOT_CONST.bits(), Rc::new(IdxSetBuf::new_empty(0)));
     }
@@ -956,7 +956,7 @@ impl MirPass for QualifyAndPromoteConstants {
                           src: MirSource,
                           mir: &mut Mir<'tcx>) {
         // There's not really any point in promoting errorful MIR.
-        if mir.return_ty.references_error() {
+        if mir.return_ty().references_error() {
             tcx.sess.delay_span_bug(mir.span, "QualifyAndPromoteConstants: Mir had errors");
             return;
         }
@@ -1045,7 +1045,7 @@ impl MirPass for QualifyAndPromoteConstants {
                     return;
                 }
             }
-            let ty = mir.return_ty;
+            let ty = mir.return_ty();
             tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);

@@ -50,11 +50,11 @@ def block_trim(s):
         lns = lns[:-1]
 
     # remove leading horizontal whitespace
-    n = sys.maxint
+    n = sys.maxsize
     for ln in lns:
         if ln.strip():
             n = min(n, len(re.search('^\s*', ln).group()))
-    if n != sys.maxint:
+    if n != sys.maxsize:
         lns = [ln[n:] for ln in lns]
 
     # strip trailing whitespace

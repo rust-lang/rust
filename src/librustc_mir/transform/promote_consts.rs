@@ -287,7 +287,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let span = self.promoted.span;
         let new_operand = Operand::Constant(box Constant {
             span,
-            ty: self.promoted.return_ty,
+            ty: self.promoted.return_ty(),
             literal: Literal::Promoted {
                 index: Promoted::new(self.source.promoted.len())
             }
@@ -385,7 +385,6 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 mir.visibility_scopes.clone(),
                 mir.visibility_scope_info.clone(),
                 IndexVec::new(),
-                ty,
                 None,
                 initial_locals,
                 0,
