@@ -292,7 +292,7 @@ macro_rules! make_mir_visitor {
                     self.visit_visibility_scope_data(scope);
                 }
 
-                self.visit_ty(&$($mutability)* mir.return_ty, TyContext::ReturnTy(SourceInfo {
+                self.visit_ty(&$($mutability)* mir.return_ty(), TyContext::ReturnTy(SourceInfo {
                     span: mir.span,
                     scope: ARGUMENT_VISIBILITY_SCOPE,
                 }));

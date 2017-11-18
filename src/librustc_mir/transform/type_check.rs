@@ -130,7 +130,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     }
 
     fn visit_mir(&mut self, mir: &Mir<'tcx>) {
-        self.sanitize_type(&"return type", mir.return_ty);
+        self.sanitize_type(&"return type", mir.return_ty());
         for local_decl in &mir.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
         }
