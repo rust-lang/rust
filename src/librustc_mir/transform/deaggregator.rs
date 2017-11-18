@@ -67,7 +67,7 @@ impl MirPass for Deaggregator {
                     let ty = variant_def.fields[i].ty(tcx, substs);
                     let rhs = Rvalue::Use(op.clone());
 
-                    let lhs_cast = if adt_def.variants.len() > 1 {
+                    let lhs_cast = if adt_def.is_enum() {
                         Lvalue::Projection(Box::new(LvalueProjection {
                             base: lhs.clone(),
                             elem: ProjectionElem::Downcast(adt_def, variant),
@@ -89,7 +89,7 @@ impl MirPass for Deaggregator {
                 }
 
                 // if the aggregate was an enum, we need to set the discriminant
-                if adt_def.variants.len() > 1 {
+                if adt_def.is_enum() {
                     let set_discriminant = Statement {
                         kind: StatementKind::SetDiscriminant {
                             lvalue: lhs.clone(),

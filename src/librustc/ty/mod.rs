@@ -1674,11 +1674,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.variants.iter().flat_map(|v| v.fields.iter())
     }
 
-    #[inline]
-    pub fn is_univariant(&self) -> bool {
-        self.variants.len() == 1
-    }
-
     pub fn is_payloadfree(&self) -> bool {
         !self.variants.is_empty() &&
             self.variants.iter().all(|v| v.fields.is_empty())

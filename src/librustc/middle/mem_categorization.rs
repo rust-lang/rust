@@ -210,7 +210,7 @@ impl<'tcx> cmt_<'tcx> {
                 adt_def.variant_with_id(variant_did)
             }
             _ => {
-                assert!(adt_def.is_univariant());
+                assert_eq!(adt_def.variants.len(), 1);
                 &adt_def.variants[0]
             }
         };
@@ -1096,7 +1096,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                               -> cmt<'tcx> {
         // univariant enums do not need downcasts
         let base_did = self.tcx.parent_def_id(variant_did).unwrap();
-        if !self.tcx.adt_def(base_did).is_univariant() {
+        if self.tcx.adt_def(base_did).variants.len() != 1 {
             let base_ty = base_cmt.ty;
             let ret = Rc::new(cmt_ {
                 id: node.id(),
