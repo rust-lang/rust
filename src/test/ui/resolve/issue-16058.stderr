@@ -3,7 +3,6 @@ error[E0574]: expected struct, variant or union type, found enum `Result`
    |
 19 |         Result {
    |         ^^^^^^ not a struct, variant or union type
-   |
 help: possible better candidates are found in other modules, you can import them into scope
    |
 12 | use std::fmt::Result;

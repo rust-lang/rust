@@ -50,7 +50,6 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                    ^ not interpreted as comparison
 27 |                    4);
    |                    - interpreted as generic arguments
-   |
 help: try comparing the casted value
    |
 23 |     println!("{}", (a
@@ -65,7 +64,6 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                    ^ not interpreted as comparison
 36 |                    5);
    |                    - interpreted as generic arguments
-   |
 help: try comparing the casted value
    |
 28 |     println!("{}", (a
