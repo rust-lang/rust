@@ -237,6 +237,7 @@ pub struct Handler {
     emitter: RefCell<Box<Emitter>>,
     pub can_emit_warnings: bool,
     treat_err_as_bug: bool,
+    pub macro_backtrace: bool,
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
     tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
@@ -251,14 +252,16 @@ impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
+                            macro_backtrace: bool,
                             cm: Option<Rc<CodeMapper>>)
                             -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false));
-        Handler::with_emitter(can_emit_warnings, treat_err_as_bug, emitter)
+        Handler::with_emitter(can_emit_warnings, treat_err_as_bug, macro_backtrace, emitter)
     }
 
     pub fn with_emitter(can_emit_warnings: bool,
                         treat_err_as_bug: bool,
+                        macro_backtrace: bool,
                         e: Box<Emitter>)
                         -> Handler {
         Handler {
@@ -266,6 +269,7 @@ impl Handler {
             emitter: RefCell::new(e),
             can_emit_warnings,
             treat_err_as_bug,
+            macro_backtrace,
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
             tracked_diagnostics: RefCell::new(None),

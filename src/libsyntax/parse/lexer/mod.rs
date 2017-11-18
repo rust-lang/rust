@@ -1726,7 +1726,7 @@ mod tests {
                                                           Some(cm.clone()),
                                                           false);
         ParseSess {
-            span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
+            span_diagnostic: errors::Handler::with_emitter(true, false, false, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),
             config: CrateConfig::new(),
             included_mod_stack: RefCell::new(Vec::new()),

@@ -353,7 +353,7 @@ pub struct CodegenContext {
 
 impl CodegenContext {
     pub fn create_diag_handler(&self) -> Handler {
-        Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
+        Handler::with_emitter(true, false, false, Box::new(self.diag_emitter.clone()))
     }
 
     pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {

@@ -58,6 +58,7 @@ impl ParseSess {
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
                                                 false,
+                                                false,
                                                 Some(cm.clone()));
         ParseSess::with_span_handler(handler, cm)
     }

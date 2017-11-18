@@ -23,7 +23,6 @@ use std::rc::Rc;
 use term;
 use std::collections::HashMap;
 use std::cmp::min;
-use std::env;
 
 /// Emitter trait for emitting errors.
 pub trait Emitter {
@@ -65,8 +64,11 @@ impl Emitter for EmitterWriter {
             }
         }
 
-        self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
+        if !db.handler.macro_backtrace {
+            self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
+        }
         self.emit_messages_default(&db.level,
+                                   db.handler.macro_backtrace,
                                    &db.styled_message(),
                                    &db.code,
                                    &primary_span,
@@ -787,23 +789,21 @@ impl EmitterWriter {
     fn fix_multispans_in_std_macros(&mut self,
                                     span: &mut MultiSpan,
                                     children: &mut Vec<SubDiagnostic>) {
-        if env::var_os("RUST_MACRO_BACKTRACE").is_none() {
-            let mut spans_updated = self.fix_multispan_in_std_macros(span);
-            for child in children.iter_mut() {
-                spans_updated |= self.fix_multispan_in_std_macros(&mut child.span);
-            }
-            if spans_updated {
-                children.push(SubDiagnostic {
-                    level: Level::Note,
-                    message: vec![
-                        (["this error originates in a macro outside of the current crate",
-                          "(run with RUST_MACRO_BACKTRACE=1 for more info)"].join(" "),
-                         Style::NoStyle),
-                    ],
-                    span: MultiSpan::new(),
-                    render_span: None,
-                });
-            }
+        let mut spans_updated = self.fix_multispan_in_std_macros(span);
+        for child in children.iter_mut() {
+            spans_updated |= self.fix_multispan_in_std_macros(&mut child.span);
+        }
+        if spans_updated {
+            children.push(SubDiagnostic {
+                level: Level::Note,
+                message: vec![
+                    (["this error originates in a macro outside of the current crate",
+                      "(run with -Z macro-backtrace for more info)"].join(" "),
+                     Style::NoStyle),
+                ],
+                span: MultiSpan::new(),
+                render_span: None,
+            });
         }
     }
 
@@ -888,6 +888,7 @@ impl EmitterWriter {
                             msg: &Vec<(String, Style)>,
                             code: &Option<DiagnosticId>,
                             level: &Level,
+                            macro_backtrace: bool,
                             max_line_num_len: usize,
                             is_secondary: bool)
                             -> io::Result<()> {
@@ -1085,7 +1086,7 @@ impl EmitterWriter {
             }
         }
 
-        if env::var_os("RUST_MACRO_BACKTRACE").is_some() {
+        if macro_backtrace {
             if let Some(ref primary_span) = msp.primary_span().as_ref() {
                 self.render_macro_backtrace_old_school(primary_span, &mut buffer)?;
             }
@@ -1182,6 +1183,7 @@ impl EmitterWriter {
     }
     fn emit_messages_default(&mut self,
                              level: &Level,
+                             macro_backtrace: bool,
                              message: &Vec<(String, Style)>,
                              code: &Option<DiagnosticId>,
                              span: &MultiSpan,
@@ -1190,7 +1192,13 @@ impl EmitterWriter {
         let max_line_num = self.get_max_line_num(span, children);
         let max_line_num_len = max_line_num.to_string().len();
 
-        match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
+        match self.emit_message_default(span,
+                                        message,
+                                        code,
+                                        level,
+                                        macro_backtrace,
+                                        max_line_num_len,
+                                        false) {
             Ok(()) => {
                 if !children.is_empty() {
                     let mut buffer = StyledBuffer::new();
@@ -1210,6 +1218,7 @@ impl EmitterWriter {
                                                         &child.styled_message(),
                                                         &None,
                                                         &child.level,
+                                                        macro_backtrace,
                                                         max_line_num_len,
                                                         true) {
                             Err(e) => panic!("failed to emit error: {}", e),

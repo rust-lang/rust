@@ -731,6 +731,8 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
+    let macro_backtrace = sopts.debugging_opts.macro_backtrace;
+
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), false))
@@ -755,6 +757,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
     let diagnostic_handler =
         errors::Handler::with_emitter(can_print_warnings,
                                       treat_err_as_bug,
+                                      macro_backtrace,
                                       emitter);
 
     build_session_(sopts,
@@ -925,7 +928,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
             Box::new(EmitterWriter::stderr(color_config, None, true))
         }
     };
-    let handler = errors::Handler::with_emitter(true, false, emitter);
+    let handler = errors::Handler::with_emitter(true, false, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
     panic!(errors::FatalError);
 }
@@ -940,7 +943,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
             Box::new(EmitterWriter::stderr(color_config, None, true))
         }
     };
-    let handler = errors::Handler::with_emitter(true, false, emitter);
+    let handler = errors::Handler::with_emitter(true, false, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 

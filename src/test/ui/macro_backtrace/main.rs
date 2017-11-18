@@ -10,7 +10,7 @@
 
 // Test that the macro backtrace facility works
 // aux-build:ping.rs
-// rustc-env:RUST_MACRO_BACKTRACE
+// compile-flags: -Z macro-backtrace
 
 #[macro_use] extern crate ping;
 
