@@ -15,9 +15,9 @@ use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Field, Location, Lvalue, Local};
+use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue, Local};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
-use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
+use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use transform::nll;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -1581,6 +1581,31 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         buf
     }
 
+    /// If this is a field projection, and the field is being projected from a closure type,
+    /// then returns the index of the field being projected. Note that this closure will always
+    /// be `self` in the current MIR, because that is the only time we directly access the fields
+    /// of a closure type.
+    fn is_upvar_field_projection(&self, lvalue: &Lvalue<'tcx>) -> Option<Field> {
+        match *lvalue {
+            Lvalue::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Field(field, _ty) => {
+                        let is_projection_from_ty_closure = proj.base.ty(self.mir, self.tcx)
+                                .to_ty(self.tcx).is_closure();
+
+                        if is_projection_from_ty_closure {
+                            Some(field)
+                        } else {
+                            None
+                        }
+                    },
+                    _ => None
+                }
+            },
+            _ => None
+        }
+    }
+
     // Appends end-user visible description of `lvalue` to `buf`.
     fn append_lvalue_to_string(&self,
                                lvalue: &Lvalue<'tcx>,
@@ -1596,11 +1621,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Lvalue::Projection(ref proj) => {
                 match proj.elem {
                     ProjectionElem::Deref => {
-                        if autoderef {
-                            self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                        if let Some(field) = self.is_upvar_field_projection(&proj.base) {
+                            let var_index = field.index();
+                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
+                            if self.mir.upvar_decls[var_index].by_ref {
+                                buf.push_str(&name);
+                            } else {
+                                buf.push_str(&format!("*{}", &name));
+                            }
                         } else {
-                            buf.push_str(&"*");
-                            self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                            if autoderef {
+                                self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                            } else {
+                                buf.push_str(&"*");
+                                self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                            }
                         }
                     },
                     ProjectionElem::Downcast(..) => {
@@ -1608,13 +1643,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     },
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
-                        let is_projection_from_ty_closure = proj.base.ty(self.mir, self.tcx)
-                                .to_ty(self.tcx).is_closure();
 
-                        let field_name = self.describe_field(&proj.base, field);
-                        if is_projection_from_ty_closure {
-                            buf.push_str(&format!("{}", field_name));
+                        if let Some(field) = self.is_upvar_field_projection(lvalue) {
+                            let var_index = field.index();
+                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
+                            buf.push_str(&name);
                         } else {
+                            let field_name = self.describe_field(&proj.base, field);
                             self.append_lvalue_to_string(&proj.base, buf, autoderef);
                             buf.push_str(&format!(".{}", field_name));
                         }

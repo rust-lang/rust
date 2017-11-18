@@ -300,7 +300,7 @@ fn main() {
             let y = &mut x;
             &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
                     //[mir]~^ ERROR cannot borrow `**x` as mutable more than once at a time (Ast)
-                    //[mir]~| ERROR cannot borrow `*x` as mutable more than once at a time (Mir)
+                    //[mir]~| ERROR cannot borrow `x` as mutable more than once at a time (Mir)
             *y = 1;
         };
     }
@@ -312,9 +312,20 @@ fn main() {
                 let y = &mut x;
                 &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
                         //[mir]~^ ERROR cannot borrow `**x` as mutable more than once at a time (Ast)
-                        //[mir]~| ERROR cannot borrow `*x` as mutable more than once at a time (Mir)
+                        //[mir]~| ERROR cannot borrow `x` as mutable more than once at a time (Mir)
                 *y = 1;
                 }
            };
+    }
+    {
+        fn foo(x: Vec<i32>) {
+            let c = || {
+                drop(x);
+                drop(x); //[ast]~ ERROR use of moved value: `x`
+                         //[mir]~^ ERROR use of moved value: `x` (Ast)
+                         //[mir]~| ERROR use of moved value: `x` (Mir)
+            };
+            c();
+        }
     }
 }
