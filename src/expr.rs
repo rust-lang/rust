@@ -2596,7 +2596,7 @@ pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
     Some(lhs + &rhs)
 }
 
-fn choose_rhs<R: Rewrite>(
+pub fn choose_rhs<R: Rewrite>(
     context: &RewriteContext,
     expr: &R,
     shape: Shape,

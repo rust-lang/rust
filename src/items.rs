@@ -23,7 +23,7 @@ use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent};
-use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
+use expr::{choose_rhs, format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
@@ -1200,7 +1200,7 @@ pub fn format_struct_struct(
     let items_str = rewrite_with_alignment(
         fields,
         context,
-        Shape::indented(offset, context.config),
+        Shape::indented(offset, context.config).sub_width(1)?,
         mk_sp(body_lo, span.hi()),
         one_line_budget,
     )?;
@@ -1480,34 +1480,23 @@ pub fn rewrite_struct_field(
         spacing.push(' ');
     }
     let ty_shape = shape.offset_left(overhead + spacing.len())?;
-    if let Some(ref ty) = field.ty.rewrite(context, ty_shape) {
+    let mut orig_ty = field.ty.rewrite(context, ty_shape);
+    if let Some(ref ty) = orig_ty {
         if !ty.contains('\n') {
             return Some(attr_prefix + &spacing + ty);
         }
     }
 
-    // We must use multiline.
-    let new_shape = shape.with_max_width(context.config);
-    let ty_rewritten = field.ty.rewrite(context, new_shape)?;
-
+    // We must use multiline. We are going to put attributes and a field on different lines.
+    // 1 = " "
+    let rhs_shape = shape.offset_left(last_line_width(&prefix) + 1)?;
+    orig_ty = field.ty.rewrite(context, rhs_shape);
     let field_str = if prefix.is_empty() {
-        ty_rewritten
-    } else if prefix.len() + first_line_width(&ty_rewritten) + 1 <= shape.width {
-        prefix + " " + &ty_rewritten
+        orig_ty?
     } else {
-        let type_offset = shape.indent.block_indent(context.config);
-        let nested_shape = Shape::indented(type_offset, context.config);
-        let nested_ty = field.ty.rewrite(context, nested_shape)?;
-        prefix + "\n" + &type_offset.to_string(context.config) + &nested_ty
+        prefix + &choose_rhs(context, &*field.ty, rhs_shape, orig_ty)?
     };
-    combine_strs_with_missing_comments(
-        context,
-        &attrs_str,
-        &field_str,
-        missing_span,
-        shape,
-        attrs_extendable,
-    )
+    combine_strs_with_missing_comments(context, &attrs_str, &field_str, missing_span, shape, false)
 }
 
 pub struct StaticParts<'a> {
