@@ -150,7 +150,7 @@ fn lorem(ipsum: usize,
 }
 ```
 
-### Functaion calls
+### Function calls
 
 #### `"Block"` (default):
 
