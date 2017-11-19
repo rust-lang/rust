@@ -63,8 +63,8 @@ macro_rules! define_impl {
                 slice: &mut [$elemty],
                 offset: usize,
             ) {
-                use std::mem::size_of;
-                use std::ptr;
+                use core::mem::size_of;
+                use core::ptr;
 
                 ptr::copy_nonoverlapping(
                     &self as *const $name as *const u8,
@@ -83,8 +83,8 @@ macro_rules! define_impl {
                 slice: &[$elemty],
                 offset: usize,
             ) -> $name {
-                use std::mem::size_of;
-                use std::ptr;
+                use core::mem::size_of;
+                use core::ptr;
 
                 let mut x = $name::splat(0 as $elemty);
                 ptr::copy_nonoverlapping(
@@ -133,7 +133,7 @@ macro_rules! define_from {
             impl From<$from> for $to {
                 #[inline(always)]
                 fn from(f: $from) -> $to {
-                    unsafe { ::std::mem::transmute(f) }
+                    unsafe { ::core::mem::transmute(f) }
                 }
             }
         )+
@@ -143,7 +143,7 @@ macro_rules! define_from {
 macro_rules! define_common_ops {
     ($($ty:ident),+) => {
         $(
-            impl ::std::ops::Add for $ty {
+            impl ::core::ops::Add for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn add(self, other: Self) -> Self {
@@ -151,7 +151,7 @@ macro_rules! define_common_ops {
                 }
             }
 
-            impl ::std::ops::Sub for $ty {
+            impl ::core::ops::Sub for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn sub(self, other: Self) -> Self {
@@ -159,7 +159,7 @@ macro_rules! define_common_ops {
                 }
             }
 
-            impl ::std::ops::Mul for $ty {
+            impl ::core::ops::Mul for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn mul(self, other: Self) -> Self {
@@ -167,7 +167,7 @@ macro_rules! define_common_ops {
                 }
             }
 
-            impl ::std::ops::Div for $ty {
+            impl ::core::ops::Div for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn div(self, other: Self) -> Self {
@@ -175,7 +175,7 @@ macro_rules! define_common_ops {
                 }
             }
 
-            impl ::std::ops::Rem for $ty {
+            impl ::core::ops::Rem for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn rem(self, other: Self) -> Self {
@@ -183,35 +183,35 @@ macro_rules! define_common_ops {
                 }
             }
 
-            impl ::std::ops::AddAssign for $ty {
+            impl ::core::ops::AddAssign for $ty {
                 #[inline(always)]
                 fn add_assign(&mut self, other: Self) {
                     *self = *self + other;
                 }
             }
 
-            impl ::std::ops::SubAssign for $ty {
+            impl ::core::ops::SubAssign for $ty {
                 #[inline(always)]
                 fn sub_assign(&mut self, other: Self) {
                     *self = *self - other;
                 }
             }
 
-            impl ::std::ops::MulAssign for $ty {
+            impl ::core::ops::MulAssign for $ty {
                 #[inline(always)]
                 fn mul_assign(&mut self, other: Self) {
                     *self = *self * other;
                 }
             }
 
-            impl ::std::ops::DivAssign for $ty {
+            impl ::core::ops::DivAssign for $ty {
                 #[inline(always)]
                 fn div_assign(&mut self, other: Self) {
                     *self = *self / other;
                 }
             }
 
-            impl ::std::ops::RemAssign for $ty {
+            impl ::core::ops::RemAssign for $ty {
                 #[inline(always)]
                 fn rem_assign(&mut self, other: Self) {
                     *self = *self % other;
@@ -225,14 +225,14 @@ macro_rules! define_common_ops {
 macro_rules! define_shifts {
     ($ty:ident, $elem:ident, $($by:ident),+) => {
         $(
-            impl ::std::ops::Shl<$by> for $ty {
+            impl ::core::ops::Shl<$by> for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn shl(self, other: $by) -> Self {
                     unsafe { simd_shl(self, $ty::splat(other as $elem)) }
                 }
             }
-            impl ::std::ops::Shr<$by> for $ty {
+            impl ::core::ops::Shr<$by> for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn shr(self, other: $by) -> Self {
@@ -240,13 +240,13 @@ macro_rules! define_shifts {
                 }
             }
 
-            impl ::std::ops::ShlAssign<$by> for $ty {
+            impl ::core::ops::ShlAssign<$by> for $ty {
                 #[inline(always)]
                 fn shl_assign(&mut self, other: $by) {
                     *self = *self << other;
                 }
             }
-            impl ::std::ops::ShrAssign<$by> for $ty {
+            impl ::core::ops::ShrAssign<$by> for $ty {
                 #[inline(always)]
                 fn shr_assign(&mut self, other: $by) {
                     *self = *self >> other;
@@ -260,7 +260,7 @@ macro_rules! define_shifts {
 macro_rules! define_float_ops {
     ($($ty:ident),+) => {
         $(
-            impl ::std::ops::Neg for $ty {
+            impl ::core::ops::Neg for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn neg(self) -> Self {
@@ -274,7 +274,7 @@ macro_rules! define_float_ops {
 macro_rules! define_signed_integer_ops {
     ($($ty:ident),+) => {
         $(
-            impl ::std::ops::Neg for $ty {
+            impl ::core::ops::Neg for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn neg(self) -> Self {
@@ -288,7 +288,7 @@ macro_rules! define_signed_integer_ops {
 macro_rules! define_integer_ops {
     ($(($ty:ident, $elem:ident)),+) => {
         $(
-            impl ::std::ops::Not for $ty {
+            impl ::core::ops::Not for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn not(self) -> Self {
@@ -296,40 +296,40 @@ macro_rules! define_integer_ops {
                 }
             }
 
-            impl ::std::ops::BitAnd for $ty {
+            impl ::core::ops::BitAnd for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn bitand(self, other: Self) -> Self {
                     unsafe { simd_and(self, other) }
                 }
             }
-            impl ::std::ops::BitOr for $ty {
+            impl ::core::ops::BitOr for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn bitor(self, other: Self) -> Self {
                     unsafe { simd_or(self, other) }
                 }
             }
-            impl ::std::ops::BitXor for $ty {
+            impl ::core::ops::BitXor for $ty {
                 type Output = Self;
                 #[inline(always)]
                 fn bitxor(self, other: Self) -> Self {
                     unsafe { simd_xor(self, other) }
                 }
             }
-            impl ::std::ops::BitAndAssign for $ty {
+            impl ::core::ops::BitAndAssign for $ty {
                 #[inline(always)]
                 fn bitand_assign(&mut self, other: Self) {
                     *self = *self & other;
                 }
             }
-            impl ::std::ops::BitOrAssign for $ty {
+            impl ::core::ops::BitOrAssign for $ty {
                 #[inline(always)]
                 fn bitor_assign(&mut self, other: Self) {
                     *self = *self | other;
                 }
             }
-            impl ::std::ops::BitXorAssign for $ty {
+            impl ::core::ops::BitXorAssign for $ty {
                 #[inline(always)]
                 fn bitxor_assign(&mut self, other: Self) {
                     *self = *self ^ other;
@@ -341,12 +341,12 @@ macro_rules! define_integer_ops {
                 u8, u16, u32, u64, usize,
                 i8, i16, i32, i64, isize);
 
-            impl ::std::fmt::LowerHex for $ty {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter)
-                       -> ::std::fmt::Result {
+            impl ::core::fmt::LowerHex for $ty {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter)
+                       -> ::core::fmt::Result {
                     write!(f, "{}(", stringify!($ty))?;
-                    let n = ::std::mem::size_of_val(self)
-                        / ::std::mem::size_of::<$elem>();
+                    let n = ::core::mem::size_of_val(self)
+                        / ::core::mem::size_of::<$elem>();
                     for i in 0..n {
                         if i > 0 {
                             write!(f, ", ")?;

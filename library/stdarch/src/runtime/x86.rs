@@ -16,6 +16,8 @@
 //! in a global `AtomicUsize` variable. The query is performed by just checking
 //! whether the feature bit in this global variable is set or cleared.
 
+use core::mem;
+
 use super::bit;
 
 /// This macro maps the string-literal feature names to values of the
@@ -271,11 +273,11 @@ pub fn detect_features() -> usize {
             edx,
         } = __cpuid(0);
         let vendor_id: [[u8; 4]; 3] = [
-            ::std::mem::transmute(ebx),
-            ::std::mem::transmute(edx),
-            ::std::mem::transmute(ecx),
+            mem::transmute(ebx),
+            mem::transmute(edx),
+            mem::transmute(ecx),
         ];
-        let vendor_id: [u8; 12] = ::std::mem::transmute(vendor_id);
+        let vendor_id: [u8; 12] = mem::transmute(vendor_id);
         (max_leaf, vendor_id)
     };
 

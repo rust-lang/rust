@@ -3,12 +3,12 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-use std::mem;
-use x86::c_void;
-use std::ptr;
+use core::mem;
+use core::ptr;
 
 use simd_llvm::{simd_cast, simd_shuffle16, simd_shuffle2, simd_shuffle4,
                 simd_shuffle8};
+use x86::c_void;
 use x86::__m128i;
 use v128::*;
 use v64::*;

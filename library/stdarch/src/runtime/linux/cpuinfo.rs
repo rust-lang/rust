@@ -1,5 +1,7 @@
 //! Reads /proc/cpuinfo on Linux systems
 
+use std::prelude::v1::*;
+
 /// cpuinfo
 pub struct CpuInfo {
     raw: String,

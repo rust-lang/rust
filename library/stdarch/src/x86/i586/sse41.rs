@@ -1,6 +1,6 @@
 //! Streaming SIMD Extensions 4.1 (SSE4.1)
 
-use std::mem;
+use core::mem;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;

@@ -45,7 +45,7 @@ pub struct CpuidResult {
 #[inline(always)]
 #[cfg_attr(test, assert_instr(cpuid))]
 pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
-    let mut r = ::std::mem::uninitialized::<CpuidResult>();
+    let mut r = ::core::mem::uninitialized::<CpuidResult>();
     if cfg!(target_arch = "x86") {
         asm!("cpuid"
              : "={eax}"(r.eax), "={ebx}"(r.ebx), "={ecx}"(r.ecx), "={edx}"(r.edx)

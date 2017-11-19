@@ -13,8 +13,8 @@
 //! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
-use std::mem;
-use std::ptr;
+use core::mem;
+use core::ptr;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;

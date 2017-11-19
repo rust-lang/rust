@@ -1,11 +1,12 @@
 //! Streaming SIMD Extensions (SSE)
 
+use core::mem;
+use core::ptr;
+
 use simd_llvm::simd_shuffle4;
 use v128::*;
 use v64::f32x2;
 use x86::c_void;
-use std::mem;
-use std::ptr;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
