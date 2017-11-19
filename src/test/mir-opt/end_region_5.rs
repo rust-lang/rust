@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags: -Z identify_regions -Z span_free_formats -Z emit-end-regions
-// ignore-tidy-linelength
 
 // Unwinding should EndRegion for in-scope borrows: Borrowing via by-ref closure.
 

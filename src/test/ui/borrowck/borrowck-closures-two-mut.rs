@@ -12,7 +12,7 @@
 // access to the variable, whether that mutable access be used
 // for direct assignment or for taking mutable ref. Issue #6801.
 
-// compile-flags: -Z emit-end-regions -Z borrowck-mir
+// compile-flags: -Z borrowck=compare
 
 #![feature(box_syntax)]
 

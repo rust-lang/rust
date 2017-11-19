@@ -10,9 +10,8 @@
 
 // Test taken from #45641 (https://github.com/rust-lang/rust/issues/45641)
 
-// ignore-tidy-linelength
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 static mut Y: u32 = 0;
 

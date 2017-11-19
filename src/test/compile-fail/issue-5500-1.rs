@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=compare
 
 struct TrieMapIterator<'a> {
     node: &'a usize
@@ -18,7 +18,7 @@ struct TrieMapIterator<'a> {
 fn main() {
     let a = 5;
     let _iter = TrieMapIterator{node: &a};
-    _iter.node = & //[ast]~ ERROR cannot assign to immutable field
+    _iter.node = & //[ast]~ ERROR cannot assign to immutable field `_iter.node`
                    //[mir]~^ ERROR cannot assign to immutable field `_iter.node` (Ast)
                    // FIXME Error for MIR
     panic!()

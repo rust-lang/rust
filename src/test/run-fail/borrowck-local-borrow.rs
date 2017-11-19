@@ -10,7 +10,7 @@
 // error-pattern:panic 1
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 fn main() {
     let x = 2;

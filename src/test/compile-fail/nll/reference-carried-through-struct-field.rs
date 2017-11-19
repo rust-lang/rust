@@ -7,8 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 //revisions: ast mir
-//[mir] compile-flags: -Z emit-end-regions -Z borrowck-mir -Z nll
+//[mir] compile-flags: -Z borrowck=mir -Z nll
 
 #![allow(unused_assignments)]
 
@@ -18,9 +19,8 @@ fn foo() {
     let mut x = 22;
     let wrapper = Wrap { w: &mut x };
     x += 1; //[ast]~ ERROR cannot assign to `x` because it is borrowed [E0506]
-    //[mir]~^ ERROR cannot assign to `x` because it is borrowed (Ast) [E0506]
-    //[mir]~^^ ERROR cannot assign to `x` because it is borrowed (Mir) [E0506]
-    //[mir]~^^^ ERROR cannot use `x` because it was mutably borrowed (Mir) [E0503]
+    //[mir]~^ ERROR cannot assign to `x` because it is borrowed [E0506]
+    //[mir]~^^ ERROR cannot use `x` because it was mutably borrowed [E0503]
     *wrapper.w += 1;
 }
 

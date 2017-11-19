@@ -12,7 +12,7 @@
 // of the output to the region of the input.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 trait FnLike<A,R> {
     fn call(&self, arg: A) -> R;
@@ -25,8 +25,7 @@ fn call_repeatedly<F>(f: F)
     let mut x = 3;
     let y = f.call(&x);
     x = 5; //[ast]~ ERROR cannot assign
-           //[mir]~^ ERROR cannot assign to `x` because it is borrowed (Ast)
-           //[mir]~| ERROR cannot assign to `x` because it is borrowed (Mir)
+           //[mir]~^ ERROR cannot assign to `x` because it is borrowed
 
     // Result is not stored: can re-assign `x`
     let mut x = 3;

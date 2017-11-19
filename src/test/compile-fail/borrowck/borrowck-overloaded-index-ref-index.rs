@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 use std::ops::{Index, IndexMut};
 
@@ -61,17 +61,14 @@ fn main() {
     let rs = &mut s;
     println!("{}", f[&s]);
     //[ast]~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
-    //[mir]~^^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable (Ast)
-    //[mir]~| ERROR cannot borrow `s` as immutable because it is also borrowed as mutable (Mir)
+    //[mir]~^^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
     f[&s] = 10;
     //[ast]~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
-    //[mir]~^^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable (Ast)
-    //[mir]~| ERROR cannot borrow `s` as immutable because it is also borrowed as mutable (Mir)
+    //[mir]~^^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
     let s = Bar {
         x: 1,
     };
     s[2] = 20;
     //[ast]~^ ERROR cannot assign to immutable indexed content
-    //[mir]~^^ ERROR cannot assign to immutable indexed content
     // FIXME Error for MIR
 }
