@@ -491,7 +491,9 @@ impl<'a, 'tcx> ArgType<'tcx> {
              .set(ArgAttribute::NoCapture)
              .set(ArgAttribute::NonNull);
         attrs.pointee_size = self.layout.size;
-        attrs.pointee_align = Some(self.layout.align);
+        // FIXME(eddyb) We should be doing this, but at least on
+        // i686-pc-windows-msvc, it results in wrong stack offsets.
+        // attrs.pointee_align = Some(self.layout.align);
 
         self.mode = PassMode::Indirect(attrs);
     }
