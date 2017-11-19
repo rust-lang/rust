@@ -103,8 +103,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn alloca(bcx: &Builder<'a, 'tcx>, layout: TyLayout<'tcx>, name: &str)
                   -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
-        let tmp = bcx.alloca(
-            layout.llvm_type(bcx.ccx), name, layout.over_align());
+        let tmp = bcx.alloca(layout.llvm_type(bcx.ccx), name, layout.align);
         Self::new_sized(tmp, layout, Alignment::AbiAligned)
     }
 

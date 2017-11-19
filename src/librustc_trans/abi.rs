@@ -585,7 +585,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.alloca(cast.llvm_type(ccx), "abi_cast", None);
+                let llscratch = bcx.alloca(cast.llvm_type(ccx), "abi_cast", cast.align(ccx));
                 let scratch_size = cast.size(ccx);
                 bcx.lifetime_start(llscratch, scratch_size);
 

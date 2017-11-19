@@ -185,7 +185,6 @@ pub trait LayoutLlvmExt<'tcx> {
     fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
                                          index: usize) -> Type;
-    fn over_align(&self) -> Option<Align>;
     fn llvm_field_index(&self, index: usize) -> u64;
     fn pointee_info_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo>;
@@ -362,14 +361,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 };
                 pointee.ptr_to()
             }
-        }
-    }
-
-    fn over_align(&self) -> Option<Align> {
-        if self.align != self.primitive_align {
-            Some(self.align)
-        } else {
-            None
         }
     }
 

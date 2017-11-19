@@ -847,7 +847,6 @@ pub struct LayoutDetails {
     pub fields: FieldPlacement,
     pub abi: Abi,
     pub align: Align,
-    pub primitive_align: Align,
     pub size: Size
 }
 
@@ -861,7 +860,6 @@ impl LayoutDetails {
             abi: Abi::Scalar(scalar),
             size,
             align,
-            primitive_align: align
         }
     }
 
@@ -872,7 +870,6 @@ impl LayoutDetails {
             fields: FieldPlacement::Union(field_count),
             abi: Abi::Uninhabited,
             align,
-            primitive_align: align,
             size: Size::from_bytes(0)
         }
     }
@@ -935,7 +932,6 @@ impl<'a, 'tcx> LayoutDetails {
                 },
                 abi: Abi::ScalarPair(a, b),
                 align,
-                primitive_align: align,
                 size
             }
         };
@@ -955,14 +951,12 @@ impl<'a, 'tcx> LayoutDetails {
                 bug!("struct cannot be packed and aligned");
             }
 
-            let base_align = if packed {
+            let mut align = if packed {
                 dl.i8_align
             } else {
                 dl.aggregate_align
             };
 
-            let mut align = base_align;
-            let mut primitive_align = base_align;
             let mut sized = true;
             let mut offsets = vec![Size::from_bytes(0); fields.len()];
             let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
@@ -1012,7 +1006,6 @@ impl<'a, 'tcx> LayoutDetails {
                 if !packed {
                     let discr_align = discr.align(dl);
                     align = align.max(discr_align);
-                    primitive_align = primitive_align.max(discr_align);
                 }
             }
 
@@ -1035,7 +1028,6 @@ impl<'a, 'tcx> LayoutDetails {
                 if !packed {
                     offset = offset.abi_align(field.align);
                     align = align.max(field.align);
-                    primitive_align = primitive_align.max(field.primitive_align);
                 }
 
                 debug!("univariant offset: {:?} field: {:#?}", offset, field);
@@ -1134,7 +1126,6 @@ impl<'a, 'tcx> LayoutDetails {
                             if offsets[i] == pair_offsets[0] &&
                                offsets[j] == pair_offsets[1] &&
                                align == pair.align &&
-                               primitive_align == pair.primitive_align &&
                                size == pair.size {
                                 // We can use `ScalarPair` only when it matches our
                                 // already computed layout (including `#[repr(C)]`).
@@ -1155,7 +1146,6 @@ impl<'a, 'tcx> LayoutDetails {
                 },
                 abi,
                 align,
-                primitive_align,
                 size
             })
         };
@@ -1255,7 +1245,6 @@ impl<'a, 'tcx> LayoutDetails {
                         packed: false
                     },
                     align: element.align,
-                    primitive_align: element.primitive_align,
                     size
                 })
             }
@@ -1272,7 +1261,6 @@ impl<'a, 'tcx> LayoutDetails {
                         packed: false
                     },
                     align: element.align,
-                    primitive_align: element.primitive_align,
                     size: Size::from_bytes(0)
                 })
             }
@@ -1288,7 +1276,6 @@ impl<'a, 'tcx> LayoutDetails {
                         packed: false
                     },
                     align: dl.i8_align,
-                    primitive_align: dl.i8_align,
                     size: Size::from_bytes(0)
                 })
             }
@@ -1359,7 +1346,6 @@ impl<'a, 'tcx> LayoutDetails {
                     abi: Abi::Vector,
                     size,
                     align,
-                    primitive_align: align
                 })
             }
 
@@ -1389,19 +1375,17 @@ impl<'a, 'tcx> LayoutDetails {
                         bug!("Union cannot be packed and aligned");
                     }
 
-                    let mut primitive_align = if def.repr.packed() {
+                    let mut align = if def.repr.packed() {
                         dl.i8_align
                     } else {
                         dl.aggregate_align
                     };
 
-                    let mut align = if def.repr.align > 0 {
+                    if def.repr.align > 0 {
                         let repr_align = def.repr.align as u64;
-                        primitive_align.max(
-                            Align::from_bytes(repr_align, repr_align).unwrap())
-                    } else {
-                        primitive_align
-                    };
+                        align = align.max(
+                            Align::from_bytes(repr_align, repr_align).unwrap());
+                    }
 
                     let mut size = Size::from_bytes(0);
                     for field in &variants[0] {
@@ -1409,7 +1393,6 @@ impl<'a, 'tcx> LayoutDetails {
 
                         if !packed {
                             align = align.max(field.align);
-                            primitive_align = primitive_align.max(field.primitive_align);
                         }
                         size = cmp::max(size, field.size);
                     }
@@ -1422,7 +1405,6 @@ impl<'a, 'tcx> LayoutDetails {
                             packed
                         },
                         align,
-                        primitive_align,
                         size: size.abi_align(align)
                     }));
                 }
@@ -1519,12 +1501,7 @@ impl<'a, 'tcx> LayoutDetails {
                             }).collect::<Result<Vec<_>, _>>()?;
 
                             let offset = st[i].fields.offset(field_index) + offset;
-                            let LayoutDetails {
-                                size,
-                                mut align,
-                                mut primitive_align,
-                                ..
-                            } = st[i];
+                            let LayoutDetails { size, mut align, .. } = st[i];
 
                             let mut niche_align = niche.value.align(dl);
                             let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
@@ -1541,7 +1518,6 @@ impl<'a, 'tcx> LayoutDetails {
                                 }
                             };
                             align = align.max(niche_align);
-                            primitive_align = primitive_align.max(niche_align);
 
                             return Ok(tcx.intern_layout(LayoutDetails {
                                 variants: Variants::NicheFilling {
@@ -1558,7 +1534,6 @@ impl<'a, 'tcx> LayoutDetails {
                                 abi,
                                 size,
                                 align,
-                                primitive_align
                             }));
                         }
                     }
@@ -1577,7 +1552,6 @@ impl<'a, 'tcx> LayoutDetails {
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
                 let mut align = dl.aggregate_align;
-                let mut primitive_align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
                 // We're interested in the smallest alignment, so start large.
@@ -1599,7 +1573,6 @@ impl<'a, 'tcx> LayoutDetails {
                     }
                     size = cmp::max(size, st.size);
                     align = align.max(st.align);
-                    primitive_align = primitive_align.max(st.primitive_align);
                     Ok(st)
                 }).collect::<Result<Vec<_>, _>>()?;
 
@@ -1692,7 +1665,6 @@ impl<'a, 'tcx> LayoutDetails {
                     fields: FieldPlacement::Union(1),
                     abi,
                     align,
-                    primitive_align,
                     size
                 })
             }
@@ -2465,8 +2437,7 @@ impl_stable_hash_for!(struct ::ty::layout::LayoutDetails {
     fields,
     abi,
     size,
-    align,
-    primitive_align
+    align
 });
 
 impl_stable_hash_for!(enum ::ty::layout::Integer {
