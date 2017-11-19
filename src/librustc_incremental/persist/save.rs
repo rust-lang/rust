@@ -189,7 +189,8 @@ fn encode_dep_graph(tcx: TyCtxt,
 
         let total_node_count = serialized_graph.nodes.len();
         let total_edge_count = serialized_graph.edge_list_data.len();
-        let (total_edge_reads, total_duplicate_edge_reads) = tcx.dep_graph.edge_deduplication_data();
+        let (total_edge_reads, total_duplicate_edge_reads) = 
+            tcx.dep_graph.edge_deduplication_data();
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap();
 
