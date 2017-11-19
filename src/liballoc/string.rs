@@ -2034,6 +2034,7 @@ pub trait ToString {
     ///
     /// assert_eq!(five, i.to_string());
     /// ```
+    #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_string(&self) -> String;
 }

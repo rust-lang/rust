@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                scope_expr_id);
         let method_names =
             self.probe_op(span, mode, None, Some(return_type), IsSuggestion(true),
-                          self_ty, scope_expr_id, ProbeScope::TraitsInScope,
+                          self_ty, scope_expr_id, ProbeScope::AllTraits,
                           |probe_cx| Ok(probe_cx.candidate_method_names()))
                 .unwrap_or(vec![]);
          method_names
@@ -199,7 +199,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  self.probe_op(
                      span, mode, Some(method_name), Some(return_type),
                      IsSuggestion(true), self_ty, scope_expr_id,
-                     ProbeScope::TraitsInScope, |probe_cx| probe_cx.pick()
+                     ProbeScope::AllTraits, |probe_cx| probe_cx.pick()
                  ).ok().map(|pick| pick.item)
              })
             .collect()
