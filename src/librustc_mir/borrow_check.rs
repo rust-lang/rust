@@ -1121,72 +1121,75 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             debug!("borrowed = {:?}", borrowed);
 
+            if base != &borrowed.base_lvalue {
+                continue;
+            }
+
+            let bps = &borrowed.projections;
+
             // FIXME: Differs from AST-borrowck; includes drive-by fix
             // to #38899. Will probably need back-compat mode flag.
-            if base == &borrowed.base_lvalue {
-                let bps = &borrowed.projections;
 
-                // Is `lvalue` (or a prefix of it) already borrowed? If
-                // so, that's relevant.
-                if ps.ends_with(bps) {
-                    let accessed_prefix = {
-                        let mut lv = lvalue;
-                        for _ in 0..ps.len() - bps.len() {
-                            if let Lvalue::Projection(ref proj) = *lv {
-                                lv = &proj.base;
-                            } else {
-                                unreachable!()
-                            }
+            // Is `lvalue` (or a prefix of it) already borrowed? If
+            // so, that's relevant.
+            if ps.ends_with(bps) {
+                let accessed_prefix = {
+                    let mut lv = lvalue;
+                    for _ in 0..ps.len() - bps.len() {
+                        if let Lvalue::Projection(ref proj) = *lv {
+                            lv = &proj.base;
+                        } else {
+                            unreachable!()
                         }
-                        lv
-                    };
-                    debug!("accessed_prefix = {:?}", accessed_prefix);
-                    // FIXME: pass in enum describing case we are in?
-                    let ctrl = op(self, i, borrowed, accessed_prefix);
-                    if ctrl == Control::Break {
-                        return;
                     }
-                }
-
-                // Is `lvalue` a prefix (modulo access type) of the
-                // `borrowed.lvalue`? If so, that's relevant.
-
-                let depth = match access {
-                    Shallow(Some(ArtificialField::Discriminant)) |
-                    Shallow(Some(ArtificialField::ArrayLength)) => {
-                        // The discriminant and array length are like
-                        // additional fields on the type; they do not
-                        // overlap any existing data there. Furthermore,
-                        // they cannot actually be a prefix of any
-                        // borrowed lvalue (at least in MIR as it is
-                        // currently.)
-                        continue 'next_borrow;
-                    }
-                    Shallow(None) => borrowed.shallow_projections_len,
-                    Deep => borrowed.supporting_projections_len,
+                    lv
                 };
+                debug!("accessed_prefix = {:?}", accessed_prefix);
+                // FIXME: pass in enum describing case we are in?
+                let ctrl = op(self, i, borrowed, accessed_prefix);
+                if ctrl == Control::Break {
+                    return;
+                }
+            }
 
-                if bps.len() != ps.len()
-                    && depth.map(|l| ps.len() > (bps.len() - l)).unwrap_or(true)
-                    && bps.ends_with(&ps)
-                {
-                    let borrowed_prefix = {
-                        let mut lv = &borrowed.lvalue;
-                        for _ in 0..bps.len() - ps.len() {
-                            if let Lvalue::Projection(ref proj) = *lv {
-                                lv = &proj.base;
-                            } else {
-                                unreachable!()
-                            }
+            // Is `lvalue` a prefix (modulo access type) of the
+            // `borrowed.lvalue`? If so, that's relevant.
+
+            let depth = match access {
+                Shallow(Some(ArtificialField::Discriminant)) |
+                Shallow(Some(ArtificialField::ArrayLength)) => {
+                    // The discriminant and array length are like
+                    // additional fields on the type; they do not
+                    // overlap any existing data there. Furthermore,
+                    // they cannot actually be a prefix of any
+                    // borrowed lvalue (at least in MIR as it is
+                    // currently.)
+                    continue 'next_borrow;
+                }
+                Shallow(None) => borrowed.shallow_projections_len,
+                Deep => borrowed.supporting_projections_len,
+            };
+
+            if bps.len() != ps.len()
+                && depth.map(|l| ps.len() > (bps.len() - l)).unwrap_or(true)
+                && bps.ends_with(&ps)
+            {
+                let borrowed_prefix = {
+                    let mut lv = &borrowed.lvalue;
+                    for _ in 0..bps.len() - ps.len() {
+                        if let Lvalue::Projection(ref proj) = *lv {
+                            lv = &proj.base;
+                        } else {
+                            unreachable!()
                         }
-                        lv
-                    };
-                    debug!("borrowed_prefix = {:?}", borrowed_prefix);
-                    // FIXME: pass in enum describing case we are in?
-                    let ctrl = op(self, i, borrowed, borrowed_prefix);
-                    if ctrl == Control::Break {
-                        return;
                     }
+                    lv
+                };
+                debug!("borrowed_prefix = {:?}", borrowed_prefix);
+                // FIXME: pass in enum describing case we are in?
+                let ctrl = op(self, i, borrowed, borrowed_prefix);
+                if ctrl == Control::Break {
+                    return;
                 }
             }
         }
