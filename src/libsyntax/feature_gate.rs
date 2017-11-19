@@ -1617,13 +1617,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }
             }
-            ast::TraitItemKind::Type(_, Some(_)) => {
-                gate_feature_post!(&self, associated_type_defaults, ti.span,
-                                  "associated type defaults are unstable");
-            }
-            _ if ti.generics.is_parameterized() => {
-                gate_feature_post!(&self, generic_associated_types, ti.span,
-                                   "generic associated types are unstable");
+            ast::TraitItemKind::Type(_, default) => {
+                // We use two if statements instead of something like match guards so that both
+                // of these errors can be emitted if both cases apply.
+                if default.is_some() {
+                    gate_feature_post!(&self, associated_type_defaults, ti.span,
+                                       "associated type defaults are unstable");
+                }
+                if ti.generics.is_parameterized() {
+                    gate_feature_post!(&self, generic_associated_types, ti.span,
+                                       "generic associated types are unstable");
+                }
             }
             _ => {}
         }
@@ -1643,7 +1647,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");
                 }
             }
-            _ if ii.generics.is_parameterized() => {
+            ast::ImplItemKind::Type(_) if ii.generics.is_parameterized() => {
                 gate_feature_post!(&self, generic_associated_types, ii.span,
                                    "generic associated types are unstable");
             }
