@@ -373,10 +373,41 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                                      Consume, (value, span), flow_state);
             }
 
-            TerminatorKind::Goto { target: _ } |
             TerminatorKind::Resume |
             TerminatorKind::Return |
-            TerminatorKind::GeneratorDrop |
+            TerminatorKind::GeneratorDrop => {
+                // Returning from the function implicitly kills storage for all locals and statics.
+                // Often, the storage will already have been killed by an explicit
+                // StorageDead, but we don't always emit those (notably on unwind paths),
+                // so this "extra check" serves as a kind of backup.
+                let domain = flow_state.borrows.base_results.operator();
+                for borrow in domain.borrows() {
+                    let root_lvalue = self.prefixes(
+                        &borrow.lvalue,
+                        PrefixSet::All
+                    ).last().unwrap();
+                    match root_lvalue {
+                        Lvalue::Static(_) => {
+                            self.access_lvalue(
+                                ContextKind::StorageDead.new(loc),
+                                (&root_lvalue, self.mir.source_info(borrow.location).span),
+                                (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                                flow_state
+                            );
+                        }
+                        Lvalue::Local(_) => {
+                            self.access_lvalue(
+                                ContextKind::StorageDead.new(loc),
+                                (&root_lvalue, self.mir.source_info(borrow.location).span),
+                                (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                                flow_state
+                            );
+                        }
+                        Lvalue::Projection(_) => ()
+                    }
+                }
+            }
+            TerminatorKind::Goto { target: _ } |
             TerminatorKind::Unreachable |
             TerminatorKind::FalseEdges { .. } => {
                 // no data used, thus irrelevant to borrowck

@@ -233,6 +233,35 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     fn terminator_effect(&self,
                          sets: &mut BlockSets<BorrowIndex>,
                          location: Location) {
+        let block = &self.mir.basic_blocks().get(location.block).unwrap_or_else(|| {
+            panic!("could not find block at location {:?}", location);
+        });
+        match block.terminator().kind {
+            mir::TerminatorKind::Resume |
+            mir::TerminatorKind::Return |
+            mir::TerminatorKind::GeneratorDrop => {
+                // When we return from the function, then all `ReScope`-style regions
+                // are guaranteed to have ended.
+                // Normally, there would be `EndRegion` statements that come before,
+                // and hence most of these loans will already be dead -- but, in some cases
+                // like unwind paths, we do not always emit `EndRegion` statements, so we
+                // add some kills here as a "backup" and to avoid spurious error messages.
+                for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
+                    if let ReScope(..) = borrow_data.region {
+                        sets.kill(&borrow_index);
+                    }
+                }
+            }
+            mir::TerminatorKind::SwitchInt {..} |
+            mir::TerminatorKind::Drop {..} |
+            mir::TerminatorKind::DropAndReplace {..} |
+            mir::TerminatorKind::Call {..} |
+            mir::TerminatorKind::Assert {..} |
+            mir::TerminatorKind::Yield {..} |
+            mir::TerminatorKind::Goto {..} |
+            mir::TerminatorKind::FalseEdges {..} |
+            mir::TerminatorKind::Unreachable => {}
+        }
         self.kill_loans_out_of_scope_at_location(sets, location);
     }
 
