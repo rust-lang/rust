@@ -384,7 +384,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                                   substs: &'tcx Substs<'tcx>)
                                   -> (BasicBlock, Unwind) {
         let (succ, unwind) = self.drop_ladder_bottom();
-        if adt.variants.len() == 1 {
+        if !adt.is_enum() {
             let fields = self.move_paths_for_fields(
                 self.lvalue,
                 self.path,

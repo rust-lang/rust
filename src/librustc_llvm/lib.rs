@@ -74,22 +74,19 @@ pub fn AddFunctionAttrStringValue(llfn: ValueRef,
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub enum AttributePlace {
+    ReturnValue,
     Argument(u32),
     Function,
 }
 
 impl AttributePlace {
-    pub fn ReturnValue() -> Self {
-        AttributePlace::Argument(0)
-    }
-
     pub fn as_uint(self) -> c_uint {
         match self {
+            AttributePlace::ReturnValue => 0,
+            AttributePlace::Argument(i) => 1 + i,
             AttributePlace::Function => !0,
-            AttributePlace::Argument(i) => i,
         }
     }
 }

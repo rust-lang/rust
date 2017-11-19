@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -C no-prepopulate-passes
+// ignore-tidy-linelength
 
 #![crate_type = "lib"]
 
@@ -23,9 +24,9 @@ pub fn helper(_: usize) {
 pub fn no_op_slice_adjustment(x: &[u8]) -> &[u8] {
     // We used to generate an extra alloca and memcpy for the block's trailing expression value, so
     // check that we copy directly to the return value slot
-// CHECK: %0 = insertvalue { i8*, [[USIZE]] } undef, i8* %x.ptr, 0
-// CHECK: %1 = insertvalue { i8*, [[USIZE]] } %0, [[USIZE]] %x.meta, 1
-// CHECK: ret { i8*, [[USIZE]] } %1
+// CHECK: %0 = insertvalue { [0 x i8]*, [[USIZE]] } undef, [0 x i8]* %x.0, 0
+// CHECK: %1 = insertvalue { [0 x i8]*, [[USIZE]] } %0, [[USIZE]] %x.1, 1
+// CHECK: ret { [0 x i8]*, [[USIZE]] } %1
     { x }
 }
 

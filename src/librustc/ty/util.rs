@@ -19,7 +19,6 @@ use middle::const_val::ConstVal;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::TypeVisitor;
-use ty::layout::{Layout, LayoutError};
 use ty::subst::{Subst, Kind};
 use ty::TypeVariants::*;
 use util::common::ErrorReported;
@@ -852,30 +851,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx.needs_drop_raw(param_env.and(self))
     }
 
-    /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode.
-    #[inline]
-    pub fn layout<'lcx>(&'tcx self,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        param_env: ty::ParamEnv<'tcx>)
-                        -> Result<&'tcx Layout, LayoutError<'tcx>> {
-        let ty = tcx.erase_regions(&self);
-        let layout = tcx.layout_raw(param_env.reveal_all().and(ty));
-
-        // NB: This recording is normally disabled; when enabled, it
-        // can however trigger recursive invocations of `layout()`.
-        // Therefore, we execute it *after* the main query has
-        // completed, to avoid problems around recursive structures
-        // and the like. (Admitedly, I wasn't able to reproduce a problem
-        // here, but it seems like the right thing to do. -nmatsakis)
-        if let Ok(l) = layout {
-            Layout::record_layout_for_printing(tcx, ty, param_env, l);
-        }
-
-        layout
-    }
-
-
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
     pub fn is_representable(&'tcx self,
@@ -1184,26 +1159,6 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                        -> Result<&'tcx Layout, LayoutError<'tcx>>
-{
-    let (param_env, ty) = query.into_parts();
-
-    let rec_limit = tcx.sess.recursion_limit.get();
-    let depth = tcx.layout_depth.get();
-    if depth > rec_limit {
-        tcx.sess.fatal(
-            &format!("overflow representing the type `{}`", ty));
-    }
-
-    tcx.layout_depth.set(depth+1);
-    let layout = Layout::compute_uncached(tcx, param_env, ty);
-    tcx.layout_depth.set(depth);
-
-    layout
-}
-
 pub enum ExplicitSelf<'tcx> {
     ByValue,
     ByReference(ty::Region<'tcx>, hir::Mutability),
@@ -1262,7 +1217,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_sized_raw,
         is_freeze_raw,
         needs_drop_raw,
-        layout_raw,
         ..*providers
     };
 }

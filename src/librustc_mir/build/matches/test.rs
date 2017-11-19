@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     span: match_pair.pattern.span,
                     kind: TestKind::Switch {
                         adt_def: adt_def.clone(),
-                        variants: BitVector::new(self.hir.num_variants(adt_def)),
+                        variants: BitVector::new(adt_def.variants.len()),
                     },
                 }
             }
@@ -184,7 +184,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
                 // Variants is a BitVec of indexes into adt_def.variants.
-                let num_enum_variants = self.hir.num_variants(adt_def);
+                let num_enum_variants = adt_def.variants.len();
                 let used_variants = variants.count();
                 let mut otherwise_block = None;
                 let mut target_blocks = Vec::with_capacity(num_enum_variants);

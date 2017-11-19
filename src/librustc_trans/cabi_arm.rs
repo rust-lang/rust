@@ -15,7 +15,7 @@ use llvm::CallConv;
 fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
                                      -> Option<Uniform> {
     arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
-        let size = arg.layout.size(ccx);
+        let size = arg.layout.size;
 
         // Ensure we have at most four uniquely addressable members.
         if size > unit.size.checked_mul(4, ccx).unwrap() {
@@ -47,12 +47,12 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
 
     if vfp {
         if let Some(uniform) = is_homogeneous_aggregate(ccx, ret) {
-            ret.cast_to(ccx, uniform);
+            ret.cast_to(uniform);
             return;
         }
     }
 
-    let size = ret.layout.size(ccx);
+    let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 32 {
         let unit = if bits <= 8 {
@@ -62,13 +62,13 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         } else {
             Reg::i32()
         };
-        ret.cast_to(ccx, Uniform {
+        ret.cast_to(Uniform {
             unit,
             total: size
         });
         return;
     }
-    ret.make_indirect(ccx);
+    ret.make_indirect();
 }
 
 fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>, vfp: bool) {
@@ -79,14 +79,14 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
 
     if vfp {
         if let Some(uniform) = is_homogeneous_aggregate(ccx, arg) {
-            arg.cast_to(ccx, uniform);
+            arg.cast_to(uniform);
             return;
         }
     }
 
-    let align = arg.layout.align(ccx).abi();
-    let total = arg.layout.size(ccx);
-    arg.cast_to(ccx, Uniform {
+    let align = arg.layout.align.abi();
+    let total = arg.layout.size;
+    arg.cast_to(Uniform {
         unit: if align <= 4 { Reg::i32() } else { Reg::i64() },
         total
     });

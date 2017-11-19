@@ -98,19 +98,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
-                if self.hir.tcx().sess.features.borrow().never_type {
-                    let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
-                        i == variant_index || {
-                            self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
-                        }
-                    });
-                    if irrefutable {
-                        let lvalue = match_pair.lvalue.downcast(adt_def, variant_index);
-                        candidate.match_pairs.extend(self.field_match_pairs(lvalue, subpatterns));
-                        Ok(())
-                    } else {
-                        Err(match_pair)
+                let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
+                    i == variant_index || {
+                        self.hir.tcx().sess.features.borrow().never_type &&
+                        self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
                     }
+                });
+                if irrefutable {
+                    let lvalue = match_pair.lvalue.downcast(adt_def, variant_index);
+                    candidate.match_pairs.extend(self.field_match_pairs(lvalue, subpatterns));
+                    Ok(())
                 } else {
                     Err(match_pair)
                 }

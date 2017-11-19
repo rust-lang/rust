@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: overflow representing the type
+// error-pattern: unsupported cyclic reference between types/traits detected
+// note-pattern: the cycle begins when computing layout of
+// note-pattern: ...which then requires computing layout of
+// note-pattern: ...which then again requires computing layout of
 
 
 trait Mirror { type It: ?Sized; }

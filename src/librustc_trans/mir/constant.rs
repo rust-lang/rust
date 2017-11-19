@@ -18,21 +18,21 @@ use rustc::traits;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_apfloat::{ieee, Float, Status};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use {adt, base, machine};
+use base;
 use abi::{self, Abi};
 use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
-use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_big_integral, C_u32, C_u64};
-use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, is_undef};
+use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_uint_big, C_u32, C_u64};
+use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, C_fat_ptr};
 use common::const_to_opt_u128;
 use consts;
-use type_of;
+use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
@@ -55,7 +55,7 @@ pub struct Const<'tcx> {
     pub ty: Ty<'tcx>
 }
 
-impl<'tcx> Const<'tcx> {
+impl<'a, 'tcx> Const<'tcx> {
     pub fn new(llval: ValueRef, ty: Ty<'tcx>) -> Const<'tcx> {
         Const {
             llval,
@@ -63,32 +63,31 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    pub fn from_constint<'a>(ccx: &CrateContext<'a, 'tcx>, ci: &ConstInt)
-    -> Const<'tcx> {
+    pub fn from_constint(ccx: &CrateContext<'a, 'tcx>, ci: &ConstInt) -> Const<'tcx> {
         let tcx = ccx.tcx();
         let (llval, ty) = match *ci {
             I8(v) => (C_int(Type::i8(ccx), v as i64), tcx.types.i8),
             I16(v) => (C_int(Type::i16(ccx), v as i64), tcx.types.i16),
             I32(v) => (C_int(Type::i32(ccx), v as i64), tcx.types.i32),
             I64(v) => (C_int(Type::i64(ccx), v as i64), tcx.types.i64),
-            I128(v) => (C_big_integral(Type::i128(ccx), v as u128), tcx.types.i128),
+            I128(v) => (C_uint_big(Type::i128(ccx), v as u128), tcx.types.i128),
             Isize(v) => (C_int(Type::isize(ccx), v.as_i64()), tcx.types.isize),
             U8(v) => (C_uint(Type::i8(ccx), v as u64), tcx.types.u8),
             U16(v) => (C_uint(Type::i16(ccx), v as u64), tcx.types.u16),
             U32(v) => (C_uint(Type::i32(ccx), v as u64), tcx.types.u32),
             U64(v) => (C_uint(Type::i64(ccx), v), tcx.types.u64),
-            U128(v) => (C_big_integral(Type::i128(ccx), v), tcx.types.u128),
+            U128(v) => (C_uint_big(Type::i128(ccx), v), tcx.types.u128),
             Usize(v) => (C_uint(Type::isize(ccx), v.as_u64()), tcx.types.usize),
         };
         Const { llval: llval, ty: ty }
     }
 
     /// Translate ConstVal into a LLVM constant value.
-    pub fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
-                             cv: &ConstVal,
-                             ty: Ty<'tcx>)
-                             -> Const<'tcx> {
-        let llty = type_of::type_of(ccx, ty);
+    pub fn from_constval(ccx: &CrateContext<'a, 'tcx>,
+                         cv: &ConstVal,
+                         ty: Ty<'tcx>)
+                         -> Const<'tcx> {
+        let llty = ccx.layout_of(ty).llvm_type(ccx);
         let val = match *cv {
             ConstVal::Float(v) => {
                 let bits = match v.ty {
@@ -100,9 +99,11 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
-            ConstVal::ByteStr(v) => consts::addr_of(ccx, C_bytes(ccx, v.data), 1, "byte_str"),
+            ConstVal::ByteStr(v) => {
+                consts::addr_of(ccx, C_bytes(ccx, v.data), ccx.align_of(ty), "byte_str")
+            }
             ConstVal::Char(c) => C_uint(Type::char(ccx), c as u64),
-            ConstVal::Function(..) => C_null(type_of::type_of(ccx, ty)),
+            ConstVal::Function(..) => C_undef(llty),
             ConstVal::Variant(_) |
             ConstVal::Aggregate(..) |
             ConstVal::Unevaluated(..) => {
@@ -115,15 +116,44 @@ impl<'tcx> Const<'tcx> {
         Const::new(val, ty)
     }
 
-    fn get_pair(&self) -> (ValueRef, ValueRef) {
-        (const_get_elt(self.llval, &[0]),
-         const_get_elt(self.llval, &[1]))
+    fn get_field(&self, ccx: &CrateContext<'a, 'tcx>, i: usize) -> ValueRef {
+        let layout = ccx.layout_of(self.ty);
+        let field = layout.field(ccx, i);
+        if field.is_zst() {
+            return C_undef(field.immediate_llvm_type(ccx));
+        }
+        match layout.abi {
+            layout::Abi::Scalar(_) => self.llval,
+            layout::Abi::ScalarPair(ref a, ref b) => {
+                let offset = layout.fields.offset(i);
+                if offset.bytes() == 0 {
+                    if field.size == layout.size {
+                        self.llval
+                    } else {
+                        assert_eq!(field.size, a.value.size(ccx));
+                        const_get_elt(self.llval, 0)
+                    }
+                } else {
+                    assert_eq!(offset, a.value.size(ccx)
+                        .abi_align(b.value.align(ccx)));
+                    assert_eq!(field.size, b.value.size(ccx));
+                    const_get_elt(self.llval, 1)
+                }
+            }
+            _ => {
+                const_get_elt(self.llval, layout.llvm_field_index(i))
+            }
+        }
     }
 
-    fn get_fat_ptr(&self) -> (ValueRef, ValueRef) {
+    fn get_pair(&self, ccx: &CrateContext<'a, 'tcx>) -> (ValueRef, ValueRef) {
+        (self.get_field(ccx, 0), self.get_field(ccx, 1))
+    }
+
+    fn get_fat_ptr(&self, ccx: &CrateContext<'a, 'tcx>) -> (ValueRef, ValueRef) {
         assert_eq!(abi::FAT_PTR_ADDR, 0);
         assert_eq!(abi::FAT_PTR_EXTRA, 1);
-        self.get_pair()
+        self.get_pair(ccx)
     }
 
     fn as_lvalue(&self) -> ConstLvalue<'tcx> {
@@ -134,14 +164,16 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    pub fn to_operand<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
-        let llty = type_of::immediate_type_of(ccx, self.ty);
+    pub fn to_operand(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
+        let layout = ccx.layout_of(self.ty);
+        let llty = layout.immediate_llvm_type(ccx);
         let llvalty = val_ty(self.llval);
 
-        let val = if llty == llvalty && common::type_is_imm_pair(ccx, self.ty) {
-            let (a, b) = self.get_pair();
-            OperandValue::Pair(a, b)
-        } else if llty == llvalty && common::type_is_immediate(ccx, self.ty) {
+        let val = if llty == llvalty && layout.is_llvm_scalar_pair() {
+            OperandValue::Pair(
+                const_get_elt(self.llval, 0),
+                const_get_elt(self.llval, 1))
+        } else if llty == llvalty && layout.is_llvm_immediate() {
             // If the types match, we can use the value directly.
             OperandValue::Immediate(self.llval)
         } else {
@@ -149,12 +181,13 @@ impl<'tcx> Const<'tcx> {
             // a constant LLVM global and cast its address if necessary.
             let align = ccx.align_of(self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
-            OperandValue::Ref(consts::ptrcast(ptr, llty.ptr_to()), Alignment::AbiAligned)
+            OperandValue::Ref(consts::ptrcast(ptr, layout.llvm_type(ccx).ptr_to()),
+                              Alignment::AbiAligned)
         };
 
         OperandRef {
             val,
-            ty: self.ty
+            layout: ccx.layout_of(self.ty)
         }
     }
 }
@@ -368,12 +401,12 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             match &tcx.item_name(def_id)[..] {
                                 "size_of" => {
                                     let llval = C_usize(self.ccx,
-                                        self.ccx.size_of(substs.type_at(0)));
+                                        self.ccx.size_of(substs.type_at(0)).bytes());
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 "min_align_of" => {
                                     let llval = C_usize(self.ccx,
-                                        self.ccx.align_of(substs.type_at(0)) as u64);
+                                        self.ccx.align_of(substs.type_at(0)).abi());
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
@@ -436,7 +469,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let (base, extra) = if !has_metadata {
                             (base.llval, ptr::null_mut())
                         } else {
-                            base.get_fat_ptr()
+                            base.get_fat_ptr(self.ccx)
                         };
                         if self.ccx.statics().borrow().contains_key(&base) {
                             (Base::Static(base), extra)
@@ -450,9 +483,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 span_bug!(span, "dereference of non-constant pointer `{:?}`",
                                           Value(base));
                             }
-                            if projected_ty.is_bool() {
+                            let layout = self.ccx.layout_of(projected_ty);
+                            if let layout::Abi::Scalar(ref scalar) = layout.abi {
                                 let i1_type = Type::i1(self.ccx);
-                                if val_ty(val) != i1_type {
+                                if scalar.is_bool() && val_ty(val) != i1_type {
                                     unsafe {
                                         val = llvm::LLVMConstTrunc(val, i1_type.to_ref());
                                     }
@@ -462,8 +496,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let llprojected = adt::const_get_field(self.ccx, tr_base.ty, base.llval,
-                                                               field.index());
+                        let llprojected = base.get_field(self.ccx, field.index());
                         let llextra = if !has_metadata {
                             ptr::null_mut()
                         } else {
@@ -484,9 +517,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         // Produce an undef instead of a LLVM assertion on OOB.
                         let len = common::const_to_uint(tr_base.len(self.ccx));
                         let llelem = if iv < len as u128 {
-                            const_get_elt(base.llval, &[iv as u32])
+                            const_get_elt(base.llval, iv as u64)
                         } else {
-                            C_undef(type_of::type_of(self.ccx, projected_ty))
+                            C_undef(self.ccx.layout_of(projected_ty).llvm_type(self.ccx))
                         };
 
                         (Base::Value(llelem), ptr::null_mut())
@@ -540,7 +573,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         let elem_ty = array_ty.builtin_index().unwrap_or_else(|| {
             bug!("bad array type {:?}", array_ty)
         });
-        let llunitty = type_of::type_of(self.ccx, elem_ty);
+        let llunitty = self.ccx.layout_of(elem_ty).llvm_type(self.ccx);
         // If the array contains enums, an LLVM array won't work.
         let val = if fields.iter().all(|&f| val_ty(f) == llunitty) {
             C_array(llunitty, fields)
@@ -566,7 +599,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 self.const_array(dest_ty, &fields)
             }
 
-            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+            mir::Rvalue::Aggregate(box mir::AggregateKind::Array(_), ref operands) => {
                 // Make sure to evaluate all operands to
                 // report as many errors as we possibly can.
                 let mut fields = Vec::with_capacity(operands.len());
@@ -579,17 +612,23 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
                 failure?;
 
-                match **kind {
-                    mir::AggregateKind::Array(_) => {
-                        self.const_array(dest_ty, &fields)
-                    }
-                    mir::AggregateKind::Adt(..) |
-                    mir::AggregateKind::Closure(..) |
-                    mir::AggregateKind::Generator(..) |
-                    mir::AggregateKind::Tuple => {
-                        Const::new(trans_const(self.ccx, dest_ty, kind, &fields), dest_ty)
+                self.const_array(dest_ty, &fields)
+            }
+
+            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+                // Make sure to evaluate all operands to
+                // report as many errors as we possibly can.
+                let mut fields = Vec::with_capacity(operands.len());
+                let mut failure = Ok(());
+                for operand in operands {
+                    match self.const_operand(operand, span) {
+                        Ok(val) => fields.push(val),
+                        Err(err) => if failure.is_ok() { failure = Err(err); }
                     }
                 }
+                failure?;
+
+                trans_const_adt(self.ccx, dest_ty, kind, &fields)
             }
 
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -635,10 +674,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         operand.llval
                     }
                     mir::CastKind::Unsize => {
-                        // unsize targets other than to a fat pointer currently
-                        // can't be in constants.
-                        assert!(common::type_is_fat_ptr(self.ccx, cast_ty));
-
                         let pointee_ty = operand.ty.builtin_deref(true, ty::NoPreference)
                             .expect("consts: unsizing got non-pointer type").ty;
                         let (base, old_info) = if !self.ccx.shared().type_is_sized(pointee_ty) {
@@ -648,7 +683,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             // to use a different vtable. In that case, we want to
                             // load out the original data pointer so we can repackage
                             // it.
-                            let (base, extra) = operand.get_fat_ptr();
+                            let (base, extra) = operand.get_fat_ptr(self.ccx);
                             (base, Some(extra))
                         } else {
                             (operand.llval, None)
@@ -656,7 +691,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                         let unsized_ty = cast_ty.builtin_deref(true, ty::NoPreference)
                             .expect("consts: unsizing got non-pointer target type").ty;
-                        let ptr_ty = type_of::in_memory_type_of(self.ccx, unsized_ty).ptr_to();
+                        let ptr_ty = self.ccx.layout_of(unsized_ty).llvm_type(self.ccx).ptr_to();
                         let base = consts::ptrcast(base, ptr_ty);
                         let info = base::unsized_info(self.ccx, pointee_ty,
                                                       unsized_ty, old_info);
@@ -666,22 +701,23 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                                      .insert(base, operand.llval);
                             assert!(prev_const.is_none() || prev_const == Some(operand.llval));
                         }
-                        assert_eq!(abi::FAT_PTR_ADDR, 0);
-                        assert_eq!(abi::FAT_PTR_EXTRA, 1);
-                        C_struct(self.ccx, &[base, info], false)
+                        C_fat_ptr(self.ccx, base, info)
                     }
-                    mir::CastKind::Misc if common::type_is_immediate(self.ccx, operand.ty) => {
-                        debug_assert!(common::type_is_immediate(self.ccx, cast_ty));
+                    mir::CastKind::Misc if self.ccx.layout_of(operand.ty).is_llvm_immediate() => {
                         let r_t_in = CastTy::from_ty(operand.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                        let ll_t_out = type_of::immediate_type_of(self.ccx, cast_ty);
+                        let cast_layout = self.ccx.layout_of(cast_ty);
+                        assert!(cast_layout.is_llvm_immediate());
+                        let ll_t_out = cast_layout.immediate_llvm_type(self.ccx);
                         let llval = operand.llval;
-                        let signed = if let CastTy::Int(IntTy::CEnum) = r_t_in {
-                            let l = self.ccx.layout_of(operand.ty);
-                            adt::is_discr_signed(&l)
-                        } else {
-                            operand.ty.is_signed()
-                        };
+
+                        let mut signed = false;
+                        let l = self.ccx.layout_of(operand.ty);
+                        if let layout::Abi::Scalar(ref scalar) = l.abi {
+                            if let layout::Int(_, true) = scalar.value {
+                                signed = true;
+                            }
+                        }
 
                         unsafe {
                             match (r_t_in, r_t_out) {
@@ -720,20 +756,19 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     mir::CastKind::Misc => { // Casts from a fat-ptr.
-                        let ll_cast_ty = type_of::immediate_type_of(self.ccx, cast_ty);
-                        let ll_from_ty = type_of::immediate_type_of(self.ccx, operand.ty);
-                        if common::type_is_fat_ptr(self.ccx, operand.ty) {
-                            let (data_ptr, meta_ptr) = operand.get_fat_ptr();
-                            if common::type_is_fat_ptr(self.ccx, cast_ty) {
-                                let ll_cft = ll_cast_ty.field_types();
-                                let ll_fft = ll_from_ty.field_types();
-                                let data_cast = consts::ptrcast(data_ptr, ll_cft[0]);
-                                assert_eq!(ll_cft[1].kind(), ll_fft[1].kind());
-                                C_struct(self.ccx, &[data_cast, meta_ptr], false)
+                        let l = self.ccx.layout_of(operand.ty);
+                        let cast = self.ccx.layout_of(cast_ty);
+                        if l.is_llvm_scalar_pair() {
+                            let (data_ptr, meta) = operand.get_fat_ptr(self.ccx);
+                            if cast.is_llvm_scalar_pair() {
+                                let data_cast = consts::ptrcast(data_ptr,
+                                    cast.scalar_pair_element_llvm_type(self.ccx, 0));
+                                C_fat_ptr(self.ccx, data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                consts::ptrcast(data_ptr, ll_cast_ty)
+                                let llcast_ty = cast.immediate_llvm_type(self.ccx);
+                                consts::ptrcast(data_ptr, llcast_ty)
                             }
                         } else {
                             bug!("Unexpected non-fat-pointer operand")
@@ -756,7 +791,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let align = if self.ccx.shared().type_is_sized(ty) {
                             self.ccx.align_of(ty)
                         } else {
-                            self.ccx.tcx().data_layout.pointer_align.abi() as machine::llalign
+                            self.ccx.tcx().data_layout.pointer_align
                         };
                         if bk == mir::BorrowKind::Mut {
                             consts::addr_of_mut(self.ccx, llval, align, "ref_mut")
@@ -771,7 +806,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let ptr = if self.ccx.shared().type_is_sized(ty) {
                     base
                 } else {
-                    C_struct(self.ccx, &[base, tr_lvalue.llextra], false)
+                    C_fat_ptr(self.ccx, base, tr_lvalue.llextra)
                 };
                 Const::new(ptr, ref_ty)
             }
@@ -801,8 +836,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                 match const_scalar_checked_binop(tcx, op, lhs, rhs, ty) {
                     Some((llval, of)) => {
-                        let llof = C_bool(self.ccx, of);
-                        Const::new(C_struct(self.ccx, &[llval, llof], false), binop_ty)
+                        trans_const_adt(self.ccx, binop_ty, &mir::AggregateKind::Tuple, &[
+                            Const::new(llval, val_ty),
+                            Const::new(C_bool(self.ccx, of), tcx.types.bool)
+                        ])
                     }
                     None => {
                         span_bug!(span, "{:?} got non-integer operands: {:?} and {:?}",
@@ -836,7 +873,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(self.ccx.shared().type_is_sized(ty));
-                let llval = C_usize(self.ccx, self.ccx.size_of(ty));
+                let llval = C_usize(self.ccx, self.ccx.size_of(ty).bytes());
                 Const::new(llval, tcx.types.usize)
             }
 
@@ -986,7 +1023,7 @@ unsafe fn cast_const_float_to_int(ccx: &CrateContext,
         let err = ConstEvalErr { span: span, kind: ErrKind::CannotCast };
         err.report(ccx.tcx(), span, "expression");
     }
-    C_big_integral(int_ty, cast_result.value)
+    C_uint_big(int_ty, cast_result.value)
 }
 
 unsafe fn cast_const_int_to_float(ccx: &CrateContext,
@@ -1037,7 +1074,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let result = result.unwrap_or_else(|_| {
             // We've errored, so we don't have to produce working code.
-            let llty = type_of::type_of(bcx.ccx, ty);
+            let llty = bcx.ccx.layout_of(ty).llvm_type(bcx.ccx);
             Const::new(C_undef(llty), ty)
         });
 
@@ -1075,19 +1112,41 @@ pub fn trans_static_initializer<'a, 'tcx>(
 /// Currently the returned value has the same size as the type, but
 /// this could be changed in the future to avoid allocating unnecessary
 /// space after values of shorter-than-maximum cases.
-fn trans_const<'a, 'tcx>(
+fn trans_const_adt<'a, 'tcx>(
     ccx: &CrateContext<'a, 'tcx>,
     t: Ty<'tcx>,
     kind: &mir::AggregateKind,
-    vals: &[ValueRef]
-) -> ValueRef {
+    vals: &[Const<'tcx>]
+) -> Const<'tcx> {
     let l = ccx.layout_of(t);
     let variant_index = match *kind {
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
     };
-    match *l {
-        layout::CEnum { discr: d, min, max, .. } => {
+
+    if let layout::Abi::Uninhabited = l.abi {
+        return Const::new(C_undef(l.llvm_type(ccx)), t);
+    }
+
+    match l.variants {
+        layout::Variants::Single { index } => {
+            assert_eq!(variant_index, index);
+            if let layout::Abi::Vector = l.abi {
+                Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
+            } else if let layout::FieldPlacement::Union(_) = l.fields {
+                assert_eq!(variant_index, 0);
+                assert_eq!(vals.len(), 1);
+                let contents = [
+                    vals[0].llval,
+                    padding(ccx, l.size - ccx.size_of(vals[0].ty))
+                ];
+
+                Const::new(C_struct(ccx, &contents, l.is_packed()), t)
+            } else {
+                build_const_struct(ccx, l, vals, None)
+            }
+        }
+        layout::Variants::Tagged { .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
                     adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
@@ -1095,114 +1154,103 @@ fn trans_const<'a, 'tcx>(
                 },
                 _ => 0,
             };
-            assert_eq!(vals.len(), 0);
-            adt::assert_discr_in_range(min, max, discr);
-            C_int(Type::from_integer(ccx, d), discr as i64)
-        }
-        layout::General { discr: d, ref variants, .. } => {
-            let variant = &variants[variant_index];
-            let lldiscr = C_int(Type::from_integer(ccx, d), variant_index as i64);
-            let mut vals_with_discr = vec![lldiscr];
-            vals_with_discr.extend_from_slice(vals);
-            let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
-            let needed_padding = l.size(ccx).bytes() - variant.stride().bytes();
-            if needed_padding > 0 {
-                contents.push(padding(ccx, needed_padding));
-            }
-            C_struct(ccx, &contents[..], false)
-        }
-        layout::UntaggedUnion { ref variants, .. }=> {
-            assert_eq!(variant_index, 0);
-            let contents = build_const_union(ccx, variants, vals[0]);
-            C_struct(ccx, &contents, variants.packed)
-        }
-        layout::Univariant { ref variant, .. } => {
-            assert_eq!(variant_index, 0);
-            let contents = build_const_struct(ccx, &variant, vals);
-            C_struct(ccx, &contents[..], variant.packed)
-        }
-        layout::Vector { .. } => {
-            C_vector(vals)
-        }
-        layout::RawNullablePointer { nndiscr, .. } => {
-            if variant_index as u64 == nndiscr {
-                assert_eq!(vals.len(), 1);
-                vals[0]
+            let discr_field = l.field(ccx, 0);
+            let discr = C_int(discr_field.llvm_type(ccx), discr as i64);
+            if let layout::Abi::Scalar(_) = l.abi {
+                Const::new(discr, t)
             } else {
-                C_null(type_of::type_of(ccx, t))
+                let discr = Const::new(discr, discr_field.ty);
+                build_const_struct(ccx, l.for_variant(ccx, variant_index), vals, Some(discr))
             }
         }
-        layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
-            if variant_index as u64 == nndiscr {
-                C_struct(ccx, &build_const_struct(ccx, &nonnull, vals), false)
+        layout::Variants::NicheFilling {
+            dataful_variant,
+            ref niche_variants,
+            niche_start,
+            ..
+        } => {
+            if variant_index == dataful_variant {
+                build_const_struct(ccx, l.for_variant(ccx, dataful_variant), vals, None)
             } else {
-                // Always use null even if it's not the `discrfield`th
-                // field; see #8506.
-                C_null(type_of::type_of(ccx, t))
+                let niche = l.field(ccx, 0);
+                let niche_llty = niche.llvm_type(ccx);
+                let niche_value = ((variant_index - niche_variants.start) as u128)
+                    .wrapping_add(niche_start);
+                // FIXME(eddyb) Check the actual primitive type here.
+                let niche_llval = if niche_value == 0 {
+                    // HACK(eddyb) Using `C_null` as it works on all types.
+                    C_null(niche_llty)
+                } else {
+                    C_uint_big(niche_llty, niche_value)
+                };
+                build_const_struct(ccx, l, &[Const::new(niche_llval, niche.ty)], None)
             }
         }
-        _ => bug!("trans_const: cannot handle type {} repreented as {:#?}", t, l)
     }
 }
 
 /// Building structs is a little complicated, because we might need to
 /// insert padding if a field's value is less aligned than its type.
 ///
-/// Continuing the example from `trans_const`, a value of type `(u32,
+/// Continuing the example from `trans_const_adt`, a value of type `(u32,
 /// E)` should have the `E` at offset 8, but if that field's
 /// initializer is 4-byte aligned then simply translating the tuple as
 /// a two-element struct will locate it at offset 4, and accesses to it
 /// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                st: &layout::Struct,
-                                vals: &[ValueRef])
-                                -> Vec<ValueRef> {
-    assert_eq!(vals.len(), st.offsets.len());
+                                layout: layout::TyLayout<'tcx>,
+                                vals: &[Const<'tcx>],
+                                discr: Option<Const<'tcx>>)
+                                -> Const<'tcx> {
+    assert_eq!(vals.len(), layout.fields.count());
 
-    if vals.len() == 0 {
-        return Vec::new();
+    match layout.abi {
+        layout::Abi::Scalar(_) |
+        layout::Abi::ScalarPair(..) if discr.is_none() => {
+            let mut non_zst_fields = vals.iter().enumerate().map(|(i, f)| {
+                (f, layout.fields.offset(i))
+            }).filter(|&(f, _)| !ccx.layout_of(f.ty).is_zst());
+            match (non_zst_fields.next(), non_zst_fields.next()) {
+                (Some((x, offset)), None) if offset.bytes() == 0 => {
+                    return Const::new(x.llval, layout.ty);
+                }
+                (Some((a, a_offset)), Some((b, _))) if a_offset.bytes() == 0 => {
+                    return Const::new(C_struct(ccx, &[a.llval, b.llval], false), layout.ty);
+                }
+                (Some((a, _)), Some((b, b_offset))) if b_offset.bytes() == 0 => {
+                    return Const::new(C_struct(ccx, &[b.llval, a.llval], false), layout.ty);
+                }
+                _ => {}
+            }
+        }
+        _ => {}
     }
 
     // offset of current value
-    let mut offset = 0;
+    let mut offset = Size::from_bytes(0);
     let mut cfields = Vec::new();
-    cfields.reserve(st.offsets.len()*2);
+    cfields.reserve(discr.is_some() as usize + 1 + layout.fields.count() * 2);
 
-    let parts = st.field_index_by_increasing_offset().map(|i| {
-        (&vals[i], st.offsets[i].bytes())
+    if let Some(discr) = discr {
+        cfields.push(discr.llval);
+        offset = ccx.size_of(discr.ty);
+    }
+
+    let parts = layout.fields.index_by_increasing_offset().map(|i| {
+        (vals[i], layout.fields.offset(i))
     });
-    for (&val, target_offset) in parts {
-        if offset < target_offset {
-            cfields.push(padding(ccx, target_offset - offset));
-            offset = target_offset;
-        }
-        assert!(!is_undef(val));
-        cfields.push(val);
-        offset += machine::llsize_of_alloc(ccx, val_ty(val));
+    for (val, target_offset) in parts {
+        cfields.push(padding(ccx, target_offset - offset));
+        cfields.push(val.llval);
+        offset = target_offset + ccx.size_of(val.ty);
     }
 
-    if offset < st.stride().bytes() {
-        cfields.push(padding(ccx, st.stride().bytes() - offset));
-    }
+    // Pad to the size of the whole type, not e.g. the variant.
+    cfields.push(padding(ccx, ccx.size_of(layout.ty) - offset));
 
-    cfields
+    Const::new(C_struct(ccx, &cfields, layout.is_packed()), layout.ty)
 }
 
-fn build_const_union<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               un: &layout::Union,
-                               field_val: ValueRef)
-                               -> Vec<ValueRef> {
-    let mut cfields = vec![field_val];
-
-    let offset = machine::llsize_of_alloc(ccx, val_ty(field_val));
-    let size = un.stride().bytes();
-    if offset != size {
-        cfields.push(padding(ccx, size - offset));
-    }
-
-    cfields
-}
-
-fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
-    C_undef(Type::array(&Type::i8(ccx), size))
+fn padding(ccx: &CrateContext, size: Size) -> ValueRef {
+    C_undef(Type::array(&Type::i8(ccx), size.bytes()))
 }

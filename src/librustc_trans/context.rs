@@ -24,12 +24,14 @@ use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
 use type_::Type;
+use type_of::PointeeInfo;
+
 use rustc_data_structures::base_n;
 use rustc::middle::trans::Stats;
 use rustc_data_structures::stable_hasher::StableHashingContextProvider;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
-use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
+use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_trans_utils;
@@ -99,10 +101,10 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
     used_statics: RefCell<Vec<ValueRef>>,
 
-    lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
+    lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
+    scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
+    pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     isize_ty: Type,
-    opaque_vec_type: Type,
-    str_slice_type: Type,
 
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
@@ -377,9 +379,9 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
+                scalar_lltypes: RefCell::new(FxHashMap()),
+                pointee_infos: RefCell::new(FxHashMap()),
                 isize_ty: Type::from_ref(ptr::null_mut()),
-                opaque_vec_type: Type::from_ref(ptr::null_mut()),
-                str_slice_type: Type::from_ref(ptr::null_mut()),
                 dbg_cx,
                 eh_personality: Cell::new(None),
                 eh_unwind_resume: Cell::new(None),
@@ -389,25 +391,19 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 placeholder: PhantomData,
             };
 
-            let (isize_ty, opaque_vec_type, str_slice_ty, mut local_ccx) = {
+            let (isize_ty, mut local_ccx) = {
                 // Do a little dance to create a dummy CrateContext, so we can
                 // create some things in the LLVM module of this codegen unit
                 let mut local_ccxs = vec![local_ccx];
-                let (isize_ty, opaque_vec_type, str_slice_ty) = {
+                let isize_ty = {
                     let dummy_ccx = LocalCrateContext::dummy_ccx(shared,
                                                                  local_ccxs.as_mut_slice());
-                    let mut str_slice_ty = Type::named_struct(&dummy_ccx, "str_slice");
-                    str_slice_ty.set_struct_body(&[Type::i8p(&dummy_ccx),
-                                                   Type::isize(&dummy_ccx)],
-                                                 false);
-                    (Type::isize(&dummy_ccx), Type::opaque_vec(&dummy_ccx), str_slice_ty)
+                    Type::isize(&dummy_ccx)
                 };
-                (isize_ty, opaque_vec_type, str_slice_ty, local_ccxs.pop().unwrap())
+                (isize_ty, local_ccxs.pop().unwrap())
             };
 
             local_ccx.isize_ty = isize_ty;
-            local_ccx.opaque_vec_type = opaque_vec_type;
-            local_ccx.str_slice_type = str_slice_ty;
 
             local_ccx
         }
@@ -512,8 +508,17 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().used_statics
     }
 
-    pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
+    pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>> {
         &self.local().lltypes
+    }
+
+    pub fn scalar_lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
+        &self.local().scalar_lltypes
+    }
+
+    pub fn pointee_infos<'a>(&'a self)
+                             -> &'a RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>> {
+        &self.local().pointee_infos
     }
 
     pub fn stats<'a>(&'a self) -> &'a RefCell<Stats> {
@@ -522,10 +527,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn isize_ty(&self) -> Type {
         self.local().isize_ty
-    }
-
-    pub fn str_slice_type(&self) -> Type {
-        self.local().str_slice_type
     }
 
     pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext<'tcx>> {
@@ -647,47 +648,43 @@ impl<'a, 'tcx> ty::layout::HasDataLayout for &'a SharedCrateContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.tcx
+    }
+}
+
 impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CrateContext<'a, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.shared.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CrateContext<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.shared.tcx
+    }
+}
+
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a SharedCrateContext<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.tcx
-    }
-
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = ty::ParamEnv::empty(traits::Reveal::All);
-        LayoutCx::new(self.tcx, param_env)
+        (self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
             .layout_of(ty)
             .unwrap_or_else(|e| match e {
                 LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
                 _ => bug!("failed to get layout for `{}`: {}", ty, e)
             })
     }
-
-    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx().fully_normalize_associated_types_in(&ty)
-    }
 }
 
-impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CrateContext<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.shared.tcx
-    }
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.shared.layout_of(ty)
-    }
-
-    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.shared.normalize_projections(ty)
     }
 }
 

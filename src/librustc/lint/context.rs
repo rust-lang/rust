@@ -34,7 +34,8 @@ use middle::privacy::AccessLevels;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use session::{config, early_error, Session};
 use traits::Reveal;
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, Ty};
+use ty::layout::{LayoutError, LayoutOf, TyLayout};
 use util::nodemap::FxHashMap;
 
 use std::default::Default as StdDefault;
@@ -623,6 +624,14 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         self.param_env = self.tcx.param_env(self.tcx.hir.local_def_id(id));
         f(self);
         self.param_env = old_param_env;
+    }
+}
+
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a LateContext<'a, 'tcx> {
+    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        (self.tcx, self.param_env.reveal_all()).layout_of(ty)
     }
 }
 

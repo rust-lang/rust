@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Test([i32]);
-fn main() {
-    let _x: fn(_) -> Test = Test;
+// compile-flags: -Z print-type-sizes
+
+#![feature(never_type)]
+
+pub fn main() {
+    let _x: Option<!> = None;
+    let _y: Result<u32, !> = Ok(42);
 }

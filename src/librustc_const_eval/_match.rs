@@ -255,7 +255,7 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             &Variant(vid) => adt.variant_index_with_id(vid),
             &Single => {
-                assert_eq!(adt.variants.len(), 1);
+                assert!(!adt.is_enum());
                 0
             }
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
@@ -356,7 +356,7 @@ impl<'tcx> Witness<'tcx> {
                     }).collect();
 
                     if let ty::TyAdt(adt, substs) = ty.sty {
-                        if adt.variants.len() > 1 {
+                        if adt.is_enum() {
                             PatternKind::Variant {
                                 adt_def: adt,
                                 substs,
@@ -444,7 +444,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
-        ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
+        ty::TyAdt(def, substs) if def.is_enum() => {
             def.variants.iter()
                 .filter(|v| !cx.is_variant_uninhabited(v, substs))
                 .map(|v| Variant(v.did))

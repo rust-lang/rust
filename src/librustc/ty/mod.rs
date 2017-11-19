@@ -1674,11 +1674,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.variants.iter().flat_map(|v| v.fields.iter())
     }
 
-    #[inline]
-    pub fn is_univariant(&self) -> bool {
-        self.variants.len() == 1
-    }
-
     pub fn is_payloadfree(&self) -> bool {
         !self.variants.is_empty() &&
             self.variants.iter().all(|v| v.fields.is_empty())
@@ -2622,9 +2617,10 @@ fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {
-    util::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
+    layout::provide(providers);
+    util::provide(providers);
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,
