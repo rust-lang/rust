@@ -1,3 +1,91 @@
+Version 1.22.0 (2017-11-23)
+==========================
+
+Language
+--------
+- [`non_snake_case` lint now allows extern no-mangle functions][44966]
+- [Now accepts underscores in unicode escapes][43716]
+- [`#![feature(const_fn)]` is now no longer required for
+  calling const functions.][43017] It's still required for creating
+  constant functions.
+- [`T op= &T` now works for numeric types.][44287] eg. `let mut x = 2; x += &8;`
+- [types that impl `Drop` are now allowed in `const` and `static` types][44456]
+
+Compiler
+--------
+- [rustc now defaults to having 16 codegen units at debug on supported platforms.][45064]
+- [rustc will no longer inline in codegen units when compiling for debug][45075]
+  This should decrease compile times for debug builds.
+- [strict memory alignment now enabled on ARMv6][45094]
+- [Remove support for the PNaCl target `le32-unknown-nacl`][45041]
+
+Libraries
+---------
+- [Allow atomic operations up to 32 bits
+  on `armv5te_unknown_linux_gnueabi`][44978]
+- [`Box<Error>` now impls `From<Cow<str>>`][44466]
+- [`std::mem::Discriminant` is now guaranteed to be `Send + Sync`][45095]
+- [`fs::copy` now returns the length of the main stream on NTFS.][44895]
+- [Properly detect overflow in `Instant += Duration`.][44220]
+- [impl `Hasher` for `{&mut Hasher, Box<Hasher>}`][44015]
+- [impl `fmt::Debug` for `SplitWhitespace`.][44303]
+- [`Option<T>` now impls `Try`][42526] This allows for using `?` with `Option` types.
+
+Stabilized APIs
+---------------
+
+Cargo
+-----
+- [Cargo will now build multi file examples in subdirectories of the `examples`
+  folder that have a `main.rs` file.][cargo/4496]
+- [Changed `[root]` to `[package]` in `Cargo.lock`][cargo/4571] Packages with
+  the old format will continue to work and can be updated with `cargo update`.
+- [Now supports vendoring git repositories][cargo/3992]
+
+Misc
+----
+- [`libbacktrace` is now available on Apple platforms.][44251]
+- [Stabilised the `compile_fail` attribute for code fences.][43949] This now
+  lets you specify that a given code example will fail to compile.
+
+Compatibility Notes
+-------------------
+- [The minimum Android version that rustc can build for has been bumped
+  to `4.0` from `2.3`][45656]
+- [Allowing `T op= &T` for numeric types has broken some type
+  inference cases][45480]
+
+
+[42526]: https://github.com/rust-lang/rust/pull/42526
+[43017]: https://github.com/rust-lang/rust/pull/43017
+[43716]: https://github.com/rust-lang/rust/pull/43716
+[43949]: https://github.com/rust-lang/rust/pull/43949
+[44015]: https://github.com/rust-lang/rust/pull/44015
+[44220]: https://github.com/rust-lang/rust/pull/44220
+[44251]: https://github.com/rust-lang/rust/pull/44251
+[44287]: https://github.com/rust-lang/rust/pull/44287
+[44303]: https://github.com/rust-lang/rust/pull/44303
+[44456]: https://github.com/rust-lang/rust/pull/44456
+[44466]: https://github.com/rust-lang/rust/pull/44466
+[44895]: https://github.com/rust-lang/rust/pull/44895
+[44966]: https://github.com/rust-lang/rust/pull/44966
+[44978]: https://github.com/rust-lang/rust/pull/44978
+[45041]: https://github.com/rust-lang/rust/pull/45041
+[45064]: https://github.com/rust-lang/rust/pull/45064
+[45075]: https://github.com/rust-lang/rust/pull/45075
+[45094]: https://github.com/rust-lang/rust/pull/45094
+[45095]: https://github.com/rust-lang/rust/pull/45095
+[45480]: https://github.com/rust-lang/rust/issues/45480
+[45656]: https://github.com/rust-lang/rust/pull/45656
+[cargo/3992]: https://github.com/rust-lang/cargo/pull/3992
+[cargo/4496]: https://github.com/rust-lang/cargo/pull/4496
+[cargo/4571]: https://github.com/rust-lang/cargo/pull/4571
+
+
+
+
+
+
 Version 1.21.0 (2017-10-12)
 ==========================
 
