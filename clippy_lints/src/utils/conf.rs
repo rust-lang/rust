@@ -157,7 +157,7 @@ define_Conf! {
         "JavaScript",
         "NaN",
         "OAuth",
-        "OpenGL", "OpenSSH", "OpenSSL",
+        "OpenGL", "OpenSSH", "OpenSSL", "OpenStreetMap",
         "TrueType",
         "iOS", "macOS",
         "TeX", "LaTeX", "BibTeX", "BibLaTeX",
