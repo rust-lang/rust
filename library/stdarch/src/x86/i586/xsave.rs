@@ -226,6 +226,7 @@ pub unsafe fn _xsaves64(mem_addr: *mut c_void, save_mask: u64) -> () {
 pub unsafe fn _xrstors(mem_addr: *const c_void, rs_mask: u64) -> () {
     xrstors(mem_addr, (rs_mask >> 32) as i32, rs_mask as i32);
 }
+
 /// Perform a full or partial restore of the enabled processor states using the
 /// state information stored in memory at `mem_addr`.
 ///
@@ -243,10 +244,10 @@ pub unsafe fn _xrstors64(mem_addr: *const c_void, rs_mask: u64) -> () {
     xrstors64(mem_addr, (rs_mask >> 32) as i32, rs_mask as i32);
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use x86::c_void;
+    use x86::i586::xsave;
     use stdsimd_test::simd_test;
     use std::fmt;
 
@@ -294,9 +295,9 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsave(a.ptr(), m);
-        _xrstor(a.ptr(), m);
-        _xsave(b.ptr(), m);
+        xsave::_xsave(a.ptr(), m);
+        xsave::_xrstor(a.ptr(), m);
+        xsave::_xsave(b.ptr(), m);
         assert_eq!(a, b);
     }
 
@@ -307,22 +308,22 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsave64(a.ptr(), m);
-        _xrstor64(a.ptr(), m);
-        _xsave64(b.ptr(), m);
+        xsave::_xsave64(a.ptr(), m);
+        xsave::_xrstor64(a.ptr(), m);
+        xsave::_xsave64(b.ptr(), m);
         assert_eq!(a, b);
     }
 
     #[simd_test = "xsave"]
     unsafe fn xgetbv_xsetbv() {
-        let xcr_n: u32 = _XCR_XFEATURE_ENABLED_MASK;
+        let xcr_n: u32 = xsave::_XCR_XFEATURE_ENABLED_MASK;
 
-        let xcr: u64 = _xgetbv(xcr_n);
+        let xcr: u64 = xsave::_xgetbv(xcr_n);
         // FIXME: XSETBV is a privileged instruction we should only test this
         // when running in privileged mode:
         //
         // _xsetbv(xcr_n, xcr);
-        let xcr_cpy: u64 = _xgetbv(xcr_n);
+        let xcr_cpy: u64 = xsave::_xgetbv(xcr_n);
         assert_eq!(xcr, xcr_cpy);
     }
 
@@ -332,9 +333,9 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsaveopt(a.ptr(), m);
-        _xrstor(a.ptr(), m);
-        _xsaveopt(b.ptr(), m);
+        xsave::_xsaveopt(a.ptr(), m);
+        xsave::_xrstor(a.ptr(), m);
+        xsave::_xsaveopt(b.ptr(), m);
         assert_eq!(a, b);
     }
 
@@ -345,9 +346,9 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsaveopt64(a.ptr(), m);
-        _xrstor64(a.ptr(), m);
-        _xsaveopt64(b.ptr(), m);
+        xsave::_xsaveopt64(a.ptr(), m);
+        xsave::_xrstor64(a.ptr(), m);
+        xsave::_xsaveopt64(b.ptr(), m);
         assert_eq!(a, b);
     }
 
@@ -358,9 +359,9 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsavec(a.ptr(), m);
-        _xrstor(a.ptr(), m);
-        _xsavec(b.ptr(), m);
+        xsave::_xsavec(a.ptr(), m);
+        xsave::_xrstor(a.ptr(), m);
+        xsave::_xsavec(b.ptr(), m);
         assert_eq!(a, b);
     }
 
@@ -371,9 +372,9 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsavec64(a.ptr(), m);
-        _xrstor64(a.ptr(), m);
-        _xsavec64(b.ptr(), m);
+        xsave::_xsavec64(a.ptr(), m);
+        xsave::_xrstor64(a.ptr(), m);
+        xsave::_xsavec64(b.ptr(), m);
         assert_eq!(a, b);
     }
 
@@ -384,9 +385,9 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsaves(a.ptr(), m);
-        _xrstors(a.ptr(), m);
-        _xsaves(b.ptr(), m);
+        xsave::_xsaves(a.ptr(), m);
+        xsave::_xrstors(a.ptr(), m);
+        xsave::_xsaves(b.ptr(), m);
         assert_eq!(a, b);
     }
 
@@ -397,9 +398,9 @@ mod tests {
         let mut a = Buffer::new();
         let mut b = Buffer::new();
 
-        _xsaves64(a.ptr(), m);
-        _xrstors64(a.ptr(), m);
-        _xsaves64(b.ptr(), m);
+        xsave::_xsaves64(a.ptr(), m);
+        xsave::_xrstors64(a.ptr(), m);
+        xsave::_xsaves64(b.ptr(), m);
         assert_eq!(a, b);
     }
 }

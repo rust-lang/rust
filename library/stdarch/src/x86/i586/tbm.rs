@@ -263,7 +263,7 @@ pub unsafe fn _tzmsk_u64(x: u64) -> u64 {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use x86::tbm;
+    use x86::i586::tbm;
 
     /*
     #[simd_test = "tbm"]

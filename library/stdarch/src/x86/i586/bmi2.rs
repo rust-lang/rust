@@ -118,7 +118,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use x86::bmi2;
+    use x86::i586::bmi2;
 
     #[simd_test = "bmi2"]
     unsafe fn _pext_u32() {

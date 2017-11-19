@@ -1,4 +1,14 @@
-//! nvptx intrinsics
+//! NVPTX intrinsics (experimental)
+//!
+//! These intrinsics form the foundation of the CUDA
+//! programming model.
+//!
+//! The reference is the [CUDA C Programming Guide][cuda_c]. Relevant is also the [LLVM NVPTX Backend documentation][llvm_docs].
+//!
+//! [cuda_c]:
+//! http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
+//! [llvm_docs]:
+//! https://llvm.org/docs/NVPTXUsage.html
 
 #[allow(improper_ctypes)]
 extern "C" {

@@ -2217,7 +2217,7 @@ mod tests {
 
     use v256::*;
     use v128::*;
-    use x86::avx2;
+    use x86::i586::avx2;
     use x86::__m256i;
     use std;
 

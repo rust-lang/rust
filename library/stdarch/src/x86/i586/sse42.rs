@@ -553,26 +553,6 @@ pub unsafe fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
     crc32_32_32(crc, v)
 }
 
-/// Starting with the initial value in `crc`, return the accumulated
-/// CRC32 value for unsigned 64-bit integer `v`.
-#[cfg(target_arch = "x86_64")]
-#[inline(always)]
-#[target_feature = "+sse4.2"]
-#[cfg_attr(test, assert_instr(crc32))]
-pub unsafe fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
-    crc32_64_64(crc, v)
-}
-
-/// Compare packed 64-bit integers in `a` and `b` for greater-than,
-/// return the results.
-#[cfg(target_arch = "x86_64")]
-#[inline(always)]
-#[target_feature = "+sse4.2"]
-#[cfg_attr(test, assert_instr(pcmpgtq))]
-pub unsafe fn _mm_cmpgt_epi64(a: i64x2, b: i64x2) -> i64x2 {
-    a.gt(b)
-}
-
 #[allow(improper_ctypes)]
 extern "C" {
     // SSE 4.2 string and text comparison ops
@@ -624,8 +604,6 @@ extern "C" {
     fn crc32_32_16(crc: u32, v: u16) -> u32;
     #[link_name = "llvm.x86.sse42.crc32.32.32"]
     fn crc32_32_32(crc: u32, v: u32) -> u32;
-    #[link_name = "llvm.x86.sse42.crc32.64.64"]
-    fn crc32_64_64(crc: u64, v: u64) -> u64;
 }
 
 #[cfg(test)]
@@ -634,7 +612,8 @@ mod tests {
 
     use std::ptr;
     use v128::*;
-    use x86::{__m128i, sse42};
+    use x86::__m128i;
+    use x86::i586::sse42;
 
     // Currently one cannot `load` a &[u8] that is is less than 16
     // in length. This makes loading strings less than 16 in length
@@ -824,23 +803,5 @@ mod tests {
         let v = 0x845fed;
         let i = sse42::_mm_crc32_u32(crc, v);
         assert_eq!(i, 0xffae2ed1);
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    #[simd_test = "sse4.2"]
-    unsafe fn _mm_crc32_u64() {
-        let crc = 0x7819dccd3e824;
-        let v = 0x2a22b845fed;
-        let i = sse42::_mm_crc32_u64(crc, v);
-        assert_eq!(i, 0xbb6cdc6c);
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpgt_epi64() {
-        let a = i64x2::splat(0x00).replace(1, 0x2a);
-        let b = i64x2::splat(0x00);
-        let i = sse42::_mm_cmpgt_epi64(a, b);
-        assert_eq!(i, i64x2::new(0x00, 0xffffffffffffffffu64 as i64));
     }
 }

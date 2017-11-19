@@ -16,7 +16,7 @@ case ${TARGET} in
 esac
 
 FEATURES="strict,$FEATURES"
-FEATURES_STD="${FEATURES},std"
+FEATURES_STD="$std,${FEATURES}"
 
 echo "RUSTFLAGS=${RUSTFLAGS}"
 echo "FEATURES=${FEATURES}"

@@ -1,24 +1,30 @@
 //! `x86` and `x86_64` intrinsics.
 
-pub use self::ia32::*;
-pub use self::cpuid::*;
-pub use self::xsave::*;
+#[macro_use]
+mod macros;
 
-pub use self::sse::*;
-pub use self::sse2::*;
-pub use self::sse3::*;
-pub use self::ssse3::*;
-pub use self::sse41::*;
-pub use self::sse42::*;
-pub use self::avx::*;
-pub use self::avx2::*;
+mod i386;
+pub use self::i386::*;
 
-pub use self::abm::*;
-pub use self::bmi::*;
-pub use self::bmi2::*;
+// x86 w/o sse2
+mod i586;
+pub use self::i586::*;
 
-#[cfg(not(feature = "intel_sde"))]
-pub use self::tbm::*;
+// `i686` is `i586 + sse2`.
+//
+// This module is not available for `i586` targets,
+// but available for all `i686` targets by default
+#[cfg(any(all(target_arch = "x86", target_feature = "sse2"),
+          target_arch = "x86_64"))]
+mod i686;
+#[cfg(any(all(target_arch = "x86", target_feature = "sse2"),
+          target_arch = "x86_64"))]
+pub use self::i686::*;
+
+#[cfg(target_arch = "x86_64")]
+mod x86_64;
+#[cfg(target_arch = "x86_64")]
+pub use self::x86_64::*;
 
 /// 128-bit wide signed integer vector type
 #[allow(non_camel_case_types)]
@@ -27,28 +33,6 @@ pub type __m128i = ::v128::i8x16;
 #[allow(non_camel_case_types)]
 pub type __m256i = ::v256::i8x32;
 
-#[macro_use]
-mod macros;
-
-mod ia32;
-mod cpuid;
-mod xsave;
-
-mod sse;
-mod sse2;
-mod sse3;
-mod ssse3;
-mod sse41;
-mod sse42;
-mod avx;
-mod avx2;
-
-mod abm;
-mod bmi;
-mod bmi2;
-
-#[cfg(not(feature = "intel_sde"))]
-mod tbm;
 
 /// `C`'s `void` type.
 #[cfg(not(feature = "std"))]
@@ -59,5 +43,6 @@ pub enum c_void {
     #[doc(hidden)] __variant2,
 }
 
+// FIXME: we should not depend on std for this
 #[cfg(feature = "std")]
 use std::os::raw::c_void;

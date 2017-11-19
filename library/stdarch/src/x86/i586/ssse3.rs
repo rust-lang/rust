@@ -286,7 +286,7 @@ mod tests {
     use stdsimd_test::simd_test;
 
     use v128::*;
-    use x86::ssse3;
+    use x86::i586::ssse3;
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_abs_epi8() {

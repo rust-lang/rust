@@ -85,7 +85,7 @@ pub unsafe fn _mm_movedup_pd(a: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse3"]
 pub unsafe fn _mm_loaddup_pd(mem_addr: *const f64) -> f64x2 {
-    use x86::sse2::_mm_load1_pd;
+    use x86::i586::sse2::_mm_load1_pd;
     _mm_load1_pd(mem_addr)
 }
 
@@ -131,7 +131,7 @@ mod tests {
     use stdsimd_test::simd_test;
 
     use v128::*;
-    use x86::sse3;
+    use x86::i586::sse3;
 
     #[simd_test = "sse3"]
     unsafe fn _mm_addsub_ps() {

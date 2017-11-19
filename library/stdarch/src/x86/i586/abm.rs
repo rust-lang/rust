@@ -61,7 +61,7 @@ pub unsafe fn _popcnt64(x: u64) -> u64 {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use x86::abm;
+    use x86::i586::abm;
 
     #[simd_test = "lzcnt"]
     unsafe fn _lzcnt_u32() {

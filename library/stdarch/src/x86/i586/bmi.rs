@@ -192,7 +192,7 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use x86::bmi;
+    use x86::i586::bmi;
 
     #[simd_test = "bmi"]
     unsafe fn _bextr_u32() {

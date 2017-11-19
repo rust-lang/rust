@@ -986,7 +986,7 @@ pub unsafe fn _mm256_permute_ps(a: f32x8, imm8: i32) -> f32x8 {
 #[target_feature = "+avx,+sse"]
 #[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
 pub unsafe fn _mm_permute_ps(a: f32x4, imm8: i32) -> f32x4 {
-    use x86::sse::_mm_undefined_ps;
+    use x86::i586::sse::_mm_undefined_ps;
 
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
@@ -1100,7 +1100,7 @@ pub unsafe fn _mm256_permute_pd(a: f64x4, imm8: i32) -> f64x4 {
 #[target_feature = "+avx,+sse2"]
 #[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
 pub unsafe fn _mm_permute_pd(a: f64x2, imm8: i32) -> f64x2 {
-    use x86::sse2::_mm_undefined_pd;
+    use x86::i586::sse2::_mm_undefined_pd;
 
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle2 {
@@ -2159,7 +2159,7 @@ pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
 pub unsafe fn _mm256_zextps128_ps256(a: f32x4) -> f32x8 {
-    use x86::sse::_mm_setzero_ps;
+    use x86::i586::sse::_mm_setzero_ps;
     simd_shuffle8(a, _mm_setzero_ps(), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
@@ -2169,7 +2169,7 @@ pub unsafe fn _mm256_zextps128_ps256(a: f32x4) -> f32x8 {
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
 pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
-    use x86::sse2::_mm_setzero_si128;
+    use x86::i586::sse2::_mm_setzero_si128;
     let b = mem::transmute(_mm_setzero_si128());
     let dst: i64x4 = simd_shuffle4(i64x2::from(a), b, [0, 1, 2, 3]);
     __m256i::from(dst)
@@ -2182,7 +2182,7 @@ pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
 pub unsafe fn _mm256_zextpd128_pd256(a: f64x2) -> f64x4 {
-    use x86::sse2::_mm_setzero_pd;
+    use x86::i586::sse2::_mm_setzero_pd;
     simd_shuffle4(a, _mm_setzero_pd(), [0, 1, 2, 3])
 }
 
@@ -2268,7 +2268,7 @@ pub unsafe fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
 pub unsafe fn _mm256_loadu2_m128(
     hiaddr: *const f32, loaddr: *const f32
 ) -> f32x8 {
-    use x86::sse::_mm_loadu_ps;
+    use x86::i586::sse::_mm_loadu_ps;
     let a = _mm256_castps128_ps256(_mm_loadu_ps(loaddr));
     _mm256_insertf128_ps(a, _mm_loadu_ps(hiaddr), 1)
 }
@@ -2282,7 +2282,7 @@ pub unsafe fn _mm256_loadu2_m128(
 pub unsafe fn _mm256_loadu2_m128d(
     hiaddr: *const f64, loaddr: *const f64
 ) -> f64x4 {
-    use x86::sse2::_mm_loadu_pd;
+    use x86::i586::sse2::_mm_loadu_pd;
     let a = _mm256_castpd128_pd256(_mm_loadu_pd(loaddr));
     _mm256_insertf128_pd(a, _mm_loadu_pd(hiaddr), 1)
 }
@@ -2295,7 +2295,7 @@ pub unsafe fn _mm256_loadu2_m128d(
 pub unsafe fn _mm256_loadu2_m128i(
     hiaddr: *const __m128i, loaddr: *const __m128i
 ) -> __m256i {
-    use x86::sse2::_mm_loadu_si128;
+    use x86::i586::sse2::_mm_loadu_si128;
     let a = _mm256_castsi128_si256(_mm_loadu_si128(loaddr));
     _mm256_insertf128_si256(a, _mm_loadu_si128(hiaddr), 1)
 }
@@ -2309,7 +2309,7 @@ pub unsafe fn _mm256_loadu2_m128i(
 pub unsafe fn _mm256_storeu2_m128(
     hiaddr: *mut f32, loaddr: *mut f32, a: f32x8
 ) {
-    use x86::sse::_mm_storeu_ps;
+    use x86::i586::sse::_mm_storeu_ps;
     let lo = _mm256_castps256_ps128(a);
     _mm_storeu_ps(loaddr, lo);
     let hi = _mm256_extractf128_ps(a, 1);
@@ -2325,7 +2325,7 @@ pub unsafe fn _mm256_storeu2_m128(
 pub unsafe fn _mm256_storeu2_m128d(
     hiaddr: *mut f64, loaddr: *mut f64, a: f64x4
 ) {
-    use x86::sse2::_mm_storeu_pd;
+    use x86::i586::sse2::_mm_storeu_pd;
     let lo = _mm256_castpd256_pd128(a);
     _mm_storeu_pd(loaddr, lo);
     let hi = _mm256_extractf128_pd(a, 1);
@@ -2340,7 +2340,7 @@ pub unsafe fn _mm256_storeu2_m128d(
 pub unsafe fn _mm256_storeu2_m128i(
     hiaddr: *mut __m128i, loaddr: *mut __m128i, a: __m256i
 ) {
-    use x86::sse2::_mm_storeu_si128;
+    use x86::i586::sse2::_mm_storeu_si128;
     let lo = _mm256_castsi256_si128(a);
     _mm_storeu_si128(loaddr, lo);
     let hi = _mm256_extractf128_si256(a, 1);
@@ -2501,7 +2501,7 @@ mod tests {
 
     use v128::{f32x4, f64x2, i32x4, i64x2, i8x16};
     use v256::*;
-    use x86::avx;
+    use x86::i586::avx;
     use x86::{__m128i, __m256i};
 
     #[simd_test = "avx"]
@@ -4173,7 +4173,7 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_storeu2_m128() {
-        use x86::sse::_mm_undefined_ps;
+        use x86::i586::sse::_mm_undefined_ps;
         let a = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
         let mut hi = _mm_undefined_ps();
         let mut lo = _mm_undefined_ps();
@@ -4188,7 +4188,7 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_storeu2_m128d() {
-        use x86::sse2::_mm_undefined_pd;
+        use x86::i586::sse2::_mm_undefined_pd;
         let a = f64x4::new(1., 2., 3., 4.);
         let mut hi = _mm_undefined_pd();
         let mut lo = _mm_undefined_pd();
@@ -4203,7 +4203,7 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_storeu2_m128i() {
-        use x86::sse2::_mm_undefined_si128;
+        use x86::i586::sse2::_mm_undefined_si128;
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,

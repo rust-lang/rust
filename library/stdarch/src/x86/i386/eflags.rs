@@ -1,4 +1,4 @@
-//! `i386/ia32` intrinsics
+//! `i386` intrinsics
 
 /// Reads EFLAGS.
 #[cfg(target_arch = "x86")]
@@ -34,7 +34,7 @@ pub unsafe fn __writeeflags(eflags: u64) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use x86::i386::*;
 
     #[test]
     fn test_eflags() {

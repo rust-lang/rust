@@ -77,7 +77,7 @@ pub fn has_cpuid() -> bool {
     }
     #[cfg(target_arch = "x86")]
     {
-        use super::ia32::{__readeflags, __writeeflags};
+        use x86::i386::{__readeflags, __writeeflags};
 
         // On `x86` the `cpuid` instruction is not always available.
         // This follows the approach indicated in:
@@ -119,23 +119,23 @@ pub unsafe fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use x86::i586::cpuid;
 
     #[test]
     fn test_always_has_cpuid() {
         // all currently-tested targets have the instruction
         // FIXME: add targets without `cpuid` to CI
-        assert!(has_cpuid());
+        assert!(cpuid::has_cpuid());
     }
 
     #[cfg(target_arch = "x86")]
     #[test]
     fn test_has_cpuid() {
-        use vendor::__readeflags;
+        use x86::i386::__readeflags;
         unsafe {
             let before = __readeflags();
 
-            if has_cpuid() {
+            if cpuid::has_cpuid() {
                 assert!(before != __readeflags());
             } else {
                 assert!(before == __readeflags());
