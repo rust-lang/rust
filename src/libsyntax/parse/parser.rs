@@ -4443,6 +4443,8 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses the following grammar:
+    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [TyParamBounds]] ["where" ...] ["=" Ty]
     fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
         -> PResult<'a, (ast::Generics, TyParam)> {
         let span = self.span;
@@ -4455,13 +4457,13 @@ impl<'a> Parser<'a> {
         } else {
             Vec::new()
         };
+        generics.where_clause = self.parse_where_clause()?;
 
         let default = if self.eat(&token::Eq) {
             Some(self.parse_ty()?)
         } else {
             None
         };
-        generics.where_clause = self.parse_where_clause()?;
 
         Ok((generics, TyParam {
             attrs: preceding_attrs.into(),
@@ -5014,14 +5016,18 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness()?;
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
+            // This parses the grammar:
+            //     ImplItemAssocTy = Ident ["<"...">"] ["where" ...] "=" Ty ";"
             let name = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
+            generics.where_clause = self.parse_where_clause()?;
             self.expect(&token::Eq)?;
             let typ = self.parse_ty()?;
-            generics.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Type(typ), generics)
         } else if self.is_const_item() {
+            // This parses the grammar:
+            //     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
             self.expect_keyword(keywords::Const)?;
             let name = self.parse_ident()?;
             self.expect(&token::Colon)?;

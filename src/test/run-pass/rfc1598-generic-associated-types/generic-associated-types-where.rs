@@ -18,7 +18,7 @@ use std::fmt::{Display, Debug};
 trait Foo {
     type Assoc where Self: Sized;
     type Assoc2<T> where T: Display;
-    type WithDefault<T> = Iterator<Item=T> where T: Debug;
+    type WithDefault<T> where T: Debug = Iterator<Item=T>;
 }
 
 struct Bar;
