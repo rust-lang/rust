@@ -253,8 +253,12 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.spec_nth(n)
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        for x in self {
+            if n == 0 { return Some(x) }
+            n -= 1;
+        }
+        None
     }
 
     /// Creates an iterator starting at the same point, but stepping by
@@ -2380,28 +2384,4 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
     }
-}
-
-
-trait SpecIterator : Iterator {
-    fn spec_nth(&mut self, n: usize) -> Option<Self::Item>;
-}
-
-impl<I: Iterator + ?Sized> SpecIterator for I {
-    default fn spec_nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self {
-            if n == 0 { return Some(x) }
-            n -= 1;
-        }
-        None
-   }
-}
-
-impl<I: Iterator + Sized> SpecIterator for I {
-    fn spec_nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.try_fold(n, move |i, x| {
-            if i == 0 { LoopState::Break(x) }
-            else { LoopState::Continue(i - 1) }
-        }).break_value()
-   }
 }
