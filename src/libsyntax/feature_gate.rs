@@ -420,6 +420,7 @@ declare_features! (
 
     // #![wasm_import_memory] attribute
     (active, wasm_import_memory, "1.22.0", None),
+
     // generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265)),
 );
