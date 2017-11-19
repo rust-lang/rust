@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
 use rustc::mir::{self, Location, Mir};
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, Region, TyCtxt};
@@ -57,7 +58,9 @@ pub struct BorrowData<'tcx> {
     /// The base lvalue of projections.
     pub(crate) base_lvalue: mir::Lvalue<'tcx>,
     /// Number of projections outside the outermost dereference.
-    pub(crate) shallow_projections_len: usize,
+    pub(crate) shallow_projections_len: Option<usize>,
+    /// Number of projections outside the outermost raw pointer or shared borrow.
+    pub(crate) supporting_projections_len: Option<usize>,
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
@@ -112,6 +115,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     let mut base_lvalue = lvalue;
                     let mut projections = vec![];
                     let mut shallow_projections_len = None;
+                    let mut supporting_projections_len = None;
 
                     while let mir::Lvalue::Projection(ref proj) = *base_lvalue {
                         projections.push(proj.elem.lift());
@@ -121,11 +125,25 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                             if shallow_projections_len.is_none() {
                                 shallow_projections_len = Some(projections.len());
                             }
+
+                            if supporting_projections_len.is_none() {
+                                let ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                                match ty.sty {
+                                    ty::TyRawPtr(_) |
+                                    ty::TyRef(
+                                        _, /*rgn*/
+                                        ty::TypeAndMut {
+                                            ty: _,
+                                            mutbl: hir::MutImmutable,
+                                        },
+                                    ) => {
+                                        supporting_projections_len = Some(projections.len());
+                                    }
+                                    _ => {}
+                                }
+                            }
                         }
                     }
-
-                    let shallow_projections_len =
-                        shallow_projections_len.unwrap_or(projections.len());
 
                     let borrow = BorrowData {
                         location,
@@ -135,6 +153,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                         projections,
                         base_lvalue: base_lvalue.clone(),
                         shallow_projections_len,
+                        supporting_projections_len,
                     };
                     let idx = self.idx_vec.push(borrow);
                     self.location_map.insert(location, idx);

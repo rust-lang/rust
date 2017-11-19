@@ -1151,7 +1151,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // Is `lvalue` a prefix (modulo access type) of the
                 // `borrowed.lvalue`? If so, that's relevant.
 
-                let shallow = match access {
+                let depth = match access {
                     Shallow(Some(ArtificialField::Discriminant)) |
                     Shallow(Some(ArtificialField::ArrayLength)) => {
                         // The discriminant and array length are like
@@ -1162,12 +1162,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // currently.)
                         continue 'next_borrow;
                     }
-                    Shallow(None) => true,
-                    Deep => false,
+                    Shallow(None) => borrowed.shallow_projections_len,
+                    Deep => borrowed.supporting_projections_len,
                 };
 
                 if bps.len() != ps.len()
-                    && (!shallow || ps.len() > (bps.len() - borrowed.shallow_projections_len))
+                    && depth.map(|l| ps.len() > (bps.len() - l)).unwrap_or(true)
                     && bps.ends_with(&ps)
                 {
                     let borrowed_prefix = {
