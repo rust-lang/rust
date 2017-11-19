@@ -14,7 +14,7 @@ struct S;
 
 mod m {
     fn f() {
-        let s = crate::S; //~ ERROR undeclared type or module `crate`
+        let s = crate::S; //~ ERROR `crate` can only be used in absolute paths
     }
 }
 

@@ -11,5 +11,5 @@
 #![feature(crate_in_paths)]
 
 fn main() {
-    let crate = 0; //~ ERROR cannot find unit struct/variant or constant `crate` in this scope
+    let crate = 0; //~ ERROR `crate` can only be used in absolute paths
 }

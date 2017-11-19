@@ -606,10 +606,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let module_result = self.resolve_path(&module_path, None, true, span);
         let module = match module_result {
             PathResult::Module(module) => module,
-            PathResult::Failed(span, msg, _) => {
+            PathResult::Failed(span, msg, false) => {
+                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                return None;
+            }
+            PathResult::Failed(span, msg, true) => {
                 let (mut self_path, mut self_result) = (module_path.clone(), None);
                 if !self_path.is_empty() &&
-                    !token::Ident(self_path[0].node).is_path_segment_keyword()
+                    !token::Ident(self_path[0].node).is_path_segment_keyword() &&
+                    !(self_path.len() > 1 &&
+                      token::Ident(self_path[1].node).is_path_segment_keyword())
                 {
                     self_path[0].node.name = keywords::SelfValue.name();
                     self_result = Some(self.resolve_path(&self_path, None, false, span));
