@@ -269,6 +269,17 @@ impl<'b, 'tcx: 'b> BorrowckErrors for BorrowckCtxt<'b, 'tcx> {
     {
         self.tcx.sess.struct_span_err(sp, msg)
     }
+
+    fn cancel_if_wrong_origin<'a>(&'a self,
+                                mut diag: DiagnosticBuilder<'a>,
+                                o: Origin)
+                                -> DiagnosticBuilder<'a>
+    {
+        if !o.should_emit_errors(self.tcx.sess.opts.borrowck_mode) {
+            self.tcx.sess.diagnostic().cancel(&mut diag);
+        }
+        diag
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
