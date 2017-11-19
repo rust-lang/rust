@@ -166,3 +166,15 @@ error: this boolean expression can be simplified
 56 |     let _ = !(!c ^ c) || !a.is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!(!c ^ c) || a.is_none()`
 
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:57:13
+   |
+57 |     let _ = (!c ^ c) || !a.is_some();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(!c ^ c) || a.is_none()`
+
+error: this boolean expression can be simplified
+  --> $DIR/booleans.rs:58:13
+   |
+58 |     let _ = !c ^ c || !a.is_some();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `!c ^ c || a.is_none()`
+

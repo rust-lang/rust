@@ -54,4 +54,6 @@ fn methods_with_negation() {
     let c = false;
     let _ = !(a.is_some() && !c);
     let _ = !(!c ^ c) || !a.is_some();
+    let _ = (!c ^ c) || !a.is_some();
+    let _ = !c ^ c || !a.is_some();
 }
