@@ -48,20 +48,23 @@ impl StaticConst {
             TyKind::Rptr(ref optional_lifetime, ref borrow_type) => {
                 // Match the 'static lifetime
                 if let Some(lifetime) = *optional_lifetime {
-                    if let TyKind::Path(_, _) = borrow_type.ty.node {
-                        // Verify that the path is a str
-                        if lifetime.ident.name == "'static" {
-                            let mut sug: String = String::new();
-                            span_lint_and_then(
-                                cx,
-                                CONST_STATIC_LIFETIME,
-                                lifetime.span,
-                                "Constants have by default a `'static` lifetime",
-                                |db| {
-                                    db.span_suggestion(lifetime.span, "consider removing `'static`", sug);
-                                },
-                            );
+                    match borrow_type.ty.node {
+                        TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) |
+                        TyKind::Tup(..) => {
+                            if lifetime.ident.name == "'static" {
+                                let mut sug: String = String::new();
+                                span_lint_and_then(
+                                    cx,
+                                    CONST_STATIC_LIFETIME,
+                                    lifetime.span,
+                                    "Constants have by default a `'static` lifetime",
+                                    |db| {
+                                        db.span_suggestion(lifetime.span, "consider removing `'static`", sug);
+                                    },
+                                );
+                            }
                         }
+                        _ => {}
                     }
                 }
                 self.visit_type(&*borrow_type.ty, cx);

@@ -18,7 +18,7 @@
 #
 # See all `update-references.sh`, if you just want to update a single test.
 
-if [[ "$1" == "--help" || "$1" == "-h" || "$1" == "" ]]; then
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "usage: $0"
 fi
 

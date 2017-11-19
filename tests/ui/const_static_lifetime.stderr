@@ -25,6 +25,12 @@ error: Constants have by default a `'static` lifetime
    |                                               ^^^^^^^ help: consider removing `'static`
 
 error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:12:18
+   |
+12 | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
+   |                  ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
   --> $DIR/const_static_lifetime.rs:12:30
    |
 12 | const VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
@@ -37,6 +43,12 @@ error: Constants have by default a `'static` lifetime
    |                 ^^^^^^^ help: consider removing `'static`
 
 error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:16:29
+   |
+16 | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                             ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
   --> $DIR/const_static_lifetime.rs:16:39
    |
 16 | const VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
@@ -47,4 +59,22 @@ error: Constants have by default a `'static` lifetime
    |
 18 | const VAR_HEIGHT: &'static Foo = &Foo {};
    |                    ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:20:19
+   |
+20 | const VAR_SLICE: &'static [u8] = b"Test constant #1"; // ERROR Consider removing 'static.
+   |                   ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:22:19
+   |
+22 | const VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing 'static.
+   |                   ^^^^^^^ help: consider removing `'static`
+
+error: Constants have by default a `'static` lifetime
+  --> $DIR/const_static_lifetime.rs:24:19
+   |
+24 | const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
+   |                   ^^^^^^^ help: consider removing `'static`
 
