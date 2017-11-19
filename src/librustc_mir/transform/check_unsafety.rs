@@ -373,6 +373,22 @@ fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: a
     db.emit();
 }
 
+fn builtin_derive_def_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
+    debug!("builtin_derive_def_id({:?})", def_id);
+    if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
+        if tcx.has_attr(impl_def_id, "automatically_derived") {
+            debug!("builtin_derive_def_id({:?}) - is {:?}", def_id, impl_def_id);
+            Some(impl_def_id)
+        } else {
+            debug!("builtin_derive_def_id({:?}) - not automatically derived", def_id);
+            None
+        }
+    } else {
+        debug!("builtin_derive_def_id({:?}) - not a method", def_id);
+        None
+    }
+}
+
 pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     debug!("check_unsafety({:?})", def_id);
 
@@ -386,6 +402,7 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
         unsafe_blocks
     } = tcx.unsafety_check_result(def_id);
 
+    let mut emitted_derive_error = false;
     for &UnsafetyViolation {
         source_info, description, kind
     } in violations.iter() {
@@ -406,11 +423,29 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
                                         block (error E0133)", description));
             }
             UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
+                if emitted_derive_error {
+                    continue
+                }
+
+                let message = if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
+                    emitted_derive_error = true;
+                    // FIXME: when we make this a hard error, this should have its
+                    // own error code.
+                    if !tcx.generics_of(impl_def_id).types.is_empty() {
+                        format!("#[derive] can't be used on a #[repr(packed)] struct with \
+                                 type parameters (error E0133)")
+                    } else {
+                        format!("#[derive] can't be used on a non-Copy #[repr(packed)] struct \
+                                (error E0133)")
+                    }
+                } else {
+                   format!("{} requires unsafe function or \
+                            block (error E0133)", description)
+                };
                 tcx.lint_node(SAFE_PACKED_BORROWS,
                               lint_node_id,
                               source_info.span,
-                              &format!("{} requires unsafe function or \
-                                        block (error E0133)", description));
+                              &message);
             }
         }
     }

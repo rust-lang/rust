@@ -413,7 +413,24 @@ impl<'a> TraitDef<'a> {
                     attr::find_repr_attrs(&cx.parse_sess.span_diagnostic, attr)
                         .contains(&attr::ReprPacked)
                 });
-                let use_temporaries = is_packed;
+                let has_no_type_params = match item.node {
+                    ast::ItemKind::Struct(_, ref generics) |
+                    ast::ItemKind::Enum(_, ref generics) |
+                    ast::ItemKind::Union(_, ref generics) => {
+                        generics.ty_params.is_empty()
+                    }
+                    _ => {
+                        // Non-ADT derive is an error, but it should have been
+                        // set earlier; see
+                        // libsyntax/ext/expand.rs:MacroExpander::expand()
+                        return;
+                    }
+                };
+                let is_always_copy =
+                    attr::contains_name(&item.attrs, "rustc_copy_clone_marker") &&
+                    has_no_type_params;
+                let use_temporaries = is_packed && is_always_copy;
+
                 let newitem = match item.node {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => {
                         self.expand_struct_def(cx, &struct_def, item.ident, generics, from_scratch,
@@ -440,12 +457,7 @@ impl<'a> TraitDef<'a> {
                             return;
                         }
                     }
-                    _ => {
-                        // Non-ADT derive is an error, but it should have been
-                        // set earlier; see
-                        // libsyntax/ext/expand.rs:MacroExpander::expand()
-                        return;
-                    }
+                    _ => unreachable!(),
                 };
                 // Keep the lint attributes of the previous item to control how the
                 // generated implementations are linted

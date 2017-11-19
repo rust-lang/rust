@@ -31,7 +31,7 @@ impl PartialEq for Aligned {
 }
 
 #[repr(packed)]
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 struct Packed(Aligned, Aligned);
 
 #[derive(PartialEq)]

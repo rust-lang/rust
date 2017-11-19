@@ -1,0 +1,34 @@
+error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
+  --> $DIR/deriving-with-repr-packed.rs:16:19
+   |
+16 | pub struct Foo<T>(T, T, T);
+   |                   ^^
+   |
+note: lint level defined here
+  --> $DIR/deriving-with-repr-packed.rs:11:9
+   |
+11 | #![deny(safe_packed_borrows)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+
+error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
+  --> $DIR/deriving-with-repr-packed.rs:16:19
+   |
+16 | pub struct Foo<T>(T, T, T);
+   |                   ^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+
+error: #[derive] can't be used on a non-Copy #[repr(packed)] struct (error E0133)
+  --> $DIR/deriving-with-repr-packed.rs:23:16
+   |
+23 | pub struct Bar(u32, u32, u32);
+   |                ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+
+error: aborting due to 5 previous errors
+
