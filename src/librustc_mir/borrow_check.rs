@@ -1165,14 +1165,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Shallow(None) => true,
                     Deep => false,
                 };
-                let bps = if shallow {
-                    &bps[borrowed.shallow_projections_len..]
-                } else {
-                    bps
-                };
 
-                if bps.len() != ps.len() &&
-                    bps.ends_with(&ps)
+                if bps.len() != ps.len()
+                    && (!shallow || ps.len() > (bps.len() - borrowed.shallow_projections_len))
+                    && bps.ends_with(&ps)
                 {
                     let borrowed_prefix = {
                         let mut lv = &borrowed.lvalue;
