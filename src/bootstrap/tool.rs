@@ -11,7 +11,7 @@
 use std::fs;
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, exit};
 
 use Mode;
 use Compiler;
@@ -115,7 +115,14 @@ impl Step for ToolBuild {
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
-        build.run_expecting(&mut cargo, expectation);
+        if !build.try_run(&mut cargo, expectation) {
+            if expectation == BuildExpectation::None {
+                exit(1);
+            } else {
+                return None;
+            }
+        }
+
         if expectation == BuildExpectation::Succeeding || expectation == BuildExpectation::None {
             let cargo_out = build.cargo_out(compiler, Mode::Tool, target)
                 .join(exe(tool, &compiler.host));
