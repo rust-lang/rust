@@ -376,7 +376,7 @@
 
             for (var z = 0; z < split.length; ++z) {
                 if (split[z] === "") {
-                    split.slice(z, 1);
+                    split.splice(z, 1);
                     z -= 1;
                 }
             }
@@ -526,20 +526,47 @@
                 return literalSearch === true ? false : lev_distance;
             }
 
-            function checkPath(startsWith, ty) {
-                var lev_total = 0;
+            function checkPath(startsWith, lastElem, ty) {
+                var ret_lev = MAX_LEV_DISTANCE + 1;
                 var path = ty.path.split("::");
+
+                if (ty.parent && ty.parent.name) {
+                    path.push(ty.parent.name.toLowerCase());
+                }
+
                 if (startsWith.length > path.length) {
                     return MAX_LEV_DISTANCE + 1;
                 }
-                for (var i = path.length - 1; i < startsWith.length; ++i) {
-                    var lev = levenshtein(startsWith[i], path[i]);
-                    if (lev > MAX_LEV_DISTANCE) {
-                        return MAX_LEV_DISTANCE + 1;
+                for (var i = 0; i < path.length; ++i) {
+                    if (i + startsWith.length > path.length) {
+                        break;
                     }
-                    lev_total += lev;
+                    var lev_total = 0;
+                    var aborted = false;
+                    for (var x = 0; x < startsWith.length; ++x) {
+                        var lev = levenshtein(path[i + x], startsWith[x]);
+                        if (lev > MAX_LEV_DISTANCE) {
+                            aborted = true;
+                            break;
+                        }
+                        lev_total += lev;
+                    }
+                    if (aborted === false) {
+                        var extra = MAX_LEV_DISTANCE + 1;
+                        if (i + startsWith.length < path.length) {
+                            extra = levenshtein(path[i + startsWith.length], lastElem);
+                        }
+                        if (extra > MAX_LEV_DISTANCE) {
+                            extra = levenshtein(ty.name, lastElem);
+                        }
+                        if (extra < MAX_LEV_DISTANCE + 1) {
+                            lev_total += extra;
+                            ret_lev = Math.min(ret_lev,
+                                               Math.round(lev_total / (startsWith.length + 1)));
+                        }
+                    }
                 }
-                return Math.round(lev_total / startsWith.length);
+                return ret_lev;
             }
 
             function typePassesFilter(filter, type) {
@@ -701,7 +728,7 @@
                     }
                     var lev_add = 0;
                     if (paths.length > 1) {
-                        var lev = checkPath(startsWith, ty);
+                        var lev = checkPath(startsWith, paths[paths.length - 1], ty);
                         if (lev > MAX_LEV_DISTANCE) {
                             continue;
                         } else if (lev > 0) {
