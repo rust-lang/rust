@@ -2635,7 +2635,11 @@ pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
         0
     };
     // 1 = space between operator and rhs.
-    let orig_shape = shape.offset_left(last_line_width + 1)?;
+    let orig_shape = shape.offset_left(last_line_width + 1).unwrap_or(Shape {
+        width: 0,
+        offset: shape.offset + last_line_width + 1,
+        ..shape
+    });
     let rhs = choose_rhs(context, ex, orig_shape, ex.rewrite(context, orig_shape))?;
     Some(lhs + &rhs)
 }
