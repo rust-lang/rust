@@ -77,7 +77,6 @@ error: this is a decimal constant
    |
 30 |     let fail8 = 0123;
    |                 ^^^^
-   |
 help: if you mean to use a decimal constant, remove the `0` to remove confusion
    |
 30 |     let fail8 = 123;

@@ -15,7 +15,6 @@ error: you should consider deriving a `Default` implementation for `Bar`
    |
 16 |     pub fn new() -> Self { Bar }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
 help: try this
    |
 13 | #[derive(Default)]

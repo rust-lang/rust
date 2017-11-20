@@ -15,7 +15,6 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
    |
 11 |     y + 1 <= x;
    |     ^^^^^^^^^^
-   |
 help: change `>= y + 1` to `> y` as shown
    |
 11 |     y < x;
@@ -26,7 +25,6 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
    |
 13 |     x - 1 >= y;
    |     ^^^^^^^^^^
-   |
 help: change `>= y + 1` to `> y` as shown
    |
 13 |     x > y;
@@ -37,7 +35,6 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
    |
 14 |     y <= x - 1;
    |     ^^^^^^^^^^
-   |
 help: change `>= y + 1` to `> y` as shown
    |
 14 |     y < x;

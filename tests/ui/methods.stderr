@@ -212,7 +212,6 @@ error: called `map_or(None, f)` on an Option value. This can be done more direct
 151 | |                        }
 152 | |                 );
     | |_________________^
-    |
 help: try using and_then instead
     |
 149 |     let _ = opt.and_then(|x| {
