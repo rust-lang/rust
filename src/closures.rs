@@ -256,7 +256,9 @@ pub fn rewrite_last_closure(
 ) -> Option<String> {
     if let ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) = expr.node {
         let body = match body.node {
-            ast::ExprKind::Block(ref block) if is_simple_block(block, context.codemap) => {
+            ast::ExprKind::Block(ref block)
+                if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
+            {
                 stmt_expr(&block.stmts[0]).unwrap_or(body)
             }
             _ => body,
