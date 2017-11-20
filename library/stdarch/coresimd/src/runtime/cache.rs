@@ -1,7 +1,7 @@
 //! Cache of run-time feature detection
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::usize;
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::usize;
 
 use super::bit;
 

@@ -885,7 +885,7 @@ pub unsafe fn _mm_movemask_ps(a: f32x4) -> i32 {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate coresimd as stdsimd;
 /// #
 /// # // The real main function
 /// # fn main() {
@@ -937,7 +937,7 @@ pub unsafe fn _mm_loadh_pi(a: f32x4, p: *const f32) -> f32x4 {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate coresimd as stdsimd;
 /// #
 /// # // The real main function
 /// # fn main() {

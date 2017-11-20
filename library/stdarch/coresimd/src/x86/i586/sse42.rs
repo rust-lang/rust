@@ -96,7 +96,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate coresimd as stdsimd;
 /// #
 /// # fn main() {
 /// #     if cfg_feature_enabled!("sse4.2") {
@@ -139,7 +139,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate coresimd as stdsimd;
 /// #
 /// # fn main() {
 /// #     if cfg_feature_enabled!("sse4.2") {
@@ -180,7 +180,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate coresimd as stdsimd;
 /// #
 /// # fn main() {
 /// #     if cfg_feature_enabled!("sse4.2") {
@@ -219,7 +219,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate coresimd as stdsimd;
 /// #
 /// # fn main() {
 /// #     if cfg_feature_enabled!("sse4.2") {
@@ -392,7 +392,7 @@ pub unsafe fn _mm_cmpestrm(
 /// # #![feature(cfg_target_feature)]
 /// # #![feature(target_feature)]
 /// #
-/// # #[macro_use] extern crate stdsimd;
+/// # #[macro_use] extern crate coresimd as stdsimd;
 /// #
 /// # fn main() {
 /// #     if cfg_feature_enabled!("sse4.2") {

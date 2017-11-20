@@ -504,7 +504,7 @@ pub unsafe fn _mm_ceil_ss(a: f32x4, b: f32x4) -> f32x4 {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// use stdsimd::vendor;
+/// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
 /// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
@@ -533,7 +533,7 @@ pub unsafe fn _mm_round_pd(a: f64x2, rounding: i32) -> f64x2 {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// use stdsimd::vendor;
+/// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
 /// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
@@ -564,7 +564,7 @@ pub unsafe fn _mm_round_ps(a: f32x4, rounding: i32) -> f32x4 {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// use stdsimd::vendor;
+/// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
 /// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);
@@ -595,7 +595,7 @@ pub unsafe fn _mm_round_sd(a: f64x2, b: f64x2, rounding: i32) -> f64x2 {
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```
-/// use stdsimd::vendor;
+/// use coresimd::vendor;
 ///
 /// // round to nearest, and suppress exceptions:
 /// (vendor::_MM_FROUND_TO_NEAREST_INT |vendor::_MM_FROUND_NO_EXC);

@@ -28,6 +28,7 @@ impl<'a> CpuInfoField<'a> {
         }
     }
     /// Does the field exist?
+    #[cfg(test)]
     pub fn exists(&self) -> bool {
         self.0.is_some()
     }
@@ -61,17 +62,19 @@ impl CpuInfo {
     pub fn field(&self, field: &str) -> CpuInfoField {
         for l in self.raw.lines() {
             if l.trim().starts_with(field) {
-                return CpuInfoField(l.split(": ").skip(1).next());
+                return CpuInfoField::new(l.split(": ").skip(1).next());
             }
         }
         CpuInfoField(None)
     }
 
     /// Returns the `raw` contents of `/proc/cpuinfo`
+    #[cfg(test)]
     fn raw(&self) -> &String {
         &self.raw
     }
 
+    #[cfg(test)]
     fn from_str(other: &str) -> Result<CpuInfo, ::std::io::Error> {
         Ok(CpuInfo {
             raw: String::from(other),

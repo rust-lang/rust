@@ -2,15 +2,17 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 #![cfg_attr(feature = "cargo-clippy", allow(option_unwrap_used))]
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 extern crate cupid;
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "arm",
+          target_arch = "aarch64"))]
 #[macro_use]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 extern crate stdsimd;
 
 #[test]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn works() {
+fn x86() {
     let information = cupid::master().unwrap();
     assert_eq!(cfg_feature_enabled!("sse"), information.sse());
     assert_eq!(cfg_feature_enabled!("sse2"), information.sse2());
@@ -51,4 +53,19 @@ fn works() {
         cfg_feature_enabled!("xsavec"),
         information.xsaves_xrstors_and_ia32_xss()
     );
+}
+
+#[test]
+#[cfg(all(target_arch = "arm", target_os = "linux"))]
+fn arm_linux() {
+    println!("neon: {}", cfg_feature_enabled!("neon"));
+    println!("pmull: {}", cfg_feature_enabled!("pmull"));
+}
+
+#[test]
+#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+fn aarch64_linux() {
+    println!("neon: {}", cfg_feature_enabled!("neon"));
+    println!("asimd: {}", cfg_feature_enabled!("asimd"));
+    println!("pmull: {}", cfg_feature_enabled!("pmull"));
 }

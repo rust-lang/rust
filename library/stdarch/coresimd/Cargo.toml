@@ -1,14 +1,14 @@
 [package]
-name = "stdsimd"
+name = "coresimd"
 version = "0.0.3"
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
-description = "SIMD support in Rust's standard library."
+description = "SIMD support in Rust's core library."
 documentation = "https://docs.rs/stdsimd"
 homepage = "https://github.com/BurntSushi/stdsimd"
 repository = "https://github.com/BurntSushi/stdsimd"
 readme = "README.md"
-keywords = ["std", "simd", "intrinsics"]
-categories = ["hardware-support"]
+keywords = ["core", "simd", "intrinsics"]
+categories = ["hardware-support", "no-std"]
 license = "MIT/Apache-2.0"
 
 [badges]
@@ -18,24 +18,12 @@ is-it-maintained-issue-resolution = { repository = "BurntSushi/stdsimd" }
 is-it-maintained-open-issues = { repository = "BurntSushi/stdsimd" }
 maintenance = { status = "experimental" }
 
-[dependencies]
-coresimd = { version = "0.0.3", path = "coresimd/" }
-
-[profile.release]
-debug = true
-opt-level = 3
-
-[profile.bench]
-debug = true
-opt-level = 3
-
 [dev-dependencies]
-stdsimd-test = { version = "0.*", path = "stdsimd-test" }
-cupid = "0.5.0"
+stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
 
 [features]
 # Internal-usage only: denies all warnings.
-strict = [ "coresimd/strict" ]
+strict = []
 # Internal-usage only: enables only those intrinsics supported by Intel's
 # Software Development Environment (SDE).
-intel_sde = [ "coresimd/intel_sde" ]
+intel_sde = []

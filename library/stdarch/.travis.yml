@@ -25,6 +25,8 @@ matrix:
       script: |
         cargo install clippy
         cargo clippy --all -- -D clippy-pedantic
+        cd coresimd
+        cargo clippy --all -- -D clippy-pedantic
   allow_failures:
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
     - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
@@ -32,7 +34,6 @@ install:
   - if [ "$NO_ADD" == "" ]; then rustup target add $TARGET; fi
 
 script:
-  - cargo generate-lockfile
   - ci/run-docker.sh $TARGET $FEATURES
 
 notifications:

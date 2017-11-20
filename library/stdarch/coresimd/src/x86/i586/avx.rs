@@ -326,9 +326,9 @@ pub unsafe fn _mm256_div_pd(a: f64x4, b: f64x4) -> f64x4 {
 /// - `0x02`: Round up, toward positive infinity.
 /// - `0x03`: Truncate the values.
 ///
-/// For a complete list of options, check the LLVM docs:
+/// For a complete list of options, check [the LLVM docs][llvm_docs].
 ///
-/// https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
+/// [llvm_docs]: https://github.com/llvm-mirror/clang/blob/dcd8d797b20291f1a6b3e0ddda085aa2bbb382a8/lib/Headers/avxintrin.h#L382
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vroundpd, b = 0x3))]

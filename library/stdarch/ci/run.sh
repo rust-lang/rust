@@ -16,14 +16,14 @@ case ${TARGET} in
 esac
 
 FEATURES="strict,$FEATURES"
-FEATURES_STD="$std,${FEATURES}"
 
 echo "RUSTFLAGS=${RUSTFLAGS}"
 echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"
 
-cargo test --target $TARGET --features $FEATURES --verbose -- --nocapture
-cargo test --release --target $TARGET --features $FEATURES --verbose -- --nocapture
-
-cargo test --target $TARGET --features $FEATURES_STD --verbose -- --nocapture
-cargo test --release --target $TARGET --features $FEATURES_STD --verbose -- --nocapture
+cd coresimd
+cargo test --all --target $TARGET --features $FEATURES --verbose -- --nocapture
+cargo test --all --release --target $TARGET --features $FEATURES --verbose -- --nocapture
+cd ..
+cargo test --all --target $TARGET --features $FEATURES --verbose -- --nocapture
+cargo test --all --release --target $TARGET --features $FEATURES --verbose -- --nocapture
