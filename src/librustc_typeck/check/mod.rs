@@ -2131,7 +2131,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn default_type_parameters(&self) {
+    fn apply_diverging_and_numeric_type_parameter_fallback(&self) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -2161,13 +2161,45 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[allow(dead_code)]
+    fn apply_user_type_parameter_fallback(&self) {
+        debug!("Applying user defaults");
+        // It is a possible that this algorithm will have to run an arbitrary number of times
+        // to terminate so we bound it by the compiler's recursion limit.
+        // TODO: detect fixed point.
+        for _ in 0..5 {//self.tcx().sess.recursion_limit.get() {
+            self.select_obligations_where_possible();
+            // Collect all unsolved type variables.
+            let unsolved = self.inh.infcx.candidates_for_defaulting();
+
+            let mut has_user_default = FxHashSet();
+
+            // Examine all unsolved variables, applying user defaults.
+            // If no default is provided, then the variable will be unable to unify with anything.
+            for &(ref ty, ref default) in &unsolved {
+                if let &Default::User(ref user_default) = default {
+                    println!("apply_user_type_parameter_fallback: \
+                            ty: {:?} with default: {:?}", ty, user_default);
+                    has_user_default.insert((*ty, user_default.clone()));
+                    
+                    let normalized_default = self.normalize_associated_types_in(
+                        user_default.origin_span,
+                        &user_default.ty);
+                    self.demand_eqtype(user_default.origin_span, *ty, normalized_default);
+                } else {
+                    self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.err);
+                }
+            }
+        }
+    }
+
     // Implements type inference fallback algorithm
     fn select_all_obligations_and_apply_defaults(&self) {
         self.select_obligations_where_possible();
-        self.default_type_parameters();
+        self.apply_diverging_and_numeric_type_parameter_fallback();
         self.select_obligations_where_possible();
     }
-
+    
     #[allow(dead_code)]
     fn new_select_all_obligations_and_apply_defaults(&self) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
@@ -2223,6 +2255,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 is_diverging.is_empty()
             {
                 break;
+            }
+
+            // First apply integer and floating point fallbacks.
+            for ty in &has_literal_fallback {
+                let resolved = self.infcx.resolve_type_vars_if_possible(ty);
+                match self.infcx.type_is_unconstrained_numeric(resolved) {
+                    UnconstrainedInt => {
+                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                    },
+                    UnconstrainedFloat => {
+                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                    }
+                    Neither => {}
+                }
             }
 
             // Finally we loop through each of the unbound type variables and unify them with
@@ -2303,21 +2349,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }*/
 
-            // Apply integer and floating point fallbacks to any variables that
-            // weren't solved by the previous phase where we applied user defaults.
-            for ty in &has_literal_fallback {
-                let resolved = self.infcx.resolve_type_vars_if_possible(ty);
-                match self.infcx.type_is_unconstrained_numeric(resolved) {
-                    UnconstrainedInt => {
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                    }
-                    Neither => {}
-                }
-            }
-
             // Finally for any leftover variables that diverage
             // we should apply the unit fallback rules.
             for ty in &is_diverging {
@@ -2381,6 +2412,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.select_all_obligations_and_apply_defaults();
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
+
+        if fulfillment_cx.select_where_possible(self).is_err() {
+            self.apply_user_type_parameter_fallback();
+            // FIXME: Probably uneccessary.
+            self.select_obligations_where_possible();
+        }
 
         match fulfillment_cx.select_all_or_error(self) {
             Ok(()) => { }
