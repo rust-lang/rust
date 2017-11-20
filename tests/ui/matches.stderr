@@ -143,7 +143,6 @@ error: you don't need to add `&` to all patterns
 150 | |         _ => println!("none"),
 151 | |     }
     | |_____^
-    |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
 148 |     match *tup { .. }
@@ -165,7 +164,6 @@ error: you don't need to add `&` to all patterns
 166 | |         println!("none");
 167 | |     }
     | |_____^
-    |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |
 165 |     if let .. = *a { .. }

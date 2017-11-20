@@ -29,7 +29,6 @@ error: this argument is passed by value, but not consumed in the function body
    |
 44 | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
    |                  ^^^^^^^^^^^^^^^^^^^^^^
-   |
 help: consider taking a reference instead
    |
 44 | fn test_match(x: &Option<Option<String>>, y: Option<Option<String>>) {
@@ -47,7 +46,6 @@ error: this argument is passed by value, but not consumed in the function body
    |
 57 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                                    ^^^^^^^
-   |
 help: consider taking a reference instead
    |
 57 | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
@@ -73,7 +71,6 @@ error: this argument is passed by value, but not consumed in the function body
    |
 75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                             ^^^^^^
-   |
 help: consider changing the type to
    |
 75 | fn issue_2114(s: String, t: &str, u: Vec<i32>, v: Vec<i32>) {
@@ -94,7 +91,6 @@ error: this argument is passed by value, but not consumed in the function body
    |
 75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                                                     ^^^^^^^^
-   |
 help: consider changing the type to
    |
 75 | fn issue_2114(s: String, t: String, u: Vec<i32>, v: &[i32]) {

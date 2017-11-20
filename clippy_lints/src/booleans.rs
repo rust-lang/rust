@@ -159,120 +159,114 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 }
 
-fn simplify_not(expr: &Expr, cx: &LateContext) -> Option<String> {
-    let snip = |e: &Expr| snippet_opt(cx, e.span).expect("don't try to improve booleans created by macros");
-    match expr.node {
-        ExprBinary(binop, ref lhs, ref rhs) => {
-            match binop.node {
-                BiEq => Some(" != "),
-                BiNe => Some(" == "),
-                BiLt => Some(" >= "),
-                BiGt => Some(" <= "),
-                BiLe => Some(" > "),
-                BiGe => Some(" < "),
-                _ => None,
-            }.map(|op| format!("{}{}{}", &snip(lhs), op, &snip(rhs)))
-        },
-        ExprMethodCall(ref path, _, ref args) if args.len() == 1 => {
-            METHODS_WITH_NEGATION
-                .iter().cloned()
-                .flat_map(|(a, b)| vec![(a, b), (b, a)])
-                .find(|&(a, _)| a == path.name.as_str())
-                .map(|(_, neg_method)| format!("{}.{}()", &snip(&args[0]), neg_method))
-        },
-        _ => None,
+struct SuggestContext<'a, 'tcx: 'a, 'v> {
+    terminals: &'v [&'v Expr],
+    cx: &'a LateContext<'a, 'tcx>,
+    output: String,
+    simplified: bool,
+}
+
+impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
+    fn snip(&self, e: &Expr) -> String {
+        snippet_opt(self.cx, e.span).expect("don't try to improve booleans created by macros")
+    }
+
+    fn simplify_not(&self, expr: &Expr) -> Option<String> {
+        match expr.node {
+            ExprBinary(binop, ref lhs, ref rhs) => {
+                match binop.node {
+                    BiEq => Some(" != "),
+                    BiNe => Some(" == "),
+                    BiLt => Some(" >= "),
+                    BiGt => Some(" <= "),
+                    BiLe => Some(" > "),
+                    BiGe => Some(" < "),
+                    _ => None,
+                }.map(|op| format!("{}{}{}", self.snip(lhs), op, self.snip(rhs)))
+            },
+            ExprMethodCall(ref path, _, ref args) if args.len() == 1 => {
+                METHODS_WITH_NEGATION
+                    .iter().cloned()
+                    .flat_map(|(a, b)| vec![(a, b), (b, a)])
+                    .find(|&(a, _)| a == path.name.as_str())
+                    .map(|(_, neg_method)| format!("{}.{}()", self.snip(&args[0]), neg_method))
+            },
+            _ => None,
+        }
+    }
+
+    fn recurse(&mut self, suggestion: &Bool) {
+        use quine_mc_cluskey::Bool::*;
+        match *suggestion {
+            True => {
+                self.output.push_str("true");
+            },
+            False => {
+                self.output.push_str("false");
+            },
+            Not(ref inner) => match **inner {
+                And(_) | Or(_) => {
+                    self.output.push('!');
+                    self.output.push('(');
+                    self.recurse(inner);
+                    self.output.push(')');
+                },
+                Term(n) => {
+                    let terminal = self.terminals[n as usize];
+                    if let Some(str) = self.simplify_not(terminal) {
+                        self.simplified = true;
+                        self.output.push_str(&str)
+                    } else {
+                        self.output.push('!');
+                        let snip = self.snip(terminal);
+                        self.output.push_str(&snip);
+                    }
+                },
+                True | False | Not(_) => {
+                    self.output.push('!');
+                    self.recurse(inner)
+                },
+            },
+            And(ref v) => {
+                for (index, inner) in v.iter().enumerate() {
+                    if index > 0 {
+                        self.output.push_str(" && ");
+                    }
+                    if let Or(_) = *inner {
+                        self.output.push('(');
+                        self.recurse(inner);
+                        self.output.push(')');
+                    } else {
+                        self.recurse(inner);
+                    }
+                }
+            },
+            Or(ref v) => {
+                for (index, inner) in v.iter().enumerate() {
+                    if index > 0 {
+                        self.output.push_str(" || ");
+                    }
+                    self.recurse(inner);
+                }
+            },
+            Term(n) => {
+                let snip = self.snip(self.terminals[n as usize]);
+                self.output.push_str(&snip);
+            },
+        }
     }
 }
 
 // The boolean part of the return indicates whether some simplifications have been applied.
 fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> (String, bool) {
-    fn recurse(
-        brackets: bool,
-        cx: &LateContext,
-        suggestion: &Bool,
-        terminals: &[&Expr],
-        s: &mut String,
-        simplified: &mut bool,
-    ) {
-        use quine_mc_cluskey::Bool::*;
-        let snip = |e: &Expr| snippet_opt(cx, e.span).expect("don't try to improve booleans created by macros");
-        match *suggestion {
-            True => {
-                s.push_str("true");
-            },
-            False => {
-                s.push_str("false");
-            },
-            Not(ref inner) => match **inner {
-                And(_) | Or(_) => {
-                    s.push('!');
-                    recurse(true, cx, inner, terminals, s, simplified)
-                },
-                Term(n) => {
-                    if let Some(str) = simplify_not(terminals[n as usize], cx) {
-                        *simplified = true;
-                        s.push_str(&str)
-                    } else {
-                        s.push('!');
-                        recurse(false, cx, inner, terminals, s, simplified)
-                    }
-                },
-                True | False | Not(_) => {
-                    s.push('!');
-                    recurse(false, cx, inner, terminals, s, simplified)
-                },
-            },
-            And(ref v) => {
-                if brackets {
-                    s.push('(');
-                }
-                for (index, inner) in v.iter().enumerate() {
-                    if index > 0 {
-                        s.push_str(" && ");
-                    }
-                    if let Or(_) = *inner {
-                        recurse(true, cx, inner, terminals, s, simplified);
-                    } else {
-                        recurse(false, cx, inner, terminals, s, simplified);
-                    }
-                }
-                if brackets {
-                    s.push(')');
-                }
-            },
-            Or(ref v) => {
-                if brackets {
-                    s.push('(');
-                }
-                for (index, inner) in v.iter().enumerate() {
-                    if index > 0 {
-                        s.push_str(" || ");
-                    }
-                    recurse(false, cx, inner, terminals, s, simplified);
-                }
-                if brackets {
-                    s.push(')');
-                }
-            },
-            Term(n) => {
-                let brackets = brackets && match terminals[n as usize].node {
-                    ExprBinary(..) => true,
-                    _ => false,
-                };
-                if brackets {
-                    s.push('(');
-                }
-                s.push_str(&snip(terminals[n as usize]));
-                if brackets {
-                    s.push(')');
-                }
-            },
-        }
-    }
-    let mut simplified = false;
-    let mut s = String::new();
-    recurse(false, cx, suggestion, terminals, &mut s, &mut simplified);
-    (s, simplified)
+    let mut suggest_context = SuggestContext {
+        terminals: terminals,
+        cx: cx,
+        output: String::new(),
+        simplified: false,
+    };
+    suggest_context.recurse(suggestion);
+    (suggest_context.output, suggest_context.simplified)
 }
 
 fn simple_negate(b: Bool) -> Bool {

@@ -91,7 +91,6 @@ error: the loop variable `i` is only used to index `vec`.
 96 | |         let _ = vec[i];
 97 | |     }
    | |_____^
-   |
 help: consider using an iterator
    |
 95 |     for <item> in &vec {
@@ -104,7 +103,6 @@ error: the loop variable `j` is only used to index `STATIC`.
 101 | |         println!("{:?}", STATIC[j]);
 102 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 100 |     for <item> in STATIC.iter().take(4) {
@@ -117,7 +115,6 @@ error: the loop variable `j` is only used to index `CONST`.
 105 | |         println!("{:?}", CONST[j]);
 106 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 104 |     for <item> in CONST.iter().take(4) {
@@ -130,7 +127,6 @@ error: the loop variable `i` is used to index `vec`
 109 | |         println!("{} {}", vec[i], i);
 110 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 108 |     for (i, <item>) in vec.iter().enumerate() {
@@ -143,7 +139,6 @@ error: the loop variable `i` is only used to index `vec2`.
 117 | |         println!("{}", vec2[i]);
 118 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 116 |     for <item> in vec2.iter().take(vec.len()) {
@@ -156,7 +151,6 @@ error: the loop variable `i` is only used to index `vec`.
 121 | |         println!("{}", vec[i]);
 122 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 120 |     for <item> in vec.iter().skip(5) {
@@ -169,7 +163,6 @@ error: the loop variable `i` is only used to index `vec`.
 125 | |         println!("{}", vec[i]);
 126 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 124 |     for <item> in vec.iter().take(MAX_LEN) {
@@ -182,7 +175,6 @@ error: the loop variable `i` is only used to index `vec`.
 129 | |         println!("{}", vec[i]);
 130 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 128 |     for <item> in vec.iter().take(MAX_LEN + 1) {
@@ -195,7 +187,6 @@ error: the loop variable `i` is only used to index `vec`.
 133 | |         println!("{}", vec[i]);
 134 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 132 |     for <item> in vec.iter().take(10).skip(5) {
@@ -208,7 +199,6 @@ error: the loop variable `i` is only used to index `vec`.
 137 | |         println!("{}", vec[i]);
 138 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 136 |     for <item> in vec.iter().take(10 + 1).skip(5) {
@@ -221,7 +211,6 @@ error: the loop variable `i` is used to index `vec`
 141 | |         println!("{} {}", vec[i], i);
 142 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 140 |     for (i, <item>) in vec.iter().enumerate().skip(5) {
@@ -234,7 +223,6 @@ error: the loop variable `i` is used to index `vec`
 145 | |         println!("{} {}", vec[i], i);
 146 | |     }
     | |_____^
-    |
 help: consider using an iterator
     |
 144 |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
@@ -261,7 +249,6 @@ error: this range is empty so this for loop will never run
 153 | |         println!("{}", i);
 154 | |     }
     | |_____^
-    |
 help: consider using the following if you are attempting to iterate over this range in reverse
     |
 152 |     for i in (0...10).rev() {
@@ -274,7 +261,6 @@ error: this range is empty so this for loop will never run
 157 | |         println!("{}", i);
 158 | |     }
     | |_____^
-    |
 help: consider using the following if you are attempting to iterate over this range in reverse
     |
 156 |     for i in (0..MAX_LEN).rev() {
@@ -295,7 +281,6 @@ error: this range is empty so this for loop will never run
 186 | |         println!("{}", i);
 187 | |     }
     | |_____^
-    |
 help: consider using the following if you are attempting to iterate over this range in reverse
     |
 185 |     for i in (5 + 4..10).rev() {
@@ -308,7 +293,6 @@ error: this range is empty so this for loop will never run
 190 | |         println!("{}", i);
 191 | |     }
     | |_____^
-    |
 help: consider using the following if you are attempting to iterate over this range in reverse
     |
 189 |     for i in ((3 - 1)..(5 + 2)).rev() {
@@ -460,7 +444,6 @@ error: you seem to want to iterate on a map's values
 394 | |         // `in *m.values()` as we used to
 395 | |     }
     | |_____^
-    |
 help: use the corresponding method
     |
 390 |     for v in (*m).values() {
@@ -473,7 +456,6 @@ error: you seem to want to iterate on a map's values
 399 | |         let _v = v;
 400 | |     }
     | |_____^
-    |
 help: use the corresponding method
     |
 398 |     for v in m.values_mut() {
@@ -486,7 +468,6 @@ error: you seem to want to iterate on a map's values
 404 | |         let _v = v;
 405 | |     }
     | |_____^
-    |
 help: use the corresponding method
     |
 403 |     for v in (*m).values_mut() {
@@ -499,7 +480,6 @@ error: you seem to want to iterate on a map's keys
 410 | |         let _k = k;
 411 | |     }
     | |_____^
-    |
 help: use the corresponding method
     |
 409 |     for k in rm.keys() {
@@ -555,7 +535,6 @@ error: it looks like you're manually copying between slices
 497 | |         dst2[i + 500] = src[i]
 498 | |     }
     | |_____^
-    |
 help: try replacing the loop by
     |
 495 |     dst[10..256].clone_from_slice(&src[(10 - 5)..(256 - 5)])
