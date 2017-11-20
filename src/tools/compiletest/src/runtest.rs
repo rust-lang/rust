@@ -1370,7 +1370,7 @@ actual:\n\
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags
             .iter()
-            .fold(false, |acc, x| acc || x.starts_with("--target"));
+            .any(|x| x.starts_with("--target"));
 
         if !custom_target {
             let target = if self.props.force_host {
