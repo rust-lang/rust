@@ -15,7 +15,7 @@ pub mod patch;
 
 mod alignment;
 mod graphviz;
-mod pretty;
+pub(crate) mod pretty;
 pub mod liveness;
 
 pub use self::alignment::is_disaligned;

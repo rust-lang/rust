@@ -14,17 +14,17 @@ use rustc::mir::*;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx};
+use rustc_data_structures::indexed_vec::Idx;
 use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use super::graphviz::write_mir_fn_graphviz;
 use transform::MirSource;
 
 const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
-const ALIGN: usize = 40;
+pub(crate) const ALIGN: usize = 40;
 
 /// An indication of where we are in the control flow graph. Used for printing
 /// extra information in `dump_mir`
@@ -38,8 +38,11 @@ pub enum PassWhere {
     /// We are about to start dumping the given basic block.
     BeforeBlock(BasicBlock),
 
-    /// We are just about to dumpt the given statement or terminator.
-    InCFG(Location),
+    /// We are just about to dump the given statement or terminator.
+    BeforeLocation(Location),
+
+    /// We just dumped the given statement or terminator.
+    AfterLocation(Location),
 }
 
 /// If the session is properly configured, dumps a human-readable
@@ -56,87 +59,80 @@ pub enum PassWhere {
 /// - `substring1&substring2,...` -- `&`-separated list of substrings
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
-pub fn dump_mir<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                   pass_num: Option<&Display>,
-                                   pass_name: &str,
-                                   disambiguator: &Display,
-                                   source: MirSource,
-                                   mir: &Mir<'tcx>,
-                                   extra_data: F)
-where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+pub fn dump_mir<'a, 'gcx, 'tcx, F>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pass_num: Option<&Display>,
+    pass_name: &str,
+    disambiguator: &Display,
+    source: MirSource,
+    mir: &Mir<'tcx>,
+    extra_data: F,
+) where
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
 {
     if !dump_enabled(tcx, pass_name, source) {
         return;
     }
 
-    let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
+    let node_path = item_path::with_forced_impl_filename_line(|| {
+        // see notes on #41697 below
         tcx.item_path_str(source.def_id)
     });
-    dump_matched_mir_node(tcx, pass_num, pass_name, &node_path,
-                          disambiguator, source, mir, extra_data);
+    dump_matched_mir_node(
+        tcx,
+        pass_num,
+        pass_name,
+        &node_path,
+        disambiguator,
+        source,
+        mir,
+        extra_data,
+    );
 }
 
-pub fn dump_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                    pass_name: &str,
-                                    source: MirSource)
-                                    -> bool {
+pub fn dump_enabled<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pass_name: &str,
+    source: MirSource,
+) -> bool {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return false,
         Some(ref filters) => filters,
     };
-    let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
+    let node_path = item_path::with_forced_impl_filename_line(|| {
+        // see notes on #41697 below
         tcx.item_path_str(source.def_id)
     });
-    filters.split("&")
-           .any(|filter| {
-               filter == "all" ||
-                   pass_name.contains(filter) ||
-                   node_path.contains(filter)
-           })
+    filters.split("&").any(|filter| {
+        filter == "all" || pass_name.contains(filter) || node_path.contains(filter)
+    })
 }
 
 // #41697 -- we use `with_forced_impl_filename_line()` because
 // `item_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
-fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            pass_num: Option<&Display>,
-                                            pass_name: &str,
-                                            node_path: &str,
-                                            disambiguator: &Display,
-                                            source: MirSource,
-                                            mir: &Mir<'tcx>,
-                                            mut extra_data: F)
-where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pass_num: Option<&Display>,
+    pass_name: &str,
+    node_path: &str,
+    disambiguator: &Display,
+    source: MirSource,
+    mir: &Mir<'tcx>,
+    mut extra_data: F,
+) where
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
 {
-    let promotion_id = match source.promoted {
-        Some(id) => format!("-{:?}", id),
-        None => String::new()
-    };
-
-    let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
-        format!("")
-    } else {
-        match pass_num {
-            None => format!(".-------"),
-            Some(pass_num) => format!(".{}", pass_num),
-        }
-    };
-
-    let mut file_path = PathBuf::new();
-    if let Some(ref file_dir) = tcx.sess.opts.debugging_opts.dump_mir_dir {
-        let p = Path::new(file_dir);
-        file_path.push(p);
-    };
-
-    let _ = fs::create_dir_all(&file_path);
-    let item_name = tcx.hir.def_path(source.def_id).to_filename_friendly_no_crate();
-    let file_name = format!("rustc.{}{}{}.{}.{}.mir",
-                            item_name, promotion_id, pass_num, pass_name, disambiguator);
-    file_path.push(&file_name);
-    let _ = fs::File::create(&file_path).and_then(|mut file| {
+    let _: io::Result<()> = do catch {
+        let mut file = create_dump_file(
+            tcx,
+            "mir",
+            pass_num,
+            pass_name,
+            disambiguator,
+            source,
+        )?;
         writeln!(file, "// MIR for `{}`", node_path)?;
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
@@ -149,25 +145,108 @@ where
         write_mir_fn(tcx, source, mir, &mut extra_data, &mut file)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
         Ok(())
-    });
+    };
 
     if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
-        file_path.set_extension("dot");
-        let _ = fs::File::create(&file_path).and_then(|mut file| {
+    let _: io::Result<()> = do catch {
+            let mut file = create_dump_file(
+                tcx,
+                "dot",
+                pass_num,
+                pass_name,
+                disambiguator,
+                source,
+            )?;
             write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;
             Ok(())
-        });
+        };
     }
 }
 
+/// Returns the path to the filename where we should dump a given MIR.
+/// Also used by other bits of code (e.g., NLL inference) that dump
+/// graphviz data or other things.
+fn dump_path(
+    tcx: TyCtxt<'_, '_, '_>,
+    extension: &str,
+    pass_num: Option<&Display>,
+    pass_name: &str,
+    disambiguator: &Display,
+    source: MirSource,
+) -> PathBuf {
+    let promotion_id = match source.promoted {
+        Some(id) => format!("-{:?}", id),
+        None => String::new(),
+    };
+
+    let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
+        format!("")
+    } else {
+        match pass_num {
+            None => format!(".-------"),
+            Some(pass_num) => format!(".{}", pass_num),
+        }
+    };
+
+    let mut file_path = PathBuf::new();
+
+    if let Some(ref file_dir) = tcx.sess.opts.debugging_opts.dump_mir_dir {
+        let p = Path::new(file_dir);
+        file_path.push(p);
+    };
+
+    let item_name = tcx.hir
+        .def_path(source.def_id)
+        .to_filename_friendly_no_crate();
+
+    let file_name = format!(
+        "rustc.{}{}{}.{}.{}.{}",
+        item_name,
+        promotion_id,
+        pass_num,
+        pass_name,
+        disambiguator,
+        extension,
+    );
+
+    file_path.push(&file_name);
+
+    file_path
+}
+
+/// Attempts to open a file where we should dump a given MIR or other
+/// bit of MIR-related data. Used by `mir-dump`, but also by other
+/// bits of code (e.g., NLL inference) that dump graphviz data or
+/// other things, and hence takes the extension as an argument.
+pub(crate) fn create_dump_file(
+    tcx: TyCtxt<'_, '_, '_>,
+    extension: &str,
+    pass_num: Option<&Display>,
+    pass_name: &str,
+    disambiguator: &Display,
+    source: MirSource,
+) -> io::Result<fs::File> {
+    let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, source);
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::File::create(&file_path)
+}
+
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                        single: Option<DefId>,
-                                        w: &mut Write)
-                                        -> io::Result<()>
-{
-    writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
-    writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
+pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    single: Option<DefId>,
+    w: &mut Write,
+) -> io::Result<()> {
+    writeln!(
+        w,
+        "// WARNING: This output format is intended for human consumers only"
+    )?;
+    writeln!(
+        w,
+        "// and is subject to change without notice. Knock yourself out."
+    )?;
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
@@ -186,7 +265,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             writeln!(w, "")?;
             let src = MirSource {
                 def_id,
-                promoted: Some(i)
+                promoted: Some(i),
             };
             write_mir_fn(tcx, src, mir, &mut |_, _| Ok(()), w)?;
         }
@@ -194,14 +273,15 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     Ok(())
 }
 
-pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       src: MirSource,
-                                       mir: &Mir<'tcx>,
-                                       extra_data: &mut F,
-                                       w: &mut Write)
-                                       -> io::Result<()>
+pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    src: MirSource,
+    mir: &Mir<'tcx>,
+    extra_data: &mut F,
+    w: &mut Write,
+) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
 {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
@@ -217,14 +297,15 @@ where
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-pub fn write_basic_block<F>(tcx: TyCtxt,
-                            block: BasicBlock,
-                            mir: &Mir,
-                            extra_data: &mut F,
-                            w: &mut Write)
-                            -> io::Result<()>
+pub fn write_basic_block<F>(
+    tcx: TyCtxt,
+    block: BasicBlock,
+    mir: &Mir,
+    extra_data: &mut F,
+    w: &mut Write,
+) -> io::Result<()>
 where
-    F: FnMut(PassWhere, &mut Write) -> io::Result<()>
+    F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
 {
     let data = &mir[block];
 
@@ -234,43 +315,61 @@ where
     writeln!(w, "{0:1$}{2}", lbl, ALIGN, cleanup_text)?;
 
     // List of statements in the middle.
-    let mut current_location = Location { block: block, statement_index: 0 };
+    let mut current_location = Location {
+        block: block,
+        statement_index: 0,
+    };
     for statement in &data.statements {
-        extra_data(PassWhere::InCFG(current_location), w)?;
+        extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_mir = format!("{0}{0}{1:?};", INDENT, statement);
-        writeln!(w, "{0:1$} // {2}",
-                 indented_mir,
-                 ALIGN,
-                 comment(tcx, statement.source_info))?;
+        writeln!(
+            w,
+            "{:A$} // {:?}: {}",
+            indented_mir,
+            current_location,
+            comment(tcx, statement.source_info),
+            A = ALIGN,
+        )?;
+        extra_data(PassWhere::AfterLocation(current_location), w)?;
 
         current_location.statement_index += 1;
     }
 
     // Terminator at the bottom.
-    extra_data(PassWhere::InCFG(current_location), w)?;
+    extra_data(PassWhere::BeforeLocation(current_location), w)?;
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
-    writeln!(w, "{0:1$} // {2}",
-             indented_terminator,
-             ALIGN,
-             comment(tcx, data.terminator().source_info))?;
+    writeln!(
+        w,
+        "{:A$} // {:?}: {}",
+        indented_terminator,
+        current_location,
+        comment(tcx, data.terminator().source_info),
+        A = ALIGN,
+    )?;
+    extra_data(PassWhere::AfterLocation(current_location), w)?;
 
     writeln!(w, "{}}}", INDENT)
 }
 
 fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
-    format!("scope {} at {}", scope.index(), tcx.sess.codemap().span_to_string(span))
+    format!(
+        "scope {} at {}",
+        scope.index(),
+        tcx.sess.codemap().span_to_string(span)
+    )
 }
 
 /// Prints user-defined variables in a scope tree.
 ///
 /// Returns the total number of variables printed.
-fn write_scope_tree(tcx: TyCtxt,
-                    mir: &Mir,
-                    scope_tree: &FxHashMap<VisibilityScope, Vec<VisibilityScope>>,
-                    w: &mut Write,
-                    parent: VisibilityScope,
-                    depth: usize)
-                    -> io::Result<()> {
+fn write_scope_tree(
+    tcx: TyCtxt,
+    mir: &Mir,
+    scope_tree: &FxHashMap<VisibilityScope, Vec<VisibilityScope>>,
+    w: &mut Write,
+    parent: VisibilityScope,
+    depth: usize,
+) -> io::Result<()> {
     let indent = depth * INDENT.len();
 
     let children = match scope_tree.get(&parent) {
@@ -300,17 +399,22 @@ fn write_scope_tree(tcx: TyCtxt,
             };
 
             let indent = indent + INDENT.len();
-            let indented_var = format!("{0:1$}let {2}{3:?}: {4};",
-                                       INDENT,
-                                       indent,
-                                       mut_str,
-                                       local,
-                                       var.ty);
-            writeln!(w, "{0:1$} // \"{2}\" in {3}",
-                     indented_var,
-                     ALIGN,
-                     name,
-                     comment(tcx, source_info))?;
+            let indented_var = format!(
+                "{0:1$}let {2}{3:?}: {4:?};",
+                INDENT,
+                indent,
+                mut_str,
+                local,
+                var.ty
+            );
+            writeln!(
+                w,
+                "{0:1$} // \"{2}\" in {3}",
+                indented_var,
+                ALIGN,
+                name,
+                comment(tcx, source_info)
+            )?;
         }
 
         write_scope_tree(tcx, mir, scope_tree, w, child, depth + 1)?;
@@ -323,11 +427,12 @@ fn write_scope_tree(tcx: TyCtxt,
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-pub fn write_mir_intro<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       src: MirSource,
-                                       mir: &Mir,
-                                       w: &mut Write)
-                                       -> io::Result<()> {
+pub fn write_mir_intro<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    src: MirSource,
+    mir: &Mir,
+    w: &mut Write,
+) -> io::Result<()> {
     write_mir_sig(tcx, src, mir, w)?;
     writeln!(w, " {{")?;
 
@@ -335,9 +440,10 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let mut scope_tree: FxHashMap<VisibilityScope, Vec<VisibilityScope>> = FxHashMap();
     for (index, scope_data) in mir.visibility_scopes.iter().enumerate() {
         if let Some(parent) = scope_data.parent_scope {
-            scope_tree.entry(parent)
-                      .or_insert(vec![])
-                      .push(VisibilityScope::new(index));
+            scope_tree
+                .entry(parent)
+                .or_insert(vec![])
+                .push(VisibilityScope::new(index));
         } else {
             // Only the argument scope has no parent, because it's the root.
             assert_eq!(index, ARGUMENT_VISIBILITY_SCOPE.index());
@@ -363,9 +469,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     Ok(())
 }
 
-fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
-                 -> io::Result<()>
-{
+fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write) -> io::Result<()> {
     let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
     let body_owner_kind = tcx.hir.body_owner_kind(id);
     match (body_owner_kind, src.promoted) {
@@ -376,7 +480,8 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         (hir::BodyOwnerKind::Static(hir::MutMutable), _) => write!(w, "static mut")?,
     }
 
-    item_path::with_forced_impl_filename_line(|| { // see notes on #41697 elsewhere
+    item_path::with_forced_impl_filename_line(|| {
+        // see notes on #41697 elsewhere
         write!(w, " {}", tcx.item_path_str(src.def_id))
     })?;
 
@@ -394,9 +499,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
 
             write!(w, ") -> {}", mir.return_ty())
         }
-        (hir::BodyOwnerKind::Const, _) |
-        (hir::BodyOwnerKind::Static(_), _) |
-        (_, Some(_)) => {
+        (hir::BodyOwnerKind::Const, _) | (hir::BodyOwnerKind::Static(_), _) | (_, Some(_)) => {
             assert_eq!(mir.arg_count, 0);
             write!(w, ": {} =", mir.return_ty())
         }
@@ -406,7 +509,13 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
 fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     // Compiler-introduced temporary types.
     for temp in mir.temps_iter() {
-        writeln!(w, "{}let mut {:?}: {};", INDENT, temp, mir.local_decls[temp].ty)?;
+        writeln!(
+            w,
+            "{}let mut {:?}: {};",
+            INDENT,
+            temp,
+            mir.local_decls[temp].ty
+        )?;
     }
 
     Ok(())
