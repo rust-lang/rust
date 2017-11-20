@@ -355,7 +355,6 @@ impl Session {
 
     /// Analogous to calling methods on the given `DiagnosticBuilder`, but
     /// deduplicates on lint ID, span (if any), and message for this `Session`
-    /// if we're not outputting in JSON mode.
     fn diag_once<'a, 'b>(&'a self,
                          diag_builder: &'b mut DiagnosticBuilder<'a>,
                          method: DiagnosticBuilderMethod,
@@ -371,20 +370,11 @@ impl Session {
             }
         };
 
-        match self.opts.error_format {
-            // when outputting JSON for tool consumption, the tool might want
-            // the duplicates
-            config::ErrorOutputType::Json(_) => {
-                do_method()
-            },
-            _ => {
-                let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
-                let id_span_message = (lint_id, span, message.to_owned());
-                let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
-                if fresh {
-                    do_method()
-                }
-            }
+        let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
+        let id_span_message = (lint_id, span, message.to_owned());
+        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
+        if fresh {
+            do_method()
         }
     }
 
