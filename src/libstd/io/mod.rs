@@ -419,14 +419,8 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 ///
 /// [`File`]s implement `Read`:
 ///
-/// [`read()`]: trait.Read.html#tymethod.read
-/// [`std::io`]: ../../std/io/index.html
-/// [`File`]: ../fs/struct.File.html
-/// [`BufRead`]: trait.BufRead.html
-/// [`BufReader`]: struct.BufReader.html
-///
 /// ```
-/// use std::io;
+/// # use std::io;
 /// use std::io::prelude::*;
 /// use std::fs::File;
 ///
@@ -449,6 +443,32 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 /// # Ok(())
 /// # }
 /// ```
+///
+/// Read from `&str` because [`&[u8]`] implements [`Read`]:
+///
+/// ```
+/// # use std::io;
+/// use std::io::prelude::*;
+///
+/// # fn foo() -> io::Result<()> {
+/// let mut b = "This string will be read".as_bytes();
+/// let mut buffer = [0; 10];
+///
+/// // read up to 10 bytes
+/// b.read(&mut buffer)?;
+///
+/// // etc... it works exactly as a File does!
+/// # Ok(())
+/// # }
+/// ```
+///
+/// [`read()`]: trait.Read.html#tymethod.read
+/// [`std::io`]: ../../std/io/index.html
+/// [`File`]: ../fs/struct.File.html
+/// [`BufRead`]: trait.BufRead.html
+/// [`BufReader`]: struct.BufReader.html
+/// [`&[u8]`]: primitive.slice.html
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
