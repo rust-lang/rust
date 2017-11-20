@@ -724,6 +724,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         // these
         DepKind::IsCopy |
         DepKind::IsSized |
+        DepKind::IsDynSized |
         DepKind::IsFreeze |
         DepKind::NeedsDrop |
         DepKind::Layout |
@@ -790,6 +791,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::IsConstFn => { force!(is_const_fn, def_id!()); }
         DepKind::IsForeignItem => { force!(is_foreign_item, def_id!()); }
         DepKind::SizedConstraint => { force!(adt_sized_constraint, def_id!()); }
+        DepKind::DynSizedConstraint => { force!(adt_dynsized_constraint, def_id!()); }
         DepKind::DtorckConstraint => { force!(adt_dtorck_constraint, def_id!()); }
         DepKind::AdtDestructor => { force!(adt_destructor, def_id!()); }
         DepKind::AssociatedItemDefIds => { force!(associated_item_def_ids, def_id!()); }
