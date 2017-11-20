@@ -201,7 +201,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         };
 
         let index = self.values.push(TypeVariableData {
-            value: Bounded { default: Some(default) },
+            value: Bounded { default: Some(default.clone()) },
             origin,
             default,
         });

@@ -90,8 +90,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
 use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
-use rustc::infer::type_variable::{TypeVariableOrigin};
-use rustc::infer::type_variable::Default;
+use rustc::infer::type_variable::{TypeVariableOrigin, Default};
 use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
@@ -107,7 +106,7 @@ use session::{CompileIncomplete, Session};
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, DefIdSet, FnvHashSet, FxHashMap, NodeMap};
+use util::nodemap::{DefIdMap, DefIdSet, FxHashSet, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::rc::Rc;
@@ -1642,27 +1641,9 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         };
         Some(self.next_region_var(v))
     }
-    fn ty_infer(&self,
-                ty_param_def: Option<ty::TypeParameterDef<'tcx>>,
-                substs: Option<&mut subst::Substs<'tcx>>,
-                space: Option<subst::ParamSpace>,
-                span: Span) -> Ty<'tcx> {
-        // Grab the default doing subsitution
-        let default = ty_param_def.and_then(|def| {
-            def.default.map(|ty| type_variable::UserDefault {
-                ty: ty.subst_spanned(self.tcx(), substs.as_ref().unwrap(), Some(span)),
-                origin_span: span,
-                def_id: def.default_def_id
-            })
-        });
 
-        let ty_var = self.infcx().next_ty_var_with_default(default);
-
-        // Finally we add the type variable to the substs
-        match substs {
-            None => ty_var,
-            Some(substs) => { substs.types.push(space.unwrap(), ty_var); ty_var }
-        }
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
+        self.next_ty_var(TypeVariableOrigin::TypeInference(span))
     }
 
     fn ty_infer_for_def(&self,
@@ -2151,16 +2132,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn default_type_parameters(&self) {
-        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
-        let unsolved_variables = self.infcx().candidates_for_defaulting();
+        use rustc::ty::error::UnconstrainedNumeric::Neither;
+        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+
+        let unsolved_variables = self.infcx.candidates_for_defaulting();
         for &(ref ty, _) in &unsolved_variables {
-            let resolved = self.infcx().resolve_type_vars_if_possible(ty);
-            let diverges = self.infcx().type_var_diverges(resolved);
+            let resolved = self.infcx.resolve_type_vars_if_possible(ty);
+            let diverges = self.infcx.type_var_diverges(resolved);
             if diverges {
-                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
             } else {
                 let unconstrained =
-                    self.infcx().type_is_unconstrained_numeric(resolved);
+                    self.infcx.type_is_unconstrained_numeric(resolved);
                 match unconstrained {
                     UnconstrainedInt => {
                         debug!("default_type_parameters: defaulting `{:?}` to `i32`",
@@ -2185,25 +2168,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.select_obligations_where_possible();
     }
 
+    #[allow(dead_code)]
     fn new_select_all_obligations_and_apply_defaults(&self) {
-        use middle::ty::error::UnconstrainedNumeric::Neither;
-        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+        use rustc::ty::error::UnconstrainedNumeric::Neither;
+        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
         // It is a possible that this algorithm will have to run an arbitrary number of times
         // to terminate so we bound it by the compiler's recursion limit.
-        for _ in (0..self.tcx().sess.recursion_limit.get()) {
+        for _ in 0..self.tcx().sess.recursion_limit.get() {
             // First we try to solve all obligations, it is possible that the last iteration
             // has made it possible to make more progress.
             self.select_obligations_where_possible();
 
-            let mut conflicts = Vec::new();
+            // QUESTION(leodasvacas): Don't know how to rebase the whole error reporting strategy.
+            // let mut conflicts = Vec::new();
 
             // Collect all unsolved type, integral and floating point variables.
             let defaults_to_apply = self.inh.infcx.candidates_for_defaulting();
 
-            let mut has_user_default = FnvHashSet();
-            let mut has_literal_fallback = FnvHashSet();
-            let mut is_diverging = FnvHashSet();
+            let mut has_user_default = FxHashSet();
+            let mut has_literal_fallback = FxHashSet();
+            let mut is_diverging = FxHashSet();
 
             // Examine all unsolved variables, and narrow them to the set that have applicable
             // defaults. We want to process any unsolved variables that have either an explicit
@@ -2251,40 +2236,48 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // We wrap all of this in a transaction for error reporting. If we detect a conflict
             // we will rollback to the previous state so we can check what conflicts and
             // correctly report them.
-            let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
+            //let _ = self.infcx.commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for &(ref ty, ref default) in &has_user_default {
                     let default = default.clone();
 
-                    let normalized_default = self.inh.normalize_associated_types_in(
+                    let normalized_default = self.normalize_associated_types_in(
                         default.origin_span,
-                        0, &default.ty);
+                        &default.ty);
 
-                    match infer::mk_eqty(self.infcx(), false,
+                    // QUESTION(leodasvacas): mk_eqty was removed,
+                    // replaced it with demand but I don't know the difference.
+                    self.demand_eqtype(default.origin_span, *ty, normalized_default);
+
+                    // QUESTION(leodasvacas): This means conflict is always empty
+                    //                        and the error reporting is broken.
+                    /*match infer::mk_eqty(self.infcx, false,
                                          infer::Misc(default.origin_span),
                                          ty, normalized_default) {
                         Ok(()) => {}
                         Err(_) => {
                             conflicts.push((*ty, default));
                         }
-                    }
+                    }*/
                 }
 
                 // If there are conflicts we rollback, otherwise commit
+                /*
                 if conflicts.len() > 0 {
                     Err(())
                 } else {
                     Ok(())
-                }
-            });
+                }*/
+            //});
 
+            /* Consequence of commenting of find_conflicting_default
             if conflicts.len() > 0 {
                 // Loop through each conflicting default, figuring out the default that caused
                 // a unification failure and then report an error for each.
                 for conflict in conflicts {
                     let conflicting_default =
                         self.find_conflicting_default(&has_user_default, &conflict)
-                            .unwrap_or(type_variable::UserDefault {
-                                ty: self.infcx().next_ty_var(),
+                            .unwrap_or(UserDefault {
+                                ty: self.infcx.next_ty_var(),
                                 origin_span: codemap::DUMMY_SP,
                                 def_id: DefId::local(0) // what do I put here?
                             });
@@ -2302,23 +2295,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         };
 
 
-                    self.infcx().report_conflicting_default_types(
+                    self.infcx.report_conflicting_default_types(
                         first_default.origin_span,
+                        0, // QUESTION(leodasvacas): What to put here as `body_id: ast::NodeId`
                         first_default,
                         second_default)
                 }
-            }
+            }*/
 
             // Apply integer and floating point fallbacks to any variables that
             // weren't solved by the previous phase where we applied user defaults.
             for ty in &has_literal_fallback {
-                let resolved = self.infcx().resolve_type_vars_if_possible(ty);
-                match self.infcx().type_is_unconstrained_numeric(resolved) {
+                let resolved = self.infcx.resolve_type_vars_if_possible(ty);
+                match self.infcx.type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.i32)
                     },
                     UnconstrainedFloat => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.f64)
                     }
                     Neither => {}
                 }
@@ -2327,8 +2321,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Finally for any leftover variables that diverage
             // we should apply the unit fallback rules.
             for ty in &is_diverging {
-               if self.infcx().type_var_diverges(ty) {
-                   demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+               if self.infcx.type_var_diverges(ty) {
+                   self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
                }
             }
         }
@@ -2340,10 +2334,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // apply the default that caused conflict first to a local version of the type variable
     // table then apply defaults until we find a conflict. That default must be the one
     // that caused conflict earlier.
+    // QUESTION(leodasvacas): Commented out because of rebase problems I don't know how to solve.
+    /*
     fn find_conflicting_default(&self,
-            tys_with_defaults: &HashSet<(Ty<'tcx>, type_variable::UserDefault<'tcx>)>,
-            conflict: &(Ty<'tcx>, type_variable::UserDefault<'tcx>))
-            -> Option<type_variable::UserDefault<'tcx>> {
+            tys_with_defaults: &FxHashSet<(Ty<'tcx>, UserDefault<'tcx>)>,
+            conflict: &(Ty<'tcx>, UserDefault<'tcx>))
+            -> Option<UserDefault<'tcx>> {
         // Ensure that we apply the conflicting default first
         let unbound_tyvars: Vec<_> = Some(conflict).chain(tys_with_defaults).collect();
 
@@ -2353,14 +2349,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // We also run this inside snapshot that never commits so we can do error
         // reporting for more then one conflict.
+        // QUESTION(leodasvacas): Again don't know what to do with this and `mk_eqty`.
         for &(ref ty, ref default) in tys_with_defaults {
             let default = default.clone();
 
-            let normalized_default = self.inh.normalize_associated_types_in(
-                default.origin_span, 0,
+            let normalized_default = self.normalize_associated_types_in(
+                default.origin_span,
                 &default.ty);
 
-            match infer::mk_eqty(self.infcx(), false,
+            match infer::mk_eqty(self.infcx, false,
                                  infer::Misc(default.origin_span),
                                  ty, normalized_default) {
                 Ok(()) => {}
@@ -2372,7 +2369,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         return result;
-    }
+    }*/
 
     fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
