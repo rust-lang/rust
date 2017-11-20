@@ -659,6 +659,39 @@ impl DepGraph {
         }).unwrap_or(false)
     }
 
+    // This method loads all on-disk cacheable query results into memory, so
+    // they can be written out to the new cache file again. Most query results
+    // will already be in memory but in the case where we marked something as
+    // green but then did not need the value, that value will never have been
+    // loaded from disk.
+    //
+    // This method will only load queries that will end up in the disk cache.
+    // Other queries will not be executed.
+    pub fn exec_cache_promotions<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+        let green_nodes: Vec<DepNode> = {
+            let data = self.data.as_ref().unwrap();
+            data.colors.borrow().iter().filter_map(|(dep_node, color)| match color {
+                DepNodeColor::Green(_) => {
+                    if dep_node.cache_on_disk(tcx) {
+                        Some(*dep_node)
+                    } else {
+                        None
+                    }
+                }
+                DepNodeColor::Red => {
+                    // We can skip red nodes because a node can only be marked
+                    // as red if the query result was recomputed and thus is
+                    // already in memory.
+                    None
+                }
+            }).collect()
+        };
+
+        for dep_node in green_nodes {
+            dep_node.load_from_on_disk_cache(tcx);
+        }
+    }
+
     pub fn mark_loaded_from_cache(&self, dep_node_index: DepNodeIndex, state: bool) {
         debug!("mark_loaded_from_cache({:?}, {})",
                self.data.as_ref().unwrap().current.borrow().nodes[dep_node_index],

@@ -197,6 +197,10 @@ impl<'sess> OnDiskCache<'sess> {
 
         encoder.encode_tagged(PREV_DIAGNOSTICS_TAG, &diagnostics)?;
 
+        // Load everything into memory so we can write it out to the on-disk
+        // cache. The vast majority of cacheable query results should already
+        // be in memory, so this should be a cheap operation.
+        tcx.dep_graph.exec_cache_promotions(tcx);
 
         // Encode query results
         let mut query_result_index = EncodedQueryResultIndex::new();
