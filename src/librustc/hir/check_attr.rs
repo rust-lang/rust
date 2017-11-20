@@ -75,7 +75,9 @@ impl<'a> CheckAttrVisitor<'a> {
             }
         };
 
-        let mut conflicting_reprs = 0;
+        let mut int_reprs = 0;
+        let mut is_c = false;
+        let mut is_simd = false;
 
         for word in words {
 
@@ -86,7 +88,7 @@ impl<'a> CheckAttrVisitor<'a> {
 
             let (message, label) = match &*name.as_str() {
                 "C" => {
-                    conflicting_reprs += 1;
+                    is_c = true;
                     if target != Target::Struct &&
                             target != Target::Union &&
                             target != Target::Enum {
@@ -108,7 +110,7 @@ impl<'a> CheckAttrVisitor<'a> {
                     }
                 }
                 "simd" => {
-                    conflicting_reprs += 1;
+                    is_simd = true;
                     if target != Target::Struct {
                         ("attribute should be applied to struct",
                          "a struct")
@@ -128,7 +130,7 @@ impl<'a> CheckAttrVisitor<'a> {
                 "i8" | "u8" | "i16" | "u16" |
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
-                    conflicting_reprs += 1;
+                    int_reprs += 1;
                     if target != Target::Enum {
                         ("attribute should be applied to enum",
                          "an enum")
@@ -142,7 +144,11 @@ impl<'a> CheckAttrVisitor<'a> {
                 .span_label(item.span, format!("not {}", label))
                 .emit();
         }
-        if conflicting_reprs > 1 {
+
+        // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
+        if (int_reprs > 1)
+           || (is_simd && is_c)
+           || (int_reprs == 1 && is_c && is_c_like_enum(item)) {
             span_warn!(self.sess, attr.span, E0566,
                        "conflicting representation hints");
         }
@@ -161,4 +167,18 @@ impl<'a> Visitor<'a> for CheckAttrVisitor<'a> {
 
 pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     visit::walk_crate(&mut CheckAttrVisitor { sess: sess }, krate);
+}
+
+fn is_c_like_enum(item: &ast::Item) -> bool {
+    if let ast::ItemKind::Enum(ref def, _) = item.node {
+        for variant in &def.variants {
+            match variant.node.data {
+                ast::VariantData::Unit(_) => { /* continue */ }
+                _ => { return false; }
+            }
+        }
+        true
+    } else {
+        false
+    }
 }
