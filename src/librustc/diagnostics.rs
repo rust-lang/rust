@@ -1974,7 +1974,7 @@ A closure or generator was constructed that references its own type.
 
 Erroneous example:
 
-```rust
+```compile-fail,E0644
 fn fix<F>(f: &F)
   where F: Fn(&F)
 {
