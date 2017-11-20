@@ -9,20 +9,22 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::mir::{Local, Location, Place, Mir, Rvalue};
+use rustc::mir::{BasicBlock, BasicBlockData, Location, Place, Mir, Rvalue};
 use rustc::mir::visit::Visitor;
 use rustc::mir::Place::Projection;
-use rustc::mir::{PlaceProjection, ProjectionElem};
+use rustc::mir::{Local, PlaceProjection, ProjectionElem};
+use rustc::mir::visit::TyContext;
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ObligationCause};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, ClosureSubsts, Ty};
+use rustc::ty::subst::Substs;
 use rustc::ty::fold::TypeFoldable;
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::DUMMY_SP;
 use borrow_check::FlowInProgress;
 use dataflow::MaybeInitializedLvals;
-use dataflow::move_paths::{MoveData, HasMoveData};
+use dataflow::move_paths::{HasMoveData, MoveData};
 
 use super::LivenessResults;
 use super::ToRegionVid;
@@ -37,7 +39,7 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
-    ConstraintGeneration {
+    let mut cg = ConstraintGeneration {
         infcx,
         regioncx,
         mir,
@@ -45,7 +47,11 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
         param_env,
         flow_inits,
         move_data,
-    }.add_constraints();
+    };
+
+    for (bb, data) in mir.basic_blocks().iter_enumerated() {
+        cg.visit_basic_block_data(bb, data);
+    }
 }
 
 /// 'cg = the duration of the constraint generation process itself.
@@ -59,75 +65,147 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     move_data: &'cg MoveData<'tcx>,
 }
 
-impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
-    fn add_constraints(&mut self) {
-        self.add_liveness_constraints();
-        self.add_borrow_constraints();
+
+impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
+    fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
+        self.add_liveness_constraints(bb);
+        self.super_basic_block_data(bb, data);
     }
 
+    /// We sometimes have `substs` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_substs(&mut self, substs: &&'tcx Substs<'tcx>, location: Location) {
+        self.add_regular_live_constraint(*substs, location);
+        self.super_substs(substs);
+    }
+
+    /// We sometimes have `region` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_region(&mut self, region: &ty::Region<'tcx>, location: Location) {
+        self.add_regular_live_constraint(*region, location);
+        self.super_region(region);
+    }
+
+    /// We sometimes have `ty` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_ty(&mut self, ty: &ty::Ty<'tcx>, ty_context: TyContext) {
+        match ty_context {
+            TyContext::ReturnTy(source_info) |
+            TyContext::LocalDecl { source_info, .. } => {
+                span_bug!(source_info.span,
+                          "should not be visiting outside of the CFG: {:?}",
+                          ty_context);
+            }
+            TyContext::Location(location) => {
+                self.add_regular_live_constraint(*ty, location);
+            }
+        }
+
+        self.super_ty(ty);
+    }
+
+    /// We sometimes have `closure_substs` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_closure_substs(&mut self, substs: &ClosureSubsts<'tcx>, location: Location) {
+        self.add_regular_live_constraint(*substs, location);
+        self.super_closure_substs(substs);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        debug!("visit_rvalue(rvalue={:?}, location={:?})", rvalue, location);
+
+        // Look for an rvalue like:
+        //
+        //     & L
+        //
+        // where L is the path that is borrowed. In that case, we have
+        // to add the reborrow constraints (which don't fall out
+        // naturally from the type-checker).
+        if let Rvalue::Ref(region, _bk, ref borrowed_lv) = *rvalue {
+            self.add_reborrow_constraint(location, region, borrowed_lv);
+        }
+
+        self.super_rvalue(rvalue, location);
+    }
+}
+
+impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
     /// Liveness constraints:
     ///
     /// > If a variable V is live at point P, then all regions R in the type of V
     /// > must include the point P.
-    fn add_liveness_constraints(&mut self) {
-        debug!("add_liveness_constraints()");
-        for bb in self.mir.basic_blocks().indices() {
-            debug!("add_liveness_constraints: bb={:?}", bb);
+    fn add_liveness_constraints(&mut self, bb: BasicBlock) {
+        debug!("add_liveness_constraints(bb={:?})", bb);
 
-            self.liveness
-                .regular
-                .simulate_block(self.mir, bb, |location, live_locals| {
-                    for live_local in live_locals.iter() {
-                        let live_local_ty = self.mir.local_decls[live_local].ty;
-                        self.add_regular_live_constraint(live_local_ty, location);
-                    }
-                });
+        self.liveness
+            .regular
+            .simulate_block(self.mir, bb, |location, live_locals| {
+                for live_local in live_locals.iter() {
+                    let live_local_ty = self.mir.local_decls[live_local].ty;
+                    self.add_regular_live_constraint(live_local_ty, location);
+                }
+            });
 
-            let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
-            self.liveness.drop.simulate_block(self.mir, bb, |location, live_locals| {
+        let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
+        self.liveness
+            .drop
+            .simulate_block(self.mir, bb, |location, live_locals| {
                 all_live_locals.push((location, live_locals.iter().collect()));
             });
-            debug!("add_liveness_constraints: all_live_locals={:#?}", all_live_locals);
+        debug!(
+            "add_liveness_constraints: all_live_locals={:#?}",
+            all_live_locals
+        );
 
-            let terminator_index = self.mir.basic_blocks()[bb].statements.len();
-            self.flow_inits.reset_to_entry_of(bb);
-            while let Some((location, live_locals)) = all_live_locals.pop() {
-                for live_local in live_locals {
-                    debug!("add_liveness_constraints: location={:?} live_local={:?}", location,
-                           live_local);
+        let terminator_index = self.mir.basic_blocks()[bb].statements.len();
+        self.flow_inits.reset_to_entry_of(bb);
+        while let Some((location, live_locals)) = all_live_locals.pop() {
+            for live_local in live_locals {
+                debug!(
+                    "add_liveness_constraints: location={:?} live_local={:?}",
+                    location,
+                    live_local
+                );
 
-                    self.flow_inits.each_state_bit(|mpi_init| {
-                        debug!("add_liveness_constraints: location={:?} initialized={:?}",
-                               location,
-                               &self.flow_inits
-                                   .base_results
-                                   .operator()
-                                   .move_data()
-                                   .move_paths[mpi_init]);
-                    });
+                self.flow_inits.each_state_bit(|mpi_init| {
+                    debug!(
+                        "add_liveness_constraints: location={:?} initialized={:?}",
+                        location,
+                        &self.flow_inits
+                            .base_results
+                            .operator()
+                            .move_data()
+                            .move_paths[mpi_init]
+                    );
+                });
 
-                    let mpi = self.move_data.rev_lookup.find_local(live_local);
-                    if let Some(initialized_child) = self.flow_inits.has_any_child_of(mpi) {
-                        debug!("add_liveness_constraints: mpi={:?} has initialized child {:?}",
-                               self.move_data.move_paths[mpi],
-                               self.move_data.move_paths[initialized_child]);
+                let mpi = self.move_data.rev_lookup.find_local(live_local);
+                if let Some(initialized_child) = self.flow_inits.has_any_child_of(mpi) {
+                    debug!(
+                        "add_liveness_constraints: mpi={:?} has initialized child {:?}",
+                        self.move_data.move_paths[mpi],
+                        self.move_data.move_paths[initialized_child]
+                    );
 
-                        let live_local_ty = self.mir.local_decls[live_local].ty;
-                        self.add_drop_live_constraint(live_local_ty, location);
-                    }
+                    let live_local_ty = self.mir.local_decls[live_local].ty;
+                    self.add_drop_live_constraint(live_local_ty, location);
                 }
-
-                if location.statement_index == terminator_index {
-                    debug!("add_liveness_constraints: reconstruct_terminator_effect from {:#?}",
-                           location);
-                    self.flow_inits.reconstruct_terminator_effect(location);
-                } else {
-                    debug!("add_liveness_constraints: reconstruct_statement_effect from {:#?}",
-                           location);
-                    self.flow_inits.reconstruct_statement_effect(location);
-                }
-                self.flow_inits.apply_local_effect();
             }
+
+            if location.statement_index == terminator_index {
+                debug!(
+                    "add_liveness_constraints: reconstruct_terminator_effect from {:#?}",
+                    location
+                );
+                self.flow_inits.reconstruct_terminator_effect(location);
+            } else {
+                debug!(
+                    "add_liveness_constraints: reconstruct_statement_effect from {:#?}",
+                    location
+                );
+                self.flow_inits.reconstruct_statement_effect(location);
+            }
+            self.flow_inits.apply_local_effect();
         }
     }
 
@@ -185,13 +263,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
             // All things in the `outlives` array may be touched by
             // the destructor and must be live at this point.
             for outlive in outlives {
-                if let Some(ty) = outlive.as_type() {
-                    self.add_regular_live_constraint(ty, location);
-                } else if let Some(r) = outlive.as_region() {
-                    self.add_regular_live_constraint(r, location);
-                } else {
-                    bug!()
-                }
+                self.add_regular_live_constraint(outlive, location);
             }
 
             // However, there may also be some types that
@@ -228,10 +300,6 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
         }
     }
 
-    fn add_borrow_constraints(&mut self) {
-        self.visit_mir(self.mir);
-    }
-
     fn add_reborrow_constraint(
         &mut self,
         location: Location,
@@ -246,43 +314,24 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                 let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
                 let base_sty = &base_ty.sty;
 
-                if let ty::TyRef(base_region, ty::TypeAndMut{ ty: _, mutbl }) = *base_sty {
+                if let ty::TyRef(base_region, ty::TypeAndMut { ty: _, mutbl }) = *base_sty {
                     match mutbl {
-                        hir::Mutability::MutImmutable => { },
+                        hir::Mutability::MutImmutable => {}
 
                         hir::Mutability::MutMutable => {
                             self.add_reborrow_constraint(location, borrow_region, base);
-                        },
+                        }
                     }
 
                     let span = self.mir.source_info(location).span;
-                    self.regioncx.add_outlives(span,
-                                               base_region.to_region_vid(),
-                                               borrow_region.to_region_vid(),
-                                               location.successor_within_block());
+                    self.regioncx.add_outlives(
+                        span,
+                        base_region.to_region_vid(),
+                        borrow_region.to_region_vid(),
+                        location.successor_within_block(),
+                    );
                 }
             }
         }
-    }
-}
-
-impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
-    fn visit_rvalue(&mut self,
-                    rvalue: &Rvalue<'tcx>,
-                    location: Location) {
-        debug!("visit_rvalue(rvalue={:?}, location={:?})", rvalue, location);
-
-        // Look for an rvalue like:
-        //
-        //     & L
-        //
-        // where L is the path that is borrowed. In that case, we have
-        // to add the reborrow constraints (which don't fall out
-        // naturally from the type-checker).
-        if let Rvalue::Ref(region, _bk, ref borrowed_place) = *rvalue {
-            self.add_reborrow_constraint(location, region, borrowed_place);
-        }
-
-        self.super_rvalue(rvalue, location);
     }
 }

@@ -132,10 +132,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         &self.borrows[idx].location
     }
 
-    pub fn nonlexical_regioncx(&self) -> Option<&'a RegionInferenceContext<'tcx>> {
-        self.nonlexical_regioncx
-    }
-
     /// Returns the span for the "end point" given region. This will
     /// return `None` if NLL is enabled, since that concept has no
     /// meaning there.  Otherwise, return region span if it exists and
