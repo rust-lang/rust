@@ -6,7 +6,6 @@ use core::ptr;
 use simd_llvm::simd_shuffle4;
 use v128::*;
 use v64::f32x2;
-use x86::c_void;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -1572,7 +1571,7 @@ pub const _MM_HINT_NTA: i8 = 0;
 #[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
 #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
 #[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
-pub unsafe fn _mm_prefetch(p: *const c_void, strategy: i8) {
+pub unsafe fn _mm_prefetch(p: *const u8, strategy: i8) {
     // The `strategy` must be a compile-time constant, so we use a short form
     // of `constify_imm8!` for now.
     // We use the `llvm.prefetch` instrinsic with `rw` = 0 (read), and
@@ -1684,7 +1683,7 @@ extern "C" {
     #[link_name = "llvm.x86.sse.ldmxcsr"]
     fn ldmxcsr(p: *const i8);
     #[link_name = "llvm.prefetch"]
-    fn prefetch(p: *const c_void, rw: i32, loc: i32, ty: i32);
+    fn prefetch(p: *const u8, rw: i32, loc: i32, ty: i32);
     #[link_name = "llvm.x86.sse.cmp.ss"]
     fn cmpss(a: f32x4, b: f32x4, imm8: i8) -> f32x4;
 }

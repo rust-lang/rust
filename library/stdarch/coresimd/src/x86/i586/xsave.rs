@@ -5,14 +5,12 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-use x86::c_void;
-
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.xsave"]
     fn xsave(p: *mut i8, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xrstor"]
-    fn xrstor(p: *const c_void, hi: i32, lo: i32) -> ();
+    fn xrstor(p: *const u8, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xsetbv"]
     fn xsetbv(v: i32, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xgetbv"]
@@ -20,7 +18,7 @@ extern "C" {
     #[link_name = "llvm.x86.xsave64"]
     fn xsave64(p: *mut i8, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xrstor64"]
-    fn xrstor64(p: *const c_void, hi: i32, lo: i32) -> ();
+    fn xrstor64(p: *const u8, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xsaveopt"]
     fn xsaveopt(p: *mut i8, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xsaveopt64"]
@@ -34,9 +32,9 @@ extern "C" {
     #[link_name = "llvm.x86.xsaves64"]
     fn xsaves64(p: *mut i8, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xrstors"]
-    fn xrstors(p: *const c_void, hi: i32, lo: i32) -> ();
+    fn xrstors(p: *const u8, hi: i32, lo: i32) -> ();
     #[link_name = "llvm.x86.xrstors64"]
-    fn xrstors64(p: *const c_void, hi: i32, lo: i32) -> ();
+    fn xrstors64(p: *const u8, hi: i32, lo: i32) -> ();
 }
 
 /// Perform a full or partial save of the enabled processor states to memory at
@@ -50,7 +48,7 @@ extern "C" {
 #[inline(always)]
 #[target_feature = "+xsave"]
 #[cfg_attr(test, assert_instr(xsave))]
-pub unsafe fn _xsave(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) -> () {
     xsave(mem_addr as *mut i8, (save_mask >> 32) as i32, save_mask as i32);
 }
 
@@ -63,7 +61,7 @@ pub unsafe fn _xsave(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave"]
 #[cfg_attr(test, assert_instr(xrstor))]
-pub unsafe fn _xrstor(mem_addr: *const c_void, rs_mask: u64) -> () {
+pub unsafe fn _xrstor(mem_addr: *const u8, rs_mask: u64) -> () {
     xrstor(mem_addr, (rs_mask >> 32) as i32, rs_mask as i32);
 }
 
@@ -104,7 +102,7 @@ pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
 #[target_feature = "+xsave"]
 #[cfg_attr(test, assert_instr(xsave64))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _xsave64(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsave64(mem_addr: *mut u8, save_mask: u64) -> () {
     xsave64(mem_addr as *mut i8, (save_mask >> 32) as i32, save_mask as i32);
 }
 
@@ -118,7 +116,7 @@ pub unsafe fn _xsave64(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[target_feature = "+xsave"]
 #[cfg_attr(test, assert_instr(xrstor64))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _xrstor64(mem_addr: *const c_void, rs_mask: u64) -> () {
+pub unsafe fn _xrstor64(mem_addr: *const u8, rs_mask: u64) -> () {
     xrstor64(mem_addr, (rs_mask >> 32) as i32, rs_mask as i32);
 }
 
@@ -132,7 +130,7 @@ pub unsafe fn _xrstor64(mem_addr: *const c_void, rs_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave,+xsaveopt"]
 #[cfg_attr(test, assert_instr(xsaveopt))]
-pub unsafe fn _xsaveopt(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) -> () {
     xsaveopt(mem_addr as *mut i8, (save_mask >> 32) as i32, save_mask as i32);
 }
 
@@ -147,7 +145,7 @@ pub unsafe fn _xsaveopt(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[target_feature = "+xsave,+xsaveopt"]
 #[cfg_attr(test, assert_instr(xsaveopt64))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _xsaveopt64(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsaveopt64(mem_addr: *mut u8, save_mask: u64) -> () {
     xsaveopt64(
         mem_addr as *mut i8,
         (save_mask >> 32) as i32,
@@ -164,7 +162,7 @@ pub unsafe fn _xsaveopt64(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave,+xsavec"]
 #[cfg_attr(test, assert_instr(xsavec))]
-pub unsafe fn _xsavec(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) -> () {
     xsavec(mem_addr as *mut i8, (save_mask >> 32) as i32, save_mask as i32);
 }
 
@@ -178,7 +176,7 @@ pub unsafe fn _xsavec(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[target_feature = "+xsave,+xsavec"]
 #[cfg_attr(test, assert_instr(xsavec64))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _xsavec64(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsavec64(mem_addr: *mut u8, save_mask: u64) -> () {
     xsavec64(mem_addr as *mut i8, (save_mask >> 32) as i32, save_mask as i32);
 }
 
@@ -192,7 +190,7 @@ pub unsafe fn _xsavec64(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave,+xsaves"]
 #[cfg_attr(test, assert_instr(xsaves))]
-pub unsafe fn _xsaves(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) -> () {
     xsaves(mem_addr as *mut i8, (save_mask >> 32) as i32, save_mask as i32);
 }
 
@@ -207,7 +205,7 @@ pub unsafe fn _xsaves(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[target_feature = "+xsave,+xsaves"]
 #[cfg_attr(test, assert_instr(xsaves64))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _xsaves64(mem_addr: *mut c_void, save_mask: u64) -> () {
+pub unsafe fn _xsaves64(mem_addr: *mut u8, save_mask: u64) -> () {
     xsaves64(mem_addr as *mut i8, (save_mask >> 32) as i32, save_mask as i32);
 }
 
@@ -223,7 +221,7 @@ pub unsafe fn _xsaves64(mem_addr: *mut c_void, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave,+xsaves"]
 #[cfg_attr(test, assert_instr(xrstors))]
-pub unsafe fn _xrstors(mem_addr: *const c_void, rs_mask: u64) -> () {
+pub unsafe fn _xrstors(mem_addr: *const u8, rs_mask: u64) -> () {
     xrstors(mem_addr, (rs_mask >> 32) as i32, rs_mask as i32);
 }
 
@@ -240,13 +238,12 @@ pub unsafe fn _xrstors(mem_addr: *const c_void, rs_mask: u64) -> () {
 #[target_feature = "+xsave,+xsaves"]
 #[cfg_attr(test, assert_instr(xrstors64))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _xrstors64(mem_addr: *const c_void, rs_mask: u64) -> () {
+pub unsafe fn _xrstors64(mem_addr: *const u8, rs_mask: u64) -> () {
     xrstors64(mem_addr, (rs_mask >> 32) as i32, rs_mask as i32);
 }
 
 #[cfg(test)]
 mod tests {
-    use x86::c_void;
     use x86::i586::xsave;
     use stdsimd_test::simd_test;
     use std::fmt;
@@ -260,8 +257,8 @@ mod tests {
         fn new() -> Buffer {
             Buffer { data: [0; 1024] }
         }
-        fn ptr(&mut self) -> *mut c_void {
-            &mut self.data[0] as *mut _ as *mut c_void
+        fn ptr(&mut self) -> *mut u8 {
+            &mut self.data[0] as *mut _ as *mut u8
         }
     }
 

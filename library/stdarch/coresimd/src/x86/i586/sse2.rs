@@ -8,7 +8,6 @@ use core::ptr;
 
 use simd_llvm::{simd_cast, simd_shuffle16, simd_shuffle2, simd_shuffle4,
                 simd_shuffle8};
-use x86::c_void;
 use x86::__m128i;
 use v128::*;
 use v64::*;
@@ -29,7 +28,7 @@ pub unsafe fn _mm_pause() {
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(clflush))]
-pub unsafe fn _mm_clflush(p: *mut c_void) {
+pub unsafe fn _mm_clflush(p: *mut u8) {
     clflush(p)
 }
 
@@ -1989,7 +1988,7 @@ extern "C" {
     #[link_name = "llvm.x86.sse2.pause"]
     fn pause();
     #[link_name = "llvm.x86.sse2.clflush"]
-    fn clflush(p: *mut c_void);
+    fn clflush(p: *mut u8);
     #[link_name = "llvm.x86.sse2.lfence"]
     fn lfence();
     #[link_name = "llvm.x86.sse2.mfence"]
@@ -2142,7 +2141,6 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use super::c_void;
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
 
@@ -2158,7 +2156,7 @@ mod tests {
     #[simd_test = "sse2"]
     unsafe fn _mm_clflush() {
         let x = 0;
-        sse2::_mm_clflush(&x as *const _ as *mut c_void);
+        sse2::_mm_clflush(&x as *const _ as *mut u8);
     }
 
     #[simd_test = "sse2"]

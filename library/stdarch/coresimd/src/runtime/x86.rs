@@ -364,8 +364,7 @@ pub fn detect_features() -> usize {
                 enable(extended_features_ebx, 5, __Feature::avx2);
 
                 // For AVX-512 the OS also needs to support saving/restoring
-                // the extended state, only then we enable
-                // AVX-512 support:
+                // the extended state, only then we enable AVX-512 support:
                 if os_avx512_support {
                     enable(extended_features_ebx, 16, __Feature::avx512f);
                     enable(extended_features_ebx, 17, __Feature::avx512dq);
@@ -384,8 +383,8 @@ pub fn detect_features() -> usize {
                 }
             }
 
-            // Processor Extended State Enumeration Sub-leaf (EAX = 0DH, ECX =
-            // 1)
+            // Processor Extended State Enumeration Sub-leaf
+            // (EAX = 0DH, ECX = 1)
             if max_basic_leaf >= 0xd {
                 let CpuidResult {
                     eax: proc_extended_state1_eax,
@@ -417,7 +416,6 @@ pub fn detect_features() -> usize {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "std")]
     #[test]
     fn runtime_detection_x86_nocapture() {
         println!("sse: {:?}", cfg_feature_enabled!("sse"));
