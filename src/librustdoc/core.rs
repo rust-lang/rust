@@ -141,7 +141,6 @@ pub fn run_core(search_paths: SearchPaths,
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                                                true,
                                                                false,
-                                                               false,
                                                                Some(codemap.clone()));
 
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));

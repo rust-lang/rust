@@ -82,7 +82,7 @@ pub fn run(input: &str,
     let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let handler =
         errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                          true, false, false,
+                                          true, false,
                                           Some(codemap.clone()));
 
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
@@ -246,7 +246,7 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
     // Compile the code
-    let diagnostic_handler = errors::Handler::with_emitter(true, false, false, box emitter);
+    let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(

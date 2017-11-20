@@ -64,11 +64,11 @@ impl Emitter for EmitterWriter {
             }
         }
 
-        if !db.handler.macro_backtrace {
+        if !db.handler.flags.external_macro_backtrace {
             self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
         }
         self.emit_messages_default(&db.level,
-                                   db.handler.macro_backtrace,
+                                   db.handler.flags.external_macro_backtrace,
                                    &db.styled_message(),
                                    &db.code,
                                    &primary_span,
@@ -798,7 +798,7 @@ impl EmitterWriter {
                 level: Level::Note,
                 message: vec![
                     (["this error originates in a macro outside of the current crate",
-                      "(run with -Z macro-backtrace for more info)"].join(" "),
+                      "(run with -Z external-macro-backtrace for more info)"].join(" "),
                      Style::NoStyle),
                 ],
                 span: MultiSpan::new(),
@@ -888,7 +888,7 @@ impl EmitterWriter {
                             msg: &Vec<(String, Style)>,
                             code: &Option<DiagnosticId>,
                             level: &Level,
-                            macro_backtrace: bool,
+                            external_macro_backtrace: bool,
                             max_line_num_len: usize,
                             is_secondary: bool)
                             -> io::Result<()> {
@@ -1086,7 +1086,7 @@ impl EmitterWriter {
             }
         }
 
-        if macro_backtrace {
+        if external_macro_backtrace {
             if let Some(ref primary_span) = msp.primary_span().as_ref() {
                 self.render_macro_backtrace_old_school(primary_span, &mut buffer)?;
             }
@@ -1183,7 +1183,7 @@ impl EmitterWriter {
     }
     fn emit_messages_default(&mut self,
                              level: &Level,
-                             macro_backtrace: bool,
+                             external_macro_backtrace: bool,
                              message: &Vec<(String, Style)>,
                              code: &Option<DiagnosticId>,
                              span: &MultiSpan,
@@ -1196,7 +1196,7 @@ impl EmitterWriter {
                                         message,
                                         code,
                                         level,
-                                        macro_backtrace,
+                                        external_macro_backtrace,
                                         max_line_num_len,
                                         false) {
             Ok(()) => {
@@ -1218,7 +1218,7 @@ impl EmitterWriter {
                                                         &child.styled_message(),
                                                         &None,
                                                         &child.level,
-                                                        macro_backtrace,
+                                                        external_macro_backtrace,
                                                         max_line_num_len,
                                                         true) {
                             Err(e) => panic!("failed to emit error: {}", e),

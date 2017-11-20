@@ -104,7 +104,7 @@ fn test_env<F>(source_string: &str,
     let mut options = config::basic_options();
     options.debugging_opts.verbose = true;
     options.unstable_features = UnstableFeatures::Allow;
-    let diagnostic_handler = errors::Handler::with_emitter(true, false, false, emitter);
+    let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
     let cstore = Rc::new(CStore::new(::DefaultTransCrate::metadata_loader()));
     let sess = session::build_session_(options,
