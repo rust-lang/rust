@@ -20,6 +20,11 @@ fn alloc_system_overaligned_request() {
     check_overalign_requests(System)
 }
 
+#[test]
+fn std_heap_overaligned_request() {
+    check_overalign_requests(Heap)
+}
+
 fn check_overalign_requests<T: Alloc>(mut allocator: T) {
     let size = 8;
     let align = 16; // greater than size

@@ -92,8 +92,8 @@ mod contents {
         a.trailing_zeros() as c_int
     }
 
-    fn align_to_flags(align: usize) -> c_int {
-        if align <= MIN_ALIGN {
+    fn align_to_flags(align: usize, size: usize) -> c_int {
+        if align <= MIN_ALIGN && align <= size {
             0
         } else {
             mallocx_align(align)
@@ -111,7 +111,7 @@ mod contents {
     pub unsafe extern fn __rde_alloc(size: usize,
                                      align: usize,
                                      err: *mut u8) -> *mut u8 {
-        let flags = align_to_flags(align);
+        let flags = align_to_flags(align, size);
         let ptr = mallocx(size as size_t, flags) as *mut u8;
         if ptr.is_null() {
             let layout = Layout::from_size_align_unchecked(size, align);
@@ -132,7 +132,7 @@ mod contents {
     pub unsafe extern fn __rde_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
-        let flags = align_to_flags(align);
+        let flags = align_to_flags(align, size);
         sdallocx(ptr as *mut c_void, size, flags);
     }
 
@@ -142,7 +142,7 @@ mod contents {
                                            min: *mut usize,
                                            max: *mut usize) {
         let layout = &*(layout as *const Layout);
-        let flags = align_to_flags(layout.align());
+        let flags = align_to_flags(layout.align(), layout.size());
         let size = nallocx(layout.size(), flags) as usize;
         *min = layout.size();
         if size > 0 {
@@ -166,7 +166,7 @@ mod contents {
             return 0 as *mut u8
         }
 
-        let flags = align_to_flags(new_align);
+        let flags = align_to_flags(new_align, new_size);
         let ptr = rallocx(ptr as *mut c_void, new_size, flags) as *mut u8;
         if ptr.is_null() {
             let layout = Layout::from_size_align_unchecked(new_size, new_align);
@@ -181,10 +181,10 @@ mod contents {
     pub unsafe extern fn __rde_alloc_zeroed(size: usize,
                                             align: usize,
                                             err: *mut u8) -> *mut u8 {
-        let ptr = if align <= MIN_ALIGN {
+        let ptr = if align <= MIN_ALIGN && align <= size {
             calloc(size as size_t, 1) as *mut u8
         } else {
-            let flags = align_to_flags(align) | MALLOCX_ZERO;
+            let flags = align_to_flags(align, size) | MALLOCX_ZERO;
             mallocx(size as size_t, flags) as *mut u8
         };
         if ptr.is_null() {
@@ -203,7 +203,7 @@ mod contents {
                                             err: *mut u8) -> *mut u8 {
         let p = __rde_alloc(size, align, err);
         if !p.is_null() {
-            let flags = align_to_flags(align);
+            let flags = align_to_flags(align, size);
             *excess = nallocx(size, flags) as usize;
         }
         return p
@@ -220,7 +220,7 @@ mod contents {
                                               err: *mut u8) -> *mut u8 {
         let p = __rde_realloc(ptr, old_size, old_align, new_size, new_align, err);
         if !p.is_null() {
-            let flags = align_to_flags(new_align);
+            let flags = align_to_flags(new_align, new_size);
             *excess = nallocx(new_size, flags) as usize;
         }
         p
@@ -244,7 +244,7 @@ mod contents {
                                                new_size: usize,
                                                new_align: usize) -> u8 {
         if old_align == new_align {
-            let flags = align_to_flags(new_align);
+            let flags = align_to_flags(new_align, new_size);
             (xallocx(ptr as *mut c_void, new_size, 0, flags) == new_size) as u8
         } else {
             0
