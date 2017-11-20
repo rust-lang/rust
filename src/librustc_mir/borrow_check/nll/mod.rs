@@ -170,7 +170,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                 writeln!(out, "    | Live variables on entry to {:?}: {}", bb, s)?;
             }
 
-            PassWhere::InCFG(location) => {
+            PassWhere::BeforeLocation(location) => {
                 let s = live_variable_set(
                     &regular_liveness_per_location[&location],
                     &drop_liveness_per_location[&location],
@@ -178,6 +178,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                 writeln!(out, "            | Live variables at {:?}: {}", location, s)?;
             }
 
+            PassWhere::AfterLocation(_) |
             PassWhere::AfterCFG => {}
         }
         Ok(())
