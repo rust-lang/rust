@@ -237,6 +237,16 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
         Ok(())
     }
 
+    fn size_snapshot(&self) -> Option<usize> {
+        if let Some(diff) = (self.inner.as_ref().len() as u64).checked_sub(self.pos) {
+            let size = diff as usize;
+            if size as u64 == diff {
+                return Some(size);
+            }
+        }
+        None
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()

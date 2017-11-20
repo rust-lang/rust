@@ -24,6 +24,11 @@ impl<'a, R: Read + ?Sized> Read for &'a mut R {
     }
 
     #[inline]
+    fn size_snapshot(&self) -> Option<usize> {
+        (**self).size_snapshot()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         (**self).initializer()
     }
@@ -90,6 +95,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
+    }
+
+    #[inline]
+    fn size_snapshot(&self) -> Option<usize> {
+        (**self).size_snapshot()
     }
 
     #[inline]
@@ -179,6 +189,11 @@ impl<'a> Read for &'a [u8] {
 
         *self = b;
         Ok(amt)
+    }
+
+    #[inline]
+    fn size_snapshot(&self) -> Option<usize> {
+        Some(self.len())
     }
 
     #[inline]

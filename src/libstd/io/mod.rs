@@ -553,6 +553,21 @@ pub trait Read {
         Initializer::zeroing()
     }
 
+    /// Return a snapshot of how many bytes would be read from this source until EOF
+    /// if read immediately, or None if that is unknown. Depending on the source, the
+    /// size may change at any time, so this isn't a guarantee that exactly that number
+    /// of bytes will actually be read.
+    ///
+    /// This is used by [`read_to_end`] and [`read_to_string`] to pre-allocate a memory buffer.
+    ///
+    /// [`read_to_end`]: #method.read_to_end
+    /// [`read_to_string`]: #method.read_to_string
+    #[unstable(feature = "read_size_snapshot", issue = /* FIXME */ "0")]
+    #[inline]
+    fn size_snapshot(&self) -> Option<usize> {
+        None
+    }
+
     /// Read all bytes until EOF in this source, placing them into `buf`.
     ///
     /// All bytes read from this source will be appended to the specified buffer
@@ -1729,6 +1744,19 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         self.second.read(buf)
     }
 
+    fn size_snapshot(&self) -> Option<usize> {
+        if self.done_first {
+            self.second.size_snapshot()
+        } else {
+            if let Some(second_size) = self.second.size_snapshot() {
+                if let Some(first_size) = self.first.size_snapshot() {
+                    return first_size.checked_add(second_size);
+                }
+            }
+            None
+        }
+    }
+
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
         if initializer.should_initialize() {
@@ -1925,6 +1953,17 @@ impl<T: Read> Read for Take<T> {
         let n = self.inner.read(&mut buf[..max])?;
         self.limit -= n as u64;
         Ok(n)
+    }
+
+    fn size_snapshot(&self) -> Option<usize> {
+        if let Some(inner_size) = self.inner.size_snapshot() {
+            let min = cmp::min(self.limit, inner_size as u64);
+            let size = min as usize;
+            if size as u64 == min {
+                return Some(size);
+            }
+        }
+        None
     }
 
     unsafe fn initializer(&self) -> Initializer {

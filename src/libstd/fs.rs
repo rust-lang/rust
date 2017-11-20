@@ -449,6 +449,19 @@ impl Read for File {
         self.inner.read(buf)
     }
 
+    fn size_snapshot(&self) -> Option<usize> {
+        if let Ok(meta) = self.metadata() {
+            let len = meta.len();
+            let size = len as usize;
+            // Don't trust a length of zero. For example, "pseudofiles" on Linux
+            // like /proc/meminfo report a size of 0.
+            if size != 0 && size as u64 == len {
+                return Some(size);
+            }
+        }
+        None
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -471,6 +484,10 @@ impl Seek for File {
 impl<'a> Read for &'a File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    fn size_snapshot(&self) -> Option<usize> {
+        (**self).size_snapshot()
     }
 
     #[inline]
