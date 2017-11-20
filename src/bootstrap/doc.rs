@@ -251,10 +251,12 @@ impl Step for TheBook {
     ///
     /// * Book (first edition)
     /// * Book (second edition)
+    /// * Version info and CSS
     /// * Index page
     /// * Redirect pages
     fn run(self, builder: &Builder) {
         let build = builder.build;
+        let compiler = self.compiler;
         let target = self.target;
         let name = self.name;
         // build book first edition
@@ -269,10 +271,16 @@ impl Step for TheBook {
             name: INTERNER.intern_string(format!("{}/second-edition", name)),
         });
 
+        // build the version info page and CSS
+        builder.ensure(Standalone {
+            compiler,
+            target,
+        });
+
         // build the index page
         let index = format!("{}/index.md", name);
         println!("Documenting book index ({})", target);
-        invoke_rustdoc(builder, self.compiler, target, &index);
+        invoke_rustdoc(builder, compiler, target, &index);
 
         // build the redirect pages
         println!("Documenting book redirect pages ({})", target);
@@ -281,7 +289,7 @@ impl Step for TheBook {
             let path = file.path();
             let path = path.to_str().unwrap();
 
-            invoke_rustdoc(builder, self.compiler, target, path);
+            invoke_rustdoc(builder, compiler, target, path);
         }
     }
 }
@@ -294,24 +302,11 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
-
-    let version_input = build.src.join("src/doc/version_info.html.template");
     let version_info = out.join("version_info.html");
-
-    if !up_to_date(&version_input, &version_info) {
-        let mut info = String::new();
-        t!(t!(File::open(&version_input)).read_to_string(&mut info));
-        let info = info.replace("VERSION", &build.rust_release())
-                       .replace("SHORT_HASH", build.rust_info.sha_short().unwrap_or(""))
-                       .replace("STAMP", build.rust_info.sha().unwrap_or(""));
-        t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
-    }
 
     let mut cmd = builder.rustdoc_cmd(compiler.host);
 
     let out = out.join("book");
-
-    t!(fs::copy(build.src.join("src/doc/rust.css"), out.join("rust.css")));
 
     cmd.arg("--html-after-content").arg(&footer)
         .arg("--html-before-content").arg(&version_info)
@@ -321,7 +316,7 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
         .arg("-o").arg(&out)
         .arg(&path)
         .arg("--markdown-css")
-        .arg("rust.css");
+        .arg("../rust.css");
 
     build.run(&mut cmd);
 }
