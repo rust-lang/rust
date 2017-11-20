@@ -106,7 +106,7 @@ result is then compared against reference files named
 those files doesn't exist, the output must be empty. If the test run
 fails, we will print out the current output, but it is also saved in
 `build/<target-triple>/test/ui/hello_world/main.stdout` (this path is
-printed as part of the test failure mesage), so you can run `diff` and
+printed as part of the test failure message), so you can run `diff` and
 so forth.
 
 ### Editing and updating the reference files
