@@ -13,6 +13,7 @@ use utils::{get_item_name, get_parent_expr, implements_trait, in_constant, in_ma
             span_lint_and_then, walk_ptrs_ty};
 use utils::sugg::Sugg;
 use syntax::ast::{FloatTy, LitKind, CRATE_NODE_ID};
+use consts::constant;
 
 /// **What it does:** Checks for function arguments and let bindings denoted as
 /// `ref`.
@@ -200,6 +201,27 @@ declare_lint! {
     "using 0 as *{const, mut} T"
 }
 
+/// **What it does:** Checks for (in-)equality comparisons on floating-point
+/// value and constant, except in functions called `*eq*` (which probably
+/// implement equality for a type involving floats).
+///
+/// **Why is this bad?** Floating point calculations are usually imprecise, so
+/// asking if two values are *exactly* equal is asking for trouble. For a good
+/// guide on what to do, see [the floating point
+/// guide](http://www.floating-point-gui.de/errors/comparison).
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// const ONE == 1.00f64
+/// x == ONE  // where both are floats
+/// ```
+declare_restriction_lint! {
+    pub FLOAT_CMP_CONST,
+    "using `==` or `!=` on float constants instead of comparing difference with an epsilon"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -214,7 +236,8 @@ impl LintPass for Pass {
             REDUNDANT_PATTERN,
             USED_UNDERSCORE_BINDING,
             SHORT_CIRCUIT_STATEMENT,
-            ZERO_PTR
+            ZERO_PTR,
+            FLOAT_CMP_CONST
         )
     }
 }
@@ -334,7 +357,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             return;
                         }
                     }
-                    span_lint_and_then(cx, FLOAT_CMP, expr.span, "strict comparison of f32 or f64", |db| {
+                    let (lint, msg) = if is_named_constant(cx, left) || is_named_constant(cx, right) {
+                        (FLOAT_CMP_CONST, "strict comparison of f32 or f64 constant")
+                    } else {
+                        (FLOAT_CMP, "strict comparison of f32 or f64")
+                    };
+                    span_lint_and_then(cx, lint, expr.span, msg, |db| {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
@@ -420,6 +448,14 @@ fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
                 );
             }
         });
+    }
+}
+
+fn is_named_constant<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
+    if let Some((_, res)) = constant(cx, expr) {
+        res
+    } else {
+       false
     }
 }
 
