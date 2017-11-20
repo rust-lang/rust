@@ -239,12 +239,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             return simple();
         }
 
-        // If the type of the last field is [T] or str, then we don't need to do
-        // any adjusments. Otherwise it must be a trait object.
         match field.ty.sty {
+            // If the type of the last field is [T] or str, then we don't need
+            // to do any adjustments.
             ty::TySlice(..) | ty::TyStr => return simple(),
-            ty::TyDynamic(..) => (),
-            _ => bug!("unexpected DST tail: {:?}", fty.sty),
+            // extern types aren't allowed in struct tails, this is a bug
+            ty::TyForeign(..) => bug!("extern type in a struct field"),
+            _ => ()
         }
 
         // We need to get the pointer manually now.
