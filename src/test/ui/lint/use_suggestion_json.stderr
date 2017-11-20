@@ -372,7 +372,6 @@ mod foo {
    |
 20 |     let x: Iter;
    |            ^^^^ not found in this scope
-   |
 help: possible candidates are found in other modules, you can import them into scope
    |
 19 | use std::collections::binary_heap::Iter;
