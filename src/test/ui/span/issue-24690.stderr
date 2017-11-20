@@ -1,7 +1,7 @@
 warning: unused variable: `theOtherTwo`
   --> $DIR/issue-24690.rs:23:9
    |
-23 |     let theOtherTwo = 2;
+23 |     let theOtherTwo = 2; //~ WARN should have a snake case name
    |         ^^^^^^^^^^^
    |
 note: lint level defined here
@@ -15,7 +15,7 @@ note: lint level defined here
 warning: variable `theTwo` should have a snake case name such as `the_two`
   --> $DIR/issue-24690.rs:22:9
    |
-22 |     let theTwo = 2;
+22 |     let theTwo = 2; //~ WARN should have a snake case name
    |         ^^^^^^
    |
    = note: #[warn(non_snake_case)] on by default
@@ -23,16 +23,17 @@ warning: variable `theTwo` should have a snake case name such as `the_two`
 warning: variable `theOtherTwo` should have a snake case name such as `the_other_two`
   --> $DIR/issue-24690.rs:23:9
    |
-23 |     let theOtherTwo = 2;
+23 |     let theOtherTwo = 2; //~ WARN should have a snake case name
    |         ^^^^^^^^^^^
 
 error: compilation successful
   --> $DIR/issue-24690.rs:21:1
    |
-21 | / fn main() {
-22 | |     let theTwo = 2;
-23 | |     let theOtherTwo = 2;
-24 | |     println!("{}", theTwo);
-25 | | }
+21 | / fn main() { //~ ERROR compilation successful
+22 | |     let theTwo = 2; //~ WARN should have a snake case name
+23 | |     let theOtherTwo = 2; //~ WARN should have a snake case name
+24 | |     //~^ WARN unused variable
+25 | |     println!("{}", theTwo);
+26 | | }
    | |_^
 

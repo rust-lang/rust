@@ -15,5 +15,5 @@
 fn g<F>(_: F) where F: FnOnce(Option<F>) {}
 
 fn main() {
-    g(|_| {  });
+    g(|_| {  }); //~ ERROR closure/generator type that references itself
 }

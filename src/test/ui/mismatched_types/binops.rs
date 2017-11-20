@@ -9,10 +9,10 @@
 // except according to those terms.
 
 fn main() {
-    1 + Some(1);
-    2 as usize - Some(1);
-    3 * ();
-    4 / "";
-    5 < String::new();
-    6 == Ok(1);
+    1 + Some(1); //~ ERROR is not satisfied
+    2 as usize - Some(1); //~ ERROR is not satisfied
+    3 * (); //~ ERROR is not satisfied
+    4 / ""; //~ ERROR is not satisfied
+    5 < String::new(); //~ ERROR is not satisfied
+    6 == Ok(1); //~ ERROR is not satisfied
 }

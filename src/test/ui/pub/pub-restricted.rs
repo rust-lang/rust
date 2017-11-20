@@ -12,8 +12,8 @@
 
 mod a {}
 
-pub (a) fn afn() {}
-pub (b) fn bfn() {}
+pub (a) fn afn() {} //~ incorrect visibility restriction
+pub (b) fn bfn() {} //~ incorrect visibility restriction
 pub fn privfn() {}
 mod x {
     mod y {
@@ -29,8 +29,8 @@ mod y {
         pub (super) s: usize,
         valid_private: usize,
         pub (in y) valid_in_x: usize,
-        pub (a) invalid: usize,
-        pub (in x) non_parent_invalid: usize,
+        pub (a) invalid: usize, //~ incorrect visibility restriction
+        pub (in x) non_parent_invalid: usize, //~ ERROR visibilities can only be restricted
     }
 }
 
@@ -38,4 +38,4 @@ fn main() {}
 
 // test multichar names
 mod xyz {}
-pub (xyz) fn xyz() {}
+pub (xyz) fn xyz() {} //~ incorrect visibility restriction

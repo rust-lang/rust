@@ -41,5 +41,5 @@ enum N { N(usize) }
 fn is_send<T:Send>() { }
 
 fn main() {
-    is_send::<A>();
+    is_send::<A>(); //~ ERROR overflow evaluating the requirement
 }

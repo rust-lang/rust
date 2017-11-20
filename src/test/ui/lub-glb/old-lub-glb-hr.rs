@@ -15,7 +15,7 @@ fn foo(
     x: fn(&u8, &u8),
     y: for<'a> fn(&'a u8, &'a u8),
 ) {
-    let z = match 22 {
+    let z = match 22 { //~ ERROR incompatible types
         0 => x,
         _ => y,
     };

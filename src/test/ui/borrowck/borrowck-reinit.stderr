@@ -3,7 +3,7 @@ error[E0382]: use of moved value: `x` (Ast)
    |
 17 |     drop(x);
    |          - value moved here
-18 |     let _ = (1,x);
+18 |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
    |                ^ value used here after move
    |
    = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -13,7 +13,7 @@ error[E0382]: use of moved value: `x` (Mir)
    |
 17 |     drop(x);
    |          - value moved here
-18 |     let _ = (1,x);
+18 |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
    |                ^ value use here after move
 
 error: aborting due to 2 previous errors

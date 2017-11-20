@@ -17,7 +17,7 @@
 
 fn a() {
     // the repeat is unreachable:
-    let x: [usize; 2] = [return; 2];
+    let x: [usize; 2] = [return; 2]; //~ ERROR unreachable
 }
 
 fn main() { }

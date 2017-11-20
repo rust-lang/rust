@@ -26,7 +26,7 @@ fn f() {
     v3.push(&id('x'));           // statement 6
     //~^ ERROR borrowed value does not live long enough
     //~| NOTE temporary value created here
-    //~| NOTE temporary value only lives until here
+    //~| NOTE temporary value dropped here while still borrowed
     //~| NOTE consider using a `let` binding to increase its lifetime
 
     {
@@ -36,7 +36,7 @@ fn f() {
         v4.push(&id('y'));
         //~^ ERROR borrowed value does not live long enough
         //~| NOTE temporary value created here
-        //~| NOTE temporary value only lives until here
+        //~| NOTE temporary value dropped here while still borrowed
         //~| NOTE consider using a `let` binding to increase its lifetime
 
     }                       // (statement 7)
@@ -47,7 +47,7 @@ fn f() {
     v5.push(&id('z'));
     //~^ ERROR borrowed value does not live long enough
     //~| NOTE temporary value created here
-    //~| NOTE temporary value only lives until here
+    //~| NOTE temporary value dropped here while still borrowed
     //~| NOTE consider using a `let` binding to increase its lifetime
 
     v1.push(&old[0]);

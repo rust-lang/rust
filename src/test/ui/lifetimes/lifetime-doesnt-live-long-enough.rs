@@ -16,6 +16,7 @@ trait Collection { fn len(&self) -> usize; }
 
 struct List<'a, T: ListItem<'a>> {
     slice: &'a [T]
+    //~^ ERROR may not live long enough
 }
 
 impl<'a, T: ListItem<'a>> Collection for List<'a, T> {
@@ -26,19 +27,24 @@ impl<'a, T: ListItem<'a>> Collection for List<'a, T> {
 
 struct Foo<T> {
     foo: &'static T
+    //~^ ERROR may not live long enough
 }
 
 trait X<K>: Sized {
     fn foo<'a, L: X<&'a Nested<K>>>();
+    //~^ ERROR may not live long enough
     // check that we give a sane error for `Self`
     fn bar<'a, L: X<&'a Nested<Self>>>();
+    //~^ ERROR may not live long enough
 }
 
 struct Nested<K>(K);
 impl<K> Nested<K> {
     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
+        //~^ ERROR may not live long enough
     }
     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
+        //~^ ERROR may not live long enough
     }
 }
 

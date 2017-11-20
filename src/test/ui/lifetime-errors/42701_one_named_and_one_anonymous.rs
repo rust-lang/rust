@@ -17,7 +17,7 @@ fn foo2<'a>(a: &'a Foo, x: &i32) -> &'a i32 {
         let p: &i32 = &a.field;
         &*p
     } else {
-        &*x
+        &*x //~ ERROR explicit lifetime
     }
 }
 

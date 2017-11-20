@@ -1,9 +1,10 @@
 error[E0382]: use of moved value: `debug_dump_dict`
-  --> $DIR/issue-42065.rs:21:5
+  --> $DIR/issue-42065.rs:23:5
    |
-20 |     debug_dump_dict();
-   |     --------------- value moved here
 21 |     debug_dump_dict();
+   |     --------------- value moved here
+22 |     //~^ NOTE: value moved here
+23 |     debug_dump_dict();
    |     ^^^^^^^^^^^^^^^ value used here after move
    |
 note: closure cannot be invoked more than once because it moves the variable `dict` out of its environment

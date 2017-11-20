@@ -10,14 +10,14 @@
 
 #![feature(attr_literals)]
 
-#[repr(align(16))]
+#[repr(align(16))] //~ ERROR is experimental
 struct Gem {
     mohs_hardness: u8,
     poofed: bool,
     weapon: Weapon,
 }
 
-#[repr(simd)]
+#[repr(simd)] //~ ERROR are experimental
 struct Weapon {
     name: String,
     damage: u32
@@ -25,9 +25,10 @@ struct Weapon {
 
 impl Gem {
     #[must_use] fn summon_weapon(&self) -> Weapon { self.weapon }
+    //~^ WARN is experimental
 }
 
-#[must_use]
+#[must_use] //~ WARN is experimental
 fn bubble(gem: Gem) -> Result<Gem, ()> {
     if gem.poofed {
         Ok(gem)

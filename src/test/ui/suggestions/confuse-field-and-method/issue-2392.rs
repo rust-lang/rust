@@ -13,6 +13,9 @@
 use std::boxed::FnBox;
 
 struct FuncContainer {
+//~^ NOTE not found for this
+//~| NOTE not found for this
+//~| NOTE not found for this
     f1: fn(data: u8),
     f2: extern "C" fn(data: u8),
     f3: unsafe fn(data: u8),
@@ -23,11 +26,19 @@ struct FuncContainerOuter {
 }
 
 struct Obj<F> where F: FnOnce() -> u32 {
+//~^ NOTE not found for this
+//~| NOTE not found for this
+//~| NOTE not found for this
+//~| NOTE not found for this
+//~| NOTE not found for this
+//~| NOTE not found for this
     closure: F,
     not_closure: usize,
 }
 
 struct BoxedObj {
+//~^ NOTE not found for this
+//~| NOTE not found for this
     boxed_closure: Box<FnBox() -> u32>,
 }
 

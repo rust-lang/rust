@@ -16,5 +16,5 @@ fn foo(mut f: Box<FnMut()>) {
 
 fn main() {
     let y = true;
-    foo(Box::new(move || y = false) as Box<_>);
+    foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
 }

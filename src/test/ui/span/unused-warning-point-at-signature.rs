@@ -12,25 +12,25 @@
 
 #![warn(unused)]
 
-enum Enum {
+enum Enum { //~ WARN enum is never used
     A,
     B,
     C,
     D,
 }
 
-struct Struct {
+struct Struct { //~ WARN struct is never used
     a: usize,
     b: usize,
     c: usize,
     d: usize,
 }
 
-fn func() -> usize {
+fn func() -> usize { //~ WARN function is never used
     3
 }
 
-fn
+fn //~ WARN function is never used
 func_complete_span()
 -> usize
 {

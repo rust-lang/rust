@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_match.rs:20:5
    |
-20 |     match {return} { }
+20 |     match {return} { } //~ ERROR unreachable
    |     ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

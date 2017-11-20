@@ -23,7 +23,7 @@ trait MyFromIterator<A> {
     fn my_from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
 }
 
-#[rustc_on_unimplemented] //~ ERROR this attribute must have a value
+#[rustc_on_unimplemented] //~ ERROR `#[rustc_on_unimplemented]` requires a value
 trait BadAnnotation1
 {}
 
@@ -38,27 +38,34 @@ trait BadAnnotation3<A,B>
 {}
 
 #[rustc_on_unimplemented(lorem="")]
+//~^ this attribute must have a valid
 trait BadAnnotation4 {}
 
 #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
+//~^ this attribute must have a valid
 trait BadAnnotation5 {}
 
 #[rustc_on_unimplemented(message="x", message="y")]
+//~^ this attribute must have a valid
 trait BadAnnotation6 {}
 
 #[rustc_on_unimplemented(message="x", on(desugared, message="y"))]
+//~^ this attribute must have a valid
 trait BadAnnotation7 {}
 
 #[rustc_on_unimplemented(on(), message="y")]
+//~^ empty `on`-clause
 trait BadAnnotation8 {}
 
 #[rustc_on_unimplemented(on="x", message="y")]
+//~^ this attribute must have a valid
 trait BadAnnotation9 {}
 
 #[rustc_on_unimplemented(on(x="y"), message="y")]
 trait BadAnnotation10 {}
 
 #[rustc_on_unimplemented(on(desugared, on(desugared, message="x")), message="y")]
+//~^ this attribute must have a valid
 trait BadAnnotation11 {}
 
 pub fn main() {

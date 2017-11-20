@@ -2218,9 +2218,9 @@ actual:\n\
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
         // the rendered error messages from json and print them
-        let explicit = self.props.compile_flags.iter().any(|s| s.starts_with("--error-format"));
+        let explicit = self.props.compile_flags.iter().any(|s| s.contains("--error-format"));
 
-        let mut proc_res = self.compile_test();
+        let proc_res = self.compile_test();
 
         let expected_stderr_path = self.expected_output_path("stderr");
         let expected_stderr = self.load_expected_output(&expected_stderr_path);
@@ -2229,7 +2229,7 @@ actual:\n\
         let expected_stdout = self.load_expected_output(&expected_stdout_path);
 
         let normalized_stdout =
-            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout, explicit);
+            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
 
         let stderr = if explicit {
             proc_res.stderr.clone()
@@ -2238,14 +2238,11 @@ actual:\n\
         };
 
         let normalized_stderr =
-            self.normalize_output(&stderr, &self.props.normalize_stderr, explicit);
+            self.normalize_output(&stderr, &self.props.normalize_stderr);
 
         let mut errors = 0;
         errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
         errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
-
-        // rewrite the output to the human readable one (shown in case of errors)
-        proc_res.stderr = normalized_stderr;
 
         if errors > 0 {
             println!("To update references, run this command from build directory:");
@@ -2260,11 +2257,22 @@ actual:\n\
                                 &proc_res);
         }
 
+        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
+
         if self.props.run_pass {
             let proc_res = self.exec_compiled_test();
 
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test run failed!", &proc_res);
+            }
+        }
+        if !explicit {
+            if !expected_errors.is_empty() || !proc_res.status.success() {
+                // "// error-pattern" comments
+                self.check_expected_errors(expected_errors, &proc_res);
+            } else if !self.props.error_patterns.is_empty() || !proc_res.status.success() {
+                // "//~ERROR comments"
+                self.check_error_patterns(&proc_res.stderr, &proc_res);
             }
         }
     }
@@ -2440,13 +2448,13 @@ actual:\n\
         mir_dump_dir
     }
 
-    fn normalize_output(
-        &self,
-        output: &str,
-        custom_rules: &[(String, String)],
-        json: bool,
-    ) -> String {
+    fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
         let parent_dir = self.testpaths.file.parent().unwrap();
+        let cflags = self.props.compile_flags.join(" ");
+        let json = cflags.contains("--error-format json") ||
+                   cflags.contains("--error-format pretty-json") ||
+                   cflags.contains("--error-format=json") ||
+                   cflags.contains("--error-format=pretty-json");
         let parent_dir_str = if json {
             parent_dir.display().to_string().replace("\\", "\\\\")
         } else {

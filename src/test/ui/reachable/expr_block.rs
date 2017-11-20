@@ -18,7 +18,7 @@ fn a() {
     // Here the tail expression is considered unreachable:
     let x = {
         return;
-        22
+        22 //~ ERROR unreachable
     };
 }
 

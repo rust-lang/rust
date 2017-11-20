@@ -45,6 +45,7 @@ fn h4() -> i32 {
     a::b.J
     //~^ ERROR expected value, found module `a::b`
     //~| NOTE did you mean `a::b::J`?
+    //~| NOTE did you mean `I`
 }
 
 fn h5() {
@@ -54,23 +55,24 @@ fn h5() {
     let v = Vec::new();
     v.push(a::b);
     //~^ ERROR expected value, found module `a::b`
-    //~| NOTE not a value
+    //~| NOTE did you mean `I`
 }
 
 fn h6() -> i32 {
     a::b.f()
     //~^ ERROR expected value, found module `a::b`
     //~| NOTE did you mean `a::b::f(...)`?
+    //~| NOTE did you mean `I`
 }
 
 fn h7() {
     a::b
     //~^ ERROR expected value, found module `a::b`
-    //~| NOTE not a value
+    //~| NOTE did you mean `I`
 }
 
 fn h8() -> i32 {
     a::b()
     //~^ ERROR expected function, found module `a::b`
-    //~| NOTE not a function
+    //~| NOTE did you mean `I`
 }

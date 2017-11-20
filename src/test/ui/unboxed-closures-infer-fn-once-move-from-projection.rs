@@ -21,6 +21,6 @@ fn main() {
     // the closure implements `FnOnce`, not that it moves from inside
     // a `Fn` closure.)
     let y = (vec![1, 2, 3], 0);
-    let c = || drop(y.0);
+    let c = || drop(y.0); //~ ERROR expected a closure that implements the `Fn` trait
     foo(c);
 }

@@ -14,13 +14,13 @@ fn main() {
 
     unsafe {
         let f = |v: &mut Vec<_>| {
-            unsafe {
+            unsafe { //~ ERROR unnecessary `unsafe`
                 v.set_len(24);
-                |w: &mut Vec<u32>| { unsafe {
+                |w: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
                     w.set_len(32);
                 } };
             }
-            |x: &mut Vec<u32>| { unsafe {
+            |x: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
                 x.set_len(40);
             } };
         };

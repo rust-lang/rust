@@ -1,7 +1,7 @@
 error[E0596]: cannot borrow immutable argument `self` as mutable
   --> $DIR/issue-31424.rs:17:15
    |
-17 |         (&mut self).bar();
+17 |         (&mut self).bar(); //~ ERROR cannot borrow
    |               ^^^^
    |               |
    |               cannot reborrow mutably
@@ -12,7 +12,7 @@ error[E0596]: cannot borrow immutable argument `self` as mutable
    |
 22 |     fn bar(self: &mut Self) {
    |            --------------- consider changing this to `mut self: &mut Self`
-23 |         (&mut self).bar();
+23 |         (&mut self).bar(); //~ ERROR cannot borrow
    |               ^^^^ cannot borrow mutably
 
 error: aborting due to 2 previous errors

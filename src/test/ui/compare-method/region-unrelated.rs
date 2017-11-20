@@ -17,7 +17,7 @@ trait Master<'a, T: ?Sized, U> {
 // `U: 'a` does not imply `V: 'a`
 impl<'a, U, V> Master<'a, U, V> for () {
     fn foo() where V: 'a { }
-    //~^ ERROR parameter type `V` may not live long enough
+    //~^ ERROR impl has stricter requirements than trait
 }
 
 fn main() {

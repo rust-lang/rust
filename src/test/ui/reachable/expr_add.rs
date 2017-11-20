@@ -24,5 +24,5 @@ impl ops::Add<!> for Foo {
 }
 
 fn main() {
-    let x = Foo + return;
+    let x = Foo + return; //~ ERROR unreachable
 }

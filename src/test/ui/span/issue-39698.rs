@@ -18,5 +18,9 @@ enum T {
 fn main() {
     match T::T1(123, 456) {
         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+        //~^ ERROR is not bound in all patterns
+        //~| ERROR is not bound in all patterns
+        //~| ERROR is not bound in all patterns
+        //~| ERROR is not bound in all patterns
     }
 }

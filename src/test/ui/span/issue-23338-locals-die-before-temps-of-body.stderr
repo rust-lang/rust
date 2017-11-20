@@ -11,9 +11,9 @@ error[E0597]: `y` does not live long enough
 error[E0597]: `y` does not live long enough
   --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:28:5
    |
-27 |         y.borrow().clone() //~ ERROR `y` does not live long enough
+27 |         y.borrow().clone()
    |         - borrow occurs here
-28 |     };
+28 |     }; //~ ERROR `y` does not live long enough
    |     ^- borrowed value needs to live until here
    |     |
    |     `y` dropped here while still borrowed

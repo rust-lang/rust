@@ -10,9 +10,9 @@ error[E0631]: type mismatch in function arguments
    = note: required by `apply`
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/fn-variance-1.rs:27:5
+  --> $DIR/fn-variance-1.rs:28:5
    |
-27 |     apply(&mut 3, takes_imm);
+28 |     apply(&mut 3, takes_imm);
    |     ^^^^^
    |     |
    |     expected signature of `fn(&mut {integer}) -> _`

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    for i 0..2 {
+    for i 0..2 { //~ ERROR missing `in`
     }
 }
 

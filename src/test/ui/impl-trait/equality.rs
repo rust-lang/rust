@@ -32,7 +32,7 @@ fn sum_to(n: u32) -> impl Foo {
         0
     } else {
         n + sum_to(n - 1)
-        //~^ ERROR no implementation for `u32 + impl Foo`
+        //~^ ERROR the trait bound `u32: std::ops::Add<impl Foo>` is not satisfied
     }
 }
 

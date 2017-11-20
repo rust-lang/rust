@@ -13,7 +13,7 @@
 #![feature(proc_macro)]
 #![allow(unused_macros)]
 
-#[macro_use] extern crate log;
+#[macro_use] extern crate log; //~ ERROR use of unstable library feature
 
 pub fn main() {
     info!("This is a log message.");

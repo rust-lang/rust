@@ -10,7 +10,7 @@
 
 // Test that parameter cardinality or missing method error gets span exactly.
 
-pub struct Foo;
+pub struct Foo; //~ NOTE not found for this
 impl Foo {
     fn zero(self) -> Foo { self }
     //~^ NOTE defined here

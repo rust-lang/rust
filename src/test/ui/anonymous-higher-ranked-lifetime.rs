@@ -9,17 +9,17 @@
 // except according to those terms.
 
 fn main() {
-    f1(|_: (), _: ()| {});
-    f2(|_: (), _: ()| {});
-    f3(|_: (), _: ()| {});
-    f4(|_: (), _: ()| {});
-    f5(|_: (), _: ()| {});
-    g1(|_: (), _: ()| {});
-    g2(|_: (), _: ()| {});
-    g3(|_: (), _: ()| {});
-    g4(|_: (), _: ()| {});
-    h1(|_: (), _: (), _: (), _: ()| {});
-    h2(|_: (), _: (), _: (), _: ()| {});
+    f1(|_: (), _: ()| {}); //~ ERROR type mismatch
+    f2(|_: (), _: ()| {}); //~ ERROR type mismatch
+    f3(|_: (), _: ()| {}); //~ ERROR type mismatch
+    f4(|_: (), _: ()| {}); //~ ERROR type mismatch
+    f5(|_: (), _: ()| {}); //~ ERROR type mismatch
+    g1(|_: (), _: ()| {}); //~ ERROR type mismatch
+    g2(|_: (), _: ()| {}); //~ ERROR type mismatch
+    g3(|_: (), _: ()| {}); //~ ERROR type mismatch
+    g4(|_: (), _: ()| {}); //~ ERROR type mismatch
+    h1(|_: (), _: (), _: (), _: ()| {}); //~ ERROR type mismatch
+    h2(|_: (), _: (), _: (), _: ()| {}); //~ ERROR type mismatch
 }
 
 // Basic

@@ -17,36 +17,36 @@ struct S(Enum, ());
 struct Sd { x: Enum, y: () }
 
 fn main() {
-    match (A, ()) {
+    match (A, ()) { //~ ERROR non-exhaustive
         (A, _) => {}
     }
 
-    match (A, A) {
+    match (A, A) { //~ ERROR non-exhaustive
         (_, A) => {}
     }
 
-    match ((A, ()), ()) {
+    match ((A, ()), ()) { //~ ERROR non-exhaustive
         ((A, ()), _) => {}
     }
 
-    match ((A, ()), A) {
+    match ((A, ()), A) { //~ ERROR non-exhaustive
         ((A, ()), _) => {}
     }
 
-    match ((A, ()), ()) {
+    match ((A, ()), ()) { //~ ERROR non-exhaustive
         ((A, _), _) => {}
     }
 
 
-    match S(A, ()) {
+    match S(A, ()) { //~ ERROR non-exhaustive
         S(A, _) => {}
     }
 
-    match (Sd { x: A, y: () }) {
+    match (Sd { x: A, y: () }) { //~ ERROR non-exhaustive
         Sd { x: A, y: _ } => {}
     }
 
-    match Some(A) {
+    match Some(A) { //~ ERROR non-exhaustive
         Some(A) => (),
         None => ()
     }

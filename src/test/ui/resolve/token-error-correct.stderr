@@ -1,7 +1,7 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct.rs:23:1
+  --> $DIR/token-error-correct.rs:18:1
    |
-23 | }
+18 | }
    | ^
    |
 note: unclosed delimiter
@@ -11,9 +11,9 @@ note: unclosed delimiter
    |            ^
 
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct.rs:23:1
+  --> $DIR/token-error-correct.rs:18:1
    |
-23 | }
+18 | }
    | ^
    |
 note: unclosed delimiter
@@ -29,9 +29,9 @@ error: expected expression, found `;`
    |             ^
 
 error: expected expression, found `)`
-  --> $DIR/token-error-correct.rs:23:1
+  --> $DIR/token-error-correct.rs:18:1
    |
-23 | }
+18 | }
    | ^
 
 error: aborting due to 4 previous errors

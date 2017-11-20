@@ -1,7 +1,7 @@
 error[E0425]: cannot find value `bar` in this scope
   --> $DIR/tab.rs:14:2
    |
-14 |  bar;
+14 |  bar; //~ ERROR cannot find value `bar`
    |  ^^^ not found in this scope
 
 error[E0308]: mismatched types
@@ -9,7 +9,7 @@ error[E0308]: mismatched types
    |
 17 | fn foo() {
    |          - help: try adding a return type: `-> &'static str `
-18 |  "bar   boo"
+18 |  "bar   boo" //~ ERROR mismatched types
    |  ^^^^^^^^^^^ expected (), found reference
    |
    = note: expected type `()`

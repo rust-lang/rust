@@ -17,39 +17,39 @@ error[E0425]: cannot find value `field` in this scope
    |         ^^^^^ help: try: `self.field`
 
 error[E0412]: cannot find type `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:36:16
+  --> $DIR/resolve-assoc-suggestions.rs:35:16
    |
-36 |         let _: Type;
+35 |         let _: Type;
    |                ^^^^ help: try: `Self::Type`
 
 error[E0531]: cannot find tuple struct/variant `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:39:13
+  --> $DIR/resolve-assoc-suggestions.rs:37:13
    |
-39 |         let Type(..);
+37 |         let Type(..);
    |             ^^^^ not found in this scope
 
 error[E0425]: cannot find value `Type` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:42:9
+  --> $DIR/resolve-assoc-suggestions.rs:40:9
    |
-42 |         Type;
+40 |         Type;
    |         ^^^^ not found in this scope
 
 error[E0412]: cannot find type `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:46:16
+  --> $DIR/resolve-assoc-suggestions.rs:44:16
    |
-46 |         let _: method;
+44 |         let _: method;
    |                ^^^^^^ not found in this scope
 
 error[E0531]: cannot find tuple struct/variant `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:49:13
+  --> $DIR/resolve-assoc-suggestions.rs:47:13
    |
-49 |         let method(..);
+47 |         let method(..);
    |             ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `method` in this scope
-  --> $DIR/resolve-assoc-suggestions.rs:52:9
+  --> $DIR/resolve-assoc-suggestions.rs:50:9
    |
-52 |         method;
+50 |         method;
    |         ^^^^^^ help: try: `self.method`
 
 error: aborting due to 9 previous errors

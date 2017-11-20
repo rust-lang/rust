@@ -1,7 +1,7 @@
 error: the struct `#[repr(align(u16))]` attribute is experimental (see issue #33626)
   --> $DIR/gated-features-attr-spans.rs:13:1
    |
-13 | #[repr(align(16))]
+13 | #[repr(align(16))] //~ ERROR is experimental
    | ^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_align)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error: the struct `#[repr(align(u16))]` attribute is experimental (see issue #33
 error: SIMD types are experimental and possibly buggy (see issue #27731)
   --> $DIR/gated-features-attr-spans.rs:20:1
    |
-20 | #[repr(simd)]
+20 | #[repr(simd)] //~ ERROR are experimental
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_simd)] to the crate attributes to enable
@@ -23,9 +23,9 @@ warning: `#[must_use]` on methods is experimental (see issue #43302)
    = help: add #![feature(fn_must_use)] to the crate attributes to enable
 
 warning: `#[must_use]` on functions is experimental (see issue #43302)
-  --> $DIR/gated-features-attr-spans.rs:30:1
+  --> $DIR/gated-features-attr-spans.rs:31:1
    |
-30 | #[must_use]
+31 | #[must_use] //~ WARN is experimental
    | ^^^^^^^^^^^
    |
    = help: add #![feature(fn_must_use)] to the crate attributes to enable

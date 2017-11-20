@@ -5,23 +5,23 @@ error[E0560]: struct `submodule::Demo` has no field named `inocently_mispellable
    |                                       ^^^^^^^^^^^^^^^^^^^^^^ field does not exist - did you mean `innocently_misspellable`?
 
 error[E0560]: struct `submodule::Demo` has no field named `egregiously_nonexistent_field`
-  --> $DIR/issue-42599_available_fields_note.rs:30:39
+  --> $DIR/issue-42599_available_fields_note.rs:31:39
    |
-30 |             Self { secret_integer: 3, egregiously_nonexistent_field: () }
+31 |             Self { secret_integer: 3, egregiously_nonexistent_field: () }
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `submodule::Demo` does not have this field
    |
    = note: available fields are: `favorite_integer`, `secret_integer`, `innocently_misspellable`, `another_field`, `yet_another_field` ... and 2 others
 
 error[E0609]: no field `inocently_mispellable` on type `submodule::Demo`
-  --> $DIR/issue-42599_available_fields_note.rs:40:41
+  --> $DIR/issue-42599_available_fields_note.rs:42:41
    |
-40 |     let innocent_field_misaccess = demo.inocently_mispellable;
+42 |     let innocent_field_misaccess = demo.inocently_mispellable;
    |                                         ^^^^^^^^^^^^^^^^^^^^^ did you mean `innocently_misspellable`?
 
 error[E0609]: no field `egregiously_nonexistent_field` on type `submodule::Demo`
-  --> $DIR/issue-42599_available_fields_note.rs:42:42
+  --> $DIR/issue-42599_available_fields_note.rs:45:42
    |
-42 |     let egregious_field_misaccess = demo.egregiously_nonexistent_field;
+45 |     let egregious_field_misaccess = demo.egregiously_nonexistent_field;
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown field
    |
    = note: available fields are: `favorite_integer`, `innocently_misspellable`

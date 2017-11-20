@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: &i32, y: &i32) -> &i32 {
+fn foo(x: &i32, y: &i32) -> &i32 { //~ ERROR missing lifetime
     if x > y { x } else { y }
 }
 

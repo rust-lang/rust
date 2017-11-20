@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//~^^^^^^^^^^ ERROR reached the recursion limit
+
 // Test that the recursion limit can be changed and that the compiler
 // suggests a fix. In this case, we have a long chain of Deref impls
 // which will cause an overflow during the autoderef loop.
@@ -57,6 +59,7 @@ link!(K, Bottom);
 
 fn main() {
     let t = Top::new();
-    let x: &Bottom = &t;
+    let x: &Bottom = &t; //~ ERROR mismatched types
+    //~^ error recursion limit
 }
 

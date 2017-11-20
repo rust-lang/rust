@@ -13,7 +13,13 @@ use std::fmt::Debug;
 
 trait Foo {
     fn bar(&self);
+    //~^ NOTE item in trait
+    //~| NOTE `bar` from trait
+    //~| NOTE item in trait
+    //~| NOTE `bar` from trait
     const MY_CONST: u32;
+    //~^ NOTE item in trait
+    //~| NOTE `MY_CONST` from trait
 }
 
 pub struct FooConstForMethod;
@@ -46,10 +52,15 @@ impl Foo for FooTypeForMethod {
     type bar = u64;
     //~^ ERROR E0325
     //~| NOTE does not match trait
+    //~| NOTE not a member
+    //~| ERROR E0437
     const MY_CONST: u32 = 1;
 }
 
 impl Debug for FooTypeForMethod {
 }
+//~^^ ERROR E0046
+//~| NOTE missing `fmt` in implementation
+//~| NOTE `fmt` from trait:
 
 fn main () {}

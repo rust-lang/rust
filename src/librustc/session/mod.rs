@@ -359,7 +359,11 @@ impl Session {
                          diag_builder: &'b mut DiagnosticBuilder<'a>,
                          method: DiagnosticBuilderMethod,
                          lint: &'static lint::Lint, message: &str, span: Option<Span>) {
-        let mut do_method = || {
+
+        let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
+        let id_span_message = (lint_id, span, message.to_owned());
+        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
+        if fresh {
             match method {
                 DiagnosticBuilderMethod::Note => {
                     diag_builder.note(message);
@@ -368,13 +372,6 @@ impl Session {
                     diag_builder.span_note(span.expect("span_note expects a span"), message);
                 }
             }
-        };
-
-        let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
-        let id_span_message = (lint_id, span, message.to_owned());
-        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
-        if fresh {
-            do_method()
         }
     }
 

@@ -23,13 +23,13 @@ macro_rules! write {
         const stdout: i32 = 1;
         unsafe {
             write(stdout, $arr.as_ptr() as *const i8,
-                  $arr.len() * size_of($arr[0]));
+                  $arr.len() * size_of($arr[0])); //~ ERROR mismatched types
         }
     }}
 }
 
 macro_rules! cast {
-    ($x:expr) => ($x as ())
+    ($x:expr) => ($x as ()) //~ ERROR non-primitive cast
 }
 
 fn main() {

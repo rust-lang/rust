@@ -1,7 +1,7 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct-3.rs:29:9
+  --> $DIR/token-error-correct-3.rs:31:9
    |
-29 |         } else { //~ ERROR: incorrect close delimiter: `}`
+31 |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^
    |
 note: unclosed delimiter
@@ -17,24 +17,24 @@ error: expected one of `,`, `.`, `?`, or an operator, found `;`
    |                                   ^ expected one of `,`, `.`, `?`, or an operator here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
-  --> $DIR/token-error-correct-3.rs:29:9
+  --> $DIR/token-error-correct-3.rs:31:9
    |
-25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+26 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
 ...
-29 |         } else { //~ ERROR: incorrect close delimiter: `}`
+31 |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
   --> $DIR/token-error-correct-3.rs:21:13
    |
-21 |         if !is_directory(path.as_ref()) { //~ ERROR: unresolved function `is_directory`
+21 |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
    |             ^^^^^^^^^^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/token-error-correct-3.rs:25:13
+  --> $DIR/token-error-correct-3.rs:26:13
    |
-25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+26 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |             |
    |             expected (), found enum `std::result::Result`

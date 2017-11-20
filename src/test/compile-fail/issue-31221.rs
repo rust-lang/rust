@@ -13,8 +13,6 @@
 #![allow(non_snake_case)]
 #![deny(unreachable_patterns)]
 //~^ NOTE lint level defined here
-//~^^ NOTE lint level defined here
-//~^^^ NOTE lint level defined here
 
 #[derive(Clone, Copy)]
 enum Enum {

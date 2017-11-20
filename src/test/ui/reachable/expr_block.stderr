@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_block.rs:21:9
    |
-21 |         22
+21 |         22 //~ ERROR unreachable
    |         ^^
    |
 note: lint level defined here

@@ -15,7 +15,8 @@
 #![feature(never_type)]
 
 fn foo() {
-    let x: ! = ! { return; 22 };
+    let x: ! = ! { return; 22 }; //~ ERROR unreachable
+    //~^ ERROR cannot apply unary operator `!` to type `!`
 }
 
 fn main() { }
