@@ -367,6 +367,15 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // probably always be WF, because it should be
                     // shorthand for something like `where(T: 'a) {
                     // fn(&'a T) }`, as discussed in #25860.
+                    //
+                    // Note that we are also skipping the generic
+                    // types. This is consistent with the `outlives`
+                    // code, but anyway doesn't matter: within the fn
+                    // body where they are created, the generics will
+                    // always be WF, and outside of that fn body we
+                    // are not directly inspecting closure types
+                    // anyway, except via auto trait matching (which
+                    // only inspects the upvar types).
                     subtys.skip_current_subtree(); // subtree handled by compute_projection
                     for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
                         self.compute(upvar_ty);
