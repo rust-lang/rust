@@ -54,7 +54,7 @@ static AtomicOrdering fromRust(LLVMAtomicOrdering Ordering) {
     return AtomicOrdering::SequentiallyConsistent;
   }
 
-  llvm_unreachable("Invalid LLVMAtomicOrdering value!");
+  report_fatal_error("Invalid LLVMAtomicOrdering value!");
 }
 
 static LLVM_THREAD_LOCAL char *LastError;
@@ -161,7 +161,7 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
   case SanitizeMemory:
     return Attribute::SanitizeMemory;
   }
-  llvm_unreachable("bad AttributeKind");
+  report_fatal_error("bad AttributeKind");
 }
 
 extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
@@ -356,7 +356,7 @@ static SyncScope::ID fromRust(LLVMRustSynchronizationScope Scope) {
   case LLVMRustSynchronizationScope::CrossThread:
     return SyncScope::System;
   default:
-    llvm_unreachable("bad SynchronizationScope.");
+    report_fatal_error("bad SynchronizationScope.");
   }
 }
 #else
@@ -367,7 +367,7 @@ static SynchronizationScope fromRust(LLVMRustSynchronizationScope Scope) {
   case LLVMRustSynchronizationScope::CrossThread:
     return CrossThread;
   default:
-    llvm_unreachable("bad SynchronizationScope.");
+    report_fatal_error("bad SynchronizationScope.");
   }
 }
 #endif
@@ -397,7 +397,7 @@ static InlineAsm::AsmDialect fromRust(LLVMRustAsmDialect Dialect) {
   case LLVMRustAsmDialect::Intel:
     return InlineAsm::AD_Intel;
   default:
-    llvm_unreachable("bad AsmDialect.");
+    report_fatal_error("bad AsmDialect.");
   }
 }
 
@@ -748,7 +748,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
         unwrapDI<DIType>(Ty), AlwaysPreserve, fromRust(Flags)
 #if LLVM_VERSION_GE(4, 0)
         ,
-	AlignInBits
+  AlignInBits
 #endif
         ));
   } else {
@@ -1149,7 +1149,7 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMTokenTypeKind;
 #endif
   }
-  llvm_unreachable("Unhandled TypeID.");
+  report_fatal_error("Unhandled TypeID.");
 }
 
 extern "C" void LLVMRustWriteDebugLocToString(LLVMContextRef C,
@@ -1370,7 +1370,7 @@ static LLVMRustLinkage toRust(LLVMLinkage Linkage) {
   case LLVMCommonLinkage:
     return LLVMRustLinkage::CommonLinkage;
   default:
-    llvm_unreachable("Invalid LLVMRustLinkage value!");
+    report_fatal_error("Invalid LLVMRustLinkage value!");
   }
 }
 
@@ -1399,7 +1399,7 @@ static LLVMLinkage fromRust(LLVMRustLinkage Linkage) {
   case LLVMRustLinkage::CommonLinkage:
     return LLVMCommonLinkage;
   }
-  llvm_unreachable("Invalid LLVMRustLinkage value!");
+  report_fatal_error("Invalid LLVMRustLinkage value!");
 }
 
 extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
@@ -1447,7 +1447,7 @@ static LLVMRustVisibility toRust(LLVMVisibility Vis) {
   case LLVMProtectedVisibility:
     return LLVMRustVisibility::Protected;
   }
-  llvm_unreachable("Invalid LLVMRustVisibility value!");
+  report_fatal_error("Invalid LLVMRustVisibility value!");
 }
 
 static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
@@ -1459,7 +1459,7 @@ static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
   case LLVMRustVisibility::Protected:
     return LLVMProtectedVisibility;
   }
-  llvm_unreachable("Invalid LLVMRustVisibility value!");
+  report_fatal_error("Invalid LLVMRustVisibility value!");
 }
 
 extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
