@@ -235,8 +235,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                     "auto traits cannot have generics");
                     }
                     if !bounds.is_empty() {
-                        self.err_handler().span_err(item.span,
-                                                    "auto traits cannot have super traits");
+                        let all_bounds_are_maybe = bounds.iter()
+                        .all(|bound| {
+                            match *bound {
+                                TraitTyParamBound(_, TraitBoundModifier::Maybe) => true,
+                                _ => false
+                            }
+                        });
+
+                        // allow `?DynSized` bound, since the `DynSized` bound is implicit
+                        // for traits
+                        if !all_bounds_are_maybe {
+                            self.err_handler().span_err(item.span,
+                                                        "auto traits cannot have super traits");
+                        }
                     }
                     if !trait_items.is_empty() {
                         self.err_handler().span_err(item.span,
