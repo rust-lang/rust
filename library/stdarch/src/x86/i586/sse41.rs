@@ -333,7 +333,7 @@ pub unsafe fn _mm_cvtepu8_epi16(a: u8x16) -> i16x8 {
     simd_shuffle8::<_, ::v64::u8x8>(a, a, [0, 1, 2, 3, 4, 5, 6, 7]).as_i16x8()
 }
 
-/// Zero extend packed unsigned 8-bit integers in `a` to packed 16-bit integers
+/// Zero extend packed unsigned 8-bit integers in `a` to packed 32-bit integers
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovzxbd))]
@@ -341,7 +341,7 @@ pub unsafe fn _mm_cvtepu8_epi32(a: u8x16) -> i32x4 {
     simd_shuffle4::<_, ::v32::u8x4>(a, a, [0, 1, 2, 3]).as_i32x4()
 }
 
-/// Zero extend packed unsigned 8-bit integers in `a` to packed 16-bit integers
+/// Zero extend packed unsigned 8-bit integers in `a` to packed 64-bit integers
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pmovzxbq))]
