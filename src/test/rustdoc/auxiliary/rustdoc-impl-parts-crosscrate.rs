@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits, dynsized)]
 
-pub trait AnOibit {}
+use std::marker::DynSized;
+
+pub trait AnOibit: ?DynSized {}
 
 #[allow(auto_impl)]
 impl AnOibit for .. {}

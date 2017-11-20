@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits, dynsized)]
 #![feature(core)]
 
 pub mod bar {
-    use std::marker;
+    use std::marker::DynSized;
 
-    pub trait Bar {}
+    pub trait Bar: ?DynSized {}
 
     #[allow(auto_impl)]
     impl Bar for .. {}
