@@ -17,12 +17,12 @@ fn foo() {
             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         }
         Pattern1 | Pattern2 | Pattern3 => false,
-        Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn |
-        Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => blah,
-        Patternnnnnnnnnnnnnnnnnnn |
-        Patternnnnnnnnnnnnnnnnnnn |
-        Patternnnnnnnnnnnnnnnnnnn |
-        Patternnnnnnnnnnnnnnnnnnn => meh,
+        Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
+        | Paternnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => blah,
+        Patternnnnnnnnnnnnnnnnnnn
+        | Patternnnnnnnnnnnnnnnnnnn
+        | Patternnnnnnnnnnnnnnnnnnn
+        | Patternnnnnnnnnnnnnnnnnnn => meh,
 
         Patternnnnnnnnnnnnnnnnnnn | Patternnnnnnnnnnnnnnnnnnn if looooooooooooooooooong_guard => {
             meh
@@ -35,8 +35,9 @@ fn foo() {
         }
 
         // Test that earlier patterns can take the guard space
-        (aaaa, bbbbb, ccccccc, aaaaa, bbbbbbbb, cccccc, aaaa, bbbbbbbb, cccccc, dddddd) |
-        Patternnnnnnnnnnnnnnnnnnnnnnnnn if loooooooooooooooooooooooooooooooooooooooooong_guard => {}
+        (aaaa, bbbbb, ccccccc, aaaaa, bbbbbbbb, cccccc, aaaa, bbbbbbbb, cccccc, dddddd)
+        | Patternnnnnnnnnnnnnnnnnnnnnnnnn
+            if loooooooooooooooooooooooooooooooooooooooooong_guard => {}
 
         _ => {}
         ast::PathParameters::AngleBracketedParameters(ref data)
@@ -299,18 +300,8 @@ fn issue494() {
 fn issue386() {
     match foo {
         BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
-        BiAnd |
-        BiOr |
-        BiAdd |
-        BiSub |
-        BiMul |
-        BiDiv |
-        BiRem |
-        BiBitXor |
-        BiBitAnd |
-        BiBitOr |
-        BiShl |
-        BiShr => false,
+        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem | BiBitXor | BiBitAnd | BiBitOr
+        | BiShl | BiShr => false,
     }
 }
 
@@ -318,8 +309,8 @@ fn guards() {
     match foo {
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if foooooooooooooo && barrrrrrrrrrrr => {}
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if foooooooooooooo && barrrrrrrrrrrr => {}
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if fooooooooooooooooooooo
@@ -438,12 +429,12 @@ fn match_with_near_max_width() {
         _ => unimplemented!(),
     };
     match m {
-        Variant::Tag |
-        Variant::Tag2 |
-        Variant::Tag3 |
-        Variant::Tag4 |
-        Variant::Tag5 |
-        Variant::Tag6 => {}
+        Variant::Tag
+        | Variant::Tag2
+        | Variant::Tag3
+        | Variant::Tag4
+        | Variant::Tag5
+        | Variant::Tag6 => {}
     }
 }
 

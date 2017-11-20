@@ -99,12 +99,12 @@ pub fn format_expr(
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, &ptr_vec_to_ref_vec(items), expr.span, shape)
         }
-        ast::ExprKind::If(..) |
-        ast::ExprKind::IfLet(..) |
-        ast::ExprKind::ForLoop(..) |
-        ast::ExprKind::Loop(..) |
-        ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
+        ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
         ast::ExprKind::Block(ref block) => {
             match expr_type {
@@ -161,10 +161,10 @@ pub fn format_expr(
         ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
             closures::rewrite_closure(capture, fn_decl, body, expr.span, context, shape)
         }
-        ast::ExprKind::Try(..) |
-        ast::ExprKind::Field(..) |
-        ast::ExprKind::TupField(..) |
-        ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
+        ast::ExprKind::Try(..)
+        | ast::ExprKind::Field(..)
+        | ast::ExprKind::TupField(..)
+        | ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
         ast::ExprKind::Mac(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
@@ -430,6 +430,7 @@ where
         context.codemap,
         expr_iter,
         "]",
+        ",",
         |item| item.span.lo(),
         |item| item.span.hi(),
         |item| item.rewrite(context, nested_shape),
@@ -1341,6 +1342,7 @@ fn rewrite_match_arms(
             .zip(is_last_iter)
             .map(|(arm, is_last)| ArmWrapper::new(arm, is_last)),
         "}",
+        "|",
         |arm| arm.arm.span().lo(),
         |arm| arm.arm.span().hi(),
         |arm| arm.rewrite(context, arm_shape),
@@ -1409,6 +1411,38 @@ fn rewrite_match_arm(
     )
 }
 
+/// Returns true if the given pattern is short. A short pattern is defined by the following grammer:
+///
+/// [small, ntp]:
+///     - single token
+///     - `&[single-line, ntp]`
+///
+/// [small]:
+///     - `[small, ntp]`
+///     - unary tuple constructor `([small, ntp])`
+///     - `&[small]`
+fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
+    // We also require that the pattern is reasonably 'small' with its literal width.
+    pat_str.len() <= 20 && !pat_str.contains("\n") && is_short_pattern_inner(pat)
+}
+
+fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
+    match pat.node {
+        ast::PatKind::Wild | ast::PatKind::Lit(_) => true,
+        ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
+        ast::PatKind::Struct(..)
+        | ast::PatKind::Mac(..)
+        | ast::PatKind::Slice(..)
+        | ast::PatKind::Path(..)
+        | ast::PatKind::Range(..) => false,
+        ast::PatKind::Tuple(ref subpats, _) => subpats.len() <= 1,
+        ast::PatKind::TupleStruct(ref path, ref subpats, _) => {
+            path.segments.len() <= 1 && subpats.len() <= 1
+        }
+        ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) => is_short_pattern_inner(&*p),
+    }
+}
+
 fn rewrite_match_pattern(
     context: &RewriteContext,
     pats: &[ptr::P<ast::Pat>],
@@ -1423,13 +1457,20 @@ fn rewrite_match_pattern(
         .map(|p| p.rewrite(context, pat_shape))
         .collect::<Option<Vec<_>>>()?;
 
+    let use_mixed_layout = pats.iter()
+        .zip(pat_strs.iter())
+        .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
     let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = definitive_tactic(
-        &items,
-        ListTactic::HorizontalVertical,
-        Separator::VerticalBar,
-        pat_shape.width,
-    );
+    let tactic = if use_mixed_layout {
+        DefinitiveListTactic::Mixed
+    } else {
+        definitive_tactic(
+            &items,
+            ListTactic::HorizontalVertical,
+            Separator::VerticalBar,
+            pat_shape.width,
+        )
+    };
     let fmt = ListFormatting {
         tactic: tactic,
         separator: " |",
@@ -1874,6 +1915,7 @@ where
         context.codemap,
         args.iter(),
         ")",
+        ",",
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| item.rewrite(context, shape),
@@ -2060,29 +2102,29 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
             (context.use_block_indent() && args_len == 1)
                 || (context.config.indent_style() == IndentStyle::Visual && args_len > 1)
         }
-        ast::ExprKind::If(..) |
-        ast::ExprKind::IfLet(..) |
-        ast::ExprKind::ForLoop(..) |
-        ast::ExprKind::Loop(..) |
-        ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) => {
+        ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..) => {
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
         ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
             context.use_block_indent()
                 || context.config.indent_style() == IndentStyle::Visual && args_len > 1
         }
-        ast::ExprKind::Array(..) |
-        ast::ExprKind::Call(..) |
-        ast::ExprKind::Mac(..) |
-        ast::ExprKind::MethodCall(..) |
-        ast::ExprKind::Struct(..) |
-        ast::ExprKind::Tup(..) => context.use_block_indent() && args_len == 1,
-        ast::ExprKind::AddrOf(_, ref expr) |
-        ast::ExprKind::Box(ref expr) |
-        ast::ExprKind::Try(ref expr) |
-        ast::ExprKind::Unary(_, ref expr) |
-        ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
+        ast::ExprKind::Array(..)
+        | ast::ExprKind::Call(..)
+        | ast::ExprKind::Mac(..)
+        | ast::ExprKind::MethodCall(..)
+        | ast::ExprKind::Struct(..)
+        | ast::ExprKind::Tup(..) => context.use_block_indent() && args_len == 1,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
         _ => false,
     }
 }
@@ -2301,6 +2343,7 @@ fn rewrite_struct_lit<'a>(
             context.codemap,
             field_iter,
             "}",
+            ",",
             span_lo,
             span_hi,
             rewrite,
@@ -2451,6 +2494,7 @@ where
         context.codemap,
         items,
         ")",
+        ",",
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| item.rewrite(context, nested_shape),

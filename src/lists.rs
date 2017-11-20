@@ -207,10 +207,18 @@ impl SeparatorPlace {
         *self == SeparatorPlace::Back
     }
 
-    pub fn from_tactic(default: SeparatorPlace, tactic: DefinitiveListTactic) -> SeparatorPlace {
+    pub fn from_tactic(
+        default: SeparatorPlace,
+        tactic: DefinitiveListTactic,
+        sep: &str,
+    ) -> SeparatorPlace {
         match tactic {
             DefinitiveListTactic::Vertical => default,
-            _ => SeparatorPlace::Back,
+            _ => if sep == "," {
+                SeparatorPlace::Back
+            } else {
+                default
+            },
         }
     }
 }
@@ -269,7 +277,8 @@ where
     let cloned_items = items.clone();
     let mut iter = items.into_iter().enumerate().peekable();
     let mut item_max_width: Option<usize> = None;
-    let mut sep_place = SeparatorPlace::from_tactic(formatting.separator_place, tactic);
+    let sep_place =
+        SeparatorPlace::from_tactic(formatting.separator_place, tactic, formatting.separator);
 
     let mut line_len = 0;
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
@@ -278,7 +287,10 @@ where
         let inner_item = item.item.as_ref()?;
         let first = i == 0;
         let last = iter.peek().is_none();
-        let mut separate = !last || trailing_separator;
+        let mut separate = match sep_place {
+            SeparatorPlace::Front => !first,
+            SeparatorPlace::Back => !last || trailing_separator,
+        };
         let item_sep_len = if separate { sep_len } else { 0 };
 
         // Item string may be multi-line. Its length (used for block comment alignment)
@@ -316,9 +328,6 @@ where
                             trailing_separator = true;
                         }
                     }
-                    sep_place = formatting.separator_place;
-                } else {
-                    sep_place = SeparatorPlace::Back;
                 }
 
                 if line_len > 0 {
@@ -509,6 +518,7 @@ where
     prev_span_end: BytePos,
     next_span_start: BytePos,
     terminator: &'a str,
+    separator: &'a str,
     leave_last: bool,
 }
 
@@ -581,7 +591,7 @@ where
                         }
                     }
                     let newline_index = post_snippet.find('\n');
-                    if let Some(separator_index) = post_snippet.find_uncommented(",") {
+                    if let Some(separator_index) = post_snippet.find_uncommented(self.separator) {
                         match (block_open_index, newline_index) {
                             // Separator before comment, with the next item on same line.
                             // Comment belongs to next item.
@@ -677,6 +687,7 @@ pub fn itemize_list<'a, T, I, F1, F2, F3>(
     codemap: &'a CodeMap,
     inner: I,
     terminator: &'a str,
+    separator: &'a str,
     get_lo: F1,
     get_hi: F2,
     get_item_string: F3,
@@ -699,6 +710,7 @@ where
         prev_span_end: prev_span_end,
         next_span_start: next_span_start,
         terminator: terminator,
+        separator: separator,
         leave_last: leave_last,
     }
 }

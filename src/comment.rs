@@ -64,10 +64,10 @@ impl<'a> CommentStyle<'a> {
 
     pub fn closer(&self) -> &'a str {
         match *self {
-            CommentStyle::DoubleSlash |
-            CommentStyle::TripleSlash |
-            CommentStyle::Custom(..) |
-            CommentStyle::Doc => "",
+            CommentStyle::DoubleSlash
+            | CommentStyle::TripleSlash
+            | CommentStyle::Custom(..)
+            | CommentStyle::Doc => "",
             CommentStyle::DoubleBullet => " **/",
             CommentStyle::SingleBullet | CommentStyle::Exclamation => " */",
         }
@@ -648,9 +648,9 @@ enum FullCodeCharKind {
 impl FullCodeCharKind {
     fn is_comment(&self) -> bool {
         match *self {
-            FullCodeCharKind::StartComment |
-            FullCodeCharKind::InComment |
-            FullCodeCharKind::EndComment => true,
+            FullCodeCharKind::StartComment
+            | FullCodeCharKind::InComment
+            | FullCodeCharKind::EndComment => true,
             _ => false,
         }
     }

@@ -402,9 +402,9 @@ fn newlines_between_list_like_expr() {
     ];
 
     match x {
-        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx |
-        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy |
-        zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz => foo(a, b, c),
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        | yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+        | zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz => foo(a, b, c),
         _ => bar(),
     };
 }

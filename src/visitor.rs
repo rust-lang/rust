@@ -750,6 +750,7 @@ impl Rewrite for ast::MetaItem {
                     context.codemap,
                     list.iter(),
                     ")",
+                    ",",
                     |nested_meta_item| nested_meta_item.span.lo(),
                     |nested_meta_item| nested_meta_item.span.hi(),
                     |nested_meta_item| nested_meta_item.rewrite(context, item_shape),

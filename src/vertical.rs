@@ -231,6 +231,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         context.codemap,
         fields.iter(),
         "}",
+        ",",
         |field| field.get_span().lo(),
         |field| field.get_span().hi(),
         |field| field.rewrite_aligned_item(context, item_shape, field_prefix_max_width),

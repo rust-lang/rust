@@ -27,9 +27,9 @@ use visitor::{rewrite_extern_crate, FmtVisitor};
 
 fn path_of(a: &ast::ViewPath_) -> &ast::Path {
     match *a {
-        ast::ViewPath_::ViewPathSimple(_, ref p) |
-        ast::ViewPath_::ViewPathGlob(ref p) |
-        ast::ViewPath_::ViewPathList(ref p, _) => p,
+        ast::ViewPath_::ViewPathSimple(_, ref p)
+        | ast::ViewPath_::ViewPathGlob(ref p)
+        | ast::ViewPath_::ViewPathList(ref p, _) => p,
     }
 }
 
@@ -212,6 +212,7 @@ fn rewrite_imports(
         context.codemap,
         use_items.iter(),
         "",
+        ";",
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| {
@@ -366,10 +367,10 @@ impl<'a> ImportItem<'a> {
 
     fn to_str(&self) -> Option<&str> {
         match *self {
-            ImportItem::SelfImport(s) |
-            ImportItem::SnakeCase(s) |
-            ImportItem::CamelCase(s) |
-            ImportItem::AllCaps(s) => Some(s),
+            ImportItem::SelfImport(s)
+            | ImportItem::SnakeCase(s)
+            | ImportItem::CamelCase(s)
+            | ImportItem::AllCaps(s) => Some(s),
             ImportItem::Invalid => None,
         }
     }
@@ -442,6 +443,7 @@ fn rewrite_use_list(
             context.codemap,
             path_list.iter(),
             "}",
+            ",",
             |vpi| vpi.span.lo(),
             |vpi| vpi.span.hi(),
             rewrite_path_item,

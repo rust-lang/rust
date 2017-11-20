@@ -151,6 +151,7 @@ fn rewrite_struct_pat(
         context.codemap,
         fields.iter(),
         terminator,
+        ",",
         |f| f.span.lo(),
         |f| f.span.hi(),
         |f| f.node.rewrite(context, v_shape),
@@ -245,10 +246,10 @@ impl<'a> Spanned for TuplePatField<'a> {
 pub fn can_be_overflowed_pat(context: &RewriteContext, pat: &TuplePatField, len: usize) -> bool {
     match *pat {
         TuplePatField::Pat(pat) => match pat.node {
-            ast::PatKind::Path(..) |
-            ast::PatKind::Tuple(..) |
-            ast::PatKind::Struct(..) |
-            ast::PatKind::TupleStruct(..) => context.use_block_indent() && len == 1,
+            ast::PatKind::Path(..)
+            | ast::PatKind::Tuple(..)
+            | ast::PatKind::Struct(..)
+            | ast::PatKind::TupleStruct(..) => context.use_block_indent() && len == 1,
             ast::PatKind::Ref(ref p, _) | ast::PatKind::Box(ref p) => {
                 can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
             }
@@ -347,6 +348,7 @@ fn count_wildcard_suffix_len(
         context.codemap,
         patterns.iter(),
         ")",
+        ",",
         |item| item.span().lo(),
         |item| item.span().hi(),
         |item| item.rewrite(context, shape),
