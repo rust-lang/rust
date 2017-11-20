@@ -60,7 +60,7 @@ static Archive::Kind fromRust(LLVMRustArchiveKind Kind) {
   case LLVMRustArchiveKind::GNU:
     return Archive::K_GNU;
   case LLVMRustArchiveKind::MIPS64:
-    return Archive::K_MIPS64;
+    return Archive::K_GNU64;
   case LLVMRustArchiveKind::BSD:
     return Archive::K_BSD;
   case LLVMRustArchiveKind::COFF:
@@ -280,6 +280,7 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
 #endif
     }
   }
+  /*
 #if LLVM_VERSION_GE(3, 8)
   auto Pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);
 #else
@@ -289,4 +290,11 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
     return LLVMRustResult::Success;
   LLVMRustSetLastError(Pair.second.message().c_str());
   return LLVMRustResult::Failure;
+  */
+
+  if (auto E = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false)) {
+    //LLVMRustSetLastError();
+    return LLVMRustResult::Failure;
+  }
+  return LLVMRustResult::Success;
 }
