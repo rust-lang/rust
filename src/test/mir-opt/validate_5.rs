@@ -37,7 +37,7 @@ fn main() {
 // fn test(_1: &ReErased mut i32) -> () {
 //     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:4) => validate_5[317d]::test[0] }, BrAnon(0)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/0:4 ~ validate_5[317d]::test[0]), BrAnon(0)) mut i32]);
 //         ...
 //         Validate(Release, [_2: bool, _3: *mut i32]);
 //         _2 = const write_42(_3) -> bb1;
@@ -49,7 +49,7 @@ fn main() {
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(46)], _2: &ReErased mut i32) -> bool {
 //     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:9) => validate_5[317d]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(46)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:9) => validate_5[317d]::main[0]::{{closure}}[0] }, BrAnon(0)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/1:9 ~ validate_5[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(46)], _2: &ReFree(DefId(0/1:9 ~ validate_5[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         Validate(Suspend(ReScope(Node(ItemLocalId(9)))), [(*_2): i32]);

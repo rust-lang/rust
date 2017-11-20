@@ -17,8 +17,8 @@ use std::u32;
 
 newtype_index!(CrateNum
     {
-        derive[Debug]
         ENCODABLE = custom
+        DEBUG_FORMAT = "crate{}",
 
         /// Item definitions in the currently-compiled crate would have the CrateNum
         /// LOCAL_CRATE in their DefId.
@@ -172,17 +172,19 @@ pub struct DefId {
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "DefId {{ krate: {:?}, index: {:?}",
-               self.krate, self.index)?;
+        write!(f, "DefId({:?}/{}:{}",
+               self.krate.index(),
+               self.index.address_space().index(),
+               self.index.as_array_index())?;
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                write!(f, " => {}", tcx.def_path_debug_str(*self))?;
+                write!(f, " ~ {}", tcx.def_path_debug_str(*self))?;
             }
             Ok(())
         })?;
 
-        write!(f, " }}")
+        write!(f, ")")
     }
 }
 
