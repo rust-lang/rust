@@ -1982,10 +1982,9 @@ fn fix<F>(f: &F)
 }
 
 fn main() {
-  let x = |y| {
+  fix(&|y| {
     // Here, when `x` is called, the parameter `y` is equal to `x`.
-  };
-  fix(&x);
+  });
 }
 ```
 
