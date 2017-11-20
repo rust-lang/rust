@@ -1166,7 +1166,7 @@ impl Step for Rustfmt {
         let cargofmt = builder.ensure(tool::Cargofmt {
             compiler: builder.compiler(stage, build.build),
             target
-        }).expect("Rustfmt to build: toolstate is testing");
+        }).expect("Cargofmt to build: toolstate is testing");
         install(&rustfmt, &image.join("bin"), 0o755);
         install(&cargofmt, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rustfmt");
