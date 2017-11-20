@@ -140,7 +140,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         node_id: id,
         move_data: &mdpe.move_data,
         param_env: param_env,
-        storage_drop_or_dead_error_reported: FxHashSet(),
+        storage_dead_or_drop_error_reported: FxHashSet(),
     };
 
     let mut state = InProgress::new(flow_borrows,
@@ -159,10 +159,10 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     node_id: ast::NodeId,
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
-    /// This field keeps track of when storage drop or dead errors are reported
+    /// This field keeps track of when storage dead or drop errors are reported
     /// in order to stop duplicate error reporting and identify the conditions required
     /// for a "temporary value dropped here while still borrowed" error. See #45360.
-    storage_drop_or_dead_error_reported: FxHashSet<Local>,
+    storage_dead_or_drop_error_reported: FxHashSet<Local>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
@@ -296,15 +296,9 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             }
 
             StatementKind::StorageDead(local) => {
-                if !self.storage_drop_or_dead_error_reported.contains(&local) {
-                    let error_reported = self.access_lvalue(ContextKind::StorageDead.new(location),
-                        (&Lvalue::Local(local), span),
-                        (Shallow(None), Write(WriteKind::StorageDeadOrDrop)), flow_state);
-
-                    if error_reported {
-                        self.storage_drop_or_dead_error_reported.insert(local);
-                    }
-                }
+                self.access_lvalue(ContextKind::StorageDead.new(location),
+                    (&Lvalue::Local(local), span),
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)), flow_state);
             }
         }
     }
@@ -523,8 +517,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      context: Context,
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
-                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) -> bool {
+                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         let (sd, rw) = kind;
+
+        let storage_dead_or_drop_local = match (lvalue_span.0, rw) {
+            (&Lvalue::Local(local), Write(WriteKind::StorageDeadOrDrop)) => Some(local),
+            _ => None
+        };
+
+        // Check if error has already been reported to stop duplicate reporting.
+        if let Some(local) = storage_dead_or_drop_local {
+            if self.storage_dead_or_drop_error_reported.contains(&local) {
+                return;
+            }
+        }
 
         // Check permissions
         self.check_access_permissions(lvalue_span, rw);
@@ -590,7 +596,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
                 }
             });
-        error_reported
+
+        if error_reported {
+            if let Some(local) = storage_dead_or_drop_local {
+                self.storage_dead_or_drop_error_reported.insert(local);
+            }
+        }
     }
 
     fn mutate_lvalue(&mut self,
@@ -708,39 +719,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let erased_ty = gcx.lift(&self.tcx.erase_regions(&ty)).unwrap();
         let moves_by_default = erased_ty.moves_by_default(gcx, self.param_env, DUMMY_SP);
 
-        // Check if error has already been reported to stop duplicate reporting.
-        let has_storage_drop_or_dead_error_reported = match *lvalue {
-            Lvalue::Local(local) => self.storage_drop_or_dead_error_reported.contains(&local),
-            _ => false,
-        };
+        if moves_by_default {
+            let kind = match consume_via_drop {
+                ConsumeKind::Drop => WriteKind::StorageDeadOrDrop,
+                _ => WriteKind::Move,
+            };
 
-        // If the error has been reported already, then we don't need the access_lvalue call.
-        if !has_storage_drop_or_dead_error_reported || consume_via_drop != ConsumeKind::Drop {
-            let error_reported;
-
-            if moves_by_default {
-                let kind = match consume_via_drop {
-                    ConsumeKind::Drop => WriteKind::StorageDeadOrDrop,
-                    _ => WriteKind::Move,
-                };
-
-                // move of lvalue: check if this is move of already borrowed path
-                error_reported = self.access_lvalue(context, lvalue_span,
-                                                    (Deep, Write(kind)), flow_state);
-            } else {
-                // copy of lvalue: check if this is "copy of frozen path"
-                // (FIXME: see check_loans.rs)
-                error_reported = self.access_lvalue(context, lvalue_span,
-                                                    (Deep, Read(ReadKind::Copy)), flow_state);
-            }
-
-            // If there was an error, then we keep track of it so as to deduplicate it.
-            // We only do this on ConsumeKind::Drop.
-            if error_reported && consume_via_drop == ConsumeKind::Drop {
-                if let Lvalue::Local(local) = *lvalue {
-                    self.storage_drop_or_dead_error_reported.insert(local);
-                }
-            }
+            // move of lvalue: check if this is move of already borrowed path
+            self.access_lvalue(context, lvalue_span, (Deep, Write(kind)), flow_state);
+        } else {
+            // copy of lvalue: check if this is "copy of frozen path"
+            // (FIXME: see check_loans.rs)
+            self.access_lvalue(context, lvalue_span, (Deep, Read(ReadKind::Copy)), flow_state);
         }
 
         // Finally, check if path was already moved.
