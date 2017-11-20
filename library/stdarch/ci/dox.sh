@@ -22,7 +22,10 @@ dox() {
   rm -rf target/doc/$arch
   mkdir target/doc/$arch
 
-  rustdoc --target $target -o target/doc/$arch src/lib.rs --crate-name stdsimd
+  cargo clean
+  cargo build --target $target
+
+  rustdoc --target $target -o target/doc/$arch src/lib.rs --crate-name stdsimd --library-path target/$target/debug/deps
 }
 
 dox i686 i686-unknown-linux-gnu
