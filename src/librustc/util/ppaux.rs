@@ -1032,10 +1032,11 @@ define_print! {
                             if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
                                 let did = trait_ref.def_id();
 
-                                // Don't print +Sized/DynSized, but rather +?Sized/?DynSized if absent.
+                                // Don't print Sized, but rather ?Sized if absent.
                                 if Some(did) == tcx.lang_items().sized_trait() {
                                     is_sized = true;
                                     continue;
+                                // Same for DynSized
                                 } else if Some(did) == tcx.lang_items().dynsized_trait() {
                                     is_dynsized = true;
                                     continue;
