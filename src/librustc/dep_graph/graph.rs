@@ -413,6 +413,12 @@ impl DepGraph {
         self.data.as_ref().and_then(|t| t.dep_node_debug.borrow().get(&dep_node).cloned())
     }
 
+    pub fn edge_deduplication_data(&self) -> (u64, u64) {
+        let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
+
+        (current_dep_graph.total_read_count, current_dep_graph.total_duplicate_read_count)
+    }
+
     pub fn serialize(&self) -> SerializedDepGraph {
         let fingerprints = self.fingerprints.borrow();
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
@@ -737,6 +743,9 @@ pub(super) struct CurrentDepGraph {
     // each anon node. The session-key is just a random number generated when
     // the DepGraph is created.
     anon_id_seed: Fingerprint,
+
+    total_read_count: u64,
+    total_duplicate_read_count: u64,
 }
 
 impl CurrentDepGraph {
@@ -770,6 +779,8 @@ impl CurrentDepGraph {
             anon_id_seed: stable_hasher.finish(),
             task_stack: Vec::new(),
             forbidden_edge,
+            total_read_count: 0,
+            total_duplicate_read_count: 0,
         }
     }
 
@@ -900,6 +911,7 @@ impl CurrentDepGraph {
                 ref mut read_set,
                 node: ref target,
             }) => {
+                self.total_read_count += 1;
                 if read_set.insert(source) {
                     reads.push(source);
 
@@ -913,6 +925,8 @@ impl CurrentDepGraph {
                             }
                         }
                     }
+                } else {
+                    self.total_duplicate_read_count += 1;
                 }
             }
             Some(&mut OpenTask::Anon {
