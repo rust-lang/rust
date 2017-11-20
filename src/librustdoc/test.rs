@@ -31,7 +31,6 @@ use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
-use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
@@ -39,7 +38,6 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::fold::Folder;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span};
 use errors;
 use errors::emitter::ColorConfig;
@@ -97,7 +95,6 @@ pub fn run(input: &str,
     let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
                                                       &sess,
                                                       &input));
-    let krate = ReplaceBodyWithLoop::new().fold_crate(krate);
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
             &sess,

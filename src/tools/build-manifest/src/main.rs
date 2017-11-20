@@ -84,6 +84,7 @@ static TARGETS: &'static [&'static str] = &[
     "sparc64-unknown-linux-gnu",
     "sparcv9-sun-solaris",
     "wasm32-unknown-emscripten",
+    "wasm32-unknown-unknown",
     "x86_64-linux-android",
     "x86_64-apple-darwin",
     "x86_64-apple-ios",

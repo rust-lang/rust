@@ -638,13 +638,14 @@ impl UserIdentifiedItem {
 //    ambitious form of the closed RFC #1637. See also [#34511].
 //
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
-pub struct ReplaceBodyWithLoop {
+pub struct ReplaceBodyWithLoop<'a> {
     within_static_or_const: bool,
+    sess: &'a Session,
 }
 
-impl ReplaceBodyWithLoop {
-    pub fn new() -> ReplaceBodyWithLoop {
-        ReplaceBodyWithLoop { within_static_or_const: false }
+impl<'a> ReplaceBodyWithLoop<'a> {
+    pub fn new(sess: &'a Session) -> ReplaceBodyWithLoop<'a> {
+        ReplaceBodyWithLoop { within_static_or_const: false, sess }
     }
 
     fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
@@ -691,7 +692,7 @@ impl ReplaceBodyWithLoop {
     }
 }
 
-impl fold::Folder for ReplaceBodyWithLoop {
+impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
@@ -723,11 +724,13 @@ impl fold::Folder for ReplaceBodyWithLoop {
     }
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
-        fn expr_to_block(rules: ast::BlockCheckMode, e: Option<P<ast::Expr>>) -> P<ast::Block> {
+        fn expr_to_block(rules: ast::BlockCheckMode,
+                         e: Option<P<ast::Expr>>,
+                         sess: &Session) -> P<ast::Block> {
             P(ast::Block {
                 stmts: e.map(|e| {
                         ast::Stmt {
-                            id: ast::DUMMY_NODE_ID,
+                            id: sess.next_node_id(),
                             span: e.span,
                             node: ast::StmtKind::Expr(e),
                         }
@@ -735,22 +738,22 @@ impl fold::Folder for ReplaceBodyWithLoop {
                     .into_iter()
                     .collect(),
                 rules,
-                id: ast::DUMMY_NODE_ID,
+                id: sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
             })
         }
 
         if !self.within_static_or_const {
 
-            let empty_block = expr_to_block(BlockCheckMode::Default, None);
+            let empty_block = expr_to_block(BlockCheckMode::Default, None, self.sess);
             let loop_expr = P(ast::Expr {
                 node: ast::ExprKind::Loop(empty_block, None),
-                id: ast::DUMMY_NODE_ID,
+                id: self.sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
                 attrs: ast::ThinVec::new(),
             });
 
-            expr_to_block(b.rules, Some(loop_expr))
+            expr_to_block(b.rules, Some(loop_expr), self.sess)
 
         } else {
             fold::noop_fold_block(b, self)
@@ -829,9 +832,9 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     }
 }
 
-pub fn fold_crate(krate: ast::Crate, ppm: PpMode) -> ast::Crate {
+pub fn fold_crate(sess: &Session, krate: ast::Crate, ppm: PpMode) -> ast::Crate {
     if let PpmSource(PpmEveryBodyLoops) = ppm {
-        let mut fold = ReplaceBodyWithLoop::new();
+        let mut fold = ReplaceBodyWithLoop::new(sess);
         fold.fold_crate(krate)
     } else {
         krate
