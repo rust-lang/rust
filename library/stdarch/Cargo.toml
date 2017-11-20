@@ -29,10 +29,6 @@ opt-level = 3
 debug = true
 opt-level = 3
 
-[dev-dependencies]
-stdsimd-test = { version = "0.*", path = "stdsimd-test" }
-cupid = "0.5.0"
-
 [features]
 # Internal-usage only: denies all warnings.
 strict = [ "coresimd/strict" ]

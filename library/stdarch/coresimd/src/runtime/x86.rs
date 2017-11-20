@@ -416,8 +416,10 @@ pub fn detect_features() -> usize {
 
 #[cfg(test)]
 mod tests {
+    extern crate cupid;
+
     #[test]
-    fn runtime_detection_x86_nocapture() {
+    fn dump() {
         println!("sse: {:?}", cfg_feature_enabled!("sse"));
         println!("sse2: {:?}", cfg_feature_enabled!("sse2"));
         println!("sse3: {:?}", cfg_feature_enabled!("sse3"));
@@ -433,10 +435,10 @@ mod tests {
         println!("avx512bw {:?}", cfg_feature_enabled!("avx512bw"));
         println!("avx512dq {:?}", cfg_feature_enabled!("avx512dq"));
         println!("avx512vl {:?}", cfg_feature_enabled!("avx512vl"));
-        println!("avx512ifma {:?}", cfg_feature_enabled!("avx512ifma"));
-        println!("avx512vbmi {:?}", cfg_feature_enabled!("avx512vbmi"));
+        println!("avx512_ifma {:?}", cfg_feature_enabled!("avx512ifma"));
+        println!("avx512_vbmi {:?}", cfg_feature_enabled!("avx512vbmi"));
         println!(
-            "avx512vpopcntdq {:?}",
+            "avx512_vpopcntdq {:?}",
             cfg_feature_enabled!("avx512vpopcntdq")
         );
         println!("fma: {:?}", cfg_feature_enabled!("fma"));
@@ -450,5 +452,49 @@ mod tests {
         println!("xsaveopt {:?}", cfg_feature_enabled!("xsaveopt"));
         println!("xsaves {:?}", cfg_feature_enabled!("xsaves"));
         println!("xsavec {:?}", cfg_feature_enabled!("xsavec"));
+    }
+
+    #[test]
+    fn compare_with_cupid() {
+        let information = cupid::master().unwrap();
+        assert_eq!(cfg_feature_enabled!("sse"), information.sse());
+        assert_eq!(cfg_feature_enabled!("sse2"), information.sse2());
+        assert_eq!(cfg_feature_enabled!("sse3"), information.sse3());
+        assert_eq!(cfg_feature_enabled!("ssse3"), information.ssse3());
+        assert_eq!(cfg_feature_enabled!("sse4.1"), information.sse4_1());
+        assert_eq!(cfg_feature_enabled!("sse4.2"), information.sse4_2());
+        assert_eq!(cfg_feature_enabled!("avx"), information.avx());
+        assert_eq!(cfg_feature_enabled!("avx2"), information.avx2());
+        assert_eq!(cfg_feature_enabled!("avx512f"), information.avx512f());
+        assert_eq!(cfg_feature_enabled!("avx512cd"), information.avx512cd());
+        assert_eq!(cfg_feature_enabled!("avx512er"), information.avx512er());
+        assert_eq!(cfg_feature_enabled!("avx512pf"), information.avx512pf());
+        assert_eq!(cfg_feature_enabled!("avx512bw"), information.avx512bw());
+        assert_eq!(cfg_feature_enabled!("avx512dq"), information.avx512dq());
+        assert_eq!(cfg_feature_enabled!("avx512vl"), information.avx512vl());
+        assert_eq!(cfg_feature_enabled!("avx512ifma"), information.avx512_ifma());
+        assert_eq!(cfg_feature_enabled!("avx512vbmi"), information.avx512_vbmi());
+        assert_eq!(
+            cfg_feature_enabled!("avx512vpopcntdq"),
+            information.avx512_vpopcntdq()
+        );
+        assert_eq!(cfg_feature_enabled!("fma"), information.fma());
+        assert_eq!(cfg_feature_enabled!("bmi"), information.bmi1());
+        assert_eq!(cfg_feature_enabled!("bmi2"), information.bmi2());
+        assert_eq!(cfg_feature_enabled!("popcnt"), information.popcnt());
+        assert_eq!(cfg_feature_enabled!("sse4a"), information.sse4a());
+        assert_eq!(cfg_feature_enabled!("abm"), information.lzcnt());
+        assert_eq!(cfg_feature_enabled!("tbm"), information.tbm());
+        assert_eq!(cfg_feature_enabled!("lzcnt"), information.lzcnt());
+        assert_eq!(cfg_feature_enabled!("xsave"), information.xsave());
+        assert_eq!(cfg_feature_enabled!("xsaveopt"), information.xsaveopt());
+        assert_eq!(
+            cfg_feature_enabled!("xsavec"),
+            information.xsavec_and_xrstor()
+        );
+        assert_eq!(
+            cfg_feature_enabled!("xsaves"),
+            information.xsaves_xrstors_and_ia32_xss()
+        );
     }
 }

@@ -19,6 +19,7 @@ is-it-maintained-open-issues = { repository = "BurntSushi/stdsimd" }
 maintenance = { status = "experimental" }
 
 [dev-dependencies]
+cupid = "0.5.0"
 stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
 
 [features]
