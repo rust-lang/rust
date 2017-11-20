@@ -41,9 +41,9 @@ impl Lower128Bit {
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
             for i in (0..block.statements.len()).rev() {
-                let call_did =
-                    if let Some(call_did) = lower_to(&block.statements[i], local_decls, tcx) {
-                        call_did
+                let lang_item =
+                    if let Some(lang_item) = lower_to(&block.statements[i], local_decls, tcx) {
+                        lang_item
                     } else {
                         continue;
                     };
@@ -71,6 +71,9 @@ impl Lower128Bit {
                     _ => bug!("Statement doesn't match pattern any more?"),
                 };
 
+                let call_did = check_lang_item_type(
+                    lang_item, &lvalue, &lhs, &rhs, local_decls, tcx);
+
                 let bb = BasicBlock::new(cur_len + new_blocks.len());
                 new_blocks.push(after_call);
 
@@ -92,25 +95,43 @@ impl Lower128Bit {
     }
 }
 
+fn check_lang_item_type<'a, 'tcx, D>(
+    lang_item: LangItem,
+    lvalue: &Lvalue<'tcx>,
+    lhs: &Operand<'tcx>,
+    rhs: &Operand<'tcx>,
+    local_decls: &D,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>)
+-> DefId
+    where D: HasLocalDecls<'tcx>
+{
+    let did = tcx.require_lang_item(lang_item);
+    let poly_sig = tcx.fn_sig(did);
+    let sig = tcx.no_late_bound_regions(&poly_sig).unwrap();
+    let lhs_ty = lhs.ty(local_decls, tcx);
+    let rhs_ty = rhs.ty(local_decls, tcx);
+    let lvalue_ty = lvalue.ty(local_decls, tcx).to_ty(tcx);
+    let expected = [lhs_ty, rhs_ty, lvalue_ty];
+    assert_eq!(sig.inputs_and_output[..], expected,
+        "lang item {}", tcx.def_symbol_name(did));
+    did
+}
+
 fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-    -> Option<DefId>
+    -> Option<LangItem>
     where D: HasLocalDecls<'tcx>
 {
     match statement.kind {
         StatementKind::Assign(_, Rvalue::BinaryOp(bin_op, ref lhs, _)) => {
             let ty = lhs.ty(local_decls, tcx);
-            if let Some(is_signed) = sign_of_128bit(&ty) {
-                if let Some(item) = item_for_op(bin_op, is_signed) {
-                    return Some(tcx.require_lang_item(item))
-                }
+            if let Some(is_signed) = sign_of_128bit(ty) {
+                return item_for_op(bin_op, is_signed);
             }
         },
         StatementKind::Assign(_, Rvalue::CheckedBinaryOp(bin_op, ref lhs, _)) => {
             let ty = lhs.ty(local_decls, tcx);
-            if let Some(is_signed) = sign_of_128bit(&ty) {
-                if let Some(item) = item_for_checked_op(bin_op, is_signed) {
-                    return Some(tcx.require_lang_item(item))
-                }
+            if let Some(is_signed) = sign_of_128bit(ty) {
+                return item_for_checked_op(bin_op, is_signed);
             }
         },
         _ => {},
@@ -118,7 +139,7 @@ fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCt
     None
 }
 
-fn sign_of_128bit(ty: &Ty) -> Option<bool> {
+fn sign_of_128bit(ty: Ty) -> Option<bool> {
     match ty.sty {
         TypeVariants::TyInt(syntax::ast::IntTy::I128) => Some(true),
         TypeVariants::TyUint(syntax::ast::UintTy::U128) => Some(false),
@@ -128,14 +149,18 @@ fn sign_of_128bit(ty: &Ty) -> Option<bool> {
 
 fn item_for_op(bin_op: BinOp, is_signed: bool) -> Option<LangItem> {
     let i = match (bin_op, is_signed) {
-        (BinOp::Add, _) => LangItem::I128AddFnLangItem,
-        (BinOp::Sub, _) => LangItem::I128SubFnLangItem,
-        (BinOp::Mul, _) => LangItem::I128MulFnLangItem,
+        (BinOp::Add, true) => LangItem::I128AddFnLangItem,
+        (BinOp::Add, false) => LangItem::U128AddFnLangItem,
+        (BinOp::Sub, true) => LangItem::I128SubFnLangItem,
+        (BinOp::Sub, false) => LangItem::U128SubFnLangItem,
+        (BinOp::Mul, true) => LangItem::I128MulFnLangItem,
+        (BinOp::Mul, false) => LangItem::U128MulFnLangItem,
         (BinOp::Div, true) => LangItem::I128DivFnLangItem,
         (BinOp::Div, false) => LangItem::U128DivFnLangItem,
         (BinOp::Rem, true) => LangItem::I128RemFnLangItem,
         (BinOp::Rem, false) => LangItem::U128RemFnLangItem,
-        (BinOp::Shl, _) => LangItem::I128ShlFnLangItem,
+        (BinOp::Shl, true) => LangItem::I128ShlFnLangItem,
+        (BinOp::Shl, false) => LangItem::U128ShlFnLangItem,
         (BinOp::Shr, true) => LangItem::I128ShrFnLangItem,
         (BinOp::Shr, false) => LangItem::U128ShrFnLangItem,
         _ => return None,
@@ -151,10 +176,11 @@ fn item_for_checked_op(bin_op: BinOp, is_signed: bool) -> Option<LangItem> {
         (BinOp::Sub, false) => LangItem::U128SuboFnLangItem,
         (BinOp::Mul, true) => LangItem::I128MuloFnLangItem,
         (BinOp::Mul, false) => LangItem::U128MuloFnLangItem,
-        (BinOp::Shl, _) => LangItem::I128ShloFnLangItem,
+        (BinOp::Shl, true) => LangItem::I128ShloFnLangItem,
+        (BinOp::Shl, false) => LangItem::U128ShloFnLangItem,
         (BinOp::Shr, true) => LangItem::I128ShroFnLangItem,
         (BinOp::Shr, false) => LangItem::U128ShroFnLangItem,
-        _ => return None,
+        _ => bug!("That should be all the checked ones?"),
     };
     Some(i)
 }

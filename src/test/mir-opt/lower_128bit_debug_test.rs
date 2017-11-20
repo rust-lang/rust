@@ -16,31 +16,32 @@
 #[lang="i128_div"]
 fn i128_div(_x: i128, _y: i128) -> i128 { 3 }
 #[lang="u128_div"]
-fn u128_div(_x: i128, _y: i128) -> i128 { 4 }
+fn u128_div(_x: u128, _y: u128) -> u128 { 4 }
 #[lang="i128_rem"]
 fn i128_rem(_x: i128, _y: i128) -> i128 { 5 }
 #[lang="u128_rem"]
-fn u128_rem(_x: i128, _y: i128) -> i128 { 6 }
+fn u128_rem(_x: u128, _y: u128) -> u128 { 6 }
 
 #[lang="i128_addo"]
 fn i128_addo(_x: i128, _y: i128) -> (i128, bool) { (0, false) }
 #[lang="u128_addo"]
-fn u128_addo(_x: i128, _y: i128) -> (i128, bool) { (1, false) }
+fn u128_addo(_x: u128, _y: u128) -> (u128, bool) { (1, false) }
 #[lang="i128_subo"]
 fn i128_subo(_x: i128, _y: i128) -> (i128, bool) { (2, false) }
 #[lang="u128_subo"]
-fn u128_subo(_x: i128, _y: i128) -> (i128, bool) { (3, false) }
+fn u128_subo(_x: u128, _y: u128) -> (u128, bool) { (3, false) }
 #[lang="i128_mulo"]
 fn i128_mulo(_x: i128, _y: i128) -> (i128, bool) { (4, false) }
 #[lang="u128_mulo"]
-fn u128_mulo(_x: i128, _y: i128) -> (i128, bool) { (5, false) }
+fn u128_mulo(_x: u128, _y: u128) -> (u128, bool) { (5, false) }
 #[lang="i128_shlo"]
-fn i128_shlo(_x: i128, _y: u32) -> (i128, bool) { (6, false) }
+fn i128_shlo(_x: i128, _y: i32) -> (i128, bool) { (6, false) }
+#[lang="u128_shlo"]
+fn u128_shlo(_x: u128, _y: i32) -> (u128, bool) { (6, false) }
 #[lang="i128_shro"]
-fn i128_shro(_x: i128, _y: u32) -> (i128, bool) { (7, false) }
+fn i128_shro(_x: i128, _y: i32) -> (i128, bool) { (7, false) }
 #[lang="u128_shro"]
-fn u128_shro(_x: i128, _y: u32) -> (i128, bool) { (8, false) }
-
+fn u128_shro(_x: u128, _y: i32) -> (u128, bool) { (8, false) }
 
 fn test_signed(mut x: i128) -> i128 {
     x += 1;
@@ -132,7 +133,7 @@ fn main() {
 //     ...
 //     assert(!(_7.1: bool), "attempt to shift left with overflow") -> bb6;
 //     ...
-//     _7 = const i128_shlo(_1, const 6i32) -> bb12;
+//     _7 = const u128_shlo(_1, const 6i32) -> bb12;
 //     ...
 //     assert(!(_8.1: bool), "attempt to shift right with overflow") -> bb7;
 // END rustc.test_unsigned.Lower128Bit.after.mir

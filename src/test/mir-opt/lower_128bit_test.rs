@@ -15,25 +15,32 @@
 
 #[lang="i128_add"]
 fn i128_add(_x: i128, _y: i128) -> i128 { 0 }
+#[lang="u128_add"]
+fn u128_add(_x: u128, _y: u128) -> u128 { 0 }
 #[lang="i128_sub"]
 fn i128_sub(_x: i128, _y: i128) -> i128 { 1 }
+#[lang="u128_sub"]
+fn u128_sub(_x: u128, _y: u128) -> u128 { 1 }
 #[lang="i128_mul"]
 fn i128_mul(_x: i128, _y: i128) -> i128 { 2 }
+#[lang="u128_mul"]
+fn u128_mul(_x: u128, _y: u128) -> u128 { 2 }
 #[lang="i128_div"]
 fn i128_div(_x: i128, _y: i128) -> i128 { 3 }
 #[lang="u128_div"]
-fn u128_div(_x: i128, _y: i128) -> i128 { 4 }
+fn u128_div(_x: u128, _y: u128) -> u128 { 4 }
 #[lang="i128_rem"]
 fn i128_rem(_x: i128, _y: i128) -> i128 { 5 }
 #[lang="u128_rem"]
-fn u128_rem(_x: i128, _y: i128) -> i128 { 6 }
+fn u128_rem(_x: u128, _y: u128) -> u128 { 6 }
 #[lang="i128_shl"]
-fn i128_shl(_x: i128, _y: u32) -> i128 { 7 }
+fn i128_shl(_x: i128, _y: i32) -> i128 { 7 }
+#[lang="u128_shl"]
+fn u128_shl(_x: u128, _y: i32) -> u128 { 7 }
 #[lang="i128_shr"]
-fn i128_shr(_x: i128, _y: u32) -> i128 { 8 }
+fn i128_shr(_x: i128, _y: i32) -> i128 { 8 }
 #[lang="u128_shr"]
-fn u128_shr(_x: i128, _y: u32) -> i128 { 9 }
-
+fn u128_shr(_x: u128, _y: i32) -> u128 { 9 }
 
 fn test_signed(mut x: i128) -> i128 {
     x += 1;
@@ -81,17 +88,17 @@ fn main() {
 // END rustc.test_signed.Lower128Bit.after.mir
 
 // START rustc.test_unsigned.Lower128Bit.after.mir
-//     _1 = const i128_add(_1, const 1u128) -> bb5;
+//     _1 = const u128_add(_1, const 1u128) -> bb5;
 //     ...
 //     _1 = const u128_div(_1, const 4u128) -> bb6;
 //     ...
 //     _1 = const u128_rem(_1, const 5u128) -> bb9;
 //     ...
-//     _1 = const i128_mul(_1, const 3u128) -> bb3;
+//     _1 = const u128_mul(_1, const 3u128) -> bb3;
 //     ...
-//     _1 = const i128_sub(_1, const 2u128) -> bb4;
+//     _1 = const u128_sub(_1, const 2u128) -> bb4;
 //     ...
 //     _1 = const u128_shr(_1, const 7i32) -> bb7;
 //     ...
-//     _1 = const i128_shl(_1, const 6i32) -> bb8;
+//     _1 = const u128_shl(_1, const 6i32) -> bb8;
 // END rustc.test_unsigned.Lower128Bit.after.mir
