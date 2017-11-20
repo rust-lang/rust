@@ -132,7 +132,7 @@ mod platform {
     unsafe impl<'a> Alloc for &'a System {
         #[inline]
         unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            let ptr = if layout.align() <= MIN_ALIGN {
+            let ptr = if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
                 libc::malloc(layout.size()) as *mut u8
             } else {
                 aligned_malloc(&layout)
@@ -148,7 +148,7 @@ mod platform {
         unsafe fn alloc_zeroed(&mut self, layout: Layout)
             -> Result<*mut u8, AllocErr>
         {
-            if layout.align() <= MIN_ALIGN {
+            if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
                 let ptr = libc::calloc(layout.size(), 1) as *mut u8;
                 if !ptr.is_null() {
                     Ok(ptr)
@@ -180,7 +180,7 @@ mod platform {
                 })
             }
 
-            if new_layout.align() <= MIN_ALIGN {
+            if new_layout.align() <= MIN_ALIGN  && new_layout.align() <= new_layout.size(){
                 let ptr = libc::realloc(ptr as *mut libc::c_void, new_layout.size());
                 if !ptr.is_null() {
                     Ok(ptr as *mut u8)
