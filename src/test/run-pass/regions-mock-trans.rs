@@ -10,10 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(libc)]
+#![feature(allocator_api)]
 
-extern crate libc;
-use std::mem;
+use std::heap::{Alloc, Heap, Layout};
 
 struct arena(());
 
@@ -32,8 +31,9 @@ struct Ccx {
 
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
-        mem::transmute(libc::malloc(mem::size_of::<Bcx<'a>>()
-            as libc::size_t))
+        let ptr = Heap.alloc(Layout::new::<Bcx>())
+            .unwrap_or_else(|e| Heap.oom(e));
+        &*(ptr as *const _)
     }
 }
 
@@ -45,7 +45,7 @@ fn g(fcx : &Fcx) {
     let bcx = Bcx { fcx: fcx };
     let bcx2 = h(&bcx);
     unsafe {
-        libc::free(mem::transmute(bcx2));
+        Heap.dealloc(bcx2 as *const _ as *mut _, Layout::new::<Bcx>());
     }
 }
 

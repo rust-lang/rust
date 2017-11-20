@@ -46,6 +46,9 @@ mod imp;
 #[path = "redox/mod.rs"]
 mod imp;
 
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+#[path = "wasm/mod.rs"]
+mod imp;
 
 // Import essential modules from both platforms when documenting.
 

@@ -539,7 +539,7 @@ impl Config {
             let name = line[prefix.len()+1 ..].split(&[':', ' '][..]).next().unwrap();
 
             name == "test" ||
-                name == util::get_os(&self.target) ||               // target
+                util::matches_os(&self.target, name) ||             // target
                 name == util::get_arch(&self.target) ||             // architecture
                 name == util::get_pointer_width(&self.target) ||    // pointer width
                 name == self.stage_id.split('-').next().unwrap() || // stage

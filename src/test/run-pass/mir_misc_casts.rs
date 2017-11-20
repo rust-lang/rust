@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc)]
-
-extern crate libc;
-
 fn func(){}
 
 const STR: &'static str = "hello";
@@ -19,7 +15,7 @@ const BSTR: &'static [u8; 5] = b"hello";
 
 fn from_ptr()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, *const ()) {
-    let f = 1_usize as *const libc::FILE;
+    let f = 1_usize as *const String;
     let c1 = f as isize;
     let c2 = f as usize;
     let c3 = f as i8;
@@ -35,7 +31,7 @@ fn from_ptr()
 }
 
 fn from_1()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1 as isize;
     let c2 = 1 as usize;
     let c3 = 1 as i8;
@@ -48,12 +44,12 @@ fn from_1()
     let c10 = 1 as u64;
     let c11 = 1 as f32;
     let c12 = 1 as f64;
-    let c13 = 1 as *const libc::FILE;
+    let c13 = 1 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1usize()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_usize as isize;
     let c2 = 1_usize as usize;
     let c3 = 1_usize as i8;
@@ -66,12 +62,12 @@ fn from_1usize()
     let c10 = 1_usize as u64;
     let c11 = 1_usize as f32;
     let c12 = 1_usize as f64;
-    let c13 = 1_usize as *const libc::FILE;
+    let c13 = 1_usize as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1isize()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_isize as isize;
     let c2 = 1_isize as usize;
     let c3 = 1_isize as i8;
@@ -84,12 +80,12 @@ fn from_1isize()
     let c10 = 1_isize as u64;
     let c11 = 1_isize as f32;
     let c12 = 1_isize as f64;
-    let c13 = 1_isize as *const libc::FILE;
+    let c13 = 1_isize as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1u8()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_u8 as isize;
     let c2 = 1_u8 as usize;
     let c3 = 1_u8 as i8;
@@ -102,12 +98,12 @@ fn from_1u8()
     let c10 = 1_u8 as u64;
     let c11 = 1_u8 as f32;
     let c12 = 1_u8 as f64;
-    let c13 = 1_u8 as *const libc::FILE;
+    let c13 = 1_u8 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1i8()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_i8 as isize;
     let c2 = 1_i8 as usize;
     let c3 = 1_i8 as i8;
@@ -120,12 +116,12 @@ fn from_1i8()
     let c10 = 1_i8 as u64;
     let c11 = 1_i8 as f32;
     let c12 = 1_i8 as f64;
-    let c13 = 1_i8 as *const libc::FILE;
+    let c13 = 1_i8 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1u16()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_u16 as isize;
     let c2 = 1_u16 as usize;
     let c3 = 1_u16 as i8;
@@ -138,12 +134,12 @@ fn from_1u16()
     let c10 = 1_u16 as u64;
     let c11 = 1_u16 as f32;
     let c12 = 1_u16 as f64;
-    let c13 = 1_u16 as *const libc::FILE;
+    let c13 = 1_u16 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1i16()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_i16 as isize;
     let c2 = 1_i16 as usize;
     let c3 = 1_i16 as i8;
@@ -156,12 +152,12 @@ fn from_1i16()
     let c10 = 1_i16 as u64;
     let c11 = 1_i16 as f32;
     let c12 = 1_i16 as f64;
-    let c13 = 1_i16 as *const libc::FILE;
+    let c13 = 1_i16 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1u32()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_u32 as isize;
     let c2 = 1_u32 as usize;
     let c3 = 1_u32 as i8;
@@ -174,12 +170,12 @@ fn from_1u32()
     let c10 = 1_u32 as u64;
     let c11 = 1_u32 as f32;
     let c12 = 1_u32 as f64;
-    let c13 = 1_u32 as *const libc::FILE;
+    let c13 = 1_u32 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1i32()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_i32 as isize;
     let c2 = 1_i32 as usize;
     let c3 = 1_i32 as i8;
@@ -192,12 +188,12 @@ fn from_1i32()
     let c10 = 1_i32 as u64;
     let c11 = 1_i32 as f32;
     let c12 = 1_i32 as f64;
-    let c13 = 1_i32 as *const libc::FILE;
+    let c13 = 1_i32 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1u64()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_u64 as isize;
     let c2 = 1_u64 as usize;
     let c3 = 1_u64 as i8;
@@ -210,12 +206,12 @@ fn from_1u64()
     let c10 = 1_u64 as u64;
     let c11 = 1_u64 as f32;
     let c12 = 1_u64 as f64;
-    let c13 = 1_u64 as *const libc::FILE;
+    let c13 = 1_u64 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
 fn from_1i64()
--> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
+-> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const String) {
     let c1 = 1_i64 as isize;
     let c2 = 1_i64 as usize;
     let c3 = 1_i64 as i8;
@@ -228,7 +224,7 @@ fn from_1i64()
     let c10 = 1_i64 as u64;
     let c11 = 1_i64 as f32;
     let c12 = 1_i64 as f64;
-    let c13 = 1_i64 as *const libc::FILE;
+    let c13 = 1_i64 as *const String;
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
@@ -297,9 +293,9 @@ fn other_casts()
 }
 
 pub fn assert_eq_13(l: (isize, usize, i8, i16, i32, i64, u8,
-                        u16, u32, u64, f32, f64, *const libc::FILE),
+                        u16, u32, u64, f32, f64, *const String),
                     r: (isize, usize, i8, i16, i32, i64, u8,
-                        u16, u32, u64, f32, f64, *const libc::FILE)) -> bool {
+                        u16, u32, u64, f32, f64, *const String)) -> bool {
     let (l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12, l13) = l;
     let (r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13) = r;
     l1 == r1 && l2 == r2 && l3 == r3 && l4 == r4 && l5 == r5 && l6 == r6 && l7 == r7 &&
@@ -308,7 +304,7 @@ pub fn assert_eq_13(l: (isize, usize, i8, i16, i32, i64, u8,
 
 
 pub fn main() {
-    let f = 1_usize as *const libc::FILE;
+    let f = 1_usize as *const String;
     let t13 = (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.0, 1.0, f);
     let t12 = (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.0, 1.0);
     assert_eq_13(from_1(), t13);

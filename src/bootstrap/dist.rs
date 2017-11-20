@@ -672,6 +672,9 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
              spath.ends_with(".s")) {
             return false
         }
+        if spath.contains("test/emscripten") || spath.contains("test\\emscripten") {
+            return false
+        }
 
         let full_path = Path::new(dir).join(path);
         if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
@@ -736,6 +739,7 @@ impl Step for Src {
         // (essentially libstd and all of its path dependencies)
         let std_src_dirs = [
             "src/build_helper",
+            "src/dlmalloc",
             "src/liballoc",
             "src/liballoc_jemalloc",
             "src/liballoc_system",
@@ -754,6 +758,7 @@ impl Step for Src {
             "src/libunwind",
             "src/rustc/compiler_builtins_shim",
             "src/rustc/libc_shim",
+            "src/rustc/dlmalloc_shim",
             "src/libtest",
             "src/libterm",
             "src/jemalloc",

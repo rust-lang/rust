@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // pretty-expanded FIXME #23616
+// ignore-wasm32-bare no target_family
 
 #[cfg(windows)]
 pub fn main() {

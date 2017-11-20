@@ -28,7 +28,6 @@
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
 #![feature(nonzero)]
-#![feature(rand)]
 #![feature(raw)]
 #![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
@@ -49,7 +48,6 @@
 
 extern crate core;
 extern crate test;
-extern crate rand;
 
 mod any;
 mod array;

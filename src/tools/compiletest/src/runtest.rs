@@ -1271,6 +1271,7 @@ actual:\n\
             let crate_type = if aux_props.no_prefer_dynamic {
                 None
             } else if (self.config.target.contains("musl") && !aux_props.force_host) ||
+                      self.config.target.contains("wasm32") ||
                       self.config.target.contains("emscripten") {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible
@@ -1432,7 +1433,10 @@ actual:\n\
             }
         }
 
-        if !self.props.no_prefer_dynamic {
+
+        if self.config.target == "wasm32-unknown-unknown" {
+            // rustc.arg("-g"); // get any backtrace at all on errors
+        } else if !self.props.no_prefer_dynamic {
             rustc.args(&["-C", "prefer-dynamic"]);
         }
 
@@ -1473,6 +1477,10 @@ actual:\n\
             let mut fname = f.file_name().unwrap().to_os_string();
             fname.push(".js");
             f.set_file_name(&fname);
+        } else if self.config.target.contains("wasm32") {
+            let mut fname = f.file_name().unwrap().to_os_string();
+            fname.push(".wasm");
+            f.set_file_name(&fname);
         } else if !env::consts::EXE_SUFFIX.is_empty() {
             let mut fname = f.file_name().unwrap().to_os_string();
             fname.push(env::consts::EXE_SUFFIX);
@@ -1493,6 +1501,22 @@ actual:\n\
             } else {
                 self.fatal("no NodeJS binary found (--nodejs)");
             }
+        }
+
+        // If this is otherwise wasm , then run tests under nodejs with our
+        // shim
+        if self.config.target.contains("wasm32") {
+            if let Some(ref p) = self.config.nodejs {
+                args.push(p.clone());
+            } else {
+                self.fatal("no NodeJS binary found (--nodejs)");
+            }
+
+            let src = self.config.src_base
+                .parent().unwrap() // chop off `run-pass`
+                .parent().unwrap() // chop off `test`
+                .parent().unwrap(); // chop off `src`
+            args.push(src.join("src/etc/wasm32-shim.js").display().to_string());
         }
 
         let exe_file = self.make_exe_name();

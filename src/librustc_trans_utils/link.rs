@@ -163,15 +163,30 @@ pub fn default_output_for_target(sess: &Session) -> config::CrateType {
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
-    match (sess.target.target.options.dynamic_linking,
-           sess.target.target.options.executables, crate_type) {
-        (false, _, config::CrateTypeCdylib) |
-        (false, _, config::CrateTypeDylib) |
-        (false, _, config::CrateTypeProcMacro) => true,
-        (true, _, config::CrateTypeCdylib) |
-        (true, _, config::CrateTypeDylib) => sess.crt_static() &&
-            !sess.target.target.options.crt_static_allows_dylibs,
-        (_, false, config::CrateTypeExecutable) => true,
-        _ => false
+    match crate_type {
+        config::CrateTypeCdylib |
+        config::CrateTypeDylib |
+        config::CrateTypeProcMacro => {
+            if !sess.target.target.options.dynamic_linking {
+                return true
+            }
+            if sess.crt_static() && !sess.target.target.options.crt_static_allows_dylibs {
+                return true
+            }
+        }
+        _ => {}
     }
+    if sess.target.target.options.only_cdylib {
+        match crate_type {
+            config::CrateTypeProcMacro | config::CrateTypeDylib => return true,
+            _ => {}
+        }
+    }
+    if !sess.target.target.options.executables {
+        if crate_type == config::CrateTypeExecutable {
+            return true
+        }
+    }
+
+    false
 }

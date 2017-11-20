@@ -1211,7 +1211,8 @@ impl Step for Crate {
                     // ends up messing with various mtime calculations and such.
                     if !name.contains("jemalloc") &&
                        *name != *"build_helper" &&
-                       !(name.starts_with("rustc_") && name.ends_with("san")) {
+                       !(name.starts_with("rustc_") && name.ends_with("san")) &&
+                       name != "dlmalloc" {
                         cargo.arg("-p").arg(&format!("{}:0.0.0", name));
                     }
                     for dep in build.crates[&name].deps.iter() {

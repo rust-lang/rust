@@ -415,6 +415,9 @@ declare_features! (
 
     // Allow trait methods with arbitrary self types
     (active, arbitrary_self_types, "1.23.0", Some(44874)),
+
+    // #![wasm_import_memory] attribute
+    (active, wasm_import_memory, "1.22.0", None),
 );
 
 declare_features! (
@@ -927,6 +930,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                      "this is an internal attribute that will \
                                       never be stable",
                                      cfg_fn!(rustc_attrs))),
+
+    ("wasm_import_memory", Whitelisted, Gated(Stability::Unstable,
+                                 "wasm_import_memory",
+                                 "wasm_import_memory attribute is currently unstable",
+                                 cfg_fn!(wasm_import_memory))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),

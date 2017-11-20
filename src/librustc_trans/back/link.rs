@@ -27,7 +27,7 @@ use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
 use rustc_back::tempdir::TempDir;
-use rustc_back::{PanicStrategy, RelroLevel};
+use rustc_back::{PanicStrategy, RelroLevel, LinkerFlavor};
 use context::get_reloc_model;
 use llvm;
 
@@ -245,12 +245,12 @@ pub fn each_linked_rlib(sess: &Session,
 /// It's unusual for a crate to not participate in LTO. Typically only
 /// compiler-specific and unstable crates have a reason to not participate in
 /// LTO.
-pub fn ignored_for_lto(info: &CrateInfo, cnum: CrateNum) -> bool {
-    // `#![no_builtins]` crates don't participate in LTO because the state
-    // of builtins gets messed up (our crate isn't tagged with no builtins).
-    // Similarly `#![compiler_builtins]` doesn't participate because we want
-    // those builtins!
-    info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum)
+pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
+    // If our target enables builtin function lowering in LLVM then the
+    // crates providing these functions don't participate in LTO (e.g.
+    // no_builtins or compiler builtins crates).
+    !sess.target.target.options.no_builtins &&
+        (info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum))
 }
 
 fn link_binary_output(sess: &Session,
@@ -505,7 +505,7 @@ fn link_staticlib(sess: &Session,
         });
         ab.add_rlib(path,
                     &name.as_str(),
-                    sess.lto() && !ignored_for_lto(&trans.crate_info, cnum),
+                    sess.lto() && !ignored_for_lto(sess, &trans.crate_info, cnum),
                     skip_object_files).unwrap();
 
         all_native_libs.extend(trans.crate_info.native_libraries[&cnum].iter().cloned());
@@ -564,6 +564,11 @@ fn link_natively(sess: &Session,
                  tmpdir: &Path) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let flavor = sess.linker_flavor();
+
+    // The "binaryen linker" is massively special, so skip everything below.
+    if flavor == LinkerFlavor::Binaryen {
+        return link_binaryen(sess, crate_type, out_filename, trans, tmpdir);
+    }
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd, envs) = get_linker(sess);
@@ -1193,7 +1198,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if (!sess.lto() || ignored_for_lto(&trans.crate_info, cnum)) &&
+        if (!sess.lto() || ignored_for_lto(sess, &trans.crate_info, cnum)) &&
            crate_type != config::CrateTypeDylib &&
            !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
@@ -1246,8 +1251,10 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto = sess.lto() && is_rust_object &&
-                                        !trans.crate_info.is_no_builtins.contains(&cnum);
+                let skip_because_lto = sess.lto() &&
+                    is_rust_object &&
+                    (sess.target.target.options.no_builtins ||
+                     !trans.crate_info.is_no_builtins.contains(&cnum));
 
                 if skip_because_cfg_say_so || skip_because_lto {
                     archive.remove_file(&f);
@@ -1360,5 +1367,32 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
+    }
+}
+
+/// For now "linking with binaryen" is just "move the one module we generated in
+/// the backend to the final output"
+///
+/// That is, all the heavy lifting happens during the `back::write` phase. Here
+/// we just clean up after that.
+///
+/// Note that this is super temporary and "will not survive the night", this is
+/// guaranteed to get removed as soon as a linker for wasm exists. This should
+/// not be used for anything other than wasm.
+fn link_binaryen(sess: &Session,
+                 _crate_type: config::CrateType,
+                 out_filename: &Path,
+                 trans: &CrateTranslation,
+                 _tmpdir: &Path) {
+    assert!(trans.allocator_module.is_none());
+    assert_eq!(trans.modules.len(), 1);
+
+    let object = trans.modules[0].object.as_ref().expect("object must exist");
+    let res = fs::hard_link(object, out_filename)
+        .or_else(|_| fs::copy(object, out_filename).map(|_| ()));
+    if let Err(e) = res {
+        sess.fatal(&format!("failed to create `{}`: {}",
+                            out_filename.display(),
+                            e));
     }
 }

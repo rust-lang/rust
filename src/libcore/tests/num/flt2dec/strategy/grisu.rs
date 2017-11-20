@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::i16;
 use super::super::*;
 use core::num::flt2dec::strategy::grisu::*;
 
@@ -47,35 +46,6 @@ fn shortest_sanity_test() {
 }
 
 #[test]
-fn shortest_random_equivalence_test() {
-    use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, 10_000);
-    f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, 10_000);
-}
-
-#[test] #[ignore] // it is too expensive
-fn shortest_f32_exhaustive_equivalence_test() {
-    // it is hard to directly test the optimality of the output, but we can at least test if
-    // two different algorithms agree to each other.
-    //
-    // this reports the progress and the number of f32 values returned `None`.
-    // with `--nocapture` (and plenty of time and appropriate rustc flags), this should print:
-    // `done, ignored=17643158 passed=2121451881 failed=0`.
-
-    use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    f32_exhaustive_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS);
-}
-
-#[test] #[ignore] // it is too expensive
-fn shortest_f64_hard_random_equivalence_test() {
-    // this again probably has to use appropriate rustc flags.
-
-    use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
-    f64_random_equivalence_test(format_shortest_opt, fallback,
-                                         MAX_SIG_DIGITS, 100_000_000);
-}
-
-#[test]
 fn exact_sanity_test() {
     // See comments in dragon.rs's exact_sanity_test for why this test is
     // ignored on MSVC
@@ -83,24 +53,6 @@ fn exact_sanity_test() {
         f64_exact_sanity_test(format_exact);
     }
     f32_exact_sanity_test(format_exact);
-}
-
-#[test]
-fn exact_f32_random_equivalence_test() {
-    use core::num::flt2dec::strategy::dragon::format_exact as fallback;
-    for k in 1..21 {
-        f32_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),
-                                             |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
-    }
-}
-
-#[test]
-fn exact_f64_random_equivalence_test() {
-    use core::num::flt2dec::strategy::dragon::format_exact as fallback;
-    for k in 1..21 {
-        f64_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),
-                                             |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
-    }
 }
 
 #[test]

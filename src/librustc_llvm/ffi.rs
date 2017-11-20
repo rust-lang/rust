@@ -1582,7 +1582,8 @@ extern "C" {
                                        PositionIndependentExecutable: bool,
                                        FunctionSections: bool,
                                        DataSections: bool,
-                                       TrapUnreachable: bool)
+                                       TrapUnreachable: bool,
+                                       Singlethread: bool)
                                        -> TargetMachineRef;
     pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
     pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: ModuleRef);

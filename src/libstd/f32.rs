@@ -26,7 +26,6 @@ use num::FpCategory;
 #[cfg(not(test))]
 use sys::cmath;
 
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
 #[stable(feature = "rust1", since = "1.0.0")]
