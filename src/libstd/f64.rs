@@ -9,8 +9,9 @@
 // except according to those terms.
 
 //! This module provides constants which are specific to the implementation
-//! of the `f64` floating point data type. Mathematically significant
-//! numbers are provided in the `consts` sub-module.
+//! of the `f64` floating point data type.
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
 //! *[See also the `f64` primitive type](../primitive.f64.html).*
 

@@ -57,7 +57,6 @@ fn filter_dirs(path: &Path) -> bool {
         "src/libbacktrace",
         "src/libcompiler_builtins",
         "src/compiler-rt",
-        "src/rustllvm",
         "src/liblibc",
         "src/vendor",
         "src/rt/hoedown",

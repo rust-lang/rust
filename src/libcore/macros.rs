@@ -361,7 +361,7 @@ macro_rules! try {
     })
 }
 
-/// Write formatted data into a buffer
+/// Write formatted data into a buffer.
 ///
 /// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.

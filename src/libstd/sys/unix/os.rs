@@ -515,3 +515,7 @@ pub fn exit(code: i32) -> ! {
 pub fn getpid() -> u32 {
     unsafe { libc::getpid() as u32 }
 }
+
+pub fn getppid() -> u32 {
+    unsafe { libc::getppid() as u32 }
+}

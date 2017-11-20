@@ -235,7 +235,7 @@ static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
   case LLVMRustCodeModel::Large:
     return CodeModel::Large;
   default:
-    llvm_unreachable("Bad CodeModel.");
+    report_fatal_error("Bad CodeModel.");
   }
 }
 
@@ -258,7 +258,7 @@ static CodeGenOpt::Level fromRust(LLVMRustCodeGenOptLevel Level) {
   case LLVMRustCodeGenOptLevel::Aggressive:
     return CodeGenOpt::Aggressive;
   default:
-    llvm_unreachable("Bad CodeGenOptLevel.");
+    report_fatal_error("Bad CodeGenOptLevel.");
   }
 }
 
@@ -302,7 +302,7 @@ static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
     break;
 #endif
   }
-  llvm_unreachable("Bad RelocModel.");
+  report_fatal_error("Bad RelocModel.");
 }
 
 #if LLVM_RUSTLLVM
@@ -511,7 +511,7 @@ static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
   case LLVMRustFileType::ObjectFile:
     return TargetMachine::CGFT_ObjectFile;
   default:
-    llvm_unreachable("Bad FileType.");
+    report_fatal_error("Bad FileType.");
   }
 }
 
@@ -1197,7 +1197,7 @@ extern "C" bool
 LLVMRustWriteThinBitcodeToFile(LLVMPassManagerRef PMR,
                                LLVMModuleRef M,
                                const char *BcFile) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 struct LLVMRustThinLTOData {
@@ -1211,32 +1211,32 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                           int num_modules,
                           const char **preserved_symbols,
                           int num_symbols) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" bool
 LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" bool
 LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" bool
 LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" bool
 LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" void
 LLVMRustFreeThinLTOData(LLVMRustThinLTOData *Data) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 struct LLVMRustThinLTOBuffer {
@@ -1244,22 +1244,22 @@ struct LLVMRustThinLTOBuffer {
 
 extern "C" LLVMRustThinLTOBuffer*
 LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" void
 LLVMRustThinLTOBufferFree(LLVMRustThinLTOBuffer *Buffer) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" const void*
 LLVMRustThinLTOBufferPtr(const LLVMRustThinLTOBuffer *Buffer) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" size_t
 LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 
 extern "C" LLVMModuleRef
@@ -1267,6 +1267,6 @@ LLVMRustParseBitcodeForThinLTO(LLVMContextRef Context,
                                const char *data,
                                size_t len,
                                const char *identifier) {
-  llvm_unreachable("ThinLTO not available");
+  report_fatal_error("ThinLTO not available");
 }
 #endif // LLVM_VERSION_GE(4, 0)

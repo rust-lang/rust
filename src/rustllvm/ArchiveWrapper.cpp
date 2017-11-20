@@ -66,7 +66,7 @@ static Archive::Kind fromRust(LLVMRustArchiveKind Kind) {
   case LLVMRustArchiveKind::COFF:
     return Archive::K_COFF;
   default:
-    llvm_unreachable("Bad ArchiveKind.");
+    report_fatal_error("Bad ArchiveKind.");
   }
 }
 
