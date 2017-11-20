@@ -144,7 +144,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
-            if bcx.ccx.shared().type_is_size(ty_ty) {
+            if bcx.ccx.shared().type_is_sized(tp_ty) {
                 C_usize(ccx, ccx.size_of(tp_ty).bytes())
             } else if bcx.ccx.shared().type_is_dynsized(tp_ty) {
                 if let OperandValue::Pair(_, meta) = args[0].val {
