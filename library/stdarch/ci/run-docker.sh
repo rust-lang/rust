@@ -19,7 +19,7 @@ run() {
       --env TARGET=$target \
       --env FEATURES=$2 \
       --env STDSIMD_TEST_EVERYTHING \
-      --volume `pwd`:/checkout \
+      --volume `pwd`:/checkout:ro \
       --volume `pwd`/target:/checkout/target \
       --workdir /checkout \
       --privileged \

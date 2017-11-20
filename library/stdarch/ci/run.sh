@@ -21,9 +21,10 @@ echo "RUSTFLAGS=${RUSTFLAGS}"
 echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"
 
-cd coresimd
-cargo test --all --target $TARGET --features $FEATURES --verbose -- --nocapture
-cargo test --all --release --target $TARGET --features $FEATURES --verbose -- --nocapture
-cd ..
-cargo test --all --target $TARGET --features $FEATURES --verbose -- --nocapture
-cargo test --all --release --target $TARGET --features $FEATURES --verbose -- --nocapture
+cargo_test() {
+    cmd="cargo test --all --target=$TARGET --features $FEATURES --verbose $1 -- --nocapture $2"
+    $cmd
+}
+
+cargo_test
+cargo_test "--release"

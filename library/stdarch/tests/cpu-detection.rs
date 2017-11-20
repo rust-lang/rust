@@ -6,6 +6,7 @@
 #[macro_use]
 extern crate stdsimd;
 
+#[test]
 #[cfg(all(target_arch = "arm", target_os = "linux"))]
 fn arm_linux() {
     println!("neon: {}", cfg_feature_enabled!("neon"));

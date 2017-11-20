@@ -1,8 +1,4 @@
 Cargo.lock
 .*.swp
-/target
+target
 tags
-/coresimd/target
-/stdsimd-test/target
-/stdsimd-test/assert-instr-macro/target
-/stdsimd-test/simd-test-macro/target

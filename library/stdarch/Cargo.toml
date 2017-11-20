@@ -11,6 +11,8 @@ keywords = ["std", "simd", "intrinsics"]
 categories = ["hardware-support"]
 license = "MIT/Apache-2.0"
 
+[workspace]
+
 [badges]
 travis-ci = { repository = "BurntSushi/stdsimd" }
 appveyor = { repository = "BurntSushi/stdsimd"  }
