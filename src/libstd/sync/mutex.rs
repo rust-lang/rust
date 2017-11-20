@@ -382,6 +382,17 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
     }
 }
 
+#[stable(feature = "mutex_from", since = "1.22.0")]
+impl<T> From<T> for Mutex<T> {
+    /// Creates a new mutex in an unlocked state ready for use.
+    /// This is equivalent to [`Mutex::new`].
+    ///
+    /// [`Mutex::new`]: #method.new
+    fn from(t: T) -> Self {
+        Mutex::new(t)
+    }
+}
+
 #[stable(feature = "mutex_default", since = "1.10.0")]
 impl<T: ?Sized + Default> Default for Mutex<T> {
     /// Creates a `Mutex<T>`, with the `Default` value for T.
