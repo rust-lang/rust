@@ -200,7 +200,7 @@ impl Diagnostic {
             children: db.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
             }).chain(sugg).collect(),
-            rendered: Some(output.to_owned()),
+            rendered: Some(output),
         }
     }
 

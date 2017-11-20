@@ -2411,7 +2411,11 @@ actual:\n\
         let mut normalized = output.replace(&parent_dir_str, "$DIR");
 
         if json {
-            normalized = normalized.replace("\\n", "\n"); // verbatim newline in json strings
+            // escaped newlines in json strings should be readable
+            // in the stderr files. There's no point int being correct,
+            // since only humans process the stderr files.
+            // Thus we just turn escaped newlines back into newlines.
+            normalized = normalized.replace("\\n", "\n");
         }
 
         normalized = normalized.replace("\\\\", "\\") // denormalize for paths on windows
