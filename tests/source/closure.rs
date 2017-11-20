@@ -188,3 +188,13 @@ fn issue1524() {
     let f = |x| {x};
     let f = |x| x;
 }
+
+fn issue2171() {
+    foo(|| unsafe {
+        if PERIPHERALS {
+            loop {}
+        } else {
+            PERIPHERALS = true;
+        }
+    })
+}
