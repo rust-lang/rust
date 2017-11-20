@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits, dynsized)]
 
-auto trait Auto {}
+use std::marker::DynSized;
+
+auto trait Auto: ?DynSized {}
 // Redundant but accepted until we remove it.
 #[allow(auto_impl)]
 impl Auto for .. {}
 
-unsafe auto trait AutoUnsafe {}
+unsafe auto trait AutoUnsafe: ?DynSized {}
 
 impl !Auto for bool {}
 impl !AutoUnsafe for bool {}
@@ -34,6 +36,6 @@ fn main() {
     take_auto_unsafe(0);
     take_auto_unsafe(AutoBool(true));
 
-    /// Auto traits are allowed in trait object bounds.
+    // Auto traits are allowed in trait object bounds.
     let _: &(Send + Auto) = &0;
 }
