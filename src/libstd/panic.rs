@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Panic support in the standard library
+//! Panic support in the standard library.
 
 #![stable(feature = "std_panic", since = "1.9.0")]
 
