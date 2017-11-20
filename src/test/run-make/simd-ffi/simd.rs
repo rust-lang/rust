@@ -72,6 +72,9 @@ pub fn bar(a: i32x4, b: i32x4) -> i32x4 {
 #[lang = "sized"]
 pub trait Sized { }
 
+#[lang = "dynsized"]
+pub trait DynSized: ?DynSized { }
+
 #[lang = "copy"]
 pub trait Copy { }
 
@@ -80,6 +83,6 @@ pub mod marker {
 }
 
 #[lang = "freeze"]
-trait Freeze {}
+trait Freeze: ?DynSized {}
 #[allow(auto_impl)]
 impl Freeze for .. {}
