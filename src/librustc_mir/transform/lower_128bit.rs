@@ -41,21 +41,41 @@ impl Lower128Bit {
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
             for i in (0..block.statements.len()).rev() {
-                let lang_item =
-                    if let Some(lang_item) = lower_to(&block.statements[i], local_decls, tcx) {
-                        lang_item
+                let (lang_item, rhs_kind) =
+                    if let Some((lang_item, rhs_kind)) =
+                        lower_to(&block.statements[i], local_decls, tcx)
+                    {
+                        (lang_item, rhs_kind)
                     } else {
                         continue;
                     };
 
+                let rhs_override_ty = rhs_kind.ty(tcx);
+                let cast_local =
+                    match rhs_override_ty {
+                        None => None,
+                        Some(ty) => {
+                            let local_decl = LocalDecl::new_internal(
+                                ty, block.statements[i].source_info.span);
+                            Some(local_decls.push(local_decl))
+                        },
+                    };
+
+                let storage_dead = cast_local.map(|local| {
+                    Statement {
+                        source_info: block.statements[i].source_info,
+                        kind: StatementKind::StorageDead(local),
+                    }
+                });
                 let after_call = BasicBlockData {
-                    statements: block.statements.drain((i+1)..).collect(),
+                    statements: storage_dead.into_iter()
+                        .chain(block.statements.drain((i+1)..)).collect(),
                     is_cleanup: block.is_cleanup,
                     terminator: block.terminator.take(),
                 };
 
                 let bin_statement = block.statements.pop().unwrap();
-                let (source_info, lvalue, lhs, rhs) = match bin_statement {
+                let (source_info, lvalue, lhs, mut rhs) = match bin_statement {
                     Statement {
                         source_info,
                         kind: StatementKind::Assign(
@@ -70,6 +90,23 @@ impl Lower128Bit {
                     } => (source_info, lvalue, lhs, rhs),
                     _ => bug!("Statement doesn't match pattern any more?"),
                 };
+
+                if let Some(local) = cast_local {
+                    block.statements.push(Statement {
+                        source_info: source_info,
+                        kind: StatementKind::StorageLive(local),
+                    });
+                    block.statements.push(Statement {
+                        source_info: source_info,
+                        kind: StatementKind::Assign(
+                            Lvalue::Local(local),
+                            Rvalue::Cast(
+                                CastKind::Misc,
+                                rhs,
+                                rhs_override_ty.unwrap())),
+                    });
+                    rhs = Operand::Consume(Lvalue::Local(local));
+                }
 
                 let call_did = check_lang_item_type(
                     lang_item, &lvalue, &lhs, &rhs, local_decls, tcx);
@@ -118,7 +155,7 @@ fn check_lang_item_type<'a, 'tcx, D>(
 }
 
 fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-    -> Option<LangItem>
+    -> Option<(LangItem, RhsKind)>
     where D: HasLocalDecls<'tcx>
 {
     match statement.kind {
@@ -139,6 +176,23 @@ fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCt
     None
 }
 
+#[derive(Copy, Clone)]
+enum RhsKind {
+    Unchanged,
+    ForceU128,
+    ForceU32,
+}
+
+impl RhsKind {
+    fn ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+        match *self {
+            RhsKind::Unchanged => None,
+            RhsKind::ForceU128 => Some(tcx.types.u128),
+            RhsKind::ForceU32 => Some(tcx.types.u32),
+        }
+    }
+}
+
 fn sign_of_128bit(ty: Ty) -> Option<bool> {
     match ty.sty {
         TypeVariants::TyInt(syntax::ast::IntTy::I128) => Some(true),
@@ -147,39 +201,39 @@ fn sign_of_128bit(ty: Ty) -> Option<bool> {
     }
 }
 
-fn item_for_op(bin_op: BinOp, is_signed: bool) -> Option<LangItem> {
+fn item_for_op(bin_op: BinOp, is_signed: bool) -> Option<(LangItem, RhsKind)> {
     let i = match (bin_op, is_signed) {
-        (BinOp::Add, true) => LangItem::I128AddFnLangItem,
-        (BinOp::Add, false) => LangItem::U128AddFnLangItem,
-        (BinOp::Sub, true) => LangItem::I128SubFnLangItem,
-        (BinOp::Sub, false) => LangItem::U128SubFnLangItem,
-        (BinOp::Mul, true) => LangItem::I128MulFnLangItem,
-        (BinOp::Mul, false) => LangItem::U128MulFnLangItem,
-        (BinOp::Div, true) => LangItem::I128DivFnLangItem,
-        (BinOp::Div, false) => LangItem::U128DivFnLangItem,
-        (BinOp::Rem, true) => LangItem::I128RemFnLangItem,
-        (BinOp::Rem, false) => LangItem::U128RemFnLangItem,
-        (BinOp::Shl, true) => LangItem::I128ShlFnLangItem,
-        (BinOp::Shl, false) => LangItem::U128ShlFnLangItem,
-        (BinOp::Shr, true) => LangItem::I128ShrFnLangItem,
-        (BinOp::Shr, false) => LangItem::U128ShrFnLangItem,
+        (BinOp::Add, true) => (LangItem::I128AddFnLangItem, RhsKind::Unchanged),
+        (BinOp::Add, false) => (LangItem::U128AddFnLangItem, RhsKind::Unchanged),
+        (BinOp::Sub, true) => (LangItem::I128SubFnLangItem, RhsKind::Unchanged),
+        (BinOp::Sub, false) => (LangItem::U128SubFnLangItem, RhsKind::Unchanged),
+        (BinOp::Mul, true) => (LangItem::I128MulFnLangItem, RhsKind::Unchanged),
+        (BinOp::Mul, false) => (LangItem::U128MulFnLangItem, RhsKind::Unchanged),
+        (BinOp::Div, true) => (LangItem::I128DivFnLangItem, RhsKind::Unchanged),
+        (BinOp::Div, false) => (LangItem::U128DivFnLangItem, RhsKind::Unchanged),
+        (BinOp::Rem, true) => (LangItem::I128RemFnLangItem, RhsKind::Unchanged),
+        (BinOp::Rem, false) => (LangItem::U128RemFnLangItem, RhsKind::Unchanged),
+        (BinOp::Shl, true) => (LangItem::I128ShlFnLangItem, RhsKind::ForceU32),
+        (BinOp::Shl, false) => (LangItem::U128ShlFnLangItem, RhsKind::ForceU32),
+        (BinOp::Shr, true) => (LangItem::I128ShrFnLangItem, RhsKind::ForceU32),
+        (BinOp::Shr, false) => (LangItem::U128ShrFnLangItem, RhsKind::ForceU32),
         _ => return None,
     };
     Some(i)
 }
 
-fn item_for_checked_op(bin_op: BinOp, is_signed: bool) -> Option<LangItem> {
+fn item_for_checked_op(bin_op: BinOp, is_signed: bool) -> Option<(LangItem, RhsKind)> {
     let i = match (bin_op, is_signed) {
-        (BinOp::Add, true) => LangItem::I128AddoFnLangItem,
-        (BinOp::Add, false) => LangItem::U128AddoFnLangItem,
-        (BinOp::Sub, true) => LangItem::I128SuboFnLangItem,
-        (BinOp::Sub, false) => LangItem::U128SuboFnLangItem,
-        (BinOp::Mul, true) => LangItem::I128MuloFnLangItem,
-        (BinOp::Mul, false) => LangItem::U128MuloFnLangItem,
-        (BinOp::Shl, true) => LangItem::I128ShloFnLangItem,
-        (BinOp::Shl, false) => LangItem::U128ShloFnLangItem,
-        (BinOp::Shr, true) => LangItem::I128ShroFnLangItem,
-        (BinOp::Shr, false) => LangItem::U128ShroFnLangItem,
+        (BinOp::Add, true) => (LangItem::I128AddoFnLangItem, RhsKind::Unchanged),
+        (BinOp::Add, false) => (LangItem::U128AddoFnLangItem, RhsKind::Unchanged),
+        (BinOp::Sub, true) => (LangItem::I128SuboFnLangItem, RhsKind::Unchanged),
+        (BinOp::Sub, false) => (LangItem::U128SuboFnLangItem, RhsKind::Unchanged),
+        (BinOp::Mul, true) => (LangItem::I128MuloFnLangItem, RhsKind::Unchanged),
+        (BinOp::Mul, false) => (LangItem::U128MuloFnLangItem, RhsKind::Unchanged),
+        (BinOp::Shl, true) => (LangItem::I128ShloFnLangItem, RhsKind::ForceU128),
+        (BinOp::Shl, false) => (LangItem::U128ShloFnLangItem, RhsKind::ForceU128),
+        (BinOp::Shr, true) => (LangItem::I128ShroFnLangItem, RhsKind::ForceU128),
+        (BinOp::Shr, false) => (LangItem::U128ShroFnLangItem, RhsKind::ForceU128),
         _ => bug!("That should be all the checked ones?"),
     };
     Some(i)

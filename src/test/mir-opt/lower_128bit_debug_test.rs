@@ -35,13 +35,13 @@ fn i128_mulo(_x: i128, _y: i128) -> (i128, bool) { (4, false) }
 #[lang="u128_mulo"]
 fn u128_mulo(_x: u128, _y: u128) -> (u128, bool) { (5, false) }
 #[lang="i128_shlo"]
-fn i128_shlo(_x: i128, _y: i32) -> (i128, bool) { (6, false) }
+fn i128_shlo(_x: i128, _y: u128) -> (i128, bool) { (6, false) }
 #[lang="u128_shlo"]
-fn u128_shlo(_x: u128, _y: i32) -> (u128, bool) { (6, false) }
+fn u128_shlo(_x: u128, _y: u128) -> (u128, bool) { (6, false) }
 #[lang="i128_shro"]
-fn i128_shro(_x: i128, _y: i32) -> (i128, bool) { (7, false) }
+fn i128_shro(_x: i128, _y: u128) -> (i128, bool) { (7, false) }
 #[lang="u128_shro"]
-fn u128_shro(_x: u128, _y: i32) -> (u128, bool) { (8, false) }
+fn u128_shro(_x: u128, _y: u128) -> (u128, bool) { (8, false) }
 
 fn test_signed(mut x: i128) -> i128 {
     x += 1;
@@ -88,7 +88,9 @@ fn main() {
 //     _1 = const i128_rem(_1, const 5i128) -> bb15;
 //     ...
 //     _1 = (_13.0: i128);
-//     _14 = const i128_shro(_1, const 7i32) -> bb16;
+//     ...
+//     _17 = const 7i32 as u128 (Misc);
+//     _14 = const i128_shro(_1, _17) -> bb16;
 //     ...
 //     _1 = (_14.0: i128);
 //     ...
@@ -100,7 +102,8 @@ fn main() {
 //     ...
 //     assert(!(_13.1: bool), "attempt to shift left with overflow") -> bb8;
 //     ...
-//     _13 = const i128_shlo(_1, const 6i32) -> bb14;
+//     _16 = const 6i32 as u128 (Misc);
+//     _13 = const i128_shlo(_1, _16) -> bb14;
 //     ...
 //     assert(!(_14.1: bool), "attempt to shift right with overflow") -> bb9;
 // END rustc.test_signed.Lower128Bit.after.mir
@@ -121,7 +124,9 @@ fn main() {
 //     _1 = const u128_rem(_1, const 5u128) -> bb13;
 //     ...
 //     _1 = (_7.0: u128);
-//     _8 = const u128_shro(_1, const 7i32) -> bb14;
+//     ...
+//     _11 = const 7i32 as u128 (Misc);
+//     _8 = const u128_shro(_1, _11) -> bb14;
 //     ...
 //     _1 = (_8.0: u128);
 //     ...
@@ -133,7 +138,8 @@ fn main() {
 //     ...
 //     assert(!(_7.1: bool), "attempt to shift left with overflow") -> bb6;
 //     ...
-//     _7 = const u128_shlo(_1, const 6i32) -> bb12;
+//     _10 = const 6i32 as u128 (Misc);
+//     _7 = const u128_shlo(_1, _10) -> bb12;
 //     ...
 //     assert(!(_8.1: bool), "attempt to shift right with overflow") -> bb7;
 // END rustc.test_unsigned.Lower128Bit.after.mir

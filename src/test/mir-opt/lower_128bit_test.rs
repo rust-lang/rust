@@ -34,13 +34,13 @@ fn i128_rem(_x: i128, _y: i128) -> i128 { 5 }
 #[lang="u128_rem"]
 fn u128_rem(_x: u128, _y: u128) -> u128 { 6 }
 #[lang="i128_shl"]
-fn i128_shl(_x: i128, _y: i32) -> i128 { 7 }
+fn i128_shl(_x: i128, _y: u32) -> i128 { 7 }
 #[lang="u128_shl"]
-fn u128_shl(_x: u128, _y: i32) -> u128 { 7 }
+fn u128_shl(_x: u128, _y: u32) -> u128 { 7 }
 #[lang="i128_shr"]
-fn i128_shr(_x: i128, _y: i32) -> i128 { 8 }
+fn i128_shr(_x: i128, _y: u32) -> i128 { 8 }
 #[lang="u128_shr"]
-fn u128_shr(_x: u128, _y: i32) -> u128 { 9 }
+fn u128_shr(_x: u128, _y: u32) -> u128 { 9 }
 
 fn test_signed(mut x: i128) -> i128 {
     x += 1;
@@ -82,9 +82,11 @@ fn main() {
 //     ...
 //     _1 = const i128_sub(_1, const 2i128) -> bb6;
 //     ...
-//     _1 = const i128_shr(_1, const 7i32) -> bb9;
+//     _11 = const 7i32 as u32 (Misc);
+//     _1 = const i128_shr(_1, _11) -> bb9;
 //     ...
-//     _1 = const i128_shl(_1, const 6i32) -> bb10;
+//     _12 = const 6i32 as u32 (Misc);
+//     _1 = const i128_shl(_1, _12) -> bb10;
 // END rustc.test_signed.Lower128Bit.after.mir
 
 // START rustc.test_unsigned.Lower128Bit.after.mir
@@ -98,7 +100,9 @@ fn main() {
 //     ...
 //     _1 = const u128_sub(_1, const 2u128) -> bb4;
 //     ...
-//     _1 = const u128_shr(_1, const 7i32) -> bb7;
+//     _5 = const 7i32 as u32 (Misc);
+//     _1 = const u128_shr(_1, _5) -> bb7;
 //     ...
-//     _1 = const u128_shl(_1, const 6i32) -> bb8;
+//     _6 = const 6i32 as u32 (Misc);
+//     _1 = const u128_shl(_1, _6) -> bb8;
 // END rustc.test_unsigned.Lower128Bit.after.mir
