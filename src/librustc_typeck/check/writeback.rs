@@ -18,8 +18,9 @@ use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::fold::{TypeFolder,TypeFoldable};
-use rustc::util::nodemap::DefIdSet;
+use rustc::ty::fold::{TypeFolder, TypeFoldable};
+use rustc::ty::subst::{Kind, Substs};
+use rustc::util::nodemap::{DefIdSet, FxHashMap};
 use syntax::ast;
 use syntax_pos::Span;
 use std::mem;
@@ -285,8 +286,23 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_anon_types(&mut self) {
         let gcx = self.tcx().global_tcx();
-        for (&node_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
-            let inside_ty = self.resolve(&concrete_ty, &node_id);
+        for (&def_id, anon_defn) in self.fcx.anon_types.borrow().iter() {
+            let node_id = gcx.hir.as_local_node_id(def_id).unwrap();
+            let inside_ty = self.resolve(&anon_defn.concrete_ty, &node_id);
+
+            // Use substs to build up a reverse map from regions
+            // to their identity mappings.
+            // This is necessary because of `impl Trait` lifetimes
+            // are computed by replacing existing lifetimes with 'static
+            // and remapping only those used in the `impl Trait` return type,
+            // resulting in the parameters shifting.
+            let id_substs = Substs::identity_for_item(gcx, def_id);
+            let map: FxHashMap<Kind<'tcx>, Kind<'gcx>> =
+                anon_defn.substs
+                         .iter()
+                         .enumerate()
+                         .map(|(index, subst)| (*subst, id_substs[index]))
+                         .collect();
 
             // Convert the type from the function into a type valid outside
             // the function, by replacing invalid regions with 'static,
@@ -295,25 +311,39 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 match *r {
                     // 'static and early-bound regions are valid.
                     ty::ReStatic |
-                    ty::ReEarlyBound(_) |
                     ty::ReEmpty => r,
 
-                    ty::ReFree(_) |
-                    ty::ReLateBound(..) |
-                    ty::ReScope(_) |
-                    ty::ReSkolemized(..) => {
-                        let span = node_id.to_span(&self.fcx.tcx);
-                        span_err!(self.tcx().sess, span, E0564,
-                                  "only named lifetimes are allowed in `impl Trait`, \
-                                   but `{}` was found in the type `{}`", r, inside_ty);
-                        gcx.types.re_static
-                    }
-
-                    ty::ReVar(_) |
-                    ty::ReErased => {
-                        let span = node_id.to_span(&self.fcx.tcx);
-                        span_bug!(span, "invalid region in impl Trait: {:?}", r);
-                    }
+                    // All other regions, we map them appropriately to their adjusted
+                    // indices, erroring if we find any lifetimes that were not mapped
+                    // into the new set.
+                    _ => if let Some(r1) =
+                            map.get(&Kind::from(r)).and_then(|k| k.as_region()) { r1 } else
+                        {
+                            // No mapping was found. This means that
+                            // it is either a disallowed lifetime,
+                            // which will be caught by regionck, or it
+                            // is a region in a non-upvar closure
+                            // generic, which is explicitly
+                            // allowed. If that surprises you, read
+                            // on.
+                            //
+                            // The case of closure is a somewhat
+                            // subtle (read: hacky) consideration. The
+                            // problem is that our closure types
+                            // currently include all the lifetime
+                            // parameters declared on the enclosing
+                            // function, even if they are unused by
+                            // the closure itself. We can't readily
+                            // filter them out, so here we replace
+                            // those values with `'empty`. This can't
+                            // really make a difference to the rest of
+                            // the compiler; those regions are ignored
+                            // for the outlives relation, and hence
+                            // don't affect trait selection or auto
+                            // traits, and they are erased during
+                            // trans.
+                            gcx.types.re_empty
+                        },
                 }
             });
 

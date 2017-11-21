@@ -1462,6 +1462,12 @@ pub struct BareFnTy {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ExistTy {
+    pub generics: Generics,
+    pub bounds: TyParamBounds,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// The different kinds of types recognized by the compiler
 pub enum Ty_ {
     /// A variable length slice (`[T]`)
@@ -1488,7 +1494,16 @@ pub enum Ty_ {
     TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
     /// An exsitentially quantified (there exists a type satisfying) `impl
     /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
-    TyImplTraitExistential(TyParamBounds),
+    ///
+    /// The `ExistTy` structure emulates an
+    /// `abstract type Foo<'a, 'b>: MyTrait<'a, 'b>;`.
+    ///
+    /// The `HirVec<Lifetime>` is the list of lifetimes applied as parameters
+    /// to the `abstract type`, e.g. the `'c` and `'d` in `-> Foo<'c, 'd>`.
+    /// This list is only a list of lifetimes and not type parameters
+    /// because all in-scope type parameters are captured by `impl Trait`,
+    /// so they are resolved directly through the parent `Generics`.
+    TyImplTraitExistential(ExistTy, HirVec<Lifetime>),
     /// An universally quantified (for all types satisfying) `impl
     /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
     TyImplTraitUniversal(DefId, TyParamBounds),

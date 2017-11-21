@@ -2019,4 +2019,5 @@ register_diagnostics! {
     E0628, // generators cannot have explicit arguments
     E0631, // type mismatch in closure arguments
     E0637, // "'_" is not a valid lifetime bound
+    E0657, // `impl Trait` can only capture lifetimes bound at the fn level
 }

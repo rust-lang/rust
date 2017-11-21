@@ -92,6 +92,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc::infer::{self, OutlivesEnvironment};
 use rustc::ty::adjustment;
+use rustc::ty::outlives::Component;
 
 use std::mem;
 use std::ops::Deref;
@@ -135,7 +136,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          item_id: ast::NodeId,
                          span: Span,
                          wf_tys: &[Ty<'tcx>]) {
-        debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
+        debug!("regionck_item(item.id={:?}, wf_tys={:?})", item_id, wf_tys);
         let subject = self.tcx.hir.local_def_id(item_id);
         let mut rcx = RegionCtxt::new(self,
                                       RepeatingScope(item_id),
@@ -336,10 +337,13 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("visit_fn_body body.id {:?} call_site_scope: {:?}",
                body.id(), call_site_scope);
         let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope));
+
         let body_hir_id = self.tcx.hir.node_to_hir_id(body_id.node_id);
         self.type_of_node_must_outlive(infer::CallReturn(span),
                                        body_hir_id,
                                        call_site_region);
+
+        self.constrain_anon_types();
     }
 
     fn visit_region_obligations(&mut self, node_id: ast::NodeId)
@@ -356,6 +360,194 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             self.implicit_region_bound,
             self.param_env,
             self.body_id);
+    }
+
+    /// Go through each of the existential `impl Trait` types that
+    /// appear in the function signature. For example, if the current
+    /// function is as follows:
+    ///
+    ///     fn foo<'a, 'b>(..) -> (impl Bar<'a>, impl Bar<'b>)
+    ///
+    /// we would iterate through the `impl Bar<'a>` and the
+    /// `impl Bar<'b>` here. Remember that each of them has
+    /// their own "abstract type" definition created for them. As
+    /// we iterate, we have a `def_id` that corresponds to this
+    /// definition, and a set of substitutions `substs` that are
+    /// being supplied to this abstract typed definition in the
+    /// signature:
+    ///
+    ///     abstract type Foo1<'x>: Bar<'x>;
+    ///     abstract type Foo2<'x>: Bar<'x>;
+    ///     fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
+    ///                            ^^^^ ^^ substs
+    ///                            def_id
+    ///
+    /// In addition, for each of the types we will have a type
+    /// variable `concrete_ty` containing the concrete type that
+    /// this function uses for `Foo1` and `Foo2`. That is,
+    /// conceptually, there is a constraint like:
+    ///
+    ///     for<'a> (Foo1<'a> = C)
+    ///
+    /// where `C` is `concrete_ty`. For this equation to be satisfiable,
+    /// the type `C` can only refer to two regions: `'static` and `'a`.
+    ///
+    /// The problem is that this type `C` may contain arbitrary
+    /// region variables. In fact, it is fairly likely that it
+    /// does!  Consider this possible definition of `foo`:
+    ///
+    ///     fn foo<'a, 'b>(x: &'a i32, y: &'b i32) -> (impl Bar<'a>, impl Bar<'b>) {
+    ///         (&*x, &*y)
+    ///     }
+    ///
+    /// Here, the values for the concrete types of the two impl
+    /// traits will include inference variables:
+    ///
+    ///     &'0 i32
+    ///     &'1 i32
+    ///
+    /// Ordinarily, the subtyping rules would ensure that these are
+    /// sufficiently large.  But since `impl Bar<'a>` isn't a specific
+    /// type per se, we don't get such constraints by default.  This
+    /// is where this function comes into play. It adds extra
+    /// constraints to ensure that all the regions which appear in the
+    /// inferred type are regions that could validly appear.
+    ///
+    /// This is actually a bit of a tricky constraint in general. We
+    /// want to say that each variable (e.g., `'0``) can only take on
+    /// values that were supplied as arguments to the abstract type
+    /// (e.g., `'a` for `Foo1<'a>`) or `'static`, which is always in
+    /// scope. We don't have a constraint quite of this kind in the current
+    /// region checker.
+    ///
+    /// What we *do* have is the `<=` relation. So what we do is to
+    /// find the LUB of all the arguments that appear in the substs:
+    /// in this case, that would be `LUB('a) = 'a`, and then we apply
+    /// that as a least bound to the variables (e.g., `'a <= '0`).
+    ///
+    /// In some cases this is pretty suboptimal. Consider this example:
+    ///
+    ///    fn baz<'a, 'b>() -> impl Trait<'a, 'b> { ... }
+    ///
+    /// Here, the regions `'a` and `'b` appear in the substitutions,
+    /// so we would generate `LUB('a, 'b)` as a kind of "minimal upper
+    /// bound", but that turns out be `'static` -- which is clearly
+    /// too strict!
+    fn constrain_anon_types(&mut self) {
+        debug!("constrain_anon_types()");
+
+        for (&def_id, anon_defn) in self.fcx.anon_types.borrow().iter() {
+            let concrete_ty = self.resolve_type(anon_defn.concrete_ty);
+
+            debug!("constrain_anon_types: def_id={:?}", def_id);
+            debug!("constrain_anon_types: anon_defn={:#?}", anon_defn);
+            debug!("constrain_anon_types: concrete_ty={:?}", concrete_ty);
+
+            let abstract_type_generics = self.tcx.generics_of(def_id);
+
+            let span = self.tcx.def_span(def_id);
+
+            // If there are required region bounds, we can just skip
+            // ahead.  There will already be a registered region
+            // obligation related `concrete_ty` to those regions.
+            if anon_defn.required_region_bounds.len() != 0 {
+                continue;
+            }
+
+            // There were no `required_region_bounds`,
+            // so we have to search for a `least_region`.
+            // Go through all the regions used as arguments to the
+            // abstract type. These are the parameters to the abstract
+            // type; so in our example above, `substs` would contain
+            // `['a]` for the first impl trait and `'b` for the
+            // second.
+            let mut least_region = None;
+            for region_def in &abstract_type_generics.regions {
+                // Find the index of this region in the list of substitutions.
+                let index = region_def.index as usize;
+
+                // Get the value supplied for this region from the substs.
+                let subst_arg = anon_defn.substs[index].as_region().unwrap();
+
+                // Compute the least upper bound of it with the other regions.
+                debug!("constrain_anon_types: least_region={:?}", least_region);
+                debug!("constrain_anon_types: subst_arg={:?}", subst_arg);
+                match least_region {
+                    None => least_region = Some(subst_arg),
+                    Some(lr) => {
+                        if self.outlives_environment
+                               .free_region_map()
+                               .sub_free_regions(lr, subst_arg) {
+                            // keep the current least region
+                        } else if self.outlives_environment
+                                      .free_region_map()
+                                      .sub_free_regions(subst_arg, lr) {
+                            // switch to `subst_arg`
+                            least_region = Some(subst_arg);
+                        } else {
+                            // There are two regions (`lr` and
+                            // `subst_arg`) which are not relatable. We can't
+                            // find a best choice.
+                            self.tcx
+                                .sess
+                                .struct_span_err(span, "ambiguous lifetime bound in `impl Trait`")
+                                .span_label(span,
+                                            format!("neither `{}` nor `{}` outlives the other",
+                                                    lr, subst_arg))
+                                .emit();
+
+                            least_region = Some(self.tcx.mk_region(ty::ReEmpty));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            let least_region = least_region.unwrap_or(self.tcx.types.re_static);
+            debug!("constrain_anon_types: least_region={:?}", least_region);
+
+            // Require that the type `concrete_ty` outlives
+            // `least_region`, modulo any type parameters that appear
+            // in the type, which we ignore. This is because impl
+            // trait values are assumed to capture all the in-scope
+            // type parameters. This little loop here just invokes
+            // `outlives` repeatedly, draining all the nested
+            // obligations that result.
+            let mut types = vec![concrete_ty];
+            let bound_region = |r| self.sub_regions(infer::CallReturn(span), least_region, r);
+            while let Some(ty) = types.pop() {
+                let mut components = self.tcx.outlives_components(ty);
+                while let Some(component) = components.pop() {
+                    match component {
+                        Component::Region(r) => {
+                            bound_region(r);
+                        }
+
+                        Component::Param(_) => {
+                            // ignore type parameters like `T`, they are captured
+                            // implicitly by the `impl Trait`
+                        }
+
+                        Component::UnresolvedInferenceVariable(_) => {
+                            // we should get an error that more type
+                            // annotations are needed in this case
+                            self.tcx.sess.delay_span_bug(span, "unresolved inf var in anon");
+                        }
+
+                        Component::Projection(ty::ProjectionTy { substs, item_def_id: _ }) => {
+                            for r in substs.regions() {
+                                bound_region(r);
+                            }
+                            types.extend(substs.types());
+                        }
+
+                        Component::EscapingProjection(more_components) => {
+                            components.extend(more_components);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn resolve_regions_and_report_errors(&self) {

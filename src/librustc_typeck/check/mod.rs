@@ -213,7 +213,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // associated fresh inference variable. Writeback resolves these
     // variables to get the concrete type, which can be used to
     // deanonymize TyAnon, after typeck is done with all functions.
-    anon_types: RefCell<NodeMap<Ty<'tcx>>>,
+    anon_types: RefCell<DefIdMap<AnonTypeDecl<'tcx>>>,
 
     /// Each type parameter has an implicit region bound that
     /// indicates it must outlive at least the function body (the user
@@ -224,6 +224,43 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
 
     body_id: Option<hir::BodyId>,
+}
+
+/// Information about the anonymous, abstract types whose values we
+/// are inferring in this function (these are the `impl Trait` that
+/// appear in the return type).
+#[derive(Debug)]
+struct AnonTypeDecl<'tcx> {
+    /// The substitutions that we apply to the abstract that that this
+    /// `impl Trait` desugars to. e.g., if:
+    ///
+    ///     fn foo<'a, 'b, T>() -> impl Trait<'a>
+    ///
+    /// winds up desugared to:
+    ///
+    ///     abstract type Foo<'x, T>: Trait<'x>
+    ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
+    ///
+    /// then `substs` would be `['a, T]`.
+    substs: &'tcx Substs<'tcx>,
+
+    /// The type variable that represents the value of the abstract type
+    /// that we require. In other words, after we compile this function,
+    /// we will be created a constraint like:
+    ///
+    ///     Foo<'a, T> = ?C
+    ///
+    /// where `?C` is the value of this type variable. =) It may
+    /// naturally refer to the type and lifetime parameters in scope
+    /// in this function, though ultimately it should only reference
+    /// those that are arguments to `Foo` in the constraint above. (In
+    /// other words, `?C` should not include `'b`, even though it's a
+    /// lifetime parameter on `foo`.)
+    concrete_ty: Ty<'tcx>,
+
+    /// A list of all required region bounds on the impl Trait type,
+    /// e.g. `'a` and `'b` in `fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b`.
+    required_region_bounds: Vec<ty::Region<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -622,7 +659,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             deferred_call_resolutions: RefCell::new(DefIdMap()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
-            anon_types: RefCell::new(NodeMap()),
+            anon_types: RefCell::new(DefIdMap()),
             implicit_region_bound,
             body_id,
         }
@@ -870,7 +907,10 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   param_env,
                                                   &fn_sig);
 
-            check_fn(&inh, param_env, fn_sig, decl, id, body, false).0
+            let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, false).0;
+            // Ensure anon_types have been instantiated prior to entering regionck
+            fcx.instantiate_anon_types(&fn_sig.output());
+            fcx
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.id);
             let expected_type = tcx.type_of(def_id);
@@ -1909,20 +1949,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Replace all anonymized types with fresh inference variables
     /// and record them for writeback.
     fn instantiate_anon_types<T: TypeFoldable<'tcx>>(&self, value: &T) -> T {
+        debug!("instantiate_anon_types(value={:?})", value);
         value.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
             if let ty::TyAnon(def_id, substs) = ty.sty {
+                debug!("instantiate_anon_types: TyAnon(def_id={:?}, substs={:?})", def_id, substs);
+
                 // Use the same type variable if the exact same TyAnon appears more
                 // than once in the return type (e.g. if it's passed to a type alias).
-                let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
-                if let Some(ty_var) = self.anon_types.borrow().get(&id) {
-                    return ty_var;
+                if let Some(anon_defn) = self.anon_types.borrow().get(&def_id) {
+                    return anon_defn.concrete_ty;
                 }
                 let span = self.tcx.def_span(def_id);
                 let ty_var = self.next_ty_var(TypeVariableOrigin::TypeInference(span));
-                self.anon_types.borrow_mut().insert(id, ty_var);
 
                 let predicates_of = self.tcx.predicates_of(def_id);
                 let bounds = predicates_of.instantiate(self.tcx, substs);
+                debug!("instantiate_anon_types: bounds={:?}", bounds);
+
+                let required_region_bounds =
+                    self.tcx.required_region_bounds(ty, bounds.predicates.clone());
+                debug!("instantiate_anon_types: required_region_bounds={:?}",
+                       required_region_bounds);
+
+                self.anon_types.borrow_mut().insert(def_id, AnonTypeDecl {
+                    substs,
+                    concrete_ty: ty_var,
+                    required_region_bounds,
+                });
+                debug!("instantiate_anon_types: ty_var={:?}", ty_var);
 
                 for predicate in bounds.predicates {
                     // Change the predicate to refer to the type variable,
@@ -1931,8 +1985,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let predicate = self.instantiate_anon_types(&predicate);
 
                     // Require that the predicate holds for the concrete type.
-                    let cause = traits::ObligationCause::new(span, self.body_id,
+                    let cause = traits::ObligationCause::new(span,
+                                                             self.body_id,
                                                              traits::SizedReturnType);
+
+                    debug!("instantiate_anon_types: predicate={:?}", predicate);
                     self.register_predicate(traits::Obligation::new(cause,
                                                                     self.param_env,
                                                                     predicate));

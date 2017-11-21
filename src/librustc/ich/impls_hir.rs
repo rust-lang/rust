@@ -295,6 +295,11 @@ impl_stable_hash_for!(struct hir::BareFnTy {
     arg_names
 });
 
+impl_stable_hash_for!(struct hir::ExistTy {
+    generics,
+    bounds
+});
+
 impl_stable_hash_for!(enum hir::Ty_ {
     TySlice(t),
     TyArray(t, body_id),
@@ -305,7 +310,7 @@ impl_stable_hash_for!(enum hir::Ty_ {
     TyTup(ts),
     TyPath(qpath),
     TyTraitObject(trait_refs, lifetime),
-    TyImplTraitExistential(bounds),
+    TyImplTraitExistential(existty, lifetimes),
     TyImplTraitUniversal(def_id, bounds),
     TyTypeof(body_id),
     TyErr,
