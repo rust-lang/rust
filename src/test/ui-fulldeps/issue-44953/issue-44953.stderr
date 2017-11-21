@@ -13,7 +13,7 @@ error: use of unstable library feature 'rustc_private': this crate is being load
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(rustc_private)] to the crate attributes to enable
-   = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

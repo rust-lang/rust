@@ -798,7 +798,8 @@ impl EmitterWriter {
                 level: Level::Note,
                 message: vec![
                     (["this error originates in a macro outside of the current crate",
-                      "(run with -Z external-macro-backtrace for more info)"].join(" "),
+                      "(in Nightly builds, run with -Z external-macro-backtrace for more info)"]
+                      .join(" "),
                      Style::NoStyle),
                 ],
                 span: MultiSpan::new(),
