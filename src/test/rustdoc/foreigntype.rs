@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(extern_types)]
+#![feature(extern_types, dynsized)]
+
+use std::marker::DynSized;
 
 extern {
     // @has foreigntype/foreigntype.ExtType.html
@@ -20,7 +22,7 @@ impl ExtType {
     pub fn do_something(&self) {}
 }
 
-pub trait Trait {}
+pub trait Trait: ?DynSized {}
 
 // @has foreigntype/trait.Trait.html '//a[@class="foreigntype"]' 'ExtType'
 impl Trait for ExtType {}
