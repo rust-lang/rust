@@ -15,6 +15,7 @@
 
 #![allow(non_camel_case_types)]
 
+#![feature(match_default_bindings)]
 #![feature(quote)]
 
 #[macro_use] extern crate log;

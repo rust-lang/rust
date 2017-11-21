@@ -23,6 +23,7 @@ use rustc::ty::layout::LayoutOf;
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
+use std::iter;
 use transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
@@ -559,8 +560,29 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     ) -> Vec<Operand<'tcx>> {
         let tcx = self.tcx;
 
-        // A closure is passed its self-type and a tuple like `(arg1, arg2, ...)`,
-        // hence mappings to tuple fields are needed.
+        // There is a bit of a mismatch between the *caller* of a closure and the *callee*.
+        // The caller provides the arguments wrapped up in a tuple:
+        //
+        //     tuple_tmp = (a, b, c)
+        //     Fn::call(closure_ref, tuple_tmp)
+        //
+        // meanwhile the closure body expects the arguments (here, `a`, `b`, and `c`)
+        // as distinct arguments. (This is the "rust-call" ABI hack.) Normally, trans has
+        // the job of unpacking this tuple. But here, we are trans. =) So we want to create
+        // a vector like
+        //
+        //     [closure_ref, tuple_tmp.0, tuple_tmp.1, tuple_tmp.2]
+        //
+        // Except for one tiny wrinkle: we don't actually want `tuple_tmp.0`. It's more convenient
+        // if we "spill" that into *another* temporary, so that we can map the argument
+        // variable in the callee MIR directly to an argument variable on our side.
+        // So we introduce temporaries like:
+        //
+        //     tmp0 = tuple_tmp.0
+        //     tmp1 = tuple_tmp.1
+        //     tmp2 = tuple_tmp.2
+        //
+        // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if tcx.is_closure(callsite.callee) {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
@@ -573,12 +595,21 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 bug!("Closure arguments are not passed as a tuple");
             };
 
-            let mut res = Vec::with_capacity(1 + tuple_tys.len());
-            res.push(Operand::Consume(self_));
-            res.extend(tuple_tys.iter().enumerate().map(|(i, ty)| {
-                Operand::Consume(tuple.clone().field(Field::new(i), ty))
-            }));
-            res
+            // The `closure_ref` in our example above.
+            let closure_ref_arg = iter::once(Operand::Consume(self_));
+
+            // The `tmp0`, `tmp1`, and `tmp2` in our example abonve.
+            let tuple_tmp_args =
+                tuple_tys.iter().enumerate().map(|(i, ty)| {
+                    // This is e.g. `tuple_tmp.0` in our example above.
+                    let tuple_field = Operand::Consume(tuple.clone().field(Field::new(i), ty));
+
+                    // Spill to a local to make e.g. `tmp0`.
+                    let tmp = self.create_temp_if_necessary(tuple_field, callsite, caller_mir);
+                    Operand::Consume(tmp)
+                });
+
+            closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
             args.into_iter()
                 .map(|a| Operand::Consume(self.create_temp_if_necessary(a, callsite, caller_mir)))

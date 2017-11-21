@@ -103,7 +103,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     Some((closure_self_ty(tcx, id, body_id), None))
                 }
                 ty::TyGenerator(..) => {
-                    let gen_ty =  tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
+                    let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
                     Some((gen_ty, None))
                 }
                 _ => None,
@@ -127,7 +127,12 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.is_generator {
-                let gen_sig = cx.tables().generator_sigs()[fn_hir_id].clone().unwrap();
+                let gen_sig = match ty.sty {
+                    ty::TyGenerator(gen_def_id, gen_substs, ..) =>
+                        gen_substs.generator_sig(gen_def_id, tcx),
+                    _ =>
+                        span_bug!(tcx.hir.span(id), "generator w/o generator type: {:?}", ty),
+                };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
             } else {
                 (None, fn_sig.output())
@@ -248,14 +253,18 @@ pub fn closure_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
-    let closure_def_id = tcx.hir.local_def_id(closure_expr_id);
+    let (closure_def_id, closure_substs) = match closure_ty.sty {
+        ty::TyClosure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
+        _ => bug!("closure expr does not have closure type: {:?}", closure_ty)
+    };
+
     let region = ty::ReFree(ty::FreeRegion {
         scope: closure_def_id,
         bound_region: ty::BoundRegion::BrEnv,
     });
     let region = tcx.mk_region(region);
 
-    match tcx.closure_kind(closure_def_id) {
+    match closure_substs.closure_kind_ty(closure_def_id, tcx).to_opt_closure_kind().unwrap() {
         ty::ClosureKind::Fn =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,

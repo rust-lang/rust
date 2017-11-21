@@ -759,28 +759,10 @@ pub fn provide(providers: &mut Providers) {
         typeck_item_bodies,
         typeck_tables_of,
         has_typeck_tables,
-        closure_kind,
-        generator_sig,
         adt_destructor,
         used_trait_imports,
         ..*providers
     };
-}
-
-fn generator_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          def_id: DefId)
-                          -> Option<ty::PolyGenSig<'tcx>> {
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let hir_id = tcx.hir.node_to_hir_id(node_id);
-    tcx.typeck_tables_of(def_id).generator_sigs()[hir_id].map(|s| ty::Binder(s))
-}
-
-fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          def_id: DefId)
-                          -> ty::ClosureKind {
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let hir_id = tcx.hir.node_to_hir_id(node_id);
-    tcx.typeck_tables_of(def_id).closure_kinds()[hir_id].0
 }
 
 fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1021,6 +1003,17 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
                 _: hir::BodyId, _: Span, _: ast::NodeId) { }
 }
 
+/// When `check_fn` is invoked on a generator (i.e., a body that
+/// includes yield), it returns back some information about the yield
+/// points.
+struct GeneratorTypes<'tcx> {
+    /// Type of value that is yielded.
+    yield_ty: ty::Ty<'tcx>,
+
+    /// Types that are captured (see `GeneratorInterior` for more).
+    interior: ty::GeneratorInterior<'tcx>
+}
+
 /// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item
 /// there is still a bit more to do.
@@ -1034,7 +1027,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             fn_id: ast::NodeId,
                             body: &'gcx hir::Body,
                             can_be_generator: bool)
-                            -> (FnCtxt<'a, 'gcx, 'tcx>, Option<ty::GeneratorInterior<'tcx>>)
+                            -> (FnCtxt<'a, 'gcx, 'tcx>, Option<GeneratorTypes<'tcx>>)
 {
     let mut fn_sig = fn_sig.clone();
 
@@ -1084,21 +1077,11 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
     let gen_ty = if can_be_generator && body.is_generator {
-        let gen_sig = ty::GenSig {
-            yield_ty: fcx.yield_ty.unwrap(),
-            return_ty: ret_ty,
-        };
-        inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, Some(gen_sig));
-
         let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), witness));
         let interior = ty::GeneratorInterior::new(witness);
-
-        inherited.tables.borrow_mut().generator_interiors_mut().insert(fn_hir_id, interior);
-
-        Some(interior)
+        Some(GeneratorTypes { yield_ty: fcx.yield_ty.unwrap(), interior: interior })
     } else {
-        inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, None);
         None
     };
     inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);

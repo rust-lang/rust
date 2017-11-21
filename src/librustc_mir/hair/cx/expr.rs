@@ -713,8 +713,8 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = if let ty::TyClosure(..) = closure_ty.sty {
-                match cx.tcx.closure_kind(closure_def_id) {
+            let self_expr = if let ty::TyClosure(_, closure_substs) = closure_ty.sty {
+                match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {

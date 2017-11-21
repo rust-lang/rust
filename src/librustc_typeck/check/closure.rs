@@ -10,7 +10,7 @@
 
 //! Code for type-checking closure expressions.
 
-use super::{check_fn, Expectation, FnCtxt};
+use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use astconv::AstConv;
 use rustc::hir::def_id::DefId;
@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
-        let interior = check_fn(
+        let generator_types = check_fn(
             self,
             self.param_env,
             liberated_sig,
@@ -100,14 +100,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             |_, _| span_bug!(expr.span, "closure has region param"),
             |_, _| {
                 self.infcx
-                    .next_ty_var(TypeVariableOrigin::TransformedUpvar(expr.span))
+                    .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span))
             },
         );
+        let substs = ty::ClosureSubsts { substs };
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
-        if let Some(interior) = interior {
-            let closure_substs = ty::ClosureSubsts { substs: substs };
-            return self.tcx.mk_generator(expr_def_id, closure_substs, interior);
+        if let Some(GeneratorTypes { yield_ty, interior }) = generator_types {
+            self.demand_eqtype(expr.span,
+                               yield_ty,
+                               substs.generator_yield_ty(expr_def_id, self.tcx));
+            self.demand_eqtype(expr.span,
+                               liberated_sig.output(),
+                               substs.generator_return_ty(expr_def_id, self.tcx));
+            return self.tcx.mk_generator(expr_def_id, substs, interior);
         }
 
         debug!(
@@ -135,15 +141,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind
         );
 
-        {
-            let mut tables = self.tables.borrow_mut();
-            tables.closure_tys_mut().insert(expr.hir_id, sig);
-            match opt_kind {
-                Some(kind) => {
-                    tables.closure_kinds_mut().insert(expr.hir_id, (kind, None));
-                }
-                None => {}
-            }
+        let sig_fn_ptr_ty = self.tcx.mk_fn_ptr(sig);
+        self.demand_eqtype(expr.span,
+                           sig_fn_ptr_ty,
+                           substs.closure_sig_ty(expr_def_id, self.tcx));
+
+        if let Some(kind) = opt_kind {
+            self.demand_eqtype(expr.span,
+                               kind.to_ty(self.tcx),
+                               substs.closure_kind_ty(expr_def_id, self.tcx));
         }
 
         closure_type

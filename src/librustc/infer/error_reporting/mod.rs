@@ -689,9 +689,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                          diag: &mut DiagnosticBuilder<'tcx>,
                          cause: &ObligationCause<'tcx>,
                          secondary_span: Option<(Span, String)>,
-                         values: Option<ValuePairs<'tcx>>,
+                         mut values: Option<ValuePairs<'tcx>>,
                          terr: &TypeError<'tcx>)
     {
+        // For some types of errors, expected-found does not make
+        // sense, so just ignore the values we were given.
+        match terr {
+            TypeError::CyclicTy(_) => { values = None; }
+            _ => { }
+        }
+
         let (expected_found, exp_found, is_simple_error) = match values {
             None => (None, None, false),
             Some(values) => {
@@ -780,16 +787,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                terr);
 
         let span = trace.cause.span;
-        let failure_str = trace.cause.as_failure_str();
-        let mut diag = match trace.cause.code {
-            ObligationCauseCode::IfExpressionWithNoElse => {
+        let failure_code = trace.cause.as_failure_code(terr);
+        let mut diag = match failure_code {
+            FailureCode::Error0317(failure_str) => {
                 struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
             }
-            ObligationCauseCode::MainFunctionType => {
+            FailureCode::Error0580(failure_str) => {
                 struct_span_err!(self.tcx.sess, span, E0580, "{}", failure_str)
             }
-            _ => {
+            FailureCode::Error0308(failure_str) => {
                 struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
+            }
+            FailureCode::Error0644(failure_str) => {
+                struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
             }
         };
         self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr);
@@ -1040,23 +1050,40 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
+enum FailureCode {
+    Error0317(&'static str),
+    Error0580(&'static str),
+    Error0308(&'static str),
+    Error0644(&'static str),
+}
+
 impl<'tcx> ObligationCause<'tcx> {
-    fn as_failure_str(&self) -> &'static str {
+    fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode {
+        use self::FailureCode::*;
         use traits::ObligationCauseCode::*;
         match self.code {
-            CompareImplMethodObligation { .. } => "method not compatible with trait",
-            MatchExpressionArm { source, .. } => match source {
+            CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
+            MatchExpressionArm { source, .. } => Error0308(match source {
                 hir::MatchSource::IfLetDesugar{..} => "`if let` arms have incompatible types",
                 _ => "match arms have incompatible types",
-            },
-            IfExpression => "if and else have incompatible types",
-            IfExpressionWithNoElse => "if may be missing an else clause",
-            EquatePredicate => "equality predicate not satisfied",
-            MainFunctionType => "main function has wrong type",
-            StartFunctionType => "start function has wrong type",
-            IntrinsicType => "intrinsic has wrong type",
-            MethodReceiver => "mismatched method receiver",
-            _ => "mismatched types",
+            }),
+            IfExpression => Error0308("if and else have incompatible types"),
+            IfExpressionWithNoElse => Error0317("if may be missing an else clause"),
+            EquatePredicate => Error0308("equality predicate not satisfied"),
+            MainFunctionType => Error0580("main function has wrong type"),
+            StartFunctionType => Error0308("start function has wrong type"),
+            IntrinsicType => Error0308("intrinsic has wrong type"),
+            MethodReceiver => Error0308("mismatched method receiver"),
+
+            // In the case where we have no more specific thing to
+            // say, also take a look at the error code, maybe we can
+            // tailor to that.
+            _ => match terr {
+                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_generator() =>
+                    Error0644("closure/generator type that references itself"),
+                _ =>
+                    Error0308("mismatched types"),
+            }
         }
     }
 

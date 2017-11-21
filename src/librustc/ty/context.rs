@@ -356,16 +356,9 @@ pub struct TypeckTables<'tcx> {
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
-    /// Records the type of each closure.
-    closure_tys: ItemLocalMap<ty::PolyFnSig<'tcx>>,
-
-    /// Records the kind of each closure and the span and name of the variable
-    /// that caused the closure to be this kind.
-    closure_kinds: ItemLocalMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
-
-    generator_sigs: ItemLocalMap<Option<ty::GenSig<'tcx>>>,
-
-    generator_interiors: ItemLocalMap<ty::GeneratorInterior<'tcx>>,
+    /// Records the reasons that we picked the kind of each closure;
+    /// not all closures are present in the map.
+    closure_kind_origins: ItemLocalMap<(Span, ast::Name)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -411,10 +404,7 @@ impl<'tcx> TypeckTables<'tcx> {
             pat_binding_modes: ItemLocalMap(),
             pat_adjustments: ItemLocalMap(),
             upvar_capture_map: FxHashMap(),
-            generator_sigs: ItemLocalMap(),
-            generator_interiors: ItemLocalMap(),
-            closure_tys: ItemLocalMap(),
-            closure_kinds: ItemLocalMap(),
+            closure_kind_origins: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
             cast_kinds: ItemLocalMap(),
@@ -609,34 +599,17 @@ impl<'tcx> TypeckTables<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
 
-    pub fn closure_tys(&self) -> LocalTableInContext<ty::PolyFnSig<'tcx>> {
+    pub fn closure_kind_origins(&self) -> LocalTableInContext<(Span, ast::Name)> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
-            data: &self.closure_tys
+            data: &self.closure_kind_origins
         }
     }
 
-    pub fn closure_tys_mut(&mut self)
-                           -> LocalTableInContextMut<ty::PolyFnSig<'tcx>> {
+    pub fn closure_kind_origins_mut(&mut self) -> LocalTableInContextMut<(Span, ast::Name)> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
-            data: &mut self.closure_tys
-        }
-    }
-
-    pub fn closure_kinds(&self) -> LocalTableInContext<(ty::ClosureKind,
-                                                        Option<(Span, ast::Name)>)> {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.closure_kinds
-        }
-    }
-
-    pub fn closure_kinds_mut(&mut self)
-            -> LocalTableInContextMut<(ty::ClosureKind, Option<(Span, ast::Name)>)> {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.closure_kinds
+            data: &mut self.closure_kind_origins
         }
     }
 
@@ -681,42 +654,6 @@ impl<'tcx> TypeckTables<'tcx> {
             data: &mut self.cast_kinds
         }
     }
-
-    pub fn generator_sigs(&self)
-        -> LocalTableInContext<Option<ty::GenSig<'tcx>>>
-    {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.generator_sigs,
-        }
-    }
-
-    pub fn generator_sigs_mut(&mut self)
-        -> LocalTableInContextMut<Option<ty::GenSig<'tcx>>>
-    {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.generator_sigs,
-        }
-    }
-
-    pub fn generator_interiors(&self)
-        -> LocalTableInContext<ty::GeneratorInterior<'tcx>>
-    {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.generator_interiors,
-        }
-    }
-
-    pub fn generator_interiors_mut(&mut self)
-        -> LocalTableInContextMut<ty::GeneratorInterior<'tcx>>
-    {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.generator_interiors,
-        }
-    }
 }
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
@@ -732,8 +669,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             ref pat_binding_modes,
             ref pat_adjustments,
             ref upvar_capture_map,
-            ref closure_tys,
-            ref closure_kinds,
+            ref closure_kind_origins,
             ref liberated_fn_sigs,
             ref fru_field_types,
 
@@ -742,8 +678,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
-            ref generator_sigs,
-            ref generator_interiors,
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -775,13 +709,10 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
                  hcx.def_path_hash(closure_def_id))
             });
 
-            closure_tys.hash_stable(hcx, hasher);
-            closure_kinds.hash_stable(hcx, hasher);
+            closure_kind_origins.hash_stable(hcx, hasher);
             liberated_fn_sigs.hash_stable(hcx, hasher);
             fru_field_types.hash_stable(hcx, hasher);
             cast_kinds.hash_stable(hcx, hasher);
-            generator_sigs.hash_stable(hcx, hasher);
-            generator_interiors.hash_stable(hcx, hasher);
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
@@ -1981,11 +1912,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_closure(self,
                       closure_id: DefId,
-                      substs: &'tcx Substs<'tcx>)
-        -> Ty<'tcx> {
-        self.mk_closure_from_closure_substs(closure_id, ClosureSubsts {
-            substs,
-        })
+                      substs: ClosureSubsts<'tcx>)
+                      -> Ty<'tcx> {
+        self.mk_closure_from_closure_substs(closure_id, substs)
     }
 
     pub fn mk_closure_from_closure_substs(self,

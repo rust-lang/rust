@@ -1019,9 +1019,31 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
     if let NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) = node {
+        // add a dummy parameter for the closure kind
+        types.push(ty::TypeParameterDef {
+            index: type_start,
+            name: Symbol::intern("<closure_kind>"),
+            def_id,
+            has_default: false,
+            object_lifetime_default: rl::Set1::Empty,
+            pure_wrt_drop: false,
+            synthetic: None,
+        });
+
+        // add a dummy parameter for the closure signature
+        types.push(ty::TypeParameterDef {
+            index: type_start + 1,
+            name: Symbol::intern("<closure_signature>"),
+            def_id,
+            has_default: false,
+            object_lifetime_default: rl::Set1::Empty,
+            pure_wrt_drop: false,
+            synthetic: None,
+        });
+
         tcx.with_freevars(node_id, |fv| {
-            types.extend(fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
-                index: type_start + i as u32,
+            types.extend(fv.iter().zip(2..).map(|(_, i)| ty::TypeParameterDef {
+                index: type_start + i,
                 name: Symbol::intern("<upvar>"),
                 def_id,
                 has_default: false,
@@ -1156,14 +1178,19 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 return tcx.typeck_tables_of(def_id).node_id_to_type(hir_id);
             }
 
-            tcx.mk_closure(def_id, Substs::for_item(
-                tcx, def_id,
-                |def, _| {
-                    let region = def.to_early_bound_region_data();
-                    tcx.mk_region(ty::ReEarlyBound(region))
-                },
-                |def, _| tcx.mk_param_from_def(def)
-            ))
+            let substs = ty::ClosureSubsts {
+                substs: Substs::for_item(
+                    tcx,
+                    def_id,
+                    |def, _| {
+                        let region = def.to_early_bound_region_data();
+                        tcx.mk_region(ty::ReEarlyBound(region))
+                    },
+                    |def, _| tcx.mk_param_from_def(def)
+                )
+            };
+
+            tcx.mk_closure(def_id, substs)
         }
 
         NodeExpr(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {
@@ -1242,7 +1269,14 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeExpr(&hir::Expr { node: hir::ExprClosure(..), hir_id, .. }) => {
-            tcx.typeck_tables_of(def_id).closure_tys()[hir_id]
+            let tables = tcx.typeck_tables_of(def_id);
+            match tables.node_id_to_type(hir_id).sty {
+                ty::TyClosure(closure_def_id, closure_substs) => {
+                    assert_eq!(def_id, closure_def_id);
+                    return closure_substs.closure_sig(closure_def_id, tcx);
+                }
+                ref t => bug!("closure with non-closure type: {:?}", t),
+            }
         }
 
         x => {

@@ -718,8 +718,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                match self.infcx.closure_kind(closure_def_id) {
+            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                match self.infcx.closure_kind(closure_def_id, closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
                             EvaluatedToOk
@@ -1593,10 +1593,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match obligation.self_ty().skip_binder().sty {
-            ty::TyClosure(closure_def_id, _) => {
+            ty::TyClosure(closure_def_id, closure_substs) => {
                 debug!("assemble_unboxed_candidates: kind={:?} obligation={:?}",
                        kind, obligation);
-                match self.infcx.closure_kind(closure_def_id) {
+                match self.infcx.closure_kind(closure_def_id, closure_substs) {
                     Some(closure_kind) => {
                         debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                         if closure_kind.extends(kind) {
@@ -2726,7 +2726,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligations.push(Obligation::new(
             obligation.cause.clone(),
             obligation.param_env,
-            ty::Predicate::ClosureKind(closure_def_id, kind)));
+            ty::Predicate::ClosureKind(closure_def_id, substs, kind)));
 
         Ok(VtableClosureData {
             closure_def_id,
@@ -3184,8 +3184,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                       substs: ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let gen_sig = self.infcx.generator_sig(closure_def_id).unwrap()
-            .subst(self.tcx(), substs.substs);
+        let gen_sig = substs.generator_poly_sig(closure_def_id, self.tcx());
         let ty::Binder((trait_ref, ..)) =
             self.tcx().generator_trait_ref_and_outputs(obligation.predicate.def_id(),
                                                        obligation.predicate.0.self_ty(), // (1)

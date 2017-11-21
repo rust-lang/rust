@@ -767,7 +767,11 @@ impl MirPass for StateTransform {
         let hir_id = tcx.hir.node_to_hir_id(node_id);
 
         // Get the interior types which typeck computed
-        let interior = *tcx.typeck_tables_of(def_id).generator_interiors().get(hir_id).unwrap();
+        let tables = tcx.typeck_tables_of(def_id);
+        let interior = match tables.node_id_to_type(hir_id).sty {
+            ty::TyGenerator(_, _, interior) => interior,
+            ref t => bug!("type of generator not a generator: {:?}", t),
+        };
 
         // The first argument is the generator type passed by value
         let gen_ty = mir.local_decls.raw[1].ty;

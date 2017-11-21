@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that unboxed closures cannot capture their own type.
+//
+// Also regression test for issue #21410.
+
 fn g<F>(_: F) where F: FnOnce(Option<F>) {}
 
 fn main() {

@@ -43,9 +43,6 @@ error[E0308]: mismatched types
    |
 41 |     f = box f;
    |         ^^^^^ cyclic type of infinite size
-   |
-   = note: expected type `_`
-              found type `std::boxed::Box<_>`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:48:9

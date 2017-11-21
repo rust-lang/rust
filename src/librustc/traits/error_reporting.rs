@@ -643,8 +643,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                             violations)
                     }
 
-                    ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                        let found_kind = self.closure_kind(closure_def_id).unwrap();
+                    ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                        let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
                         let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
                         let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
@@ -663,14 +663,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         if let Some(tables) = self.in_progress_tables {
                             let tables = tables.borrow();
                             let closure_hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                            match tables.closure_kinds().get(closure_hir_id) {
-                                Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
-                                    err.span_note(span, &format!(
+                            match (found_kind, tables.closure_kind_origins().get(closure_hir_id)) {
+                                (ty::ClosureKind::FnOnce, Some((span, name))) => {
+                                    err.span_note(*span, &format!(
                                         "closure is `FnOnce` because it moves the \
                                          variable `{}` out of its environment", name));
                                 },
-                                Some(&(ty::ClosureKind::FnMut, Some((span, name)))) => {
-                                    err.span_note(span, &format!(
+                                (ty::ClosureKind::FnMut, Some((span, name))) => {
+                                    err.span_note(*span, &format!(
                                         "closure is `FnMut` because it mutates the \
                                          variable `{}` here", name));
                                 },

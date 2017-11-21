@@ -396,7 +396,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let sig = tcx.fn_sig(def_id).subst(tcx, substs.substs);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
-            let env_ty = match tcx.closure_kind(def_id) {
+            let env_ty = match substs.closure_kind(def_id, tcx) {
                 ty::ClosureKind::Fn => tcx.mk_imm_ref(tcx.mk_region(env_region), ty),
                 ty::ClosureKind::FnMut => tcx.mk_mut_ref(tcx.mk_region(env_region), ty),
                 ty::ClosureKind::FnOnce => ty,
@@ -412,7 +412,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         ty::TyGenerator(def_id, substs, _) => {
             let tcx = ccx.tcx();
-            let sig = tcx.generator_sig(def_id).unwrap().subst(tcx, substs.substs);
+            let sig = substs.generator_poly_sig(def_id, ccx.tcx());
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

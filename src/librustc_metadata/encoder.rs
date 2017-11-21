@@ -1205,19 +1205,25 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_closure({:?})", def_id);
         let tcx = self.tcx;
 
-        let kind = if let Some(sig) = self.tcx.generator_sig(def_id) {
-            let layout = self.tcx.generator_layout(def_id);
-            let data = GeneratorData {
-                sig,
-                layout: layout.clone(),
-            };
-            EntryKind::Generator(self.lazy(&data))
-        } else {
-            let data = ClosureData {
-                kind: tcx.closure_kind(def_id),
-                sig: self.lazy(&tcx.fn_sig(def_id)),
-            };
-            EntryKind::Closure(self.lazy(&data))
+        let tables = self.tcx.typeck_tables_of(def_id);
+        let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        let kind = match tables.node_id_to_type(hir_id).sty {
+            ty::TyGenerator(def_id, ..) => {
+                let layout = self.tcx.generator_layout(def_id);
+                let data = GeneratorData {
+                    layout: layout.clone(),
+                };
+                EntryKind::Generator(self.lazy(&data))
+            }
+
+            ty::TyClosure(def_id, substs) => {
+                let sig = substs.closure_sig(def_id, self.tcx);
+                let data = ClosureData { sig: self.lazy(&sig) };
+                EntryKind::Closure(self.lazy(&data))
+            }
+
+            _ => bug!("closure that is neither generator nor closure")
         };
 
         Entry {

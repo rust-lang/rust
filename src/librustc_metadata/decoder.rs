@@ -1020,13 +1020,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn closure_kind(&self, closure_id: DefIndex) -> ty::ClosureKind {
-        match self.entry(closure_id).kind {
-            EntryKind::Closure(data) => data.decode(self).kind,
-            _ => bug!(),
-        }
-    }
-
     pub fn fn_sig(&self,
                   id: DefIndex,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -1041,23 +1034,6 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
         sig.decode((self, tcx))
-    }
-
-    fn get_generator_data(&self,
-                      id: DefIndex,
-                      tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                      -> Option<GeneratorData<'tcx>> {
-        match self.entry(id).kind {
-            EntryKind::Generator(data) => Some(data.decode((self, tcx))),
-            _ => None,
-        }
-    }
-
-    pub fn generator_sig(&self,
-                      id: DefIndex,
-                      tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                      -> Option<ty::PolyGenSig<'tcx>> {
-        self.get_generator_data(id, tcx).map(|d| d.sig)
     }
 
     #[inline]

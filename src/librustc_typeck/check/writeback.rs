@@ -47,8 +47,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_anon_types();
         wbcx.visit_cast_types();
         wbcx.visit_free_region_map();
-        wbcx.visit_generator_sigs();
-        wbcx.visit_generator_interiors();
 
         let used_trait_imports = mem::replace(&mut self.tables.borrow_mut().used_trait_imports,
                                               Rc::new(DefIdSet()));
@@ -244,21 +242,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
-        for (&id, closure_ty) in fcx_tables.closure_tys().iter() {
+        for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,
                 local_id: id,
             };
-            let closure_ty = self.resolve(closure_ty, &hir_id);
-            self.tables.closure_tys_mut().insert(hir_id, closure_ty);
-        }
-
-        for (&id, &closure_kind) in fcx_tables.closure_kinds().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            self.tables.closure_kinds_mut().insert(hir_id, closure_kind);
+            self.tables.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
 
@@ -415,33 +404,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 debug!("pat_adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
                 self.tables.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
             }
-        }
-    }
-
-    fn visit_generator_interiors(&mut self) {
-        let common_local_id_root = self.fcx.tables.borrow().local_id_root.unwrap();
-        for (&id, interior) in self.fcx.tables.borrow().generator_interiors().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            let interior = self.resolve(interior, &hir_id);
-            self.tables.generator_interiors_mut().insert(hir_id, interior);
-        }
-    }
-
-    fn visit_generator_sigs(&mut self) {
-        let common_local_id_root = self.fcx.tables.borrow().local_id_root.unwrap();
-        for (&id, gen_sig) in self.fcx.tables.borrow().generator_sigs().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            let gen_sig = gen_sig.map(|s| ty::GenSig {
-                yield_ty: self.resolve(&s.yield_ty, &hir_id),
-                return_ty: self.resolve(&s.return_ty, &hir_id),
-            });
-            self.tables.generator_sigs_mut().insert(hir_id, gen_sig);
         }
     }
 

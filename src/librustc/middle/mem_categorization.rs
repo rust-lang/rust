@@ -750,10 +750,19 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let kind = match self.node_ty(fn_hir_id)?.sty {
             ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
-            ty::TyClosure(..) => {
-                match self.tables.closure_kinds().get(fn_hir_id) {
-                    Some(&(kind, _)) => kind,
-                    None => span_bug!(span, "missing closure kind"),
+            ty::TyClosure(closure_def_id, closure_substs) => {
+                match self.infcx {
+                    // During upvar inference we may not know the
+                    // closure kind, just use the LATTICE_BOTTOM value.
+                    Some(infcx) =>
+                        infcx.closure_kind(closure_def_id, closure_substs)
+                             .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
+
+                    None =>
+                        self.tcx.global_tcx()
+                                .lift(&closure_substs)
+                                .expect("no inference cx, but inference variables in closure ty")
+                                .closure_kind(closure_def_id, self.tcx.global_tcx()),
                 }
             }
             ref t => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", t),
