@@ -1481,20 +1481,29 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// work during the type-checking of the enclosing function and
     /// return the closure signature in its partially inferred state.
     pub fn fn_sig(&self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
+        // Do we have an in-progress set of tables we are inferring?
         if let Some(tables) = self.in_progress_tables {
+            // Is this a local item?
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                let hir_id = self.tcx.hir.node_to_hir_id(id);
-                let closure_ty = tables.borrow().node_id_to_type(hir_id);
-                let (closure_def_id, closure_substs) = match closure_ty.sty {
-                    ty::TyClosure(closure_def_id, closure_substs) =>
-                        (closure_def_id, closure_substs),
-                    _ =>
-                        bug!("closure with non-closure type: {:?}", closure_ty),
-                };
-                assert_eq!(def_id, closure_def_id);
-                let closure_sig_ty = closure_substs.closure_sig_ty(def_id, self.tcx);
-                let closure_sig_ty = self.shallow_resolve(&closure_sig_ty);
-                return closure_sig_ty.fn_sig(self.tcx);
+                // Is it a local *closure*?
+                if self.tcx.is_closure(def_id) {
+                    let hir_id = self.tcx.hir.node_to_hir_id(id);
+                    // Is this local closure contained within the tables we are inferring?
+                    if tables.borrow().local_id_root == Some(DefId::local(hir_id.owner)) {
+                        // if so, extract signature from there.
+                        let closure_ty = tables.borrow().node_id_to_type(hir_id);
+                        let (closure_def_id, closure_substs) = match closure_ty.sty {
+                            ty::TyClosure(closure_def_id, closure_substs) =>
+                                (closure_def_id, closure_substs),
+                            _ =>
+                                bug!("closure with non-closure type: {:?}", closure_ty),
+                        };
+                        assert_eq!(def_id, closure_def_id);
+                        let closure_sig_ty = closure_substs.closure_sig_ty(def_id, self.tcx);
+                        let closure_sig_ty = self.shallow_resolve(&closure_sig_ty);
+                        return closure_sig_ty.fn_sig(self.tcx);
+                    }
+                }
             }
         }
 
