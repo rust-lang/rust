@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.16] 2017-11-21
+
+### Added
+
+- Remove empty lines at the beginning of the file.
+- Soft wrapping on doc comments.
+
+### Changed
+
+- Break before `|` when using multiple lines for match arm patterns.
+- Combine `control_style`, `where_style` and `*_indent` config options into `indent_style`.
+- Combine `item_brace_style` and `fn_brace_style` config options into `brace_style`.
+- Combine config options related spacing around colons into `space_before_colon` and `space_after_colon`.
+
+### Fixed
+
+- Fix many bugs.
+
 ## [0.2.15] 2017-11-08
 
 ### Added
