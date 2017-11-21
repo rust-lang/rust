@@ -451,7 +451,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                       implied_bounds: &mut Vec<Ty<'tcx>>)
     {
         let sig = fcx.normalize_associated_types_in(span, &sig);
-        let sig = fcx.liberate_late_bound_regions(def_id, &sig);
+        let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
         for input_ty in sig.inputs() {
             fcx.register_wf_obligation(&input_ty, span, self.code.clone());
@@ -484,12 +484,12 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         let sig = fcx.tcx.fn_sig(method.def_id);
         let sig = fcx.normalize_associated_types_in(span, &sig);
-        let sig = fcx.liberate_late_bound_regions(method.def_id, &sig);
+        let sig = fcx.tcx.liberate_late_bound_regions(method.def_id, &sig);
 
         debug!("check_method_receiver: sig={:?}", sig);
 
         let self_ty = fcx.normalize_associated_types_in(span, &self_ty);
-        let self_ty = fcx.liberate_late_bound_regions(
+        let self_ty = fcx.tcx.liberate_late_bound_regions(
             method.def_id,
             &ty::Binder(self_ty)
         );
@@ -498,7 +498,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
         let self_arg_ty = fcx.normalize_associated_types_in(span, &self_arg_ty);
-        let self_arg_ty = fcx.liberate_late_bound_regions(
+        let self_arg_ty = fcx.tcx.liberate_late_bound_regions(
             method.def_id,
             &ty::Binder(self_arg_ty)
         );
