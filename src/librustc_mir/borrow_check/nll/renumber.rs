@@ -16,18 +16,18 @@ use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
 use super::ToRegionVid;
-use super::free_regions::FreeRegions;
+use super::universal_regions::UniversalRegions;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
 pub fn renumber_mir<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    free_regions: &FreeRegions<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
     mir: &mut Mir<'tcx>,
 ) {
     // Create inference variables for each of the free regions
     // declared on the function signature.
-    let free_region_inference_vars = (0..free_regions.indices.len())
+    let free_region_inference_vars = (0..universal_regions.indices.len())
         .map(RegionVid::new)
         .map(|vid_expected| {
             let r = infcx.next_nll_region_var(NLLRegionVariableOrigin::FreeRegion);
@@ -37,12 +37,12 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
         .collect();
 
     debug!("renumber_mir()");
-    debug!("renumber_mir: free_regions={:#?}", free_regions);
+    debug!("renumber_mir: universal_regions={:#?}", universal_regions);
     debug!("renumber_mir: mir.arg_count={:?}", mir.arg_count);
 
     let mut visitor = NLLVisitor {
         infcx,
-        free_regions,
+        universal_regions,
         free_region_inference_vars,
         arg_count: mir.arg_count,
     };
@@ -51,7 +51,7 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
 
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    free_regions: &'a FreeRegions<'tcx>,
+    universal_regions: &'a UniversalRegions<'tcx>,
     free_region_inference_vars: IndexVec<RegionVid, ty::Region<'tcx>>,
     arg_count: usize,
 }
@@ -76,16 +76,16 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
 
     /// Renumbers the regions appearing in `value`, but those regions
     /// are expected to be free regions from the function signature.
-    fn renumber_free_regions<T>(&mut self, value: &T) -> T
+    fn renumber_universal_regions<T>(&mut self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!("renumber_free_regions(value={:?})", value);
+        debug!("renumber_universal_regions(value={:?})", value);
 
         self.infcx
             .tcx
             .fold_regions(value, &mut false, |region, _depth| {
-                let index = self.free_regions.indices[&region];
+                let index = self.universal_regions.indices[&region];
                 self.free_region_inference_vars[index]
             })
     }
@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
 
         let old_ty = *ty;
         *ty = if is_arg {
-            self.renumber_free_regions(&old_ty)
+            self.renumber_universal_regions(&old_ty)
         } else {
             self.renumber_regions(ty_context, &old_ty)
         };
