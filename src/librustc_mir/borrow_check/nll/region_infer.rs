@@ -18,7 +18,9 @@ use rustc::mir::{Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
-use std::collections::BTreeSet;
+use rustc_data_structures::bitvec::BitMatrix;
+use rustc_data_structures::indexed_vec::Idx;
+use std::collections::BTreeMap;
 use std::fmt;
 use syntax_pos::Span;
 
@@ -33,14 +35,24 @@ pub struct RegionInferenceContext<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each free region R they start out containing the entire CFG
     /// and `end(R)`.
-    liveness_constraints: IndexVec<RegionVid, Region>,
+    ///
+    /// In this `BitMatrix` representation, the rows are the region
+    /// variables and the columns are the free regions and MIR locations.
+    liveness_constraints: BitMatrix,
 
     /// The final inferred values of the inference variables; `None`
     /// until `solve` is invoked.
-    inferred_values: Option<IndexVec<RegionVid, Region>>,
+    inferred_values: Option<BitMatrix>,
 
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
+
+    /// A map from each MIR Location to its column index in
+    /// `liveness_constraints`/`inferred_values`. (The first N columns are
+    /// the free regions.)
+    point_indices: BTreeMap<Location, usize>,
+
+    num_free_regions: usize,
 
     free_region_map: &'tcx FreeRegionMap<'tcx>,
 }
@@ -55,42 +67,6 @@ struct RegionDefinition<'tcx> {
     /// If this is a free-region, then this is `Some(X)` where `X` is
     /// the name of the region.
     name: Option<ty::Region<'tcx>>,
-}
-
-/// The value of an individual region variable. Region variables
-/// consist of a set of points in the CFG as well as a set of "free
-/// regions", which are sometimes written as `end(R)`. These
-/// correspond to the named lifetimes and refer to portions of the
-/// caller's control-flow graph -- specifically some portion that can
-/// be reached after we return.
-#[derive(Clone, Default, PartialEq, Eq)]
-struct Region {
-    points: BTreeSet<Location>,
-    free_regions: BTreeSet<RegionVid>,
-}
-
-impl fmt::Debug for Region {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        formatter
-            .debug_set()
-            .entries(&self.points)
-            .entries(&self.free_regions)
-            .finish()
-    }
-}
-
-impl Region {
-    fn add_point(&mut self, point: Location) -> bool {
-        self.points.insert(point)
-    }
-
-    fn add_free_region(&mut self, region: RegionVid) -> bool {
-        self.free_regions.insert(region)
-    }
-
-    fn contains_point(&self, point: Location) -> bool {
-        self.points.contains(&point)
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -119,6 +95,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// regions defined in `free_regions`.
     pub fn new(var_origins: VarOrigins, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) -> Self {
         let num_region_variables = var_origins.len();
+        let num_free_regions = free_regions.indices.len();
+
+        let mut num_points = 0;
+        let mut point_indices = BTreeMap::new();
+
+        for (block, block_data) in mir.basic_blocks().iter_enumerated() {
+            for statement_index in 0..block_data.statements.len() + 1 {
+                let location = Location {
+                    block,
+                    statement_index,
+                };
+                point_indices.insert(location, num_free_regions + num_points);
+                num_points += 1;
+            }
+        }
 
         // Create a RegionDefinition for each inference variable.
         let definitions = var_origins
@@ -127,14 +118,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .collect();
 
         let mut result = Self {
-            definitions: definitions,
-            liveness_constraints: IndexVec::from_elem_n(Region::default(), num_region_variables),
+            definitions,
+            liveness_constraints: BitMatrix::new(
+                num_region_variables,
+                num_free_regions + num_points,
+            ),
             inferred_values: None,
             constraints: Vec::new(),
+            point_indices,
+            num_free_regions,
             free_region_map: free_regions.free_region_map,
         };
 
-        result.init_free_regions(free_regions, mir);
+        result.init_free_regions(free_regions);
 
         result
     }
@@ -158,7 +154,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// and (b) any free regions that it outlives, which in this case
     /// is just itself. R1 (`'b`) in contrast also outlives `'a` and
     /// hence contains R0 and R1.
-    fn init_free_regions(&mut self, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) {
+    fn init_free_regions(&mut self, free_regions: &FreeRegions<'tcx>) {
         let FreeRegions {
             indices,
             free_region_map: _,
@@ -175,27 +171,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Initialize the name and a few other details.
             self.definitions[variable].name = Some(free_region);
 
-            // Add all nodes in the CFG to `definition.value`.
-            for (block, block_data) in mir.basic_blocks().iter_enumerated() {
-                let liveness_constraint = &mut self.liveness_constraints[variable];
-                for statement_index in 0..block_data.statements.len() + 1 {
-                    let location = Location {
-                        block,
-                        statement_index,
-                    };
-                    liveness_constraint.add_point(location);
-                }
+            // Add all nodes in the CFG to liveness constraints
+            for (_location, point_index) in &self.point_indices {
+                self.liveness_constraints
+                    .add(variable.index(), *point_index);
             }
 
             // Add `end(X)` into the set for X.
-            self.liveness_constraints[variable].add_free_region(variable);
-
-            debug!(
-                "init_free_regions: region variable for `{:?}` is `{:?}` with value `{:?}`",
-                free_region,
-                variable,
-                self.liveness_constraints[variable],
-            );
+            self.liveness_constraints
+                .add(variable.index(), variable.index());
         }
     }
 
@@ -206,27 +190,76 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Returns true if the region `r` contains the point `p`.
     ///
-    /// Until `solve()` executes, this value is not particularly meaningful.
+    /// Panics if called before `solve()` executes,
     pub fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
         let inferred_values = self.inferred_values
             .as_ref()
             .expect("region values not yet inferred");
-        inferred_values[r].contains_point(p)
+        self.region_contains_point_in_matrix(inferred_values, r, p)
+    }
+
+    /// True if given region `r` contains the point `p`, when
+    /// evaluated in the set of region values `matrix`.
+    fn region_contains_point_in_matrix(
+        &self,
+        matrix: &BitMatrix,
+        r: RegionVid,
+        p: Location,
+    ) -> bool {
+        let point_index = self.point_indices
+            .get(&p)
+            .expect("point index should be known");
+        matrix.contains(r.index(), *point_index)
+    }
+
+    /// True if given region `r` contains the `end(s)`, when
+    /// evaluated in the set of region values `matrix`.
+    fn region_contains_region_in_matrix(
+        &self,
+        matrix: &BitMatrix,
+        r: RegionVid,
+        s: RegionVid
+    ) -> bool {
+        matrix.contains(r.index(), s.index())
     }
 
     /// Returns access to the value of `r` for debugging purposes.
-    pub(super) fn region_value(&self, r: RegionVid) -> &fmt::Debug {
+    pub(super) fn region_value_str(&self, r: RegionVid) -> String {
         let inferred_values = self.inferred_values
             .as_ref()
             .expect("region values not yet inferred");
-        &inferred_values[r]
+
+        let mut result = String::new();
+        result.push_str("{");
+        let mut sep = "";
+
+        for &point in self.point_indices.keys() {
+            if self.region_contains_point_in_matrix(inferred_values, r, point) {
+                result.push_str(&format!("{}{:?}", sep, point));
+                sep = ", ";
+            }
+        }
+
+        for fr in (0 .. self.num_free_regions).map(RegionVid::new) {
+            if self.region_contains_region_in_matrix(inferred_values, r, fr) {
+                result.push_str(&format!("{}{:?}", sep, fr));
+                sep = ", ";
+            }
+        }
+
+        result.push_str("}");
+
+        result
     }
 
     /// Indicates that the region variable `v` is live at the point `point`.
-    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) {
+    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) -> bool {
         debug!("add_live_point({:?}, {:?})", v, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
-        self.liveness_constraints[v].add_point(point);
+        let point_index = self.point_indices
+            .get(&point)
+            .expect("point index should be known");
+        self.liveness_constraints.add(v.index(), *point_index)
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
@@ -285,26 +318,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         let inferred_values = self.inferred_values.as_ref().unwrap();
         let fr_name = fr_definition.name.unwrap();
-        let fr_value = &inferred_values[fr];
+        let fr_value = inferred_values.iter(fr.index());
 
         // Find every region `o` such that `fr: o`
         // (because `fr` includes `end(o)`).
-        for &outlived_fr in &fr_value.free_regions {
+        for outlived_fr in fr_value.take_while(|&i| i < self.num_free_regions) {
             // `fr` includes `end(fr)`, that's not especially
             // interesting.
-            if fr == outlived_fr {
+            if fr.index() == outlived_fr {
                 continue;
             }
 
-            let outlived_fr_definition = &self.definitions[outlived_fr];
+            let outlived_fr_definition = &self.definitions[RegionVid::new(outlived_fr)];
             let outlived_fr_name = outlived_fr_definition.name.unwrap();
 
             // Check that `o <= fr`. If not, report an error.
             if !self.free_region_map
                 .sub_free_regions(outlived_fr_name, fr_name)
             {
-                // worst error msg ever
-                let blame_span = self.blame_span(fr, outlived_fr);
+                // FIXME: worst error msg ever
+                let blame_span = self.blame_span(fr, RegionVid::new(outlived_fr));
                 infcx.tcx.sess.span_err(
                     blame_span,
                     &format!(
@@ -323,7 +356,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// feasible, but we check this later.
     fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
         let mut changed = true;
-        let mut dfs = Dfs::new(mir);
 
         debug!("propagate_constraints()");
         debug!("propagate_constraints: constraints={:#?}", {
@@ -342,15 +374,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             for constraint in &self.constraints {
                 debug!("propagate_constraints: constraint={:?}", constraint);
 
-                let sub = &inferred_values[constraint.sub].clone();
-                let sup_value = &mut inferred_values[constraint.sup];
-
                 // Grow the value as needed to accommodate the
                 // outlives constraint.
 
-                if dfs.copy(sub, sup_value, constraint.point) {
-                    debug!("propagate_constraints:   sub={:?}", sub);
-                    debug!("propagate_constraints:   sup={:?}", sup_value);
+                if self.copy(
+                    &mut inferred_values,
+                    mir,
+                    constraint.sub,
+                    constraint.sup,
+                    constraint.point,
+                ) {
+                    debug!("propagate_constraints:   sub={:?}", constraint.sub);
+                    debug!("propagate_constraints:   sup={:?}", constraint.sup);
                     changed = true;
                 }
             }
@@ -358,6 +393,77 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         self.inferred_values = Some(inferred_values);
+    }
+
+    fn copy(
+        &self,
+        inferred_values: &mut BitMatrix,
+        mir: &Mir<'tcx>,
+        from_region: RegionVid,
+        to_region: RegionVid,
+        start_point: Location,
+    ) -> bool {
+        let mut changed = false;
+
+        let mut stack = vec![];
+        let mut visited = FxHashSet();
+
+        stack.push(start_point);
+        while let Some(p) = stack.pop() {
+            debug!("        copy: p={:?}", p);
+
+            if !self.region_contains_point_in_matrix(inferred_values, from_region, p) {
+                debug!("            not in from-region");
+                continue;
+            }
+
+            if !visited.insert(p) {
+                debug!("            already visited");
+                continue;
+            }
+
+            let point_index = self.point_indices.get(&p).unwrap();
+            changed |= inferred_values.add(to_region.index(), *point_index);
+
+            let block_data = &mir[p.block];
+            let successor_points = if p.statement_index < block_data.statements.len() {
+                vec![
+                    Location {
+                        statement_index: p.statement_index + 1,
+                        ..p
+                    },
+                ]
+            } else {
+                block_data
+                    .terminator()
+                    .successors()
+                    .iter()
+                    .map(|&basic_block| {
+                        Location {
+                            statement_index: 0,
+                            block: basic_block,
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            };
+
+            if successor_points.is_empty() {
+                // If we reach the END point in the graph, then copy
+                // over any skolemized end points in the `from_region`
+                // and make sure they are included in the `to_region`.
+                let free_region_indices = inferred_values
+                    .iter(from_region.index())
+                    .take_while(|&i| i < self.num_free_regions)
+                    .collect::<Vec<_>>();
+                for fr in &free_region_indices {
+                    changed |= inferred_values.add(to_region.index(), *fr);
+                }
+            } else {
+                stack.extend(successor_points);
+            }
+        }
+
+        changed
     }
 
     /// Tries to finds a good span to blame for the fact that `fr1`
@@ -410,82 +516,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         result_set
-    }
-}
-
-struct Dfs<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
-}
-
-impl<'a, 'tcx> Dfs<'a, 'tcx> {
-    fn new(mir: &'a Mir<'tcx>) -> Self {
-        Self { mir }
-    }
-
-    fn copy(
-        &mut self,
-        from_region: &Region,
-        to_region: &mut Region,
-        start_point: Location,
-    ) -> bool {
-        let mut changed = false;
-
-        let mut stack = vec![];
-        let mut visited = FxHashSet();
-
-        stack.push(start_point);
-        while let Some(p) = stack.pop() {
-            debug!("        dfs: p={:?}", p);
-
-            if !from_region.contains_point(p) {
-                debug!("            not in from-region");
-                continue;
-            }
-
-            if !visited.insert(p) {
-                debug!("            already visited");
-                continue;
-            }
-
-            changed |= to_region.add_point(p);
-
-            let block_data = &self.mir[p.block];
-            let successor_points = if p.statement_index < block_data.statements.len() {
-                vec![
-                    Location {
-                        statement_index: p.statement_index + 1,
-                        ..p
-                    },
-                ]
-            } else {
-                block_data
-                    .terminator()
-                    .successors()
-                    .iter()
-                    .map(|&basic_block| {
-                        Location {
-                            statement_index: 0,
-                            block: basic_block,
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            };
-
-            if successor_points.is_empty() {
-                // If we reach the END point in the graph, then copy
-                // over any skolemized end points in the `from_region`
-                // and make sure they are included in the `to_region`.
-
-                debug!("        dfs: free_regions={:?}", from_region.free_regions);
-                for &fr in &from_region.free_regions {
-                    changed |= to_region.free_regions.insert(fr);
-                }
-            } else {
-                stack.extend(successor_points);
-            }
-        }
-
-        changed
     }
 }
 
