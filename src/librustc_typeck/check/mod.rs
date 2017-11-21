@@ -86,7 +86,7 @@ use self::TupleArgumentsFlag::*;
 
 use astconv::AstConv;
 use hir::def::{Def, CtorKind};
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
 use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
@@ -740,13 +740,12 @@ pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), Err
 }
 
 pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), CompileIncomplete> {
-    tcx.typeck_item_bodies(LOCAL_CRATE)
+    tcx.typeck_item_bodies()
 }
 
-fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
+fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                 -> Result<(), CompileIncomplete>
 {
-    debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {
         for body_owner_def_id in tcx.body_owners() {
             ty::maps::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
