@@ -2,7 +2,72 @@
   "message": "cannot find type `Iter` in this scope",
   "code": {
     "code": "E0412",
-    "explanation": "/nThe type name used is not in scope./n/nErroneous code examples:/n/n```compile_fail,E0412/nimpl Something {} // error: type name `Something` is not in scope/n/n// or:/n/ntrait Foo {/n    fn bar(N); // error: type name `N` is not in scope/n}/n/n// or:/n/nfn foo(x: T) {} // type name `T` is not in scope/n```/n/nTo fix this error, please verify you didn't misspell the type name, you did/ndeclare it or imported it into the scope. Examples:/n/n```/nstruct Something;/n/nimpl Something {} // ok!/n/n// or:/n/ntrait Foo {/n    type N;/n/n    fn bar(_: Self::N); // ok!/n}/n/n// or:/n/nfn foo<T>(x: T) {} // ok!/n```/n/nAnother case that causes this error is when a type is imported into a parent/nmodule. To fix this, you can follow the suggestion and use File directly or/n`use super::File;` which will import the types from the parent namespace. An/nexample that causes this error is below:/n/n```compile_fail,E0412/nuse std::fs::File;/n/nmod foo {/n    fn some_function(f: File) {}/n}/n```/n/n```/nuse std::fs::File;/n/nmod foo {/n    // either/n    use super::File;/n    // or/n    // use std::fs::File;/n    fn foo(f: File) {}/n}/n# fn main() {} // don't insert it for us; that'll break imports/n```/n"
+    "explanation": "
+The type name used is not in scope.
+
+Erroneous code examples:
+
+```compile_fail,E0412
+impl Something {} // error: type name `Something` is not in scope
+
+// or:
+
+trait Foo {
+    fn bar(N); // error: type name `N` is not in scope
+}
+
+// or:
+
+fn foo(x: T) {} // type name `T` is not in scope
+```
+
+To fix this error, please verify you didn't misspell the type name, you did
+declare it or imported it into the scope. Examples:
+
+```
+struct Something;
+
+impl Something {} // ok!
+
+// or:
+
+trait Foo {
+    type N;
+
+    fn bar(_: Self::N); // ok!
+}
+
+// or:
+
+fn foo<T>(x: T) {} // ok!
+```
+
+Another case that causes this error is when a type is imported into a parent
+module. To fix this, you can follow the suggestion and use File directly or
+`use super::File;` which will import the types from the parent namespace. An
+example that causes this error is below:
+
+```compile_fail,E0412
+use std::fs::File;
+
+mod foo {
+    fn some_function(f: File) {}
+}
+```
+
+```
+use std::fs::File;
+
+mod foo {
+    // either
+    use super::File;
+    // or
+    // use std::fs::File;
+    fn foo(f: File) {}
+}
+# fn main() {} // don't insert it for us; that'll break imports
+```
+"
   },
   "level": "error",
   "spans": [
@@ -50,7 +115,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::collections::binary_heap::Iter;/n/n",
+          "suggested_replacement": "use std::collections::binary_heap::Iter;
+
+",
           "expansion": null
         },
         {
@@ -70,7 +137,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::collections::btree_map::Iter;/n/n",
+          "suggested_replacement": "use std::collections::btree_map::Iter;
+
+",
           "expansion": null
         },
         {
@@ -90,7 +159,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::collections::btree_set::Iter;/n/n",
+          "suggested_replacement": "use std::collections::btree_set::Iter;
+
+",
           "expansion": null
         },
         {
@@ -110,7 +181,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::collections::hash_map::Iter;/n/n",
+          "suggested_replacement": "use std::collections::hash_map::Iter;
+
+",
           "expansion": null
         },
         {
@@ -130,7 +203,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::collections::hash_set::Iter;/n/n",
+          "suggested_replacement": "use std::collections::hash_set::Iter;
+
+",
           "expansion": null
         },
         {
@@ -150,7 +225,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::collections::linked_list::Iter;/n/n",
+          "suggested_replacement": "use std::collections::linked_list::Iter;
+
+",
           "expansion": null
         },
         {
@@ -170,7 +247,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::collections::vec_deque::Iter;/n/n",
+          "suggested_replacement": "use std::collections::vec_deque::Iter;
+
+",
           "expansion": null
         },
         {
@@ -190,7 +269,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::option::Iter;/n/n",
+          "suggested_replacement": "use std::option::Iter;
+
+",
           "expansion": null
         },
         {
@@ -210,7 +291,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::path::Iter;/n/n",
+          "suggested_replacement": "use std::path::Iter;
+
+",
           "expansion": null
         },
         {
@@ -230,7 +313,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::result::Iter;/n/n",
+          "suggested_replacement": "use std::result::Iter;
+
+",
           "expansion": null
         },
         {
@@ -250,7 +335,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::slice::Iter;/n/n",
+          "suggested_replacement": "use std::slice::Iter;
+
+",
           "expansion": null
         },
         {
@@ -270,7 +357,9 @@
             }
           ],
           "label": null,
-          "suggested_replacement": "use std::sync::mpsc::Iter;/n/n",
+          "suggested_replacement": "use std::sync::mpsc::Iter;
+
+",
           "expansion": null
         }
       ],
@@ -278,7 +367,24 @@
       "rendered": null
     }
   ],
-  "rendered": null
+  "rendered": "error[E0412]: cannot find type `Iter` in this scope
+  --> $DIR/use_suggestion_json.rs:20:12
+   |
+20 |     let x: Iter;
+   |            ^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+19 | use std::collections::binary_heap::Iter;
+   |
+19 | use std::collections::btree_map::Iter;
+   |
+19 | use std::collections::btree_set::Iter;
+   |
+19 | use std::collections::hash_map::Iter;
+   |
+and 8 other candidates
+
+"
 }
 {
   "message": "aborting due to previous error",
@@ -286,5 +392,7 @@
   "level": "error",
   "spans": [],
   "children": [],
-  "rendered": null
+  "rendered": "error: aborting due to previous error
+
+"
 }

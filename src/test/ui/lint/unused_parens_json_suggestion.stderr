@@ -87,5 +87,17 @@
       "rendered": null
     }
   ],
-  "rendered": null
+  "rendered": "warning: unnecessary parentheses around assigned value
+  --> $DIR/unused_parens_json_suggestion.rs:24:14
+   |
+24 |     let _a = (1 / (2 + 3));
+   |              ^^^^^^^^^^^^^ help: remove these parentheses
+   |
+note: lint level defined here
+  --> $DIR/unused_parens_json_suggestion.rs:19:9
+   |
+19 | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+
+"
 }
