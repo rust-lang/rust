@@ -26,8 +26,8 @@ use self::mir_util::PassWhere;
 
 mod constraint_generation;
 mod subtype_constraint_generation;
-mod free_regions;
-use self::free_regions::FreeRegions;
+mod universal_regions;
+use self::universal_regions::UniversalRegions;
 
 pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
@@ -42,14 +42,14 @@ pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     mir: &mut Mir<'tcx>,
-) -> FreeRegions<'tcx> {
+) -> UniversalRegions<'tcx> {
     // Compute named region information.
-    let free_regions = free_regions::free_regions(infcx, def_id);
+    let universal_regions = universal_regions::universal_regions(infcx, def_id);
 
     // Replace all regions with fresh inference variables.
-    renumber::renumber_mir(infcx, &free_regions, mir);
+    renumber::renumber_mir(infcx, &universal_regions, mir);
 
-    free_regions
+    universal_regions
 }
 
 /// Computes the (non-lexical) regions from the input MIR.
@@ -58,7 +58,7 @@ pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
 pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
-    free_regions: FreeRegions<'tcx>,
+    universal_regions: UniversalRegions<'tcx>,
     mir: &Mir<'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
@@ -71,8 +71,13 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // Create the region inference context, taking ownership of the region inference
     // data that was contained in `infcx`.
     let var_origins = infcx.take_region_var_origins();
-    let mut regioncx = RegionInferenceContext::new(var_origins, &free_regions, mir);
-    subtype_constraint_generation::generate(&mut regioncx, &free_regions, mir, constraint_sets);
+    let mut regioncx = RegionInferenceContext::new(var_origins, &universal_regions, mir);
+    subtype_constraint_generation::generate(
+        &mut regioncx,
+        &universal_regions,
+        mir,
+        constraint_sets,
+    );
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -178,8 +183,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                 writeln!(out, "            | Live variables at {:?}: {}", location, s)?;
             }
 
-            PassWhere::AfterLocation(_) |
-            PassWhere::AfterCFG => {}
+            PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
         }
         Ok(())
     });

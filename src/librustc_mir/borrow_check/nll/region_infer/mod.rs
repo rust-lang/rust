@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::free_regions::FreeRegions;
+use super::universal_regions::UniversalRegions;
 use rustc::infer::InferCtxt;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::NLLRegionVariableOrigin;
@@ -33,8 +33,8 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
-    /// each free region R they start out containing the entire CFG
-    /// and `end(R)`.
+    /// each universally quantified region R they start out containing
+    /// the entire CFG and `end(R)`.
     ///
     /// In this `BitMatrix` representation, the rows are the region
     /// variables and the columns are the free regions and MIR locations.
@@ -52,7 +52,10 @@ pub struct RegionInferenceContext<'tcx> {
     /// the free regions.)
     point_indices: BTreeMap<Location, usize>,
 
-    num_free_regions: usize,
+    /// Number of universally quantified regions. This is used to
+    /// determine the meaning of the bits in `inferred_values` and
+    /// friends.
+    num_universal_regions: usize,
 
     free_region_map: &'tcx FreeRegionMap<'tcx>,
 }
@@ -92,10 +95,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
     /// of those will be constant regions representing the free
-    /// regions defined in `free_regions`.
-    pub fn new(var_origins: VarOrigins, free_regions: &FreeRegions<'tcx>, mir: &Mir<'tcx>) -> Self {
+    /// regions defined in `universal_regions`.
+    pub fn new(
+        var_origins: VarOrigins,
+        universal_regions: &UniversalRegions<'tcx>,
+        mir: &Mir<'tcx>,
+    ) -> Self {
         let num_region_variables = var_origins.len();
-        let num_free_regions = free_regions.indices.len();
+        let num_universal_regions = universal_regions.indices.len();
 
         let mut num_points = 0;
         let mut point_indices = BTreeMap::new();
@@ -106,7 +113,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     block,
                     statement_index,
                 };
-                point_indices.insert(location, num_free_regions + num_points);
+                point_indices.insert(location, num_universal_regions + num_points);
                 num_points += 1;
             }
         }
@@ -121,25 +128,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             definitions,
             liveness_constraints: BitMatrix::new(
                 num_region_variables,
-                num_free_regions + num_points,
+                num_universal_regions + num_points,
             ),
             inferred_values: None,
             constraints: Vec::new(),
             point_indices,
-            num_free_regions,
-            free_region_map: free_regions.free_region_map,
+            num_universal_regions,
+            free_region_map: universal_regions.free_region_map,
         };
 
-        result.init_free_regions(free_regions);
+        result.init_universal_regions(universal_regions);
 
         result
     }
 
-    /// Initializes the region variables for each free region
-    /// (lifetime parameter). The first N variables always correspond
-    /// to the free regions appearing in the function signature (both
-    /// named and anonymous) and where clauses. This function iterates
-    /// over those regions and initializes them with minimum values.
+    /// Initializes the region variables for each universally
+    /// quantified region (lifetime parameter). The first N variables
+    /// always correspond to the regions appearing in the function
+    /// signature (both named and anonymous) and where clauses. This
+    /// function iterates over those regions and initializes them with
+    /// minimum values.
     ///
     /// For example:
     ///
@@ -154,13 +162,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// and (b) any free regions that it outlives, which in this case
     /// is just itself. R1 (`'b`) in contrast also outlives `'a` and
     /// hence contains R0 and R1.
-    fn init_free_regions(&mut self, free_regions: &FreeRegions<'tcx>) {
-        let FreeRegions {
+    fn init_universal_regions(&mut self, universal_regions: &UniversalRegions<'tcx>) {
+        let UniversalRegions {
             indices,
             free_region_map: _,
-        } = free_regions;
+        } = universal_regions;
 
-        // For each free region X:
+        // For each universally quantified region X:
         for (free_region, &variable) in indices {
             // These should be free-region variables.
             assert!(match self.definitions[variable].origin {
@@ -218,7 +226,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         matrix: &BitMatrix,
         r: RegionVid,
-        s: RegionVid
+        s: RegionVid,
     ) -> bool {
         matrix.contains(r.index(), s.index())
     }
@@ -240,7 +248,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        for fr in (0 .. self.num_free_regions).map(RegionVid::new) {
+        for fr in (0..self.num_universal_regions).map(RegionVid::new) {
             if self.region_contains_region_in_matrix(inferred_values, r, fr) {
                 result.push_str(&format!("{}{:?}", sep, fr));
                 sep = ", ";
@@ -287,9 +295,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Find the minimal regions that can solve the constraints. This is infallible.
         self.propagate_constraints(mir);
 
-        // Now, see whether any of the constraints were too strong. In particular,
-        // we want to check for a case where a free region exceeded its bounds.
-        // Consider:
+        // Now, see whether any of the constraints were too strong. In
+        // particular, we want to check for a case where a universally
+        // quantified region exceeded its bounds.  Consider:
         //
         //     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
         //
@@ -300,7 +308,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // have no evidence that `'b` outlives `'a`, so we want to report
         // an error.
 
-        // The free regions are always found in a prefix of the full list.
+        // The universal regions are always found in a prefix of the
+        // full list.
         let free_region_definitions = self.definitions
             .iter_enumerated()
             .take_while(|(_, fr_definition)| fr_definition.name.is_some());
@@ -322,7 +331,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Find every region `o` such that `fr: o`
         // (because `fr` includes `end(o)`).
-        for outlived_fr in fr_value.take_while(|&i| i < self.num_free_regions) {
+        for outlived_fr in fr_value.take_while(|&i| i < self.num_universal_regions) {
             // `fr` includes `end(fr)`, that's not especially
             // interesting.
             if fr.index() == outlived_fr {
@@ -451,11 +460,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // If we reach the END point in the graph, then copy
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
-                let free_region_indices = inferred_values
+                let universal_region_indices = inferred_values
                     .iter(from_region.index())
-                    .take_while(|&i| i < self.num_free_regions)
+                    .take_while(|&i| i < self.num_universal_regions)
                     .collect::<Vec<_>>();
-                for fr in &free_region_indices {
+                for fr in &universal_region_indices {
                     changed |= inferred_values.add(to_region.index(), *fr);
                 }
             } else {
@@ -523,7 +532,7 @@ impl<'tcx> RegionDefinition<'tcx> {
     fn new(origin: RegionVariableOrigin) -> Self {
         // Create a new region definition. Note that, for free
         // regions, these fields get updated later in
-        // `init_free_regions`.
+        // `init_universal_regions`.
         Self { origin, name: None }
     }
 }
