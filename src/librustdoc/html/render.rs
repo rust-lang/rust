@@ -3680,18 +3680,24 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             }
             let mut links = HashSet::new();
             let ret = v.iter()
-                       .filter_map(|i| if let Some(ref i) = i.inner_impl().trait_ {
-                           let i_display = format!("{:#}", i);
-                           let out = Escape(&i_display);
-                           let encoded = small_url_encode(&format!("{:#}", i));
-                           let generated = format!("<a href=\"#impl-{}\">{}</a>", encoded, out);
-                           if !links.contains(&generated) && links.insert(generated.clone()) {
-                               Some(generated)
+                       .filter_map(|i| {
+                           let is_negative_impl = is_negative_impl(i.inner_impl());
+                           if let Some(ref i) = i.inner_impl().trait_ {
+                               let i_display = format!("{:#}", i);
+                               let out = Escape(&i_display);
+                               let encoded = small_url_encode(&format!("{:#}", i));
+                               let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
+                                                       encoded,
+                                                       if is_negative_impl { "!" } else { "" },
+                                                       out);
+                               if !links.contains(&generated) && links.insert(generated.clone()) {
+                                   Some(generated)
+                               } else {
+                                   None
+                               }
                            } else {
                                None
                            }
-                       } else {
-                           None
                        })
                        .collect::<String>();
             if !ret.is_empty() {
@@ -3736,6 +3742,10 @@ fn extract_for_impl_name(item: &clean::Item) -> Option<(String, String)> {
         },
         _ => None,
     }
+}
+
+fn is_negative_impl(i: &clean::Impl) -> bool {
+    i.polarity == Some(clean::ImplPolarity::Negative)
 }
 
 fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
