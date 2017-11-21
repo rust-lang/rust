@@ -279,10 +279,10 @@ impl DefPath {
         let mut data = vec![];
         let mut index = Some(start_index);
         loop {
-            debug!("DefPath::make: krate={:?} index={:?}", krate, index);
+            trace!("DefPath::make: krate={:?} index={:?}", krate, index);
             let p = index.unwrap();
             let key = get_key(p);
-            debug!("DefPath::make: key={:?}", key);
+            trace!("DefPath::make: key={:?}", key);
             match key.disambiguated_data.data {
                 DefPathData::CrateRoot => {
                     assert!(key.parent.is_none());
