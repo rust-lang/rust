@@ -1,0 +1,24 @@
+error: equality constraints are not yet supported in where clauses (#20041)
+  --> $DIR/generic_associated_types_equals.rs:15:21
+   |
+15 |     type X<T> where T = f64;
+   |                     ^^^^^^^
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/generic_associated_types_equals.rs:15:21
+   |
+15 |     type X<T> where T = f64;
+   |                     ^ not found in this scope
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions.
+  --> $DIR/generic_associated_types_equals.rs:14:14
+   |
+14 |     type Bar<T=usize>;
+   |              ^
+   |
+   = note: #[deny(invalid_type_param_default)] on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+
+error: aborting due to 3 previous errors
+
