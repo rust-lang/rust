@@ -190,12 +190,8 @@ directory and it will apply the options in that file. See `rustfmt
 visual style previews, [Configurations.md](Configurations.md).
 
 By default, Rustfmt uses a style which conforms to the [Rust style guide][style
-guide]. For details that have not yet been formalized through the [style RFC
-process][fmt rfcs], we try to adhere to a style similar to that used in the
-[Rust repo][rust].
-
-If there are styling choices you don't agree with, we are usually happy to add
-options covering different styles. File an issue, or even better, submit a PR.
+guide] that has been formalized through the [style RFC
+process][fmt rfcs].
 
 
 ## Tips
