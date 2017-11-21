@@ -159,6 +159,9 @@ pub mod vendor {
     #[cfg(target_arch = "aarch64")]
     pub use aarch64::*;
 
+    // FIXME: rust does not expose the nvptx and nvptx64 targets yet
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64",
+                  target_arch = "arm", target_arch = "aarch64")))]
     pub use nvptx::*;
 
     #[cfg(any(
@@ -233,4 +236,7 @@ mod arm;
 #[cfg(target_arch = "aarch64")]
 mod aarch64;
 
+// FIXME: rust does not expose the nvptx and nvptx64 targets yet
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64",
+              target_arch = "arm", target_arch = "aarch64")))]
 mod nvptx;
