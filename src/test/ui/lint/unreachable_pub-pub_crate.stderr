@@ -122,6 +122,14 @@ warning: unreachable `pub` item
    |
    = help: or consider exporting it for use by other crates
 
+warning: found Rust type `bool` in foreign module, while its ABI is reserved for future change
+  --> $DIR/unreachable_pub-pub_crate.rs:52:30
+   |
+52 |         pub fn catalyze() -> bool;
+   |                              ^^^^
+   |
+   = note: #[warn(improper_ctypes)] on by default
+
 warning: unreachable `pub` item
   --> $DIR/unreachable_pub-pub_crate.rs:52:9
    |

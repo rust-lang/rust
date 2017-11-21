@@ -561,8 +561,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                            stable ABI")
             }
 
+            ty::TyBool => {
+                FfiUnsafe("found Rust type `bool` in foreign module, \
+                           while its ABI is reserved for future change")
+            }
+
             // Primitive types with a stable representation.
-            ty::TyBool | ty::TyInt(..) | ty::TyUint(..) | ty::TyFloat(..) | ty::TyNever => FfiSafe,
+            ty::TyInt(..) | ty::TyUint(..) | ty::TyFloat(..) | ty::TyNever => FfiSafe,
 
             ty::TySlice(_) => {
                 FfiUnsafe("found Rust slice type in foreign module, \
