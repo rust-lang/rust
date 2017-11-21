@@ -11,6 +11,7 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
@@ -578,7 +579,7 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
 #[derive(Default)]
-pub struct MirTypeckRegionConstraints<'tcx> {
+pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
     /// which performs a liveness analysis. However, in some limited
@@ -586,7 +587,7 @@ pub struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    pub liveness_set: Vec<(ty::Region<'tcx>, Location)>,
+    pub liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
 
     /// During the course of type-checking, we will accumulate region
     /// constraints due to performing subtyping operations or solving
@@ -889,7 +890,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 for &late_bound_region in map.values() {
                     self.constraints
                         .liveness_set
-                        .push((late_bound_region, term_location));
+                        .push((late_bound_region, term_location, Cause::LiveOther(term_location)));
                 }
 
                 if self.is_box_free(func) {

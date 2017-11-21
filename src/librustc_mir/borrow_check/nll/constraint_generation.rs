@@ -20,7 +20,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::fold::TypeFoldable;
 
 use super::ToRegionVid;
-use super::region_infer::RegionInferenceContext;
+use super::region_infer::{RegionInferenceContext, Cause};
 
 pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
@@ -53,14 +53,14 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
     /// We sometimes have `substs` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_substs(&mut self, substs: &&'tcx Substs<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*substs, location);
+        self.add_regular_live_constraint(*substs, location, Cause::LiveOther(location));
         self.super_substs(substs);
     }
 
     /// We sometimes have `region` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_region(&mut self, region: &ty::Region<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*region, location);
+        self.add_regular_live_constraint(*region, location, Cause::LiveOther(location));
         self.super_region(region);
     }
 
@@ -75,7 +75,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
                           ty_context);
             }
             TyContext::Location(location) => {
-                self.add_regular_live_constraint(*ty, location);
+                self.add_regular_live_constraint(*ty, location, Cause::LiveOther(location));
             }
         }
 
@@ -85,7 +85,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
     /// We sometimes have `closure_substs` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_closure_substs(&mut self, substs: &ClosureSubsts<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*substs, location);
+        self.add_regular_live_constraint(*substs, location, Cause::LiveOther(location));
         self.super_closure_substs(substs);
     }
 
@@ -112,7 +112,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at
     /// `location`.
-    fn add_regular_live_constraint<T>(&mut self, live_ty: T, location: Location)
+    fn add_regular_live_constraint<T>(&mut self, live_ty: T, location: Location, cause: Cause)
     where
         T: TypeFoldable<'tcx>,
     {
@@ -126,7 +126,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
             .tcx
             .for_each_free_region(&live_ty, |live_region| {
                 let vid = live_region.to_region_vid();
-                self.regioncx.add_live_point(vid, location);
+                self.regioncx.add_live_point(vid, location, &cause);
             });
     }
 

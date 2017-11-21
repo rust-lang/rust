@@ -10,10 +10,14 @@
 
 use std::rc::Rc;
 use rustc_data_structures::bitvec::BitMatrix;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
+use syntax::codemap::Span;
+
+use super::{Cause, CauseExt, TrackCauses};
 
 /// Maps between the various kinds of elements of a region value to
 /// the internal indices that w use.
@@ -187,10 +191,22 @@ impl ToElementIndex for RegionElementIndex {
 pub(super) struct RegionValues {
     elements: Rc<RegionValueElements>,
     matrix: BitMatrix,
+
+    /// If cause tracking is enabled, maps from a pair (r, e)
+    /// consisting of a region `r` that contains some element `e` to
+    /// the reason that the element is contained. There should be an
+    /// entry for every bit set to 1 in `BitMatrix`.
+    causes: Option<CauseMap>,
 }
 
+type CauseMap = FxHashMap<(RegionVid, RegionElementIndex), Rc<Cause>>;
+
 impl RegionValues {
-    pub(super) fn new(elements: &Rc<RegionValueElements>, num_region_variables: usize) -> Self {
+    pub(super) fn new(
+        elements: &Rc<RegionValueElements>,
+        num_region_variables: usize,
+        track_causes: TrackCauses,
+    ) -> Self {
         assert!(
             elements.num_universal_regions <= num_region_variables,
             "universal regions are a subset of the region variables"
@@ -199,19 +215,66 @@ impl RegionValues {
         Self {
             elements: elements.clone(),
             matrix: BitMatrix::new(num_region_variables, elements.num_elements()),
+            causes: if track_causes.0 {
+                Some(CauseMap::default())
+            } else {
+                None
+            },
         }
     }
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    pub(super) fn add<E: ToElementIndex>(&mut self, r: RegionVid, elem: E) -> bool {
+    pub(super) fn add<E: ToElementIndex>(&mut self, r: RegionVid, elem: E, cause: &Cause) -> bool {
         let i = self.elements.index(elem);
+        self.add_internal(r, i, |_| cause.clone())
+    }
+
+    /// Internal method to add an element to a region.
+    ///
+    /// Takes a "lazy" cause -- this function will return the cause, but it will only
+    /// be invoked if cause tracking is enabled.
+    fn add_internal<F>(&mut self, r: RegionVid, i: RegionElementIndex, make_cause: F) -> bool
+    where
+        F: FnOnce(&CauseMap) -> Cause,
+    {
         if self.matrix.add(r.index(), i.index()) {
             debug!("add(r={:?}, i={:?})", r, self.elements.to_element(i));
+
+            if let Some(causes) = &mut self.causes {
+                let cause = Rc::new(make_cause(causes));
+                causes.insert((r, i), cause);
+            }
+
             true
         } else {
+            if let Some(causes) = &mut self.causes {
+                let cause = make_cause(causes);
+                let old_cause = causes.get_mut(&(r, i)).unwrap();
+                if cause < **old_cause {
+                    *old_cause = Rc::new(cause);
+                    return true;
+                }
+            }
+
             false
         }
+    }
+
+    /// Adds all the universal regions outlived by `from_region` to
+    /// `to_region`.
+    pub(super) fn add_due_to_outlives<T: ToElementIndex>(
+        &mut self,
+        from_region: RegionVid,
+        to_region: RegionVid,
+        elem: T,
+        constraint_location: Location,
+        constraint_span: Span,
+    ) -> bool {
+        let elem = self.elements.index(elem);
+        self.add_internal(to_region, elem, |causes| {
+            causes[&(from_region, elem)].outlives(constraint_location, constraint_span)
+        })
     }
 
     /// Adds all the universal regions outlived by `from_region` to
@@ -220,10 +283,12 @@ impl RegionValues {
         &mut self,
         from_region: RegionVid,
         to_region: RegionVid,
+        constraint_location: Location,
+        constraint_span: Span,
     ) -> bool {
-        // FIXME. We could optimize this by improving
-        // `BitMatrix::merge` so it does not always merge an entire
-        // row.
+        // We could optimize this by improving `BitMatrix::merge` so
+        // it does not always merge an entire row. That would
+        // complicate causal tracking though.
         debug!(
             "add_universal_regions_outlived_by(from_region={:?}, to_region={:?})",
             from_region,
@@ -232,7 +297,13 @@ impl RegionValues {
         let mut changed = false;
         for elem in self.elements.all_universal_region_indices() {
             if self.contains(from_region, elem) {
-                changed |= self.add(to_region, elem);
+                changed |= self.add_due_to_outlives(
+                    from_region,
+                    to_region,
+                    elem,
+                    constraint_location,
+                    constraint_span,
+                );
             }
         }
         changed

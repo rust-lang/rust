@@ -15,6 +15,7 @@ use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::region_infer::values::{RegionElementIndex, RegionValueElements,
                                               RegionValues};
+use syntax::codemap::Span;
 use rustc::mir::{Location, Mir};
 use rustc::ty::RegionVid;
 use rustc_data_structures::fx::FxHashSet;
@@ -127,6 +128,7 @@ pub(super) struct CopyFromSourceToTarget<'v> {
     pub target_region: RegionVid,
     pub inferred_values: &'v mut RegionValues,
     pub constraint_point: Location,
+    pub constraint_span: Span,
 }
 
 impl<'v> DfsOp for CopyFromSourceToTarget<'v> {
@@ -143,14 +145,22 @@ impl<'v> DfsOp for CopyFromSourceToTarget<'v> {
     }
 
     fn add_to_target_region(&mut self, point_index: RegionElementIndex) -> Result<bool, !> {
-        Ok(self.inferred_values.add(self.target_region, point_index))
+        Ok(self.inferred_values.add_due_to_outlives(
+            self.source_region,
+            self.target_region,
+            point_index,
+            self.constraint_point,
+            self.constraint_span,
+        ))
     }
 
     fn add_universal_regions_outlived_by_source_to_target(&mut self) -> Result<bool, !> {
-        Ok(
-            self.inferred_values
-                .add_universal_regions_outlived_by(self.source_region, self.target_region),
-        )
+        Ok(self.inferred_values.add_universal_regions_outlived_by(
+            self.source_region,
+            self.target_region,
+            self.constraint_point,
+            self.constraint_span,
+        ))
     }
 }
 

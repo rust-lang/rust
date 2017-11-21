@@ -17,7 +17,7 @@ use rustc::infer::RegionVariableOrigin;
 use rustc::infer::SubregionOrigin;
 use rustc::infer::region_constraints::{GenericKind, VarOrigins};
 use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-                 Location, Mir};
+                 Local, Location, Mir};
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, RegionVid, Ty, TypeFoldable};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -65,6 +65,8 @@ pub struct RegionInferenceContext<'tcx> {
     universal_regions: UniversalRegions<'tcx>,
 }
 
+struct TrackCauses(bool);
+
 struct RegionDefinition<'tcx> {
     /// Why we created this variable. Mostly these will be
     /// `RegionVariableOrigin::NLL`, but some variables get created
@@ -81,6 +83,38 @@ struct RegionDefinition<'tcx> {
     /// If this is 'static or an early-bound region, then this is
     /// `Some(X)` where `X` is the name of the region.
     external_name: Option<ty::Region<'tcx>>,
+}
+
+/// NB: The variants in `Cause` are intentionally ordered. Lower
+/// values are preferred when it comes to error messages. Do not
+/// reorder willy nilly.
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub(crate) enum Cause {
+    /// point inserted because Local was live at the given Location
+    LiveVar(Local, Location),
+
+    /// point inserted because Local was dropped at the given Location
+    DropVar(Local, Location),
+
+    /// point inserted because the type was live at the given Location,
+    /// but not as part of some local variable
+    LiveOther(Location),
+
+    /// part of the initial set of values for a universally quantified region
+    UniversalRegion,
+
+    /// Element E was added to R because there was some
+    /// outlives obligation `R: R1 @ P` and `R1` contained `E`.
+    Outlives {
+        /// the reason that R1 had E
+        original_cause: Rc<Cause>,
+
+        /// the point P from the relation
+        constraint_location: Location,
+
+        /// The span indicating why we added the outlives constraint.
+        constraint_span: Span,
+    },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -212,7 +246,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut result = Self {
             definitions,
             elements: elements.clone(),
-            liveness_constraints: RegionValues::new(elements, num_region_variables),
+            liveness_constraints: RegionValues::new(
+                elements,
+                num_region_variables,
+                TrackCauses(true),
+            ),
             inferred_values: None,
             constraints: Vec::new(),
             type_tests: Vec::new(),
@@ -262,11 +300,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Add all nodes in the CFG to liveness constraints
             for point_index in self.elements.all_point_indices() {
-                self.liveness_constraints.add(variable, point_index);
+                self.liveness_constraints.add(variable, point_index, &Cause::UniversalRegion);
             }
 
             // Add `end(X)` into the set for X.
-            self.liveness_constraints.add(variable, variable);
+            self.liveness_constraints.add(variable, variable, &Cause::UniversalRegion);
         }
     }
 
@@ -306,13 +344,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Returns `true` if this constraint is new and `false` is the
     /// constraint was already present.
-    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) -> bool {
+    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location, cause: &Cause) -> bool {
         debug!("add_live_point({:?}, {:?})", v, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
-        debug!("add_live_point: @{:?}", point);
+        debug!("add_live_point: @{:?} Adding cause {:?}", point, cause);
 
         let element = self.elements.index(point);
-        if self.liveness_constraints.add(v, element) {
+        if self.liveness_constraints.add(v, element, &cause) {
             true
         } else {
             false
@@ -416,6 +454,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         target_region: constraint.sup,
                         inferred_values: &mut inferred_values,
                         constraint_point: constraint.point,
+                        constraint_span: constraint.span,
                     },
                 );
 
@@ -973,7 +1012,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
     /// Given an instance T of the closure type, this method
     /// instantiates the "extra" requirements that we computed for the
     /// closure into the inference context. This has the effect of
-    /// adding new subregion obligations to existing variables.
+    /// adding new outlives obligations to existing variables.
     ///
     /// As described on `ClosureRegionRequirements`, the extra
     /// requirements are expressed in terms of regionvids that index
@@ -1073,5 +1112,20 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
                 )
             }
         })
+    }
+}
+
+trait CauseExt {
+    fn outlives(&self, constraint_location: Location, constraint_span: Span) -> Cause;
+}
+
+impl CauseExt for Rc<Cause> {
+    /// Creates a derived cause due to an outlives constraint.
+    fn outlives(&self, constraint_location: Location, constraint_span: Span) -> Cause {
+        Cause::Outlives {
+            original_cause: self.clone(),
+            constraint_location,
+            constraint_span,
+        }
     }
 }
