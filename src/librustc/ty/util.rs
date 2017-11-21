@@ -634,6 +634,33 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         def_id
     }
 
+    /// Given the def-id and substs a closure, creates the type of
+    /// `self` argument that the closure expects. For example, for a
+    /// `Fn` closure, this would return a reference type `&T` where
+    /// `T=closure_ty`.
+    ///
+    /// Returns `None` if this closure's kind has not yet been inferred.
+    /// This should only be possible during type checking.
+    ///
+    /// Note that the return value is a late-bound region and hence
+    /// wrapped in a binder.
+    pub fn closure_env_ty(self,
+                          closure_def_id: DefId,
+                          closure_substs: ty::ClosureSubsts<'tcx>)
+                          -> Option<ty::Binder<Ty<'tcx>>>
+    {
+        let closure_ty = self.mk_closure(closure_def_id, closure_substs);
+        let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
+        let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self);
+        let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
+        let env_ty = match closure_kind {
+            ty::ClosureKind::Fn => self.mk_imm_ref(self.mk_region(env_region), closure_ty),
+            ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),
+            ty::ClosureKind::FnOnce => closure_ty,
+        };
+        Some(ty::Binder(env_ty))
+    }
+
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx ty::Substs<'tcx> {
