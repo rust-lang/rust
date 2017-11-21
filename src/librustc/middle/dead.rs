@@ -531,13 +531,15 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                       id: ast::NodeId,
                       span: syntax_pos::Span,
                       name: ast::Name,
-                      node_type: &str) {
+                      node_type: &str,
+                      participle: &str) {
         if !name.as_str().starts_with("_") {
             self.tcx
                 .lint_node(lint::builtin::DEAD_CODE,
                            id,
                            span,
-                           &format!("{} is never used: `{}`", node_type, name));
+                           &format!("{} is never {}: `{}`",
+                                    node_type, participle, name));
         }
     }
 }
@@ -570,7 +572,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 item.id,
                 span,
                 item.name,
-                item.node.descriptive_variant()
+                item.node.descriptive_variant(),
+                "used",
             );
         } else {
             // Only continue if we didn't warn
@@ -583,7 +586,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                      g: &'tcx hir::Generics,
                      id: ast::NodeId) {
         if self.should_warn_about_variant(&variant.node) {
-            self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.name, "variant");
+            self.warn_dead_code(variant.node.data.id(), variant.span, variant.node.name,
+                                "variant", "constructed");
         } else {
             intravisit::walk_variant(self, variant, g, id);
         }
@@ -591,15 +595,15 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.id, fi.span, fi.name, fi.node.descriptive_variant());
+            self.warn_dead_code(fi.id, fi.span, fi.name,
+                                fi.node.descriptive_variant(), "used");
         }
         intravisit::walk_foreign_item(self, fi);
     }
 
     fn visit_struct_field(&mut self, field: &'tcx hir::StructField) {
         if self.should_warn_about_field(&field) {
-            self.warn_dead_code(field.id, field.span,
-                                field.name, "field");
+            self.warn_dead_code(field.id, field.span, field.name, "field", "used");
         }
         intravisit::walk_struct_field(self, field);
     }
@@ -611,14 +615,15 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                     self.warn_dead_code(impl_item.id,
                                         impl_item.span,
                                         impl_item.name,
-                                        "associated const");
+                                        "associated const",
+                                        "used");
                 }
                 self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Method(_, body_id) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     let span = self.tcx.sess.codemap().def_span(impl_item.span);
-                    self.warn_dead_code(impl_item.id, span, impl_item.name, "method");
+                    self.warn_dead_code(impl_item.id, span, impl_item.name, "method", "used");
                 }
                 self.visit_nested_body(body_id)
             }
