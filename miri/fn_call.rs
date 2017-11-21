@@ -45,6 +45,8 @@ pub trait EvalContextExt<'tcx> {
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool>;
+
+    fn write_null(&mut self, dest: Lvalue, dest_ty: Ty<'tcx>) -> EvalResult<'tcx>;
 }
 
 impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
@@ -416,10 +418,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_type = args[0].ty.builtin_deref(true, ty::LvaluePreference::NoPreference)
                                    .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
-                let key_size = {
-                    let layout = self.type_layout(key_type)?;
-                    layout.size(&self.tcx.data_layout)
-                };
+                let key_size = self.type_layout(key_type)?.size;
 
                 // Create key and write it into the memory where key_ptr wants it
                 let key = self.memory.create_tls_key(dtor) as u128;
@@ -654,5 +653,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         self.dump_local(dest);
         self.goto_block(dest_block);
         return Ok(());
+    }
+
+    fn write_null(&mut self, dest: Lvalue, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
+        self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
     }
 }

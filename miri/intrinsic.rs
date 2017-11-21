@@ -1,7 +1,7 @@
 use rustc::mir;
 use rustc::traits::Reveal;
-use rustc::ty::layout::Layout;
-use rustc::ty::{self, Ty};
+use rustc::ty::layout::TyLayout;
+use rustc::ty;
 
 use rustc::mir::interpret::{EvalResult, Lvalue, LvalueExtra, PrimVal, PrimValKind, Value, Pointer,
                             HasMemory, AccessKind, EvalContext, PtrAndAlign, ValTy};
@@ -14,8 +14,7 @@ pub trait EvalContextExt<'tcx> {
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
         dest: Lvalue,
-        dest_ty: Ty<'tcx>,
-        dest_layout: &'tcx Layout,
+        dest_layout: TyLayout<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 }
@@ -26,8 +25,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
         dest: Lvalue,
-        dest_ty: Ty<'tcx>,
-        dest_layout: &'tcx Layout,
+        dest_layout: TyLayout<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
         let substs = instance.substs;
@@ -37,7 +35,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "align_offset" => {
                 // FIXME: return a real value in case the target allocation has an
                 // alignment bigger than the one requested
-                self.write_primval(dest, PrimVal::Bytes(u128::max_value()), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(u128::max_value()), dest_layout.ty)?;
             },
 
             "add_with_overflow" => {
@@ -46,7 +44,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?
             }
 
@@ -56,7 +54,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?
             }
 
@@ -66,7 +64,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?
             }
 
@@ -74,7 +72,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let offset = self.value_to_primval(args[1])?.to_i128()? as i64;
                 let ptr = args[0].into_ptr(&self.memory)?;
                 let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
-                self.write_ptr(dest, result_ptr, dest_ty)?;
+                self.write_ptr(dest, result_ptr, dest_layout.ty)?;
             }
 
             "assume" => {
@@ -139,8 +137,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
                 };
                 let (val, _) = self.binary_op(mir::BinOp::Eq, old, ty, expect_old, ty)?;
-                let dest = self.force_allocation(dest)?.to_ptr()?;
-                self.write_pair_to_ptr(old, val, dest, dest_ty)?;
+                let valty = ValTy {
+                    value: Value::ByValPair(old, val),
+                    ty: dest_layout.ty,
+                };
+                self.write_value(valty, dest)?;
                 self.write_primval(
                     Lvalue::from_primval_ptr(ptr),
                     change,
@@ -238,9 +239,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
-                let adt_ptr = args[0].into_ptr(&self.memory)?.to_ptr()?;
-                let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
-                self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
+                let adt_ptr = args[0].into_ptr(&self.memory)?;
+                let lval = Lvalue::from_primval_ptr(adt_ptr);
+                let discr_val = self.read_discriminant_value(lval, ty)?;
+                self.write_primval(dest, PrimVal::Bytes(discr_val), dest_layout.ty)?;
             }
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
@@ -262,7 +264,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     "truncf32" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_layout.ty)?;
             }
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
@@ -284,7 +286,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     "truncf64" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_layout.ty)?;
             }
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
@@ -300,13 +302,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     _ => bug!(),
                 };
                 let result = self.binary_op(op, a, ty, b, ty)?;
-                self.write_primval(dest, result.0, dest_ty)?;
+                self.write_primval(dest, result.0, dest_layout.ty)?;
             }
 
             "likely" | "unlikely" | "forget" => {}
 
             "init" => {
-                let size = self.type_size(dest_ty)?.expect("cannot zero unsized value");
+                let size = self.type_size(dest_layout.ty)?.expect("cannot zero unsized value");
                 let init = |this: &mut Self, val: Value| {
                     let zero_val = match val {
                         Value::ByRef(PtrAndAlign { ptr, .. }) => {
@@ -316,10 +318,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                         }
                         // TODO(solson): Revisit this, it's fishy to check for Undef here.
                         Value::ByVal(PrimVal::Undef) => {
-                            match this.ty_to_primval_kind(dest_ty) {
+                            match this.ty_to_primval_kind(dest_layout.ty) {
                                 Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
                                 Err(_) => {
-                                    let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
+                                    let ptr = this.alloc_ptr_with_substs(dest_layout.ty, substs)?;
                                     let ptr = Pointer::from(PrimVal::Ptr(ptr));
                                     this.memory.write_repeat(ptr, 0, size)?;
                                     Value::by_ref(ptr)
@@ -349,15 +351,15 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let elem_ty = substs.type_at(0);
                 let elem_align = self.type_align(elem_ty)?;
                 let align_val = PrimVal::from_u128(elem_align as u128);
-                self.write_primval(dest, align_val, dest_ty)?;
+                self.write_primval(dest, align_val, dest_layout.ty)?;
             }
 
             "pref_align_of" => {
                 let ty = substs.type_at(0);
                 let layout = self.type_layout(ty)?;
-                let align = layout.align(&self.tcx.data_layout).pref();
+                let align = layout.align.pref();
                 let align_val = PrimVal::from_u128(align as u128);
-                self.write_primval(dest, align_val, dest_ty)?;
+                self.write_primval(dest, align_val, dest_layout.ty)?;
             }
 
             "move_val_init" => {
@@ -373,7 +375,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(
                     dest,
                     PrimVal::from_bool(needs_drop),
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -381,7 +383,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let offset = self.value_to_primval(args[1])?.to_i128()? as i64;
                 let ptr = args[0].into_ptr(&self.memory)?;
                 let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
-                self.write_ptr(dest, result_ptr, dest_ty)?;
+                self.write_ptr(dest, result_ptr, dest_layout.ty)?;
             }
 
             "overflowing_sub" => {
@@ -390,7 +392,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -400,7 +402,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -410,7 +412,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -422,7 +424,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(
                     dest,
                     PrimVal::Bytes(f.powf(f2).to_bits() as u128),
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -434,7 +436,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(
                     dest,
                     PrimVal::Bytes(f.powf(f2).to_bits() as u128),
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -448,7 +450,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(
                     dest,
                     PrimVal::Bytes((a * b + c).to_bits() as u128),
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -462,7 +464,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(
                     dest,
                     PrimVal::Bytes((a * b + c).to_bits() as u128),
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -473,7 +475,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(
                     dest,
                     PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -484,7 +486,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(
                     dest,
                     PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -493,7 +495,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let size = self.type_size(ty)?.expect(
                     "size_of intrinsic called on unsized value",
                 ) as u128;
-                self.write_primval(dest, PrimVal::from_u128(size), dest_ty)?;
+                self.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
             }
 
             "size_of_val" => {
@@ -501,8 +503,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let (size, _) = self.size_and_align_of_dst(ty, args[0].value)?;
                 self.write_primval(
                     dest,
-                    PrimVal::from_u128(size as u128),
-                    dest_ty,
+                    PrimVal::from_u128(size.bytes() as u128),
+                    dest_layout.ty,
                 )?;
             }
 
@@ -512,8 +514,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let (_, align) = self.size_and_align_of_dst(ty, args[0].value)?;
                 self.write_primval(
                     dest,
-                    PrimVal::from_u128(align as u128),
-                    dest_ty,
+                    PrimVal::from_u128(align.pref() as u128),
+                    dest_layout.ty,
                 )?;
             }
 
@@ -521,12 +523,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let ty = substs.type_at(0);
                 let ty_name = ty.to_string();
                 let value = self.str_to_value(&ty_name)?;
-                self.write_value(ValTy { value, ty: dest_ty }, dest)?;
+                self.write_value(ValTy { value, ty: dest_layout.ty }, dest)?;
             }
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
-                self.write_primval(dest, PrimVal::Bytes(n as u128), dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(n as u128), dest_layout.ty)?;
             }
 
             "transmute" => {
@@ -542,7 +544,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "unchecked_shl" => {
-                let bits = self.type_size(dest_ty)?.expect(
+                let bits = self.type_size(dest_layout.ty)?.expect(
                     "intrinsic can't be called on unsized type",
                 ) as u128 * 8;
                 let rhs = self.value_to_primval(args[1])?
@@ -557,12 +559,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
             "unchecked_shr" => {
-                let bits = self.type_size(dest_ty)?.expect(
+                let bits = self.type_size(dest_layout.ty)?.expect(
                     "intrinsic can't be called on unsized type",
                 ) as u128 * 8;
                 let rhs = self.value_to_primval(args[1])?
@@ -577,7 +579,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -592,7 +594,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
@@ -607,12 +609,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     args[0],
                     args[1],
                     dest,
-                    dest_ty,
+                    dest_layout.ty,
                 )?;
             }
 
             "uninit" => {
-                let size = dest_layout.size(&self.tcx.data_layout).bytes();
+                let size = dest_layout.size.bytes();
                 let uninit = |this: &mut Self, val: Value| match val {
                     Value::ByRef(PtrAndAlign { ptr, .. }) => {
                         this.memory.mark_definedness(ptr, size, false)?;

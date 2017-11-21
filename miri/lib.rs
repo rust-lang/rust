@@ -11,7 +11,7 @@ extern crate rustc;
 extern crate syntax;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::TyLayout;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::traits;
@@ -50,7 +50,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         let main_mir = ecx.load_mir(main_instance.def)?;
         let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
 
-        if !main_mir.return_ty.is_nil() || main_mir.arg_count != 0 {
+        if !main_mir.return_ty().is_nil() || main_mir.arg_count != 0 {
             return err!(Unimplemented(
                 "miri does not support main functions without `fn()` type signatures"
                     .to_owned(),
@@ -208,11 +208,10 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
         dest: Lvalue,
-        dest_ty: ty::Ty<'tcx>,
-        dest_layout: &'tcx Layout,
+        dest_layout: TyLayout<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
-        ecx.call_intrinsic(instance, args, dest, dest_ty, dest_layout, target)
+        ecx.call_intrinsic(instance, args, dest, dest_layout, target)
     }
 
     fn try_ptr_op<'a>(
