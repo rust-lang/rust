@@ -213,6 +213,7 @@ pub enum Style {
     UnderlineSecondary,
     LabelPrimary,
     LabelSecondary,
+    OldSchoolNoteText,
     NoStyle,
     Level(Level),
     Highlight,

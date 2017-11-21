@@ -1036,6 +1036,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "run all passes except translation; no output"),
     treat_err_as_bug: bool = (false, parse_bool, [TRACKED],
           "treat all errors that occur as bugs"),
+    external_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
+          "show macro backtraces even for non-local macros"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
           "attempt to recover from parse errors (experimental)"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -2100,7 +2102,7 @@ mod tests {
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
-            assert!(!sess.diagnostic().can_emit_warnings);
+            assert!(!sess.diagnostic().flags.can_emit_warnings);
         }
 
         {
@@ -2111,7 +2113,7 @@ mod tests {
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
-            assert!(sess.diagnostic().can_emit_warnings);
+            assert!(sess.diagnostic().flags.can_emit_warnings);
         }
 
         {
@@ -2121,7 +2123,7 @@ mod tests {
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
-            assert!(sess.diagnostic().can_emit_warnings);
+            assert!(sess.diagnostic().flags.can_emit_warnings);
         }
     }
 

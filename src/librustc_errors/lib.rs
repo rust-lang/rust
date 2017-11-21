@@ -233,10 +233,10 @@ pub use diagnostic_builder::DiagnosticBuilder;
 /// (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
 pub struct Handler {
+    pub flags: HandlerFlags,
+
     err_count: Cell<usize>,
     emitter: RefCell<Box<Emitter>>,
-    pub can_emit_warnings: bool,
-    treat_err_as_bug: bool,
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
     tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
@@ -247,25 +247,55 @@ pub struct Handler {
     emitted_diagnostics: RefCell<FxHashSet<u128>>,
 }
 
+#[derive(Default)]
+pub struct HandlerFlags {
+    pub can_emit_warnings: bool,
+    pub treat_err_as_bug: bool,
+    pub external_macro_backtrace: bool,
+}
+
 impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
                             cm: Option<Rc<CodeMapper>>)
                             -> Handler {
+        Handler::with_tty_emitter_and_flags(
+            color_config,
+            cm,
+            HandlerFlags {
+                can_emit_warnings,
+                treat_err_as_bug,
+                .. Default::default()
+            })
+    }
+
+    pub fn with_tty_emitter_and_flags(color_config: ColorConfig,
+                                      cm: Option<Rc<CodeMapper>>,
+                                      flags: HandlerFlags)
+                                      -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false));
-        Handler::with_emitter(can_emit_warnings, treat_err_as_bug, emitter)
+        Handler::with_emitter_and_flags(emitter, flags)
     }
 
     pub fn with_emitter(can_emit_warnings: bool,
                         treat_err_as_bug: bool,
                         e: Box<Emitter>)
                         -> Handler {
+        Handler::with_emitter_and_flags(
+            e,
+            HandlerFlags {
+                can_emit_warnings,
+                treat_err_as_bug,
+                .. Default::default()
+            })
+    }
+
+    pub fn with_emitter_and_flags(e: Box<Emitter>, flags: HandlerFlags) -> Handler {
         Handler {
+            flags,
             err_count: Cell::new(0),
             emitter: RefCell::new(e),
-            can_emit_warnings,
-            treat_err_as_bug,
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
             tracked_diagnostics: RefCell::new(None),
@@ -293,7 +323,7 @@ impl Handler {
                                                     -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
         result.set_span(sp);
-        if !self.can_emit_warnings {
+        if !self.flags.can_emit_warnings {
             result.cancel();
         }
         result
@@ -306,14 +336,14 @@ impl Handler {
         let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
         result.set_span(sp);
         result.code(code);
-        if !self.can_emit_warnings {
+        if !self.flags.can_emit_warnings {
             result.cancel();
         }
         result
     }
     pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        if !self.can_emit_warnings {
+        if !self.flags.can_emit_warnings {
             result.cancel();
         }
         result
@@ -376,7 +406,7 @@ impl Handler {
     }
 
     fn panic_if_treat_err_as_bug(&self) {
-        if self.treat_err_as_bug {
+        if self.flags.treat_err_as_bug {
             panic!("encountered error with `-Z treat_err_as_bug");
         }
     }
@@ -418,7 +448,7 @@ impl Handler {
         panic!(ExplicitBug);
     }
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        if self.treat_err_as_bug {
+        if self.flags.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(Level::Bug, msg);
@@ -443,7 +473,7 @@ impl Handler {
         self.span_bug(sp, &format!("unimplemented {}", msg));
     }
     pub fn fatal(&self, msg: &str) -> FatalError {
-        if self.treat_err_as_bug {
+        if self.flags.treat_err_as_bug {
             self.bug(msg);
         }
         let mut db = DiagnosticBuilder::new(self, Fatal, msg);
@@ -451,7 +481,7 @@ impl Handler {
         FatalError
     }
     pub fn err(&self, msg: &str) {
-        if self.treat_err_as_bug {
+        if self.flags.treat_err_as_bug {
             self.bug(msg);
         }
         let mut db = DiagnosticBuilder::new(self, Error, msg);
@@ -504,7 +534,7 @@ impl Handler {
         panic!(self.fatal(&s));
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
-        if lvl == Warning && !self.can_emit_warnings {
+        if lvl == Warning && !self.flags.can_emit_warnings {
             return;
         }
         let mut db = DiagnosticBuilder::new(self, lvl, msg);
@@ -515,7 +545,7 @@ impl Handler {
         }
     }
     pub fn emit_with_code(&self, msp: &MultiSpan, msg: &str, code: DiagnosticId, lvl: Level) {
-        if lvl == Warning && !self.can_emit_warnings {
+        if lvl == Warning && !self.flags.can_emit_warnings {
             return;
         }
         let mut db = DiagnosticBuilder::new_with_code(self, lvl, Some(code), msg);

@@ -23,7 +23,7 @@ use syntax_pos::{MultiSpan, Span};
 #[must_use]
 #[derive(Clone)]
 pub struct DiagnosticBuilder<'a> {
-    handler: &'a Handler,
+    pub handler: &'a Handler,
     diagnostic: Diagnostic,
 }
 

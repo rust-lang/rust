@@ -81,7 +81,9 @@ pub fn run(input: &str,
 
     let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let handler =
-        errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
+        errors::Handler::with_tty_emitter(ColorConfig::Auto,
+                                          true, false,
+                                          Some(codemap.clone()));
 
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(

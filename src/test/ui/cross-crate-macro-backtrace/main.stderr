@@ -4,7 +4,7 @@ error: 1 positional argument in format string, but no arguments were given
 16 |     myprintln!("{}"); //~ ERROR in this macro
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate
+   = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error
 
