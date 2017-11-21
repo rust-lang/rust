@@ -61,7 +61,8 @@ pub fn simd_test(
     let mut cfg_target_features = quote::Tokens::new();
     use quote::ToTokens;
     for feature in target_features {
-        let q = quote! {
+        let q = quote_spanned! {
+            proc_macro2::Span::call_site(),
             cfg_feature_enabled!(#feature) &&
         };
         q.to_tokens(&mut cfg_target_features);
@@ -69,7 +70,8 @@ pub fn simd_test(
     let q = quote!{ true };
     q.to_tokens(&mut cfg_target_features);
 
-    let ret: TokenStream = quote! {
+    let ret: TokenStream = quote_spanned! {
+        proc_macro2::Span::call_site(),
         #[allow(non_snake_case)]
         #[test]
         fn #name() {

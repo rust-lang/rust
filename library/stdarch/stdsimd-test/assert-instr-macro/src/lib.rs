@@ -96,7 +96,8 @@ pub fn assert_instr(
         )
     };
 
-    let tts: TokenStream = quote! {
+    let tts: TokenStream = quote_spanned! {
+        proc_macro2::Span::call_site(),
         #[test]
         #[allow(non_snake_case)]
         #maybe_ignore
