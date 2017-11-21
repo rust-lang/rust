@@ -254,7 +254,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
             hir::TyTraitObject(ref bounds, _) => {
                 for bound in bounds {
                     self.depth += 1;
-                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                    self.visit_ty_param_bound(bound);
                     self.depth -= 1;
                 }
             }

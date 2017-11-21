@@ -1348,6 +1348,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let sized_conditions = self.sized_conditions(obligation);
             self.assemble_builtin_bound_candidates(sized_conditions,
                                                    &mut candidates)?;
+         } else if lang_items.move_trait() == Some(def_id) {
+            // Move is never implementable by end-users, it is
+            // always automatically computed.
+            let move_conditions = self.move_conditions(obligation);
+            self.assemble_builtin_bound_candidates(move_conditions,
+                                                   &mut candidates)?;
          } else if lang_items.unsize_trait() == Some(def_id) {
              self.assemble_candidates_for_unsizing(obligation, &mut candidates);
          } else {
@@ -2054,6 +2060,94 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn move_conditions(&mut self, obligation: &TraitObligation<'tcx>)
+                     -> BuiltinImplConditions<'tcx>
+    {
+        use self::BuiltinImplConditions::{Ambiguous, None, Never, Where};
+
+        // NOTE: binder moved to (*)
+        let self_ty = self.infcx.shallow_resolve(
+            obligation.predicate.skip_binder().self_ty());
+
+        match self_ty.sty {
+            // TyForeign isn't possible to move since you cannot get its size
+            // Therefore its fine for it to implement Move
+            ty::TyForeign(..) |
+
+            ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
+            ty::TyChar | ty::TyRef(..) |
+            ty::TyStr | ty::TyNever |
+            ty::TyError => {
+                // safe for everything
+                Where(ty::Binder(Vec::new()))
+            }
+
+            ty::TySlice(element_ty) |
+            ty::TyArray(element_ty, _) => {
+                // (*) binder moved here
+                Where(ty::Binder(vec![element_ty]))
+            }
+
+            ty::TyClosure(def_id, substs) => {
+                Where(ty::Binder(substs.upvar_tys(def_id, self.infcx.tcx).collect()))
+            }
+
+            ty::TyGenerator(def_id, substs, interior) => {
+                Where(ty::Binder(substs.upvar_tys(def_id, self.infcx.tcx)
+                                       .chain(iter::once(interior.witness))
+                                       .collect()))
+            }
+
+            ty::TyDynamic(predicate, _) => {
+                // Trait objects with a Move trait bound are movable
+                let move_trait = self.infcx.tcx.lang_items().move_trait().unwrap();
+                // We can skip the binder here because
+                // ExistentialPredicate::AutoTrait cannot contain lifetimes
+                let test = |p| p == &ty::ExistentialPredicate::AutoTrait(move_trait);
+                if predicate.skip_binder().into_iter().any(test) {
+                    Where(ty::Binder(Vec::new()))
+                } else {
+                    Never
+                }
+            }
+
+            ty::TyTuple(tys, _) => {
+                Where(ty::Binder(tys.into_iter().map(|t| *t).collect()))
+            }
+
+            ty::TyAdt(def, substs) => {
+                if def.is_immovable() {
+                    Never
+                } else {
+                    let move_constr = def.move_constraint(self.tcx());
+                    // (*) binder moved here
+                    Where(ty::Binder(
+                        move_constr.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
+                    ))
+                }
+            }
+
+            ty::TyAnon(def_id, substs) => {
+                // We can resolve the `impl Trait` to its concrete type,
+                // which enforces a DAG between the functions requiring
+                // the auto trait bounds in question.
+                Where(ty::Binder(vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)]))
+            }
+
+            ty::TyProjection(_) | ty::TyParam(_) => None,
+            ty::TyInfer(ty::TyVar(_)) => Ambiguous,
+
+            ty::TyInfer(ty::FreshTy(_))
+            | ty::TyInfer(ty::FreshIntTy(_))
+            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}",
+                     self_ty);
+            }
+        }
+    }
+
     fn copy_clone_conditions(&mut self, obligation: &TraitObligation<'tcx>)
                      -> BuiltinImplConditions<'tcx>
     {
@@ -2381,6 +2475,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let conditions = match trait_def {
                 _ if Some(trait_def) == lang_items.sized_trait() => {
                     self.sized_conditions(obligation)
+                }
+                _ if Some(trait_def) == lang_items.move_trait() => {
+                    self.move_conditions(obligation)
                 }
                 _ if Some(trait_def) == lang_items.copy_trait() => {
                     self.copy_clone_conditions(obligation)

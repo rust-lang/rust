@@ -128,6 +128,29 @@ pub struct MoveData<'tcx> {
     pub rev_lookup: MovePathLookup<'tcx>,
 }
 
+impl<'tcx> MoveData<'tcx> {
+    pub fn all_paths_from<F>(&self, root: MovePathIndex, mut each_path: F)
+        where F: FnMut(MovePathIndex) -> bool
+    {
+        fn all_paths_from<'tcx, F>(move_data: &MoveData<'tcx>,
+        root: MovePathIndex, each_path: &mut F)
+            where F: FnMut(MovePathIndex) -> bool
+        {
+            if !each_path(root) {
+                return;
+            }
+
+            let mut next_child_index = move_data.move_paths[root].first_child;
+            while let Some(child_index) = next_child_index {
+                all_paths_from(move_data, child_index, each_path);
+                next_child_index = move_data.move_paths[child_index].next_sibling;
+            }
+        }
+
+        all_paths_from(self, root, &mut each_path);
+    }
+}
+
 pub trait HasMoveData<'tcx> {
     fn move_data(&self) -> &MoveData<'tcx>;
 }
@@ -258,8 +281,9 @@ impl<'tcx> MoveError<'tcx> {
 impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
     pub fn gather_moves(mir: &Mir<'tcx>,
                         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                        param_env: ty::ParamEnv<'gcx>)
+                        param_env: ty::ParamEnv<'gcx>,
+                        move_check: bool)
                         -> Result<Self, (Self, Vec<MoveError<'tcx>>)> {
-        builder::gather_moves(mir, tcx, param_env)
+        builder::gather_moves(mir, tcx, param_env, move_check)
     }
 }

@@ -40,7 +40,7 @@ use std::collections::BTreeMap;
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
+use std::iter::{self, FromIterator};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::slice;
@@ -1367,6 +1367,9 @@ bitflags! {
         ///
         /// See RFC 2008 (https://github.com/rust-lang/rfcs/pull/2008).
         const IS_NON_EXHAUSTIVE   = 1 << 5;
+
+        const IS_IMMOVABLE        = 1 << 6;
+        const IS_MOVABLE_CELL     = 1 << 7;
     }
 }
 
@@ -1561,6 +1564,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         if attr::contains_name(&attrs, "fundamental") {
             flags = flags | AdtFlags::IS_FUNDAMENTAL;
         }
+        if Some(did) == tcx.lang_items().immovable() {
+            flags = flags | AdtFlags::IS_IMMOVABLE;
+        }
+        if Some(did) == tcx.lang_items().movable_cell_type() {
+            flags = flags | AdtFlags::IS_MOVABLE_CELL;
+        }
         if Some(did) == tcx.lang_items().phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
         }
@@ -1636,6 +1645,18 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn is_fundamental(&self) -> bool {
         self.flags.intersects(AdtFlags::IS_FUNDAMENTAL)
+    }
+
+    /// Returns true if this is Immovable.
+    #[inline]
+    pub fn is_immovable(&self) -> bool {
+        self.flags.intersects(AdtFlags::IS_IMMOVABLE)
+    }
+
+    /// Returns true if this is MovableCell<T>.
+    #[inline]
+    pub fn is_movable_cell(&self) -> bool {
+        self.flags.intersects(AdtFlags::IS_MOVABLE_CELL)
     }
 
     /// Returns true if this is PhantomData<T>.
@@ -1885,6 +1906,123 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             }
         };
         debug!("sized_constraint_for_ty({:?}) = {:?}", ty, result);
+        result
+    }
+
+    /// Returns a list of types such that `Self: Move` if and only
+    /// if that type is Move, or `TyErr` if this type is recursive.
+    pub fn move_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
+        match queries::adt_move_constraint::try_get(tcx, DUMMY_SP, self.did) {
+            Ok(tys) => tys,
+            Err(mut bug) => {
+                debug!("adt_move_constraint: {:?} is recursive", self);
+                // This should be reported as an error by `check_representable`.
+                //
+                // Consider the type as Move in the meanwhile to avoid
+                // further errors. Delay our `bug` diagnostic here to get
+                // emitted later as well in case we accidentally otherwise don't
+                // emit an error.
+                bug.delay_as_bug();
+                tcx.intern_type_list(&[tcx.types.err])
+            }
+        }
+    }
+
+    fn move_constraint_for_ty(&self,
+                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               ty: Ty<'tcx>)
+                               -> Vec<Ty<'tcx>> {
+        let result = match ty.sty {
+            // TyForeign isn't possible to move since you cannot get its size
+            // Therefore its fine for it to implement Move
+            TyForeign(..) |
+
+            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyStr | TyNever => {
+                vec![]
+            }
+
+            TyArray(t, _) | TySlice(t) => vec![t],
+
+            // FIXME: Should TyClosure/TyGenerator panic since they can't appear in ADTs?
+            TyClosure(def_id, substs) => {
+                substs.upvar_tys(def_id, tcx)
+                      .flat_map(|ty| self.move_constraint_for_ty(tcx, ty))
+                      .collect()
+            }
+
+            TyGenerator(def_id, substs, interior) => {
+                 substs.upvar_tys(def_id, tcx)
+                       .chain(iter::once(interior.witness))
+                       .flat_map(|ty| self.move_constraint_for_ty(tcx, ty))
+                       .collect()
+            }
+
+            TyDynamic(predicate, _) => {
+                // Trait objects with a Move trait bound are movable
+                let move_trait = tcx.lang_items().move_trait().unwrap();
+                // We can skip the binder here because
+                // ExistentialPredicate::AutoTrait cannot contain lifetimes
+                let test = |p| p == &ty::ExistentialPredicate::AutoTrait(move_trait);
+                if predicate.skip_binder().into_iter().any(test) {
+                    vec![]
+                } else {
+                    vec![ty]
+                }
+            }
+
+            // FIXME: Shouldn't Error always implement Move and Sized to avoid errors?
+            TyError => vec![ty],
+
+            TyTuple(tys, _) => {
+                tys.into_iter()
+                    .flat_map(|ty| self.move_constraint_for_ty(tcx, *ty))
+                    .collect()
+            }
+
+            TyAdt(adt, substs) => {
+                // recursive case
+                let adt_tys = adt.move_constraint(tcx);
+                debug!("move_constraint_for_ty({:?}) intermediate = {:?}",
+                       ty, adt_tys);
+                adt_tys.iter()
+                    .map(|ty| ty.subst(tcx, substs))
+                    .flat_map(|ty| self.move_constraint_for_ty(tcx, ty))
+                    .collect()
+            }
+
+            TyProjection(..) | TyAnon(..) => {
+                // FIXME: Should we replace TyAnon with its underlying type here?
+                // must calculate explicitly.
+                // FIXME: consider special-casing always-Move projections
+                vec![ty]
+            }
+
+            TyParam(..) => {
+                // perf hack: if there is a `T: Move` bound, then
+                // we know that `T` is Move and do not need to check
+                // it on the impl.
+
+                let move_trait = tcx.lang_items().move_trait().unwrap();
+                let move_predicate = Binder(TraitRef {
+                    def_id: move_trait,
+                    substs: tcx.mk_substs_trait(ty, &[])
+                }).to_predicate();
+                let predicates = tcx.predicates_of(self.did).predicates;
+                if predicates.into_iter().any(|p| p == move_predicate) {
+                    vec![]
+                } else {
+                    vec![ty]
+                }
+            }
+
+            TyInfer(..) => {
+                bug!("unexpected type `{:?}` in move_constraint_for_ty",
+                     ty)
+            }
+        };
+        debug!("move_constraint_for_ty({:?}) = {:?}", ty, result);
         result
     }
 }
@@ -2501,6 +2639,35 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
+/// Calculates the Move-constraint.
+///
+/// In fact, there are only a few options for the types in the constraint:
+///     - an obviously-immovable type
+///     - a type parameter or projection whose Moveness can't be known
+///     - a tuple of type parameters or projections, if there are multiple
+///       such.
+///     - a TyError, if a type contained itself. The representability
+///       check should catch this case.
+fn adt_move_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def_id: DefId)
+                                  -> &'tcx [Ty<'tcx>] {
+    let def = tcx.adt_def(def_id);
+
+    if def.is_movable_cell() {
+        return tcx.intern_type_list(&[]);
+    }
+
+    let result = tcx.intern_type_list(&def.variants.iter().flat_map(|v| {
+        v.fields.last()
+    }).flat_map(|f| {
+        def.move_constraint_for_ty(tcx, tcx.type_of(f.did))
+    }).collect::<Vec<_>>());
+
+    debug!("adt_move_constraint: {:?} => {:?}", def, result);
+
+    result
+}
+
 /// Calculates the dtorck constraint for a type.
 fn adt_dtorck_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
@@ -2625,6 +2792,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
+        adt_move_constraint,
         adt_dtorck_constraint,
         def_span,
         param_env,

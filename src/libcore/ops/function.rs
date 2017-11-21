@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(not(stage0))]
+use marker::Move;
+
 /// The version of the call operator that takes an immutable receiver.
 ///
 /// Instances of `Fn` can be called repeatedly without mutating state.
@@ -67,6 +70,18 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
+#[cfg(not(stage0))]
+pub trait Fn<Args: ?Move> : FnMut<Args> {
+    /// This is called when the call operator is used.
+    #[unstable(feature = "fn_traits", issue = "29625")]
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+}
+/// docs
+#[lang = "fn"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_paren_sugar]
+#[fundamental] // so that regex can rely that `&str: !FnMut`
+#[cfg(stage0)]
 pub trait Fn<Args> : FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -140,6 +155,18 @@ pub trait Fn<Args> : FnMut<Args> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
+#[cfg(not(stage0))]
+pub trait FnMut<Args: ?Move> : FnOnce<Args> {
+    /// This is called when the call operator is used.
+    #[unstable(feature = "fn_traits", issue = "29625")]
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+}
+/// docs
+#[lang = "fn_mut"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_paren_sugar]
+#[fundamental] // so that regex can rely that `&str: !FnMut`
+#[cfg(stage0)]
 pub trait FnMut<Args> : FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -213,6 +240,23 @@ pub trait FnMut<Args> : FnOnce<Args> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
+#[cfg(not(stage0))]
+pub trait FnOnce<Args: ?Move> {
+    /// The returned type after the call operator is used.
+    #[stable(feature = "fn_once_output", since = "1.12.0")]
+    type Output: ?Move;
+
+    /// This is called when the call operator is used.
+    #[unstable(feature = "fn_traits", issue = "29625")]
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
+
+/// docs
+#[lang = "fn_once"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_paren_sugar]
+#[fundamental] // so that regex can rely that `&str: !FnMut`
+#[cfg(stage0)]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     #[stable(feature = "fn_once_output", since = "1.12.0")]

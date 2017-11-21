@@ -542,11 +542,33 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn conv_object_ty_poly_trait_ref(&self,
         span: Span,
-        trait_bounds: &[hir::PolyTraitRef],
+        bounds: &[hir::TyParamBound],
         lifetime: &hir::Lifetime)
         -> Ty<'tcx>
     {
         let tcx = self.tcx();
+
+        let move_id = tcx.lang_items().move_trait().unwrap();
+        let mut is_move = true;
+        let mut trait_bounds = Vec::new();
+        for bound in bounds {
+            match *bound {
+                hir::TraitTyParamBound(ref trait_ref, hir::TraitBoundModifier::None) => {
+                    trait_bounds.push(trait_ref.clone());
+                }
+                hir::TraitTyParamBound(ref trait_ref, hir::TraitBoundModifier::Maybe) => {
+                    if self.trait_def_id(&trait_ref.trait_ref) == move_id {
+                        is_move = false;
+                    } else {
+                        tcx.sess.span_warn(span,
+                                           "default bound relaxed for a trait object, but \
+                                            this does nothing because the given bound is not \
+                                            a default. Only `?Move` is supported");
+                    }
+                },
+                _ => unreachable!(),
+            }
+        }
 
         if trait_bounds.is_empty() {
             span_err!(tcx.sess, span, E0224,
@@ -567,7 +589,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                             &mut vec![]);
         }
 
-        let (auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
+        let (mut auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
+
+        if is_move {
+            auto_traits.push(move_id);
+        }
 
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
@@ -1305,12 +1331,18 @@ fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected
         .emit();
 }
 
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct ImplicitBounds {
+    pub sized_trait: bool,
+    pub move_trait: bool,
+}
+
 // A helper struct for conveniently grouping a set of bounds which we pass to
 // and return from functions in multiple places.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
     pub region_bounds: Vec<ty::Region<'tcx>>,
-    pub implicitly_sized: bool,
+    pub implicit_bounds: ImplicitBounds,
     pub trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
     pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
 }
@@ -1321,8 +1353,19 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     {
         let mut vec = Vec::new();
 
+        // If it could be move, and is, add the move predicate
+        if self.implicit_bounds.move_trait {
+            if let Some(sized) = tcx.lang_items().move_trait() {
+                let trait_ref = ty::TraitRef {
+                    def_id: sized,
+                    substs: tcx.mk_substs_trait(param_ty, &[])
+                };
+                vec.push(trait_ref.to_predicate());
+            }
+        }
+
         // If it could be sized, and is, add the sized predicate
-        if self.implicitly_sized {
+        if self.implicit_bounds.sized_trait {
             if let Some(sized) = tcx.lang_items().sized_trait() {
                 let trait_ref = ty::TraitRef {
                     def_id: sized,

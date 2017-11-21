@@ -279,6 +279,7 @@
 #![feature(heap_api)]
 #![feature(i128)]
 #![feature(i128_type)]
+#![cfg_attr(not(stage0), feature(immovable_types))]
 #![feature(inclusive_range)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]

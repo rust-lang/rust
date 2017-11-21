@@ -9,24 +9,21 @@
 // except according to those terms.
 
 #![feature(immovable_types)]
-#![feature(optin_builtin_traits)]
 
-use std::marker::Move;
+use std::marker::Immovable;
 
-trait NotSame: ?Move {}
-#[allow(auto_impl)]
-impl NotSame for .. {}
-impl<A> !NotSame for (A, A) {}
-
-trait OneOfEach {}
-
-impl<A> OneOfEach for (A,) {}
-
-impl<A, B> OneOfEach for (A, B)
-where
-    (B,): OneOfEach,
-    (A, B): NotSame,
-{
+fn new_box_immovable() -> Box<Immovable> {
+    // FIXME: we still can't create boxes of immovable types using
+    // `Box::new`, please change this to use `Box::new` when that is possible
+    panic!("please change this to use Box::new when that can be used")
 }
 
-fn main() {}
+fn move_from_box(b: Box<Immovable>) {
+    *b; //~ ERROR cannot move immovable value out of a Box type
+}
+
+fn main() {
+    let a = new_box_immovable();
+    &*a; // ok
+    move_from_box(a); // ok
+}

@@ -13,10 +13,12 @@
 // (`impl Trait for ..`))
 
 #![feature(optin_builtin_traits)]
+#![feature(immovable_types)]
 
+use std::marker::Move;
 use std::marker::{PhantomData};
 
-unsafe trait Zen {}
+unsafe trait Zen: ?Move {}
 
 #[allow(auto_impl)]
 unsafe impl Zen for .. {}

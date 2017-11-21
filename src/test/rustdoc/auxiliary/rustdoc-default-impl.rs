@@ -9,12 +9,13 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
+#![feature(immovable_types)]
 #![feature(core)]
 
 pub mod bar {
-    use std::marker;
+    use std::marker::Move;
 
-    pub trait Bar {}
+    pub trait Bar: ?Move {}
 
     #[allow(auto_impl)]
     impl Bar for .. {}

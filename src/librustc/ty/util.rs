@@ -837,6 +837,14 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx.at(span).is_freeze_raw(param_env.and(self))
     }
 
+    pub fn is_move(&'tcx self,
+                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     param_env: ty::ParamEnv<'tcx>,
+                     span: Span)-> bool
+    {
+        tcx.at(span).is_move_raw(param_env.and(self))
+    }
+
     /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely
     /// non-copy and *might* have a destructor attached; if it returns
     /// `false`, then `ty` definitely has no destructor (i.e. no drop glue).
@@ -1079,6 +1087,20 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                        DUMMY_SP))
 }
 
+fn is_move_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+                         -> bool
+{
+    let (param_env, ty) = query.into_parts();
+    let trait_def_id = tcx.require_lang_item(lang_items::MoveTraitLangItem);
+    tcx.infer_ctxt()
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
+}
+
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                             -> bool
@@ -1216,6 +1238,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_copy_raw,
         is_sized_raw,
         is_freeze_raw,
+        is_move_raw,
         needs_drop_raw,
         ..*providers
     };

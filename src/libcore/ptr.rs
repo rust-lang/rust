@@ -21,6 +21,8 @@ use intrinsics;
 use ops::CoerceUnsized;
 use fmt;
 use hash;
+#[cfg(not(stage0))]
+use marker::Move;
 use marker::{PhantomData, Unsize};
 use mem;
 use nonzero::NonZero;
@@ -2065,23 +2067,50 @@ impl<T: ?Sized> *mut T {
 }
 
 // Equality for pointers
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {
     #[inline]
     fn eq(&self, other: &*const T) -> bool { *self == *other }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Eq for *const T {}
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
     #[inline]
     fn eq(&self, other: &*mut T) -> bool { *self == *other }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Eq for *mut T {}
+
+// Equality for pointers
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+?Move> PartialEq for *const T {
+    #[inline]
+    fn eq(&self, other: &*const T) -> bool { *self == *other }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+?Move> Eq for *const T {}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+?Move> PartialEq for *mut T {
+    #[inline]
+    fn eq(&self, other: &*mut T) -> bool { *self == *other }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+?Move> Eq for *mut T {}
 
 /// Compare raw pointers for equality.
 ///
@@ -2293,13 +2322,23 @@ impl<T: ?Sized> PartialOrd for *mut T {
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
            issue = "27730")]
-pub struct Unique<T: ?Sized> {
+#[cfg(not(stage0))]
+pub struct Unique<T: ?Sized+?Move> {
     pointer: NonZero<*const T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
     //
     // For details, see:
     // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
+    _marker: PhantomData<T>,
+}
+/// docs
+#[cfg(stage0)]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
+           issue = "27730")]
+pub struct Unique<T: ?Sized> {
+    pointer: NonZero<*const T>,
     _marker: PhantomData<T>,
 }
 
@@ -2432,13 +2471,23 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
            issue = "27730")]
-pub struct Shared<T: ?Sized> {
+#[cfg(not(stage0))]
+pub struct Shared<T: ?Sized+?Move> {
     pointer: NonZero<*const T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
     //
     // For details, see:
     // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
+    _marker: PhantomData<T>,
+}
+/// docs
+#[cfg(stage0)]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
+           issue = "27730")]
+pub struct Shared<T: ?Sized> {
+    pointer: NonZero<*const T>,
     _marker: PhantomData<T>,
 }
 

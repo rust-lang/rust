@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits, immovable_types)]
+#![feature(conservative_impl_trait, specialization)]
 
-use std::marker::Move;
+trait Foo: Copy + ToString {}
 
-trait Foo: ?Move {}
-impl Foo for .. {}
-//~^ ERROR The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`
-//~^^ WARN this was previously accepted by the compiler
+impl<T: Copy + ToString> Foo for T {}
+
+fn sum_to(n: u32) -> impl Foo {
+    if n == 0 {
+        0
+    } else {
+        n + sum_to(n - 1)
+        //~^ ERROR no implementation for `u32 + impl Foo`
+    }
+}
+
+fn main() {}

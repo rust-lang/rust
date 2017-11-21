@@ -64,6 +64,8 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash, Hasher};
 use core::iter::FusedIterator;
+#[cfg(not(stage0))]
+use core::marker::Move;
 use core::marker::{self, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
@@ -103,13 +105,21 @@ pub struct ExchangeHeapSingleton {
     _force_singleton: (),
 }
 
-/// A pointer type for heap allocation.
-///
-/// See the [module-level documentation](../../std/boxed/index.html) for more.
+/// docs
+#[cfg(stage0)]
 #[lang = "owned_box"]
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T: ?Sized>(Unique<T>);
+
+/// A pointer type for heap allocation.
+///
+/// See the [module-level documentation](../../std/boxed/index.html) for more.
+#[cfg(not(stage0))]
+#[lang = "owned_box"]
+#[fundamental]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Box<T: ?Sized+?Move>(Unique<T>);
 
 /// `IntermediateBox` represents uninitialized backing storage for `Box`.
 ///
@@ -377,7 +387,16 @@ impl<T: ?Sized> Box<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
+    fn drop(&mut self) {
+        // FIXME: Do nothing, drop is currently performed by compiler.
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+unsafe impl<#[may_dangle] T: ?Sized+?Move> Drop for Box<T> {
     fn drop(&mut self) {
         // FIXME: Do nothing, drop is currently performed by compiler.
     }
@@ -752,6 +771,18 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 ///     }
 /// }
 /// ```
+#[cfg(not(stage0))]
+#[rustc_paren_sugar]
+#[unstable(feature = "fnbox",
+           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
+pub trait FnBox<A> {
+    type Output: ?Move;
+
+    fn call_box(self: Box<Self>, args: A) -> Self::Output;
+}
+
+/// docs
+#[cfg(stage0)]
 #[rustc_paren_sugar]
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]

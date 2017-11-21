@@ -1707,6 +1707,15 @@ impl Location {
             dominators.is_dominated_by(other.block, self.block)
         }
     }
+
+    pub fn source_info<'tcx>(&self, mir: &Mir<'tcx>) -> SourceInfo {
+        let block = &mir[self.block];
+        if let Some(stmt) = block.statements.get(self.statement_index) {
+            stmt.source_info
+        } else {
+            block.terminator().source_info
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

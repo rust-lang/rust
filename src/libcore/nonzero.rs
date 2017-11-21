@@ -14,6 +14,8 @@
             issue = "27730")]
 
 use ops::CoerceUnsized;
+#[cfg(not(stage0))]
+use marker::Move;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
 pub unsafe trait Zeroable {
@@ -24,8 +26,18 @@ pub unsafe trait Zeroable {
 macro_rules! impl_zeroable_for_pointer_types {
     ( $( $Ptr: ty )+ ) => {
         $(
+            #[cfg(stage0)]
             /// For fat pointers to be considered "zero", only the "data" part needs to be null.
             unsafe impl<T: ?Sized> Zeroable for $Ptr {
+                #[inline]
+                fn is_zero(&self) -> bool {
+                    // Cast because `is_null` is only available on thin pointers
+                    (*self as *mut u8).is_null()
+                }
+            }
+            #[cfg(not(stage0))]
+            /// For fat pointers to be considered "zero", only the "data" part needs to be null.
+            unsafe impl<T: ?Sized+?Move> Zeroable for $Ptr {
                 #[inline]
                 fn is_zero(&self) -> bool {
                     // Cast because `is_null` is only available on thin pointers

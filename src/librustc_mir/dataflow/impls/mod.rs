@@ -37,6 +37,10 @@ pub use self::storage_liveness::*;
 #[allow(dead_code)]
 pub(super) mod borrows;
 
+mod observed_lvals;
+
+pub use self::observed_lvals::*;
+
 /// `MaybeInitializedLvals` tracks all l-values that might be
 /// initialized upon reaching a particular point in the control flow
 /// for a function.

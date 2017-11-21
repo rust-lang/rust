@@ -24,10 +24,9 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use astconv::{AstConv, Bounds};
+use astconv::{AstConv, Bounds, ImplicitBounds};
 use lint;
 use constrained_type_params as ctp;
-use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
 use rustc::traits::Reveal;
@@ -683,7 +682,10 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let superbounds1 = compute_bounds(&icx,
                                       self_param_ty,
                                       bounds,
-                                      SizedByDefault::No,
+                                      ImplicitBounds {
+                                          sized_trait: false,
+                                          move_trait: true,
+                                      },
                                       item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
@@ -1279,48 +1281,35 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-// Is it marked with ?Sized
-fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+// Is it marked with ?Move/?Sized
+fn opt_out_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                 ast_bounds: &[hir::TyParamBound],
-                                span: Span) -> bool
+                                span: Span,
+                                mut defaults: ImplicitBounds) -> ImplicitBounds
 {
     let tcx = astconv.tcx();
-
-    // Try to find an unbound in bounds.
-    let mut unbound = None;
     for ab in ast_bounds {
         if let &hir::TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
-            if unbound.is_none() {
-                unbound = Some(ptr.trait_ref.clone());
+            let trait_id = if let Def::Trait(def_id) = ptr.trait_ref.path.def {
+                Some(def_id)
             } else {
-                span_err!(tcx.sess, span, E0203,
-                          "type parameter has more than one relaxed default \
-                                                bound, only one is supported");
+                None
+            };
+
+            if defaults.move_trait && trait_id == tcx.lang_items().move_trait() {
+                defaults.move_trait = false;
+            } else if defaults.sized_trait && trait_id == tcx.lang_items().sized_trait() {
+                defaults.sized_trait = false;
+            } else {
+                tcx.sess.span_warn(span,
+                                        "default bound relaxed for a type parameter, but \
+                                        this does nothing because the given bound is not \
+                                        a default. Only `?Sized` and `?Move` is supported");
             }
         }
     }
 
-    let kind_id = tcx.lang_items().require(SizedTraitLangItem);
-    match unbound {
-        Some(ref tpb) => {
-            // FIXME(#8559) currently requires the unbound to be built-in.
-            if let Ok(kind_id) = kind_id {
-                if tpb.path.def != Def::Trait(kind_id) {
-                    tcx.sess.span_warn(span,
-                                       "default bound relaxed for a type parameter, but \
-                                       this does nothing because the given bound is not \
-                                       a default. Only `?Sized` is supported");
-                }
-            }
-        }
-        _ if kind_id.is_ok() => {
-            return false;
-        }
-        // No lang item for Sized, so we can't add it as a bound.
-        None => {}
-    }
-
-    true
+    defaults
 }
 
 /// Returns the early-bound lifetimes declared in this generics
@@ -1418,7 +1407,10 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
             let bounds = compute_bounds(&icx, anon_ty, bounds,
-                                        SizedByDefault::Yes,
+                                        ImplicitBounds {
+                                            sized_trait: true,
+                                            move_trait: false,
+                                        },
                                         span);
             return ty::GenericPredicates {
                 parent: None,
@@ -1475,7 +1467,10 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let bounds = compute_bounds(&icx,
                                     param_ty,
                                     &param.bounds,
-                                    SizedByDefault::Yes,
+                                    ImplicitBounds {
+                                        sized_trait: true,
+                                        move_trait: true,
+                                    },
                                     param.span);
         predicates.extend(bounds.predicates(tcx, param_ty));
     }
@@ -1550,7 +1545,10 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let bounds = compute_bounds(&ItemCtxt::new(tcx, def_id),
                                         assoc_ty,
                                         bounds,
-                                        SizedByDefault::Yes,
+                                        ImplicitBounds {
+                                            sized_trait: true,
+                                            move_trait: true,
+                                        },
                                         trait_item.span);
 
             bounds.predicates(tcx, assoc_ty).into_iter()
@@ -1565,7 +1563,10 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
         index += 1;
         let bounds = compute_bounds(&icx, param_ty, info.bounds,
-                                    SizedByDefault::Yes,
+                                    ImplicitBounds {
+                                            sized_trait: true,
+                                            move_trait: true,
+                                    },
                                     info.span);
         predicates.extend(bounds.predicates(tcx, param_ty));
     }
@@ -1590,15 +1591,13 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub enum SizedByDefault { Yes, No, }
-
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         param_ty: Ty<'tcx>,
                                         ast_bounds: &[hir::TyParamBound],
-                                        sized_by_default: SizedByDefault,
+                                        defaults: ImplicitBounds,
                                         span: Span)
                                         -> Bounds<'tcx>
 {
@@ -1630,15 +1629,11 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 
     trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
 
-    let implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
-        !is_unsized(astconv, ast_bounds, span)
-    } else {
-        false
-    };
+    let implicit_bounds = opt_out_bounds(astconv, ast_bounds, span, defaults);
 
     Bounds {
         region_bounds,
-        implicitly_sized,
+        implicit_bounds,
         trait_bounds,
         projection_bounds,
     }

@@ -77,7 +77,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let id = tcx.hir.as_local_node_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
-    let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx, param_env) {
+    let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx, param_env, false) {
         Ok(move_data) => move_data,
         Err((move_data, move_errors)) => {
             for move_error in move_errors {

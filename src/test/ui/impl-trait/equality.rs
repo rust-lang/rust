@@ -27,15 +27,6 @@ fn two(x: bool) -> impl Foo {
     //~| expected i32, found u32
 }
 
-fn sum_to(n: u32) -> impl Foo {
-    if n == 0 {
-        0
-    } else {
-        n + sum_to(n - 1)
-        //~^ ERROR no implementation for `u32 + impl Foo`
-    }
-}
-
 trait Leak: Sized {
     type T;
     fn leak(self) -> Self::T;

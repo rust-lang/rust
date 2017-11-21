@@ -230,6 +230,7 @@ language_item_table! {
     F64ImplItem,                     "f64",                     f64_impl;
 
     SizedTraitLangItem,              "sized",                   sized_trait;
+    MoveTraitLangItem,               "move",                    move_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
     CloneTraitLangItem,              "clone",                   clone_trait;
@@ -266,6 +267,7 @@ language_item_table! {
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
 
     UnsafeCellTypeLangItem,          "unsafe_cell",             unsafe_cell_type;
+    MovableCellTypeLangItem,         "movable_cell",            movable_cell_type;
 
     DerefTraitLangItem,              "deref",                   deref_trait;
     DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
@@ -305,6 +307,7 @@ language_item_table! {
 
     OwnedBoxLangItem,                "owned_box",               owned_box;
 
+    ImmovableItem,                   "immovable",               immovable;
     PhantomDataItem,                 "phantom_data",            phantom_data;
 
     NonZeroItem,                     "non_zero",                non_zero;

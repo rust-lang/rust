@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits, immovable_types)]
+#![feature(immovable_types)]
 
-use std::marker::Move;
+use std::marker::Immovable;
 
-trait Foo: ?Move {}
-impl Foo for .. {}
-//~^ ERROR The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`
-//~^^ WARN this was previously accepted by the compiler
+static FOO: Immovable = Immovable;
+
+pub fn main() {}

@@ -35,6 +35,7 @@ pub mod elaborate_drops;
 pub mod add_call_guards;
 pub mod promote_consts;
 pub mod qualify_consts;
+pub mod move_check;
 pub mod dump_mir;
 pub mod deaggregator;
 pub mod instcombine;
@@ -46,6 +47,7 @@ pub mod nll;
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
     self::check_unsafety::provide(providers);
+    self::move_check::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_built,
@@ -206,6 +208,7 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         // this point, before we steal the mir-const result.
         let _ = tcx.mir_const_qualif(def_id);
     }
+    let _  = tcx.moveck(def_id);
 
     let mut mir = tcx.mir_const(def_id).steal();
     run_passes![tcx, mir, def_id, 1;

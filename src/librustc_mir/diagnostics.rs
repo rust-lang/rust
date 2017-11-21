@@ -1782,4 +1782,6 @@ register_diagnostics! {
     E0594, // cannot assign to {}
     E0598, // lifetime of {} is too short to guarantee its contents can be...
     E0625, // thread-local statics cannot be accessed at compile-time
+    E0801, // cannot move value whose address is observed
+    E0802, // cannot move immovable value out of a Box type
 }

@@ -31,12 +31,14 @@ struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'gcx>,
     data: MoveData<'tcx>,
     errors: Vec<MoveError<'tcx>>,
+    move_check: bool,
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn new(mir: &'a Mir<'tcx>,
            tcx: TyCtxt<'a, 'gcx, 'tcx>,
-           param_env: ty::ParamEnv<'gcx>)
+           param_env: ty::ParamEnv<'gcx>,
+           move_check: bool)
            -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
@@ -46,6 +48,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
             tcx,
             param_env,
             errors: Vec::new(),
+            move_check,
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(mir),
@@ -199,10 +202,11 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
 
 pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>,
                                            tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                           param_env: ty::ParamEnv<'gcx>)
+                                           param_env: ty::ParamEnv<'gcx>,
+                                           move_check: bool)
                                            -> Result<MoveData<'tcx>,
                                                      (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
-    let mut builder = MoveDataBuilder::new(mir, tcx, param_env);
+    let mut builder = MoveDataBuilder::new(mir, tcx, param_env, move_check);
 
     for (bb, block) in mir.basic_blocks().iter_enumerated() {
         for (i, stmt) in block.statements.iter().enumerate() {
@@ -283,7 +287,11 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                     self.gather_operand(operand);
                 }
             }
-            Rvalue::Ref(..) |
+            Rvalue::Ref(_, _, ref location) => {
+                if self.builder.move_check {
+                    self.create_move_path(location);
+                }
+            }
             Rvalue::Discriminant(..) |
             Rvalue::Len(..) |
             Rvalue::NullaryOp(NullOp::SizeOf, _) |
@@ -324,7 +332,10 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             }
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
-                self.gather_move(location, false);
+                // Drops are by reference, so they don't move the value
+                if !self.builder.move_check {
+                    self.gather_move(location, false);
+                }
             }
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
@@ -360,6 +371,11 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let erased_ty = gcx.lift(&tcx.erase_regions(&lv_ty)).unwrap();
         if !force && !erased_ty.moves_by_default(gcx, self.builder.param_env, DUMMY_SP) {
             debug!("gather_move({:?}, {:?}) - {:?} is Copy. skipping", self.loc, lval, lv_ty);
+            return
+        }
+
+        if self.builder.move_check && erased_ty.is_move(gcx, self.builder.param_env, DUMMY_SP) {
+            debug!("gather_move({:?}, {:?}) - {:?} is Move. skipping", self.loc, lval, lv_ty);
             return
         }
 
