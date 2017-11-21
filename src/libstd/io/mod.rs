@@ -366,32 +366,50 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
-    let ret;
+    let size_snapshot = r.size_snapshot();
+
+    // Determine the size to start reading with.
+    let initial_resize_len = if let Some(size) = size_snapshot {
+        // We know the (present) size. Don't use reserve_exact because when the
+        // initial size of buf is zero, reserve should still give us exactly the
+        // size we request, and when it's non-zero, we're concatenating things.
+        g.buf.reserve(size);
+        start_len + size
+    } else {
+        // We don't know the size. Start with a relatively small guess.
+        g.buf.reserve(32);
+        g.buf.capacity()
+    };
+    unsafe {
+        g.buf.set_len(initial_resize_len);
+        r.initializer().initialize(&mut g.buf[g.len..]);
+    }
+
     loop {
+        match r.read(&mut g.buf[g.len..]) {
+            Ok(0) => break,
+            Ok(n) => g.len += n,
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        }
+
         if g.len == g.buf.len() {
+            if size_snapshot.is_some() {
+                // We finished what the snapshot told us, so we're done.
+                debug_assert_eq!(size_snapshot.unwrap(), g.len - start_len);
+                break;
+            }
+            // We've used up our available buffer space; allocate more.
+            g.buf.reserve(32);
+            let capacity = g.buf.capacity();
             unsafe {
-                g.buf.reserve(32);
-                let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
                 r.initializer().initialize(&mut g.buf[g.len..]);
             }
         }
-
-        match r.read(&mut g.buf[g.len..]) {
-            Ok(0) => {
-                ret = Ok(g.len - start_len);
-                break;
-            }
-            Ok(n) => g.len += n,
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => {
-                ret = Err(e);
-                break;
-            }
-        }
     }
 
-    ret
+    Ok(g.len - start_len)
 }
 
 /// The `Read` trait allows for reading bytes from a source.
