@@ -745,7 +745,10 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           E: 'enc + TyEncoder,
           Q::Value: Encodable,
 {
-    for (key, entry) in Q::get_cache_internal(tcx).map.iter() {
+    use super::plumbing::CacheEntryIterable;
+
+    let cache = Q::get_cache_internal(tcx);
+    for (key, entry) in cache.cache_entry_iter() {
         if Q::cache_on_disk(key.clone()) {
             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
