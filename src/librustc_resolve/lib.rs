@@ -1910,7 +1910,9 @@ impl<'a> Resolver<'a> {
                                     });
                                 }
                                 TraitItemKind::Type(..) => {
-                                    this.with_type_parameter_rib(NoTypeParameters, |this| {
+                                    let type_parameters = HasTypeParameters(&trait_item.generics,
+                                                                            ItemRibKind);
+                                    this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
                                     });
                                 }
@@ -2160,7 +2162,13 @@ impl<'a> Resolver<'a> {
                                                             impl_item.span,
                                             |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
 
-                                        this.visit_ty(ty);
+                                        // We also need a new scope for the associated type
+                                        // specific type parameters.
+                                        let type_parameters =
+                                            HasTypeParameters(&impl_item.generics, ItemRibKind);
+                                        this.with_type_parameter_rib(type_parameters, |this| {
+                                            this.visit_ty(ty);
+                                        });
                                     }
                                     ImplItemKind::Macro(_) =>
                                         panic!("unexpanded macro in resolve!"),
