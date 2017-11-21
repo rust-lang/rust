@@ -160,7 +160,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => for region in regioncx.regions() {
-                writeln!(out, "| {:?}: {:?}", region, regioncx.region_value(region))?;
+                writeln!(out, "| {:?}: {}", region, regioncx.region_value_str(region))?;
             },
 
             // Before each basic block, dump out the values
