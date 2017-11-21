@@ -1947,7 +1947,8 @@ impl<'a> Resolver<'a> {
                 }
             }
 
-            ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_)=> {
+            ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_) |
+            ItemKind::Placeholder => {
                 // do nothing, these are just around to be encoded
             }
 

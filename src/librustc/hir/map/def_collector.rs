@@ -113,6 +113,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 return visit::walk_item(self, i);
             }
             ItemKind::Mod(..) => DefPathData::Module(i.ident.name.as_str()),
+            ItemKind::Placeholder |
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
                 DefPathData::ValueNs(i.ident.name.as_str()),
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name.as_str()),

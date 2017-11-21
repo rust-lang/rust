@@ -1757,7 +1757,9 @@ impl<'a> LoweringContext<'a> {
                                bounds,
                                items)
             }
-            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
+            ItemKind::Placeholder | ItemKind::MacroDef(..) | ItemKind::Mac(..) => {
+                panic!("Shouldn't still be around")
+            }
         }
 
         // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to

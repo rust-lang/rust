@@ -548,6 +548,7 @@ impl Sig for ast::Item {
             // FIXME should implement this (e.g., pub use).
             ast::ItemKind::Use(_) => Err("import"),
             ast::ItemKind::Mac(..) | ast::ItemKind::MacroDef(_) => Err("Macro"),
+            ast::ItemKind::Placeholder => Err("placeholder"),
         }
     }
 }
