@@ -14,6 +14,7 @@ pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 use hir::def_id::{CrateNum, DefIndex};
 use ich::Fingerprint;
 
+use ich;
 use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
@@ -22,6 +23,7 @@ use session::config::DebugInfoLevel;
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
+use util::common::ProfileQueriesMsg;
 
 use rustc_data_structures::sync::{self, Lrc, RwLock, Lock, LockCell, ReadGuard};
 
@@ -30,6 +32,7 @@ use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
+use syntax::symbol::Symbol;
 use syntax::parse;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
@@ -48,6 +51,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
+use std::sync::mpsc;
 
 mod code_stats;
 pub mod config;
@@ -111,6 +115,12 @@ pub struct Session {
     pub imported_macro_spans: Lock<HashMap<Span, (String, Span)>>,
 
     incr_comp_session: RwLock<IncrCompSession>,
+
+    /// A cache of attributes ignored by StableHashingContext
+    pub ignored_attr_names: FxHashSet<Symbol>,
+
+    /// Used by -Z profile-queries in util::common
+    pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -893,6 +903,8 @@ pub fn build_session_(sopts: config::Options,
         injected_panic_runtime: LockCell::new(None),
         imported_macro_spans: Lock::new(HashMap::new()),
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
+        ignored_attr_names: ich::compute_ignored_attr_names(),
+        profile_channel: Lock::new(None),
         perf_stats: PerfStats {
             svh_time: LockCell::new(Duration::from_secs(0)),
             incr_comp_hashes_time: LockCell::new(Duration::from_secs(0)),

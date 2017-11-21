@@ -86,7 +86,7 @@ extern crate rustc_errors as errors;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate jobserver;
-
+#[macro_use] extern crate scoped_tls;
 extern crate serialize as rustc_serialize; // used by deriving
 
 // Note that librustc doesn't actually depend on these crates, see the note in

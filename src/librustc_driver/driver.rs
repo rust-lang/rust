@@ -52,6 +52,7 @@ use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use rustc_data_structures::sync::{Sync, Lrc};
+use rustc::util::common::PROFQ_CHAN;
 use std::sync::mpsc;
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
@@ -74,6 +75,18 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
+    PROFQ_CHAN.set(&sess.profile_channel, || {
+        compile_input_impl(sess, cstore, input, outdir, output, addl_plugins, control)
+    })
+}
+
+fn compile_input_impl(sess: &Session,
+                      cstore: &CStore,
+                      input: &Input,
+                      outdir: &Option<PathBuf>,
+                      output: &Option<PathBuf>,
+                      addl_plugins: Option<Vec<String>>,
+                      control: &CompileController) -> CompileResult {
     use rustc::session::config::CrateType;
 
     macro_rules! controller_entry_point {

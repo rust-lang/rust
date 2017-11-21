@@ -34,10 +34,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvi
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::fx::FxHashSet;
 
-rustc_global!(static IGNORED_ATTR_NAMES: FxHashSet<Symbol> = {
+pub fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
     ich::IGNORED_ATTRIBUTES.iter().map(|&s| Symbol::intern(s)).collect()
-});
+}
 
 /// This is the context state available during incr. comp. hashing. It contains
 /// enough information to transform DefIds and HirIds into stable DefPaths (i.e.
@@ -177,9 +177,7 @@ impl<'gcx> StableHashingContext<'gcx> {
 
     #[inline]
     pub fn is_ignored_attr(&self, name: Symbol) -> bool {
-        rustc_access_global!(IGNORED_ATTR_NAMES, |ignored_attrs| {
-            ignored_attrs.contains(&name)
-        })
+        self.sess.ignored_attr_names.contains(&name)
     }
 
     pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
