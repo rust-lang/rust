@@ -140,14 +140,6 @@ macro_rules! __unstable_detect_feature {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::xsaveopt{})
     };
-    ("xsave") => {
-        $crate::vendor::__unstable_detect_feature(
-            $crate::vendor::__Feature::xsave{})
-    };
-    ("xsaveopt") => {
-        $crate::vendor::__unstable_detect_feature(
-            $crate::vendor::__Feature::xsaveopt{})
-    };
     ("xsaves") => {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::xsaves{})
@@ -265,9 +257,9 @@ pub fn detect_features() -> usize {
     // leaf value for subsequent calls of `cpuinfo` in range [0,
     // 0x8000_0000]. - The vendor ID is stored in 12 u8 ascii chars,
     // returned in EBX, EDX, and   ECX (in that order):
-    let (max_leaf, vendor_id) = unsafe {
+    let (max_basic_leaf, vendor_id) = unsafe {
         let CpuidResult {
-            eax: max_leaf,
+            eax: max_basic_leaf,
             ebx,
             ecx,
             edx,
@@ -278,10 +270,10 @@ pub fn detect_features() -> usize {
             mem::transmute(ecx),
         ];
         let vendor_id: [u8; 12] = mem::transmute(vendor_id);
-        (max_leaf, vendor_id)
+        (max_basic_leaf, vendor_id)
     };
 
-    if max_leaf < 1 {
+    if max_basic_leaf < 1 {
         // Earlier Intel 486, CPUID not implemented
         return value;
     }
@@ -296,7 +288,8 @@ pub fn detect_features() -> usize {
 
     // EAX = 7, ECX = 0: Queries "Extended Features";
     // Contains information about bmi,bmi2, and avx2 support.
-    let (extended_features_ebx, extended_features_ecx) = if max_leaf >= 7 {
+    let (extended_features_ebx, extended_features_ecx) = if max_basic_leaf >= 7
+    {
         let CpuidResult { ebx, ecx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
         (ebx, ecx)
     } else {
@@ -307,13 +300,13 @@ pub fn detect_features() -> usize {
     // - EAX returns the max leaf value for extended information, that is,
     // `cpuid` calls in range [0x8000_0000; u32::MAX]:
     let CpuidResult {
-        eax: extended_max_leaf,
+        eax: extended_max_basic_leaf,
         ..
     } = unsafe { __cpuid(0x8000_0000_u32) };
 
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
     // Bits"
-    let extended_proc_info_ecx = if extended_max_leaf >= 1 {
+    let extended_proc_info_ecx = if extended_max_basic_leaf >= 1 {
         let CpuidResult { ecx, .. } = unsafe { __cpuid(0x8000_0001_u32) };
         ecx
     } else {
@@ -393,7 +386,7 @@ pub fn detect_features() -> usize {
 
             // Processor Extended State Enumeration Sub-leaf (EAX = 0DH, ECX =
             // 1)
-            if max_leaf >= 0xd {
+            if max_basic_leaf >= 0xd {
                 let CpuidResult {
                     eax: proc_extended_state1_eax,
                     ..
