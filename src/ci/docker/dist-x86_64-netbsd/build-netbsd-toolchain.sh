@@ -52,7 +52,7 @@ curl $URL/2017-03-17-netbsd-comp.tgz | \
 cd usr/src
 
 # The options, in order, do the following
-# * this is an unpriviledged build
+# * this is an unprivileged build
 # * output to a predictable location
 # * disable various uneeded stuff
 MKUNPRIVED=yes TOOLDIR=/x-tools/x86_64-unknown-netbsd \

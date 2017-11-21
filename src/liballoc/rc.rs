@@ -346,7 +346,7 @@ impl<T> Rc<T> {
             unsafe {
                 let val = ptr::read(&*this); // copy the contained object
 
-                // Indicate to Weaks that they can't be promoted by decrememting
+                // Indicate to Weaks that they can't be promoted by decrementing
                 // the strong count, and then remove the implicit "strong weak"
                 // pointer while also handling drop logic by just crafting a
                 // fake Weak.
