@@ -37,7 +37,7 @@ if [ "$DIST_SRC" = "" ]; then
 fi
 
 # If we're deploying artifacts then we set the release channel, otherwise if
-# we're not deploying then we want to be sure to enable all assertions becauase
+# we're not deploying then we want to be sure to enable all assertions because
 # we'll be running tests
 #
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`

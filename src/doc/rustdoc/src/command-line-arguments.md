@@ -279,7 +279,7 @@ $ rustdoc README.md --markdown-playground-url https://play.rust-lang.org/
 ```
 
 When rendering a Markdown file, this flag gives the base URL of the Rust
-Playround, to use for generating `Run` buttons.
+Playground, to use for generating `Run` buttons.
 
 
 ## `--markdown-no-toc`: don't generate a table of contents
@@ -291,7 +291,7 @@ $ rustdoc README.md --markdown-no-toc
 ```
 
 When generating documentation from a Markdown file, by default, `rustdoc` will
-generate a table of contents. This flag supresses that, and no TOC will be
+generate a table of contents. This flag suppresses that, and no TOC will be
 generated.
 
 

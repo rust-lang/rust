@@ -1427,12 +1427,12 @@ mod pattern {
         Reject(6, 7),
         Match (7, 7),
     ]);
-    make_test!(str_searcher_mulibyte_haystack, " ", "├──", [
+    make_test!(str_searcher_multibyte_haystack, " ", "├──", [
         Reject(0, 3),
         Reject(3, 6),
         Reject(6, 9),
     ]);
-    make_test!(str_searcher_empty_needle_mulibyte_haystack, "", "├──", [
+    make_test!(str_searcher_empty_needle_multibyte_haystack, "", "├──", [
         Match (0, 0),
         Reject(0, 3),
         Match (3, 3),
@@ -1455,7 +1455,7 @@ mod pattern {
         Match (5, 6),
         Reject(6, 7),
     ]);
-    make_test!(char_searcher_mulibyte_haystack, ' ', "├──", [
+    make_test!(char_searcher_multibyte_haystack, ' ', "├──", [
         Reject(0, 3),
         Reject(3, 6),
         Reject(6, 9),

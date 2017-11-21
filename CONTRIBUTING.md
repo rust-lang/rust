@@ -421,7 +421,7 @@ Here are those same steps in detail:
 
 These instructions are specific to updating `rustfmt`, however they may apply
 to the other submodules as well. Please help by improving these instructions
-if you find any discrepencies or special cases that need to be addressed.
+if you find any discrepancies or special cases that need to be addressed.
 
 To update the `rustfmt` submodule, start by running the appropriate
 [`git submodule` command](https://git-scm.com/book/en/v2/Git-Tools-Submodules).

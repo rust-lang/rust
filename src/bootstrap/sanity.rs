@@ -78,7 +78,7 @@ pub fn check(build: &mut Build) {
     }
 
     let mut cmd_finder = Finder::new();
-    // If we've got a git directory we're gona need git to update
+    // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
     if build.rust_info.is_git() {
         cmd_finder.must_have("git");
