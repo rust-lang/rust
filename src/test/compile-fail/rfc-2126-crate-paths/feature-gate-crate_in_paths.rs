@@ -8,16 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {}
+struct S;
 
-macro_rules! m {
-    () => {
-        use a::$crate; //~ ERROR unresolved import `a::$crate`
-        use a::$crate::b; //~ ERROR `$crate` in paths can only be used in start position
-        type A = a::$crate; //~ ERROR `$crate` in paths can only be used in start position
-    }
+fn main() {
+    let _ = ::crate::S; //~ ERROR `crate` in paths is experimental
 }
-
-m!();
-
-fn main() {}

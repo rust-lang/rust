@@ -8,16 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {}
+#![feature(crate_in_paths)]
 
-macro_rules! m {
-    () => {
-        use a::$crate; //~ ERROR unresolved import `a::$crate`
-        use a::$crate::b; //~ ERROR `$crate` in paths can only be used in start position
-        type A = a::$crate; //~ ERROR `$crate` in paths can only be used in start position
+use crate::m::f;
+
+mod m {
+    pub fn f() -> u8 { 1 }
+    pub fn g() -> u8 { 2 }
+
+    // OK, visibilities are implicitly absolute like imports
+    pub(in crate::m) struct S;
+}
+
+mod n
+{
+    use crate::m::f;
+    pub fn check() {
+        assert_eq!(f(), 1);
+        assert_eq!(::crate::m::g(), 2);
     }
 }
 
-m!();
-
-fn main() {}
+fn main() {
+    assert_eq!(f(), 1);
+    assert_eq!(::crate::m::g(), 2);
+    n::check();
+}

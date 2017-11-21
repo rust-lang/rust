@@ -114,7 +114,7 @@ impl<'a> Resolver<'a> {
                 // Extract and intern the module part of the path. For
                 // globs and lists, the path is found directly in the AST;
                 // for simple paths we have to munge the path a little.
-                let mut module_path: Vec<_> = match view_path.node {
+                let module_path: Vec<_> = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
                                  .split_last()
@@ -133,14 +133,6 @@ impl<'a> Resolver<'a> {
                                          .collect()
                     }
                 };
-
-                // This can be removed once warning cycle #36888 is complete.
-                if module_path.len() >= 2 &&
-                    module_path[0].node.name == keywords::CrateRoot.name() &&
-                    token::Ident(module_path[1].node).is_path_segment_keyword()
-                {
-                    module_path.remove(0);
-                }
 
                 // Build up the import directives.
                 let is_prelude = attr::contains_name(&item.attrs, "prelude_import");

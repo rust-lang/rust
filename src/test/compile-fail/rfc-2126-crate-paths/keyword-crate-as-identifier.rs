@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
-// This file was auto-generated using 'src/etc/generate-keyword-tests.py crate'
+#![feature(crate_in_paths)]
 
 fn main() {
-    let crate = "foo"; //~ error: expected pattern, found keyword `crate`
+    let crate = 0; //~ ERROR `crate` can only be used in absolute paths
 }

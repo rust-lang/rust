@@ -2865,12 +2865,13 @@ impl<'a> Resolver<'a> {
             debug!("resolve_path ident {} {:?}", i, ident);
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
+            let name = ident.node.name;
 
-            if i == 0 && ns == TypeNS && ident.node.name == keywords::SelfValue.name() {
+            if i == 0 && ns == TypeNS && name == keywords::SelfValue.name() {
                 let mut ctxt = ident.node.ctxt.modern();
                 module = Some(self.resolve_self(&mut ctxt, self.current_module));
                 continue
-            } else if allow_super && ns == TypeNS && ident.node.name == keywords::Super.name() {
+            } else if allow_super && ns == TypeNS && name == keywords::Super.name() {
                 let mut ctxt = ident.node.ctxt.modern();
                 let self_module = match i {
                     0 => self.resolve_self(&mut ctxt, self.current_module),
@@ -2886,12 +2887,41 @@ impl<'a> Resolver<'a> {
             }
             allow_super = false;
 
-            if i == 0 && ns == TypeNS && ident.node.name == keywords::CrateRoot.name() {
-                module = Some(self.resolve_crate_root(ident.node.ctxt.modern()));
-                continue
-            } else if i == 0 && ns == TypeNS && ident.node.name == keywords::DollarCrate.name() {
-                module = Some(self.resolve_crate_root(ident.node.ctxt));
-                continue
+            if ns == TypeNS {
+                if (i == 0 && name == keywords::CrateRoot.name()) ||
+                   (i == 1 && name == keywords::Crate.name() &&
+                              path[0].node.name == keywords::CrateRoot.name()) {
+                    // `::a::b` or `::crate::a::b`
+                    module = Some(self.resolve_crate_root(ident.node.ctxt.modern()));
+                    continue
+                } else if i == 0 && name == keywords::DollarCrate.name() {
+                    // `$crate::a::b`
+                    module = Some(self.resolve_crate_root(ident.node.ctxt));
+                    continue
+                }
+            }
+
+            // Report special messages for path segment keywords in wrong positions.
+            if name == keywords::CrateRoot.name() && i != 0 ||
+               name == keywords::DollarCrate.name() && i != 0 ||
+               name == keywords::SelfValue.name() && i != 0 ||
+               name == keywords::SelfType.name() && i != 0 ||
+               name == keywords::Super.name() && i != 0 ||
+               name == keywords::Crate.name() && i != 1 &&
+                    path[0].node.name != keywords::CrateRoot.name() {
+                let name_str = if name == keywords::CrateRoot.name() {
+                    format!("crate root")
+                } else {
+                    format!("`{}`", name)
+                };
+                let msg = if i == 1 && path[0].node.name == keywords::CrateRoot.name() {
+                    format!("global paths cannot start with {}", name_str)
+                } else if i == 0 && name == keywords::Crate.name() {
+                    format!("{} can only be used in absolute paths", name_str)
+                } else {
+                    format!("{} in paths can only be used in start position", name_str)
+                };
+                return PathResult::Failed(ident.span, msg, false);
             }
 
             let binding = if let Some(module) = module {
@@ -2942,7 +2972,7 @@ impl<'a> Resolver<'a> {
                     let msg = if module.and_then(ModuleData::def) == self.graph_root.def() {
                         let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
                         let mut candidates =
-                            self.lookup_import_candidates(ident.node.name, TypeNS, is_mod);
+                            self.lookup_import_candidates(name, TypeNS, is_mod);
                         candidates.sort_by_key(|c| (c.path.segments.len(), c.path.to_string()));
                         if let Some(candidate) = candidates.get(0) {
                             format!("Did you mean `{}`?", candidate.path)

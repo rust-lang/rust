@@ -18,7 +18,7 @@ mod foo {
 
     pub fn g() {
         use ::super::main; //~ ERROR global paths cannot start with `super`
-        main();
+        main(); //~ ERROR cannot find function `main` in this scope
     }
 }
 

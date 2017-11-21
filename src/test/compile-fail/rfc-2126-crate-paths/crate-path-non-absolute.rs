@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {}
+#![feature(crate_in_paths)]
 
-macro_rules! m {
-    () => {
-        use a::$crate; //~ ERROR unresolved import `a::$crate`
-        use a::$crate::b; //~ ERROR `$crate` in paths can only be used in start position
-        type A = a::$crate; //~ ERROR `$crate` in paths can only be used in start position
+struct S;
+
+mod m {
+    fn f() {
+        let s = crate::S; //~ ERROR `crate` can only be used in absolute paths
     }
 }
-
-m!();
 
 fn main() {}

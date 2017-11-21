@@ -33,7 +33,7 @@ use syntax_pos::Span;
 use errors::{DiagnosticBuilder, Handler, FatalError};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
-use symbol::Symbol;
+use symbol::{keywords, Symbol};
 
 use std::env;
 
@@ -420,6 +420,9 @@ declare_features! (
 
     // #![wasm_import_memory] attribute
     (active, wasm_import_memory, "1.22.0", None),
+
+    // `crate` in paths
+    (active, crate_in_paths, "1.23.0", Some(45477)),
 );
 
 declare_features! (
@@ -1632,6 +1635,17 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
+    }
+
+    fn visit_path(&mut self, path: &'a ast::Path, _id: NodeId) {
+        for segment in &path.segments {
+            if segment.identifier.name == keywords::Crate.name() {
+                gate_feature_post!(&self, crate_in_paths, segment.span,
+                                   "`crate` in paths is experimental");
+            }
+        }
+
+        visit::walk_path(self, path);
     }
 
     fn visit_vis(&mut self, vis: &'a ast::Visibility) {
