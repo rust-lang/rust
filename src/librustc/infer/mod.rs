@@ -181,6 +181,9 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // obligations within. This is expected to be done 'late enough'
     // that all type inference variables have been bound and so forth.
     region_obligations: RefCell<Vec<(ast::NodeId, RegionObligation<'tcx>)>>,
+
+    // true if trait selection in this context should emit `default impl` candiates
+    pub emit_defaul_impl_candidates: Cell<bool>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -452,6 +455,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
             region_obligations: RefCell::new(vec![]),
+            emit_defaul_impl_candidates: Cell::new(false)
         }))
     }
 }

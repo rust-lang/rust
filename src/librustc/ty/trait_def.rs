@@ -92,16 +92,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                    self_ty: Ty<'tcx>,
                                                    mut f: F)
     {
-        let mut emit_impl = |impl_def_id: DefId| {
-            if !self.impl_is_default(impl_def_id) {
-                f(impl_def_id);
-            }
-        };
-
         let impls = self.trait_impls_of(def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
-            emit_impl(impl_def_id);
+            f(impl_def_id);
         }
 
         // simplify_type(.., false) basically replaces type parameters and
@@ -132,13 +126,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
-                    emit_impl(impl_def_id);
+                    f(impl_def_id);
                 }
             }
         } else {
             for v in impls.non_blanket_impls.values() {
                 for &impl_def_id in v {
-                    emit_impl(impl_def_id);
+                    f(impl_def_id);
                 }
             }
         }

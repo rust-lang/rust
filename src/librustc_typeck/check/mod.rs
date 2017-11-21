@@ -1745,6 +1745,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                param_env: ty::ParamEnv<'tcx>,
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
+        FnCtxt::set_emit_default_impl_candidates(inh, body_id);
+
         FnCtxt {
             body_id,
             param_env,
@@ -1761,6 +1763,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }),
             inh,
         }
+    }
+
+    fn set_emit_default_impl_candidates(inh: &'a Inherited<'a, 'gcx, 'tcx>,
+                                        body_id: ast::NodeId) {
+        inh.infcx.emit_defaul_impl_candidates.set(
+            match inh.tcx.hir.find(body_id) {
+                Some(Node::NodeItem(..)) => {
+                    if inh.tcx.impl_is_default(inh.tcx.hir.local_def_id(body_id)) {
+                        true
+                    } else {
+                        false
+                    }
+                },
+                _ => false
+            }
+        );
     }
 
     pub fn sess(&self) -> &Session {

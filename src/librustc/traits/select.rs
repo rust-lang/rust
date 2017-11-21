@@ -1296,6 +1296,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return false;
         }
 
+        // Using local cache if the infcx can emit `default impls`
+        if self.infcx.emit_defaul_impl_candidates.get() {
+            return false;
+        }
+
+
         // Otherwise, we can use the global cache.
         true
     }
@@ -1714,18 +1720,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             obligation.predicate.def_id(),
             obligation.predicate.0.trait_ref.self_ty(),
             |impl_def_id| {
-                self.probe(|this, snapshot| { /* [1] */
-                    match this.match_impl(impl_def_id, obligation, snapshot) {
-                        Ok(skol_map) => {
-                            candidates.vec.push(ImplCandidate(impl_def_id));
+                if self.infcx().emit_defaul_impl_candidates.get() ||
+                   !self.tcx().impl_is_default(impl_def_id) {
+                    self.probe(|this, snapshot| { /* [1] */
+                        match this.match_impl(impl_def_id, obligation, snapshot) {
+                            Ok(skol_map) => {
+                                candidates.vec.push(ImplCandidate(impl_def_id));
 
-                            // NB: we can safely drop the skol map
-                            // since we are in a probe [1]
-                            mem::drop(skol_map);
+                                // NB: we can safely drop the skol map
+                                // since we are in a probe [1]
+                                mem::drop(skol_map);
+                            }
+                            Err(_) => { }
                         }
-                        Err(_) => { }
-                    }
-                });
+                    });
+                }
             }
         );
 

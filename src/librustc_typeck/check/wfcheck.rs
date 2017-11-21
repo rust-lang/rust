@@ -343,18 +343,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                                   fcx.body_id,
                                                   &trait_ref,
                                                   ast_trait_ref.path.span);
-
-                    // not registering predicates associcated with a `default impl`
-                    let impl_is_default = fcx.tcx.impl_is_default(item_def_id);
                     for obligation in obligations {
-                        let register = match obligation.predicate {
-                            ty::Predicate::Trait(..)  => !impl_is_default,
-                            _ => true
-                        };
-
-                        if register {
-                            fcx.register_predicate(obligation);
-                        }
+                        fcx.register_predicate(obligation);
                     }
                 }
                 None => {
