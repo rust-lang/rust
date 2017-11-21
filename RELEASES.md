@@ -5,9 +5,6 @@ Language
 --------
 - [`non_snake_case` lint now allows extern no-mangle functions][44966]
 - [Now accepts underscores in unicode escapes][43716]
-- [`#![feature(const_fn)]` is now no longer required for
-  calling const functions.][43017] It's still required for creating
-  constant functions.
 - [`T op= &T` now works for numeric types.][44287] eg. `let mut x = 2; x += &8;`
 - [types that impl `Drop` are now allowed in `const` and `static` types][44456]
 
@@ -45,8 +42,8 @@ Cargo
 Misc
 ----
 - [`libbacktrace` is now available on Apple platforms.][44251]
-- [Stabilised the `compile_fail` attribute for code fences.][43949] This now
-  lets you specify that a given code example will fail to compile.
+- [Stabilised the `compile_fail` attribute for code fences in doc-comments.][43949]
+  This now lets you specify that a given code example will fail to compile.
 
 Compatibility Notes
 -------------------
@@ -624,7 +621,7 @@ Misc
 ----
 
 - [rustdoc can now use pulldown-cmark with the `--enable-commonmark` flag][40338]
-- [Added rust-winbg script for better debugging on Windows][39983]
+- [Added rust-windbg script for better debugging on Windows][39983]
 - [Rust now uses the official cross compiler for NetBSD][40612]
 - [rustdoc now accepts `#` at the start of files][40828]
 - [Fixed jemalloc support for musl][41168]
@@ -1658,7 +1655,7 @@ Diagnostics
 -----------
 
 * [Replace macro backtraces with labeled local uses][35702]
-* [Improve error message for missplaced doc comments][33922]
+* [Improve error message for misplaced doc comments][33922]
 * [Buffer unix and lock windows to prevent message interleaving][35975]
 * [Update lifetime errors to specifically note temporaries][36171]
 * [Special case a few colors for Windows][36178]
@@ -1966,7 +1963,7 @@ Language
   useful](https://github.com/rust-lang/rust/pull/34908)
 * [`macro_rules!` `stmt` matchers correctly consume the entire contents when
   inside non-braces invocations](https://github.com/rust-lang/rust/pull/34886)
-* [Semicolons are properly required as statement delimeters inside
+* [Semicolons are properly required as statement delimiters inside
   `macro_rules!` invocations](https://github.com/rust-lang/rust/pull/34660)
 * [`cfg_attr` works on `path` attributes](https://github.com/rust-lang/rust/pull/34546)
 
@@ -2191,7 +2188,7 @@ Compatibility Notes
 * [`const`s and `static`s may not have unsized types](https://github.com/rust-lang/rust/pull/34443)
 * [The new follow-set rules that place restrictions on `macro_rules!`
   in order to ensure syntax forward-compatibility have been enabled](https://github.com/rust-lang/rust/pull/33982)
-  This was an [ammendment to RFC 550](https://github.com/rust-lang/rfcs/pull/1384),
+  This was an [amendment to RFC 550](https://github.com/rust-lang/rfcs/pull/1384),
   and has been a warning since 1.10.
 * [`cfg` attribute process has been refactored to fix various bugs](https://github.com/rust-lang/rust/pull/33706).
   This causes breakage in some corner cases.
@@ -3348,7 +3345,7 @@ Libraries
 * `FromStr` is [implemented for `SockAddrV4` and `SockAddrV6`][1.5s].
 * There are now `From` conversions [between floating point
   types][1.5f] where the conversions are lossless.
-* Thera are now `From` conversions [between integer types][1.5i] where
+* There are now `From` conversions [between integer types][1.5i] where
   the conversions are lossless.
 * [`fs::Metadata` implements `Clone`][1.5fs].
 * The `parse` method [accepts a leading "+" when parsing
@@ -3548,7 +3545,7 @@ Libraries
 * [`IntoIterator` is implemented for references to `Option` and
   `Result`][into2].
 * [`HashMap` and `HashSet` implement `Extend<&T>` where `T:
-  Copy`][ext] as part of [RFC 839]. This will cause type inferance
+  Copy`][ext] as part of [RFC 839]. This will cause type inference
   breakage in rare situations.
 * [`BinaryHeap` implements `Debug`][bh2].
 * [`Borrow` and `BorrowMut` are implemented for fixed-size
@@ -3559,7 +3556,7 @@ Libraries
 * `&mut T` where `T: std::fmt::Write` [also implements
   `std::fmt::Write`][mutw].
 * [A stable regression in `VecDeque::push_back` and other
-  capicity-altering methods that caused panics for zero-sized types
+  capacity-altering methods that caused panics for zero-sized types
   was fixed][vd].
 * [Function pointers implement traits for up to 12 parameters][fp2].
 
@@ -3746,7 +3743,7 @@ Libraries
   [better for long data][sh].
 * [`AtomicPtr`] implements [`Send`].
 * The [`read_to_end`] implementations for [`Stdin`] and [`File`]
-  are now [specialized to use uninitalized buffers for increased
+  are now [specialized to use uninitialized buffers for increased
   performance][rte].
 * Lifetime parameters of foreign functions [are now resolved
   properly][f].
@@ -3875,7 +3872,7 @@ Highlights
 * This is the first release with [experimental support for linking
   with the MSVC linker and lib C on Windows (instead of using the GNU
   variants via MinGW)][win]. It is yet recommended only for the most
-  intrepid Rusticians.
+  intrepid Rustaceans.
 * Benchmark compilations are showing a 30% improvement in
   bootstrapping over 1.1.
 
@@ -4741,7 +4738,7 @@ Version 0.11.0 (2014-07-02)
   * Libraries
     * The standard library is now a "facade" over a number of underlying
       libraries. This means that development on the standard library should
-      be speeder due to smaller crates, as well as a clearer line between
+      be speedier due to smaller crates, as well as a clearer line between
       all dependencies.
     * A new library, libcore, lives under the standard library's facade
       which is Rust's "0-assumption" library, suitable for embedded and

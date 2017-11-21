@@ -50,7 +50,7 @@ running them. Here's the full algorithm rustdoc uses to preprocess examples:
 5. Finally, if the example does not contain `fn main`, the remainder of the
    text is wrapped in `fn main() { your_code }`.
 
-For more about that caveat in rule 4, see "Documeting Macros" below.
+For more about that caveat in rule 4, see "Documenting Macros" below.
 
 ## Hiding portions of the example
 

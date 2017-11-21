@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(dead_code)]
+#![feature(optin_builtin_traits)]
+#![crate_name = "foo"]
 
-#[derive(Clone)]
-enum Enum {
-    Variant1, //~ ERROR: variant is never constructed
-    Variant2,
-}
+pub struct Foo;
 
-fn main() {
-    let e = Enum::Variant2;
-    e.clone();
-}
+// @has foo/struct.Foo.html
+// @has - '//*[@class="sidebar-title"][@href="#implementations"]' 'Trait Implementations'
+// @has - '//*[@class="sidebar-links"]/a' '!Sync'
+impl !Sync for Foo {}

@@ -36,14 +36,14 @@ a Docker image.
 
     1. Select the "default" virtual machine inside VirtualBox, then click
         "Settings"
-    2. Go to "Shared Folders", click "Add shared foldrer" (the folder icon with
+    2. Go to "Shared Folders", click "Add shared folder" (the folder icon with
         a plus sign), fill in the following information, then click "OK":
 
         * Folder path: `E:\rust`
         * Folder name: `e/rust`
         * Read-only: ☐ *unchecked*
         * Auto-mount: ☑ *checked*
-        * Make Permanant: ☑ *checked*
+        * Make Permanent: ☑ *checked*
 
 3. VirtualBox might not support creating symbolic links inside a shared folder
     by default. You can enable it manually by running these from `cmd.exe`:

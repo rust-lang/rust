@@ -952,7 +952,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// Please note that using [`write!`] might be preferrable. Example:
+/// Please note that using [`write!`] might be preferable. Example:
 ///
 /// ```
 /// use std::fmt::Write;

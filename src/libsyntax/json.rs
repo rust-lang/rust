@@ -24,11 +24,12 @@ use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
 use errors::DiagnosticId;
-use errors::emitter::Emitter;
+use errors::emitter::{Emitter, EmitterWriter};
 
 use std::rc::Rc;
 use std::io::{self, Write};
 use std::vec;
+use std::sync::{Arc, Mutex};
 
 use rustc_serialize::json::{as_json, as_pretty_json};
 
@@ -95,7 +96,7 @@ struct Diagnostic {
     spans: Vec<DiagnosticSpan>,
     /// Associated diagnostic messages.
     children: Vec<Diagnostic>,
-    /// The message as rustc would render it. Currently this is always `None`
+    /// The message as rustc would render it.
     rendered: Option<String>,
 }
 
@@ -170,6 +171,27 @@ impl Diagnostic {
                 rendered: None,
             }
         });
+
+        // generate regular command line output and store it in the json
+
+        // A threadsafe buffer for writing.
+        #[derive(Default, Clone)]
+        struct BufWriter(Arc<Mutex<Vec<u8>>>);
+
+        impl Write for BufWriter {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                self.0.lock().unwrap().write(buf)
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                self.0.lock().unwrap().flush()
+            }
+        }
+        let buf = BufWriter::default();
+        let output = buf.clone();
+        EmitterWriter::new(Box::new(buf), Some(je.cm.clone()), false).emit(db);
+        let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
+        let output = String::from_utf8(output).unwrap();
+
         Diagnostic {
             message: db.message(),
             code: DiagnosticCode::map_opt_string(db.code.clone(), je),
@@ -178,7 +200,7 @@ impl Diagnostic {
             children: db.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
             }).chain(sugg).collect(),
-            rendered: None,
+            rendered: Some(output),
         }
     }
 

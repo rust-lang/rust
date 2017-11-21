@@ -3752,7 +3752,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eq_recievers() {
+    fn test_eq_receivers() {
         use borrow::Cow;
 
         let borrowed: &Path = Path::new("foo/bar");

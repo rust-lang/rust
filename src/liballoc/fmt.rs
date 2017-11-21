@@ -536,7 +536,7 @@ use string;
 /// assert_eq!(s, "Hello, world!");
 /// ```
 ///
-/// Please note that using [`format!`] might be preferrable.
+/// Please note that using [`format!`] might be preferable.
 /// Example:
 ///
 /// ```

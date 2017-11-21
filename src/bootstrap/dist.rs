@@ -1168,7 +1168,12 @@ impl Step for Rustfmt {
             compiler: builder.compiler(stage, build.build),
             target
         }).expect("Rustfmt to build: toolstate is testing");
+        let cargofmt = builder.ensure(tool::Cargofmt {
+            compiler: builder.compiler(stage, build.build),
+            target
+        }).expect("Cargofmt to build: toolstate is testing");
         install(&rustfmt, &image.join("bin"), 0o755);
+        install(&cargofmt, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rustfmt");
         install(&src.join("README.md"), &doc, 0o644);
         install(&src.join("LICENSE-MIT"), &doc, 0o644);
