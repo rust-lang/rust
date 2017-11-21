@@ -44,4 +44,4 @@ See LICENSE-APACHE, and LICENSE-MIT for details.
 [Latest Version]: https://img.shields.io/crates/v/stdsimd.svg
 [crates.io]: https://crates.io/crates/stdsimd
 [docs]: https://docs.rs/stdsimd/badge.svg
-[docs.rs]: https://docs.rs/stdsimd/0.0.2/stdsimd/
+[docs.rs]: https://docs.rs/stdsimd/
