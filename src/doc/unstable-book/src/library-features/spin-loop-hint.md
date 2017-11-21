@@ -1,4 +1,4 @@
-# `hint_core_should_pause`
+# `spin_loop_hint`
 
 The tracking issue for this feature is: [#41196]
 
@@ -23,7 +23,7 @@ fn spin_loop(value: &AtomicBool) {
 These programs can be improved in performance like so:
 
 ```rust,no_run
-#![feature(hint_core_should_pause)]
+#![feature(spin_loop_hint)]
 use std::sync::atomic;
 use std::sync::atomic::{AtomicBool,Ordering};
 
@@ -32,10 +32,10 @@ fn spin_loop(value: &AtomicBool) {
         if value.load(Ordering::Acquire) {
              break;
         }
-        atomic::hint_core_should_pause();
+        atomic::spin_loop_hint();
     }
 }
 ```
 
-Further improvements could combine `hint_core_should_pause` with
+Further improvements could combine `spin_loop_hint` with
 exponential backoff or `std::thread::yield_now`.
