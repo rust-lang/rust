@@ -1617,7 +1617,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }
             }
-            ast::TraitItemKind::Type(_, default) => {
+            ast::TraitItemKind::Type(_, ref default) => {
                 // We use two if statements instead of something like match guards so that both
                 // of these errors can be emitted if both cases apply.
                 if default.is_some() {
