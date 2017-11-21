@@ -7,7 +7,8 @@ Language
 - [Now accepts underscores in unicode escapes][43716]
 - [`#![feature(const_fn)]` is now no longer required for
   calling const functions.][43017] It's still required for creating
-  constant functions.
+  constant functions, and const functions in the standard libraries
+  now have individual feature gates.
 - [`T op= &T` now works for numeric types.][44287] eg. `let mut x = 2; x += &8;`
 - [types that impl `Drop` are now allowed in `const` and `static` types][44456]
 
@@ -45,8 +46,8 @@ Cargo
 Misc
 ----
 - [`libbacktrace` is now available on Apple platforms.][44251]
-- [Stabilised the `compile_fail` attribute for code fences.][43949] This now
-  lets you specify that a given code example will fail to compile.
+- [Stabilised the `compile_fail` attribute for code fences in doc-comments.][43949]
+  This now lets you specify that a given code example will fail to compile.
 
 Compatibility Notes
 -------------------
