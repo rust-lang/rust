@@ -216,6 +216,7 @@
         var help = document.getElementById("help");
         switch (getVirtualKey(ev)) {
         case "Escape":
+            hideModal();
             var search = document.getElementById("search");
             if (!hasClass(help, "hidden")) {
                 displayHelp(false, ev);
@@ -229,6 +230,7 @@
         case "s":
         case "S":
             displayHelp(false, ev);
+            hideModal();
             ev.preventDefault();
             focusSearchBar();
             break;
@@ -241,6 +243,7 @@
 
         case "?":
             if (ev.shiftKey) {
+                hideModal();
                 displayHelp(true, ev);
             }
             break;
@@ -1711,6 +1714,31 @@
                 e.previousElementSibling.childNodes[0].style.color = '';
             });
         }
+    });
+
+    function showModal(content) {
+        var modal = document.createElement('div');
+        modal.id = "important";
+        addClass(modal, 'modal');
+        modal.innerHTML = '<div class="modal-content"><div class="close" id="modal-close">✕</div>' +
+                          '<div class="whiter"></div><span class="docblock">' + content +
+                          '</span></div>';
+        document.getElementsByTagName('body')[0].appendChild(modal);
+        document.getElementById('modal-close').onclick = hideModal;
+        modal.onclick = hideModal;
+    }
+
+    function hideModal() {
+        var modal = document.getElementById("important");
+        if (modal) {
+            modal.parentNode.removeChild(modal);
+        }
+    }
+
+    onEach(document.getElementsByClassName('important-traits'), function(e) {
+        e.onclick = function() {
+            showModal(e.lastElementChild.innerHTML);
+        };
     });
 
     var search_input = document.getElementsByClassName("search-input")[0];

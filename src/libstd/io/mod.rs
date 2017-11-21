@@ -470,6 +470,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 /// [`&[u8]`]: primitive.slice.html
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(spotlight)]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -988,6 +989,7 @@ impl Initializer {
 /// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(spotlight)]
 pub trait Write {
     /// Write a buffer into this object, returning how many bytes were written.
     ///

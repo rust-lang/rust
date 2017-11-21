@@ -151,7 +151,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         match module.inner {
             ModuleItem(ref module) => {
                 for it in &module.items {
-                    if it.is_extern_crate() && it.attrs.has_doc_masked() {
+                    if it.is_extern_crate() && it.attrs.has_doc_flag("masked") {
                         masked_crates.insert(it.def_id.krate);
                     }
                 }
@@ -596,12 +596,12 @@ impl Attributes {
         None
     }
 
-    pub fn has_doc_masked(&self) -> bool {
+    pub fn has_doc_flag(&self, flag: &str) -> bool {
         for attr in &self.other_attrs {
             if !attr.check_name("doc") { continue; }
 
             if let Some(items) = attr.meta_item_list() {
-                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.check_name("masked")) {
+                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.check_name(flag)) {
                     return true;
                 }
             }
@@ -1331,19 +1331,31 @@ impl Clean<FunctionRetTy> for hir::FunctionRetTy {
     }
 }
 
+impl GetDefId for FunctionRetTy {
+    fn def_id(&self) -> Option<DefId> {
+        match *self {
+            Return(ref ty) => ty.def_id(),
+            DefaultReturn => None,
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Trait {
     pub unsafety: hir::Unsafety,
     pub items: Vec<Item>,
     pub generics: Generics,
     pub bounds: Vec<TyParamBound>,
+    pub is_spotlight: bool,
 }
 
 impl Clean<Item> for doctree::Trait {
     fn clean(&self, cx: &DocContext) -> Item {
+        let attrs = self.attrs.clean(cx);
+        let is_spotlight = attrs.has_doc_flag("spotlight");
         Item {
             name: Some(self.name.clean(cx)),
-            attrs: self.attrs.clean(cx),
+            attrs: attrs,
             source: self.whence.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
             visibility: self.vis.clean(cx),
@@ -1354,6 +1366,7 @@ impl Clean<Item> for doctree::Trait {
                 items: self.items.clean(cx),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
+                is_spotlight: is_spotlight,
             }),
         }
     }

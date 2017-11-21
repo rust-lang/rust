@@ -381,6 +381,8 @@ declare_features! (
     (active, doc_cfg, "1.21.0", Some(43781)),
     // #[doc(masked)]
     (active, doc_masked, "1.21.0", Some(44027)),
+    // #[doc(spotlight)]
+    (active, doc_spotlight, "1.22.0", Some(45040)),
 
     // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),
@@ -1299,6 +1301,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 } else if content.iter().any(|c| c.check_name("masked")) {
                     gate_feature_post!(&self, doc_masked, attr.span,
                         "#[doc(masked)] is experimental"
+                    );
+                } else if content.iter().any(|c| c.check_name("spotlight")) {
+                    gate_feature_post!(&self, doc_spotlight, attr.span,
+                        "#[doc(spotlight)] is experimental"
                     );
                 }
             }
