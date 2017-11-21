@@ -307,7 +307,6 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
         ItemKind::MacroDef(ref ts) => visitor.visit_mac_def(ts, item.id),
-        ItemKind::Placeholder => (),
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }

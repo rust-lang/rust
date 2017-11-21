@@ -72,50 +72,6 @@ bitflags! {
 
 type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute> >);
 
-enum HasRecovered<'a, T> {
-    Success(T),
-    Recovered(T, DiagnosticBuilder<'a>),
-}
-
-impl<'a, T> HasRecovered<'a, T> {
-    fn new(t: T, err: Option<DiagnosticBuilder<'a>>) -> HasRecovered<'a, T> {
-        if let Some(err) = err {
-            HasRecovered::Recovered(t, err)
-        } else {
-            HasRecovered::Success(t)
-        }
-    }
-
-    fn map<O, F: FnOnce(T) -> O>(self, f: F) -> HasRecovered<'a, O> {
-        let (t, e) = self.full_unwrap();
-        HasRecovered::new(f(t), e)
-    }
-
-    fn emit(self) -> T {
-        match self {
-            HasRecovered::Recovered(t, mut err) => {
-                err.emit();
-                t
-            }
-            HasRecovered::Success(t) => t,
-        }
-    }
-
-    fn full_unwrap(self) -> (T, Option<DiagnosticBuilder<'a>>) {
-        match self {
-            HasRecovered::Recovered(t, err) => (t, Some(err)),
-            HasRecovered::Success(t) => (t, None),
-        }
-    }
-
-    fn into_result(self) -> PResult<'a, T> {
-        match self {
-            HasRecovered::Recovered(_, err) => Err(err),
-            HasRecovered::Success(t) => Ok(t),
-        }
-    }
-}
-
 /// How to parse a path.
 #[derive(Copy, Clone, PartialEq)]
 pub enum PathStyle {
@@ -1411,7 +1367,6 @@ impl<'a> Parser<'a> {
                     debug!("parse_trait_methods(): parsing provided method");
                     *at_end = true;
                     let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-                    let body = body.emit();
                     attrs.extend(inner_attrs.iter().cloned());
                     Some(body)
                 }
@@ -2447,7 +2402,7 @@ impl<'a> Parser<'a> {
         let mut attrs = outer_attrs;
         attrs.extend(self.parse_inner_attributes()?);
 
-        let blk = self.parse_block_tail(lo, blk_mode)?.emit();
+        let blk = self.parse_block_tail(lo, blk_mode)?;
         return Ok(self.mk_expr(blk.span, ExprKind::Block(blk), attrs));
     }
 
@@ -3204,7 +3159,7 @@ impl<'a> Parser<'a> {
 
         let hi = self.prev_span;
         Ok(self.mk_expr(span_lo.to(hi),
-                        ExprKind::ForLoop(pat, expr, loop_block.emit(), opt_ident),
+                        ExprKind::ForLoop(pat, expr, loop_block, opt_ident),
                         attrs))
     }
 
@@ -3217,7 +3172,6 @@ impl<'a> Parser<'a> {
         }
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
-        let body = body.emit();
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
         return Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_ident), attrs));
@@ -3233,7 +3187,6 @@ impl<'a> Parser<'a> {
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
-        let body = body.emit();
         let span = span_lo.to(body.span);
         return Ok(self.mk_expr(span, ExprKind::WhileLet(pat, expr, body, opt_ident), attrs));
     }
@@ -3243,7 +3196,6 @@ impl<'a> Parser<'a> {
                            span_lo: Span,
                            mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
-        let body = body.emit();
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
         Ok(self.mk_expr(span, ExprKind::Loop(body, opt_ident), attrs))
@@ -3254,7 +3206,6 @@ impl<'a> Parser<'a> {
         -> PResult<'a, P<Expr>>
     {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
-        let body = body.emit();
         attrs.extend(iattrs);
         Ok(self.mk_expr(span_lo.to(body.span), ExprKind::Catch(body), attrs))
     }
@@ -4301,14 +4252,14 @@ impl<'a> Parser<'a> {
             return Err(e);
         }
 
-        Ok(self.parse_block_tail(lo, BlockCheckMode::Default)?.emit())
+        Ok(self.parse_block_tail(lo, BlockCheckMode::Default)?)
     }
 
     /// Parse a block. Inner attrs are allowed.
     fn parse_inner_attrs_and_block(&mut self)
-        -> PResult<'a, (Vec<Attribute>, HasRecovered<'a, P<Block>>)>
+        -> PResult<'a, (Vec<Attribute>, P<Block>)>
     {
-        maybe_whole!(self, NtBlock, |x| (Vec::new(), HasRecovered::Success(x)));
+        maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.span;
         self.expect(&token::OpenDelim(token::Brace))?;
@@ -4319,15 +4270,14 @@ impl<'a> Parser<'a> {
     /// Parse the rest of a block expression or function body
     /// Precondition: already parsed the '{'.
     fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode)
-        -> PResult<'a, HasRecovered<'a, P<Block>>>
+        -> PResult<'a, P<Block>>
     {
         let mut stmts = vec![];
 
-        let mut error = None;
         while !self.eat(&token::CloseDelim(token::Brace)) {
             let stmt = match self.parse_full_stmt(false) {
-                Err(err) => {
-                    error = Some(err);
+                Err(mut err) => {
+                    err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Break);
                     break;
                 }
@@ -4342,14 +4292,12 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
-        let block = HasRecovered::new(P(ast::Block {
+        Ok(P(ast::Block {
             stmts,
             id: ast::DUMMY_NODE_ID,
             rules: s,
             span: lo.to(self.prev_span),
-        }), error);
-
-        Ok(block)
+        }))
     }
 
     /// Parse a statement, including the trailing semicolon.
@@ -4984,22 +4932,11 @@ impl<'a> Parser<'a> {
                      constness: Spanned<Constness>,
                      abi: abi::Abi)
                      -> PResult<'a, ItemInfo> {
-
-        self.parse_item_fn_recoverable(unsafety, constness, abi)?.into_result()
-    }
-
-    fn parse_item_fn_recoverable(&mut self,
-                                 unsafety: Unsafety,
-                                 constness: Spanned<Constness>,
-                                 abi: abi::Abi)
-                                 -> PResult<'a, HasRecovered<'a, ItemInfo>> {
         let (ident, mut generics) = self.parse_fn_header()?;
         let decl = self.parse_fn_decl(false)?;
         generics.where_clause = self.parse_where_clause()?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        Ok(body.map(|body| (ident,
-                            ItemKind::Fn(decl, unsafety, constness, abi, generics, body),
-                            Some(inner_attrs))))
+        Ok((ident, ItemKind::Fn(decl, unsafety, constness, abi, generics, body), Some(inner_attrs)))
     }
 
     /// true if we are looking at `const ID`, false for things like `const fn` etc
@@ -5183,7 +5120,6 @@ impl<'a> Parser<'a> {
             generics.where_clause = self.parse_where_clause()?;
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-            let body = body.into_result()?;
             Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(ast::MethodSig {
                 abi,
                 unsafety,
@@ -6369,49 +6305,31 @@ impl<'a> Parser<'a> {
                 let mut err = self.diagnostic()
                     .struct_span_err(sp, "missing `struct` for struct definition");
                 err.span_suggestion_short(sp, &msg, " struct ".into());
-                err.emit();
-                self.consume_block(token::Brace);
-                let prev_span = self.prev_span;
-                let item = self.mk_item(lo.to(prev_span),
-                                        ident,
-                                        ItemKind::Placeholder,
-                                        visibility,
-                                        vec![]);
-                return Ok(Some(item));
+                return Err(err);
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.consume_block(token::Paren);
-                let (kw, ambiguous) = if self.check(&token::OpenDelim(token::Brace)) {
-                    self.consume_block(token::Brace);
-                    ("fn", false)
+                let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) ||
+                    self.check(&token::OpenDelim(token::Brace))
+                {
+                    ("fn", "method", false)
                 } else if self.check(&token::Colon) {
                     let kw = "struct";
-                    (kw, false)
+                    (kw, kw, false)
                 } else {
-                    ("fn` or `struct", true)
+                    ("fn` or `struct", "method or struct", true)
                 };
 
-                let msg = format!("missing `{}`{}", kw,
-                                   if ambiguous {
-                                       "".to_string()
-                                   } else {
-                                       format!(" for {} definition", kw)
-                                   });
+                let msg = format!("missing `{}` for {} definition", kw, kw_name);
                 let mut err = self.diagnostic().struct_span_err(sp, &msg);
                 if !ambiguous {
-                    let suggestion = format!("add `{kw}` here to parse `{}` as a public {kw}",
+                    let suggestion = format!("add `{}` here to parse `{}` as a public {}",
+                                             kw,
                                              ident,
-                                             kw=kw);
+                                             kw_name);
                     err.span_suggestion_short(sp, &suggestion, format!(" {} ", kw));
                 }
-                err.emit();
-                let prev_span = self.prev_span;
-                let item = self.mk_item(lo.to(prev_span),
-                                        ident,
-                                        ItemKind::Placeholder,
-                                        visibility,
-                                        vec![]);
-                return Ok(Some(item));
+                return Err(err);
             }
         }
         self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, visibility)

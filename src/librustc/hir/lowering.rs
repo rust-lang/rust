@@ -1757,7 +1757,7 @@ impl<'a> LoweringContext<'a> {
                                bounds,
                                items)
             }
-            ItemKind::Placeholder | ItemKind::MacroDef(..) | ItemKind::Mac(..) => {
+            ItemKind::MacroDef(..) | ItemKind::Mac(..) => {
                 panic!("Shouldn't still be around")
             }
         }

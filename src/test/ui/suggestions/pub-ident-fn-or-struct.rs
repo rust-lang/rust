@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted)]
-
-struct Bar(pub(()));
-
-struct Foo {
-    pub(crate) () foo: usize,
-}
+pub S (foo) bar
 
 fn main() {}

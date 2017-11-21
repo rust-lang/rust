@@ -8,32 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub Struct {
-    y: usize,
-}
+pub S();
 
-pub Y {
-    x: usize,
-}
-
-pub struct X {
-    foo();
-}
-
-pub Z {
-    x->foo(),
-}
-
-pub foo(foo) {
-    foo
-}
-
-pub struct X {
-    foo();
-}
-
-pub Z {
-    x->foo(),
-}
-
-fn main(){}
+fn main() {}

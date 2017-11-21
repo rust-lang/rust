@@ -1977,7 +1977,6 @@ pub enum ItemKind {
 
     /// A macro definition.
     MacroDef(MacroDef),
-    Placeholder,
 }
 
 impl ItemKind {
@@ -1999,7 +1998,6 @@ impl ItemKind {
             ItemKind::Mac(..) |
             ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |
-            ItemKind::Placeholder |
             ItemKind::AutoImpl(..) => "item"
         }
     }

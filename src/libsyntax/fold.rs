@@ -935,7 +935,6 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         ),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
         ItemKind::MacroDef(def) => ItemKind::MacroDef(folder.fold_macro_def(def)),
-        ItemKind::Placeholder => ItemKind::Placeholder,
     }
 }
 

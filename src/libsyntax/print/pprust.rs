@@ -1386,12 +1386,6 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?;
             }
-            ast::ItemKind::Placeholder => {
-                self.s.word("<placeholder ")?;
-                self.print_ident(item.ident)?;
-                self.s.word(">")?;
-                self.end()?;
-            }
         }
         self.ann.post(self, NodeItem(item))
     }
