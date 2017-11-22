@@ -1096,17 +1096,28 @@ define_print! {
                             write!(f, "@{:?}", tcx.hir.span(node_id))?;
                         }
                         let mut sep = " ";
-                        tcx.with_freevars(node_id, |freevars| {
-                            for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
-                                print!(f, cx,
-                                       write("{}{}:",
-                                             sep,
-                                             tcx.hir.name(freevar.var_id())),
-                                       print(upvar_ty))?;
-                                sep = ", ";
+                        if tcx.sess.verbose() {
+                            write!(f, "<")?;
+                            for (i, k) in substs.substs.iter().enumerate() {
+                                if i > 0 {
+                                    write!(f, ", ")?;
+                                }
+                                print!(f, cx, write("{:?}", k))?;
                             }
-                            Ok(())
-                        })?
+                            write!(f, ">")?;
+                        } else {
+                            tcx.with_freevars(node_id, |freevars| {
+                                for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
+                                    print!(f, cx,
+                                           write("{}{}:",
+                                                 sep,
+                                                 tcx.hir.name(freevar.var_id())),
+                                           print(upvar_ty))?;
+                                    sep = ", ";
+                                }
+                                Ok(())
+                            })?
+                        }
                     } else {
                         // cross-crate closure types should only be
                         // visible in trans bug reports, I imagine.

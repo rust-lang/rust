@@ -46,10 +46,10 @@ fn main() {
 // }
 // END rustc.test.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}(_1: &ReErased [closure@NodeId(46)], _2: &ReErased mut i32) -> bool {
+// fn main::{{closure}}(_1: &ReErased [closure@NodeId(46)<i8, for<'r> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r(8645))) mut i32,)) -> bool>], _2: &ReErased mut i32) -> bool {
 //     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId(0/1:9 ~ validate_5[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(46)], _2: &ReFree(DefId(0/1:9 ~ validate_5[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/1:9 ~ validate_5[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(46)<i8, for<'r> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r(8645))) mut i32,)) -> bool>], _2: &ReFree(DefId(0/1:9 ~ validate_5[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         Validate(Suspend(ReScope(Node(ItemLocalId(9)))), [(*_2): i32]);
