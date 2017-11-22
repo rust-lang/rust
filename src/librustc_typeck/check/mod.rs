@@ -2178,12 +2178,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// This runs as the last resort of type inference.
+    ///
+    /// It applies user supplied defaults as fallbacks for inference variables,
+    /// for example in `fn foo<T=String>()` an inference variable originated from `T`
+    /// will have `String` as its default.
+    ///
+    /// Adding a default to a type parameter that has none should be backwards compatible.
+    /// However if we get conflicting defaults we do not know how to resolve them.
+    /// Therefore we must future-proof against such a conflict by not allowing
+    /// type variables with defaults to unify with type variables without defaults.
+    ///
+    /// We may come up with rules to prioritize a type parameter over another.
+    /// When unifying type variables, the highest priority parameter involved
+    /// has the final say on what the default should be.
+    /// Currently we prioritize defaults from impls and fns over defaults in types,
+    /// this for example allows `fn foo<T=String>(x: Option<T>)` to work
+    /// even though `Option<T>` has no default for `T`.
     fn apply_user_type_parameter_fallback(&self) {
         use self::TypeVariableOrigin::TypeParameterDefinition;
         use ty::OriginOfTyParam;
-
         // Collect variables that are unsolved and support fallback,
-        // grouped by subtyping equivalence.
+        // grouped in bags by subtyping equivalence.
         let mut bags = FxHashMap();
         for vid in self.fulfillment_cx.borrow().vars_in_unsolved_obligations() {
             let mut type_variables = self.infcx.type_variables.borrow_mut();
@@ -2199,9 +2215,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 bags.entry(root).or_insert(Vec::new()).push(vid);
             }
         }
-        
+        // A bag will successfuly fallback to a default if all of it's variables
+        // have a default, and that default is the same.
+        // Low priority variables will be ignored in the presence of higher priority variables.
         'bags: for (_, mut bag) in bags.into_iter() {
-            // Partition the bag by the origin of the default.
+            // Partition the bag by the origin of the type param.
             let (fn_or_impl, ty_def) = bag.into_iter().partition(|&v| {
                 match self.infcx.type_variables.borrow().var_origin(v) {
                     TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
@@ -2212,7 +2230,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             });
             // Params from fns or impls take priority, if they exist ignore the rest of the bag.
             bag = fn_or_impl;
-            if bag.is_empty() { 
+            if bag.is_empty() {
                 bag = ty_def;
             }
             // For future-proofing against conflicting defaults,
@@ -2233,7 +2251,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let normalized_default = self.normalize_associated_types_in(
                                         user_default.origin_span,
                                         &user_default.ty);
-                // QUESTION(leodasvacas): 
+                // QUESTION(leodasvacas):
                 // This will emit "expected type mismatch" on conflicting defaults, which is bad.
                 // I'd be happy to somehow detect or rollback this demand on conflict defaults
                 // so we would emit "type annotations needed" instead.

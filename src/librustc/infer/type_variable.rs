@@ -80,9 +80,7 @@ struct TypeVariableData<'tcx> {
 
 enum TypeVariableValue<'tcx> {
     Known(Ty<'tcx>),
-    Bounded {
-        default: Option<Default<'tcx>>
-    }
+    Bounded,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -112,9 +110,8 @@ pub struct Snapshot {
     sub_snapshot: ut::Snapshot<ty::TyVid>,
 }
 
-struct Instantiate<'tcx> {
+struct Instantiate {
     vid: ty::TyVid,
-    default: Option<Default<'tcx>>,
 }
 
 struct Delegate<'tcx>(PhantomData<&'tcx ()>);
@@ -175,8 +172,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
         };
 
         match old_value {
-            TypeVariableValue::Bounded { default } => {
-                self.values.record(Instantiate { vid: vid, default: default });
+            TypeVariableValue::Bounded => {
+                self.values.record(Instantiate { vid: vid });
             }
             TypeVariableValue::Known(old_ty) => {
                 bug!("instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
@@ -201,7 +198,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         };
 
         let index = self.values.push(TypeVariableData {
-            value: Bounded { default: Some(default.clone()) },
+            value: Bounded,
             origin,
             default,
         });
@@ -253,7 +250,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn probe_root(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         debug_assert!(self.root_var(vid) == vid);
         match self.values.get(vid.index as usize).value {
-            Bounded { .. } => None,
+            Bounded => None,
             Known(t) => Some(t)
         }
     }
@@ -349,12 +346,12 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(Instantiate { vid, .. }) => {
+                sv::UndoLog::Other(Instantiate { vid }) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
                         let escaping_type = match self.values.get(vid.index as usize).value {
-                            Bounded { .. } => bug!(),
+                            Bounded => bug!(),
                             Known(ty) => ty,
                         };
                         escaping_types.push(escaping_type);
@@ -385,12 +382,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
-    type Undo = Instantiate<'tcx>;
+    type Undo = Instantiate;
 
-    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate<'tcx>) {
-        let Instantiate { vid, default } = action;
-        values[vid.index as usize].value = Bounded {
-            default,
-        };
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate) {
+        let Instantiate { vid } = action;
+        values[vid.index as usize].value = Bounded;
     }
 }
