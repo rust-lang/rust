@@ -1675,7 +1675,6 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
 
     let mut appears_in_output = AllCollector {
         regions: FxHashSet(),
-        impl_trait: false
     };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
@@ -1688,7 +1687,6 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     // ignore binders here and scrape up all names we see.
     let mut appears_in_where_clause = AllCollector {
         regions: FxHashSet(),
-        impl_trait: false
     };
     for ty_param in generics.ty_params.iter() {
         walk_list!(&mut appears_in_where_clause,
@@ -1728,9 +1726,6 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
 
         // appears in the where clauses? early-bound.
         if appears_in_where_clause.regions.contains(&name) { continue; }
-
-        // any `impl Trait` in the return type? early-bound.
-        if appears_in_output.impl_trait { continue; }
 
         // does not appear in the inputs, but appears in the return type? early-bound.
         if !constrained_by_input.regions.contains(&name) &&
@@ -1790,7 +1785,6 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
 
     struct AllCollector {
         regions: FxHashSet<hir::LifetimeName>,
-        impl_trait: bool
     }
 
     impl<'v> Visitor<'v> for AllCollector {
@@ -1800,13 +1794,6 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             self.regions.insert(lifetime_ref.name);
-        }
-
-        fn visit_ty(&mut self, ty: &hir::Ty) {
-            if let hir::TyImplTraitExistential(..) = ty.node {
-                self.impl_trait = true;
-            }
-            intravisit::walk_ty(self, ty);
         }
     }
 }
