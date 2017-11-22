@@ -252,7 +252,7 @@ fn main() {
         fn bump<'a>(mut block: &mut Block<'a>) {
             let x = &mut block;
             let p: &'a u8 = &*block.current;
-            //[mir]~^ ERROR cannot borrow `(*block.current)` as immutable because it is also borrowed as mutable (Mir)
+            //[mir]~^ ERROR cannot borrow `*block.current` as immutable because it is also borrowed as mutable (Mir)
             // No errors in AST because of issue rust#38899
         }
     }
@@ -266,7 +266,7 @@ fn main() {
         unsafe fn bump2(mut block: *mut Block2) {
             let x = &mut block;
             let p : *const u8 = &*(*block).current;
-            //[mir]~^ ERROR cannot borrow `(*block.current)` as immutable because it is also borrowed as mutable (Mir)
+            //[mir]~^ ERROR cannot borrow `*block.current` as immutable because it is also borrowed as mutable (Mir)
             // No errors in AST because of issue rust#38899
         }
     }
@@ -279,7 +279,7 @@ fn main() {
         //[ast]~^ ERROR cannot use `v[..].y` because it was mutably borrowed
         //[mir]~^^ ERROR cannot use `v[..].y` because it was mutably borrowed (Ast)
         //[mir]~| ERROR cannot use `v[..].y` because it was mutably borrowed (Mir)
-        //[mir]~| ERROR cannot use `(*v)` because it was mutably borrowed (Mir)
+        //[mir]~| ERROR cannot use `*v` because it was mutably borrowed (Mir)
     }
     // Field of constant index
     {
@@ -300,7 +300,7 @@ fn main() {
             let y = &mut x;
             &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
                     //[mir]~^ ERROR cannot borrow `**x` as mutable more than once at a time (Ast)
-                    //[mir]~| ERROR cannot borrow `(*x)` as mutable more than once at a time (Mir)
+                    //[mir]~| ERROR cannot borrow `*x` as mutable more than once at a time (Mir)
             *y = 1;
         };
     }
@@ -312,7 +312,7 @@ fn main() {
                 let y = &mut x;
                 &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
                         //[mir]~^ ERROR cannot borrow `**x` as mutable more than once at a time (Ast)
-                        //[mir]~| ERROR cannot borrow `(*x)` as mutable more than once at a time (Mir)
+                        //[mir]~| ERROR cannot borrow `*x` as mutable more than once at a time (Mir)
                 *y = 1;
                 }
            };

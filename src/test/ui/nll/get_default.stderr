@@ -34,7 +34,7 @@ error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as imm
 51 | }
    | - immutable borrow ends here
 
-error[E0502]: cannot borrow `(*map)` as mutable because it is also borrowed as immutable (Mir)
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
   --> $DIR/get_default.rs:43:17
    |
 41 |         match map.get() {
