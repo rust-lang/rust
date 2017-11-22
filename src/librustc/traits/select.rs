@@ -814,7 +814,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         let unbound_input_types = stack.fresh_trait_ref.input_types().any(|ty| ty.is_fresh());
-        if unbound_input_types && self.intercrate {
+        if unbound_input_types && self.intercrate && false {
             debug!("evaluate_stack({:?}) --> unbound argument, intercrate -->  ambiguous",
                    stack.fresh_trait_ref);
             // Heuristics: show the diagnostics when there are no candidates in crate.
@@ -1221,7 +1221,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // bound regions
         let trait_ref = predicate.skip_binder().trait_ref;
 
-        coherence::trait_ref_is_knowable(self.tcx(), trait_ref)
+        coherence::trait_ref_is_knowable(self.tcx(), trait_ref, false).is_none()
     }
 
     /// Returns true if the global caches can be used.
