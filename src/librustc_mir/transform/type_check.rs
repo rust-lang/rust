@@ -174,9 +174,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 let sty = self.sanitize_type(lvalue, sty);
                 let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(&ty, location);
-                if let Err(terr) = self.cx
-                    .eq_types(self.last_span, ty, sty, location.at_self())
-                {
+                if let Err(terr) = self.cx.eq_types(ty, sty, location.at_self()) {
                     span_mirbug!(
                         self,
                         lvalue,
@@ -213,7 +211,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
         let tcx = self.tcx();
         let base_ty = base.to_ty(tcx);
-        let span = self.last_span;
         match *pi {
             ProjectionElem::Deref => {
                 let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
@@ -298,18 +295,16 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ProjectionElem::Field(field, fty) => {
                 let fty = self.sanitize_type(lvalue, fty);
                 match self.field_ty(lvalue, base, field, location) {
-                    Ok(ty) => {
-                        if let Err(terr) = self.cx.eq_types(span, ty, fty, location.at_self()) {
-                            span_mirbug!(
-                                self,
-                                lvalue,
-                                "bad field access ({:?}: {:?}): {:?}",
-                                ty,
-                                fty,
-                                terr
-                            );
-                        }
-                    }
+                    Ok(ty) => if let Err(terr) = self.cx.eq_types(ty, fty, location.at_self()) {
+                        span_mirbug!(
+                            self,
+                            lvalue,
+                            "bad field access ({:?}: {:?}): {:?}",
+                            ty,
+                            fty,
+                            terr
+                        );
+                    },
                     Err(FieldAccessError::OutOfRange { field_count }) => span_mirbug!(
                         self,
                         lvalue,
@@ -344,9 +339,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 variant_index,
             } => (&adt_def.variants[variant_index], substs),
             LvalueTy::Ty { ty } => match ty.sty {
-                ty::TyAdt(adt_def, substs) if !adt_def.is_enum() => {
-                    (&adt_def.variants[0], substs)
-                }
+                ty::TyAdt(adt_def, substs) if !adt_def.is_enum() => (&adt_def.variants[0], substs),
                 ty::TyClosure(def_id, substs) => {
                     return match substs.upvar_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
@@ -512,13 +505,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn eq_types(
-        &mut self,
-        _span: Span,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        locations: Locations,
-    ) -> UnitResult<'tcx> {
+    fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
         self.fully_perform_op(locations, |this| {
             this.infcx
                 .at(&this.misc(this.last_span), this.param_env)
