@@ -409,7 +409,7 @@ impl<T: ?Sized> Box<T> {
     /// }
     /// ```
     #[unstable(feature = "box_leak", reason = "needs an FCP to stabilize",
-               issue = "0")]
+               issue = "46179")]
     #[inline]
     pub fn leak<'a>(b: Box<T>) -> &'a mut T
     where
