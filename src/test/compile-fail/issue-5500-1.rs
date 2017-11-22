@@ -20,6 +20,7 @@ fn main() {
     let _iter = TrieMapIterator{node: &a};
     _iter.node = & //[ast]~ ERROR cannot assign to immutable field `_iter.node`
                    //[mir]~^ ERROR cannot assign to immutable field `_iter.node` (Ast)
-                   // FIXME Error for MIR
+                   // MIR doesn't generate an error because the code isn't reachable. This is OK
+                   // because the test is here to check that the compiler doesn't ICE (cf. #5500).
     panic!()
 }
