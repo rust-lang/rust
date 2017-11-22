@@ -12,4 +12,4 @@
 
 fn main() {
     let 10 ..= makropulos!() = 12; //~ error: expected one of `::`, `:`, `;`, or `=`, found `!`
-}
+} //~ ERROR expected item, found `}`

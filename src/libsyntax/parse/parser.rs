@@ -3158,9 +3158,7 @@ impl<'a> Parser<'a> {
         attrs.extend(iattrs);
 
         let hi = self.prev_span;
-        Ok(self.mk_expr(span_lo.to(hi),
-                        ExprKind::ForLoop(pat, expr, loop_block, opt_ident),
-                        attrs))
+        Ok(self.mk_expr(span_lo.to(hi), ExprKind::ForLoop(pat, expr, loop_block, opt_ident), attrs))
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
@@ -4252,13 +4250,11 @@ impl<'a> Parser<'a> {
             return Err(e);
         }
 
-        Ok(self.parse_block_tail(lo, BlockCheckMode::Default)?)
+        self.parse_block_tail(lo, BlockCheckMode::Default)
     }
 
     /// Parse a block. Inner attrs are allowed.
-    fn parse_inner_attrs_and_block(&mut self)
-        -> PResult<'a, (Vec<Attribute>, P<Block>)>
-    {
+    fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.span;
@@ -4269,9 +4265,7 @@ impl<'a> Parser<'a> {
 
     /// Parse the rest of a block expression or function body
     /// Precondition: already parsed the '{'.
-    fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode)
-        -> PResult<'a, P<Block>>
-    {
+    fn parse_block_tail(&mut self, lo: Span, s: BlockCheckMode) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
 
         while !self.eat(&token::CloseDelim(token::Brace)) {
@@ -5340,32 +5334,23 @@ impl<'a> Parser<'a> {
     }
 
     fn consume_block(&mut self, delim: token::DelimToken) {
-        debug!("consuming {:?}", delim);
-        debug!("self.token {:?}", self.token);
         let mut brace_depth = 0;
         if !self.eat(&token::OpenDelim(delim)) {
-            debug!("didn't eat delim");
             return;
         }
         loop {
             if self.eat(&token::OpenDelim(delim)) {
-                debug!("add depth");
                 brace_depth += 1;
             } else if self.eat(&token::CloseDelim(delim)) {
-                debug!("found closing");
                 if brace_depth == 0 {
-                    debug!("ending");
                     return;
                 } else {
-                    debug!("decrease");
                     brace_depth -= 1;
                     continue;
                 }
             } else if self.eat(&token::Eof) || self.eat(&token::CloseDelim(token::NoDelim)) {
-                debug!("eof or nodelim");
                 return;
             } else {
-                debug!("bump");
                 self.bump();
             }
         }
@@ -6297,6 +6282,8 @@ impl<'a> Parser<'a> {
             //     pub   S {}
             //        ^^^ `sp` points here
             let sp = self.prev_span.between(self.span);
+            let full_sp = self.prev_span.to(self.span);
+            let ident_sp = self.span;
             if self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) {
                 // possible public struct definition where `struct` was forgotten
                 let ident = self.parse_ident().unwrap();
@@ -6328,6 +6315,16 @@ impl<'a> Parser<'a> {
                                              ident,
                                              kw_name);
                     err.span_suggestion_short(sp, &suggestion, format!(" {} ", kw));
+                } else {
+                    if let Ok(snippet) = self.sess.codemap().span_to_snippet(ident_sp) {
+                        err.span_suggestion(
+                            full_sp,
+                            "if you meant to call a macro, write instead",
+                            format!("{}!", snippet));
+                    } else {
+                        err.help("if you meant to call a macro, remove the `pub` \
+                                  and add a trailing `!` after the identifier");
+                    }
                 }
                 return Err(err);
             }
