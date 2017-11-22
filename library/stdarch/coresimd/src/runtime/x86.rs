@@ -132,6 +132,10 @@ macro_rules! __unstable_detect_feature {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::popcnt{})
     };
+    ("fxsr") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::fxsr{})
+    };
     ("xsave") => {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::xsave{})
@@ -212,6 +216,8 @@ pub enum __Feature {
     tbm,
     /// POPCNT (Population Count)
     popcnt,
+    /// FXSR (Floating-point context fast save and restor)
+    fxsr,
     /// XSAVE (Save Processor Extended States)
     xsave,
     /// XSAVEOPT (Save Processor Extended States Optimized)
@@ -325,6 +331,7 @@ pub fn detect_features() -> usize {
         enable(proc_info_ecx, 19, __Feature::sse4_1);
         enable(proc_info_ecx, 20, __Feature::sse4_2);
         enable(proc_info_ecx, 23, __Feature::popcnt);
+        enable(proc_info_edx, 24, __Feature::fxsr);
         enable(proc_info_edx, 25, __Feature::sse);
         enable(proc_info_edx, 26, __Feature::sse2);
 
@@ -332,17 +339,19 @@ pub fn detect_features() -> usize {
         enable(extended_features_ebx, 8, __Feature::bmi2);
 
         // `XSAVE` and `AVX` support:
-        if bit::test(proc_info_ecx as usize, 26) {
+        let cpu_xsave = bit::test(proc_info_ecx as usize, 26);
+        if cpu_xsave {
             // 0. Here the CPU supports `XSAVE`.
 
             // 1. Detect `OSXSAVE`, that is, whether the OS is AVX enabled and
             // supports saving the state of the AVX/AVX2 vector registers on
             // context-switches, see:
             //
-            // - https://software.intel.
-            // com/en-us/blogs/2011/04/14/is-avx-enabled
-            // - https://hg.mozilla.
-            // org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
+            // - [intel: is avx enabled?][is_avx_enabled],
+            // - [mozilla: sse.cpp][mozilla_sse_cpp].
+            //
+            // [is_avx_enabled]: https://software.intel.com/en-us/blogs/2011/04/14/is-avx-enabled
+            // [mozilla_sse_cpp]: https://hg.mozilla.org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
             let cpu_osxsave = bit::test(proc_info_ecx as usize, 27);
 
             // 2. The OS must have signaled the CPU that it supports saving and
@@ -354,10 +363,33 @@ pub fn detect_features() -> usize {
             let os_avx_support = xcr0 & 6 == 6;
             let os_avx512_support = xcr0 & 224 == 224;
 
+            // Only if the OS and the CPU support saving/restoring the AVX
+            // registers we enable `xsave` support:
             if cpu_osxsave && os_avx_support {
-                // Only if the OS and the CPU support saving/restoring the AVX
-                // registers we enable `xsave` support:
+                // See "13.3 ENABLING THE XSAVE FEATURE SET AND XSAVE-ENABLED
+                // FEATURES" in the "Intel® 64 and IA-32 Architectures Software
+                // Developer’s Manual, Volume 1: Basic Architecture":
+                //
+                // "Software enables the XSAVE feature set by setting
+                // CR4.OSXSAVE[bit 18] to 1 (e.g., with the MOV to CR4
+                // instruction). If this bit is 0, execution of any of XGETBV,
+                // XRSTOR, XRSTORS, XSAVE, XSAVEC, XSAVEOPT, XSAVES, and XSETBV
+                // causes an invalid-opcode exception (#UD)"
+                //
                 enable(proc_info_ecx, 26, __Feature::xsave);
+
+                // For `xsaveopt`, `xsavec`, and `xsaves` we need to query:
+                // Processor Extended State Enumeration Sub-leaf (EAX = 0DH,
+                // ECX = 1):
+                if max_basic_leaf >= 0xd {
+                    let CpuidResult {
+                        eax: proc_extended_state1_eax,
+                        ..
+                    } = unsafe { __cpuid_count(0xd_u32, 1) };
+                    enable(proc_extended_state1_eax, 0, __Feature::xsaveopt);
+                    enable(proc_extended_state1_eax, 1, __Feature::xsavec);
+                    enable(proc_extended_state1_eax, 3, __Feature::xsaves);
+                }
 
                 // And AVX/AVX2:
                 enable(proc_info_ecx, 28, __Feature::avx);
@@ -381,18 +413,6 @@ pub fn detect_features() -> usize {
                         __Feature::avx512_vpopcntdq,
                     );
                 }
-            }
-
-            // Processor Extended State Enumeration Sub-leaf
-            // (EAX = 0DH, ECX = 1)
-            if max_basic_leaf >= 0xd {
-                let CpuidResult {
-                    eax: proc_extended_state1_eax,
-                    ..
-                } = unsafe { __cpuid_count(0xd_u32, 1) };
-                enable(proc_extended_state1_eax, 0, __Feature::xsaveopt);
-                enable(proc_extended_state1_eax, 1, __Feature::xsavec);
-                enable(proc_extended_state1_eax, 3, __Feature::xsaves);
             }
         }
 
@@ -448,10 +468,11 @@ mod tests {
         println!("tbm: {:?}", cfg_feature_enabled!("tbm"));
         println!("popcnt: {:?}", cfg_feature_enabled!("popcnt"));
         println!("lzcnt: {:?}", cfg_feature_enabled!("lzcnt"));
-        println!("xsave {:?}", cfg_feature_enabled!("xsave"));
-        println!("xsaveopt {:?}", cfg_feature_enabled!("xsaveopt"));
-        println!("xsaves {:?}", cfg_feature_enabled!("xsaves"));
-        println!("xsavec {:?}", cfg_feature_enabled!("xsavec"));
+        println!("fxsr: {:?}", cfg_feature_enabled!("fxsr"));
+        println!("xsave: {:?}", cfg_feature_enabled!("xsave"));
+        println!("xsaveopt: {:?}", cfg_feature_enabled!("xsaveopt"));
+        println!("xsaves: {:?}", cfg_feature_enabled!("xsaves"));
+        println!("xsavec: {:?}", cfg_feature_enabled!("xsavec"));
     }
 
     #[test]
