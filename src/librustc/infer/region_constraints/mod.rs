@@ -82,7 +82,7 @@ pub type VarOrigins = IndexVec<RegionVid, RegionVariableOrigin>;
 /// Describes constraints between the region variables and other
 /// regions, as well as other conditions that must be verified, or
 /// assumptions that can be made.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct RegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
@@ -142,7 +142,7 @@ pub enum Constraint<'tcx> {
 /// outlive `RS`. Therefore verify that `R <= RS[i]` for some
 /// `i`. Inference variables may be involved (but this verification
 /// step doesn't influence inference).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Verify<'tcx> {
     pub kind: GenericKind<'tcx>,
     pub origin: SubregionOrigin<'tcx>,
@@ -159,7 +159,7 @@ pub enum GenericKind<'tcx> {
 /// When we introduce a verification step, we wish to test that a
 /// particular region (let's call it `'min`) meets some bound.
 /// The bound is described the by the following grammar:
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VerifyBound<'tcx> {
     /// B = exists {R} --> some 'r in {R} must outlive 'min
     ///
@@ -286,6 +286,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn var_origins(&self) -> &VarOrigins {
         &self.var_origins
+    }
+
+    pub fn region_constraint_data(&self) -> &RegionConstraintData<'tcx> {
+        &self.data
     }
 
     /// Once all the constraints have been gathered, extract out the final data.

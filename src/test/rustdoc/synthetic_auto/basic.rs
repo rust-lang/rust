@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use inner::*;
-
-mod inner {
-    impl super::Blah for super::What { }
+// @has basic/struct.Foo.html
+// @has - '//code' 'impl<T> Send for Foo<T> where T: Send'
+// @has - '//code' 'impl<T> Sync for Foo<T> where T: Sync'
+// @count - '//*[@id="implementations-list"]/*[@class="impl"]' 0
+// @count - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]' 2
+pub struct Foo<T> {
+    field: T,
 }
-
-pub trait Blah { }
-
-// @count issue_21474/struct.What.html \
-//        '//*[@id="implementations-list"]/*[@class="impl"]' 1
-pub struct What;
