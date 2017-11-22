@@ -340,16 +340,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               err: &mut DiagnosticBuilder,
                               mut msg: String,
                               candidates: Vec<DefId>) {
-        let limit = if candidates.len() == 5 { 5 } else { 4 };
-        for (i, trait_did) in candidates.iter().take(limit).enumerate() {
-            msg.push_str(&format!("\ncandidate #{}: `use {};`",
-                                    i + 1,
-                                    self.tcx.item_path_str(*trait_did)));
+        let module_did = self.tcx.hir.get_module_parent(self.body_id);
+        let module_id = self.tcx.hir.as_local_node_id(module_did).unwrap();
+        let krate = self.tcx.hir.krate();
+        let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
+        if let Some(span) = span {
+            let path_strings = candidates.iter().map(|did| {
+                // produce an additional newline to separate the new use statement
+                // from the directly following item.
+                let additional_newline = if found_use {
+                    ""
+                } else {
+                    "\n"
+                };
+                format!("use {};\n{}", self.tcx.item_path_str(*did), additional_newline)
+            }).collect();
+
+            err.span_suggestions(span, &msg, path_strings);
+        } else {
+            let limit = if candidates.len() == 5 { 5 } else { 4 };
+            for (i, trait_did) in candidates.iter().take(limit).enumerate() {
+                msg.push_str(&format!("\ncandidate #{}: `use {};`",
+                                        i + 1,
+                                        self.tcx.item_path_str(*trait_did)));
+            }
+            if candidates.len() > limit {
+                msg.push_str(&format!("\nand {} others", candidates.len() - limit));
+            }
+            err.note(&msg[..]);
         }
-        if candidates.len() > limit {
-            msg.push_str(&format!("\nand {} others", candidates.len() - limit));
-        }
-        err.note(&msg[..]);
     }
 
     fn suggest_valid_traits(&self,
@@ -602,5 +621,85 @@ impl<'a> Iterator for AllTraits<'a> {
             *idx += 1;
             TraitInfo::new(*info)
         })
+    }
+}
+
+
+struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {
+    target_module: ast::NodeId,
+    span: Option<Span>,
+    found_use: bool,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>
+}
+
+impl<'a, 'tcx, 'gcx> UsePlacementFinder<'a, 'tcx, 'gcx> {
+    fn check(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        krate: &'tcx hir::Crate,
+        target_module: ast::NodeId,
+    ) -> (Option<Span>, bool) {
+        let mut finder = UsePlacementFinder {
+            target_module,
+            span: None,
+            found_use: false,
+            tcx,
+        };
+        hir::intravisit::walk_crate(&mut finder, krate);
+        (finder.span, finder.found_use)
+    }
+}
+
+impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, 'tcx, 'gcx> {
+    fn visit_mod(
+        &mut self,
+        module: &'tcx hir::Mod,
+        _: Span,
+        node_id: ast::NodeId,
+    ) {
+        if self.span.is_some() {
+            return;
+        }
+        if node_id != self.target_module {
+            hir::intravisit::walk_mod(self, module, node_id);
+            return;
+        }
+        // find a use statement
+        for item_id in &module.item_ids {
+            let item = self.tcx.hir.expect_item(item_id.id);
+            match item.node {
+                hir::ItemUse(..) => {
+                    // don't suggest placing a use before the prelude
+                    // import or other generated ones
+                    if item.span.ctxt().outer().expn_info().is_none() {
+                        self.span = Some(item.span.with_hi(item.span.lo()));
+                        self.found_use = true;
+                        return;
+                    }
+                },
+                // don't place use before extern crate
+                hir::ItemExternCrate(_) => {}
+                // but place them before the first other item
+                _ => if self.span.map_or(true, |span| item.span < span ) {
+                    if item.span.ctxt().outer().expn_info().is_none() {
+                        // don't insert between attributes and an item
+                        if item.attrs.is_empty() {
+                            self.span = Some(item.span.with_hi(item.span.lo()));
+                        } else {
+                            // find the first attribute on the item
+                            for attr in &item.attrs {
+                                if self.span.map_or(true, |span| attr.span < span) {
+                                    self.span = Some(attr.span.with_hi(attr.span.lo()));
+                                }
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    }
+    fn nested_visit_map<'this>(
+        &'this mut self
+    ) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
+        hir::intravisit::NestedVisitorMap::None
     }
 }

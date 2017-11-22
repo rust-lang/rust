@@ -3,9 +3,10 @@ error: the `wait` method cannot be invoked on a trait object
    |
 24 |     arg.wait();
    |         ^^^^
+help: another candidate was found in the following trait, perhaps add a `use` for it:
    |
-   = note: another candidate was found in the following trait, perhaps add a `use` for it:
-           candidate #1: `use private::Future;`
+11 | use private::Future;
+   |
 
 error: aborting due to previous error
 

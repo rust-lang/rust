@@ -588,6 +588,18 @@ struct UsePlacementFinder {
     found_use: bool,
 }
 
+impl UsePlacementFinder {
+    fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
+        let mut finder = UsePlacementFinder {
+            target_module,
+            span: None,
+            found_use: false,
+        };
+        visit::walk_crate(&mut finder, krate);
+        (finder.span, finder.found_use)
+    }
+}
+
 impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     fn visit_mod(
         &mut self,
@@ -1278,6 +1290,8 @@ pub struct Resolver<'a> {
     ambiguity_errors: Vec<AmbiguityError<'a>>,
     /// `use` injections are delayed for better placement and deduplication
     use_injections: Vec<UseError<'a>>,
+    /// `use` injections for proc macros wrongly imported with #[macro_use]
+    proc_mac_errors: Vec<macros::ProcMacError>,
 
     gated_errors: FxHashSet<Span>,
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
@@ -1486,6 +1500,7 @@ impl<'a> Resolver<'a> {
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
             use_injections: Vec::new(),
+            proc_mac_errors: Vec::new(),
             gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
 
@@ -3569,6 +3584,7 @@ impl<'a> Resolver<'a> {
     fn report_errors(&mut self, krate: &Crate) {
         self.report_shadowing_errors();
         self.report_with_use_injections(krate);
+        self.report_proc_macro_import(krate);
         let mut reported_spans = FxHashSet();
 
         for &AmbiguityError { span, name, b1, b2, lexical, legacy } in &self.ambiguity_errors {
@@ -3618,14 +3634,9 @@ impl<'a> Resolver<'a> {
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
         for UseError { mut err, candidates, node_id, better } in self.use_injections.drain(..) {
-            let mut finder = UsePlacementFinder {
-                target_module: node_id,
-                span: None,
-                found_use: false,
-            };
-            visit::walk_crate(&mut finder, krate);
+            let (span, found_use) = UsePlacementFinder::check(krate, node_id);
             if !candidates.is_empty() {
-                show_candidates(&mut err, finder.span, &candidates, better, finder.found_use);
+                show_candidates(&mut err, span, &candidates, better, found_use);
             }
             err.emit();
         }
