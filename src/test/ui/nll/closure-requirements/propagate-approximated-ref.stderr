@@ -1,0 +1,33 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/propagate-approximated-ref.rs:60:9
+   |
+60 |         demand_y(x, y, x.get())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+note: External requirements
+  --> $DIR/propagate-approximated-ref.rs:58:47
+   |
+58 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+   |  _______________________________________________^
+59 | |         // Only works if 'x: 'y:
+60 | |         demand_y(x, y, x.get())
+61 | |     });
+   | |_____^
+   |
+   = note: defining type: [closure@$DIR/propagate-approximated-ref.rs:58:47: 61:6<i16, for<'r, 's, 't0, 't1, 't2, 't3> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r(7715))) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's(7716))) u32>, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't0(7717))) std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't1(7718))) &'_#2r u32>, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't2(9542))) std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's(7716))) u32>, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't3(9543))) std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't1(7718))) u32>))>]
+   = note: number of external vids: 3
+   = note: where '_#1r: '_#2r
+
+note: No external requirements
+  --> $DIR/propagate-approximated-ref.rs:57:1
+   |
+57 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+58 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+59 | |         // Only works if 'x: 'y:
+60 | |         demand_y(x, y, x.get())
+61 | |     });
+62 | | }
+   | |_^
+   |
+   = note: defining type: for<'a, 'b> fn(std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(1:16), 'a(90))) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(1:17), 'b(92))) u32>) {supply}
+

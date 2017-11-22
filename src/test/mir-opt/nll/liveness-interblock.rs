@@ -31,18 +31,18 @@ fn main() {
 // START rustc.main.nll.0.mir
 //     | Live variables on entry to bb2: [_1]
 //     bb2: {
-//             | Live variables at bb2[0]: [_1]
+//             | Live variables on entry to bb2[0]: [_1]
 //         StorageLive(_4);
-//             | Live variables at bb2[1]: [_1]
+//             | Live variables on entry to bb2[1]: [_1]
 //         _4 = _1;
-//             | Live variables at bb2[2]: [_4]
+//             | Live variables on entry to bb2[2]: [_4]
 //         _3 = const make_live(_4) -> bb4;
 //     }
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
 //     | Live variables on entry to bb3: []
 //     bb3: {
-//             | Live variables at bb3[0]: []
+//             | Live variables on entry to bb3[0]: []
 //         _5 = const make_dead() -> bb5;
 //     }
 // END rustc.main.nll.0.mir

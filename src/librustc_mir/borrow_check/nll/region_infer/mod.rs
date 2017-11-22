@@ -25,6 +25,10 @@ use std::collections::BTreeMap;
 use std::fmt;
 use syntax_pos::Span;
 
+mod annotation;
+mod dump_mir;
+mod graphviz;
+
 pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
     /// variables are identified by their index (`RegionVid`). The

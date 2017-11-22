@@ -1,0 +1,37 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/escape-argument-callee.rs:31:50
+   |
+31 |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                                  ^
+
+error: free region `'_#4r` does not outlive free region `'_#3r`
+  --> $DIR/escape-argument-callee.rs:31:45
+   |
+31 |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                             ^^^^^^
+
+note: External requirements
+  --> $DIR/escape-argument-callee.rs:31:38
+   |
+31 |         let mut closure = expect_sig(|p, y| *p = y);
+   |                                      ^^^^^^^^^^^^^
+   |
+   = note: defining type: [closure@$DIR/escape-argument-callee.rs:31:38: 31:51<i16, for<'r, 's, 't0> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r(7685))) mut &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's(7686))) i32, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't0(7687))) i32))>]
+   = note: number of external vids: 1
+
+note: No external requirements
+  --> $DIR/escape-argument-callee.rs:25:1
+   |
+25 | / fn test() {
+26 | |     let x = 44;
+27 | |     let mut p = &x;
+28 | |
+...  |
+37 | |     deref(p);
+38 | | }
+   | |_^
+   |
+   = note: defining type: fn() {test}
+
+error: aborting due to previous error
+
