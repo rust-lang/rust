@@ -98,7 +98,7 @@ for mir::Terminator<'gcx> {
     }
 }
 
-impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for mir::ClearOnDecode<T>
+impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for mir::ClearCrossCrate<T>
     where T: HashStable<StableHashingContext<'gcx>>
 {
     #[inline]
@@ -107,8 +107,8 @@ impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for mir::ClearOnDecode<T>
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::ClearOnDecode::Clear => {}
-            mir::ClearOnDecode::Set(ref value) => {
+            mir::ClearCrossCrate::Clear => {}
+            mir::ClearCrossCrate::Set(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
         }

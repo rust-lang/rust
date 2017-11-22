@@ -157,6 +157,15 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
     }
 }
 
+impl<'a, 'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>>
+for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self,
+                          _: &mir::ClearCrossCrate<T>)
+                          -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
 impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     fn position(&self) -> usize {
         self.opaque.position()

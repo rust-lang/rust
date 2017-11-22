@@ -320,8 +320,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     let mir = &tcx.mir_built(def_id).borrow();
 
     let visibility_scope_info = match mir.visibility_scope_info {
-        ClearOnDecode::Set(ref data) => data,
-        ClearOnDecode::Clear => {
+        ClearCrossCrate::Set(ref data) => data,
+        ClearCrossCrate::Clear => {
             debug!("unsafety_violations: {:?} - remote, skipping", def_id);
             return UnsafetyCheckResult {
                 violations: Rc::new([]),
