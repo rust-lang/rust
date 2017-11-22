@@ -178,9 +178,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(&ty, location);
-                if let Err(terr) = self.cx
-                    .eq_types(self.last_span, ty, sty, location.at_self())
-                {
+                if let Err(terr) = self.cx.eq_types(ty, sty, location.at_self()) {
                     span_mirbug!(
                         self,
                         place,
@@ -230,7 +228,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
         let base_ty = base.to_ty(tcx);
-        let span = self.last_span;
         match *pi {
             ProjectionElem::Deref => {
                 let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
@@ -316,7 +313,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 let fty = self.sanitize_type(place, fty);
                 match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
-                        if let Err(terr) = self.cx.eq_types(span, ty, fty, location.at_self()) {
+                        if let Err(terr) = self.cx.eq_types(ty, fty, location.at_self()) {
                             span_mirbug!(
                                 self,
                                 place,
@@ -529,13 +526,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn eq_types(
-        &mut self,
-        _span: Span,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        locations: Locations,
-    ) -> UnitResult<'tcx> {
+    fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
         self.fully_perform_op(locations, |this| {
             this.infcx
                 .at(&this.misc(this.last_span), this.param_env)
