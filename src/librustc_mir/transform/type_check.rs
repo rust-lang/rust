@@ -11,6 +11,7 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::traits::{self, FulfillmentContext};
@@ -1135,13 +1136,44 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         operands: &[Operand<'tcx>],
         location: Location,
     ) {
+        let tcx = self.tcx();
+
         match aggregate_kind {
             // tuple rvalue field type is always the type of the op. Nothing to check here.
             AggregateKind::Tuple => return,
+
+            // For closures, we have some **extra requirements** we
+            // have to check. In particular, in their upvars and
+            // signatures, closures often reference various regions
+            // from the surrounding function -- we call those the
+            // closure's free regions. When we borrow-check (and hence
+            // region-check) closures, we may find that the closure
+            // requires certain relationships between those free
+            // regions. However, because those free regions refer to
+            // portions of the CFG of their caller, the closure is not
+            // in a position to verify those relationships. In that
+            // case, the requirements get "propagated" to us, and so
+            // we have to solve them here where we instantiate the
+            // closure.
+            //
+            // Despite the opacity of the previous parapgrah, this is
+            // actually relatively easy to understand in terms of the
+            // desugaring. A closure gets desugared to a struct, and
+            // these extra requirements are basically like where
+            // clauses on the struct.
+            AggregateKind::Closure(def_id, substs) => {
+                if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
+                    closure_region_requirements.apply_requirements(
+                        self.infcx,
+                        location,
+                        *def_id,
+                        *substs,
+                    );
+                }
+            }
+
             _ => {}
         }
-
-        let tcx = self.tcx();
 
         for (i, operand) in operands.iter().enumerate() {
             let field_ty = match self.aggregate_field_ty(aggregate_kind, i, location) {
