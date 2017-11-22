@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Coverflow-checks=off
+
 #![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
 #![deny(const_err)]

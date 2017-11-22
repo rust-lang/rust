@@ -1,0 +1,52 @@
+warning: attempt to add with overflow
+  --> $DIR/issue-45850-without-overflow-checks.rs:38:13
+   |
+38 |     let _ = 200u8 + 200u8;
+   |             ^^^^^^^^^^^^^
+   |
+   = note: #[warn(const_err)] on by default
+
+warning: attempt to divide by zero
+  --> $DIR/issue-45850-without-overflow-checks.rs:40:13
+   |
+40 |     let _ = 17 / 0;
+   |             ^^^^^^
+
+error: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/issue-45850-without-overflow-checks.rs:20:5
+   |
+20 |     [b'a'][1]
+   |     ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-45850-without-overflow-checks.rs:18:8
+   |
+18 | #[deny(const_err)]
+   |        ^^^^^^^^^
+
+warning: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/issue-45850-without-overflow-checks.rs:29:5
+   |
+29 |     [b'c'][1]
+   |     ^^^^^^^^^
+
+warning: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/issue-45850-without-overflow-checks.rs:33:5
+   |
+33 |     [b'd'][1]
+   |     ^^^^^^^^^
+
+error: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/issue-45850-without-overflow-checks.rs:51:9
+   |
+51 |         [b'E'][1]
+   |         ^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-45850-without-overflow-checks.rs:49:12
+   |
+49 |     #[deny(const_err)]
+   |            ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

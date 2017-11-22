@@ -17,6 +17,7 @@ use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
 use rustc::session::config::FullDebugInfo;
+use rustc::hir::def_id::DefIndex;
 use base;
 use builder::Builder;
 use common::{CrateContext, Funclet};
@@ -43,6 +44,8 @@ use self::operand::{OperandRef, OperandValue};
 /// Master context for translating MIR.
 pub struct MirContext<'a, 'tcx:'a> {
     mir: &'a mir::Mir<'tcx>,
+
+    instance_def_index: DefIndex,
 
     debug_context: debuginfo::FunctionDebugContext,
 
@@ -226,6 +229,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
     let mut mircx = MirContext {
         mir,
+        instance_def_index: instance.def_id().index,
         llfn,
         fn_ty,
         ccx,
