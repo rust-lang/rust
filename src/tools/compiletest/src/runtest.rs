@@ -2355,7 +2355,9 @@ actual:\n\
         let mut dumped_file = fs::File::open(output_file.clone()).unwrap();
         let mut dumped_string = String::new();
         dumped_file.read_to_string(&mut dumped_string).unwrap();
-        let mut dumped_lines = dumped_string.lines().filter(|l| !l.is_empty());
+        let mut dumped_lines = dumped_string.lines()
+                                            .map(|l| nocomment_mir_line(l))
+                                            .filter(|l| !l.is_empty());
         let mut expected_lines = expected_content.iter().filter(|&l| {
             if let &ExpectedLine::Text(l) = l {
                 !l.is_empty()
@@ -2387,7 +2389,7 @@ actual:\n\
                                                    .collect::<Vec<_>>()
                                                    .join("\n");
             panic!("Did not find expected line, error: {}\n\
-                   Actual Line: {:?}\n\
+                   Expected Line: {:?}\n\
                    Expected:\n{}\n\
                    Actual:\n{}",
                    extra_msg,
@@ -2410,8 +2412,11 @@ actual:\n\
                     if !compare(expected_line, dumped_line) {
                         error!("{:?}", start_block_line);
                         error(expected_line,
-                              format!("Mismatch in lines\nCurrnt block: {}\nExpected Line: {:?}",
-                                      start_block_line.unwrap_or("None"), dumped_line));
+                              format!("Mismatch in lines\n\
+                                       Current block: {}\n\
+                                       Actual Line: {:?}",
+                                      start_block_line.unwrap_or("None"),
+                                      dumped_line));
                     }
                 },
                 Some(&ExpectedLine::Elision) => {
