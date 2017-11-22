@@ -2161,33 +2161,40 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    #[allow(dead_code)]
     fn apply_user_type_parameter_fallback(&self) {
-        debug!("Applying user defaults");
-        // It is a possible that this algorithm will have to run an arbitrary number of times
-        // to terminate so we bound it by the compiler's recursion limit.
-        // TODO: detect fixed point.
-        for _ in 0..5 {//self.tcx().sess.recursion_limit.get() {
-            self.select_obligations_where_possible();
-            // Collect all unsolved type variables.
-            let unsolved = self.inh.infcx.candidates_for_defaulting();
-
-            let mut has_user_default = FxHashSet();
-
-            // Examine all unsolved variables, applying user defaults.
-            // If no default is provided, then the variable will be unable to unify with anything.
-            for &(ref ty, ref default) in &unsolved {
-                if let &Default::User(ref user_default) = default {
-                    println!("apply_user_type_parameter_fallback: \
-                            ty: {:?} with default: {:?}", ty, user_default);
-                    has_user_default.insert((*ty, user_default.clone()));
-                    
+        // Collect variables that are unsolved and defaultible,
+        // partitioned by subtyping equivalence.
+        let mut partition = FxHashMap();
+        for vid in self.fulfillment_cx.borrow().vars_in_unsolved_obligations() {
+            let mut type_variables = self.infcx.type_variables.borrow_mut();
+            let not_known = type_variables.probe(vid).is_none();
+            let defaultible = type_variables.is_user_defaultible(vid);
+            if defaultible && not_known {
+                let root = type_variables.sub_root_var(vid);
+                partition.entry(root).or_insert(Vec::new()).push(vid);
+            }
+        }
+        
+        // For future-proofing against conflicting defaults,
+        // we do not allow variables with no default to be unified.
+        'parts: for part in partition.values() {
+            for &vid in part {
+                match self.infcx.type_variables.borrow().default(vid) {
+                    &Default::User(_) => {},
+                    _ => continue 'parts,
+                }
+            }
+            for &vid in part {
+                // If future-proof, then all vars have defaults.
+                let default = self.infcx.type_variables.borrow().default(vid).clone();
+                let ty = self.tcx.mk_var(vid);
+                debug!("apply_user_type_parameter_fallback: \
+                        ty: {:?} with default: {:?}", ty, default);
+                if let Default::User(user_default) = default {
                     let normalized_default = self.normalize_associated_types_in(
-                        user_default.origin_span,
-                        &user_default.ty);
-                    self.demand_eqtype(user_default.origin_span, *ty, normalized_default);
-                } else {
-                    self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.err);
+                                        user_default.origin_span,
+                                        &user_default.ty);
+                    self.demand_eqtype(user_default.origin_span, &ty, normalized_default);
                 }
             }
         }
@@ -2410,14 +2417,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(self.deferred_call_resolutions.borrow().is_empty());
 
         self.select_all_obligations_and_apply_defaults();
+        self.apply_user_type_parameter_fallback();
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
-
-        if fulfillment_cx.select_where_possible(self).is_err() {
-            self.apply_user_type_parameter_fallback();
-            // FIXME: Probably uneccessary.
-            self.select_obligations_where_possible();
-        }
 
         match fulfillment_cx.select_all_or_error(self) {
             Ok(()) => { }
