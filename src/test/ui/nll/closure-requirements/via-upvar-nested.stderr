@@ -1,0 +1,87 @@
+note: External requirements
+  --> $DIR/via-upvar-nested.rs:24:28
+   |
+24 |             let closure1 = || p = &y;
+   |                            ^^^^^^^^^
+   |
+   = note: _0: ()
+   = note: _1: &mut [closure@$DIR/via-upvar-nested.rs:24:28: 24:37 p:&mut &i32, y:&i32]
+
+note: External requirements
+  --> $DIR/via-upvar-nested.rs:23:27
+   |
+23 |           let mut closure = || {
+   |  ___________________________^
+24 | |             let closure1 = || p = &y;
+25 | |             closure1();
+26 | |         };
+   | |_________^
+   |
+   = note: _0: ()
+   = note: _1: &mut [closure@$DIR/via-upvar-nested.rs:23:27: 26:10 p:&mut &i32, y:&i32]
+   = note: where '_#1r: '_#2r
+
+error[E0596]: cannot borrow immutable item `closure1` as mutable (Mir)
+  --> $DIR/via-upvar-nested.rs:25:13
+   |
+25 |             closure1();
+   |             ^^^^^^^^ cannot borrow as mutable
+
+error[E0597]: `**y` does not live long enough (Ast)
+  --> $DIR/via-upvar-nested.rs:24:36
+   |
+24 |             let closure1 = || p = &y;
+   |                            --      ^ does not live long enough
+   |                            |
+   |                            capture occurs here
+...
+29 |     }
+   |     - borrowed value only lives until here
+...
+32 | }
+   | - borrowed value needs to live until here
+
+error[E0596]: cannot borrow immutable local variable `closure1` as mutable (Ast)
+  --> $DIR/via-upvar-nested.rs:25:13
+   |
+24 |             let closure1 = || p = &y;
+   |                 -------- consider changing this to `mut closure1`
+25 |             closure1();
+   |             ^^^^^^^^ cannot borrow mutably
+
+note: No external requirements
+  --> $DIR/via-upvar-nested.rs:16:1
+   |
+16 | / fn test() {
+17 | |     let x = 44;
+18 | |     let mut p = &x;
+19 | |
+...  |
+31 | |     deref(p);
+32 | | }
+   | |_^
+
+error[E0597]: borrowed value does not live long enough (Mir)
+  --> $DIR/via-upvar-nested.rs:29:6
+   |
+21 |         let y = 22;
+   |             - temporary value created here
+...
+29 |     }
+   |      ^ temporary value dropped here while still borrowed
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error[E0502]: cannot borrow `(*p)` as immutable because it is also borrowed as mutable (Mir)
+  --> $DIR/via-upvar-nested.rs:31:11
+   |
+23 |         let mut closure = || {
+   |                           -- mutable borrow occurs here
+24 |             let closure1 = || p = &y;
+   |                               - previous borrow occurs due to use of `(*p)` in closure
+...
+31 |     deref(p);
+   |           ^ immutable borrow occurs here
+
+error: aborting due to 5 previous errors
+

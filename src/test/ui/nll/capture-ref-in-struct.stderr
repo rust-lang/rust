@@ -1,0 +1,13 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/capture-ref-in-struct.rs:36:6
+   |
+28 |         let y = 22;
+   |             - temporary value created here
+...
+36 |     }
+   |      ^ temporary value dropped here while still borrowed
+   |
+   = note: consider using a `let` binding to increase its lifetime
+
+error: aborting due to previous error
+
