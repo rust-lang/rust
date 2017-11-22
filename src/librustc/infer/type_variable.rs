@@ -55,7 +55,7 @@ pub enum TypeVariableOrigin {
     MiscVariable(Span),
     NormalizeProjectionType(Span),
     TypeInference(Span),
-    TypeParameterDefinition(Span, ast::Name),
+    TypeParameterDefinition(Span, ast::Name, ty::OriginOfTyParam),
 
     /// one of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined)
@@ -132,15 +132,6 @@ impl<'tcx> TypeVariableTable<'tcx> {
        &self.values.get(vid.index as usize).default
     }
 
-    /// Can an user-supplied default exist for this variable?
-    pub fn is_user_defaultible(&self, vid: ty::TyVid) -> bool {
-        if let TypeVariableOrigin::TypeParameterDefinition(..) = self.var_origin(vid) {
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
         match self.values.get(vid.index as usize).default {
             Default::Diverging => true,
@@ -148,8 +139,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
         }
     }
 
-    pub fn var_origin(&self, vid: ty::TyVid) -> &TypeVariableOrigin {
-        &self.values.get(vid.index as usize).origin
+    pub fn var_origin(&self, vid: ty::TyVid) -> TypeVariableOrigin {
+        self.values.get(vid.index as usize).origin
     }
 
     /// Records that `a == b`, depending on `dir`.

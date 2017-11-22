@@ -36,7 +36,7 @@ use middle::const_val;
 use std::fmt;
 use syntax::ast;
 use session::DiagnosticMessageId;
-use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use ty::{self, AdtKind, OriginOfTyParam, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
@@ -1134,7 +1134,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let infcx = self.infcx;
                     self.var_map.entry(ty).or_insert_with(||
                         infcx.next_ty_var(
-                            TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP, name)))
+                            TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP,
+                                                                        name,
+                                                                        OriginOfTyParam::Other)))
                 } else {
                     ty.super_fold_with(self)
                 }

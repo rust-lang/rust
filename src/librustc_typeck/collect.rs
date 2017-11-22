@@ -872,6 +872,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut opt_self = None;
     let mut allow_defaults = false;
+    let mut origin = ty::OriginOfTyParam::Other;
 
     let no_generics = hir::Generics::empty();
     let (ast_generics, opt_inputs) = match node {
@@ -891,13 +892,21 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeItem(item) => {
             match item.node {
-                ItemFn(ref decl, .., ref generics, _) => (generics, Some(&decl.inputs)),
-                ItemImpl(_, _, _, ref generics, ..) => (generics, None),
+                ItemFn(ref decl, .., ref generics, _) => {
+                    origin = ty::OriginOfTyParam::Fn;
+                    (generics, Some(&decl.inputs))
+                }
+
+                ItemImpl(_, _, _, ref generics, ..) => {
+                    origin = ty::OriginOfTyParam::Impl;
+                    (generics, None)
+                }
 
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => {
+                    origin = ty::OriginOfTyParam::TyDef;
                     allow_defaults = true;
                     (generics, None)
                 }
@@ -914,6 +923,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         name: keywords::SelfType.name(),
                         def_id: tcx.hir.local_def_id(param_id),
                         has_default: false,
+                        origin: ty::OriginOfTyParam::Other,
                         object_lifetime_default: rl::Set1::Empty,
                         pure_wrt_drop: false,
                         synthetic: None,
@@ -990,6 +1000,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             name: p.name,
             def_id: tcx.hir.local_def_id(p.id),
             has_default: p.default.is_some(),
+            origin,
             object_lifetime_default:
                 object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
             pure_wrt_drop: p.pure_wrt_drop,
@@ -1008,6 +1019,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 name: Symbol::intern(&tcx.hir.node_to_pretty_string(info.id)),
                 def_id: info.def_id,
                 has_default: false,
+                origin: ty::OriginOfTyParam::Other,
                 object_lifetime_default: rl::Set1::Empty,
                 pure_wrt_drop: false,
                 synthetic: Some(SyntheticTyParamKind::ImplTrait),
@@ -1047,6 +1059,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 name: Symbol::intern("<upvar>"),
                 def_id,
                 has_default: false,
+                origin: ty::OriginOfTyParam::Other,
                 object_lifetime_default: rl::Set1::Empty,
                 pure_wrt_drop: false,
                 synthetic: None,

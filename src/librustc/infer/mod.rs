@@ -1121,14 +1121,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
+        let origin = TypeVariableOrigin::TypeParameterDefinition(span,
+                                                                 def.name,
+                                                                 def.origin);
 
-        let ty_var_id = self.type_variables
-                            .borrow_mut()
-                            .new_var(false,
-                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name),
-                                     default);
-
-        self.tcx.mk_var(ty_var_id)
+        self.tcx.mk_var(self.type_variables.borrow_mut().new_var(false, origin, default))
     }
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each

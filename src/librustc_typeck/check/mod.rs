@@ -2179,29 +2179,51 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn apply_user_type_parameter_fallback(&self) {
-        // Collect variables that are unsolved and defaultible,
-        // partitioned by subtyping equivalence.
-        let mut partition = FxHashMap();
+        use self::TypeVariableOrigin::TypeParameterDefinition;
+        use ty::OriginOfTyParam;
+
+        // Collect variables that are unsolved and support fallback,
+        // grouped by subtyping equivalence.
+        let mut bags = FxHashMap();
         for vid in self.fulfillment_cx.borrow().vars_in_unsolved_obligations() {
             let mut type_variables = self.infcx.type_variables.borrow_mut();
             let not_known = type_variables.probe(vid).is_none();
-            let defaultible = type_variables.is_user_defaultible(vid);
-            if defaultible && not_known {
+            let supports_fallback = match type_variables.var_origin(vid) {
+                TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
+                TypeParameterDefinition(_, _, OriginOfTyParam::Impl) |
+                TypeParameterDefinition(_, _, OriginOfTyParam::TyDef) => true,
+                _ => false
+            };
+            if supports_fallback && not_known {
                 let root = type_variables.sub_root_var(vid);
-                partition.entry(root).or_insert(Vec::new()).push(vid);
+                bags.entry(root).or_insert(Vec::new()).push(vid);
             }
         }
         
-        // For future-proofing against conflicting defaults,
-        // we do not allow variables with no default to be unified.
-        'parts: for part in partition.values() {
-            for &vid in part {
+        'bags: for (_, mut bag) in bags.into_iter() {
+            // Partition the bag by the origin of the default.
+            let (fn_or_impl, ty_def) = bag.into_iter().partition(|&v| {
+                match self.infcx.type_variables.borrow().var_origin(v) {
+                    TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
+                    TypeParameterDefinition(_, _, OriginOfTyParam::Impl) => true,
+                    TypeParameterDefinition(_, _, OriginOfTyParam::TyDef) => false,
+                    _ => bug!("type var does not support fallback")
+                }
+            });
+            // Params from fns or impls take priority, if they exist ignore the rest of the bag.
+            bag = fn_or_impl;
+            if bag.is_empty() { 
+                bag = ty_def;
+            }
+            // For future-proofing against conflicting defaults,
+            // if one of the variables has no default, nothing is unified.
+            for &vid in &bag {
                 match self.infcx.type_variables.borrow().default(vid) {
                     &Default::User(_) => {},
-                    _ => continue 'parts,
+                    _ => continue 'bags,
                 }
             }
-            for &vid in part {
+            for &vid in &bag {
                 // If future-proof, then all vars have defaults.
                 let default = self.infcx.type_variables.borrow().default(vid).clone();
                 let ty = self.tcx.mk_var(vid);
@@ -2211,6 +2233,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let normalized_default = self.normalize_associated_types_in(
                                         user_default.origin_span,
                                         &user_default.ty);
+                // QUESTION(leodasvacas): 
+                // This will emit "expected type mismatch" on conflicting defaults, which is bad.
+                // I'd be happy to somehow detect or rollback this demand on conflict defaults
+                // so we would emit "type annotations needed" instead.
                     self.demand_eqtype(user_default.origin_span, &ty, normalized_default);
                 }
             }
