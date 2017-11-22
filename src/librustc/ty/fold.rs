@@ -247,7 +247,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
                 match *r {
-                    ty::ReLateBound(debruijn, _) if debruijn.depth < self.current_depth => {
+                    ty::ReLateBound(debruijn, _) if debruijn.depth <= self.current_depth => {
                         /* ignore bound regions */
                     }
                     _ => (self.callback)(r),
