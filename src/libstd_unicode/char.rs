@@ -57,6 +57,7 @@ pub use tables::{UnicodeVersion, UNICODE_VERSION};
 /// [`to_lowercase`]: ../../std/primitive.char.html#method.to_lowercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct ToLowercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -78,6 +79,7 @@ impl FusedIterator for ToLowercase {}
 /// [`to_uppercase`]: ../../std/primitive.char.html#method.to_uppercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct ToUppercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -91,6 +93,7 @@ impl Iterator for ToUppercase {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for ToUppercase {}
 
+#[derive(Debug)]
 enum CaseMappingIter {
     Three(char, char, char),
     Two(char, char),
@@ -1450,7 +1453,7 @@ impl char {
 
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
 #[stable(feature = "decode_utf16", since = "1.9.0")]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DecodeUtf16<I>
     where I: Iterator<Item = u16>
 {
