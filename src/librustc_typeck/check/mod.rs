@@ -2258,7 +2258,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(self.deferred_call_resolutions.borrow().is_empty());
 
         self.select_all_obligations_and_apply_defaults();
-        self.apply_user_type_parameter_fallback();
+        if self.tcx.sess.features.borrow().default_type_parameter_fallback {
+            self.apply_user_type_parameter_fallback();
+        }
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
 
