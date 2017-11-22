@@ -624,6 +624,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
     }
 
+    /// Given the `DefId` of a fn or closure, returns the `DefId` of
+    /// the innermost fn item that the closure is contained within.
+    /// This is a significant def-id because, when we do
+    /// type-checking, we type-check this fn item and all of its
+    /// (transitive) closures together.  Therefore, when we fetch the
+    /// `typeck_tables_of` the closure, for example, we really wind up
+    /// fetching the `typeck_tables_of` the enclosing fn item.
     pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
         while self.is_closure(def_id) {
