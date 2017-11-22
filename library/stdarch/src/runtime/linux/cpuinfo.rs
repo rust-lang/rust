@@ -151,7 +151,8 @@ power management:
         assert!(!cpuinfo.field("flags").has("avx"));
     }
 
-    const ARM_CORTEX_A53: &str = r"Processor   : AArch64 Processor rev 3 (aarch64)
+    const ARM_CORTEX_A53: &str =
+        r"Processor   : AArch64 Processor rev 3 (aarch64)
         processor   : 0
         processor   : 1
         processor   : 2

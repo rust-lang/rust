@@ -695,400 +695,496 @@ pub unsafe fn _mm256_hsubs_epi16(a: i16x16, b: i16x16) -> i16x16 {
     phsubsw(a, b)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
-pub unsafe fn _mm_i32gather_epi32(slice: *const i32, offsets: i32x4, scale: i8) -> i32x4 {
+pub unsafe fn _mm_i32gather_epi32(
+    slice: *const i32, offsets: i32x4, scale: i8
+) -> i32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdd(i32x4::splat(0), slice as *const i8, offsets, i32x4::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
-pub unsafe fn _mm_mask_i32gather_epi32(src: i32x4, slice: *const i32, offsets: i32x4, mask: i32x4, scale: i8) -> i32x4 {
+pub unsafe fn _mm_mask_i32gather_epi32(
+    src: i32x4, slice: *const i32, offsets: i32x4, mask: i32x4, scale: i8
+) -> i32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdd(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
-pub unsafe fn _mm256_i32gather_epi32(slice: *const i32, offsets: i32x8, scale: i8) -> i32x8 {
+pub unsafe fn _mm256_i32gather_epi32(
+    slice: *const i32, offsets: i32x8, scale: i8
+) -> i32x8 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdd(i32x8::splat(0), slice as *const i8, offsets, i32x8::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
-pub unsafe fn _mm256_mask_i32gather_epi32(src: i32x8, slice: *const i32, offsets: i32x8, mask: i32x8, scale: i8) -> i32x8 {
+pub unsafe fn _mm256_mask_i32gather_epi32(
+    src: i32x8, slice: *const i32, offsets: i32x8, mask: i32x8, scale: i8
+) -> i32x8 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdd(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
-pub unsafe fn _mm_i32gather_ps(slice: *const f32, offsets: i32x4, scale: i8) -> f32x4 {
+pub unsafe fn _mm_i32gather_ps(
+    slice: *const f32, offsets: i32x4, scale: i8
+) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdps(f32x4::splat(0.0), slice as *const i8, offsets, f32x4::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
-pub unsafe fn _mm_mask_i32gather_ps(src: f32x4, slice: *const f32, offsets: i32x4, mask: f32x4, scale: i8) -> f32x4 {
+pub unsafe fn _mm_mask_i32gather_ps(
+    src: f32x4, slice: *const f32, offsets: i32x4, mask: f32x4, scale: i8
+) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdps(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
-pub unsafe fn _mm256_i32gather_ps(slice: *const f32, offsets: i32x8, scale: i8) -> f32x8 {
+pub unsafe fn _mm256_i32gather_ps(
+    slice: *const f32, offsets: i32x8, scale: i8
+) -> f32x8 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdps(f32x8::splat(0.0), slice as *const i8, offsets, f32x8::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
-pub unsafe fn _mm256_mask_i32gather_ps(src: f32x8, slice: *const f32, offsets: i32x8, mask: f32x8, scale: i8) -> f32x8 {
+pub unsafe fn _mm256_mask_i32gather_ps(
+    src: f32x8, slice: *const f32, offsets: i32x8, mask: f32x8, scale: i8
+) -> f32x8 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdps(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
-pub unsafe fn _mm_i32gather_epi64(slice: *const i64, offsets: i32x4, scale: i8) -> i64x2 {
+pub unsafe fn _mm_i32gather_epi64(
+    slice: *const i64, offsets: i32x4, scale: i8
+) -> i64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdq(i64x2::splat(0), slice as *const i8, offsets, i64x2::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
-pub unsafe fn _mm_mask_i32gather_epi64(src: i64x2, slice: *const i64, offsets: i32x4, mask: i64x2, scale: i8) -> i64x2 {
+pub unsafe fn _mm_mask_i32gather_epi64(
+    src: i64x2, slice: *const i64, offsets: i32x4, mask: i64x2, scale: i8
+) -> i64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdq(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
-pub unsafe fn _mm256_i32gather_epi64(slice: *const i64, offsets: i32x4, scale: i8) -> i64x4 {
+pub unsafe fn _mm256_i32gather_epi64(
+    slice: *const i64, offsets: i32x4, scale: i8
+) -> i64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdq(i64x4::splat(0), slice as *const i8, offsets, i64x4::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
-pub unsafe fn _mm256_mask_i32gather_epi64(src: i64x4, slice: *const i64, offsets: i32x4, mask: i64x4, scale: i8) -> i64x4 {
+pub unsafe fn _mm256_mask_i32gather_epi64(
+    src: i64x4, slice: *const i64, offsets: i32x4, mask: i64x4, scale: i8
+) -> i64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdq(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
-pub unsafe fn _mm_i32gather_pd(slice: *const f64, offsets: i32x4, scale: i8) -> f64x2 {
+pub unsafe fn _mm_i32gather_pd(
+    slice: *const f64, offsets: i32x4, scale: i8
+) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdpd(f64x2::splat(0.0), slice as *const i8, offsets, f64x2::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
-pub unsafe fn _mm_mask_i32gather_pd(src: f64x2, slice: *const f64, offsets: i32x4, mask: f64x2, scale: i8) -> f64x2 {
+pub unsafe fn _mm_mask_i32gather_pd(
+    src: f64x2, slice: *const f64, offsets: i32x4, mask: f64x2, scale: i8
+) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherdpd(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
-pub unsafe fn _mm256_i32gather_pd(slice: *const f64, offsets: i32x4, scale: i8) -> f64x4 {
+pub unsafe fn _mm256_i32gather_pd(
+    slice: *const f64, offsets: i32x4, scale: i8
+) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdpd(f64x4::splat(0.0), slice as *const i8, offsets, f64x4::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherdpd, scale = 1))]
-pub unsafe fn _mm256_mask_i32gather_pd(src: f64x4, slice: *const f64, offsets: i32x4, mask: f64x4, scale: i8) -> f64x4 {
+pub unsafe fn _mm256_mask_i32gather_pd(
+    src: f64x4, slice: *const f64, offsets: i32x4, mask: f64x4, scale: i8
+) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherdpd(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
-pub unsafe fn _mm_i64gather_epi32(slice: *const i32, offsets: i64x2, scale: i8) -> i32x4 {
+pub unsafe fn _mm_i64gather_epi32(
+    slice: *const i32, offsets: i64x2, scale: i8
+) -> i32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqd(i32x4::splat(0), slice as *const i8, offsets, i32x4::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
-pub unsafe fn _mm_mask_i64gather_epi32(src: i32x4, slice: *const i32, offsets: i64x2, mask: i32x4, scale: i8) -> i32x4 {
+pub unsafe fn _mm_mask_i64gather_epi32(
+    src: i32x4, slice: *const i32, offsets: i64x2, mask: i32x4, scale: i8
+) -> i32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqd(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
-pub unsafe fn _mm256_i64gather_epi32(slice: *const i32, offsets: i64x4, scale: i8) -> i32x4 {
+pub unsafe fn _mm256_i64gather_epi32(
+    slice: *const i32, offsets: i64x4, scale: i8
+) -> i32x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqd(i32x4::splat(0), slice as *const i8, offsets, i32x4::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqd, scale = 1))]
-pub unsafe fn _mm256_mask_i64gather_epi32(src: i32x4, slice: *const i32, offsets: i64x4, mask: i32x4, scale: i8) -> i32x4 {
+pub unsafe fn _mm256_mask_i64gather_epi32(
+    src: i32x4, slice: *const i32, offsets: i64x4, mask: i32x4, scale: i8
+) -> i32x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqd(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
-pub unsafe fn _mm_i64gather_ps(slice: *const f32, offsets: i64x2, scale: i8) -> f32x4 {
+pub unsafe fn _mm_i64gather_ps(
+    slice: *const f32, offsets: i64x2, scale: i8
+) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqps(f32x4::splat(0.0), slice as *const i8, offsets, f32x4::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
-pub unsafe fn _mm_mask_i64gather_ps(src: f32x4, slice: *const f32, offsets: i64x2, mask: f32x4, scale: i8) -> f32x4 {
+pub unsafe fn _mm_mask_i64gather_ps(
+    src: f32x4, slice: *const f32, offsets: i64x2, mask: f32x4, scale: i8
+) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqps(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
-pub unsafe fn _mm256_i64gather_ps(slice: *const f32, offsets: i64x4, scale: i8) -> f32x4 {
+pub unsafe fn _mm256_i64gather_ps(
+    slice: *const f32, offsets: i64x4, scale: i8
+) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqps(f32x4::splat(0.0), slice as *const i8, offsets, f32x4::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqps, scale = 1))]
-pub unsafe fn _mm256_mask_i64gather_ps(src: f32x4, slice: *const f32, offsets: i64x4, mask: f32x4, scale: i8) -> f32x4 {
+pub unsafe fn _mm256_mask_i64gather_ps(
+    src: f32x4, slice: *const f32, offsets: i64x4, mask: f32x4, scale: i8
+) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqps(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
-pub unsafe fn _mm_i64gather_epi64(slice: *const i64, offsets: i64x2, scale: i8) -> i64x2 {
+pub unsafe fn _mm_i64gather_epi64(
+    slice: *const i64, offsets: i64x2, scale: i8
+) -> i64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqq(i64x2::splat(0), slice as *const i8, offsets, i64x2::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
-pub unsafe fn _mm_mask_i64gather_epi64(src: i64x2, slice: *const i64, offsets: i64x2, mask: i64x2, scale: i8) -> i64x2 {
+pub unsafe fn _mm_mask_i64gather_epi64(
+    src: i64x2, slice: *const i64, offsets: i64x2, mask: i64x2, scale: i8
+) -> i64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqq(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
-pub unsafe fn _mm256_i64gather_epi64(slice: *const i64, offsets: i64x4, scale: i8) -> i64x4 {
+pub unsafe fn _mm256_i64gather_epi64(
+    slice: *const i64, offsets: i64x4, scale: i8
+) -> i64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqq(i64x4::splat(0), slice as *const i8, offsets, i64x4::splat(-1), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpgatherqq, scale = 1))]
-pub unsafe fn _mm256_mask_i64gather_epi64(src: i64x4, slice: *const i64, offsets: i64x4, mask: i64x4, scale: i8) -> i64x4 {
+pub unsafe fn _mm256_mask_i64gather_epi64(
+    src: i64x4, slice: *const i64, offsets: i64x4, mask: i64x4, scale: i8
+) -> i64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqq(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
-pub unsafe fn _mm_i64gather_pd(slice: *const f64, offsets: i64x2, scale: i8) -> f64x2 {
+pub unsafe fn _mm_i64gather_pd(
+    slice: *const f64, offsets: i64x2, scale: i8
+) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqpd(f64x2::splat(0.0), slice as *const i8, offsets, f64x2::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
-pub unsafe fn _mm_mask_i64gather_pd(src: f64x2, slice: *const f64, offsets: i64x2, mask: f64x2, scale: i8) -> f64x2 {
+pub unsafe fn _mm_mask_i64gather_pd(
+    src: f64x2, slice: *const f64, offsets: i64x2, mask: f64x2, scale: i8
+) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => (pgatherqpd(src, slice as *const i8, offsets, mask, $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
-pub unsafe fn _mm256_i64gather_pd(slice: *const f64, offsets: i64x4, scale: i8) -> f64x4 {
+pub unsafe fn _mm256_i64gather_pd(
+    slice: *const f64, offsets: i64x4, scale: i8
+) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqpd(f64x4::splat(0.0), slice as *const i8, offsets, f64x4::splat(-1.0), $imm8))
     }
     constify_imm8!(scale, call)
 }
 
-/// Return values from `slice` at offsets determined by `offsets * scale`, where
+/// Return values from `slice` at offsets determined by `offsets * scale`,
+/// where
 /// `scale` is between 1 and 8. If mask is set, load the value from `src` in
 /// that position instead.
 #[inline(always)]
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vgatherqpd, scale = 1))]
-pub unsafe fn _mm256_mask_i64gather_pd(src: f64x4, slice: *const f64, offsets: i64x4, mask: f64x4, scale: i8) -> f64x4 {
+pub unsafe fn _mm256_mask_i64gather_pd(
+    src: f64x4, slice: *const f64, offsets: i64x4, mask: f64x4, scale: i8
+) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => (vpgatherqpd(src, slice as *const i8, offsets, mask, $imm8))
     }
@@ -2531,37 +2627,69 @@ extern "C" {
     #[link_name = "llvm.x86.avx2.permd"]
     fn permd(a: u32x8, b: u32x8) -> u32x8;
     #[link_name = "llvm.x86.avx2.gather.d.d"]
-    fn pgatherdd(src: i32x4, slice: *const i8, offsets: i32x4, mask: i32x4, scale: i8) -> i32x4;
+    fn pgatherdd(
+        src: i32x4, slice: *const i8, offsets: i32x4, mask: i32x4, scale: i8
+    ) -> i32x4;
     #[link_name = "llvm.x86.avx2.gather.d.d.256"]
-    fn vpgatherdd(src: i32x8, slice: *const i8, offsets: i32x8, mask: i32x8, scale: i8) -> i32x8;
+    fn vpgatherdd(
+        src: i32x8, slice: *const i8, offsets: i32x8, mask: i32x8, scale: i8
+    ) -> i32x8;
     #[link_name = "llvm.x86.avx2.gather.d.q"]
-    fn pgatherdq(src: i64x2, slice: *const i8, offsets: i32x4, mask: i64x2, scale: i8) -> i64x2;
+    fn pgatherdq(
+        src: i64x2, slice: *const i8, offsets: i32x4, mask: i64x2, scale: i8
+    ) -> i64x2;
     #[link_name = "llvm.x86.avx2.gather.d.q.256"]
-    fn vpgatherdq(src: i64x4, slice: *const i8, offsets: i32x4, mask: i64x4, scale: i8) -> i64x4;
+    fn vpgatherdq(
+        src: i64x4, slice: *const i8, offsets: i32x4, mask: i64x4, scale: i8
+    ) -> i64x4;
     #[link_name = "llvm.x86.avx2.gather.q.d"]
-    fn pgatherqd(src: i32x4, slice: *const i8, offsets: i64x2, mask: i32x4, scale: i8) -> i32x4;
+    fn pgatherqd(
+        src: i32x4, slice: *const i8, offsets: i64x2, mask: i32x4, scale: i8
+    ) -> i32x4;
     #[link_name = "llvm.x86.avx2.gather.q.d.256"]
-    fn vpgatherqd(src: i32x4, slice: *const i8, offsets: i64x4, mask: i32x4, scale: i8) -> i32x4;
+    fn vpgatherqd(
+        src: i32x4, slice: *const i8, offsets: i64x4, mask: i32x4, scale: i8
+    ) -> i32x4;
     #[link_name = "llvm.x86.avx2.gather.q.q"]
-    fn pgatherqq(src: i64x2, slice: *const i8, offsets: i64x2, mask: i64x2, scale: i8) -> i64x2;
+    fn pgatherqq(
+        src: i64x2, slice: *const i8, offsets: i64x2, mask: i64x2, scale: i8
+    ) -> i64x2;
     #[link_name = "llvm.x86.avx2.gather.q.q.256"]
-    fn vpgatherqq(src: i64x4, slice: *const i8, offsets: i64x4, mask: i64x4, scale: i8) -> i64x4;
+    fn vpgatherqq(
+        src: i64x4, slice: *const i8, offsets: i64x4, mask: i64x4, scale: i8
+    ) -> i64x4;
     #[link_name = "llvm.x86.avx2.gather.d.pd"]
-    fn pgatherdpd (src: f64x2, slice: *const i8, offsets: i32x4, mask: f64x2, scale: i8) -> f64x2;
+    fn pgatherdpd(
+        src: f64x2, slice: *const i8, offsets: i32x4, mask: f64x2, scale: i8
+    ) -> f64x2;
     #[link_name = "llvm.x86.avx2.gather.d.pd.256"]
-    fn vpgatherdpd (src: f64x4, slice: *const i8, offsets: i32x4, mask: f64x4, scale: i8) -> f64x4;
+    fn vpgatherdpd(
+        src: f64x4, slice: *const i8, offsets: i32x4, mask: f64x4, scale: i8
+    ) -> f64x4;
     #[link_name = "llvm.x86.avx2.gather.q.pd"]
-    fn pgatherqpd (src: f64x2, slice: *const i8, offsets: i64x2, mask: f64x2, scale: i8) -> f64x2;
+    fn pgatherqpd(
+        src: f64x2, slice: *const i8, offsets: i64x2, mask: f64x2, scale: i8
+    ) -> f64x2;
     #[link_name = "llvm.x86.avx2.gather.q.pd.256"]
-    fn vpgatherqpd (src: f64x4, slice: *const i8, offsets: i64x4, mask: f64x4, scale: i8) -> f64x4;
+    fn vpgatherqpd(
+        src: f64x4, slice: *const i8, offsets: i64x4, mask: f64x4, scale: i8
+    ) -> f64x4;
     #[link_name = "llvm.x86.avx2.gather.d.ps"]
-    fn pgatherdps (src: f32x4, slice: *const i8, offsets: i32x4, mask: f32x4, scale: i8) -> f32x4;
+    fn pgatherdps(
+        src: f32x4, slice: *const i8, offsets: i32x4, mask: f32x4, scale: i8
+    ) -> f32x4;
     #[link_name = "llvm.x86.avx2.gather.d.ps.256"]
-    fn vpgatherdps (src: f32x8, slice: *const i8, offsets: i32x8, mask: f32x8, scale: i8) -> f32x8;
+    fn vpgatherdps(
+        src: f32x8, slice: *const i8, offsets: i32x8, mask: f32x8, scale: i8
+    ) -> f32x8;
     #[link_name = "llvm.x86.avx2.gather.q.ps"]
-    fn pgatherqps (src: f32x4, slice: *const i8, offsets: i64x2, mask: f32x4, scale: i8) -> f32x4;
+    fn pgatherqps(
+        src: f32x4, slice: *const i8, offsets: i64x2, mask: f32x4, scale: i8
+    ) -> f32x4;
     #[link_name = "llvm.x86.avx2.gather.q.ps.256"]
-    fn vpgatherqps (src: f32x4, slice: *const i8, offsets: i64x4, mask: f32x4, scale: i8) -> f32x4;
+    fn vpgatherqps(
+        src: f32x4, slice: *const i8, offsets: i64x4, mask: f32x4, scale: i8
+    ) -> f32x4;
 
 }
 
@@ -3998,7 +4126,11 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = avx2::_mm_i32gather_epi32(arr.as_ptr(), i32x4::new(0, 16, 32, 48), 4);
+        let r = avx2::_mm_i32gather_epi32(
+            arr.as_ptr(),
+            i32x4::new(0, 16, 32, 48),
+            4,
+        );
         assert_eq!(r, i32x4::new(0, 16, 32, 48));
     }
 
@@ -4009,10 +4141,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = avx2::_mm_mask_i32gather_epi32(i32x4::splat(256), arr.as_ptr(),
-                                               i32x4::new(0, 16, 64, 96),
-                                               i32x4::new(-1, -1, -1, 0),
-                                               4);
+        let r = avx2::_mm_mask_i32gather_epi32(
+            i32x4::splat(256),
+            arr.as_ptr(),
+            i32x4::new(0, 16, 64, 96),
+            i32x4::new(-1, -1, -1, 0),
+            4,
+        );
         assert_eq!(r, i32x4::new(0, 16, 64, 256));
     }
 
@@ -4023,7 +4158,11 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = avx2::_mm256_i32gather_epi32(arr.as_ptr(), i32x8::new(0, 16, 32, 48, 1, 2, 3, 4), 4);
+        let r = avx2::_mm256_i32gather_epi32(
+            arr.as_ptr(),
+            i32x8::new(0, 16, 32, 48, 1, 2, 3, 4),
+            4,
+        );
         assert_eq!(r, i32x8::new(0, 16, 32, 48, 1, 2, 3, 4));
     }
 
@@ -4034,10 +4173,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = avx2::_mm256_mask_i32gather_epi32(i32x8::splat(256), arr.as_ptr(),
-                                                  i32x8::new(0, 16, 64, 96, 0, 0, 0, 0),
-                                                  i32x8::new(-1, -1, -1, 0, 0, 0, 0, 0),
-                                                  4);
+        let r = avx2::_mm256_mask_i32gather_epi32(
+            i32x8::splat(256),
+            arr.as_ptr(),
+            i32x8::new(0, 16, 64, 96, 0, 0, 0, 0),
+            i32x8::new(-1, -1, -1, 0, 0, 0, 0, 0),
+            4,
+        );
         assert_eq!(r, i32x8::new(0, 16, 64, 256, 256, 256, 256, 256));
     }
 
@@ -4050,7 +4192,8 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = avx2::_mm_i32gather_ps(arr.as_ptr(), i32x4::new(0, 16, 32, 48), 4);
+        let r =
+            avx2::_mm_i32gather_ps(arr.as_ptr(), i32x4::new(0, 16, 32, 48), 4);
         assert_eq!(r, f32x4::new(0.0, 16.0, 32.0, 48.0));
     }
 
@@ -4063,10 +4206,13 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = avx2::_mm_mask_i32gather_ps(f32x4::splat(256.0), arr.as_ptr(),
-                                            i32x4::new(0, 16, 64, 96),
-                                            f32x4::new(-1.0, -1.0, -1.0, 0.0),
-                                            4);
+        let r = avx2::_mm_mask_i32gather_ps(
+            f32x4::splat(256.0),
+            arr.as_ptr(),
+            i32x4::new(0, 16, 64, 96),
+            f32x4::new(-1.0, -1.0, -1.0, 0.0),
+            4,
+        );
         assert_eq!(r, f32x4::new(0.0, 16.0, 64.0, 256.0));
     }
 
@@ -4079,7 +4225,11 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = avx2::_mm256_i32gather_ps(arr.as_ptr(), i32x8::new(0, 16, 32, 48, 1, 2, 3, 4), 4);
+        let r = avx2::_mm256_i32gather_ps(
+            arr.as_ptr(),
+            i32x8::new(0, 16, 32, 48, 1, 2, 3, 4),
+            4,
+        );
         assert_eq!(r, f32x8::new(0.0, 16.0, 32.0, 48.0, 1.0, 2.0, 3.0, 4.0));
     }
 
@@ -4092,11 +4242,17 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = avx2::_mm256_mask_i32gather_ps(f32x8::splat(256.0), arr.as_ptr(),
-                                               i32x8::new(0, 16, 64, 96, 0, 0, 0, 0),
-                                               f32x8::new(-1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-                                               4);
-        assert_eq!(r, f32x8::new(0.0, 16.0, 64.0, 256.0, 256.0, 256.0, 256.0, 256.0));
+        let r = avx2::_mm256_mask_i32gather_ps(
+            f32x8::splat(256.0),
+            arr.as_ptr(),
+            i32x8::new(0, 16, 64, 96, 0, 0, 0, 0),
+            f32x8::new(-1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            4,
+        );
+        assert_eq!(
+            r,
+            f32x8::new(0.0, 16.0, 64.0, 256.0, 256.0, 256.0, 256.0, 256.0)
+        );
     }
 
 
@@ -4107,7 +4263,11 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = avx2::_mm_i32gather_epi64(arr.as_ptr(), i32x4::new(0, 16, 0, 0), 8);
+        let r = avx2::_mm_i32gather_epi64(
+            arr.as_ptr(),
+            i32x4::new(0, 16, 0, 0),
+            8,
+        );
         assert_eq!(r, i64x2::new(0, 16));
     }
 
@@ -4118,10 +4278,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = avx2::_mm_mask_i32gather_epi64(i64x2::splat(256), arr.as_ptr(),
-                                               i32x4::new(16, 16, 16, 16),
-                                               i64x2::new(-1, 0),
-                                               8);
+        let r = avx2::_mm_mask_i32gather_epi64(
+            i64x2::splat(256),
+            arr.as_ptr(),
+            i32x4::new(16, 16, 16, 16),
+            i64x2::new(-1, 0),
+            8,
+        );
         assert_eq!(r, i64x2::new(16, 256));
     }
 
@@ -4132,7 +4295,11 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = avx2::_mm256_i32gather_epi64(arr.as_ptr(), i32x4::new(0, 16, 32, 48), 8);
+        let r = avx2::_mm256_i32gather_epi64(
+            arr.as_ptr(),
+            i32x4::new(0, 16, 32, 48),
+            8,
+        );
         assert_eq!(r, i64x4::new(0, 16, 32, 48));
     }
 
@@ -4143,10 +4310,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = avx2::_mm256_mask_i32gather_epi64(i64x4::splat(256), arr.as_ptr(),
-                                                  i32x4::new(0, 16, 64, 96),
-                                                  i64x4::new(-1, -1, -1, 0),
-                                                  8);
+        let r = avx2::_mm256_mask_i32gather_epi64(
+            i64x4::splat(256),
+            arr.as_ptr(),
+            i32x4::new(0, 16, 64, 96),
+            i64x4::new(-1, -1, -1, 0),
+            8,
+        );
         assert_eq!(r, i64x4::new(0, 16, 64, 256));
     }
 
@@ -4159,7 +4329,8 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 8 is word-addressing for f64s
-        let r = avx2::_mm_i32gather_pd(arr.as_ptr(), i32x4::new(0, 16, 0, 0), 8);
+        let r =
+            avx2::_mm_i32gather_pd(arr.as_ptr(), i32x4::new(0, 16, 0, 0), 8);
         assert_eq!(r, f64x2::new(0.0, 16.0));
     }
 
@@ -4172,10 +4343,13 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 8 is word-addressing for f64s
-        let r = avx2::_mm_mask_i32gather_pd(f64x2::splat(256.0), arr.as_ptr(),
-                                            i32x4::new(16, 16, 16, 16),
-                                            f64x2::new(-1.0, 0.0),
-                                            8);
+        let r = avx2::_mm_mask_i32gather_pd(
+            f64x2::splat(256.0),
+            arr.as_ptr(),
+            i32x4::new(16, 16, 16, 16),
+            f64x2::new(-1.0, 0.0),
+            8,
+        );
         assert_eq!(r, f64x2::new(16.0, 256.0));
     }
 
@@ -4188,7 +4362,11 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 8 is word-addressing for f64s
-        let r = avx2::_mm256_i32gather_pd(arr.as_ptr(), i32x4::new(0, 16, 32, 48), 8);
+        let r = avx2::_mm256_i32gather_pd(
+            arr.as_ptr(),
+            i32x4::new(0, 16, 32, 48),
+            8,
+        );
         assert_eq!(r, f64x4::new(0.0, 16.0, 32.0, 48.0));
     }
 
@@ -4201,10 +4379,13 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 8 is word-addressing for f64s
-        let r = avx2::_mm256_mask_i32gather_pd(f64x4::splat(256.0), arr.as_ptr(),
-                                               i32x4::new(0, 16, 64, 96),
-                                               f64x4::new(-1.0, -1.0, -1.0, 0.0),
-                                               8);
+        let r = avx2::_mm256_mask_i32gather_pd(
+            f64x4::splat(256.0),
+            arr.as_ptr(),
+            i32x4::new(0, 16, 64, 96),
+            f64x4::new(-1.0, -1.0, -1.0, 0.0),
+            8,
+        );
         assert_eq!(r, f64x4::new(0.0, 16.0, 64.0, 256.0));
     }
 
@@ -4226,10 +4407,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = avx2::_mm_mask_i64gather_epi32(i32x4::splat(256), arr.as_ptr(),
-                                               i64x2::new(0, 16),
-                                               i32x4::new(-1, 0, -1, 0),
-                                               4);
+        let r = avx2::_mm_mask_i64gather_epi32(
+            i32x4::splat(256),
+            arr.as_ptr(),
+            i64x2::new(0, 16),
+            i32x4::new(-1, 0, -1, 0),
+            4,
+        );
         assert_eq!(r, i32x4::new(0, 256, 0, 0));
     }
 
@@ -4240,7 +4424,11 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = avx2::_mm256_i64gather_epi32(arr.as_ptr(), i64x4::new(0, 16, 32, 48), 4);
+        let r = avx2::_mm256_i64gather_epi32(
+            arr.as_ptr(),
+            i64x4::new(0, 16, 32, 48),
+            4,
+        );
         assert_eq!(r, i32x4::new(0, 16, 32, 48));
     }
 
@@ -4251,10 +4439,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = avx2::_mm256_mask_i64gather_epi32(i32x4::splat(256), arr.as_ptr(),
-                                                  i64x4::new(0, 16, 64, 96),
-                                                  i32x4::new(-1, -1, -1, 0),
-                                                  4);
+        let r = avx2::_mm256_mask_i64gather_epi32(
+            i32x4::splat(256),
+            arr.as_ptr(),
+            i64x4::new(0, 16, 64, 96),
+            i32x4::new(-1, -1, -1, 0),
+            4,
+        );
         assert_eq!(r, i32x4::new(0, 16, 64, 256));
     }
 
@@ -4280,10 +4471,13 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = avx2::_mm_mask_i64gather_ps(f32x4::splat(256.0), arr.as_ptr(),
-                                            i64x2::new(0, 16),
-                                            f32x4::new(-1.0, 0.0, -1.0, 0.0),
-                                            4);
+        let r = avx2::_mm_mask_i64gather_ps(
+            f32x4::splat(256.0),
+            arr.as_ptr(),
+            i64x2::new(0, 16),
+            f32x4::new(-1.0, 0.0, -1.0, 0.0),
+            4,
+        );
         assert_eq!(r, f32x4::new(0.0, 256.0, 0.0, 0.0));
     }
 
@@ -4296,7 +4490,11 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = avx2::_mm256_i64gather_ps(arr.as_ptr(), i64x4::new(0, 16, 32, 48), 4);
+        let r = avx2::_mm256_i64gather_ps(
+            arr.as_ptr(),
+            i64x4::new(0, 16, 32, 48),
+            4,
+        );
         assert_eq!(r, f32x4::new(0.0, 16.0, 32.0, 48.0));
     }
 
@@ -4309,10 +4507,13 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = avx2::_mm256_mask_i64gather_ps(f32x4::splat(256.0), arr.as_ptr(),
-                                               i64x4::new(0, 16, 64, 96),
-                                               f32x4::new(-1.0, -1.0, -1.0, 0.0),
-                                               4);
+        let r = avx2::_mm256_mask_i64gather_ps(
+            f32x4::splat(256.0),
+            arr.as_ptr(),
+            i64x4::new(0, 16, 64, 96),
+            f32x4::new(-1.0, -1.0, -1.0, 0.0),
+            4,
+        );
         assert_eq!(r, f32x4::new(0.0, 16.0, 64.0, 256.0));
     }
 
@@ -4335,10 +4536,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = avx2::_mm_mask_i64gather_epi64(i64x2::splat(256), arr.as_ptr(),
-                                               i64x2::new(16, 16),
-                                               i64x2::new(-1, 0),
-                                               8);
+        let r = avx2::_mm_mask_i64gather_epi64(
+            i64x2::splat(256),
+            arr.as_ptr(),
+            i64x2::new(16, 16),
+            i64x2::new(-1, 0),
+            8,
+        );
         assert_eq!(r, i64x2::new(16, 256));
     }
 
@@ -4349,7 +4553,11 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = avx2::_mm256_i64gather_epi64(arr.as_ptr(), i64x4::new(0, 16, 32, 48), 8);
+        let r = avx2::_mm256_i64gather_epi64(
+            arr.as_ptr(),
+            i64x4::new(0, 16, 32, 48),
+            8,
+        );
         assert_eq!(r, i64x4::new(0, 16, 32, 48));
     }
 
@@ -4360,10 +4568,13 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = avx2::_mm256_mask_i64gather_epi64(i64x4::splat(256), arr.as_ptr(),
-                                                  i64x4::new(0, 16, 64, 96),
-                                                  i64x4::new(-1, -1, -1, 0),
-                                                  8);
+        let r = avx2::_mm256_mask_i64gather_epi64(
+            i64x4::splat(256),
+            arr.as_ptr(),
+            i64x4::new(0, 16, 64, 96),
+            i64x4::new(-1, -1, -1, 0),
+            8,
+        );
         assert_eq!(r, i64x4::new(0, 16, 64, 256));
     }
 
@@ -4389,10 +4600,13 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 8 is word-addressing for f64s
-        let r = avx2::_mm_mask_i64gather_pd(f64x2::splat(256.0), arr.as_ptr(),
-                                            i64x2::new(16, 16),
-                                            f64x2::new(-1.0, 0.0),
-                                            8);
+        let r = avx2::_mm_mask_i64gather_pd(
+            f64x2::splat(256.0),
+            arr.as_ptr(),
+            i64x2::new(16, 16),
+            f64x2::new(-1.0, 0.0),
+            8,
+        );
         assert_eq!(r, f64x2::new(16.0, 256.0));
     }
 
@@ -4405,7 +4619,11 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 8 is word-addressing for f64s
-        let r = avx2::_mm256_i64gather_pd(arr.as_ptr(), i64x4::new(0, 16, 32, 48), 8);
+        let r = avx2::_mm256_i64gather_pd(
+            arr.as_ptr(),
+            i64x4::new(0, 16, 32, 48),
+            8,
+        );
         assert_eq!(r, f64x4::new(0.0, 16.0, 32.0, 48.0));
     }
 
@@ -4418,10 +4636,13 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 8 is word-addressing for f64s
-        let r = avx2::_mm256_mask_i64gather_pd(f64x4::splat(256.0), arr.as_ptr(),
-                                               i64x4::new(0, 16, 64, 96),
-                                               f64x4::new(-1.0, -1.0, -1.0, 0.0),
-                                               8);
+        let r = avx2::_mm256_mask_i64gather_pd(
+            f64x4::splat(256.0),
+            arr.as_ptr(),
+            i64x4::new(0, 16, 64, 96),
+            f64x4::new(-1.0, -1.0, -1.0, 0.0),
+            8,
+        );
         assert_eq!(r, f64x4::new(0.0, 16.0, 64.0, 256.0));
     }
 

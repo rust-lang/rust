@@ -5,6 +5,8 @@
 //! assertions about the disassembly of a function.
 
 #![feature(proc_macro)]
+#![cfg_attr(feature = "cargo-clippy",
+            allow(missing_docs_in_private_items, print_stdout))]
 
 extern crate assert_instr_macro;
 extern crate backtrace;
@@ -71,9 +73,10 @@ fn disassemble_myself() -> HashMap<String, Vec<Function>> {
         );
         assert!(output.status.success());
 
-        parse_otool(&str::from_utf8(&output.stdout).expect("stdout not utf8"))
+        parse_otool(str::from_utf8(&output.stdout).expect("stdout not utf8"))
     } else {
-        let objdump = env::var("OBJDUMP").unwrap_or("objdump".to_string());
+        let objdump =
+            env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
         let output = Command::new(objdump)
             .arg("--disassemble")
             .arg(&me)
@@ -86,21 +89,18 @@ fn disassemble_myself() -> HashMap<String, Vec<Function>> {
         );
         assert!(output.status.success());
 
-        parse_objdump(
-            &str::from_utf8(&output.stdout).expect("stdout not utf8"),
-        )
+        parse_objdump(str::from_utf8(&output.stdout).expect("stdout not utf8"))
     }
 }
 
 fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
     let mut lines = output.lines();
-    let expected_len = if cfg!(target_arch = "arm") {
-        8
-    } else if cfg!(target_arch = "aarch64") {
-        8
-    } else {
-        2
-    };
+    let expected_len =
+        if cfg!(target_arch = "arm") || cfg!(target_arch = "aarch64") {
+            8
+        } else {
+            2
+        };
 
     for line in output.lines().take(100) {
         println!("{}", line);
@@ -112,7 +112,8 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
         if !header.ends_with(">:") {
             continue;
         }
-        let start = header.find("<").unwrap();
+        let start = header.find('<')
+            .expect(&format!("\"<\" not found in symbol pattern of the form \"$hex_addr <$name>\": {}", header));
         let symbol = &header[start + 1..header.len() - 2];
 
         let mut instructions = Vec::new();
@@ -136,13 +137,13 @@ fn parse_objdump(output: &str) -> HashMap<String, Vec<Function>> {
         }
 
         ret.entry(normalize(symbol))
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push(Function {
                 instrs: instructions,
             });
     }
 
-    return ret;
+    ret
 }
 
 fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
@@ -154,13 +155,9 @@ fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
 
     let mut ret = HashMap::new();
     let mut cached_header = None;
-    loop {
-        let header = match cached_header.take().or_else(|| lines.next()) {
-            Some(header) => header,
-            None => break,
-        };
+    while let Some(header) = cached_header.take().or_else(|| lines.next()) {
         // symbols should start with `$symbol:`
-        if !header.ends_with(":") {
+        if !header.ends_with(':') {
             continue;
         }
         // strip the leading underscore and the trailing colon
@@ -168,7 +165,7 @@ fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
 
         let mut instructions = Vec::new();
         while let Some(instruction) = lines.next() {
-            if instruction.ends_with(":") {
+            if instruction.ends_with(':') {
                 cached_header = Some(instruction);
                 break;
             }
@@ -184,13 +181,13 @@ fn parse_otool(output: &str) -> HashMap<String, Vec<Function>> {
         }
 
         ret.entry(normalize(symbol))
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push(Function {
                 instrs: instructions,
             });
     }
 
-    return ret;
+    ret
 }
 
 fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
@@ -202,13 +199,9 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
 
     let mut ret = HashMap::new();
     let mut cached_header = None;
-    loop {
-        let header = match cached_header.take().or_else(|| lines.next()) {
-            Some(header) => header,
-            None => break,
-        };
+    while let Some(header) = cached_header.take().or_else(|| lines.next()) {
         // symbols should start with `$symbol:`
-        if !header.ends_with(":") {
+        if !header.ends_with(':') {
             continue;
         }
         // strip the trailing colon
@@ -239,13 +232,13 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
         }
 
         ret.entry(normalize(symbol))
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push(Function {
                 instrs: instructions,
             });
     }
 
-    return ret;
+    ret
 }
 
 fn normalize(symbol: &str) -> String {
@@ -268,9 +261,10 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         sym = name.name().and_then(|s| s.as_str()).map(normalize);
     });
 
-    let functions = match sym.as_ref().and_then(|s| DISASSEMBLY.get(s)) {
-        Some(s) => s,
-        None => {
+    let functions =
+        if let Some(s) = sym.as_ref().and_then(|s| DISASSEMBLY.get(s)) {
+            s
+        } else {
             if let Some(sym) = sym {
                 println!("assumed symbol name: `{}`", sym);
             }
@@ -279,8 +273,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
                 println!("\t- {}", f);
             }
             panic!("failed to find disassembly of {:#x} ({})", fnptr, fnname);
-        }
-    };
+        };
 
     assert_eq!(functions.len(), 1);
     let function = &functions[0];
@@ -288,7 +281,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     // Look for `expected` as the first part of any instruction in this
     // function, returning if we do indeed find it.
     let mut found = false;
-    for instr in function.instrs.iter() {
+    for instr in &function.instrs {
         // Gets the first instruction, e.g. tzcntl in tzcntl %rax,%rax
         if let Some(part) = instr.parts.get(0) {
             // Truncates the instruction with the length of the expected
@@ -308,13 +301,13 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
 
     // Help debug by printing out the found disassembly, and then panic as we
     // didn't find the instruction.
-    println!("disassembly for {}: ", sym.as_ref().unwrap());
+    println!("disassembly for {}: ", sym.as_ref().expect("symbol not found"));
     for (i, instr) in function.instrs.iter().enumerate() {
         print!("\t{:2}: ", i);
-        for part in instr.parts.iter() {
+        for part in &instr.parts {
             print!("{} ", part);
         }
-        println!("");
+        println!();
     }
 
     if !found {
