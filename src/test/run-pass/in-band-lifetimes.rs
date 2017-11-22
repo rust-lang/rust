@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(warnings)]
-#![feature(in_band_lifetimes, universal_impl_trait)]
+#![feature(in_band_lifetimes, universal_impl_trait, conservative_impl_trait)]
 
 fn foo(x: &'x u8) -> &'x u8 { x }
 fn foo2(x: &'a u8, y: &u8) -> &'a u8 { x }
@@ -80,5 +80,25 @@ fn reference_in_band_from_locals(x: &'test u32) -> &'test u32 {
 fn in_generics_in_band<T: MyTrait<'a>>(x: &T) {}
 fn where_clause_in_band<T>(x: &T) where T: MyTrait<'a> {}
 fn impl_trait_in_band(x: &impl MyTrait<'a>) {}
+
+// Tests around using in-band lifetimes within existential traits.
+
+trait FunkyTrait<'a> { }
+impl<'a, T> FunkyTrait<'a> for T { }
+fn existential_impl_trait_in_band_outlives(x: &'a u32) -> impl ::std::fmt::Debug + 'a {
+    x
+}
+fn existential_impl_trait_in_band_param(x: &'a u32) -> impl FunkyTrait<'a> {
+    x
+}
+fn existential_impl_trait_in_band_param_static(x: &'a u32) -> impl FunkyTrait<'static> + 'a {
+    x
+}
+fn existential_impl_trait_in_band_param_outlives(x: &'a u32) -> impl FunkyTrait<'a> + 'a {
+    x
+}
+fn existential_impl_trait_in_band_higher_ranked(x: &'a u32) -> impl for<'b> FunkyTrait<'b> + 'a {
+    x
+}
 
 fn main() {}
