@@ -10,6 +10,12 @@
 
 enum Token { LeftParen, RightParen, Plus, Minus, /* etc */ }
 //~^ NOTE variant `Homura` not found here
+struct Struct {
+    //~^ NOTE function or associated item `method` not found for this
+    //~| NOTE function or associated item `method` not found for this
+    //~| NOTE associated item `Assoc` not found for this
+    a: usize,
+}
 
 fn use_token(token: &Token) { unimplemented!() }
 
@@ -17,4 +23,13 @@ fn main() {
     use_token(&Token::Homura);
     //~^ ERROR no variant named `Homura`
     //~| NOTE variant not found in `Token`
+    Struct::method();
+    //~^ ERROR no function or associated item named `method` found for type
+    //~| NOTE function or associated item not found in `Struct`
+    Struct::method;
+    //~^ ERROR no function or associated item named `method` found for type
+    //~| NOTE function or associated item not found in `Struct`
+    Struct::Assoc;
+    //~^ ERROR no associated item named `Assoc` found for type `Struct` in
+    //~| NOTE associated item not found in `Struct`
 }
