@@ -330,10 +330,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap(self) -> T {
-        match self {
-            Some(val) => val,
-            None => panic!("called `Option::unwrap()` on a `None` value"),
-        }
+        self.expect("called `Option::unwrap()` on a `None` value")
     }
 
     /// Returns the contained value or a default.

@@ -1081,10 +1081,8 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, idx: usize) -> char {
-        let ch = match self[idx..].chars().next() {
-            Some(ch) => ch,
-            None => panic!("cannot remove a char from the end of a string"),
-        };
+        let ch = self[idx..].chars().next()
+            .expect("cannot remove a char from the end of a string");
 
         let next = idx + ch.len_utf8();
         let len = self.len();

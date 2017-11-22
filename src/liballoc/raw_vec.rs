@@ -418,10 +418,8 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // Nothing we can really do about these checks :(
             let new_cap = used_cap.checked_add(needed_extra_cap).expect("capacity overflow");
-            let new_layout = match Layout::array::<T>(new_cap) {
-                Some(layout) => layout,
-                None => panic!("capacity overflow"),
-            };
+            let new_layout = Layout::array::<T>(new_cap)
+                .expect("capacity overflow");
             alloc_guard(new_layout.size());
             let res = match self.current_layout() {
                 Some(layout) => {
@@ -519,10 +517,8 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             let new_cap = self.amortized_new_size(used_cap, needed_extra_cap);
 
-            let new_layout = match Layout::array::<T>(new_cap) {
-                Some(layout) => layout,
-                None => panic!("capacity overflow"),
-            };
+            let new_layout = Layout::array::<T>(new_cap)
+                .expect("capacity overflow");
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size());
             let res = match self.current_layout() {
