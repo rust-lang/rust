@@ -419,7 +419,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Span {
             0u8.hash_stable(hcx, hasher);
         } else {
             1u8.hash_stable(hcx, hasher);
-            self.source_callsite().hash_stable(hcx, hasher);
+            span.ctxt.outer().expn_info().hash_stable(hcx, hasher);
         }
     }
 }
