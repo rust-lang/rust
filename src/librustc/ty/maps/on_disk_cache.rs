@@ -27,7 +27,8 @@ use std::collections::BTreeMap;
 use std::mem;
 use syntax::ast::NodeId;
 use syntax::codemap::{CodeMap, StableFilemapId};
-use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
+use syntax_pos::{BytePos, Span, DUMMY_SP};
+use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
 use ty;
 use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use ty::context::TyCtxt;
@@ -39,6 +40,10 @@ const QUERY_RESULT_INDEX_TAG: u64 = 0x1234_5678_C3C3_C3C3;
 
 const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
 const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
+
+const TAG_NO_EXPANSION_INFO: u8 = 0;
+const TAG_EXPANSION_INFO_SHORTHAND: u8 = 1;
+const TAG_EXPANSION_INFO_INLINE: u8 = 2;
 
 /// `OnDiskCache` provides an interface to incr. comp. data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -61,6 +66,7 @@ pub struct OnDiskCache<'sess> {
 
     prev_filemap_starts: BTreeMap<BytePos, StableFilemapId>,
     codemap: &'sess CodeMap,
+    synthetic_expansion_infos: RefCell<FxHashMap<usize, SyntaxContext>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
@@ -90,6 +96,8 @@ impl<'sess> OnDiskCache<'sess> {
             (header, decoder.position())
         };
 
+        let mut synthetic_expansion_infos = FxHashMap();
+
         let (prev_diagnostics, query_result_index) = {
             let mut decoder = CacheDecoder {
                 tcx: None,
@@ -97,6 +105,7 @@ impl<'sess> OnDiskCache<'sess> {
                 codemap: sess.codemap(),
                 prev_filemap_starts: &header.prev_filemap_starts,
                 cnum_map: &IndexVec::new(),
+                synthetic_expansion_infos: &mut synthetic_expansion_infos,
             };
 
             // Decode Diagnostics
@@ -135,6 +144,7 @@ impl<'sess> OnDiskCache<'sess> {
             codemap: sess.codemap(),
             current_diagnostics: RefCell::new(FxHashMap()),
             query_result_index: query_result_index.into_iter().collect(),
+            synthetic_expansion_infos: RefCell::new(synthetic_expansion_infos),
         }
     }
 
@@ -148,6 +158,7 @@ impl<'sess> OnDiskCache<'sess> {
             codemap,
             current_diagnostics: RefCell::new(FxHashMap()),
             query_result_index: FxHashMap(),
+            synthetic_expansion_infos: RefCell::new(FxHashMap()),
         }
     }
 
@@ -166,6 +177,7 @@ impl<'sess> OnDiskCache<'sess> {
             encoder,
             type_shorthands: FxHashMap(),
             predicate_shorthands: FxHashMap(),
+            expn_info_shorthands: FxHashMap(),
         };
 
 
@@ -269,12 +281,15 @@ impl<'sess> OnDiskCache<'sess> {
             *cnum_map = Some(Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
         }
 
+        let mut synthetic_expansion_infos = self.synthetic_expansion_infos.borrow_mut();
+
         let mut decoder = CacheDecoder {
             tcx: Some(tcx),
             opaque: opaque::Decoder::new(&self.serialized_data[..], pos),
             codemap: self.codemap,
             prev_filemap_starts: &self.prev_filemap_starts,
             cnum_map: cnum_map.as_ref().unwrap(),
+            synthetic_expansion_infos: &mut *synthetic_expansion_infos,
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -350,6 +365,7 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     codemap: &'x CodeMap,
     prev_filemap_starts: &'x BTreeMap<BytePos, StableFilemapId>,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
+    synthetic_expansion_infos: &'x mut FxHashMap<usize, SyntaxContext>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
@@ -457,7 +473,39 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
             if let Some(current_filemap) = self.codemap.filemap_by_stable_id(filemap_id) {
                 let lo = (lo + current_filemap.start_pos) - prev_filemap_start;
                 let hi = (hi + current_filemap.start_pos) - prev_filemap_start;
-                return Ok(Span::new(lo, hi, NO_EXPANSION));
+
+                let expn_info_tag = u8::decode(self)?;
+
+                let ctxt = match expn_info_tag {
+                    TAG_NO_EXPANSION_INFO => {
+                        SyntaxContext::empty()
+                    }
+                    TAG_EXPANSION_INFO_INLINE => {
+                        let pos = self.position();
+                        let expn_info: ExpnInfo = Decodable::decode(self)?;
+                        let ctxt = SyntaxContext::allocate_directly(expn_info);
+                        self.synthetic_expansion_infos.insert(pos, ctxt);
+                        ctxt
+                    }
+                    TAG_EXPANSION_INFO_SHORTHAND => {
+                        let pos = usize::decode(self)?;
+                        if let Some(ctxt) = self.synthetic_expansion_infos.get(&pos).cloned() {
+                            ctxt
+                        } else {
+                            let expn_info = self.with_position(pos, |this| {
+                                 ExpnInfo::decode(this)
+                            })?;
+                            let ctxt = SyntaxContext::allocate_directly(expn_info);
+                            self.synthetic_expansion_infos.insert(pos, ctxt);
+                            ctxt
+                        }
+                    }
+                    _ => {
+                        unreachable!()
+                    }
+                };
+
+                return Ok(Span::new(lo, hi, ctxt));
             }
         }
 
@@ -479,6 +527,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<DefIndex> for CacheDecoder<'a, 'tcx, 'x> {
 // compilation sessions. We use the DefPathHash, which is stable across
 // sessions, to map the old DefId to the new one.
 impl<'a, 'tcx, 'x> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx, 'x> {
+    #[inline]
     fn specialized_decode(&mut self) -> Result<DefId, Self::Error> {
         // Load the DefPathHash which is was we encoded the DefId as.
         let def_path_hash = DefPathHash::decode(self)?;
@@ -489,6 +538,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx, 'x> {
 }
 
 impl<'a, 'tcx, 'x> SpecializedDecoder<LocalDefId> for CacheDecoder<'a, 'tcx, 'x> {
+    #[inline]
     fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
         Ok(LocalDefId::from_def_id(DefId::decode(self)?))
     }
@@ -558,6 +608,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     encoder: &'enc mut E,
     type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+    expn_info_shorthands: FxHashMap<Mark, usize>,
 }
 
 impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
@@ -581,6 +632,37 @@ impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
 
         let end_pos = self.position();
         ((end_pos - start_pos) as u64).encode(self)
+    }
+}
+
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Span> for CacheEncoder<'enc, 'a, 'tcx, E>
+    where E: 'enc + ty_codec::TyEncoder
+{
+    fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
+        let span_data = span.data();
+
+        span_data.lo.encode(self)?;
+        span_data.hi.encode(self)?;
+
+        if span_data.ctxt == SyntaxContext::empty() {
+            TAG_NO_EXPANSION_INFO.encode(self)
+        } else {
+            let mark = span_data.ctxt.outer();
+
+            if let Some(expn_info) = mark.expn_info() {
+                if let Some(pos) = self.expn_info_shorthands.get(&mark).cloned() {
+                    TAG_EXPANSION_INFO_SHORTHAND.encode(self)?;
+                    pos.encode(self)
+                } else {
+                    TAG_EXPANSION_INFO_INLINE.encode(self)?;
+                    let pos = self.position();
+                    self.expn_info_shorthands.insert(mark, pos);
+                    expn_info.encode(self)
+                }
+            } else {
+                TAG_NO_EXPANSION_INFO.encode(self)
+            }
+        }
     }
 }
 
