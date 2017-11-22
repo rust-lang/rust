@@ -106,7 +106,10 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
         if let ty::ReVar(vid) = r {
             *vid
         } else {
-            self.universal_regions.indices[&r]
+            *self.universal_regions
+                 .indices
+                 .get(&r)
+                 .unwrap_or_else(|| bug!("to_region_vid: bad region {:?}", r))
         }
     }
 }

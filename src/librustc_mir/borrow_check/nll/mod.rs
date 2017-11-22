@@ -43,11 +43,16 @@ pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     def_id: DefId,
     mir: &mut Mir<'tcx>,
 ) -> UniversalRegions<'tcx> {
+    debug!("replace_regions_in_mir(def_id={:?})", def_id);
+
     // Compute named region information.
     let universal_regions = universal_regions::universal_regions(infcx, def_id);
 
     // Replace all regions with fresh inference variables.
     renumber::renumber_mir(infcx, &universal_regions, mir);
+
+    let source = MirSource::item(def_id);
+    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, mir, |_, _| Ok(()));
 
     universal_regions
 }

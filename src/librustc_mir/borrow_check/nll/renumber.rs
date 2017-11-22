@@ -138,6 +138,11 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_region: region={:?}", region);
     }
 
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, location: Location) {
+        let ty_context = TyContext::Location(location);
+        *constant = self.renumber_regions(ty_context, &*constant);
+    }
+
     fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {
         debug!(
             "visit_closure_substs(substs={:?}, location={:?})",

@@ -110,6 +110,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
+        self.sanitize_constant(constant, location);
         self.sanitize_type(constant, constant.ty);
     }
 
@@ -159,6 +160,52 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
+    /// Checks that the constant's `ty` field matches up with what
+    /// would be expected from its literal.
+    fn sanitize_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+        debug!(
+            "sanitize_constant(constant={:?}, location={:?})",
+            constant,
+            location
+        );
+
+        let expected_ty = match constant.literal {
+            Literal::Value { value } => value.ty,
+            Literal::Promoted { .. } => {
+                // FIXME -- promoted MIR return types reference
+                // various "free regions" (e.g., scopes and things)
+                // that they ought not to do. We have to figure out
+                // how best to handle that -- probably we want treat
+                // promoted MIR much like closures, renumbering all
+                // their free regions and propagating constraints
+                // upwards. We have the same acyclic guarantees, so
+                // that should be possible. But for now, ignore them.
+                //
+                // let promoted_mir = &self.mir.promoted[index];
+                // promoted_mir.return_ty()
+                return;
+            }
+        };
+
+        debug!("sanitize_constant: expected_ty={:?}", expected_ty);
+
+        if let Err(terr) = self.cx
+            .eq_types(expected_ty, constant.ty, location.at_self())
+        {
+            span_mirbug!(
+                self,
+                constant,
+                "constant {:?} should have type {:?} but has {:?} ({:?})",
+                constant,
+                expected_ty,
+                constant.ty,
+                terr,
+            );
+        }
+    }
+
+    /// Checks that the types internal to the `place` match up with
+    /// what would be expected.
     fn sanitize_place(
         &mut self,
         place: &Place<'tcx>,
