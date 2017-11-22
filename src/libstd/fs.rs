@@ -799,6 +799,8 @@ impl Metadata {
 
     /// Returns the size of the file, in bytes, this metadata is for.
     ///
+    /// As a special case, a size of `0` indicates that the size is unknown.
+    ///
     /// # Examples
     ///
     /// ```
