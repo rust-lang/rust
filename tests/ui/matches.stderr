@@ -264,7 +264,7 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |
 238 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate
+    = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
 error: Err(_) will match all errors, maybe not a good idea
    --> $DIR/matches.rs:246:9
@@ -290,7 +290,7 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |
 244 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate
+    = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
 error: Err(_) will match all errors, maybe not a good idea
    --> $DIR/matches.rs:252:9
@@ -316,7 +316,7 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |
 250 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate
+    = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
    --> $DIR/matches.rs:258:18
@@ -334,7 +334,7 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |
 257 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate
+    = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
    --> $DIR/matches.rs:265:18
@@ -352,7 +352,7 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |
 264 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate
+    = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
    --> $DIR/matches.rs:271:18
@@ -370,7 +370,7 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |
 270 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate
+    = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
    --> $DIR/matches.rs:277:18
@@ -388,5 +388,5 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |
 276 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate
+    = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
 
