@@ -36,6 +36,7 @@ use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
+use syntax::symbol::InternedString;
 use syntax_pos::Span;
 
 mod cache;
@@ -1724,21 +1725,21 @@ impl Location {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
     ExternStatic(ast::NodeId),
     BorrowPacked(ast::NodeId),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
-    pub description: &'static str,
+    pub description: InternedString,
     pub kind: UnsafetyViolationKind,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function
     pub violations: Rc<[UnsafetyViolation]>,

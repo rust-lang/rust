@@ -15,6 +15,7 @@ use util::nodemap::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct BorrowCheckResult {
     pub used_mut_nodes: FxHashSet<HirId>,
 }

@@ -17,6 +17,7 @@ use std::slice;
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract, Intersect};
 use indexed_vec::Idx;
+use rustc_serialize;
 
 /// Represents a set (or packed family of sets), of some element type
 /// E, where each E is identified by some unique index type `T`.
@@ -34,6 +35,26 @@ impl<T: Idx> Clone for IdxSetBuf<T> {
         IdxSetBuf { _pd: PhantomData, bits: self.bits.clone() }
     }
 }
+
+impl<T: Idx> rustc_serialize::Encodable for IdxSetBuf<T> {
+    fn encode<E: rustc_serialize::Encoder>(&self,
+                                     encoder: &mut E)
+                                     -> Result<(), E::Error> {
+        self.bits.encode(encoder)
+    }
+}
+
+impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
+    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<IdxSetBuf<T>, D::Error> {
+        let words: Vec<Word> = rustc_serialize::Decodable::decode(d)?;
+
+        Ok(IdxSetBuf {
+            _pd: PhantomData,
+            bits: words,
+        })
+    }
+}
+
 
 // pnkfelix wants to have this be `IdxSet<T>([Word]) and then pass
 // around `&mut IdxSet<T>` or `&IdxSet<T>`.
