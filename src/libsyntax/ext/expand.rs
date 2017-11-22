@@ -11,7 +11,7 @@
 use ast::{self, Block, Ident, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
-use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute, dummy_spanned};
 use config::{is_test_or_bench, StripUnconfigured};
 use errors::FatalError;
 use ext::base::*;
@@ -35,6 +35,8 @@ use util::small_vector::SmallVector;
 use visit::Visitor;
 
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
 use std::mem;
 use std::rc::Rc;
 
@@ -223,6 +225,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             directory: self.cx.codemap().span_to_unmapped_path(krate.span),
         };
         module.directory.pop();
+        self.cx.root_path = module.directory.clone();
         self.cx.current_expansion.module = Rc::new(module);
 
         let orig_mod_span = krate.module.inner;
@@ -843,6 +846,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             feature_gate::check_attribute(attr, self.cx.parse_sess, features);
         }
     }
+
+    fn check_attribute(&mut self, at: &ast::Attribute) {
+        let features = self.cx.ecfg.features.unwrap();
+        feature_gate::check_attribute(at, self.cx.parse_sess, features);
+    }
 }
 
 pub fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
@@ -1060,6 +1068,84 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         match item {
             ast::ItemKind::MacroDef(..) => item,
             _ => noop_fold_item_kind(self.cfg.configure_item_kind(item), self),
+        }
+    }
+
+    fn fold_attribute(&mut self, at: ast::Attribute) -> Option<ast::Attribute> {
+        // turn `#[doc(include="filename")]` attributes into `#[doc(include(file="filename",
+        // contents="file contents")]` attributes
+        if !at.check_name("doc") {
+            return noop_fold_attribute(at, self);
+        }
+
+        if let Some(list) = at.meta_item_list() {
+            if !list.iter().any(|it| it.check_name("include")) {
+                return noop_fold_attribute(at, self);
+            }
+
+            let mut items = vec![];
+
+            for it in list {
+                if !it.check_name("include") {
+                    items.push(noop_fold_meta_list_item(it, self));
+                    continue;
+                }
+
+                if let Some(file) = it.value_str() {
+                    let err_count = self.cx.parse_sess.span_diagnostic.err_count();
+                    self.check_attribute(&at);
+                    if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
+                        // avoid loading the file if they haven't enabled the feature
+                        return noop_fold_attribute(at, self);
+                    }
+
+                    let mut buf = vec![];
+                    let filename = self.cx.root_path.join(file.to_string());
+
+                    match File::open(&filename).and_then(|mut f| f.read_to_end(&mut buf)) {
+                        Ok(..) => {}
+                        Err(e) => {
+                            self.cx.span_warn(at.span,
+                                              &format!("couldn't read {}: {}",
+                                                       filename.display(),
+                                                       e));
+                        }
+                    }
+
+                    match String::from_utf8(buf) {
+                        Ok(src) => {
+                            let include_info = vec![
+                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                        attr::mk_name_value_item_str("file".into(),
+                                                                     file))),
+                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                        attr::mk_name_value_item_str("contents".into(),
+                                                                     (&*src).into()))),
+                            ];
+
+                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                        attr::mk_list_item("include".into(), include_info))));
+                        }
+                        Err(_) => {
+                            self.cx.span_warn(at.span,
+                                              &format!("{} wasn't a utf-8 file",
+                                                       filename.display()));
+                        }
+                    }
+                } else {
+                    items.push(noop_fold_meta_list_item(it, self));
+                }
+            }
+
+            let meta = attr::mk_list_item("doc".into(), items);
+            match at.style {
+                ast::AttrStyle::Inner =>
+                    Some(attr::mk_spanned_attr_inner(at.span, at.id, meta)),
+                ast::AttrStyle::Outer =>
+                    Some(attr::mk_spanned_attr_outer(at.span, at.id, meta)),
+            }
+        } else {
+            noop_fold_attribute(at, self)
         }
     }
 

@@ -383,6 +383,8 @@ declare_features! (
     (active, doc_masked, "1.21.0", Some(44027)),
     // #[doc(spotlight)]
     (active, doc_spotlight, "1.22.0", Some(45040)),
+    // #[doc(include="some-file")]
+    (active, external_doc, "1.22.0", Some(44732)),
 
     // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),
@@ -1028,6 +1030,14 @@ impl<'a> Context<'a> {
             if name == n {
                 if let Gated(_, name, desc, ref has_feature) = *gateage {
                     gate_feature_fn!(self, has_feature, attr.span, name, desc, GateStrength::Hard);
+                } else if name == "doc" {
+                    if let Some(content) = attr.meta_item_list() {
+                        if content.iter().any(|c| c.check_name("include")) {
+                            gate_feature!(self, external_doc, attr.span,
+                                "#[doc(include = \"...\")] is experimental"
+                            );
+                        }
+                    }
                 }
                 debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
                 return;

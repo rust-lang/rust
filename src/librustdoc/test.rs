@@ -663,14 +663,16 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
-        if let Some(doc) = attrs.doc_value() {
+        // the collapse-docs pass won't combine sugared/raw doc attributes, or included files with
+        // anything else, this will combine them for us
+        if let Some(doc) = attrs.collapsed_doc_value() {
             if self.collector.render_type == RenderType::Pulldown {
-                markdown::old_find_testable_code(doc, self.collector,
+                markdown::old_find_testable_code(&doc, self.collector,
                                                  attrs.span.unwrap_or(DUMMY_SP));
-                markdown::find_testable_code(doc, self.collector,
+                markdown::find_testable_code(&doc, self.collector,
                                              attrs.span.unwrap_or(DUMMY_SP));
             } else {
-                markdown::old_find_testable_code(doc, self.collector,
+                markdown::old_find_testable_code(&doc, self.collector,
                                                  attrs.span.unwrap_or(DUMMY_SP));
             }
         }
