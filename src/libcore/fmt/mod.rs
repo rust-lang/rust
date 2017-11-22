@@ -261,6 +261,14 @@ pub struct Formatter<'a> {
 
 struct Void {
     _priv: (),
+    /// Erases all oibits, because `Void` erases the type of the object that
+    /// will be used to produce formatted output. Since we do not know what
+    /// oibits the real types have (and they can have any or none), we need to
+    /// take the most conservative approach and forbid all oibits.
+    ///
+    /// It was added after #45197 showed that one could share a `!Sync`
+    /// object across threads by passing it into `format_args!`.
+    _oibit_remover: PhantomData<*mut Fn()>,
 }
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
