@@ -106,7 +106,7 @@ use session::{CompileIncomplete, Session};
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, DefIdSet, FxHashSet, FxHashMap, NodeMap};
+use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::rc::Rc;
@@ -2131,20 +2131,37 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Apply divering and numeric fallbacks.
+    /// Diverging types get replaced with ! or () (depending on whether
+    /// feature(never_type) is enabled), unconstrained ints with i32, and
+    /// unconstrained floats with f64.
     fn apply_diverging_and_numeric_type_parameter_fallback(&self) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
-        let unsolved_variables = self.infcx.candidates_for_defaulting();
-        for &(ref ty, _) in &unsolved_variables {
-            let resolved = self.infcx.resolve_type_vars_if_possible(ty);
-            let diverges = self.infcx.type_var_diverges(resolved);
-            if diverges {
-                self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+        // Defaulting inference variables becomes very dubious if we have
+        // encountered type-checking errors. Therefore, if we think we saw
+        // some errors in this function, just resolve all uninstanted type
+        // varibles to TyError.
+        if self.is_tainted_by_errors() {
+            for ty in &self.candidates_for_fallback() {
+                if let ty::TyInfer(_) = self.shallow_resolve(ty).sty {
+                    debug!("default_type_parameters: defaulting `{:?}` to error", ty);
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx().types.err);
+                }
+            }
+            return;
+        }
+
+        for ty in &self.candidates_for_fallback() {
+            let resolved = self.resolve_type_vars_if_possible(ty);
+            if self.type_var_diverges(resolved) {
+                debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges",
+                       resolved);
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
+                                   self.tcx.mk_diverging_default());
             } else {
-                let unconstrained =
-                    self.infcx.type_is_unconstrained_numeric(resolved);
-                match unconstrained {
+                match self.type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
                         debug!("default_type_parameters: defaulting `{:?}` to `i32`",
                                resolved);
@@ -2206,208 +2223,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.apply_diverging_and_numeric_type_parameter_fallback();
         self.select_obligations_where_possible();
     }
-    
-    #[allow(dead_code)]
-    fn new_select_all_obligations_and_apply_defaults(&self) {
-        use rustc::ty::error::UnconstrainedNumeric::Neither;
-        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-
-        // It is a possible that this algorithm will have to run an arbitrary number of times
-        // to terminate so we bound it by the compiler's recursion limit.
-        for _ in 0..self.tcx().sess.recursion_limit.get() {
-            // First we try to solve all obligations, it is possible that the last iteration
-            // has made it possible to make more progress.
-            self.select_obligations_where_possible();
-
-            // QUESTION(leodasvacas): Don't know how to rebase the whole error reporting strategy.
-            // let mut conflicts = Vec::new();
-
-            // Collect all unsolved type, integral and floating point variables.
-            let defaults_to_apply = self.inh.infcx.candidates_for_defaulting();
-
-            let mut has_user_default = FxHashSet();
-            let mut has_literal_fallback = FxHashSet();
-            let mut is_diverging = FxHashSet();
-
-            // Examine all unsolved variables, and narrow them to the set that have applicable
-            // defaults. We want to process any unsolved variables that have either an explicit
-            // user default, literal fallback, or are diverging.
-            for &(ref ty, ref default) in &defaults_to_apply {
-                // We should NEVER process anything but a TyInfer.
-                assert!(match ty.sty { ty::TyInfer(_) => true, _ => false });
-
-                match default {
-                    &Default::User(ref user_default) => {
-                        debug!("select_all_obligations_and_apply_defaults: \
-                                ty: {:?} with default: {:?}", ty, default);
-
-                        has_user_default.insert((*ty, user_default.clone()));
-                    },
-                    &Default::Float |
-                    &Default::Integer => {
-                        has_literal_fallback.insert(*ty);
-                    }
-                    &Default::Diverging => {
-                       is_diverging.insert(*ty);
-                    }
-                    &Default::None => {}
-                }
-            }
-
-            // If there are no more fallbacks to apply at this point we have applied all possible
-            // defaults and type inference will procede as normal.
-            if
-                has_user_default.is_empty() &&
-                has_literal_fallback.is_empty() &&
-                is_diverging.is_empty()
-            {
-                break;
-            }
-
-            // First apply integer and floating point fallbacks.
-            for ty in &has_literal_fallback {
-                let resolved = self.infcx.resolve_type_vars_if_possible(ty);
-                match self.infcx.type_is_unconstrained_numeric(resolved) {
-                    UnconstrainedInt => {
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                    }
-                    Neither => {}
-                }
-            }
-
-            // Finally we loop through each of the unbound type variables and unify them with
-            // the proper fallback, reporting a conflicting default error if any of the
-            // unifications fail.
-            //
-            // We know that a conflict must be due to multiple applicable defaults, because the
-            // variable would only be in `unbound_tyvars` and have been previously unified with
-            // another type if we had applied a default.
-
-            // We wrap all of this in a transaction for error reporting. If we detect a conflict
-            // we will rollback to the previous state so we can check what conflicts and
-            // correctly report them.
-            //let _ = self.infcx.commit_if_ok(|_: &infer::CombinedSnapshot| {
-                for &(ref ty, ref default) in &has_user_default {
-                    let default = default.clone();
-
-                    let normalized_default = self.normalize_associated_types_in(
-                        default.origin_span,
-                        &default.ty);
-
-                    // QUESTION(leodasvacas): mk_eqty was removed,
-                    // replaced it with demand but I don't know the difference.
-                    self.demand_eqtype(default.origin_span, *ty, normalized_default);
-
-                    // QUESTION(leodasvacas): This means conflict is always empty
-                    //                        and the error reporting is broken.
-                    /*match infer::mk_eqty(self.infcx, false,
-                                         infer::Misc(default.origin_span),
-                                         ty, normalized_default) {
-                        Ok(()) => {}
-                        Err(_) => {
-                            conflicts.push((*ty, default));
-                        }
-                    }*/
-                }
-
-                // If there are conflicts we rollback, otherwise commit
-                /*
-                if conflicts.len() > 0 {
-                    Err(())
-                } else {
-                    Ok(())
-                }*/
-            //});
-
-            /* Consequence of commenting of find_conflicting_default
-            if conflicts.len() > 0 {
-                // Loop through each conflicting default, figuring out the default that caused
-                // a unification failure and then report an error for each.
-                for conflict in conflicts {
-                    let conflicting_default =
-                        self.find_conflicting_default(&has_user_default, &conflict)
-                            .unwrap_or(UserDefault {
-                                ty: self.infcx.next_ty_var(),
-                                origin_span: codemap::DUMMY_SP,
-                                def_id: DefId::local(0) // what do I put here?
-                            });
-
-                    let default = conflict.1;
-
-                    // This is to ensure that we elimnate any non-determinism from the error
-                    // reporting by fixing an order, it doesn't matter what order we choose
-                    // just that it is consistent.
-                    let (first_default, second_default) =
-                        if default.def_id < conflicting_default.def_id {
-                            (default, conflicting_default)
-                        } else {
-                            (conflicting_default, default)
-                        };
-
-
-                    self.infcx.report_conflicting_default_types(
-                        first_default.origin_span,
-                        0, // QUESTION(leodasvacas): What to put here as `body_id: ast::NodeId`
-                        first_default,
-                        second_default)
-                }
-            }*/
-
-            // Finally for any leftover variables that diverage
-            // we should apply the unit fallback rules.
-            for ty in &is_diverging {
-               if self.infcx.type_var_diverges(ty) {
-                   self.demand_eqtype(codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
-               }
-            }
-        }
-
-        self.select_obligations_where_possible();
-    }
-
-    // For use in error handling related to default type parameter fallback. We explicitly
-    // apply the default that caused conflict first to a local version of the type variable
-    // table then apply defaults until we find a conflict. That default must be the one
-    // that caused conflict earlier.
-    // QUESTION(leodasvacas): Commented out because of rebase problems I don't know how to solve.
-    /*
-    fn find_conflicting_default(&self,
-            tys_with_defaults: &FxHashSet<(Ty<'tcx>, UserDefault<'tcx>)>,
-            conflict: &(Ty<'tcx>, UserDefault<'tcx>))
-            -> Option<UserDefault<'tcx>> {
-        // Ensure that we apply the conflicting default first
-        let unbound_tyvars: Vec<_> = Some(conflict).chain(tys_with_defaults).collect();
-
-        let mut result = None;
-        // We run the same code as above applying defaults in order, this time when
-        // we find the conflict we just return it for error reporting above.
-
-        // We also run this inside snapshot that never commits so we can do error
-        // reporting for more then one conflict.
-        // QUESTION(leodasvacas): Again don't know what to do with this and `mk_eqty`.
-        for &(ref ty, ref default) in tys_with_defaults {
-            let default = default.clone();
-
-            let normalized_default = self.normalize_associated_types_in(
-                default.origin_span,
-                &default.ty);
-
-            match infer::mk_eqty(self.infcx, false,
-                                 infer::Misc(default.origin_span),
-                                 ty, normalized_default) {
-                Ok(()) => {}
-                Err(_) => {
-                    result = Some(default);
-                    break;
-                }
-            }
-        }
-
-        return result;
-    }*/
 
     fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");

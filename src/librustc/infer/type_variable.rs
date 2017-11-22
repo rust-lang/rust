@@ -378,22 +378,17 @@ impl<'tcx> TypeVariableTable<'tcx> {
         escaping_types
     }
 
-    pub fn candidates_for_defaulting(&self) -> Vec<(ty::TyVid, Default<'tcx>)> {
-        self.values
-            .iter()
-            .enumerate()
-            .filter_map(|(i, value)| {
-                let vid = match &value.value {
-                    &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 }),
-                    &TypeVariableValue::Known(v) => match v.sty {
-                        ty::TyInfer(ty::FloatVar(_)) | ty::TyInfer(ty::IntVar(_)) =>
-                            Some(ty::TyVid { index: i as u32 }),
-                        _ => None
-                    }
-                };
-                vid.map(|v| (v, value.default.clone()))
-           })
-           .collect()
+    pub fn unsolved_variables(&mut self) -> Vec<ty::TyVid> {
+        (0..self.values.len())
+            .filter_map(|i| {
+                let vid = ty::TyVid { index: i as u32 };
+                if self.probe(vid).is_some() {
+                    None
+                } else {
+                    Some(vid)
+                }
+            })
+            .collect()
     }
 }
 

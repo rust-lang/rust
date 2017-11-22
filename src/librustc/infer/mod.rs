@@ -720,36 +720,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // NB: You must be careful to only apply defaults once, if a variable is unififed
     // it many no longer be unsolved and apply a second default will mostly likely
     // result in a type error.
-    pub fn candidates_for_defaulting(&self)
-                                     -> Vec<(ty::Ty<'tcx>, type_variable::Default<'tcx>)> {
+    pub fn candidates_for_fallback(&self) -> Vec<Ty<'tcx>> {
         let mut variables = Vec::new();
 
         let unbound_ty_vars = self.type_variables
                                   .borrow_mut()
-                                  .candidates_for_defaulting()
+                                  .unsolved_variables()
                                   .into_iter()
-                                  .map(|(t, d)| (self.tcx.mk_var(t), d));
+                                  .map(|t| self.tcx.mk_var(t));
 
         let unbound_int_vars = self.int_unification_table
                                    .borrow_mut()
                                    .unsolved_variables()
                                    .into_iter()
-                                   .map(|v| (self.tcx.mk_int_var(v),
-                                             type_variable::Default::Integer));
+                                   .map(|v| self.tcx.mk_int_var(v));
 
         let unbound_float_vars = self.float_unification_table
                                      .borrow_mut()
                                      .unsolved_variables()
                                      .into_iter()
-                                     .map(|v| (self.tcx.mk_float_var(v),
-                                               type_variable::Default::Float));
+                                     .map(|v| self.tcx.mk_float_var(v));
 
         variables.extend(unbound_ty_vars);
         variables.extend(unbound_int_vars);
         variables.extend(unbound_float_vars);
 
         return variables;
-    }
+}
 
     fn combine_fields(&'a self, trace: TypeTrace<'tcx>, param_env: ty::ParamEnv<'tcx>)
                       -> CombineFields<'a, 'gcx, 'tcx> {
