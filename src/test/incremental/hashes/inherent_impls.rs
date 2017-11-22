@@ -370,7 +370,16 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeckTables")]
+    // Warning: Note that `TypeckTables` are coming up clean here.
+    // The addition or removal of lifetime parameters that don't
+    // appear in the arguments or fn body in any way does not, in
+    // fact, affect the `TypeckTables` in any semantic way (at least
+    // as of this writing). **However,** altering the order of
+    // lowering **can** cause it appear to affect the `TypeckTables`:
+    // if we lower generics before the body, then the `HirId` for
+    // things in the body will be affected. So if you start to see
+    // `TypeckTables` appear dirty, that might be the cause. -nmatsakis
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
@@ -391,9 +400,18 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
+    // Warning: Note that `TypeckTables` are coming up clean here.
+    // The addition or removal of type parameters that don't appear in
+    // the arguments or fn body in any way does not, in fact, affect
+    // the `TypeckTables` in any semantic way (at least as of this
+    // writing). **However,** altering the order of lowering **can**
+    // cause it appear to affect the `TypeckTables`: if we lower
+    // generics before the body, then the `HirId` for things in the
+    // body will be affected. So if you start to see `TypeckTables`
+    // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOfItem,TypeckTables",
+        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOfItem",
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
@@ -439,8 +457,17 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
+    // Warning: Note that `TypeckTables` are coming up clean here.
+    // The addition or removal of bounds that don't appear in the
+    // arguments or fn body in any way does not, in fact, affect the
+    // `TypeckTables` in any semantic way (at least as of this
+    // writing). **However,** altering the order of lowering **can**
+    // cause it appear to affect the `TypeckTables`: if we lower
+    // generics before the body, then the `HirId` for things in the
+    // body will be affected. So if you start to see `TypeckTables`
+    // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,\
-                                        TypeOfItem,TypeckTables")]
+                                        TypeOfItem")]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
@@ -461,7 +488,16 @@ impl Foo {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,PredicatesOfItem,TypeckTables")]
+    // Warning: Note that `TypeckTables` are coming up clean here.
+    // The addition or removal of bounds that don't appear in the
+    // arguments or fn body in any way does not, in fact, affect the
+    // `TypeckTables` in any semantic way (at least as of this
+    // writing). **However,** altering the order of lowering **can**
+    // cause it appear to affect the `TypeckTables`: if we lower
+    // generics before the body, then the `HirId` for things in the
+    // body will be affected. So if you start to see `TypeckTables`
+    // appear dirty, that might be the cause. -nmatsakis
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,PredicatesOfItem")]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
