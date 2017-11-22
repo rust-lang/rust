@@ -1343,12 +1343,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             |moi| curr_move_out.contains(moi)).collect::<Vec<_>>();
 
         if mois.is_empty() {
+            let item_msg = match self.describe_lvalue(lvalue) {
+                Some(name) => format!("`{}`", name),
+                None => "value".to_owned()
+            };
             self.tcx.cannot_act_on_uninitialized_variable(span,
                                                           desired_action.as_noun(),
-                                                          &self.describe_lvalue(lvalue),
+                                                          &self.describe_lvalue(lvalue)
+                                                            .unwrap_or("_".to_owned()),
                                                           Origin::Mir)
-                    .span_label(span, format!("use of possibly uninitialized `{}`",
-                                              self.describe_lvalue(lvalue)))
+                    .span_label(span, format!("use of possibly uninitialized {}", item_msg))
                     .emit();
         } else {
             let msg = ""; //FIXME: add "partially " or "collaterally "
@@ -1356,7 +1360,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let mut err = self.tcx.cannot_act_on_moved_value(span,
                                                              desired_action.as_noun(),
                                                              msg,
-                                                             &self.describe_lvalue(lvalue),
+                                                             &self.describe_lvalue(lvalue)
+                                                                .unwrap_or("_".to_owned()),
                                                              Origin::Mir);
 
             err.span_label(span, format!("value {} here after move",
@@ -1381,14 +1386,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                       _context: Context,
                                       (lvalue, span): (&Lvalue<'tcx>, Span),
                                       borrow: &BorrowData<'tcx>) {
+        let value_msg = match self.describe_lvalue(lvalue) {
+            Some(name) => format!("`{}`", name),
+            None => "value".to_owned()
+        };
+        let borrow_msg = match self.describe_lvalue(&borrow.lvalue) {
+            Some(name) => format!("`{}`", name),
+            None => "value".to_owned()
+        };
         self.tcx.cannot_move_when_borrowed(span,
-                                           &self.describe_lvalue(lvalue),
+                                           &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
                                            Origin::Mir)
                 .span_label(self.retrieve_borrow_span(borrow),
-                            format!("borrow of `{}` occurs here",
-                                    self.describe_lvalue(&borrow.lvalue)))
-                .span_label(span, format!("move out of `{}` occurs here",
-                                          self.describe_lvalue(lvalue)))
+                            format!("borrow of {} occurs here", borrow_msg))
+                .span_label(span, format!("move out of {} occurs here", value_msg))
                 .emit();
     }
 
@@ -1398,8 +1409,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                          borrow : &BorrowData<'tcx>) {
 
         let mut err = self.tcx.cannot_use_when_mutably_borrowed(
-            span, &self.describe_lvalue(lvalue),
-            self.retrieve_borrow_span(borrow), &self.describe_lvalue(&borrow.lvalue),
+            span,
+            &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
+            self.retrieve_borrow_span(borrow),
+            &self.describe_lvalue(&borrow.lvalue).unwrap_or("_".to_owned()),
             Origin::Mir);
 
         err.emit();
@@ -1488,7 +1501,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let old_closure_span = self.find_closure_span(issued_span, issued_borrow.location);
         let issued_span = old_closure_span.map(|(args, _)| args).unwrap_or(issued_span);
 
-        let desc_lvalue = self.describe_lvalue(lvalue);
+        let desc_lvalue = self.describe_lvalue(lvalue).unwrap_or("_".to_owned());
 
         // FIXME: supply non-"" `opt_via` when appropriate
         let mut err = match (gen_borrow_kind, "immutable", "mutable",
@@ -1566,7 +1579,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                            (lvalue, span): (&Lvalue<'tcx>, Span),
                                            loan: &BorrowData) {
         let mut err = self.tcx.cannot_assign_to_borrowed(
-            span, self.retrieve_borrow_span(loan), &self.describe_lvalue(lvalue), Origin::Mir);
+            span,
+            self.retrieve_borrow_span(loan),
+            &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
+            Origin::Mir);
 
         err.emit();
     }
@@ -1576,12 +1592,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                    (lvalue, span): (&Lvalue<'tcx>, Span),
                                    assigned_span: Span) {
         let mut err = self.tcx.cannot_reassign_immutable(span,
-                                           &self.describe_lvalue(lvalue),
+                                           &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
                                            Origin::Mir);
         err.span_label(span, "cannot assign twice to immutable variable");
         if span != assigned_span {
-            err.span_label(assigned_span, format!("first assignment to `{}`",
-                                              self.describe_lvalue(lvalue)));
+            let value_msg = match self.describe_lvalue(lvalue) {
+                Some(name) => format!("`{}`", name),
+                None => "value".to_owned()
+            };
+            err.span_label(assigned_span, format!("first assignment to {}", value_msg));
         }
         err.emit();
     }
@@ -1596,11 +1615,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    // End-user visible description of `lvalue`
-    fn describe_lvalue(&self, lvalue: &Lvalue<'tcx>) -> String {
+    // End-user visible description of `lvalue` if one can be found. If the
+    // lvalue is a temporary for instance, None will be returned.
+    fn describe_lvalue(&self, lvalue: &Lvalue<'tcx>) -> Option<String> {
         let mut buf = String::new();
-        self.append_lvalue_to_string(lvalue, &mut buf, false);
-        buf
+        match self.append_lvalue_to_string(lvalue, &mut buf, false) {
+            Ok(()) => Some(buf),
+            Err(()) => None
+        }
     }
 
     /// If this is a field projection, and the field is being projected from a closure type,
@@ -1632,10 +1654,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn append_lvalue_to_string(&self,
                                lvalue: &Lvalue<'tcx>,
                                buf: &mut String,
-                               mut autoderef: bool) {
+                               mut autoderef: bool) -> Result<(), ()> {
         match *lvalue {
             Lvalue::Local(local) => {
-                self.append_local_to_string(local, buf, "_");
+                self.append_local_to_string(local, buf,)?;
             }
             Lvalue::Static(ref static_) => {
                 buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
@@ -1653,15 +1675,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                         } else {
                             if autoderef {
-                                self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                                self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                             } else {
                                 buf.push_str(&"*");
-                                self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                                self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                             }
                         }
                     },
                     ProjectionElem::Downcast(..) => {
-                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                     },
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
@@ -1672,16 +1694,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             buf.push_str(&name);
                         } else {
                             let field_name = self.describe_field(&proj.base, field);
-                            self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                            self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                             buf.push_str(&format!(".{}", field_name));
                         }
                     },
                     ProjectionElem::Index(index) => {
                         autoderef = true;
 
-                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                         buf.push_str("[");
-                        self.append_local_to_string(index, buf, "..");
+                        if let Err(_) = self.append_local_to_string(index, buf) {
+                            buf.push_str("..");
+                        }
                         buf.push_str("]");
                     },
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
@@ -1689,21 +1713,26 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // Since it isn't possible to borrow an element on a particular index and
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
-                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                         buf.push_str(&"[..]");
                     },
                 };
             }
         }
+
+        Ok(())
     }
 
     // Appends end-user visible description of the `local` lvalue to `buf`. If `local` doesn't have
-    // a name, then `none_string` is appended instead
-    fn append_local_to_string(&self, local_index: Local, buf: &mut String, none_string: &str) {
+    // a name, then `Err` is returned
+    fn append_local_to_string(&self, local_index: Local, buf: &mut String) -> Result<(), ()> {
         let local = &self.mir.local_decls[local_index];
         match local.name {
-            Some(name) => buf.push_str(&format!("{}", name)),
-            None => buf.push_str(none_string)
+            Some(name) => {
+                buf.push_str(&format!("{}", name));
+                Ok(())
+            },
+            None => Err(())
         }
     }
 
