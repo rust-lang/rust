@@ -19,7 +19,7 @@ use syntax::codemap::DUMMY_SP;
 use std::collections::hash_map::Entry;
 use std::mem;
 
-use super::abs_domain::Lift;
+use dataflow::abs_domain::Lift;
 
 use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, MoveOut, MoveOutIndex};
 use super::{MoveError};

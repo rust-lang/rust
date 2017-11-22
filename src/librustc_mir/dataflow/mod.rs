@@ -36,6 +36,7 @@ mod drop_flag_effects;
 mod graphviz;
 mod impls;
 pub mod move_paths;
+pub mod abs_domain;
 
 pub(crate) use self::move_paths::indexes;
 
