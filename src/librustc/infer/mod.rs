@@ -1062,6 +1062,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_region(ty::ReVar(self.borrow_region_constraints().new_region_var(origin)))
     }
 
+    /// Number of region variables created so far.
+    pub fn num_region_vars(&self) -> usize {
+        self.borrow_region_constraints().var_origins().len()
+    }
+
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
     pub fn next_nll_region_var(&self, origin: NLLRegionVariableOrigin)
                                -> ty::Region<'tcx> {
