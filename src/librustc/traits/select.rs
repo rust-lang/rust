@@ -13,7 +13,7 @@
 use self::SelectionCandidate::*;
 use self::EvaluationResult::*;
 
-use super::coherence;
+use super::coherence::{self, Conflict};
 use super::DerivedObligationCause;
 use super::project;
 use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
@@ -1077,28 +1077,33 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(None);
         }
 
-        if !self.is_knowable(stack) {
-            debug!("coherence stage: not knowable");
-            // Heuristics: show the diagnostics when there are no candidates in crate.
-            let candidate_set = self.assemble_candidates(stack)?;
-            if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
-                let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                let self_ty = trait_ref.self_ty();
-                let trait_desc = trait_ref.to_string();
-                let self_desc = if self_ty.has_concrete_skeleton() {
-                    Some(self_ty.to_string())
-                } else {
-                    None
-                };
-                let cause = if !coherence::trait_ref_is_local_or_fundamental(self.tcx(),
-                                                                             trait_ref) {
-                    IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
-                } else {
-                    IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
-                };
-                self.intercrate_ambiguity_causes.push(cause);
+        match self.is_knowable(stack) {
+            Some(Conflict::Downstream { used_to_be_broken: true }) if false => {
+                // ignore this for future-compat.
             }
-            return Ok(None);
+            None => {}
+            Some(conflict) => {
+                debug!("coherence stage: not knowable");
+                // Heuristics: show the diagnostics when there are no candidates in crate.
+                let candidate_set = self.assemble_candidates(stack)?;
+                if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
+                    let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+                    let self_ty = trait_ref.self_ty();
+                    let trait_desc = trait_ref.to_string();
+                    let self_desc = if self_ty.has_concrete_skeleton() {
+                        Some(self_ty.to_string())
+                    } else {
+                        None
+                    };
+                    let cause = if let Conflict::Upstream = conflict {
+                        IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
+                    } else {
+                        IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
+                    };
+                    self.intercrate_ambiguity_causes.push(cause);
+                }
+                return Ok(None);
+            }
         }
 
         let candidate_set = self.assemble_candidates(stack)?;
@@ -1205,12 +1210,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     fn is_knowable<'o>(&mut self,
                        stack: &TraitObligationStack<'o, 'tcx>)
-                       -> bool
+                       -> Option<Conflict>
     {
         debug!("is_knowable(intercrate={})", self.intercrate);
 
         if !self.intercrate {
-            return true;
+            return None;
         }
 
         let obligation = &stack.obligation;
@@ -1221,7 +1226,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // bound regions
         let trait_ref = predicate.skip_binder().trait_ref;
 
-        coherence::trait_ref_is_knowable(self.tcx(), trait_ref, false).is_none()
+        coherence::trait_ref_is_knowable(self.tcx(), trait_ref)
     }
 
     /// Returns true if the global caches can be used.

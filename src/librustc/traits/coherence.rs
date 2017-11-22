@@ -20,16 +20,17 @@ use ty::subst::Subst;
 use infer::{InferCtxt, InferOk};
 
 #[derive(Copy, Clone, Debug)]
-enum InferIsLocal {
-    BrokenYes,
-    Yes,
-    No
+/// Whether we do the orphan check relative to this crate or
+/// to some remote crate.
+enum InCrate {
+    Local,
+    Remote
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum Conflict {
     Upstream,
-    Downstream
+    Downstream { used_to_be_broken: bool }
 }
 
 pub struct OverlapResult<'tcx> {
@@ -136,21 +137,23 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                             trait_ref: ty::TraitRef<'tcx>,
-                                             broken: bool)
+                                             trait_ref: ty::TraitRef<'tcx>)
                                              -> Option<Conflict>
 {
-    debug!("trait_ref_is_knowable(trait_ref={:?}, broken={:?})", trait_ref, broken);
-    let mode = if broken {
-        InferIsLocal::BrokenYes
-    } else {
-        InferIsLocal::Yes
-    };
-    if orphan_check_trait_ref(tcx, trait_ref, mode).is_ok() {
+    debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
+    if orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
-        debug!("trait_ref_is_knowable: downstream crate might implement");
-        return Some(Conflict::Downstream);
+
+        // A trait can be implementable for a trait ref by both the current
+        // crate and crates downstream of it. Older versions of rustc
+        // were not aware of this, causing incoherence (issue #43355).
+        let used_to_be_broken =
+            orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok();
+        if used_to_be_broken {
+            debug!("trait_ref_is_knowable({:?}) - USED TO BE BROKEN", trait_ref);
+        }
+        return Some(Conflict::Downstream { used_to_be_broken });
     }
 
     if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
@@ -161,6 +164,7 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         // which we already know about.
         return None;
     }
+
     // This is a remote non-fundamental trait, so if another crate
     // can be the "final owner" of a substitution of this trait-ref,
     // they are allowed to implement it future-compatibly.
@@ -169,7 +173,7 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // and if we are an intermediate owner, then we don't care
     // about future-compatibility, which means that we're OK if
     // we are an owner.
-    if orphan_check_trait_ref(tcx, trait_ref, InferIsLocal::No).is_ok() {
+    if orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok() {
         debug!("trait_ref_is_knowable: orphan check passed");
         return None;
     } else {
@@ -213,31 +217,31 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         return Ok(());
     }
 
-    orphan_check_trait_ref(tcx, trait_ref, InferIsLocal::No)
+    orphan_check_trait_ref(tcx, trait_ref, InCrate::Local)
 }
 
 fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
                                 trait_ref: ty::TraitRef<'tcx>,
-                                infer_is_local: InferIsLocal)
+                                in_crate: InCrate)
                                 -> Result<(), OrphanCheckErr<'tcx>>
 {
-    debug!("orphan_check_trait_ref(trait_ref={:?}, infer_is_local={:?})",
-           trait_ref, infer_is_local);
+    debug!("orphan_check_trait_ref(trait_ref={:?}, in_crate={:?})",
+           trait_ref, in_crate);
 
     // First, create an ordered iterator over all the type parameters to the trait, with the self
     // type appearing first.
     // Find the first input type that either references a type parameter OR
     // some local type.
     for input_ty in trait_ref.input_types() {
-        if ty_is_local(tcx, input_ty, infer_is_local) {
+        if ty_is_local(tcx, input_ty, in_crate) {
             debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
 
             // First local input type. Check that there are no
             // uncovered type parameters.
-            let uncovered_tys = uncovered_tys(tcx, input_ty, infer_is_local);
+            let uncovered_tys = uncovered_tys(tcx, input_ty, in_crate);
             for uncovered_ty in uncovered_tys {
                 if let Some(param) = uncovered_ty.walk()
-                    .find(|t| is_possibly_remote_type(t, infer_is_local))
+                    .find(|t| is_possibly_remote_type(t, in_crate))
                 {
                     debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
                     return Err(OrphanCheckErr::UncoveredTy(param));
@@ -251,7 +255,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
         // Otherwise, enforce invariant that there are no type
         // parameters reachable.
         if let Some(param) = input_ty.walk()
-            .find(|t| is_possibly_remote_type(t, infer_is_local))
+            .find(|t| is_possibly_remote_type(t, in_crate))
         {
             debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
             return Err(OrphanCheckErr::UncoveredTy(param));
@@ -263,29 +267,29 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
     return Err(OrphanCheckErr::NoLocalInputType);
 }
 
-fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, infer_is_local: InferIsLocal)
+fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, in_crate: InCrate)
                        -> Vec<Ty<'tcx>> {
-    if ty_is_local_constructor(ty, infer_is_local) {
+    if ty_is_local_constructor(ty, in_crate) {
         vec![]
     } else if fundamental_ty(tcx, ty) {
         ty.walk_shallow()
-          .flat_map(|t| uncovered_tys(tcx, t, infer_is_local))
+          .flat_map(|t| uncovered_tys(tcx, t, in_crate))
           .collect()
     } else {
         vec![ty]
     }
 }
 
-fn is_possibly_remote_type(ty: Ty, _infer_is_local: InferIsLocal) -> bool {
+fn is_possibly_remote_type(ty: Ty, _in_crate: InCrate) -> bool {
     match ty.sty {
         ty::TyProjection(..) | ty::TyParam(..) => true,
         _ => false,
     }
 }
 
-fn ty_is_local(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal) -> bool {
-    ty_is_local_constructor(ty, infer_is_local) ||
-        fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, infer_is_local))
+fn ty_is_local(tcx: TyCtxt, ty: Ty, in_crate: InCrate) -> bool {
+    ty_is_local_constructor(ty, in_crate) ||
+        fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }
 
 fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
@@ -299,15 +303,16 @@ fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     }
 }
 
-fn def_id_is_local(def_id: DefId, infer_is_local: InferIsLocal) -> bool {
-    match infer_is_local {
-        InferIsLocal::Yes => false,
-        InferIsLocal::No |
-        InferIsLocal::BrokenYes => def_id.is_local()
+fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
+    match in_crate {
+        // The type is local to *this* crate - it will not be
+        // local in any other crate.
+        InCrate::Remote => false,
+        InCrate::Local => def_id.is_local()
     }
 }
 
-fn ty_is_local_constructor(ty: Ty, infer_is_local: InferIsLocal) -> bool {
+fn ty_is_local_constructor(ty: Ty, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.sty {
@@ -330,18 +335,19 @@ fn ty_is_local_constructor(ty: Ty, infer_is_local: InferIsLocal) -> bool {
             false
         }
 
-        ty::TyInfer(..) => match infer_is_local {
-            InferIsLocal::No => false,
-            InferIsLocal::Yes |
-            InferIsLocal::BrokenYes => true
+        ty::TyInfer(..) => match in_crate {
+            InCrate::Local => false,
+            // The inference variable might be unified with a local
+            // type in that remote crate.
+            InCrate::Remote => true,
         },
 
-        ty::TyAdt(def, _) => def_id_is_local(def.did, infer_is_local),
-        ty::TyForeign(did) => def_id_is_local(did, infer_is_local),
+        ty::TyAdt(def, _) => def_id_is_local(def.did, in_crate),
+        ty::TyForeign(did) => def_id_is_local(did, in_crate),
 
         ty::TyDynamic(ref tt, ..) => {
             tt.principal().map_or(false, |p| {
-                def_id_is_local(p.def_id(), infer_is_local)
+                def_id_is_local(p.def_id(), in_crate)
             })
         }
 
