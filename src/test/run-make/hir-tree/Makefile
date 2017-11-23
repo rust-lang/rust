@@ -6,4 +6,4 @@
 all:
 	$(RUSTC) -o $(TMPDIR)/input.hir -Z unstable-options \
 		--unpretty=hir-tree input.rs
-	grep '"Hello, Rustaceans!\\n"' $(TMPDIR)/input.hir
+	$(CGREP) '"Hello, Rustaceans!\n"' < $(TMPDIR)/input.hir
