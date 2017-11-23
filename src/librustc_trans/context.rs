@@ -22,7 +22,7 @@ use base;
 use declare;
 use monomorphize::Instance;
 
-use partitioning::CodegenUnit;
+use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
 use type_of::PointeeInfo;
 

@@ -26,6 +26,7 @@ use syntax::attr::{self, InlineAttr};
 use std::fmt::{self, Write};
 use std::iter;
 use rustc::mir::mono::Linkage;
+use syntax_pos::symbol::Symbol;
 pub use rustc::mir::mono::MonoItem;
 
 pub fn linkage_by_name(name: &str) -> Option<Linkage> {
@@ -83,6 +84,31 @@ pub enum InstantiationMode {
 pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     fn as_mono_item(&self) -> &MonoItem<'tcx>;
 
+    fn is_generic_fn(&self) -> bool {
+        match *self.as_mono_item() {
+            MonoItem::Fn(ref instance) => {
+                instance.substs.types().next().is_some()
+            }
+            MonoItem::Static(..) |
+            MonoItem::GlobalAsm(..) => false,
+        }
+    }
+
+    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
+        match *self.as_mono_item() {
+            MonoItem::Fn(instance) => tcx.symbol_name(instance),
+            MonoItem::Static(node_id) => {
+                let def_id = tcx.hir.local_def_id(node_id);
+                tcx.symbol_name(Instance::mono(tcx, def_id))
+            }
+            MonoItem::GlobalAsm(node_id) => {
+                let def_id = tcx.hir.local_def_id(node_id);
+                ty::SymbolName {
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
+                }
+            }
+        }
+    }
     fn instantiation_mode(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
                           -> InstantiationMode {

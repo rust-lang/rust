@@ -64,7 +64,7 @@ use declare;
 use meth;
 use mir;
 use monomorphize::Instance;
-use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
+use monomorphize::partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
 use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, DefPathBasedNames};

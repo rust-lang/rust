@@ -25,12 +25,11 @@ use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use rustc::hir;
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{self, TyCtxt, TypeFoldable};
+use rustc::ty::{TyCtxt, TypeFoldable};
 use rustc::ty::layout::LayoutOf;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
-use syntax_pos::symbol::Symbol;
 use std::fmt;
 
 pub use rustc::mir::mono::MonoItem;
@@ -108,22 +107,6 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                ccx.codegen_unit().name());
     }
 
-    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
-        match *self.as_mono_item() {
-            MonoItem::Fn(instance) => tcx.symbol_name(instance),
-            MonoItem::Static(node_id) => {
-                let def_id = tcx.hir.local_def_id(node_id);
-                tcx.symbol_name(Instance::mono(tcx, def_id))
-            }
-            MonoItem::GlobalAsm(node_id) => {
-                let def_id = tcx.hir.local_def_id(node_id);
-                ty::SymbolName {
-                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
-                }
-            }
-        }
-    }
-
     fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
         match *self.as_mono_item() {
             MonoItem::Fn(Instance { def, .. }) => {
@@ -134,16 +117,6 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                 Some(node_id)
             }
         }.map(|node_id| tcx.hir.span(node_id))
-    }
-
-    fn is_generic_fn(&self) -> bool {
-        match *self.as_mono_item() {
-            MonoItem::Fn(ref instance) => {
-                instance.substs.types().next().is_some()
-            }
-            MonoItem::Static(..) |
-            MonoItem::GlobalAsm(..) => false,
-        }
     }
 
     fn to_raw_string(&self) -> String {

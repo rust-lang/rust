@@ -102,7 +102,7 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
-use rustc_mir::monomorphize::collector::InliningMap;
+use monomorphize::collector::InliningMap;
 use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -113,7 +113,8 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
-use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, InstantiationMode};
+use rustc::mir::mono::MonoItem;
+use monomorphize::item::{MonoItemExt, InstantiationMode};
 use rustc::ty::subst::Subst;
 
 pub use rustc::mir::mono::CodegenUnit;

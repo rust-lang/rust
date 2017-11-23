@@ -138,7 +138,6 @@ mod llvm_util;
 mod metadata;
 mod meth;
 mod mir;
-mod partitioning;
 mod symbol_names_test;
 mod time_graph;
 mod trans_item;

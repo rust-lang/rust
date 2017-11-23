@@ -16,7 +16,7 @@ use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
 use debuginfo;
 use base;
-use trans_item::{MonoItem, MonoItemExt};
+use monomorphize::{MonoItem, MonoItemExt};
 use common::{CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
