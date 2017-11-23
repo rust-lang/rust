@@ -1468,9 +1468,9 @@ impl<T> [T] {
         core_slice::SliceExt::copy_from_slice(self, src)
     }
 
-    /// Swaps all elements in `self` with those in `src`.
+    /// Swaps all elements in `self` with those in `other`.
     ///
-    /// The length of `src` must be the same as `self`.
+    /// The length of `other` must be the same as `self`.
     ///
     /// # Panics
     ///
@@ -1481,16 +1481,16 @@ impl<T> [T] {
     /// ```
     /// #![feature(swap_with_slice)]
     ///
-    /// let mut src = [1, 2, 3];
-    /// let mut dst = [7, 8, 9];
+    /// let mut slice1 = [1, 2, 3];
+    /// let mut slice2 = [7, 8, 9];
     ///
-    /// src.swap_with_slice(&mut dst);
-    /// assert_eq!(src, [7, 8, 9]);
-    /// assert_eq!(dst, [1, 2, 3]);
+    /// slice1.swap_with_slice(&mut slice2);
+    /// assert_eq!(slice1, [7, 8, 9]);
+    /// assert_eq!(slice2, [1, 2, 3]);
     /// ```
     #[unstable(feature = "swap_with_slice", issue = "44030")]
-    pub fn swap_with_slice(&mut self, src: &mut [T]) {
-        core_slice::SliceExt::swap_with_slice(self, src)
+    pub fn swap_with_slice(&mut self, other: &mut [T]) {
+        core_slice::SliceExt::swap_with_slice(self, other)
     }
 
     /// Copies `self` into a new `Vec`.
