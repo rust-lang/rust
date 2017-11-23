@@ -55,6 +55,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         wbcx.tables.tainted_by_errors = self.is_tainted_by_errors();
 
+        debug!("writeback: tables for {:?} are {:#?}", item_def_id, wbcx.tables);
+
         self.tcx.alloc_tables(wbcx.tables)
     }
 }

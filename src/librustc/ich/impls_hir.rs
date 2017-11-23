@@ -157,7 +157,8 @@ impl_stable_hash_for!(struct hir::Lifetime {
 impl_stable_hash_for!(struct hir::LifetimeDef {
     lifetime,
     bounds,
-    pure_wrt_drop
+    pure_wrt_drop,
+    in_band
 });
 
 impl_stable_hash_for!(struct hir::Path {

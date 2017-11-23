@@ -106,6 +106,26 @@ pub struct LoweringContext<'a> {
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
 
+    // Used to create lifetime definitions from in-band lifetime usages.
+    // e.g. `fn foo(x: &'x u8) -> &'x u8` to `fn foo<'x>(x: &'x u8) -> &'x u8`
+    // When a named lifetime is encountered in a function or impl header and
+    // has not been defined
+    // (i.e. it doesn't appear in the in_scope_lifetimes list), it is added
+    // to this list. The results of this list are then added to the list of
+    // lifetime definitions in the corresponding impl or function generics.
+    lifetimes_to_define: Vec<(Span, Name)>,
+    // Whether or not in-band lifetimes are being collected. This is used to
+    // indicate whether or not we're in a place where new lifetimes will result
+    // in in-band lifetime definitions, such a function or an impl header.
+    // This will always be false unless the `in_band_lifetimes` feature is
+    // enabled.
+    is_collecting_in_band_lifetimes: bool,
+    // Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
+    // When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
+    // against this list to see if it is already in-scope, or if a definition
+    // needs to be created for it.
+    in_scope_lifetimes: Vec<Name>,
+
     type_def_lifetime_params: DefIdMap<usize>,
 
     current_hir_id_owner: Vec<(DefIndex, u32)>,
@@ -177,6 +197,9 @@ pub fn lower_crate(sess: &Session,
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
         is_in_trait_impl: false,
+        lifetimes_to_define: Vec::new(),
+        is_collecting_in_band_lifetimes: false,
+        in_scope_lifetimes: Vec::new(),
     }.lower_crate(krate)
 }
 
@@ -271,13 +294,23 @@ impl<'a> LoweringContext<'a> {
                 });
 
                 if item_lowered {
-                    if let ItemKind::Impl(_,_,_,_,ref opt_trait_ref,_,_) = item.node {
-                        self.with_trait_impl_ref(opt_trait_ref, |this| {
-                            visit::walk_item(this, item)
-                        });
-                    } else {
-                        visit::walk_item(self, item);
-                    }
+                    let item_lifetimes = match self.lctx.items.get(&item.id).unwrap().node {
+                        hir::Item_::ItemImpl(_,_,_,ref generics,..) |
+                        hir::Item_::ItemTrait(_,_,ref generics,..) =>
+                            generics.lifetimes.clone(),
+                        _ => Vec::new().into(),
+                    };
+
+                    self.lctx.with_parent_impl_lifetime_defs(&item_lifetimes, |this| {
+                        let this = &mut ItemLowerer { lctx: this };
+                        if let ItemKind::Impl(_,_,_,_,ref opt_trait_ref,_,_) = item.node {
+                            this.with_trait_impl_ref(opt_trait_ref, |this| {
+                                visit::walk_item(this, item)
+                            });
+                        } else {
+                            visit::walk_item(this, item);
+                        }
+                    });
                 }
             }
 
@@ -488,6 +521,124 @@ impl<'a> LoweringContext<'a> {
             },
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
+    }
+
+    // Creates a new hir::LifetimeDef for every new lifetime encountered
+    // while evaluating `f`. Definitions are created with the parent provided.
+    // If no `parent_id` is provided, no definitions will be returned.
+    fn collect_in_band_lifetime_defs<T, F>(
+        &mut self,
+        parent_id: Option<DefId>,
+        f: F
+    ) -> (Vec<hir::LifetimeDef>, T) where F: FnOnce(&mut LoweringContext) -> T
+    {
+        assert!(!self.is_collecting_in_band_lifetimes);
+        assert!(self.lifetimes_to_define.is_empty());
+        self.is_collecting_in_band_lifetimes = self.sess.features.borrow().in_band_lifetimes;
+
+        let res = f(self);
+
+        self.is_collecting_in_band_lifetimes = false;
+
+        let lifetimes_to_define = self.lifetimes_to_define.split_off(0);
+
+        let lifetime_defs = match parent_id {
+            Some(parent_id) => lifetimes_to_define.into_iter().map(|(span, name)| {
+                    let def_node_id = self.next_id().node_id;
+
+                    // Add a definition for the in-band lifetime def
+                    self.resolver.definitions().create_def_with_parent(
+                        parent_id.index,
+                        def_node_id,
+                        DefPathData::LifetimeDef(name.as_str()),
+                        DefIndexAddressSpace::High,
+                        Mark::root()
+                    );
+
+                    hir::LifetimeDef {
+                        lifetime: hir::Lifetime {
+                            id: def_node_id,
+                            span,
+                            name: hir::LifetimeName::Name(name),
+                        },
+                        bounds: Vec::new().into(),
+                        pure_wrt_drop: false,
+                        in_band: true,
+                    }
+                }).collect(),
+            None => Vec::new(),
+        };
+
+        (lifetime_defs, res)
+    }
+
+    // Evaluates `f` with the lifetimes in `lt_defs` in-scope.
+    // This is used to track which lifetimes have already been defined, and
+    // which are new in-band lifetimes that need to have a definition created
+    // for them.
+    fn with_in_scope_lifetime_defs<T, F>(
+        &mut self,
+        lt_defs: &[LifetimeDef],
+        f: F
+    ) -> T where F: FnOnce(&mut LoweringContext) -> T
+    {
+        let old_len = self.in_scope_lifetimes.len();
+        let lt_def_names = lt_defs.iter().map(|lt_def| lt_def.lifetime.ident.name);
+        self.in_scope_lifetimes.extend(lt_def_names);
+
+        let res = f(self);
+
+        self.in_scope_lifetimes.truncate(old_len);
+        res
+    }
+
+    // Same as the method above, but accepts `hir::LifetimeDef`s
+    // instead of `ast::LifetimeDef`s.
+    // This should only be used with generics that have already had their
+    // in-band lifetimes added. In practice, this means that this function is
+    // only used when lowering a child item of a trait or impl.
+    fn with_parent_impl_lifetime_defs<T, F>(
+        &mut self,
+        lt_defs: &[hir::LifetimeDef],
+        f: F
+    ) -> T where F: FnOnce(&mut LoweringContext) -> T
+    {
+        let old_len = self.in_scope_lifetimes.len();
+        let lt_def_names = lt_defs.iter().map(|lt_def| lt_def.lifetime.name.name());
+        self.in_scope_lifetimes.extend(lt_def_names);
+
+        let res = f(self);
+
+        self.in_scope_lifetimes.truncate(old_len);
+        res
+    }
+
+    // Appends in-band lifetime defs to the existing set of out-of-band lifetime defs.
+    // Evaluates all within the context of the out-of-band defs.
+    // If provided, `impl_item_id` is used to find the parent impls of impl items so
+    // that their generics are not duplicated.
+    fn add_in_band_lifetime_defs<F, T>(
+        &mut self,
+        generics: &Generics,
+        parent_id: Option<DefId>,
+        f: F
+    ) -> (hir::Generics, T)
+        where F: FnOnce(&mut LoweringContext) -> T
+    {
+        let (in_band_defs, (mut lowered_generics, res)) =
+            self.with_in_scope_lifetime_defs(&generics.lifetimes, |this| {
+                this.collect_in_band_lifetime_defs(parent_id, |this| {
+                    (this.lower_generics(generics), f(this))
+                })
+            });
+
+        lowered_generics.lifetimes =
+            lowered_generics.lifetimes
+                .iter().cloned()
+               .chain(in_band_defs.into_iter())
+               .collect();
+
+        (lowered_generics, res)
     }
 
     fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
@@ -710,13 +861,14 @@ impl<'a> LoweringContext<'a> {
                 hir::TyRptr(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(ref f) => {
-                hir::TyBareFn(P(hir::BareFnTy {
-                    lifetimes: self.lower_lifetime_defs(&f.lifetimes),
-                    unsafety: self.lower_unsafety(f.unsafety),
-                    abi: f.abi,
-                    decl: self.lower_fn_decl(&f.decl, None, false),
-                    arg_names: self.lower_fn_args_to_names(&f.decl),
-                }))
+                self.with_in_scope_lifetime_defs(&f.lifetimes, |this|
+                    hir::TyBareFn(P(hir::BareFnTy {
+                        lifetimes: this.lower_lifetime_defs(&f.lifetimes),
+                        unsafety: this.lower_unsafety(f.unsafety),
+                        abi: f.abi,
+                        decl: this.lower_fn_decl(&f.decl, None, false),
+                        arg_names: this.lower_fn_args_to_names(&f.decl),
+                    })))
             }
             TyKind::Never => hir::TyNever,
             TyKind::Tup(ref tys) => {
@@ -906,6 +1058,7 @@ impl<'a> LoweringContext<'a> {
                             lifetime: def_lifetime,
                             bounds: Vec::new().into(),
                             pure_wrt_drop: false,
+                            in_band: false,
                         });
                     }
                 }
@@ -1344,23 +1497,44 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
+        let name = match self.lower_ident(l.ident) {
+            x if x == "'_" => hir::LifetimeName::Underscore,
+            x if x == "'static" => hir::LifetimeName::Static,
+            name => {
+                if  self.is_collecting_in_band_lifetimes &&
+                    !self.in_scope_lifetimes.contains(&name) &&
+                    self.lifetimes_to_define.iter()
+                        .find(|&&(_, lt_name)| lt_name == name)
+                        .is_none()
+                {
+                    self.lifetimes_to_define.push((l.span, name));
+                }
+
+                hir::LifetimeName::Name(name)
+            }
+        };
+
         hir::Lifetime {
             id: self.lower_node_id(l.id).node_id,
-            name: match self.lower_ident(l.ident) {
-                x if x == "'_" => hir::LifetimeName::Underscore,
-                x if x == "'static" => hir::LifetimeName::Static,
-                name => hir::LifetimeName::Name(name),
-            },
+            name,
             span: l.span,
         }
     }
 
     fn lower_lifetime_def(&mut self, l: &LifetimeDef) -> hir::LifetimeDef {
-        hir::LifetimeDef {
+        let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
+        self.is_collecting_in_band_lifetimes = false;
+
+        let def = hir::LifetimeDef {
             lifetime: self.lower_lifetime(&l.lifetime),
             bounds: self.lower_lifetimes(&l.bounds),
             pure_wrt_drop: l.attrs.iter().any(|attr| attr.check_name("may_dangle")),
-        }
+            in_band: false,
+        };
+
+        self.is_collecting_in_band_lifetimes = was_collecting_in_band;
+
+        def
     }
 
     fn lower_lifetimes(&mut self, lts: &Vec<Lifetime>) -> hir::HirVec<hir::Lifetime> {
@@ -1435,15 +1609,19 @@ impl<'a> LoweringContext<'a> {
                                                                 ref bounded_ty,
                                                                 ref bounds,
                                                                 span}) => {
-                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    bound_lifetimes: self.lower_lifetime_defs(bound_lifetimes),
-                    bounded_ty: self.lower_ty(bounded_ty, ImplTraitContext::Disallowed),
-                    bounds: bounds.iter().filter_map(|bound| match *bound {
-                        // Ignore `?Trait` bounds, they were copied into type parameters already.
-                        TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
-                        _ => Some(self.lower_ty_param_bound(bound, ImplTraitContext::Disallowed))
-                    }).collect(),
-                    span,
+                self.with_in_scope_lifetime_defs(bound_lifetimes, |this| {
+                    hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                        bound_lifetimes: this.lower_lifetime_defs(bound_lifetimes),
+                        bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::Disallowed),
+                        bounds: bounds.iter().filter_map(|bound| match *bound {
+                            // Ignore `?Trait` bounds.
+                            // Tthey were copied into type parameters already.
+                            TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                            _ => Some(this.lower_ty_param_bound(
+                                    bound, ImplTraitContext::Disallowed))
+                        }).collect(),
+                        span,
+                    })
                 })
             }
             WherePredicate::RegionPredicate(WhereRegionPredicate{ ref lifetime,
@@ -1504,9 +1682,13 @@ impl<'a> LoweringContext<'a> {
                             p: &PolyTraitRef,
                             itctx: ImplTraitContext)
                             -> hir::PolyTraitRef {
+        let bound_lifetimes = self.lower_lifetime_defs(&p.bound_lifetimes);
+        let trait_ref = self.with_parent_impl_lifetime_defs(&bound_lifetimes,
+                                |this| this.lower_trait_ref(&p.trait_ref, itctx));
+
         hir::PolyTraitRef {
-            bound_lifetimes: self.lower_lifetime_defs(&p.bound_lifetimes),
-            trait_ref: self.lower_trait_ref(&p.trait_ref, itctx),
+            bound_lifetimes,
+            trait_ref,
             span: p.span,
         }
     }
@@ -1678,11 +1860,15 @@ impl<'a> LoweringContext<'a> {
                         let body = this.lower_block(body, false);
                         this.expr_block(body, ThinVec::new())
                     });
-                    hir::ItemFn(this.lower_fn_decl(decl, fn_def_id, true),
+                    let (generics, fn_decl) =
+                        this.add_in_band_lifetime_defs(generics, fn_def_id, |this|
+                            this.lower_fn_decl(decl, fn_def_id, true));
+
+                    hir::ItemFn(fn_decl,
                                 this.lower_unsafety(unsafety),
                                 this.lower_constness(constness),
                                 abi,
-                                this.lower_generics(generics),
+                                generics,
                                 body_id)
                 })
             }
@@ -1723,29 +1909,42 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Impl(unsafety,
                            polarity,
                            defaultness,
-                           ref generics,
+                           ref ast_generics,
                            ref ifce,
                            ref ty,
                            ref impl_items) => {
-                let new_impl_items = impl_items.iter()
-                                               .map(|item| self.lower_impl_item_ref(item))
-                                               .collect();
-                let ifce = ifce.as_ref().map(|trait_ref| {
-                    self.lower_trait_ref(trait_ref, ImplTraitContext::Disallowed)
+                let def_id = self.resolver.definitions().opt_local_def_id(id);
+                let (generics, (ifce, lowered_ty)) =
+                    self.add_in_band_lifetime_defs(ast_generics, def_id, |this| {
+                        let ifce = ifce.as_ref().map(|trait_ref| {
+                            this.lower_trait_ref(trait_ref, ImplTraitContext::Disallowed)
+                        });
+
+                        if let Some(ref trait_ref) = ifce {
+                            if let Def::Trait(def_id) = trait_ref.path.def {
+                                this.trait_impls.entry(def_id).or_insert(vec![]).push(id);
+                            }
+                        }
+
+                        let lowered_ty = this.lower_ty(ty, ImplTraitContext::Disallowed);
+
+                        (ifce, lowered_ty)
+                    });
+
+                let new_impl_items = self.with_in_scope_lifetime_defs(
+                                            &ast_generics.lifetimes, |this| {
+                    impl_items.iter()
+                              .map(|item| this.lower_impl_item_ref(item))
+                              .collect()
                 });
 
-                if let Some(ref trait_ref) = ifce {
-                    if let Def::Trait(def_id) = trait_ref.path.def {
-                        self.trait_impls.entry(def_id).or_insert(vec![]).push(id);
-                    }
-                }
 
                 hir::ItemImpl(self.lower_unsafety(unsafety),
                               self.lower_impl_polarity(polarity),
                               self.lower_defaultness(defaultness, true /* [1] */),
-                              self.lower_generics(generics),
+                              generics,
                               ifce,
-                              self.lower_ty(ty, ImplTraitContext::Disallowed),
+                              lowered_ty,
                               new_impl_items)
             }
             ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
@@ -1769,41 +1968,55 @@ impl<'a> LoweringContext<'a> {
             let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
             let fn_def_id = this.resolver.definitions().opt_local_def_id(node_id);
 
+            let (generics, node) = match i.node {
+                TraitItemKind::Const(ref ty, ref default) => {
+                    (
+                        this.lower_generics(&i.generics),
+                        hir::TraitItemKind::Const(
+                            this.lower_ty(ty, ImplTraitContext::Disallowed),
+                            default.as_ref().map(|x| {
+                                this.lower_body(None, |this| this.lower_expr(x))
+                            }))
+                    )
+                }
+                TraitItemKind::Method(ref sig, None) => {
+                    let names = this.lower_fn_args_to_names(&sig.decl);
+                    this.add_in_band_lifetime_defs(&i.generics, fn_def_id, |this|
+                        hir::TraitItemKind::Method(
+                            this.lower_method_sig(sig, fn_def_id, false),
+                            hir::TraitMethod::Required(names)))
+                }
+                TraitItemKind::Method(ref sig, Some(ref body)) => {
+                    let body_id = this.lower_body(Some(&sig.decl), |this| {
+                        let body = this.lower_block(body, false);
+                        this.expr_block(body, ThinVec::new())
+                    });
+
+                    this.add_in_band_lifetime_defs(&i.generics, fn_def_id, |this|
+                        hir::TraitItemKind::Method(
+                            this.lower_method_sig(sig, fn_def_id, false),
+                           hir::TraitMethod::Provided(body_id)))
+                }
+                TraitItemKind::Type(ref bounds, ref default) => {
+                    (
+                        this.lower_generics(&i.generics),
+                        hir::TraitItemKind::Type(
+                            this.lower_bounds(bounds, ImplTraitContext::Disallowed),
+                            default.as_ref().map(|x| {
+                                this.lower_ty(x, ImplTraitContext::Disallowed)
+                            }))
+                    )
+                }
+                TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
+            };
+
             hir::TraitItem {
                 id: node_id,
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
-                generics: this.lower_generics(&i.generics),
-                node: match i.node {
-                    TraitItemKind::Const(ref ty, ref default) => {
-                        hir::TraitItemKind::Const(this.lower_ty(ty, ImplTraitContext::Disallowed),
-                                                  default.as_ref().map(|x| {
-                            this.lower_body(None, |this| this.lower_expr(x))
-                        }))
-                    }
-                    TraitItemKind::Method(ref sig, None) => {
-                        let names = this.lower_fn_args_to_names(&sig.decl);
-                        hir::TraitItemKind::Method(this.lower_method_sig(sig, fn_def_id, false),
-                                                   hir::TraitMethod::Required(names))
-                    }
-                    TraitItemKind::Method(ref sig, Some(ref body)) => {
-                        let body_id = this.lower_body(Some(&sig.decl), |this| {
-                            let body = this.lower_block(body, false);
-                            this.expr_block(body, ThinVec::new())
-                        });
-                        hir::TraitItemKind::Method(this.lower_method_sig(sig, fn_def_id, false),
-                                                   hir::TraitMethod::Provided(body_id))
-                    }
-                    TraitItemKind::Type(ref bounds, ref default) => {
-                        hir::TraitItemKind::Type(this.lower_bounds(bounds,
-                                                                   ImplTraitContext::Disallowed),
-                                                 default.as_ref().map(|x| {
-                                                     this.lower_ty(x, ImplTraitContext::Disallowed)
-                                                 }))
-                    }
-                    TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
-                },
+                generics,
+                node,
                 span: i.span,
             }
         })
@@ -1838,37 +2051,46 @@ impl<'a> LoweringContext<'a> {
             let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
             let fn_def_id = this.resolver.definitions().opt_local_def_id(node_id);
 
+            let (generics, node) = match i.node {
+                ImplItemKind::Const(ref ty, ref expr) => {
+                    let body_id = this.lower_body(None, |this| this.lower_expr(expr));
+                    (
+                        this.lower_generics(&i.generics),
+                        hir::ImplItemKind::Const(
+                            this.lower_ty(ty, ImplTraitContext::Disallowed),
+                            body_id
+                        )
+                    )
+                }
+                ImplItemKind::Method(ref sig, ref body) => {
+                    let body_id = this.lower_body(Some(&sig.decl), |this| {
+                        let body = this.lower_block(body, false);
+                        this.expr_block(body, ThinVec::new())
+                    });
+                    let impl_trait_return_allow = !this.is_in_trait_impl;
+
+                    this.add_in_band_lifetime_defs(&i.generics, fn_def_id, |this|
+                        hir::ImplItemKind::Method(
+                            this.lower_method_sig(sig, fn_def_id, impl_trait_return_allow),
+                            body_id))
+                }
+                ImplItemKind::Type(ref ty) => (
+                    this.lower_generics(&i.generics),
+                    hir::ImplItemKind::Type(
+                        this.lower_ty(ty, ImplTraitContext::Disallowed)),
+                ),
+                ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
+            };
+
             hir::ImplItem {
                 id: node_id,
                 hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
-                generics: this.lower_generics(&i.generics),
+                generics,
                 vis: this.lower_visibility(&i.vis, None),
                 defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
-                node: match i.node {
-                    ImplItemKind::Const(ref ty, ref expr) => {
-                        let body_id = this.lower_body(None, |this| this.lower_expr(expr));
-                        hir::ImplItemKind::Const(
-                            this.lower_ty(ty, ImplTraitContext::Disallowed),
-                            body_id
-                        )
-                    }
-                    ImplItemKind::Method(ref sig, ref body) => {
-                        let body_id = this.lower_body(Some(&sig.decl), |this| {
-                            let body = this.lower_block(body, false);
-                            this.expr_block(body, ThinVec::new())
-                        });
-                        let impl_trait_return_allow = !this.is_in_trait_impl;
-                        hir::ImplItemKind::Method(this.lower_method_sig(sig,
-                                                                        fn_def_id,
-                                                                        impl_trait_return_allow),
-                                                  body_id)
-                    }
-                    ImplItemKind::Type(ref ty) =>
-                        hir::ImplItemKind::Type(this.lower_ty(ty, ImplTraitContext::Disallowed)),
-                    ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
-                },
+                node,
                 span: i.span,
             }
         })
@@ -1958,16 +2180,26 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem {
         self.with_parent_def(i.id, |this| {
+            let node_id = this.lower_node_id(i.id).node_id;
+            let def_id = this.resolver.definitions().local_def_id(node_id);
             hir::ForeignItem {
-                id: this.lower_node_id(i.id).node_id,
+                id: node_id,
                 name: i.ident.name,
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
                     ForeignItemKind::Fn(ref fdec, ref generics) => {
                         // Disallow impl Trait in foreign items
-                        hir::ForeignItemFn(this.lower_fn_decl(fdec, None, false),
-                                           this.lower_fn_args_to_names(fdec),
-                                           this.lower_generics(generics))
+                        let (generics, (fn_dec, fn_args)) =
+                            this.add_in_band_lifetime_defs(
+                                generics,
+                                Some(def_id),
+                                |this| (
+                                    this.lower_fn_decl(fdec, None, false),
+                                    this.lower_fn_args_to_names(fdec)
+                                )
+                            );
+
+                        hir::ForeignItemFn(fn_dec, fn_args, generics)
                     }
                     ForeignItemKind::Static(ref t, m) => {
                         hir::ForeignItemStatic(this.lower_ty(t, ImplTraitContext::Disallowed), m)
