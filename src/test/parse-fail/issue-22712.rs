@@ -14,6 +14,6 @@ struct Foo<B> {
 
 fn bar() {
     let Foo<Vec<u8>>  //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `<`
-}  //~ ERROR expected item, found `}`
+}
 
 fn main() {}

@@ -12,4 +12,4 @@
 
 fn main() {
     let macropus!() ..= 11 = 12; //~ error: expected one of `:`, `;`, or `=`, found `..=`
-} //~ ERROR expected item, found `}`
+}

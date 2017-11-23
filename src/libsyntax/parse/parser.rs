@@ -4273,6 +4273,7 @@ impl<'a> Parser<'a> {
                 Err(mut err) => {
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Break);
+                    self.eat(&token::CloseDelim(token::Brace));
                     break;
                 }
                 Ok(stmt) => stmt,
