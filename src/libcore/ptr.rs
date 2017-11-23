@@ -17,6 +17,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use convert::From;
+use default::Default;
 use intrinsics;
 use ops::CoerceUnsized;
 use fmt;
@@ -2268,6 +2269,21 @@ impl<T: ?Sized> PartialOrd for *mut T {
 
     #[inline]
     fn ge(&self, other: &*mut T) -> bool { *self >= *other }
+}
+
+// Default for pointers
+#[unstable(feature = "pointer_default", reason = "Recently added",
+           issue = "46228")]
+impl<T> Default for *const T {
+    #[inline]
+    fn default() -> Self { null() }
+}
+
+#[unstable(feature = "pointer_default", reason = "Recently added",
+           issue = "46228")]
+impl<T> Default for *mut T {
+    #[inline]
+    fn default() -> Self { null_mut() }
 }
 
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
