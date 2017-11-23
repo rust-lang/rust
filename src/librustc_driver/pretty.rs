@@ -77,6 +77,7 @@ pub enum PpFlowGraphMode {
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmHir(PpSourceMode),
+    PpmHirTree(PpSourceMode),
     PpmFlowGraph(PpFlowGraphMode),
     PpmMir,
     PpmMirCFG,
@@ -93,6 +94,7 @@ impl PpMode {
             PpmSource(PpmExpandedIdentified) |
             PpmSource(PpmExpandedHygiene) |
             PpmHir(_) |
+            PpmHirTree(_) |
             PpmMir |
             PpmMirCFG |
             PpmFlowGraph(_) => true,
@@ -125,6 +127,7 @@ pub fn parse_pretty(sess: &Session,
         ("hir", true) => PpmHir(PpmNormal),
         ("hir,identified", true) => PpmHir(PpmIdentified),
         ("hir,typed", true) => PpmHir(PpmTyped),
+        ("hir-tree", true) => PpmHirTree(PpmNormal),
         ("mir", true) => PpmMir,
         ("mir-cfg", true) => PpmMirCFG,
         ("flowgraph", true) => PpmFlowGraph(PpFlowGraphMode::Default),
@@ -971,6 +974,23 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 })
             }
 
+            (PpmHirTree(s), None) => {
+                let out: &mut Write = &mut out;
+                s.call_with_pp_support_hir(sess,
+                                           cstore,
+                                           hir_map,
+                                           analysis,
+                                           resolutions,
+                                           arena,
+                                           arenas,
+                                           output_filenames,
+                                           crate_name,
+                                           move |_annotation, krate| {
+                    debug!("pretty printing source code {:?}", s);
+                    write!(out, "{:#?}", krate)
+                })
+            }
+
             (PpmHir(s), Some(uii)) => {
                 let out: &mut Write = &mut out;
                 s.call_with_pp_support_hir(sess,
@@ -1005,6 +1025,28 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     pp_state.s.eof()
                 })
             }
+
+            (PpmHirTree(s), Some(uii)) => {
+                let out: &mut Write = &mut out;
+                s.call_with_pp_support_hir(sess,
+                                           cstore,
+                                           hir_map,
+                                           analysis,
+                                           resolutions,
+                                           arena,
+                                           arenas,
+                                           output_filenames,
+                                           crate_name,
+                                           move |_annotation, _krate| {
+                    debug!("pretty printing source code {:?}", s);
+                    for node_id in uii.all_matching_node_ids(hir_map) {
+                        let node = hir_map.get(node_id);
+                        write!(out, "{:#?}", node)?;
+                    }
+                    Ok(())
+                })
+            }
+
             _ => unreachable!(),
         }
         .unwrap();
