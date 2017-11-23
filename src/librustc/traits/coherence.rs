@@ -13,6 +13,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
 use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Reveal};
+use traits::IntercrateMode;
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Subst;
@@ -42,16 +43,19 @@ pub struct OverlapResult<'tcx> {
 /// `ImplHeader` with those types substituted
 pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
                                           impl1_def_id: DefId,
-                                          impl2_def_id: DefId)
+                                          impl2_def_id: DefId,
+                                          intercrate_mode: IntercrateMode)
                                           -> Option<OverlapResult<'tcx>>
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
-           impl2_def_id={:?})",
+           impl2_def_id={:?},
+           intercrate_mode={:?})",
            impl1_def_id,
-           impl2_def_id);
+           impl2_def_id,
+           intercrate_mode);
 
-    let selcx = &mut SelectionContext::intercrate(infcx);
+    let selcx = &mut SelectionContext::intercrate(infcx, intercrate_mode);
     overlap(selcx, impl1_def_id, impl2_def_id)
 }
 

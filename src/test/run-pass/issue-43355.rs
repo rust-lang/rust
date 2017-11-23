@@ -8,23 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that the code for issue #43355 can run without an ICE, please remove
+// this test when it becomes an hard error.
+
+#![allow(incoherent_fundamental_impls)]
+
 pub trait Trait1<X> {
     type Output;
 }
-
 pub trait Trait2<X> {}
-
-pub struct A;
 
 impl<X, T> Trait1<X> for T where T: Trait2<X> {
     type Output = ();
 }
-
 impl<X> Trait1<Box<X>> for A {
-//~^ ERROR conflicting implementations of trait
-//~| hard error
-//~| downstream crates may implement trait `Trait2<std::boxed::Box<_>>` for type `A`
     type Output = i32;
+}
+
+pub struct A;
+
+fn f<X, T: Trait1<Box<X>>>() {
+    println!("k: {}", ::std::mem::size_of::<<T as Trait1<Box<X>>>::Output>());
+}
+
+pub fn g<X, T: Trait2<Box<X>>>() {
+    f::<X, T>();
 }
 
 fn main() {}

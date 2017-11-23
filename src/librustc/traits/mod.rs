@@ -60,7 +60,8 @@ mod structural_impls;
 pub mod trans;
 mod util;
 
-#[derive(Copy, Clone, Debug)]
+// Whether to enable bug compatibility with issue #43355
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IntercrateMode {
     Issue43355,
     Fixed

@@ -248,10 +248,13 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
         },
         FutureIncompatibleInfo {
+            id: LintId::of(INCOHERENT_FUNDAMENTAL_IMPLS),
+            reference: "issue #46205 <https://github.com/rust-lang/rust/issues/46205>",
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(COERCE_NEVER),
             reference: "issue #46325 <https://github.com/rust-lang/rust/issues/46325>",
         },
-
         ]);
 
     // Register renamed and removed lints
