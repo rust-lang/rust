@@ -10,17 +10,22 @@
 
 #![feature(default_type_parameter_fallback)]
 
-// An example from the RFC
-trait Foo { fn takes_foo(&self); }
-trait Bar { }
+use std::path::Path;
 
-impl<T:Bar=usize> Foo for Vec<T> {
-    fn takes_foo(&self) {}
+enum Opt<T=String> {
+    Som(T),
+    Non,
 }
-
-impl Bar for usize {}
 
 fn main() {
-    let x = Vec::new(); // x: Vec<$0>
-    x.takes_foo(); // adds oblig Vec<$0> : Foo
+    // Defaults on the type definiton work, as long no other params are interfering.
+    let _ = Opt::Non;
+    let _: Opt<_> = Opt::Non;
+
+    func1(None);
+    func2(Opt::Non);
 }
+
+// Defaults on fns take precedence.
+fn func1<P: AsRef<Path> = String>(p: Option<P>) { }
+fn func2<P: AsRef<Path> = String>(p: Opt<P>) { }

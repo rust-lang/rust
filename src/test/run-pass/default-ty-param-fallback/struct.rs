@@ -7,34 +7,17 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
 
 #![feature(default_type_parameter_fallback)]
 
-use std::marker::PhantomData;
+struct Foo<A>(A);
 
-struct DeterministicHasher;
-struct RandomHasher;
-
-
-struct MyHashMap<K, V, H=DeterministicHasher> {
-    data: PhantomData<(K, V, H)>
-}
-
-impl<K, V, H> MyHashMap<K, V, H> {
-    fn new() -> MyHashMap<K, V, H> {
-        MyHashMap { data: PhantomData }
+impl<A:Default=i32> Foo<A> {
+    fn new() -> Foo<A> {
+        Foo(A::default())
     }
 }
 
-mod mystd {
-    use super::{MyHashMap, RandomHasher};
-    pub type HashMap<K, V, H=RandomHasher> = MyHashMap<K, V, H>;
-}
-
-fn try_me<H>(hash_map: mystd::HashMap<i32, i32, H>) {}
-
 fn main() {
-    let hash_map = mystd::HashMap::new();
-    try_me(hash_map);
+    let _ = Foo::new();
 }

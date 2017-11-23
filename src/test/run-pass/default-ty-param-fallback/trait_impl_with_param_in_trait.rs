@@ -10,10 +10,36 @@
 
 #![feature(default_type_parameter_fallback)]
 
-use std::collections::HashMap;
+trait A<T = Self> {
+    fn a(t: &T) -> Self;
+}
 
-type IntMap<K=usize> = HashMap<K, usize>;
+trait B<T = Self> {
+    fn b(&self) -> T;
+}
+
+impl<T = X> B<T> for X
+    where T: A<X>
+{
+    fn b(&self) -> T {
+        T::a(self)
+    }
+}
+
+struct X(u8);
+
+impl A for X {
+    fn a(x: &X) -> X {
+        X(x.0)
+    }
+}
+
+fn g(x: &X) {
+    // Bug: replacing with `let x = X::b(x)` will cause `x` to be unknown in `x.0`.
+    let x = <X as B>::b(x);
+    x.0;
+}
 
 fn main() {
-    let x = IntMap::new();
+    g(&X(0));
 }

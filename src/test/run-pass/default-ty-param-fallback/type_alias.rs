@@ -10,10 +10,16 @@
 
 #![feature(default_type_parameter_fallback)]
 
-use std::collections::HashMap;
+struct HeshMep<K, V, S=String>(Vec<K>, Vec<V>, S);
 
-type IntMap<K=usize> = HashMap<K, usize>;
+impl<V, K=usize, S:Default=String> HeshMep<K, V, S> {
+    fn new() -> HeshMep<K, V, S> {
+        HeshMep(Vec::new(), Vec::new(), S::default())
+    }
+}
+
+type IntMap<K> = HeshMep<K, usize>;
 
 fn main() {
-    let x = IntMap::new();
+    let _ = IntMap::new();
 }

@@ -7,30 +7,21 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
 
 #![feature(default_type_parameter_fallback)]
 
-use std::marker::PhantomData;
+struct Foo;
 
-trait Id {
-    type This;
-}
-
-impl<A> Id for A {
-    type This = A;
-}
-
-struct Foo<X: Default = usize, Y = <X as Id>::This> {
-    data: PhantomData<(X, Y)>
-}
-
-impl<X: Default, Y> Foo<X, Y> {
-    fn new() -> Foo<X, Y> {
-        Foo { data: PhantomData }
+impl Foo {
+    fn method<A:Default=String>(&self) -> A {
+        A::default()
     }
 }
 
 fn main() {
-    let foo = Foo::new();
+    // Bug: Replacing with Foo.method::<_>() fails.
+    // Suspicion: astconv and tycheck are considering this a "A provided type parameter.",
+    // resulting in type_var_for_def not being called and a TypeInference var being created
+    // rather than a TypeParameterDefinition var.
+    let _ = Foo.method();
 }

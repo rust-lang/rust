@@ -10,10 +10,27 @@
 //
 
 #![feature(default_type_parameter_fallback)]
+
 use std::marker::PhantomData;
 
-struct Foo<T,U=T> { t: T, data: PhantomData<U> }
+trait Id {
+    type This;
+}
+
+impl<A> Id for A {
+    type This = A;
+}
+
+struct Foo<X, Y> {
+    data: PhantomData<(X, Y)>
+}
+
+impl<X: Default = usize, Y = <X as Id>::This> Foo<X, Y> {
+    fn new() -> Foo<X, Y> {
+        Foo { data: PhantomData }
+    }
+}
 
 fn main() {
-    let foo = Foo { t: 'a', data: PhantomData };
+    let _ = Foo::new();
 }

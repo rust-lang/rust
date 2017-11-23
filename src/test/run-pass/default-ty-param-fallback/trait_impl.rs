@@ -10,16 +10,30 @@
 
 #![feature(default_type_parameter_fallback)]
 
-// Another example from the RFC
+struct Vac<T>(Vec<T>);
+
+impl<T=usize> Vac<T> {
+    fn new() -> Self {
+        Vac(Vec::new())
+    }
+}
+
 trait Foo { }
 trait Bar { }
 
-impl<T:Bar=usize> Foo for Vec<T> {}
+impl<T:Bar=usize> Foo for Vac<T> {}
 impl Bar for usize {}
 
-fn takes_foo<F:Foo>(f: F) {}
+fn takes_foo<F:Foo>(_: F) {}
 
 fn main() {
-    let x = Vec::new(); // x: Vec<$0>
-    takes_foo(x); // adds oblig Vec<$0> : Foo
+    let x = Vac::new(); // x: Vac<$0>
+    // adds oblig Vac<$0> : Foo,
+    // and applies the default of `impl<T> Vac<T>` and 
+    // `impl<T:Bar> Foo for Vac<T>`, which must agree.
+    //
+    // The default of F in takes_foo<F> makes no difference here,
+    // because the corresponding inference var will be generalized
+    // to Vac<_>.
+    takes_foo(x);
 }

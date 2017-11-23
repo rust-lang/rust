@@ -7,20 +7,20 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
 
 #![feature(default_type_parameter_fallback)]
+use std::marker::PhantomData;
 
-// An example from the RFC
-trait Foo { fn takes_foo(&self); }
-trait Bar { }
+#[allow(dead_code)]
+struct Foo<T,U=T> { t: T, data: PhantomData<U> }
 
-impl<T:Bar=usize> Foo for Vec<T> {
-    fn takes_foo(&self) {}
+impl<T,U=T> Foo<T,U> {
+    fn new(t: T) -> Foo<T,U> {
+        Foo { t, data: PhantomData }
+    }
 }
 
-impl Bar for usize {}
-
 fn main() {
-    let x = Vec::new(); // x: Vec<$0>
-    x.takes_foo(); // adds oblig Vec<$0> : Foo
+    let _ = Foo::new('a');
 }
