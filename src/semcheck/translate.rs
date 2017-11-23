@@ -378,8 +378,11 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             Predicate::WellFormed(ty) =>
                 Predicate::WellFormed(self.translate(index_map, &ty)),
             Predicate::ObjectSafe(did) => Predicate::ObjectSafe(self.translate_orig(did)),
-            Predicate::ClosureKind(did, kind) =>
-                Predicate::ClosureKind(self.translate_orig(did), kind),
+            Predicate::ClosureKind(did, substs, kind) =>
+                Predicate::ClosureKind(
+                    self.translate_orig(did),
+                    self.translate(index_map, &substs),
+                    kind),
             Predicate::Subtype(subtype_predicate) => {
                 Predicate::Subtype(subtype_predicate.map_bound(|s_pred| {
                     let l = self.translate(index_map, &s_pred.a);
