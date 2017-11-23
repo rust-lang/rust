@@ -1505,6 +1505,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rls-data"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rls-rustc"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1869,7 +1878,7 @@ name = "rustc_save_analysis"
 version = "0.0.0"
 dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-data 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-data 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2737,6 +2746,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum regex-syntax 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ad890a5eef7953f55427c50575c680c42841653abd2b028b68cd223d157f62db"
 "checksum rls-analysis 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5b961e7270b2084839ede4d2788167086b24bc9cf09c9e955cc851afaf116054"
 "checksum rls-data 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "48257ceade23c2e01a3ca8d2fc4226101b107f6a3c868f829cf3fd2f204a1fe6"
+"checksum rls-data 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ff85bb3a0daf9f64207a5530d90ae1c10f5515cef064c88b6821090678382b44"
 "checksum rls-rustc 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b21ea952e9bf1569929abf1bb920262cde04b7b1b26d8e0260286302807299d2"
 "checksum rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d7c7046dc6a92f2ae02ed302746db4382e75131b9ce20ce967259f6b5867a6a"
 "checksum rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "ffd34691a510938bb67fe0444fb363103c73ffb31c121d1e16bc92d8945ea8ff"

@@ -183,7 +183,8 @@ fn main() {
         if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
             cmd.arg("-Zsave-analysis");
             cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
-                    "{\"output_file\": null,\"full_docs\": false,\"pub_only\": true,\
+                    "{\"output_file\": null,\"full_docs\": false,\
+                     \"pub_only\": true,\"reachable_only\": false,\
                      \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}");
         }
 
