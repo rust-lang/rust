@@ -77,6 +77,7 @@ This API is completely unstable and subject to change.
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(conservative_impl_trait)]
+#![feature(from_ref)]
 #![feature(match_default_bindings)]
 #![feature(never_type)]
 #![feature(quote)]
@@ -90,7 +91,6 @@ extern crate syntax_pos;
 extern crate arena;
 #[macro_use] extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
-extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;

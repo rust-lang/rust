@@ -31,7 +31,7 @@ use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 use util::common::ErrorReported;
 use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
-use rustc_back::slice;
+use std::slice;
 
 use hir;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -530,7 +530,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         if lifetime_ref.is_elided() {
-            self.resolve_elided_lifetimes(slice::ref_slice(lifetime_ref));
+            self.resolve_elided_lifetimes(slice::from_ref(lifetime_ref));
             return;
         }
         if lifetime_ref.is_static() {

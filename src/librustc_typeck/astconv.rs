@@ -23,7 +23,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
-use rustc_back::slice;
+use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
 use util::nodemap::FxHashSet;
@@ -782,7 +782,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
-        self.prohibit_type_params(slice::ref_slice(item_segment));
+        self.prohibit_type_params(slice::from_ref(item_segment));
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
@@ -859,7 +859,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let trait_def_id = tcx.parent_def_id(item_def_id).unwrap();
 
-        self.prohibit_type_params(slice::ref_slice(item_segment));
+        self.prohibit_type_params(slice::from_ref(item_segment));
 
         let self_ty = if let Some(ty) = opt_self_ty {
             ty

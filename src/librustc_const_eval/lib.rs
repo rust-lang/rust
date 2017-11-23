@@ -24,12 +24,12 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(i128_type)]
+#![feature(from_ref)]
 
 extern crate arena;
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;
 #[macro_use] extern crate rustc;
-extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors;

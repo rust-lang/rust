@@ -40,7 +40,6 @@ extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod tempdir;
 pub mod target;
-pub mod slice;
 pub mod dynamic_lib;
 
 use std::str::FromStr;
