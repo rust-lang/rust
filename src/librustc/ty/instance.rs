@@ -50,7 +50,8 @@ impl<'a, 'tcx> Instance<'tcx> {
               tcx: TyCtxt<'a, 'tcx, 'tcx>)
               -> Ty<'tcx>
     {
-        self.def.def_ty(tcx).subst(tcx, self.substs)
+        let ty = self.def.def_ty(tcx);
+        tcx.trans_apply_param_substs(self.substs, &ty)
     }
 }
 
