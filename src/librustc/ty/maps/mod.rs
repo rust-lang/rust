@@ -23,7 +23,7 @@ use middle::cstore::{NativeLibraryKind, DepKind, CrateSource, ExternConstBody};
 use middle::privacy::AccessLevels;
 use middle::reachable::ReachableSet;
 use middle::region;
-use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
+use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::SymbolExportLevel;
@@ -306,6 +306,8 @@ define_maps! { <'tcx>
         -> Option<NativeLibraryKind>,
     [] fn link_args: link_args_node(CrateNum) -> Rc<Vec<String>>,
 
+    // Lifetime resolution. See `middle::resolve_lifetimes`.
+    [] fn resolve_lifetimes: ResolveLifetimes(CrateNum) -> Rc<ResolveLifetimes>,
     [] fn named_region_map: NamedRegion(DefIndex) ->
         Option<Rc<FxHashMap<ItemLocalId, Region>>>,
     [] fn is_late_bound_map: IsLateBound(DefIndex) ->

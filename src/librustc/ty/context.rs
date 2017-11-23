@@ -802,8 +802,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<DefId, Rc<Vec<Export>>>,
 
-    named_region_map: NamedRegionMap,
-
     pub hir: hir_map::Map<'tcx>,
 
     /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
@@ -986,7 +984,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   arenas: &'tcx GlobalArenas<'tcx>,
                                   arena: &'tcx DroplessArena,
                                   resolutions: ty::Resolutions,
-                                  named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
                                   on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
                                   crate_name: &str,
@@ -1044,27 +1041,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                             .insert(hir_id.local_id,
                                     Rc::new(StableVec::new(v)));
         }
-        let mut defs = FxHashMap();
-        for (k, v) in named_region_map.defs {
-            let hir_id = hir.node_to_hir_id(k);
-            let map = defs.entry(hir_id.owner)
-                .or_insert_with(|| Rc::new(FxHashMap()));
-            Rc::get_mut(map).unwrap().insert(hir_id.local_id, v);
-        }
-        let mut late_bound = FxHashMap();
-        for k in named_region_map.late_bound {
-            let hir_id = hir.node_to_hir_id(k);
-            let map = late_bound.entry(hir_id.owner)
-                .or_insert_with(|| Rc::new(FxHashSet()));
-            Rc::get_mut(map).unwrap().insert(hir_id.local_id);
-        }
-        let mut object_lifetime_defaults = FxHashMap();
-        for (k, v) in named_region_map.object_lifetime_defaults {
-            let hir_id = hir.node_to_hir_id(k);
-            let map = object_lifetime_defaults.entry(hir_id.owner)
-                .or_insert_with(|| Rc::new(FxHashMap()));
-            Rc::get_mut(map).unwrap().insert(hir_id.local_id, Rc::new(v));
-        }
 
         tls::enter_global(GlobalCtxt {
             sess: s,
@@ -1074,11 +1050,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             dep_graph: dep_graph.clone(),
             on_disk_query_result_cache,
             types: common_types,
-            named_region_map: NamedRegionMap {
-                defs,
-                late_bound,
-                object_lifetime_defaults,
-            },
             trait_map,
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
                 (k, Rc::new(v))
@@ -2176,27 +2147,12 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     }
 }
 
-struct NamedRegionMap {
-    defs: FxHashMap<DefIndex, Rc<FxHashMap<ItemLocalId, resolve_lifetime::Region>>>,
-    late_bound: FxHashMap<DefIndex, Rc<FxHashSet<ItemLocalId>>>,
-    object_lifetime_defaults:
-        FxHashMap<
-            DefIndex,
-            Rc<FxHashMap<ItemLocalId, Rc<Vec<ObjectLifetimeDefault>>>>,
-        >,
-}
-
 pub fn provide(providers: &mut ty::maps::Providers) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id).cloned();
     providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
-    providers.named_region_map = |tcx, id| tcx.gcx.named_region_map.defs.get(&id).cloned();
-    providers.is_late_bound_map = |tcx, id| tcx.gcx.named_region_map.late_bound.get(&id).cloned();
-    providers.object_lifetime_defaults_map = |tcx, id| {
-        tcx.gcx.named_region_map.object_lifetime_defaults.get(&id).cloned()
-    };
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name

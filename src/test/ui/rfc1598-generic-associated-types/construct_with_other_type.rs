@@ -23,6 +23,7 @@ trait Baz {
 impl<T> Baz for T where T: Foo {
     type Quux<'a> = <T as Foo>::Bar<'a, 'static>;
     //~^ ERROR undeclared lifetime
+    //~| ERROR lifetime parameters are not allowed on this type [E0110]
 }
 
 fn main() {}

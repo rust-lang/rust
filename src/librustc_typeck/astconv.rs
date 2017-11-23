@@ -140,7 +140,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
 
             None => {
-                self.re_infer(lifetime.span, def).expect("unelided lifetime in signature")
+                self.re_infer(lifetime.span, def)
+                    .unwrap_or_else(|| {
+                        // This indicates an illegal lifetime
+                        // elision. `resolve_lifetime` should have
+                        // reported an error in this case -- but if
+                        // not, let's error out.
+                        tcx.sess.delay_span_bug(lifetime.span, "unelided lifetime in signature");
+
+                        // Supply some dummy value. We don't have an
+                        // `re_error`, annoyingly, so use `'static`.
+                        tcx.types.re_static
+                    })
             }
         };
 
