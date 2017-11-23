@@ -137,10 +137,10 @@ impl ListItem {
     pub fn has_comment(&self) -> bool {
         self.pre_comment
             .as_ref()
-            .map_or(false, |comment| comment.starts_with("//"))
+            .map_or(false, |comment| comment.trim_left().starts_with("//"))
             || self.post_comment
                 .as_ref()
-                .map_or(false, |comment| comment.starts_with("//"))
+                .map_or(false, |comment| comment.trim_left().starts_with("//"))
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
