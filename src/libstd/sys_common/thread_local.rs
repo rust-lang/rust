@@ -36,7 +36,7 @@
 //! ```ignore (cannot-doctest-private-modules)
 //! let key = Key::new(None);
 //! assert!(key.get().is_null());
-//! key.set(1 as *mut u8);
+//! key.set(std::ptr::dangling_mut::<u8>());
 //! assert!(!key.get().is_null());
 //!
 //! drop(key); // deallocate this TLS slot.
@@ -50,7 +50,7 @@
 //!
 //! unsafe {
 //!     assert!(KEY.get().is_null());
-//!     KEY.set(1 as *mut u8);
+//!     KEY.set(std::ptr::dangling_mut::<u8>());
 //! }
 //! ```
 
@@ -81,7 +81,7 @@ use sys_common::mutex::Mutex;
 ///
 /// unsafe {
 ///     assert!(KEY.get().is_null());
-///     KEY.set(1 as *mut u8);
+///     KEY.set(std::ptr::dangling_mut::<u8>());
 /// }
 /// ```
 pub struct StaticKey {
@@ -110,7 +110,7 @@ pub struct StaticKey {
 ///
 /// let key = Key::new(None);
 /// assert!(key.get().is_null());
-/// key.set(1 as *mut u8);
+/// key.set(std::ptr::dangling_mut::<u8>());
 /// assert!(!key.get().is_null());
 ///
 /// drop(key); // deallocate this TLS slot.

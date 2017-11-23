@@ -55,6 +55,7 @@
 #![feature(match_default_bindings)]
 #![feature(never_type)]
 #![feature(nonzero)]
+#![feature(ptr_dangling)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]

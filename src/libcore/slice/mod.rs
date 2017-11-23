@@ -244,7 +244,7 @@ macro_rules! make_ref {
         let ptr = $ptr;
         if size_from_ptr(ptr) == 0 {
             // Use a non-null pointer value
-            &*(1 as *mut _)
+            &*ptr::dangling()
         } else {
             &*ptr
         }
@@ -257,7 +257,7 @@ macro_rules! make_ref_mut {
         let ptr = $ptr;
         if size_from_ptr(ptr) == 0 {
             // Use a non-null pointer value
-            &mut *(1 as *mut _)
+            &mut *(ptr::dangling_mut())
         } else {
             &mut *ptr
         }
@@ -279,7 +279,7 @@ impl<T> SliceExt for [T] {
     fn iter(&self) -> Iter<T> {
         unsafe {
             let p = if mem::size_of::<T>() == 0 {
-                1 as *const _
+                ptr::dangling()
             } else {
                 let p = self.as_ptr();
                 assume(!p.is_null());
@@ -443,7 +443,7 @@ impl<T> SliceExt for [T] {
     fn iter_mut(&mut self) -> IterMut<T> {
         unsafe {
             let p = if mem::size_of::<T>() == 0 {
-                1 as *mut _
+                ptr::dangling_mut()
             } else {
                 let p = self.as_mut_ptr();
                 assume(!p.is_null());
@@ -1259,7 +1259,7 @@ macro_rules! make_slice {
         let diff = ($end as usize).wrapping_sub(start as usize);
         if size_from_ptr(start) == 0 {
             // use a non-null pointer value
-            unsafe { from_raw_parts(1 as *const _, diff) }
+            unsafe { from_raw_parts(ptr::dangling(), diff) }
         } else {
             let len = diff / size_from_ptr(start);
             unsafe { from_raw_parts(start, len) }
@@ -1273,7 +1273,7 @@ macro_rules! make_mut_slice {
         let diff = ($end as usize).wrapping_sub(start as usize);
         if size_from_ptr(start) == 0 {
             // use a non-null pointer value
-            unsafe { from_raw_parts_mut(1 as *mut _, diff) }
+            unsafe { from_raw_parts_mut(ptr::dangling_mut(), diff) }
         } else {
             let len = diff / size_from_ptr(start);
             unsafe { from_raw_parts_mut(start, len) }

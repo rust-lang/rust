@@ -91,6 +91,7 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+#![feature(const_align_of)]
 #![feature(const_min_value)]
 #![feature(const_max_value)]
 #![feature(const_atomic_bool_new)]
