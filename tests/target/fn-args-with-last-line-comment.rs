@@ -18,7 +18,7 @@ fn foo(
     arg5: LongTypeName,
     arg6: LongTypeName,
     arg7: LongTypeName,
-       //arg8: LongTypeName,
+    //arg8: LongTypeName,
 ) {
     // do stuff
 }

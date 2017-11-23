@@ -47,7 +47,8 @@ pub type GenericsFitButNotEqualTest<
 
 pub type CommentTest<
     // Lifetime
-    'a, // Type
+    'a,
+    // Type
     T,
 > = ();
 
