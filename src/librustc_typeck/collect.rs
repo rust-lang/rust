@@ -878,14 +878,20 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (ast_generics, opt_inputs) = match node {
         NodeTraitItem(item) => {
             match item.node {
-                TraitItemKind::Method(ref sig, _) => (&item.generics, Some(&sig.decl.inputs)),
+                TraitItemKind::Method(ref sig, _) => {
+                    origin = ty::OriginOfTyParam::Fn;
+                    (&item.generics, Some(&sig.decl.inputs))
+                }
                 _ => (&item.generics, None)
             }
         }
 
         NodeImplItem(item) => {
             match item.node {
-                ImplItemKind::Method(ref sig, _) => (&item.generics, Some(&sig.decl.inputs)),
+                ImplItemKind::Method(ref sig, _) => {
+                    origin = ty::OriginOfTyParam::Fn;
+                    (&item.generics, Some(&sig.decl.inputs))
+                }
                 _ => (&item.generics, None)
             }
         }

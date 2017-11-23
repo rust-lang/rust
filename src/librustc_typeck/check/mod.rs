@@ -2201,7 +2201,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Collect variables that are unsolved and support fallback,
         // grouped in bags by subtyping equivalence.
         let mut bags = FxHashMap();
-        for vid in self.fulfillment_cx.borrow().vars_in_unsolved_obligations() {
+        for vid in self.fulfillment_cx.borrow().vars_in_obligations() {
             let mut type_variables = self.infcx.type_variables.borrow_mut();
             let not_known = type_variables.probe(vid).is_none();
             let supports_fallback = match type_variables.var_origin(vid) {
@@ -2236,8 +2236,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // For future-proofing against conflicting defaults,
             // if one of the variables has no default, nothing is unified.
             for &vid in &bag {
-                match self.infcx.type_variables.borrow().default(vid) {
-                    &Default::User(_) => {},
+                let default = self.infcx.type_variables.borrow().default(vid).clone();
+                debug!("apply_user_type_parameter_fallback: \
+                        checking var: {:?} with default: {:?}", vid, default);
+                match default {
+                    Default::User(_) => {},
                     _ => continue 'bags,
                 }
             }
@@ -2245,8 +2248,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // If future-proof, then all vars have defaults.
                 let default = self.infcx.type_variables.borrow().default(vid).clone();
                 let ty = self.tcx.mk_var(vid);
-                debug!("apply_user_type_parameter_fallback: \
-                        ty: {:?} with default: {:?}", ty, default);
+                debug!("apply_user_type_parameter_fallback: applying fallback to var: {:?} \
+                        with ty: {:?} with default: {:?}", vid, ty, default);
                 if let Default::User(user_default) = default {
                     let normalized_default = self.normalize_associated_types_in(
                                         user_default.origin_span,

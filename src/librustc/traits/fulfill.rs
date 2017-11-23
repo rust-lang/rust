@@ -180,9 +180,9 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         self.predicates.pending_obligations()
     }
 
-    pub fn vars_in_unsolved_obligations(&self) -> FxHashSet<ty::TyVid> {
+    pub fn vars_in_obligations(&self) -> FxHashSet<ty::TyVid> {
         let mut vars = FxHashSet();
-        for p in self.predicates.unsolved_obligations() {
+        for p in self.predicates.obligations() {
             for ty in p.obligation.predicate.walk_tys() {
                 if let TypeVariants::TyInfer(InferTy::TyVar(vid)) = ty.sty {
                     vars.insert(vid);
