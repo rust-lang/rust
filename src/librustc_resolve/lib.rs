@@ -2599,13 +2599,14 @@ impl<'a> Resolver<'a> {
                         }
                         _ => {}
                     },
-                    (Def::Enum(..), PathSource::TupleStruct) => {
+                    (Def::Enum(..), PathSource::TupleStruct)
+                        | (Def::Enum(..), PathSource::Expr(..))  => {
                         if let Some(variants) = this.collect_enum_variants(def) {
                             err.note(&format!("did you mean to use one \
                                                of the following variants?\n{}",
                                 variants.iter()
-                                    .map(|suggestion| format!("- `{}`",
-                                                              path_names_to_string(suggestion)))
+                                    .map(|suggestion| path_names_to_string(suggestion))
+                                    .map(|suggestion| format!("- `{}`", suggestion))
                                     .collect::<Vec<_>>()
                                     .join("\n")));
 
@@ -3559,6 +3560,8 @@ impl<'a> Resolver<'a> {
         }
 
         self.find_module(enum_def).map(|(enum_module, enum_import_suggestion)| {
+            self.populate_module_if_necessary(enum_module);
+
             let mut variants = Vec::new();
             enum_module.for_each_child_stable(|ident, _, name_binding| {
                 if let Def::Variant(..) = name_binding.def() {

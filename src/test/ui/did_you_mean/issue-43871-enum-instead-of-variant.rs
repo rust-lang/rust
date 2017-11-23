@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+enum Example { Ex(String), NotEx }
+
 fn result_test() {
     let x = Option(1);
 
     if let Option(_) = x {
+        println!("It is OK.");
+    }
+
+    let y = Example::Ex(String::from("test"));
+
+    if let Example(_) = y {
         println!("It is OK.");
     }
 }
