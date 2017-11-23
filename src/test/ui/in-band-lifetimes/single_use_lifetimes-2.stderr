@@ -1,0 +1,14 @@
+error: lifetime name `'x` only used once
+  --> $DIR/single_use_lifetimes-2.rs:12:10
+   |
+12 | fn deref<'x>() -> &'x u32 { //~ ERROR lifetime name `'x` only used once
+   |          ^^
+   |
+note: lint level defined here
+  --> $DIR/single_use_lifetimes-2.rs:10:9
+   |
+10 | #![deny(single_use_lifetime)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

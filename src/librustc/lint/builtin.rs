@@ -234,6 +234,12 @@ declare_lint! {
     "detect coercion to !"
 }
 
+declare_lint! {
+    pub SINGLE_USE_LIFETIME,
+    Allow,
+   "detects single use lifetimes"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -277,7 +283,8 @@ impl LintPass for HardwiredLints {
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,
-            COERCE_NEVER
+            COERCE_NEVER,
+            SINGLE_USE_LIFETIME
         )
     }
 }
