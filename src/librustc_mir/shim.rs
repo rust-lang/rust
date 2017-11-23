@@ -825,10 +825,16 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
                                       -> Mir<'tcx>
 {
     let tcx = infcx.tcx;
+    let gcx = tcx.global_tcx();
     let def_id = tcx.hir.local_def_id(ctor_id);
-    let sig = tcx.no_late_bound_regions(&tcx.fn_sig(def_id))
+    let sig = gcx.no_late_bound_regions(&gcx.fn_sig(def_id))
         .expect("LBR in ADT constructor signature");
-    let sig = tcx.erase_regions(&sig);
+    let sig = gcx.erase_regions(&sig);
+    let param_env = gcx.param_env(def_id);
+
+    // Normalize the sig now that we have liberated the late-bound
+    // regions.
+    let sig = gcx.normalize_associated_type_in_env(&sig, param_env);
 
     let (adt_def, substs) = match sig.output().sty {
         ty::TyAdt(adt_def, substs) => (adt_def, substs),
