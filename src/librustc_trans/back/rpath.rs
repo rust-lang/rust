@@ -40,9 +40,11 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
     let rpaths = get_rpaths(config, &libs);
     flags.extend_from_slice(&rpaths_to_flags(&rpaths));
 
-    // Use DT_RUNPATH instead of DT_RPATH if available
-    if config.linker_is_gnu && target.target_os == "linux" {
-        flags.push("-Wl,--enable-new-dtags".to_string());
+    if cfg!(target_os = "linux") {
+        // Use DT_RUNPATH instead of DT_RPATH if available
+        if config.linker_is_gnu {
+            flags.push("-Wl,--enable-new-dtags".to_string());
+        }
     }
 
     flags
