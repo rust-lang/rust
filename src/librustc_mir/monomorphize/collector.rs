@@ -789,12 +789,9 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             target_ty: Ty<'tcx>)
                                             -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
-        if inner_source.has_metadata(tcx) {
-            (inner_source, inner_target)
-        } else {
-            tcx.struct_lockstep_tails(inner_source, inner_target)
-        }
+        tcx.struct_lockstep_tails(inner_source, inner_target)
     };
+
     match (&source_ty.sty, &target_ty.sty) {
         (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
          &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
