@@ -324,7 +324,17 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        ty.has_metadata(self.tcx)
+        use syntax_pos::DUMMY_SP;
+        if ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+            return false;
+        }
+
+        let tail = self.tcx.struct_tail(ty);
+        match tail.sty {
+            ty::TyForeign(..) => false,
+            ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+        }
     }
 
     pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
