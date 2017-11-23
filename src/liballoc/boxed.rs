@@ -374,6 +374,59 @@ impl<T: ?Sized> Box<T> {
             unique
         };
     }
+
+    /// Consumes and leaks the `Box`, returning a mutable reference,
+    /// `&'a mut T`. Here, the lifetime `'a` may be chosen to be `'static`.
+    ///
+    /// This function is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak. If this is not acceptable, the reference should first be wrapped
+    /// with the [`Box::from_raw`] function producing a `Box`. This `Box` can
+    /// then be dropped which will properly destroy `T` and release the
+    /// allocated memory.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::leak(b)` instead of `b.leak()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// Simple usage:
+    ///
+    /// ```
+    /// #![feature(box_leak)]
+    ///
+    /// fn main() {
+    ///     let x = Box::new(41);
+    ///     let static_ref: &'static mut usize = Box::leak(x);
+    ///     *static_ref += 1;
+    ///     assert_eq!(*static_ref, 42);
+    /// }
+    /// ```
+    ///
+    /// Unsized data:
+    ///
+    /// ```
+    /// #![feature(box_leak)]
+    ///
+    /// fn main() {
+    ///     let x = vec![1, 2, 3].into_boxed_slice();
+    ///     let static_ref = Box::leak(x);
+    ///     static_ref[0] = 4;
+    ///     assert_eq!(*static_ref, [4, 2, 3]);
+    /// }
+    /// ```
+    #[unstable(feature = "box_leak", reason = "needs an FCP to stabilize",
+               issue = "46179")]
+    #[inline]
+    pub fn leak<'a>(b: Box<T>) -> &'a mut T
+    where
+        T: 'a // Technically not needed, but kept to be explicit.
+    {
+        unsafe { &mut *Box::into_raw(b) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
