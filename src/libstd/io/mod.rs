@@ -444,7 +444,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 /// # }
 /// ```
 ///
-/// Read from `&str` because [`&[u8]`] implements [`Read`]:
+/// Read from `&str` because [`&[u8]`] implements `Read`:
 ///
 /// ```
 /// # use std::io;
@@ -468,7 +468,6 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 /// [`BufRead`]: trait.BufRead.html
 /// [`BufReader`]: struct.BufReader.html
 /// [`&[u8]`]: primitive.slice.html
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Read {
