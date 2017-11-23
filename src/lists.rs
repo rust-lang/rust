@@ -137,10 +137,10 @@ impl ListItem {
     pub fn has_comment(&self) -> bool {
         self.pre_comment
             .as_ref()
-            .map_or(false, |comment| comment.starts_with("//"))
+            .map_or(false, |comment| comment.trim_left().starts_with("//"))
             || self.post_comment
                 .as_ref()
-                .map_or(false, |comment| comment.starts_with("//"))
+                .map_or(false, |comment| comment.trim_left().starts_with("//"))
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
@@ -410,7 +410,9 @@ where
                         formatting.config.max_width(),
                     ));
                 }
-                let overhead = if let Some(max_width) = *item_max_width {
+                let overhead = if starts_with_newline(comment) {
+                    0
+                } else if let Some(max_width) = *item_max_width {
                     max_width + 2
                 } else {
                     // 1 = space between item and comment.
@@ -425,12 +427,17 @@ where
                     || comment.trim().contains('\n')
                     || comment.trim().len() > width;
 
-                rewrite_comment(comment, block_style, comment_shape, formatting.config)
+                rewrite_comment(
+                    comment.trim_left(),
+                    block_style,
+                    comment_shape,
+                    formatting.config,
+                )
             };
 
             let mut formatted_comment = rewrite_post_comment(&mut item_max_width)?;
 
-            if !starts_with_newline(&formatted_comment) {
+            if !starts_with_newline(&comment) {
                 let mut comment_alignment =
                     post_comment_alignment(item_max_width, inner_item.len());
                 if first_line_width(&formatted_comment) + last_line_width(&result)
@@ -448,6 +455,9 @@ where
                 {
                     result.push(' ');
                 }
+            } else {
+                result.push('\n');
+                result.push_str(&indent_str);
             }
             if formatted_comment.contains('\n') {
                 item_max_width = None;
