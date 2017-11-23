@@ -431,6 +431,9 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
+        // The handling of regions in this area of the code is terrible,
+        // see issue #29149. We should be able to improve on this with
+        // NLL.
         let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
 
         // We can use a dummy node-id here because we won't pay any mind
@@ -511,8 +514,24 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            unnormalized_env.reveal);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let predicates = match fully_normalize(
+        // FIXME. We should really... do something with these region
+        // obligations. But this call just continues the older
+        // behavior (i.e., doesn't cause any new bugs), and it would
+        // take some further refactoring to actually solve them. In
+        // particular, we would have to handle implied bounds
+        // properly, and that code is currently largely confined to
+        // regionck (though I made some efforts to extract it
+        // out). -nmatsakis
+        //
+        // @arielby: In any case, these obligations are checked
+        // by wfcheck anyway, so I'm not sure we have to check
+        // them here too, and we will remove this function when
+        // we move over to lazy normalization *anyway*.
+        let fulfill_cx = FulfillmentContext::new_ignoring_regions();
+
+        let predicates = match fully_normalize_with_fulfillcx(
             &infcx,
+            fulfill_cx,
             cause,
             elaborated_env,
             // You would really want to pass infcx.param_env.caller_bounds here,
@@ -536,16 +555,6 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let region_scope_tree = region::ScopeTree::default();
         let free_regions = FreeRegionMap::new();
-
-        // FIXME. We should really... do something with these region
-        // obligations. But this call just continues the older
-        // behavior (i.e., doesn't cause any new bugs), and it would
-        // take some further refactoring to actually solve them. In
-        // particular, we would have to handle implied bounds
-        // properly, and that code is currently largely confined to
-        // regionck (though I made some efforts to extract it
-        // out). -nmatsakis
-        let _ = infcx.ignore_region_obligations();
 
         infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {

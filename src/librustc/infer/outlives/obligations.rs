@@ -181,18 +181,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             TypeOutlives::new(self, region_bound_pairs, implicit_region_bound, param_env);
         outlives.type_must_outlive(origin, ty, region);
     }
-
-    /// Ignore the region obligations, not bothering to prove
-    /// them. This function should not really exist; it is used to
-    /// accommodate some older code for the time being.
-    pub fn ignore_region_obligations(&self) {
-        assert!(
-            !self.in_snapshot.get(),
-            "cannot ignore registered region obligations in a snapshot"
-        );
-
-        self.region_obligations.borrow_mut().clear();
-    }
 }
 
 #[must_use] // you ought to invoke `into_accrued_obligations` when you are done =)
