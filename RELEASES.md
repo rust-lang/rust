@@ -1,4 +1,11 @@
-Version 1.22.0 (2017-11-23)
+Version 1.22.1 (2017-11-22)
+==========================
+
+- [Update Cargo to fix an issue with macOS 10.13 "High Sierra"][46183]
+
+[46183]: https://github.com/rust-lang/rust/pull/46183
+
+Version 1.22.0 (2017-11-22)
 ==========================
 
 Language
