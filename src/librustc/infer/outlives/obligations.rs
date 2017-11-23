@@ -88,6 +88,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         body_id: ast::NodeId,
         obligation: RegionObligation<'tcx>,
     ) {
+        debug!("register_region_obligation({:?}, {:?})", body_id, obligation);
         self.region_obligations
             .borrow_mut()
             .push((body_id, obligation));

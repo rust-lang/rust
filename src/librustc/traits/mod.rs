@@ -431,7 +431,7 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
 
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
@@ -583,9 +583,6 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                           -> Result<T, Vec<FulfillmentError<'tcx>>>
     where T : TypeFoldable<'tcx>
 {
-    debug!("fully_normalize(value={:?})", value);
-
-    let selcx = &mut SelectionContext::new(infcx);
     // FIXME (@jroesch) ISSUE 26721
     // I'm not sure if this is a bug or not, needs further investigation.
     // It appears that by reusing the fulfillment_cx here we incur more
@@ -599,8 +596,21 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     //
     // I think we should probably land this refactor and then come
     // back to this is a follow-up patch.
-    let mut fulfill_cx = FulfillmentContext::new();
+    let fulfillcx = FulfillmentContext::new();
+    fully_normalize_with_fulfillcx(infcx, fulfillcx, cause, param_env, value)
+}
 
+pub fn fully_normalize_with_fulfillcx<'a, 'gcx, 'tcx, T>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    mut fulfill_cx: FulfillmentContext<'tcx>,
+    cause: ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    value: &T)
+    -> Result<T, Vec<FulfillmentError<'tcx>>>
+    where T : TypeFoldable<'tcx>
+{
+    debug!("fully_normalize_with_fulfillcx(value={:?})", value);
+    let selcx = &mut SelectionContext::new(infcx);
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, param_env, cause, value);
     debug!("fully_normalize: normalized_value={:?} obligations={:?}",

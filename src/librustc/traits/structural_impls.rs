@@ -10,7 +10,7 @@
 
 use traits;
 use traits::project::Normalized;
-use ty::{Lift, TyCtxt};
+use ty::{self, Lift, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::fmt;
@@ -28,9 +28,16 @@ impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
 
 impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Obligation(predicate={:?},depth={})",
-               self.predicate,
-               self.recursion_depth)
+        if ty::tls::with(|tcx| tcx.sess.verbose()) {
+            write!(f, "Obligation(predicate={:?},cause={:?},depth={})",
+                   self.predicate,
+                   self.cause,
+                   self.recursion_depth)
+        } else {
+            write!(f, "Obligation(predicate={:?},depth={})",
+                   self.predicate,
+                   self.recursion_depth)
+        }
     }
 }
 
