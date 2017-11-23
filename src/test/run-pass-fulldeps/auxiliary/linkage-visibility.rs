@@ -14,9 +14,9 @@
 // do the runtime check that these functions aren't exported.
 #![allow(private_no_mangle_fns)]
 
-extern crate rustc_back;
+extern crate rustc_metadata;
 
-use rustc_back::dynamic_lib::DynamicLibrary;
+use rustc_metadata::dynamic_lib::DynamicLibrary;
 
 #[no_mangle]
 pub fn foo() { bar(); }

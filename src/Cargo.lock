@@ -1889,7 +1889,6 @@ name = "rustc_plugin"
 version = "0.0.0"
 dependencies = [
  "rustc 0.0.0",
- "rustc_back 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_metadata 0.0.0",
  "syntax 0.0.0",

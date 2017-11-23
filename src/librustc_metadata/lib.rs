@@ -16,12 +16,14 @@
 #![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(i128_type)]
+#![feature(libc)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
 #![feature(rustc_private)]
 
+extern crate libc;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -54,6 +56,7 @@ mod link_args;
 
 pub mod creader;
 pub mod cstore;
+pub mod dynamic_lib;
 pub mod locator;
 
 __build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }
