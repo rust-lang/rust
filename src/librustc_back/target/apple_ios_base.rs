@@ -99,6 +99,7 @@ pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
         executables: true,
         pre_link_args,
         has_elf_tls: false,
+        exe_allocation_crate: None,
         .. super::apple_base::opts()
     })
 }
