@@ -159,18 +159,6 @@ impl Span {
         Span::new(BytePos(lo), BytePos(lo), span.ctxt)
     }
 
-    /// Returns a new span representing the previous character after the start-point of this span
-    pub fn prev_point(self) -> Span {
-        let span = self.data();
-        let span_lo = span.lo.0;
-        let lo = if span_lo == 0 {
-            0
-        } else {
-            span_lo - 1
-        };
-        Span::new(BytePos(lo), BytePos(span_lo), span.ctxt)
-    }
-
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }
