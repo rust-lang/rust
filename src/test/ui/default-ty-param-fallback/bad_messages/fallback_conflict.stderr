@@ -1,0 +1,8 @@
+error[E0308]: mismatched types
+  --> $DIR/fallback_conflict.rs:25:9
+   |
+25 |     bar(x);
+   |         ^ expected isize, found usize
+
+error: aborting due to previous error
+

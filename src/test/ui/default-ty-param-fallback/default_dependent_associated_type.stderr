@@ -1,0 +1,10 @@
+error[E0283]: type annotations required: cannot resolve `_: std::default::Default`
+  --> $DIR/default_dependent_associated_type.rs:35:15
+   |
+35 |     let foo = Foo::new();
+   |               ^^^^^^^^
+   |
+   = note: required by `<Foo<X, Y>>::new`
+
+error: aborting due to previous error
+

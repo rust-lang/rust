@@ -11,7 +11,6 @@
 #![feature(default_type_parameter_fallback)]
 
 use std::path::Path;
-use std::mem::size_of;
 
 enum Opt<T=String> {
     Som(T),
@@ -28,11 +27,5 @@ fn main() {
 }
 
 // Defaults on fns take precedence.
-fn func1<P: AsRef<Path> = &'static str>(p: Option<P>) {
-    // Testing that we got &str rather than String.
-    assert_eq!(size_of::<P>(), size_of::<&str>())
-}
-
-fn func2<P: AsRef<Path> = &'static str>(p: Opt<P>) {
-    assert_eq!(size_of::<P>(), size_of::<&str>())
-}
+fn func1<P: AsRef<Path> = String>(p: Option<P>) { }
+fn func2<P: AsRef<Path> = String>(p: Opt<P>) { }

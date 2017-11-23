@@ -7,23 +7,20 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
-//aux-build:default_ty_param_cross_crate_crate.rs
 
 #![feature(default_type_parameter_fallback)]
 
-extern crate default_param_test;
+// An example from the RFC
+trait Foo { fn takes_foo(&self); }
+trait Bar { }
 
-use default_param_test::{Foo, bleh};
+impl<T:Bar=usize> Foo for Vec<T> {
+    fn takes_foo(&self) {}
+}
 
-fn meh<X, B=bool>(x: Foo<X, B>) {}
-//~^ NOTE: a default was defined here...
+impl Bar for usize {}
 
 fn main() {
-    let foo = bleh();
-    //~^ NOTE: ...that also applies to the same type variable here
-
-    meh(foo);
-    //~^ ERROR: mismatched types:
-    //~| NOTE: conflicting type parameter defaults `bool` and `char`
+    let x = Vec::new(); // x: Vec<$0>
+    x.takes_foo(); // adds oblig Vec<$0> : Foo
 }

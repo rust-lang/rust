@@ -11,28 +11,17 @@
 #![feature(default_type_parameter_fallback)]
 
 use std::path::Path;
-use std::mem::size_of;
 
-enum Opt<T=String> {
-    Som(T),
-    Non,
+fn func<P: AsRef<Path> = String>(p: Option<P>) {
+    match p {
+        None => { println!("None"); }
+        Some(path) => { println!("{:?}", path.as_ref()); }
+    }
 }
 
 fn main() {
-    // Defaults on the type definiton work, as long no other params are interfering.
-    let _ = Opt::Non;
-    let _: Opt<_> = Opt::Non;
-
-    func1(None);
-    func2(Opt::Non);
+    // Dont fallback to future-proof against default on `noner`.
+    func(noner());
 }
 
-// Defaults on fns take precedence.
-fn func1<P: AsRef<Path> = &'static str>(p: Option<P>) {
-    // Testing that we got &str rather than String.
-    assert_eq!(size_of::<P>(), size_of::<&str>())
-}
-
-fn func2<P: AsRef<Path> = &'static str>(p: Opt<P>) {
-    assert_eq!(size_of::<P>(), size_of::<&str>())
-}
+fn noner<T>() -> Option<T> { None }

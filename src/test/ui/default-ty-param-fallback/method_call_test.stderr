@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/method_call_test.rs:22:9
+   |
+22 |     let f = Foo.method();
+   |         ^
+   |         |
+   |         cannot infer type for `_`
+   |         consider giving `f` a type
+
+error: aborting due to previous error
+
