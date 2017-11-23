@@ -76,6 +76,7 @@ impl UnicodeStr for str {
 
 /// Iterator adaptor for encoding `char`s to UTF-16.
 #[derive(Clone)]
+#[allow(missing_debug_implementations)]
 pub struct Utf16Encoder<I> {
     chars: I,
     extra: u16,

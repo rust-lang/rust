@@ -28,6 +28,7 @@
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![deny(warnings)]
+#![deny(missing_debug_implementations)]
 #![no_std]
 
 #![feature(ascii_ctype)]
