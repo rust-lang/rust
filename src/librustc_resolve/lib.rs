@@ -3526,7 +3526,7 @@ impl<'a> Resolver<'a> {
 
             self.populate_module_if_necessary(in_module);
 
-            in_module.for_each_child(|ident, _, name_binding| {
+            in_module.for_each_child_stable(|ident, _, name_binding| {
                 // abort if the module is already found
                 if let Some(_) = result {
                     return ();
