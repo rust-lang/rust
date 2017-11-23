@@ -5419,8 +5419,16 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
             token::CloseDelim(token::Brace) => {}
-            token::DocComment(_) => return Err(self.span_fatal_err(self.span,
-                                                                   Error::UselessDocComment)),
+            token::DocComment(_) => {
+                let mut err = self.span_fatal_err(self.span, Error::UselessDocComment);
+                if self.eat(&token::Comma) ||
+                    self.look_ahead(1, |t| *t == token::CloseDelim(token::Brace))
+                {
+                    err.emit();
+                } else {
+                    return Err(err);
+                }
+            }
             _ => return Err(self.span_fatal_help(self.span,
                     &format!("expected `,`, or `}}`, found `{}`", self.this_token_to_string()),
                     "struct fields should be separated by commas")),
