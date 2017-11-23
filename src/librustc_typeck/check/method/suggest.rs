@@ -164,40 +164,62 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         match error {
-            MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
-                                               unsatisfied_predicates,
-                                               out_of_scope_traits,
-                                               lev_candidate,
-                                               mode,
-                                               .. }) => {
+            MethodError::NoMatch(NoMatchData {
+                static_candidates: static_sources,
+                unsatisfied_predicates,
+                out_of_scope_traits,
+                lev_candidate,
+                mode,
+                ..
+            }) => {
                 let tcx = self.tcx;
 
                 let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
-                let mut err = if !actual.references_error() {
-                    struct_span_err!(tcx.sess, span, E0599,
-                                     "no {} named `{}` found for type `{}` in the \
-                                      current scope",
-                                     if mode == Mode::MethodCall {
-                                         "method"
-                                     } else {
-                                         match item_name.as_str().chars().next() {
-                                             Some(name) => {
-                                                 if name.is_lowercase() {
-                                                     "function or associated item"
-                                                 } else {
-                                                     "associated item"
-                                                 }
-                                             },
-                                             None => {
-                                                 ""
-                                             },
-                                         }
-                                     },
-                                     item_name,
-                                     self.ty_to_string(actual))
+                let ty_string = self.ty_to_string(actual);
+                let is_method = mode == Mode::MethodCall;
+                let type_str = if is_method {
+                    "method"
+                } else if actual.is_enum() {
+                    "variant"
                 } else {
-                    self.tcx.sess.diagnostic().struct_dummy()
+                    match (item_name.as_str().chars().next(), actual.is_fresh_ty()) {
+                        (Some(name), false) if name.is_lowercase() => {
+                            "function or associated item"
+                        }
+                        (Some(_), false) => "associated item",
+                        (Some(_), true) | (None, false) => {
+                            "variant or associated item"
+                        }
+                        (None, true) => "variant",
+                    }
                 };
+                let mut err = if !actual.references_error() {
+                    struct_span_err!(
+                        tcx.sess,
+                        span,
+                        E0599,
+                        "no {} named `{}` found for type `{}` in the current scope",
+                        type_str,
+                        item_name,
+                        ty_string
+                    )
+                } else {
+                    tcx.sess.diagnostic().struct_dummy()
+                };
+
+                if let Some(def) =  actual.ty_adt_def() {
+                    if let Some(full_sp) = tcx.hir.span_if_local(def.did) {
+                        let def_sp = tcx.sess.codemap().def_span(full_sp);
+                        err.span_label(def_sp, format!("{} `{}` not found {}",
+                                                       type_str,
+                                                       item_name,
+                                                       if def.is_enum() && !is_method {
+                                                           "here"
+                                                       } else {
+                                                           "for this"
+                                                       }));
+                    }
+                }
 
                 // If the method name is the name of a field with a function or closure type,
                 // give a helping note that it has to be called as (x.f)(...).
@@ -240,6 +262,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             _ => {}
                         }
                     }
+                } else {
+                    err.span_label(span, format!("{} not found in `{}`", type_str, ty_string));
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {
