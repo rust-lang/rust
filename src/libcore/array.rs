@@ -186,9 +186,11 @@ macro_rules! array_impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<T: fmt::Debug> fmt::Debug for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::Debug::fmt(&&self[..], f)
+                    fmt::Debug::fmt(&self[..], f)
                 }
             }
+
+            fmt_array_impls!($N, Octal, LowerHex, UpperHex, Pointer, Binary, LowerExp, UpperExp);
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<'a, T> IntoIterator for &'a [T; $N] {
@@ -250,6 +252,20 @@ macro_rules! array_impls {
                 #[inline]
                 fn cmp(&self, other: &[T; $N]) -> Ordering {
                     Ord::cmp(&&self[..], &&other[..])
+                }
+            }
+        )+
+    }
+}
+
+macro_rules! fmt_array_impls {
+    ($N: expr, $( $Trait: ident ),+) => {
+        $(
+            #[unstable(feature = "slice_more_fmt_traits", issue = /* FIXME */ "0")]
+            impl<T: fmt::$Trait> fmt::$Trait for [T; $N] {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::$Trait::fmt(&self[..], f)
                 }
             }
         )+
