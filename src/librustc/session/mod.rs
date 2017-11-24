@@ -161,6 +161,7 @@ pub struct PerfStats {
 enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
+    SpanSuggestion(String), // suggestion
     // add more variants as needed to support one-time diagnostics
 }
 
@@ -171,6 +172,12 @@ pub enum DiagnosticMessageId {
     ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
     StabilityId(u32) // issue number
+}
+
+impl From<&'static lint::Lint> for DiagnosticMessageId {
+    fn from(lint: &'static lint::Lint) -> Self {
+        DiagnosticMessageId::LintId(lint::LintId::of(lint))
+    }
 }
 
 impl Session {
@@ -358,10 +365,11 @@ impl Session {
     fn diag_once<'a, 'b>(&'a self,
                          diag_builder: &'b mut DiagnosticBuilder<'a>,
                          method: DiagnosticBuilderMethod,
-                         lint: &'static lint::Lint, message: &str, span: Option<Span>) {
+                         msg_id: DiagnosticMessageId,
+                         message: &str,
+                         span_maybe: Option<Span>) {
 
-        let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
-        let id_span_message = (lint_id, span, message.to_owned());
+        let id_span_message = (msg_id, span_maybe, message.to_owned());
         let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
         if fresh {
             match method {
@@ -369,7 +377,12 @@ impl Session {
                     diag_builder.note(message);
                 },
                 DiagnosticBuilderMethod::SpanNote => {
-                    diag_builder.span_note(span.expect("span_note expects a span"), message);
+                    let span = span_maybe.expect("span_note needs a span");
+                    diag_builder.span_note(span, message);
+                },
+                DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
+                    let span = span_maybe.expect("span_suggestion needs a span");
+                    diag_builder.span_suggestion(span, message, suggestion);
                 }
             }
         }
@@ -377,14 +390,25 @@ impl Session {
 
     pub fn diag_span_note_once<'a, 'b>(&'a self,
                                        diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                       lint: &'static lint::Lint, span: Span, message: &str) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanNote, lint, message, Some(span));
+                                       msg_id: DiagnosticMessageId, span: Span, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanNote,
+                       msg_id, message, Some(span));
     }
 
     pub fn diag_note_once<'a, 'b>(&'a self,
                                   diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                  lint: &'static lint::Lint, message: &str) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, lint, message, None);
+                                  msg_id: DiagnosticMessageId, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, msg_id, message, None);
+    }
+
+    pub fn diag_span_suggestion_once<'a, 'b>(&'a self,
+                                             diag_builder: &'b mut DiagnosticBuilder<'a>,
+                                             msg_id: DiagnosticMessageId,
+                                             span: Span,
+                                             message: &str,
+                                             suggestion: String) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanSuggestion(suggestion),
+                       msg_id, message, Some(span));
     }
 
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
