@@ -703,7 +703,7 @@ pub(crate) fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
                 span: tcx.def_span(key.value.0),
-                kind: MatchCheckError,
+                kind: CheckMatchError,
             });
         }
 

@@ -477,7 +477,7 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
             }
 
             TypeckError => TypeckError,
-            MatchCheckError => MatchCheckError,
+            CheckMatchError => CheckMatchError,
         })
     }
 }
