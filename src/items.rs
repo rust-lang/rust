@@ -22,7 +22,7 @@ use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
-use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent};
+use config::{BraceStyle, Config, Density, IndentStyle};
 use expr::{choose_rhs, format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
@@ -1979,17 +1979,15 @@ fn rewrite_fn_base(
             }
         };
         let ret_indent = if ret_should_indent {
-            let indent = match context.config.fn_return_indent() {
-                ReturnIndent::WithWhereClause => indent + 4,
+            let indent = if arg_str.is_empty() {
                 // Aligning with non-existent args looks silly.
-                _ if arg_str.is_empty() => {
-                    force_new_line_for_brace = true;
-                    indent + 4
-                }
+                force_new_line_for_brace = true;
+                indent + 4
+            } else {
                 // FIXME: we might want to check that using the arg indent
                 // doesn't blow our budget, and if it does, then fallback to
                 // the where clause indent.
-                _ => arg_indent,
+                arg_indent
             };
 
             result.push('\n');

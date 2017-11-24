@@ -3,7 +3,6 @@ comment_width = 80
 tab_spaces = 2
 newline_style = "Unix"
 brace_style = "SameLineWhere"
-fn_return_indent = "WithArgs"
 fn_args_paren_newline = true
 fn_args_density = "Tall"
 where_density = "Tall"

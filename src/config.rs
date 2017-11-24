@@ -63,14 +63,6 @@ configuration_option_enum! { ControlBraceStyle:
     AlwaysNextLine,
 }
 
-// How to indent a function's return type.
-configuration_option_enum! { ReturnIndent:
-    // Aligned with the arguments
-    WithArgs,
-    // Aligned with the where clause
-    WithWhereClause,
-}
-
 configuration_option_enum! { IndentStyle:
     // First line on the same line as the opening brace, all lines aligned with
     // the first line.
@@ -557,8 +549,6 @@ create_config! {
         "Add trailing semicolon after break, continue and return";
     fn_empty_single_line: bool, true, false, "Put empty-body functions on a single line";
     fn_single_line: bool, false, false, "Put single-expression functions on a single line";
-    fn_return_indent: ReturnIndent, ReturnIndent::WithArgs, false,
-        "Location of return type in function declaration";
     fn_args_paren_newline: bool, false, false, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, false, "Argument density in functions";
     array_width: usize, 60, false,

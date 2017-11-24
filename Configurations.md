@@ -991,48 +991,6 @@ fn lorem() {
 
 See also [`control_brace_style`](#control_brace_style).
 
-## `fn_return_indent`
-
-Location of return type in function declaration
-
-- **Default value**: `"WithArgs"`
-- **Possible values**: `"WithArgs"`, `"WithWhereClause"`
-
-#### `"WithArgs"` (default):
-
-```rust
-fn lorem(ipsum: Ipsum,
-         dolor: Dolor,
-         sit: Sit,
-         amet: Amet,
-         consectetur: Consectetur,
-         adipiscing: Adipiscing)
-         -> Elit
-    where Ipsum: Eq
-{
-    // body
-}
-
-```
-
-#### `"WithWhereClause"`:
-
-```rust
-fn lorem(ipsum: Ipsum,
-         dolor: Dolor,
-         sit: Sit,
-         amet: Amet,
-         consectetur: Consectetur,
-         adipiscing: Adipiscing)
-    -> Elit
-    where Ipsum: Eq
-{
-    // body
-}
-
-```
-
-**Note**: This option only takes effect when `indent_style` is set to `"Visual"`.
 
 ## `fn_single_line`
 
