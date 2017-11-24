@@ -953,10 +953,13 @@ impl f64 {
 
     /// Raw transmutation to `u64`.
     ///
-    /// Converts the `f64` into its raw memory representation,
-    /// similar to the `transmute` function.
+    /// This is currently identical to `transmute::<f64, u64>(self)` on all platforms.
     ///
-    /// Note that this function is distinct from casting.
+    /// See `from_bits` for some discussion of the portability of this operation
+    /// (there are almost no issues).
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
     ///
     /// # Examples
     ///
@@ -973,17 +976,33 @@ impl f64 {
 
     /// Raw transmutation from `u64`.
     ///
-    /// Converts the given `u64` containing the float's raw memory
-    /// representation into the `f64` type, similar to the
-    /// `transmute` function.
+    /// This is currently identical to `transmute::<u64, f64>(v)` on all platforms.
+    /// It turns out this is incredibly portable, for two reasons:
     ///
-    /// There is only one difference to a bare `transmute`:
-    /// Due to the implications onto Rust's safety promises being
-    /// uncertain, if the representation of a signaling NaN "sNaN" float
-    /// is passed to the function, the implementation is allowed to
-    /// return a quiet NaN instead.
+    /// * Floats and Ints have the same endianess on all supported platforms.
+    /// * IEEE-754 very precisely specifies the bit layout of floats.
     ///
-    /// Note that this function is distinct from casting.
+    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
+    /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
+    /// (notably x86 and ARM) picked the interpretation that was ultimately
+    /// standardized in 2008, but some didn't (notably MIPS). As a result, all
+    /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
+    ///
+    /// Rather than trying to preserve signaling-ness cross-platform, this
+    /// implementation favours preserving the exact bits. This means that
+    /// any payloads encoded in NaNs will be preserved even if the result of
+    /// this method is sent over the network from an x86 machine to a MIPS one.
+    ///
+    /// If the results of this method are only manipulated by the same
+    /// architecture that produced them, then there is no portability concern.
+    ///
+    /// If the input isn't NaN, then there is no portability concern.
+    ///
+    /// If you don't care about signalingness (very likely), then there is no
+    /// portability concern.
+    ///
+    /// Note that this function is distinct from `as` casting, which attempts to
+    /// preserve the *numeric* value, and not the bitwise value.
     ///
     /// # Examples
     ///
@@ -992,25 +1011,11 @@ impl f64 {
     /// let v = f64::from_bits(0x4029000000000000);
     /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
-    /// // Example for a signaling NaN value:
-    /// let snan = 0x7FF0000000000001;
-    /// assert_ne!(f64::from_bits(snan).to_bits(), snan);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
-    pub fn from_bits(mut v: u64) -> Self {
-        const EXP_MASK: u64   = 0x7FF0000000000000;
-        const FRACT_MASK: u64 = 0x000FFFFFFFFFFFFF;
-        if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
-            // While IEEE 754-2008 specifies encodings for quiet NaNs
-            // and signaling ones, certain MIPS and PA-RISC
-            // CPUs treat signaling NaNs differently.
-            // Therefore to be safe, we pass a known quiet NaN
-            // if v is any kind of NaN.
-            // The check above only assumes IEEE 754-1985 to be
-            // valid.
-            v = unsafe { ::mem::transmute(NAN) };
-        }
+    pub fn from_bits(v: u64) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { ::mem::transmute(v) }
     }
 }
@@ -1597,5 +1602,15 @@ mod tests {
         assert_approx_eq!(f64::from_bits(0x4029000000000000), 12.5);
         assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
         assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
+
+        // Check that NaNs roundtrip their bits regardless of signalingness
+        // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
+        let masked_nan1 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
+        let masked_nan2 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
+        assert!(f64::from_bits(masked_nan1).is_nan());
+        assert!(f64::from_bits(masked_nan2).is_nan());
+
+        assert_eq!(f64::from_bits(masked_nan1).to_bits(), masked_nan1);
+        assert_eq!(f64::from_bits(masked_nan2).to_bits(), masked_nan2);
     }
 }
