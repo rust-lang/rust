@@ -14,5 +14,8 @@ fn main() {
     let x = vec![(String::new(), String::new())];
     x.iter()
         .filter(|&(ref a, _)| foo(a))
+        //~^ ERROR non-reference pattern used to match a reference
+        //~| HELP consider using a reference
+        //~| HELP add
         .collect();
 }
