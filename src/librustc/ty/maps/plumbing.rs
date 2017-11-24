@@ -898,3 +898,58 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
     true
 }
+
+
+// FIXME(#45015): Another piece of boilerplate code that could be generated in
+//                a combined define_dep_nodes!()/define_maps!() macro.
+macro_rules! impl_load_from_cache {
+    ($($dep_kind:ident => $query_name:ident,)*) => {
+        impl DepNode {
+            // Check whether the query invocation corresponding to the given
+            // DepNode is eligible for on-disk-caching.
+            pub fn cache_on_disk(&self, tcx: TyCtxt) -> bool {
+                use ty::maps::queries;
+                use ty::maps::QueryDescription;
+
+                match self.kind {
+                    $(DepKind::$dep_kind => {
+                        let def_id = self.extract_def_id(tcx).unwrap();
+                        queries::$query_name::cache_on_disk(def_id)
+                    })*
+                    _ => false
+                }
+            }
+
+            // This is method will execute the query corresponding to the given
+            // DepNode. It is only expected to work for DepNodes where the
+            // above `cache_on_disk` methods returns true.
+            // Also, as a sanity check, it expects that the corresponding query
+            // invocation has been marked as green already.
+            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt) {
+                match self.kind {
+                    $(DepKind::$dep_kind => {
+                        debug_assert!(tcx.dep_graph
+                                         .node_color(self)
+                                         .map(|c| c.is_green())
+                                         .unwrap_or(false));
+
+                        let def_id = self.extract_def_id(tcx).unwrap();
+                        let _ = tcx.$query_name(def_id);
+                    })*
+                    _ => {
+                        bug!()
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl_load_from_cache!(
+    TypeckTables => typeck_tables_of,
+    MirOptimized => optimized_mir,
+    UnsafetyCheckResult => unsafety_check_result,
+    BorrowCheck => borrowck,
+    MirBorrowCheck => mir_borrowck,
+    MirConstQualif => mir_const_qualif,
+);
