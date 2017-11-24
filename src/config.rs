@@ -596,8 +596,6 @@ create_config! {
                                                 if-else expressions.";
     format_strings: bool, false, false, "Format string literals where necessary";
     force_format_strings: bool, false, false, "Always format string literals";
-    take_source_hints: bool, false, false,
-        "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, false, "Use tab characters for indentation, spaces for alignment";
     wrap_comments: bool, false, false, "Break comments to fit on the line";
     comment_width: usize, 80, false,

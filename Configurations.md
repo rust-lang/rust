@@ -2004,35 +2004,6 @@ fn lorem() {
 
 See also: [`hard_tabs`](#hard_tabs).
 
-## `take_source_hints`
-
-Retain some formatting characteristics from the source code
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-#### `false` (default):
-
-```rust
-lorem
-    .ipsum()
-    .dolor(|| { sit.amet().consectetur().adipiscing().elit(); });
-```
-
-#### `true`:
-
-```rust
-lorem
-    .ipsum()
-    .dolor(|| {
-               sit.amet()
-                   .consectetur()
-                   .adipiscing()
-                   .elit();
-           });
-```
-
-Note: This only applies if the call chain within the inner closure had already been formatted on separate lines before running rustfmt.
 
 ## `trailing_comma`
 
