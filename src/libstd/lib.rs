@@ -332,6 +332,7 @@
 #![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(const_atomic_ptr_new))]
+#![cfg_attr(windows, feature(used))]
 
 #![default_lib_allocator]
 
