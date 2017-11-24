@@ -447,7 +447,8 @@ impl<'a> LoweringContext<'a> {
     fn with_lifetime_elision_behavior<F, R>(&mut self, behavior: LifetimeElisionBehavior, f: F) -> R
         where F: FnOnce(&mut Self) -> R
     {
-        let old_lifetime_elision_behavior = mem::replace(&mut self.lifetime_elision_behavior, behavior);
+        let old_lifetime_elision_behavior = mem::replace(
+            &mut self.lifetime_elision_behavior, behavior);
         let result = f(self);
         self.lifetime_elision_behavior = old_lifetime_elision_behavior;
         result
@@ -1958,7 +1959,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Impl(..) => {
                 self.with_lifetime_elision_behavior(
-                    LifetimeElisionBehavior::GenerateEarlyBound, 
+                    LifetimeElisionBehavior::GenerateEarlyBound,
                     |this| this.lower_impl(id, i))
             }
             ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
@@ -1980,7 +1981,7 @@ impl<'a> LoweringContext<'a> {
     /// Lower an AST impl into a HIR impl. Assumes that the caller has setup
     /// the elision behavior for us.
     fn lower_impl(&mut self, id: NodeId, i: &ItemKind) -> hir::Item_ {
-        assert_eq!(self.lifetime_elision_behavior, 
+        assert_eq!(self.lifetime_elision_behavior,
                    LifetimeElisionBehavior::GenerateEarlyBound);
         match *i {
             ItemKind::Impl(unsafety,
@@ -3564,7 +3565,7 @@ impl<'a> LoweringContext<'a> {
                     // so the `Ty` itself needs a different one.
                     id = self.next_id();
 
-                    // Trait object lifetimes are scoped to the 
+                    // Trait object lifetimes are scoped to the
                     // trait object type and hence can always be
                     // elided.
                     let lifetime =
