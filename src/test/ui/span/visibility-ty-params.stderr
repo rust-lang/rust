@@ -5,9 +5,9 @@ error: unexpected generic arguments in path
    |     ^^^^^
 
 error: unexpected generic arguments in path
-  --> $DIR/visibility-ty-params.rs:20:9
+  --> $DIR/visibility-ty-params.rs:19:9
    |
-20 |     m!{ m<> } //~ ERROR unexpected generic arguments in path
+19 |     m!{ m<> } //~ ERROR unexpected generic arguments in path
    |         ^^^
 
 error: aborting due to 2 previous errors

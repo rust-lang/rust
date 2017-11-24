@@ -3,7 +3,7 @@ error[E0259]: the name `m1` is defined multiple times
    |
 15 | extern crate m1;
    | ---------------- previous import of the extern crate `m1` here
-16 | extern crate m2 as m1;
+16 | extern crate m2 as m1; //~ ERROR is defined multiple times
    | ^^^^^^^^^^^^^^^^^^^^^^
    | |
    | `m1` reimported here

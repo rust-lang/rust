@@ -12,37 +12,37 @@
 
 macro_rules! fake_method_stmt {
      () => {
-          1.fake()
+          1.fake() //~ ERROR no method
      }
 }
 
 macro_rules! fake_field_stmt {
      () => {
-          1.fake
+          1.fake //~ ERROR doesn't have fields
      }
 }
 
 macro_rules! fake_anon_field_stmt {
      () => {
-          (1).0
+          (1).0 //~ ERROR no field
      }
 }
 
 macro_rules! fake_method_expr {
      () => {
-          1.fake()
+          1.fake() //~ ERROR no method
      }
 }
 
 macro_rules! fake_field_expr {
      () => {
-          1.fake
+          1.fake //~ ERROR doesn't have fields
      }
 }
 
 macro_rules! fake_anon_field_expr {
      () => {
-          (1).0
+          (1).0 //~ ERROR no field
      }
 }
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo(x: &mut Vec<&u8>, y: &u8) {
-    x.push(y);
+    x.push(y); //~ ERROR lifetime mismatch
 }
 
 fn main() { }

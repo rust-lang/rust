@@ -1,7 +1,7 @@
 error[E0308]: match arms have incompatible types
   --> $DIR/old-lub-glb-hr.rs:18:13
    |
-18 |       let z = match 22 {
+18 |       let z = match 22 { //~ ERROR incompatible types
    |  _____________^
 19 | |         0 => x,
 20 | |         _ => y,

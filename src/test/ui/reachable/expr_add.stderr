@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_add.rs:27:13
    |
-27 |     let x = Foo + return;
+27 |     let x = Foo + return; //~ ERROR unreachable
    |             ^^^^^^^^^^^^
    |
 note: lint level defined here

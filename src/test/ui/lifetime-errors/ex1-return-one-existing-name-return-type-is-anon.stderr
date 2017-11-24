@@ -6,7 +6,7 @@ error[E0623]: lifetime mismatch
    |                        |
    |                        this parameter and the return type are declared with different lifetimes...
 17 | 
-18 |     x
+18 |     x //~ ERROR lifetime mismatch
    |     ^ ...but data from `x` is returned here
 
 error: aborting due to previous error

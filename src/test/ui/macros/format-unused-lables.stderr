@@ -28,7 +28,7 @@ error: multiple unused formatting arguments
 error: named argument never used
   --> $DIR/format-unused-lables.rs:20:35
    |
-20 |     println!("Some stuff", UNUSED="args");
+20 |     println!("Some stuff", UNUSED="args"); //~ ERROR named argument never used
    |                                   ^^^^^^
 
 error: multiple unused formatting arguments

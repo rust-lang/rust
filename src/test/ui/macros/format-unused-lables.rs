@@ -17,7 +17,7 @@ fn main() {
         789
     );
 
-    println!("Some stuff", UNUSED="args");
+    println!("Some stuff", UNUSED="args"); //~ ERROR named argument never used
 
     println!("Some more $STUFF",
         "woo!",

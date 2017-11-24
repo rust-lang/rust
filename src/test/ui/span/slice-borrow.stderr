@@ -4,7 +4,7 @@ error[E0597]: borrowed value does not live long enough
 16 |         let x: &[isize] = &vec![1, 2, 3, 4, 5];
    |                            ------------------- temporary value created here
 17 |         y = &x[1..];
-18 |     }
+18 |     } //~ ERROR does not live long enough
    |     ^ temporary value dropped here while still borrowed
 19 | }
    | - temporary value needs to live until here

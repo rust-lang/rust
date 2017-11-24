@@ -13,7 +13,7 @@
 use std::fmt::Debug;
 
 fn foo(x: impl Debug) -> String {
-    x
+    x //~ ERROR mismatched types
 }
 
 fn main() { }

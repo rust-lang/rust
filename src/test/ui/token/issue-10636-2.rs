@@ -15,6 +15,6 @@ pub fn trace_option(option: Option<isize>) {
     option.map(|some| 42; //~ NOTE: unclosed delimiter
                           //~^ ERROR: expected one of
                           //~| NOTE: expected one of
-                          //~| NOTE: unexpected token
+
 } //~ ERROR: incorrect close delimiter
 //~^ ERROR: expected expression, found `)`

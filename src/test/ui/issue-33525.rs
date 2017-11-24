@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    a;
-    "".lorem;
-    "".ipsum;
+    a; //~ ERROR cannot find value `a`
+    "".lorem; //~ ERROR no field
+    "".ipsum; //~ ERROR no field
 }

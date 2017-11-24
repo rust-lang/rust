@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/unknown_type_for_closure.rs:12:14
    |
-12 |     let x = |_| {    };
+12 |     let x = |_| {    }; //~ ERROR type annotations needed
    |              ^ consider giving this closure parameter a type
 
 error: aborting due to previous error

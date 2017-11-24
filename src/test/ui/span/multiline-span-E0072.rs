@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // It should just use the entire body instead of pointing at the next two lines
-struct
+struct //~ ERROR has infinite size
 ListNode
 {
     head: u8,

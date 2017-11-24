@@ -13,7 +13,7 @@
 
 trait Get {
     fn baz(&self, x: &'a u32, y: &u32) -> &'a u32 {
-        y
+        y //~ ERROR explicit lifetime required
     }
 }
 

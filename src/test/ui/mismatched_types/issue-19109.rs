@@ -14,7 +14,6 @@ fn function(t: &mut Trait) {
     t as *mut Trait
  //~^ ERROR: mismatched types
  //~| NOTE: expected type `()`
- //~| NOTE:    found type `*mut Trait`
  //~| NOTE: expected (), found *-ptr
 }
 

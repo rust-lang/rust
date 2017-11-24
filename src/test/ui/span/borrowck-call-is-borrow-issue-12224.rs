@@ -24,6 +24,7 @@ fn call<F>(mut f: F) where F: FnMut(Fn) {
     //~| NOTE first mutable borrow occurs here
     //~| NOTE second mutable borrow occurs here
         f((Box::new(|| {})))
+        //~^ NOTE borrow occurs due to use of `f` in closure
     }));
     //~^ NOTE first borrow ends here
 }
@@ -66,7 +67,7 @@ fn test6() {
 fn test7() {
     fn foo<F>(_: F) where F: FnMut(Box<FnMut(isize)>, isize) {}
     let mut f = |g: Box<FnMut(isize)>, b: isize| {};
-    //~^ NOTE moved
+    //~^ NOTE captured outer variable
     f(Box::new(|a| {
     //~^ NOTE borrow of `f` occurs here
         foo(f);

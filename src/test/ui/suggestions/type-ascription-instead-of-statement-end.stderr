@@ -3,13 +3,13 @@ error: expected type, found `0`
    |
 14 |     println!("test"):
    |                     - help: did you mean to use `;` here?
-15 |     0;
+15 |     0; //~ ERROR expected type, found `0`
    |     ^ expecting a type here because of type ascription
 
 error: expected type, found `0`
   --> $DIR/type-ascription-instead-of-statement-end.rs:19:23
    |
-19 |     println!("test"): 0;
+19 |     println!("test"): 0; //~ ERROR expected type, found `0`
    |                       ^ expecting a type here because of type ascription
 
 error: aborting due to 2 previous errors

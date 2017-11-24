@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Example {
+struct Example { //~ NOTE not found for this
     example: Box<Fn(i32) -> i32>
 }
 

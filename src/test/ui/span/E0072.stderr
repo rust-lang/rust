@@ -1,7 +1,7 @@
 error[E0072]: recursive type `ListNode` has infinite size
   --> $DIR/E0072.rs:11:1
    |
-11 | struct ListNode {
+11 | struct ListNode { //~ ERROR has infinite size
    | ^^^^^^^^^^^^^^^ recursive type has infinite size
 12 |     head: u8,
 13 |     tail: Option<ListNode>,

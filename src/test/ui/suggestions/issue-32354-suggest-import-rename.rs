@@ -17,6 +17,6 @@ pub mod extension2 {
 }
 
 use extension1::ConstructorExtension;
-use extension2::ConstructorExtension;
+use extension2::ConstructorExtension; //~ ERROR is defined multiple times
 
 fn main() {}

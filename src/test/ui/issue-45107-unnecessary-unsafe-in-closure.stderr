@@ -1,9 +1,9 @@
 error: unnecessary `unsafe` block
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:17:13
    |
-17 | /             unsafe {
+17 | /             unsafe { //~ ERROR unnecessary `unsafe`
 18 | |                 v.set_len(24);
-19 | |                 |w: &mut Vec<u32>| { unsafe {
+19 | |                 |w: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
 20 | |                     w.set_len(32);
 21 | |                 } };
 22 | |             }
@@ -19,7 +19,7 @@ note: because it's nested under this `unsafe` block
    |
 15 | /     unsafe {
 16 | |         let f = |v: &mut Vec<_>| {
-17 | |             unsafe {
+17 | |             unsafe { //~ ERROR unnecessary `unsafe`
 18 | |                 v.set_len(24);
 ...  |
 29 | |         f(&mut v);
@@ -29,7 +29,7 @@ note: because it's nested under this `unsafe` block
 error: unnecessary `unsafe` block
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:19:38
    |
-19 |                   |w: &mut Vec<u32>| { unsafe {
+19 |                   |w: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
    |  ______________________________________^
 20 | |                     w.set_len(32);
 21 | |                 } };
@@ -40,7 +40,7 @@ note: because it's nested under this `unsafe` block
    |
 15 | /     unsafe {
 16 | |         let f = |v: &mut Vec<_>| {
-17 | |             unsafe {
+17 | |             unsafe { //~ ERROR unnecessary `unsafe`
 18 | |                 v.set_len(24);
 ...  |
 29 | |         f(&mut v);
@@ -50,7 +50,7 @@ note: because it's nested under this `unsafe` block
 error: unnecessary `unsafe` block
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:23:34
    |
-23 |               |x: &mut Vec<u32>| { unsafe {
+23 |               |x: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe`
    |  __________________________________^
 24 | |                 x.set_len(40);
 25 | |             } };
@@ -61,7 +61,7 @@ note: because it's nested under this `unsafe` block
    |
 15 | /     unsafe {
 16 | |         let f = |v: &mut Vec<_>| {
-17 | |             unsafe {
+17 | |             unsafe { //~ ERROR unnecessary `unsafe`
 18 | |                 v.set_len(24);
 ...  |
 29 | |         f(&mut v);

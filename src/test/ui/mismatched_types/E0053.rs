@@ -19,11 +19,11 @@ impl Foo for Bar {
     fn foo(x: i16) { }
     //~^ ERROR method `foo` has an incompatible type for trait
     //~| NOTE expected u16
+    //~| NOTE expected type `fn(u16)`
     fn bar(&mut self) { }
     //~^ ERROR method `bar` has an incompatible type for trait
     //~| NOTE types differ in mutability
     //~| NOTE expected type `fn(&Bar)`
-    //~| NOTE found type `fn(&mut Bar)`
 }
 
 fn main() {

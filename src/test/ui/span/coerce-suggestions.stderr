@@ -11,9 +11,9 @@ error[E0308]: mismatched types
            - .len()
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:23:19
+  --> $DIR/coerce-suggestions.rs:22:19
    |
-23 |     let x: &str = String::new();
+22 |     let x: &str = String::new();
    |                   ^^^^^^^^^^^^^ expected &str, found struct `std::string::String`
    |
    = note: expected type `&str`
@@ -21,33 +21,33 @@ error[E0308]: mismatched types
    = help: try with `&String::new()`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:30:10
+  --> $DIR/coerce-suggestions.rs:28:10
    |
-30 |     test(&y);
+28 |     test(&y);
    |          ^^ types differ in mutability
    |
    = note: expected type `&mut std::string::String`
               found type `&std::string::String`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:35:11
+  --> $DIR/coerce-suggestions.rs:32:11
    |
-35 |     test2(&y);
+32 |     test2(&y);
    |           ^^ types differ in mutability
    |
    = note: expected type `&mut i32`
               found type `&std::string::String`
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:41:9
+  --> $DIR/coerce-suggestions.rs:37:9
    |
-41 |     f = box f;
+37 |     f = box f;
    |         ^^^^^ cyclic type of infinite size
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:48:9
+  --> $DIR/coerce-suggestions.rs:42:9
    |
-48 |     s = format!("foo");
+42 |     s = format!("foo");
    |         ^^^^^^^^^^^^^^ expected mutable reference, found struct `std::string::String`
    |
    = note: expected type `&mut std::string::String`

@@ -4,7 +4,7 @@ error[E0053]: method `foo` has an incompatible type for trait
 14 |     fn foo(x: u16);
    |               --- type in trait
 ...
-21 |     fn foo(x: i16) { }
+21 |     fn foo(x: i16) { } //~ ERROR incompatible type
    |               ^^^ expected u16, found i16
    |
    = note: expected type `fn(u16)`
@@ -16,7 +16,7 @@ error[E0053]: method `bar` has an incompatible type for trait
 15 |     fn bar(&mut self, bar: &mut Bar);
    |                            -------- type in trait
 ...
-22 |     fn bar(&mut self, bar: &Bar) { }
+22 |     fn bar(&mut self, bar: &Bar) { } //~ ERROR incompatible type
    |                            ^^^^ types differ in mutability
    |
    = note: expected type `fn(&mut Bar, &mut Bar)`

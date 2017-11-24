@@ -13,11 +13,18 @@
 fn f<F: Fn<usize>>(_: F) {}
 fn main() {
     [1, 2, 3].sort_by(|| panic!());
+    //~^ ERROR closure is expected to take
     [1, 2, 3].sort_by(|tuple| panic!());
+    //~^ ERROR closure is expected to take
     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
+    //~^ ERROR closure is expected to take
     f(|| panic!());
+    //~^ ERROR closure is expected to take
 
     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
+    //~^ ERROR closure is expected to take
     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
+    //~^ ERROR closure is expected to take
     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
+    //~^ ERROR closure is expected to take
 }

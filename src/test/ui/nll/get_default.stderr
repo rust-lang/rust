@@ -7,40 +7,40 @@ error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as imm
 33 |                 map.set(String::new()); // Just AST errors here
    |                 ^^^ mutable borrow occurs here
 ...
-37 | }
+38 | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
-  --> $DIR/get_default.rs:43:17
+  --> $DIR/get_default.rs:44:17
    |
-41 |         match map.get() {
+42 |         match map.get() {
    |               --- immutable borrow occurs here
-42 |             Some(v) => {
-43 |                 map.set(String::new()); // Both AST and MIR error here
+43 |             Some(v) => {
+44 |                 map.set(String::new()); // Both AST and MIR error here
    |                 ^^^ mutable borrow occurs here
 ...
-51 | }
+55 | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
-  --> $DIR/get_default.rs:47:17
+  --> $DIR/get_default.rs:50:17
    |
-41 |         match map.get() {
+42 |         match map.get() {
    |               --- immutable borrow occurs here
 ...
-47 |                 map.set(String::new()); // Just AST errors here
+50 |                 map.set(String::new()); // Just AST errors here
    |                 ^^^ mutable borrow occurs here
 ...
-51 | }
+55 | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
-  --> $DIR/get_default.rs:43:17
+  --> $DIR/get_default.rs:44:17
    |
-41 |         match map.get() {
+42 |         match map.get() {
    |               --- immutable borrow occurs here
-42 |             Some(v) => {
-43 |                 map.set(String::new()); // Both AST and MIR error here
+43 |             Some(v) => {
+44 |                 map.set(String::new()); // Both AST and MIR error here
    |                 ^^^ mutable borrow occurs here
 
 error: aborting due to 4 previous errors

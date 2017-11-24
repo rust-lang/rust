@@ -16,7 +16,8 @@
 
 // a local macro
 macro_rules! pong {
-    () => { syntax error };
+    () => { syntax error }; //~ ERROR expected one of
+    //~^ ERROR expected one of
 }
 
 fn main() {

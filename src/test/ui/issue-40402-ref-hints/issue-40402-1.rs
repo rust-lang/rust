@@ -16,5 +16,5 @@ struct Foo {
 fn main() {
     let mut f = Foo { v: Vec::new() };
     f.v.push("hello".to_string());
-    let e = f.v[0];
+    let e = f.v[0]; //~ ERROR cannot move out of indexed content
 }

@@ -13,29 +13,29 @@ help: possible better candidate is found in another module, you can import it in
    |
 
 error[E0423]: expected value, found struct `S`
-  --> $DIR/privacy-struct-ctor.rs:36:5
+  --> $DIR/privacy-struct-ctor.rs:38:5
    |
-36 |     S;
+38 |     S;
    |     ^
    |     |
    |     constructor is not visible here due to private fields
    |     did you mean `S { /* fields */ }`?
 help: possible better candidate is found in another module, you can import it into scope
    |
-32 | use m::S;
+34 | use m::S;
    |
 
 error[E0423]: expected value, found struct `xcrate::S`
-  --> $DIR/privacy-struct-ctor.rs:42:5
+  --> $DIR/privacy-struct-ctor.rs:45:5
    |
-42 |     xcrate::S;
+45 |     xcrate::S;
    |     ^^^^^^^^^
    |     |
    |     constructor is not visible here due to private fields
    |     did you mean `xcrate::S { /* fields */ }`?
 help: possible better candidate is found in another module, you can import it into scope
    |
-32 | use m::S;
+34 | use m::S;
    |
 
 error[E0603]: tuple struct `Z` is private
@@ -45,27 +45,27 @@ error[E0603]: tuple struct `Z` is private
    |         ^^^^
 
 error[E0603]: tuple struct `S` is private
-  --> $DIR/privacy-struct-ctor.rs:35:5
+  --> $DIR/privacy-struct-ctor.rs:37:5
    |
-35 |     m::S; //~ ERROR tuple struct `S` is private
+37 |     m::S; //~ ERROR tuple struct `S` is private
    |     ^^^^
 
 error[E0603]: tuple struct `Z` is private
-  --> $DIR/privacy-struct-ctor.rs:39:5
+  --> $DIR/privacy-struct-ctor.rs:42:5
    |
-39 |     m::n::Z; //~ ERROR tuple struct `Z` is private
+42 |     m::n::Z; //~ ERROR tuple struct `Z` is private
    |     ^^^^^^^
 
 error[E0603]: tuple struct `S` is private
-  --> $DIR/privacy-struct-ctor.rs:41:5
+  --> $DIR/privacy-struct-ctor.rs:44:5
    |
-41 |     xcrate::m::S; //~ ERROR tuple struct `S` is private
+44 |     xcrate::m::S; //~ ERROR tuple struct `S` is private
    |     ^^^^^^^^^^^^
 
 error[E0603]: tuple struct `Z` is private
-  --> $DIR/privacy-struct-ctor.rs:45:5
+  --> $DIR/privacy-struct-ctor.rs:49:5
    |
-45 |     xcrate::m::n::Z; //~ ERROR tuple struct `Z` is private
+49 |     xcrate::m::n::Z; //~ ERROR tuple struct `Z` is private
    |     ^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors

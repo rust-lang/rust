@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f() {
-    let x = vec![1].iter();
+    let x = vec![1].iter(); //~ ERROR does not live long enough
 }
 
 fn main() {

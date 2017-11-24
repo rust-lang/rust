@@ -14,12 +14,13 @@ fn main() {
     let dict: HashMap<i32, i32> = HashMap::new();
     let debug_dump_dict = || {
         for (key, value) in dict {
+            //~^ NOTE closure cannot be invoked more than once
             println!("{:?} - {:?}", key, value);
         }
     };
     debug_dump_dict();
+    //~^ NOTE: value moved here
     debug_dump_dict();
     //~^ ERROR use of moved value: `debug_dump_dict`
-    //~| NOTE closure cannot be invoked more than once because it moves the
-    //~| variable `dict` out of its environment
+    //~| NOTE value used here after move
 }

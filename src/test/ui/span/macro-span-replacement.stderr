@@ -1,7 +1,7 @@
 warning: struct is never used: `S`
   --> $DIR/macro-span-replacement.rs:15:9
    |
-15 |         $b $a;
+15 |         $b $a; //~ WARN struct is never used
    |         ^^^^^^
 ...
 20 |     m!(S struct);

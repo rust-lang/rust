@@ -15,11 +15,11 @@ use std::fmt::Display;
 fn foo(f: impl Display + Clone) -> String {
     wants_debug(f);
     wants_display(f);
-    wants_clone(f);
+    wants_clone(f); //~ ERROR cannot find
 }
 
-fn wants_debug(g: impl Debug) { }
-fn wants_display(g: impl Debug) { }
+fn wants_debug(g: impl Debug) { } //~ ERROR cannot find
+fn wants_display(g: impl Debug) { } //~ ERROR cannot find
 fn wants_cone(g: impl Clone) { }
 
 fn main() {

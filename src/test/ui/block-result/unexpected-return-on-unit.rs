@@ -16,7 +16,7 @@ fn foo() -> usize {
 }
 
 fn bar() {
-    foo()
+    foo() //~ ERROR mismatched types
 }
 
 fn main() {

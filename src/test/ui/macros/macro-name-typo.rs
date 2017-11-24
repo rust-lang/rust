@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    printlx!("oh noes!");
+    printlx!("oh noes!"); //~ ERROR cannot find
 }

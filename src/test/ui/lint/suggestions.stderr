@@ -1,7 +1,7 @@
 warning: unnecessary parentheses around assigned value
-  --> $DIR/suggestions.rs:30:21
+  --> $DIR/suggestions.rs:36:21
    |
-30 |         let mut a = (1); // should suggest no `mut`, no parens
+36 |         let mut a = (1); // should suggest no `mut`, no parens
    |                     ^^^ help: remove these parentheses
    |
 note: lint level defined here
@@ -11,17 +11,17 @@ note: lint level defined here
    |                     ^^^^^^^^^^^^^
 
 warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See https://github.com/rust-lang/rust/issues/29721
-  --> $DIR/suggestions.rs:27:1
+  --> $DIR/suggestions.rs:31:1
    |
-27 | #[no_debug] // should suggest removal of deprecated attribute
+31 | #[no_debug] // should suggest removal of deprecated attribute
    | ^^^^^^^^^^^ help: remove this attribute
    |
    = note: #[warn(deprecated)] on by default
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:30:13
+  --> $DIR/suggestions.rs:36:13
    |
-30 |         let mut a = (1); // should suggest no `mut`, no parens
+36 |         let mut a = (1); // should suggest no `mut`, no parens
    |             ---^^
    |             |
    |             help: remove this `mut`
@@ -43,9 +43,9 @@ warning: static is marked #[no_mangle], but not exported
    = note: #[warn(private_no_mangle_statics)] on by default
 
 error: const items should never be #[no_mangle]
-  --> $DIR/suggestions.rs:15:14
+  --> $DIR/suggestions.rs:16:14
    |
-15 | #[no_mangle] const DISCOVERY: usize = 1; // should suggest `pub static` rather than `const`
+16 | #[no_mangle] const DISCOVERY: usize = 1; // should suggest `pub static` rather than `const`
    |              -----^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              help: try a static value: `pub static`
@@ -53,19 +53,19 @@ error: const items should never be #[no_mangle]
    = note: #[deny(no_mangle_const_items)] on by default
 
 warning: functions generic over types must be mangled
-  --> $DIR/suggestions.rs:18:1
+  --> $DIR/suggestions.rs:20:1
    |
-17 | #[no_mangle] // should suggest removal (generics can't be no-mangle)
+19 | #[no_mangle] // should suggest removal (generics can't be no-mangle)
    | ------------ help: remove this attribute
-18 | pub fn defiant<T>(_t: T) {}
+20 | pub fn defiant<T>(_t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(no_mangle_generic_items)] on by default
 
 warning: function is marked #[no_mangle], but not exported
-  --> $DIR/suggestions.rs:21:1
+  --> $DIR/suggestions.rs:24:1
    |
-21 | fn rio_grande() {} // should suggest `pub`
+24 | fn rio_grande() {} // should suggest `pub`
    | -^^^^^^^^^^^^^^^^^
    | |
    | help: try making it public: `pub `
@@ -73,27 +73,27 @@ warning: function is marked #[no_mangle], but not exported
    = note: #[warn(private_no_mangle_fns)] on by default
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/suggestions.rs:29:5
+  --> $DIR/suggestions.rs:34:5
    |
-29 |       while true { // should suggest `loop`
+34 |       while true { // should suggest `loop`
    |       ^---------
    |       |
    |  _____help: use `loop`
    | |
-30 | |         let mut a = (1); // should suggest no `mut`, no parens
-31 | |         let d = Equinox { warp_factor: 9.975 };
-32 | |         match d {
+35 | |     //~^ WARN denote infinite loops
+36 | |         let mut a = (1); // should suggest no `mut`, no parens
+37 | |         //~^ WARN does not need to be mutable
 ...  |
-35 | |         println!("{}", a);
-36 | |     }
+44 | |         println!("{}", a);
+45 | |     }
    | |_____^
    |
    = note: #[warn(while_true)] on by default
 
 warning: the `warp_factor:` in this pattern is redundant
-  --> $DIR/suggestions.rs:33:23
+  --> $DIR/suggestions.rs:41:23
    |
-33 |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
+41 |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
    |                       ------------^^^^^^^^^^^^
    |                       |
    |                       help: remove this

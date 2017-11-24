@@ -21,5 +21,5 @@ fn main() {
     {
         let ss: &isize = &id(1);
         blah = box ss as Box<Foo>;
-    }
+    } //~ ERROR does not live long enough
 }

@@ -4,7 +4,7 @@ error[E0596]: cannot borrow immutable local variable `x` as mutable
 12  |     let x = "foo";
     |         - consider changing this to `mut x`
 ...
-100 |     let y = &mut x;
+100 |     let y = &mut x; //~ ERROR cannot borrow
     |                  ^ cannot borrow mutably
 
 error: aborting due to previous error

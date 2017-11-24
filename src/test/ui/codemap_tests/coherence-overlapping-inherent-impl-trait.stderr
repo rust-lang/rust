@@ -1,7 +1,7 @@
 error[E0592]: duplicate definitions with name `f`
   --> $DIR/coherence-overlapping-inherent-impl-trait.rs:14:10
    |
-14 | impl C { fn f() {} }
+14 | impl C { fn f() {} } //~ ERROR duplicate
    |          ^^^^^^^^^ duplicate definitions for `f`
 15 | impl C { fn f() {} }
    |          --------- other definition for `f`

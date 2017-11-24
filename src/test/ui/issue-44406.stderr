@@ -1,7 +1,7 @@
 error: expected identifier, found keyword `true`
   --> $DIR/issue-44406.rs:18:10
    |
-18 |     foo!(true);
+18 |     foo!(true); //~ ERROR expected type, found keyword
    |          ^^^^
 
 error: expected type, found keyword `true`
@@ -10,7 +10,7 @@ error: expected type, found keyword `true`
 13 |         bar(baz: $rest)
    |                - help: did you mean to use `;` here?
 ...
-18 |     foo!(true);
+18 |     foo!(true); //~ ERROR expected type, found keyword
    |          ^^^^ expecting a type here because of type ascription
 
 error: aborting due to 2 previous errors

@@ -25,7 +25,9 @@ mod m {
         n::Z; //~ ERROR tuple struct `Z` is private
         Z;
         //~^ ERROR expected value, found struct `Z`
-        //~| NOTE tuple struct constructors with private fields are invisible outside of their mod
+        //~| NOTE constructor is not visible here due to private fields
+        //~| NOTE did you mean `S`
+        //~| NOTE did you mean `Z { /* fields */ }`
     }
 }
 
@@ -36,11 +38,13 @@ fn main() {
     S;
     //~^ ERROR expected value, found struct `S`
     //~| NOTE constructor is not visible here due to private fields
+    //~| NOTE did you mean `S { /* fields */ }`
     m::n::Z; //~ ERROR tuple struct `Z` is private
 
     xcrate::m::S; //~ ERROR tuple struct `S` is private
     xcrate::S;
     //~^ ERROR expected value, found struct `xcrate::S`
+    //~| NOTE did you mean `xcrate::S { /* fields */ }`
     //~| NOTE constructor is not visible here due to private fields
     xcrate::m::n::Z; //~ ERROR tuple struct `Z` is private
 }

@@ -19,12 +19,11 @@ fn broken() {
         //~^ NOTE use of borrowed `x`
         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
         //~^ NOTE use of borrowed `x`
-        _y.push(&mut z); //~ ERROR `z` does not live long enough
-        //~^ NOTE does not live long enough
+        _y.push(&mut z); //~ NOTE borrow occurs here
         x += 1; //~ ERROR cannot assign
         //~^ NOTE assignment to borrowed `x` occurs here
-    }
-    //~^ NOTE borrowed value only lives until here
+    } //~ NOTE `z` dropped here while still borrowed
+    //~^ ERROR `z` does not live long enough
 }
 //~^ NOTE borrowed value needs to live until here
 

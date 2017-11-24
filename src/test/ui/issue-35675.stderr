@@ -1,16 +1,16 @@
 error[E0412]: cannot find type `Apple` in this scope
-  --> $DIR/issue-35675.rs:20:29
+  --> $DIR/issue-35675.rs:18:29
    |
-20 | fn should_return_fruit() -> Apple {
+18 | fn should_return_fruit() -> Apple {
    |                             ^^^^^
    |                             |
    |                             not found in this scope
    |                             help: you can try using the variant's enum: `Fruit`
 
 error[E0425]: cannot find function `Apple` in this scope
-  --> $DIR/issue-35675.rs:23:5
+  --> $DIR/issue-35675.rs:22:5
    |
-23 |     Apple(5)
+22 |     Apple(5)
    |     ^^^^^ not found in this scope
 help: possible candidate is found in another module, you can import it into scope
    |
@@ -18,9 +18,9 @@ help: possible candidate is found in another module, you can import it into scop
    |
 
 error[E0573]: expected type, found variant `Fruit::Apple`
-  --> $DIR/issue-35675.rs:28:33
+  --> $DIR/issue-35675.rs:27:33
    |
-28 | fn should_return_fruit_too() -> Fruit::Apple {
+27 | fn should_return_fruit_too() -> Fruit::Apple {
    |                                 ^^^^^^^^^^^^
    |                                 |
    |                                 not a type
@@ -55,9 +55,9 @@ error[E0412]: cannot find type `Variant3` in this scope
    |             help: you can try using the variant's enum: `x::Enum`
 
 error[E0573]: expected type, found variant `Some`
-  --> $DIR/issue-35675.rs:49:13
+  --> $DIR/issue-35675.rs:50:13
    |
-49 | fn qux() -> Some {
+50 | fn qux() -> Some {
    |             ^^^^ not a type
    |
    = help: there is an enum variant `std::prelude::v1::Option::Some`, try using `std::prelude::v1::Option`?

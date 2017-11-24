@@ -22,6 +22,7 @@ fn a() {
     let mut x = 3;
     let c1 = to_fn_mut(|| x = 4);
     let c2 = to_fn_mut(|| x = 5); //~ ERROR cannot borrow `x` as mutable more than once
+    //~| ERROR cannot borrow `x` as mutable more than once
 }
 
 fn set(x: &mut isize) {
@@ -32,12 +33,14 @@ fn b() {
     let mut x = 3;
     let c1 = to_fn_mut(|| set(&mut x));
     let c2 = to_fn_mut(|| set(&mut x)); //~ ERROR cannot borrow `x` as mutable more than once
+    //~| ERROR cannot borrow `x` as mutable more than once
 }
 
 fn c() {
     let mut x = 3;
     let c1 = to_fn_mut(|| x = 5);
     let c2 = to_fn_mut(|| set(&mut x)); //~ ERROR cannot borrow `x` as mutable more than once
+    //~| ERROR cannot borrow `x` as mutable more than once
 }
 
 fn d() {
@@ -45,6 +48,7 @@ fn d() {
     let c1 = to_fn_mut(|| x = 5);
     let c2 = to_fn_mut(|| { let _y = to_fn_mut(|| set(&mut x)); }); // (nested closure)
     //~^ ERROR cannot borrow `x` as mutable more than once
+    //~| ERROR cannot borrow `x` as mutable more than once
 }
 
 fn g() {
@@ -56,6 +60,7 @@ fn g() {
     let c1 = to_fn_mut(|| set(&mut *x.f));
     let c2 = to_fn_mut(|| set(&mut *x.f));
     //~^ ERROR cannot borrow `x` as mutable more than once
+    //~| ERROR cannot borrow `x` as mutable more than once
 }
 
 fn main() {

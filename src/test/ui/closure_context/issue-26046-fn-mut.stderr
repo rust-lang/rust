@@ -1,7 +1,7 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
   --> $DIR/issue-26046-fn-mut.rs:14:19
    |
-14 |       let closure = || {
+14 |       let closure = || { //~ ERROR expected a closure that
    |  ___________________^
 15 | |         num += 1;
 16 | |     };

@@ -23,8 +23,8 @@ fn mutex() {
     drop(y); //~ ERROR cannot move out
     {
         let z = 2;
-        *lock.lock().unwrap() = &z; //~ ERROR does not live long enough
-    }
+        *lock.lock().unwrap() = &z;
+    } //~ ERROR does not live long enough
 }
 
 fn rwlock() {
@@ -35,8 +35,8 @@ fn rwlock() {
     drop(y); //~ ERROR cannot move out
     {
         let z = 2;
-        *lock.write().unwrap() = &z; //~ ERROR does not live long enough
-    }
+        *lock.write().unwrap() = &z;
+    } //~ ERROR does not live long enough
 }
 
 fn channel() {
@@ -49,8 +49,8 @@ fn channel() {
     drop(y); //~ ERROR cannot move out
     {
         let z = 2;
-        tx.send(&z).unwrap(); //~ ERROR does not live long enough
-    }
+        tx.send(&z).unwrap();
+    } //~ ERROR does not live long enough
 }
 
 fn main() {}

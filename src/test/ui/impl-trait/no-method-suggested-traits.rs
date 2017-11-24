@@ -11,7 +11,12 @@
 // aux-build:no_method_suggested_traits.rs
 extern crate no_method_suggested_traits;
 
-struct Foo;
+struct Foo; //~ HELP perhaps add a `use` for it
+//~^ HELP perhaps add a `use` for it
+//~| HELP perhaps add a `use` for it
+//~| HELP perhaps add a `use` for it
+//~| HELP perhaps add a `use` for one of them
+//~| HELP perhaps add a `use` for one of them
 enum Bar { X }
 
 mod foo {
@@ -31,95 +36,65 @@ fn main() {
 
 
     1u32.method();
-    //~^ HELP following traits are implemented but not in scope, perhaps add a `use` for one of them
-    //~| ERROR no method named
-    //~| HELP `use foo::Bar;`
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
+    //~^ ERROR no method named
+    //~|items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&1u32)).method();
-    //~^ HELP following traits are implemented but not in scope, perhaps add a `use` for one of them
-    //~| ERROR no method named
-    //~| HELP `use foo::Bar;`
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
+    //~^items from traits can only be used if the trait is in scope
+    //~| ERROR no method named `method` found for type
 
     'a'.method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use foo::Bar;`
+    //~| HELP items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&'a')).method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use foo::Bar;`
+    //~| HELP items from traits can only be used if the trait is in scope
 
     1i32.method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
+    //~| HELP items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&1i32)).method();
     //~^ ERROR no method named
-    //~| HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
-    //~| HELP `use no_method_suggested_traits::foo::PubPub;`
+    //~| HELP items from traits can only be used if the trait is in scope
 
     Foo.method();
     //~^ ERROR no method named
-    //~| HELP following traits define an item `method`, perhaps you need to implement one of them
-    //~| HELP `foo::Bar`
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
-    //~| HELP `no_method_suggested_traits::Reexported`
-    //~| HELP `no_method_suggested_traits::bar::PubPriv`
-    //~| HELP `no_method_suggested_traits::qux::PrivPub`
-    //~| HELP `no_method_suggested_traits::quz::PrivPriv`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&Foo)).method();
     //~^ ERROR no method named
-    //~| HELP following traits define an item `method`, perhaps you need to implement one of them
-    //~| HELP `foo::Bar`
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
-    //~| HELP `no_method_suggested_traits::Reexported`
-    //~| HELP `no_method_suggested_traits::bar::PubPriv`
-    //~| HELP `no_method_suggested_traits::qux::PrivPub`
-    //~| HELP `no_method_suggested_traits::quz::PrivPriv`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     1u64.method2();
     //~^ ERROR no method named
-    //~| HELP the following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
     //~^ ERROR no method named
-    //~| HELP the following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     no_method_suggested_traits::Foo.method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     no_method_suggested_traits::Bar::X.method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method2`, perhaps you need to implement it
-    //~| HELP `foo::Bar`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     Foo.method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&Foo)).method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     Bar::X.method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&Bar::X)).method3();
     //~^ ERROR no method named
-    //~| HELP following trait defines an item `method3`, perhaps you need to implement it
-    //~| HELP `no_method_suggested_traits::foo::PubPub`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     // should have no help:
     1_usize.method3(); //~ ERROR no method named

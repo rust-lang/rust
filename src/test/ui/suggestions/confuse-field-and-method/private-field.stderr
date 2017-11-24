@@ -4,7 +4,7 @@ error[E0599]: no method named `dog_age` found for type `animal::Dog` in the curr
 12 |     pub struct Dog {
    |     -------------- method `dog_age` not found for this
 ...
-26 |     let dog_age = dog.dog_age();
+26 |     let dog_age = dog.dog_age(); //~ ERROR no method
    |                       ^^^^^^^ private field, not a method
 
 error: aborting due to previous error

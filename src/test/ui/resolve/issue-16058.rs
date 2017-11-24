@@ -18,10 +18,6 @@ impl GslResult {
     pub fn new() -> GslResult {
         Result {
 //~^ ERROR expected struct, variant or union type, found enum `Result`
-//~| HELP possible better candidates are found in other modules, you can import them into scope
-//~| HELP std::fmt::Result
-//~| HELP std::io::Result
-//~| HELP std::thread::Result
             val: 0f64,
             err: 0f64
         }

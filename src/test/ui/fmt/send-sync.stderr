@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync` is not satisfied in `[std::fmt::ArgumentV1<'_>]`
   --> $DIR/send-sync.rs:18:5
    |
-18 |     send(format_args!("{:?}", c));
+18 |     send(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
    |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
    |
    = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`
@@ -17,7 +17,7 @@ error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync`
 error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync` is not satisfied in `std::fmt::Arguments<'_>`
   --> $DIR/send-sync.rs:19:5
    |
-19 |     sync(format_args!("{:?}", c));
+19 |     sync(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
    |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
    |
    = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`

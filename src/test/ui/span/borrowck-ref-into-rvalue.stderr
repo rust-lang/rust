@@ -1,10 +1,10 @@
 error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-ref-into-rvalue.rs:18:5
    |
-14 |         Some(ref m) => { //~ ERROR borrowed value does not live long enough
+14 |         Some(ref m) => {
    |              ----- borrow occurs here
 ...
-18 |     }
+18 |     } //~ ERROR borrowed value does not live long enough
    |     ^ borrowed value dropped here while still borrowed
 19 |     println!("{}", *msg);
 20 | }
