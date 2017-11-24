@@ -496,3 +496,58 @@ mod debug_list {
                    format!("{:#?}", Bar));
     }
 }
+
+#[test]
+fn test_formatting_parameters_are_forwarded() {
+    use std::collections::{BTreeMap, BTreeSet};
+    #[derive(Debug)]
+    struct Foo {
+        bar: u32,
+        baz: u32,
+    }
+    let struct_ = Foo { bar: 1024, baz: 7 };
+    let tuple = (1024, 7);
+    let list = [1024, 7];
+    let mut map = BTreeMap::new();
+    map.insert("bar", 1024);
+    map.insert("baz", 7);
+    let mut set = BTreeSet::new();
+    set.insert(1024);
+    set.insert(7);
+
+    assert_eq!(format!("{:03?}", struct_), "Foo { bar: 1024, baz: 007 }");
+    assert_eq!(format!("{:03?}", tuple), "(1024, 007)");
+    assert_eq!(format!("{:03?}", list), "[1024, 007]");
+    assert_eq!(format!("{:03?}", map), r#"{"bar": 1024, "baz": 007}"#);
+    assert_eq!(format!("{:03?}", set), "{007, 1024}");
+    assert_eq!(format!("{:#03?}", struct_), "
+Foo {
+    bar: 1024,
+    baz: 007
+}
+    ".trim());
+    assert_eq!(format!("{:#03?}", tuple), "
+(
+    1024,
+    007
+)
+    ".trim());
+    assert_eq!(format!("{:#03?}", list), "
+[
+    1024,
+    007
+]
+    ".trim());
+    assert_eq!(format!("{:#03?}", map), r#"
+{
+    "bar": 1024,
+    "baz": 007
+}
+    "#.trim());
+    assert_eq!(format!("{:#03?}", set), "
+{
+    007,
+    1024
+}
+    ".trim());
+}

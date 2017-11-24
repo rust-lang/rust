@@ -22,6 +22,25 @@ impl<'a, 'b: 'a> PadAdapter<'a, 'b> {
             on_newline: false,
         }
     }
+
+    fn as_formatter(&mut self) -> fmt::Formatter {
+        fmt::Formatter {
+            // These only exist in the struct for the `Formatter::run` method,
+            // which won’t be used.
+            curarg: self.fmt.curarg.clone(),
+            args: self.fmt.args,
+
+            // We want to preserve these
+            flags: self.fmt.flags,
+            fill: self.fmt.fill,
+            align: self.fmt.align,
+            width: self.fmt.width,
+            precision: self.fmt.precision,
+
+            // And change this
+            buf: self,
+        }
+    }
 }
 
 impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
@@ -112,11 +131,16 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
             };
 
             if self.is_pretty() {
+                use fmt::Write;
                 let mut writer = PadAdapter::new(self.fmt);
-                fmt::write(&mut writer,
-                           format_args!("{}\n{}: {:#?}", prefix, name, value))
+                writer.write_str(prefix)?;
+                writer.write_str("\n")?;
+                writer.write_str(name)?;
+                writer.write_str(": ")?;
+                value.fmt(&mut writer.as_formatter())
             } else {
-                write!(self.fmt, "{} {}: {:?}", prefix, name, value)
+                write!(self.fmt, "{} {}: ", prefix, name)?;
+                value.fmt(self.fmt)
             }
         });
 
@@ -204,10 +228,15 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
             };
 
             if self.is_pretty() {
+                use fmt::Write;
                 let mut writer = PadAdapter::new(self.fmt);
-                fmt::write(&mut writer, format_args!("{}\n{:#?}", prefix, value))
+                writer.write_str(prefix)?;
+                writer.write_str("\n")?;
+                value.fmt(&mut writer.as_formatter())
             } else {
-                write!(self.fmt, "{}{}{:?}", prefix, space, value)
+                self.fmt.write_str(prefix)?;
+                self.fmt.write_str(space)?;
+                value.fmt(self.fmt)
             }
         });
 
@@ -247,20 +276,19 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     fn entry(&mut self, entry: &fmt::Debug) {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
+                use fmt::Write;
                 let mut writer = PadAdapter::new(self.fmt);
-                let prefix = if self.has_fields {
-                    ","
+                writer.write_str(if self.has_fields {
+                    ",\n"
                 } else {
-                    ""
-                };
-                fmt::write(&mut writer, format_args!("{}\n{:#?}", prefix, entry))
+                    "\n"
+                })?;
+                entry.fmt(&mut writer.as_formatter())
             } else {
-                let prefix = if self.has_fields {
-                    ", "
-                } else {
-                    ""
-                };
-                write!(self.fmt, "{}{:?}", prefix, entry)
+                if self.has_fields {
+                    self.fmt.write_str(", ")?
+                }
+                entry.fmt(self.fmt)
             }
         });
 
@@ -472,21 +500,23 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     pub fn entry(&mut self, key: &fmt::Debug, value: &fmt::Debug) -> &mut DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
+                use fmt::Write;
                 let mut writer = PadAdapter::new(self.fmt);
-                let prefix = if self.has_fields {
-                    ","
+                writer.write_str(if self.has_fields {
+                    ",\n"
                 } else {
-                    ""
-                };
-                fmt::write(&mut writer,
-                           format_args!("{}\n{:#?}: {:#?}", prefix, key, value))
+                    "\n"
+                })?;
+                key.fmt(&mut writer.as_formatter())?;
+                writer.write_str(": ")?;
+                value.fmt(&mut writer.as_formatter())
             } else {
-                let prefix = if self.has_fields {
-                    ", "
-                } else {
-                    ""
-                };
-                write!(self.fmt, "{}{:?}: {:?}", prefix, key, value)
+                if self.has_fields {
+                    self.fmt.write_str(", ")?
+                }
+                key.fmt(self.fmt)?;
+                self.fmt.write_str(": ")?;
+                value.fmt(self.fmt)
             }
         });
 
