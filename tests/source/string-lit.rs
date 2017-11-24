@@ -1,4 +1,4 @@
-// rustfmt-force_format_strings: true
+// rustfmt-format_strings: true
 // rustfmt-error_on_line_overflow: false
 // Long string literals
 

@@ -1017,17 +1017,6 @@ extern {
 }
 ```
 
-## `force_format_strings`
-
-Always format string literals
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-See [`format_strings`](#format_strings).
-
-See also [`max_width`](#max_width).
-
 ## `format_strings`
 
 Format string literals where necessary
@@ -1049,7 +1038,7 @@ let lorem =
      adipiscing elit lorem ipsum dolor sit";
 ```
 
-See also [`force_format_strings`](#force_format_strings), [`max_width`](#max_width).
+See also [`max_width`](#max_width).
 
 ## `hard_tabs`
 

@@ -584,7 +584,6 @@ create_config! {
                                                 expressions. A value of zero means always break \
                                                 if-else expressions.";
     format_strings: bool, false, false, "Format string literals where necessary";
-    force_format_strings: bool, false, false, "Always format string literals";
     hard_tabs: bool, false, false, "Use tab characters for indentation, spaces for alignment";
     wrap_comments: bool, false, false, "Break comments to fit on the line";
     comment_width: usize, 80, false,

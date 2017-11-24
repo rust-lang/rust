@@ -1739,7 +1739,7 @@ pub fn rewrite_literal(context: &RewriteContext, l: &ast::Lit, shape: Shape) -> 
 fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Option<String> {
     let string_lit = context.snippet(span);
 
-    if !context.config.format_strings() && !context.config.force_format_strings() {
+    if !context.config.format_strings() {
         if string_lit
             .lines()
             .rev()
@@ -1767,12 +1767,6 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
         }
     }
 
-    if !context.config.force_format_strings()
-        && !string_requires_rewrite(context, span, &string_lit, shape)
-    {
-        return wrap_str(string_lit, context.config.max_width(), shape);
-    }
-
     // Remove the quote characters.
     let str_lit = &string_lit[1..string_lit.len() - 1];
 
@@ -1781,29 +1775,6 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
         &StringFormat::new(shape.visual_indent(0), context.config),
         None,
     )
-}
-
-fn string_requires_rewrite(
-    context: &RewriteContext,
-    span: Span,
-    string: &str,
-    shape: Shape,
-) -> bool {
-    if context.codemap.lookup_char_pos(span.lo()).col.0 != shape.indent.width() {
-        return true;
-    }
-
-    for (i, line) in string.lines().enumerate() {
-        if i == 0 {
-            if line.len() > shape.width {
-                return true;
-            }
-        } else if line.len() > shape.width + shape.indent.width() {
-            return true;
-        }
-    }
-
-    false
 }
 
 pub fn rewrite_call(
