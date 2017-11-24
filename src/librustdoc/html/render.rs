@@ -421,7 +421,7 @@ impl ToJson for IndexItemFunctionType {
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
                     RefCell::new(Vec::new()));
-thread_local!(static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
+thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
                     RefCell::new(init_ids()));
 
 fn init_ids() -> FxHashMap<String, usize> {
@@ -699,7 +699,10 @@ fn print_message(msg: &str, intro_msg: &mut bool, span: &Span, text: &str) {
     println!("{}", msg);
 }
 
-fn render_difference(diff: &html_diff::Difference, intro_msg: &mut bool, span: &Span, text: &str) {
+pub fn render_difference(diff: &html_diff::Difference,
+                         intro_msg: &mut bool,
+                         span: &Span,
+                         text: &str) {
     match *diff {
         html_diff::Difference::NodeType { ref elem, ref opposite_elem } => {
             print_message(&format!("    {} Types differ: expected: `{}`, found: `{}`",

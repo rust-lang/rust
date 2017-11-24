@@ -2521,7 +2521,7 @@ pub struct Span {
 }
 
 impl Span {
-    fn empty() -> Span {
+    pub fn empty() -> Span {
         Span {
             filename: "".to_string(),
             loline: 0, locol: 0,

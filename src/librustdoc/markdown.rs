@@ -19,10 +19,15 @@ use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::Externs;
 use syntax::codemap::DUMMY_SP;
 
+use clean::Span;
+
 use externalfiles::{ExternalHtml, LoadStringError, load_string};
+
+use html_diff;
 
 use html::render::reset_ids;
 use html::escape::Escape;
+use html::render::{USED_ID_MAP, render_difference};
 use html::markdown;
 use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, old_find_testable_code};
 use html::markdown::RenderType;
@@ -52,6 +57,10 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
               external_html: &ExternalHtml, include_toc: bool,
               render_type: RenderType) -> isize {
+    // Span used for markdown hoedown/pulldown differences.
+    let mut span = Span::empty();
+    span.filename = input.to_owned();
+
     let input_p = Path::new(input);
     output.push(input_p.file_stem().unwrap());
     output.set_extension("html");
@@ -89,11 +98,43 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
     reset_ids(false);
 
-    let rendered = if include_toc {
-        format!("{}", MarkdownWithToc(text, render_type))
+    let (hoedown_output, pulldown_output) = if include_toc {
+        // Save the state of USED_ID_MAP so it only gets updated once even
+        // though we're rendering twice.
+        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+        let hoedown_output = format!("{}", MarkdownWithToc(text, RenderType::Hoedown));
+        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
+        let pulldown_output = format!("{}", MarkdownWithToc(text, RenderType::Pulldown));
+        (hoedown_output, pulldown_output)
     } else {
-        format!("{}", Markdown(text, render_type))
+        // Save the state of USED_ID_MAP so it only gets updated once even
+        // though we're rendering twice.
+        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+        let hoedown_output = format!("{}", Markdown(text, RenderType::Hoedown));
+        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
+        let pulldown_output = format!("{}", Markdown(text, RenderType::Pulldown));
+        (hoedown_output, pulldown_output)
     };
+
+    let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
+    differences.retain(|s| {
+        match *s {
+            html_diff::Difference::NodeText { ref elem_text,
+                                              ref opposite_elem_text,
+                                              .. }
+                if elem_text.split_whitespace().eq(opposite_elem_text.split_whitespace()) => {
+                    false
+            }
+            _ => true,
+        }
+    });
+
+    if !differences.is_empty() {
+        let mut intro_msg = false;
+        for diff in differences {
+            render_difference(&diff, &mut intro_msg, &span, text);
+        }
+    }
 
     let err = write!(
         &mut out,
@@ -126,16 +167,16 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
         css = css,
         in_header = external_html.in_header,
         before_content = external_html.before_content,
-        text = rendered,
+        text = if render_type == RenderType::Pulldown { pulldown_output } else { hoedown_output },
         after_content = external_html.after_content,
-        );
+    );
 
     match err {
         Err(e) => {
             eprintln!("rustdoc: cannot write to `{}`: {}", output.display(), e);
             6
         }
-        Ok(_) => 0
+        Ok(_) => 0,
     }
 }
 
