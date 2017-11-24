@@ -743,6 +743,7 @@ def bootstrap():
     args.extend(sys.argv[1:])
     env = os.environ.copy()
     env["BUILD"] = build.build
+    env["RUST_BACKTRACE"] = "full"
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
