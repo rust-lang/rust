@@ -6,7 +6,6 @@ A possible content of `rustfmt.toml` or `.rustfmt.toml` might look like this:
 
 ```toml
 indent_style = "Block"
-array_width = 80
 reorder_imported_names = true
 ```
 
@@ -14,41 +13,6 @@ reorder_imported_names = true
 
 Below you find a detailed visual guide on all the supported configuration options of rustfmt:
 
-## `array_horizontal_layout_threshold`
-
-How many elements array must have before rustfmt uses horizontal layout.  
-Use this option to prevent a huge array from being vertically formatted.
-
-- **Default value**: `0`
-- **Possible values**: any positive integer
-
-**Note:** A value of `0` results in [`indent_style`](#indent_style) being applied regardless of a line's width.
-
-#### `0` (default):
-
-```rust
-// Each element will be placed on its own line.
-let a = vec![
-    0,
-    1,
-    2,
-    3,
-    4,
-    ...
-    999,
-    1000,
-];
-```
-
-#### `1000`:
-
-```rust
-// Each element will be placed on the same line as much as possible.
-let a = vec![
-    0, 1, 2, 3, 4, ...
-    ..., 999, 1000,
-];
-```
 
 ## `indent_style`
 
@@ -279,22 +243,6 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
 
 See also: [`where_density`](#where_density), [`where_layout`](#where_layout).
 
-## `array_width`
-
-Maximum width of an array literal before falling back to vertical formatting
-
-- **Default value**: `60`
-- **Possible values**: any positive integer
-
-**Note:** A value of `0` results in [`indent_style`](#indent_style) being applied regardless of a line's width.
-
-#### Lines shorter than `array_width`:
-```rust
-let lorem = vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit"];
-```
-
-#### Lines longer than `array_width`:
-See [`indent_style`](#indent_style).
 
 ## `same_line_attributes`
 
@@ -341,6 +289,66 @@ enum Lorem {
 }
 ```
 
+## `use_small_heuristics`
+
+Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `true` (default):
+
+```rust
+enum Lorem {
+    Ipsum,
+    Dolor(bool),
+    Sit { amet: Consectetur, adipiscing: Elit },
+}
+
+fn main() {
+    lorem(
+        "lorem",
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+    );
+
+    let lorem = Lorem { ipsum: dolor, sit: amet };
+
+    let lorem = if ipsum { dolor } else { sit };
+}
+```
+
+#### `false`:
+
+```rust
+enum Lorem {
+    Ipsum,
+    Dolor(bool),
+    Sit {
+        amet: Consectetur,
+        adipiscing: Elit,
+    },
+}
+
+fn main() {
+    lorem("lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing");
+
+    let lorem = Lorem {
+        ipsum: dolor,
+        sit: amet,
+    };
+
+    let lorem = if ipsum {
+        dolor
+    } else {
+        sit
+    };
+}
+```
 
 ## `binop_separator`
 
@@ -409,22 +417,6 @@ let lorem = ipsum.dolor()
                  .elit();
 ```
 
-See also [`chain_width`](#chain_width).
-
-## `chain_width`
-
-Maximum length of a chain to fit on a single line
-
-- **Default value**: `60`
-- **Possible values**: any positive integer
-
-#### Lines shorter than `chain_width`:
-```rust
-let lorem = ipsum.dolor().sit().amet().consectetur().adipiscing().elit();
-```
-
-#### Lines longer than `chain_width`:
-See [`chain_indent`](#chain_indent).
 
 
 ## `combine_control_expr`
@@ -883,23 +875,7 @@ struct Dolor<T>
 }
 ```
 
-## `fn_call_width`
 
-Maximum width of the args of a function call before falling back to vertical formatting
-
-- **Default value**: `60`
-- **Possible values**: any positive integer
-
-**Note:** A value of `0` results in vertical formatting being applied regardless of a line's width.
-
-#### Function call shorter than `fn_call_width`:
-```rust
-lorem("lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit");
-```
-
-#### Function call longer than `fn_call_width`:
-
-See [`indent_style`](#indent_style).
 
 ## `fn_empty_single_line`
 
@@ -1533,30 +1509,6 @@ it contains a `#X` (with `X` being a number) in parentheses following the
 
 See also [`report_todo`](#report_todo).
 
-## `single_line_if_else_max_width`
-
-Maximum line length for single line if-else expressions.
-
-- **Default value**: `50`
-- **Possible values**: any positive integer
-
-**Note:** A value of `0` results in if-else expressions being broken regardless of their line's width.
-
-#### Lines shorter than `single_line_if_else_max_width`:
-```rust
-let lorem = if ipsum { dolor } else { sit };
-```
-
-#### Lines longer than `single_line_if_else_max_width`:
-```rust
-let lorem = if ipsum {
-    dolor
-} else {
-    sit
-};
-```
-
-See also: [`control_brace_style`](#control_brace_style).
 
 ## `skip_children`
 
@@ -1768,56 +1720,8 @@ let lorem = Lorem {
 };
 ```
 
-See also: [`indent_style`](#indent_style), [`struct_lit_width`](#struct_lit_width).
+See also: [`indent_style`](#indent_style).
 
-## `struct_lit_width`
-
-Maximum width in the body of a struct lit before falling back to vertical formatting
-
-- **Default value**: `18`
-- **Possible values**: any positive integer
-
-**Note:** A value of `0` results in vertical formatting being applied regardless of a line's width.
-
-#### Lines shorter than `struct_lit_width`:
-```rust
-let lorem = Lorem { ipsum: dolor, sit: amet };
-```
-
-#### Lines longer than `struct_lit_width`:
-See [`indent_style`](#indent_style).
-
-See also: [`struct_lit_single_line`](#struct_lit_single_line), [`indent_style`](#indent_style).
-
-## `struct_variant_width`
-
-Maximum width in the body of a struct variant before falling back to vertical formatting
-
-- **Default value**: `35`
-- **Possible values**: any positive integer
-
-**Note:** A value of `0` results in vertical formatting being applied regardless of a line's width.
-
-#### Struct variants shorter than `struct_variant_width`:
-```rust
-enum Lorem {
-    Ipsum,
-    Dolor(bool),
-    Sit { amet: Consectetur, adipiscing: Elit },
-}
-```
-
-#### Struct variants longer than `struct_variant_width`:
-```rust
-enum Lorem {
-    Ipsum,
-    Dolor(bool),
-    Sit {
-        amet: Consectetur,
-        adipiscing: Elit,
-    },
-}
-```
 
 ## `tab_spaces`
 

@@ -12,6 +12,7 @@ extern crate toml;
 
 use std::{env, fs};
 use std::cell::Cell;
+use std::default::Default;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
@@ -132,6 +133,68 @@ configuration_option_enum! { Color:
     Auto,
 }
 
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct WidthHeuristics {
+    // Maximum width of the args of a function call before falling back
+    // to vertical formatting.
+    pub fn_call_width: usize,
+    // Maximum width in the body of a struct lit before falling back to
+    // vertical formatting.
+    pub struct_lit_width: usize,
+    // Maximum width in the body of a struct variant before falling back
+    // to vertical formatting.
+    pub struct_variant_width: usize,
+    // Maximum width of an array literal before falling back to vertical
+    // formatting.
+    pub array_width: usize,
+    // Maximum length of a chain to fit on a single line.
+    pub chain_width: usize,
+    // Maximum line length for single line if-else expressions. A value
+    // of zero means always break if-else expressions.
+    pub single_line_if_else_max_width: usize,
+}
+
+impl WidthHeuristics {
+    // Using this WidthHeuristics means we ignore heuristics.
+    fn null() -> WidthHeuristics {
+        WidthHeuristics {
+            fn_call_width: usize::max_value(),
+            struct_lit_width: 0,
+            struct_variant_width: 0,
+            array_width: usize::max_value(),
+            chain_width: usize::max_value(),
+            single_line_if_else_max_width: 0,
+        }
+    }
+}
+
+impl Default for WidthHeuristics {
+    fn default() -> WidthHeuristics {
+        WidthHeuristics {
+            fn_call_width: 60,
+            struct_lit_width: 18,
+            struct_variant_width: 35,
+            array_width: 60,
+            chain_width: 60,
+            single_line_if_else_max_width: 50,
+        }
+    }
+}
+
+impl ::std::str::FromStr for WidthHeuristics {
+    type Err = &'static str;
+
+    fn from_str(_: &str) -> Result<Self, Self::Err> {
+        Err("WidthHeuristics is not parsable")
+    }
+}
+
+impl ::config::ConfigType for WidthHeuristics {
+    fn doc_hint() -> String {
+        String::new()
+    }
+}
+
 /// Trait for types that can be used in `Config`.
 pub trait ConfigType: Sized {
     /// Returns hint text for use in `Config::print_docs()`. For enum types, this is a
@@ -216,9 +279,11 @@ macro_rules! create_config {
 
         impl PartialConfig {
             pub fn to_toml(&self) -> Result<String, String> {
-                // file_lines can't be specified in TOML
+                // Non-user-facing options can't be specified in TOML
                 let mut cloned = self.clone();
                 cloned.file_lines = None;
+                cloned.verbose = None;
+                cloned.width_heuristics = None;
 
                 toml::to_string(&cloned)
                     .map_err(|e| format!("Could not output config: {}", e.to_string()))
@@ -236,6 +301,9 @@ macro_rules! create_config {
             $(
             pub fn $i(&mut self, value: $ty) {
                 (self.0).$i.2 = value;
+                if stringify!($i) == "use_small_heuristics" {
+                    self.0.set_heuristics();
+                }
             }
             )+
         }
@@ -303,6 +371,7 @@ macro_rules! create_config {
                     }
                 }
             )+
+                self.set_heuristics();
                 self
             }
 
@@ -373,6 +442,10 @@ macro_rules! create_config {
                         }
                     )+
                     _ => panic!("Unknown config key in override: {}", key)
+                }
+
+                if key == "use_small_heuristics" {
+                    self.set_heuristics();
                 }
             }
 
@@ -461,6 +534,14 @@ macro_rules! create_config {
                     println!();
                 )+
             }
+
+            fn set_heuristics(&mut self) {
+                if self.use_small_heuristics.2 {
+                    self.set().width_heuristics(WidthHeuristics::default());
+                } else {
+                    self.set().width_heuristics(WidthHeuristics::null());
+                }
+            }
         }
 
         // Template for the default configuration
@@ -507,6 +588,8 @@ create_config! {
     tab_spaces: usize, 4, true, "Number of spaces per tab";
     newline_style: NewlineStyle, NewlineStyle::Unix, true, "Unix or Windows line endings";
     indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
+    use_small_heuristics: bool, true, false, "Whether to use different formatting for items and\
+        expressions if they satisfy a heuristic notion of 'small'.";
 
     // strings and comments
     format_strings: bool, false, false, "Format string literals where necessary";
@@ -514,22 +597,6 @@ create_config! {
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
-
-    // Width heuristics
-    fn_call_width: usize, 60, false,
-        "Maximum width of the args of a function call before falling back to vertical formatting";
-    struct_lit_width: usize, 18, false,
-        "Maximum width in the body of a struct lit before falling back to vertical formatting";
-    struct_variant_width: usize, 35, false,
-        "Maximum width in the body of a struct variant before falling back to vertical formatting";
-    array_width: usize, 60, false,
-        "Maximum width of an array literal before falling back to vertical formatting";
-    array_horizontal_layout_threshold: usize, 0, false,
-        "How many elements array must have before rustfmt uses horizontal layout.";
-    chain_width: usize, 60, false, "Maximum length of a chain to fit on a single line";
-    single_line_if_else_max_width: usize, 50, false, "Maximum line length for single line if-else \
-                                                expressions. A value of zero means always break \
-                                                if-else expressions.";
 
     // Single line expressions and items.
     struct_lit_single_line: bool, true, false,
@@ -618,12 +685,8 @@ create_config! {
         "Require a specific version of rustfmt.";
     unstable_features: bool, false, true,
             "Enables unstable features. Only available on nightly channel";
-    verbose: bool, false, false, "Use verbose output";
     disable_all_formatting: bool, false, false, "Don't reformat anything";
     skip_children: bool, false, false, "Don't reformat out of line modules";
-    file_lines: FileLines, FileLines::all(), false,
-        "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
-         via the --file-lines option";
     error_on_line_overflow: bool, true, false, "Error if unable to get all lines within max_width";
     error_on_line_overflow_comments: bool, true, false,
         "Error if unable to get comments within max_width";
@@ -631,6 +694,14 @@ create_config! {
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
+
+    // Not user-facing.
+    verbose: bool, false, false, "Use verbose output";
+    file_lines: FileLines, FileLines::all(), false,
+        "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
+         via the --file-lines option";
+    width_heuristics: WidthHeuristics, WidthHeuristics::default(), false,
+        "'small' heuristic values";
 }
 
 #[cfg(test)]
@@ -650,14 +721,18 @@ mod test {
     fn test_config_used_to_toml() {
         let config = Config::default();
 
-        let verbose = config.verbose();
+        let merge_derives = config.merge_derives();
         let skip_children = config.skip_children();
 
         let used_options = config.used_options();
         let toml = used_options.to_toml().unwrap();
         assert_eq!(
             toml,
-            format!("verbose = {}\nskip_children = {}\n", verbose, skip_children)
+            format!(
+                "merge_derives = {}\nskip_children = {}\n",
+                merge_derives,
+                skip_children,
+            )
         );
     }
 

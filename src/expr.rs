@@ -451,13 +451,14 @@ where
         .iter()
         .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
 
-    let mut tactic = match context.config.indent_style() {
+    let tactic = match context.config.indent_style() {
         IndentStyle::Block => {
             // FIXME wrong shape in one-line case
             match shape.width.checked_sub(2 * bracket_size) {
                 Some(width) => {
-                    let tactic =
-                        ListTactic::LimitedHorizontalVertical(context.config.array_width());
+                    let tactic = ListTactic::LimitedHorizontalVertical(
+                        context.config.width_heuristics().array_width,
+                    );
                     definitive_tactic(&items, tactic, Separator::Comma, width)
                 }
                 None => DefinitiveListTactic::Vertical,
@@ -466,7 +467,9 @@ where
         IndentStyle::Visual => if has_long_item || items.iter().any(ListItem::is_multiline) {
             definitive_tactic(
                 &items,
-                ListTactic::LimitedHorizontalVertical(context.config.array_width()),
+                ListTactic::LimitedHorizontalVertical(
+                    context.config.width_heuristics().array_width,
+                ),
                 Separator::Comma,
                 nested_shape.width,
             )
@@ -475,11 +478,6 @@ where
         },
     };
     let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
-    if context.config.array_horizontal_layout_threshold() > 0
-        && items.len() > context.config.array_horizontal_layout_threshold()
-    {
-        tactic = DefinitiveListTactic::Mixed;
-    }
 
     let fmt = ListFormatting {
         tactic: tactic,
@@ -957,11 +955,21 @@ impl<'a> ControlFlow<'a> {
             && !last_line_extendable(&pat_expr_string);
 
         // Try to format if-else on single line.
-        if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
+        if self.allow_single_line
+            && context
+                .config
+                .width_heuristics()
+                .single_line_if_else_max_width > 0
+        {
             let trial = self.rewrite_single_line(&pat_expr_string, context, shape.width);
 
             if let Some(cond_str) = trial {
-                if cond_str.len() <= context.config.single_line_if_else_max_width() {
+                if cond_str.len()
+                    <= context
+                        .config
+                        .width_heuristics()
+                        .single_line_if_else_max_width
+                {
                     return Some((cond_str, 0));
                 }
             }
@@ -1795,7 +1803,7 @@ pub fn rewrite_call(
         &ptr_vec_to_ref_vec(args),
         span,
         shape,
-        context.config.fn_call_width(),
+        context.config.width_heuristics().fn_call_width,
         force_trailing_comma,
     )
 }
@@ -2521,7 +2529,7 @@ where
             items,
             span,
             shape,
-            context.config.fn_call_width(),
+            context.config.width_heuristics().fn_call_width,
             force_trailing_comma,
         )
     } else {

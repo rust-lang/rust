@@ -1,4 +1,3 @@
-// rustfmt-single_line_if_else_max_width: 0
 // rustfmt-control_brace_style: AlwaysNextLine
 
 fn main() {

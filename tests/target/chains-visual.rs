@@ -1,5 +1,4 @@
 // rustfmt-normalize_comments: true
-// rustfmt-single_line_if_else_max_width: 0
 // rustfmt-indent_style: Visual
 // Test chain formatting.
 
@@ -21,11 +20,7 @@ fn main() {
               false => (),
           });
 
-    loong_func().quux(move || if true {
-                          1
-                      } else {
-                          2
-                      });
+    loong_func().quux(move || if true { 1 } else { 2 });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
         let x = c;
@@ -67,11 +62,7 @@ fn floaters() {
                   field2: val2, }.method_call()
             .method_call();
 
-    let y = if cond {
-                val1
-            } else {
-                val2
-            }.method_call();
+    let y = if cond { val1 } else { val2 }.method_call();
 
     {
         match x {

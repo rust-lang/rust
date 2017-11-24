@@ -208,7 +208,7 @@ pub fn rewrite_macro(
                 &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..],
                 mac.span,
                 shape,
-                context.config.fn_call_width(),
+                context.config.width_heuristics().fn_call_width,
                 trailing_comma,
             ).map(|rw| match position {
                 MacroPosition::Item => format!("{};", rw),

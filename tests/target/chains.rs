@@ -1,6 +1,5 @@
 // rustfmt-normalize_comments: true
-// rustfmt-single_line_if_else_max_width: 0
-// rustfmt-chain_width: 100
+// rustfmt-use_small_heuristics: false
 // Test chain formatting.
 
 fn main() {
@@ -102,11 +101,12 @@ fn floaters() {
     }.bar()
         .baz();
 
-    Foo { x: val }
-        .baz(|| {
-            force();
-            multiline();
-        })
+    Foo {
+        x: val,
+    }.baz(|| {
+        force();
+        multiline();
+    })
         .quux();
 
     Foo {
@@ -152,9 +152,7 @@ fn try_shorthand() {
         .0
         .x;
 
-    parameterized(f, substs, def_id, Ns::Value, &[], |tcx| {
-        tcx.lookup_item_type(def_id).generics
-    })?;
+    parameterized(f, substs, def_id, Ns::Value, &[], |tcx| tcx.lookup_item_type(def_id).generics)?;
     fooooooooooooooooooooooooooo()?
         .bar()?
         .baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaz()?;

@@ -502,7 +502,8 @@ impl<'a> FmtVisitor<'a> {
                 false,
             ).collect()
         };
-        let mut items: Vec<_> = itemize_list_with(self.config.struct_variant_width());
+        let mut items: Vec<_> =
+            itemize_list_with(self.config.width_heuristics().struct_variant_width);
         // If one of the variants use multiple lines, use multi-lined formatting for all variants.
         let has_multiline_variant = items.iter().any(|item| item.inner_as_ref().contains("\n"));
         let has_single_line_variant = items.iter().any(|item| !item.inner_as_ref().contains("\n"));
@@ -1324,7 +1325,7 @@ fn format_tuple_struct(
     } else {
         let shape = Shape::indented(offset, context.config);
         let fields = &fields.iter().map(|field| field).collect::<Vec<_>>()[..];
-        let one_line_width = context.config.fn_call_width();
+        let one_line_width = context.config.width_heuristics().fn_call_width;
         result = rewrite_call_inner(context, &result, fields, span, shape, one_line_width, false)?;
     }
 

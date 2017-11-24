@@ -1,5 +1,4 @@
 // rustfmt-normalize_comments: true
-// rustfmt-single_line_if_else_max_width: 0
 // rustfmt-wrap_comments: true
 // rustfmt-hard_tabs: true
 // rustfmt-error_on_line_overflow: false
@@ -73,13 +72,7 @@ fn main() {
 		arg(a, b, c, d, e)
 	}
 
-	loong_func().quux(move || {
-		if true {
-			1
-		} else {
-			2
-		}
-	});
+	loong_func().quux(move || if true { 1 } else { 2 });
 
 	fffffffffffffffffffffffffffffffffff(a, {
 		SCRIPT_TASK_ROOT.with(|root| {

@@ -1,6 +1,5 @@
 // rustfmt-normalize_comments: true
-// rustfmt-single_line_if_else_max_width: 0
-// rustfmt-chain_width: 100
+// rustfmt-use_small_heuristics: false
 // Test chain formatting.
 
 fn main() {

@@ -1,4 +1,3 @@
-// rustfmt-single_line_if_else_max_width: 0
 // rustfmt-control_brace_style: AlwaysSameLine
 
 fn main() {
@@ -15,11 +14,7 @@ fn main() {
     }
 
 
-    let a = if 0 > 1 {
-        unreachable!()
-    } else {
-        0x0
-    };
+    let a = if 0 > 1 { unreachable!() } else { 0x0 };
 
 
     if true {

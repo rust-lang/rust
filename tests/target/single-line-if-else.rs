@@ -1,5 +1,3 @@
-// rustfmt-single_line_if_else_max_width: 100
-
 // Format if-else expressions on a single line, when possible.
 
 fn main() {
@@ -28,7 +26,11 @@ fn main() {
         10
     };
 
-    let d = if let Some(val) = turbo { "cool" } else { "beans" };
+    let d = if let Some(val) = turbo {
+        "cool"
+    } else {
+        "beans"
+    };
 
     if cond() {
         statement();
@@ -46,7 +48,11 @@ fn main() {
         bbbbbbbbbb
     };
 
-    let x = if veeeeeeeeery_loooooong_condition() { aaaaaaaaaaaaaaaaaaaaaaaaa } else { bbbbbbbbbb };
+    let x = if veeeeeeeeery_loooooong_condition() {
+        aaaaaaaaaaaaaaaaaaaaaaaaa
+    } else {
+        bbbbbbbbbb
+    };
 
     funk(if test() { 1 } else { 2 }, arg2);
 }
