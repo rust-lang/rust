@@ -5422,9 +5422,8 @@ impl<'a> Parser<'a> {
             token::CloseDelim(token::Brace) => {}
             token::DocComment(_) => {
                 let mut err = self.span_fatal_err(self.span, Error::UselessDocComment);
-                if self.eat(&token::Comma) ||
-                    self.look_ahead(1, |t| *t == token::CloseDelim(token::Brace))
-                {
+                self.bump(); // consume the doc comment
+                if self.eat(&token::Comma) || self.token == token::CloseDelim(token::Brace) {
                     err.emit();
                 } else {
                     return Err(err);
