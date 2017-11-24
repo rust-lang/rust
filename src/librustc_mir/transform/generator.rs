@@ -78,7 +78,7 @@ use std::mem;
 use transform::{MirPass, MirSource};
 use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
-use dataflow::{self, MaybeStorageLive, state_for_location};
+use dataflow::{do_dataflow, DebugFormatted, MaybeStorageLive, state_for_location};
 
 pub struct StateTransform;
 
@@ -341,8 +341,8 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
     let analysis = MaybeStorageLive::new(mir);
     let storage_live =
-        dataflow::do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
-                              |bd, p| &bd.mir().local_decls[p]);
+        do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
+                    |bd, p| DebugFormatted::new(&bd.mir().local_decls[p]));
 
     let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.local_decls.len()));
     ignored.visit_mir(mir);

@@ -28,7 +28,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast;
 use syntax_pos::Span;
 
-use dataflow::do_dataflow;
+use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::MoveDataParamEnv;
 use dataflow::DataflowResultsConsumer;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
@@ -157,7 +157,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &attributes,
         &dead_unwinds,
         MaybeInitializedLvals::new(tcx, mir, &mdpe),
-        |bd, i| &bd.move_data().move_paths[i],
+        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
     let flow_uninits = FlowAtLocation::new(do_dataflow(
         tcx,
@@ -166,7 +166,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &attributes,
         &dead_unwinds,
         MaybeUninitializedLvals::new(tcx, mir, &mdpe),
-        |bd, i| &bd.move_data().move_paths[i],
+        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
     let flow_move_outs = FlowAtLocation::new(do_dataflow(
         tcx,
@@ -175,7 +175,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &attributes,
         &dead_unwinds,
         MovingOutStatements::new(tcx, mir, &mdpe),
-        |bd, i| &bd.move_data().moves[i],
+        |bd, i| DebugFormatted::new(&bd.move_data().moves[i]),
     ));
     let flow_ever_inits = FlowAtLocation::new(do_dataflow(
         tcx,
@@ -184,7 +184,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &attributes,
         &dead_unwinds,
         EverInitializedLvals::new(tcx, mir, &mdpe),
-        |bd, i| &bd.move_data().inits[i],
+        |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
@@ -212,7 +212,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &attributes,
         &dead_unwinds,
         Borrows::new(tcx, mir, opt_regioncx, def_id, body_id),
-        |bd, i| bd.location(i),
+        |bd, i| DebugFormatted::new(bd.location(i)),
     ));
 
     let mut state = Flows::new(

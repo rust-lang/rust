@@ -19,7 +19,7 @@ use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Ter
 use rustc::session::Session;
 
 use std::borrow::Borrow;
-use std::fmt::{self, Debug};
+use std::fmt;
 use std::io;
 use std::mem;
 use std::path::PathBuf;
@@ -51,10 +51,29 @@ pub(crate) struct DataflowBuilder<'a, 'tcx: 'a, BD> where BD: BitDenotation
     print_postflow_to: Option<String>,
 }
 
-pub trait Dataflow<BD: BitDenotation> {
+/// `DebugFormatted` encapsulates the "{:?}" rendering of some
+/// arbitrary value. This way: you pay cost of allocating an extra
+/// string (as well as that of rendering up-front); in exchange, you
+/// don't have to hand over ownership of your value or deal with
+/// borrowing it.
+pub(crate) struct DebugFormatted(String);
+
+impl DebugFormatted {
+    pub fn new(input: &fmt::Debug) -> DebugFormatted {
+        DebugFormatted(format!("{:?}", input))
+    }
+}
+
+impl fmt::Debug for DebugFormatted {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        write!(w, "{}", self.0)
+    }
+}
+
+pub(crate) trait Dataflow<BD: BitDenotation> {
     /// Sets up and runs the dataflow problem, using `p` to render results if
     /// implementation so chooses.
-    fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> &Debug {
+    fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> DebugFormatted {
         let _ = p; // default implementation does not instrument process.
         self.build_sets();
         self.propagate();
@@ -69,7 +88,7 @@ pub trait Dataflow<BD: BitDenotation> {
 
 impl<'a, 'tcx: 'a, BD> Dataflow<BD> for DataflowBuilder<'a, 'tcx, BD> where BD: BitDenotation
 {
-    fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> &Debug {
+    fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> DebugFormatted {
         self.flow_state.build_sets();
         self.pre_dataflow_instrumentation(|c,i| p(c,i)).unwrap();
         self.flow_state.propagate();
@@ -109,7 +128,7 @@ pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                  p: P)
                                                  -> DataflowResults<BD>
     where BD: BitDenotation,
-          P: Fn(&BD, BD::Idx) -> &fmt::Debug
+          P: Fn(&BD, BD::Idx) -> DebugFormatted
 {
     let name_found = |sess: &Session, attrs: &[ast::Attribute], name| -> Option<String> {
         if let Some(item) = has_rustc_mir_with(attrs, name) {
@@ -231,7 +250,7 @@ fn dataflow_path(context: &str, prepost: &str, path: &str) -> PathBuf {
 impl<'a, 'tcx: 'a, BD> DataflowBuilder<'a, 'tcx, BD> where BD: BitDenotation
 {
     fn pre_dataflow_instrumentation<P>(&self, p: P) -> io::Result<()>
-        where P: Fn(&BD, BD::Idx) -> &Debug
+        where P: Fn(&BD, BD::Idx) -> DebugFormatted
     {
         if let Some(ref path_str) = self.print_preflow_to {
             let path = dataflow_path(BD::name(), "preflow", path_str);
@@ -242,7 +261,7 @@ impl<'a, 'tcx: 'a, BD> DataflowBuilder<'a, 'tcx, BD> where BD: BitDenotation
     }
 
     fn post_dataflow_instrumentation<P>(&self, p: P) -> io::Result<()>
-        where P: Fn(&BD, BD::Idx) -> &Debug
+        where P: Fn(&BD, BD::Idx) -> DebugFormatted
     {
         if let Some(ref path_str) = self.print_postflow_to {
             let path = dataflow_path(BD::name(), "postflow", path_str);
@@ -403,12 +422,12 @@ impl<O: BitDenotation> DataflowState<O> {
         words.each_bit(bits_per_block, f)
     }
 
-    pub fn interpret_set<'c, P>(&self,
-                                o: &'c O,
-                                words: &IdxSet<O::Idx>,
-                                render_idx: &P)
-                                -> Vec<&'c Debug>
-        where P: Fn(&O, O::Idx) -> &Debug
+    pub(crate) fn interpret_set<'c, P>(&self,
+                                       o: &'c O,
+                                       words: &IdxSet<O::Idx>,
+                                       render_idx: &P)
+                                       -> Vec<DebugFormatted>
+        where P: Fn(&O, O::Idx) -> DebugFormatted
     {
         let mut v = Vec::new();
         self.each_bit(words, |i| {

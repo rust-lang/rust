@@ -14,7 +14,7 @@ use dataflow::{DataflowResults};
 use dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
 use dataflow::MoveDataParamEnv;
-use dataflow;
+use dataflow::{self, do_dataflow, DebugFormatted};
 use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
@@ -59,13 +59,13 @@ impl MirPass for ElaborateDrops {
             };
             let dead_unwinds = find_dead_unwinds(tcx, mir, id, &env);
             let flow_inits =
-                dataflow::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                                      MaybeInitializedLvals::new(tcx, mir, &env),
-                                      |bd, p| &bd.move_data().move_paths[p]);
+                do_dataflow(tcx, mir, id, &[], &dead_unwinds,
+                            MaybeInitializedLvals::new(tcx, mir, &env),
+                            |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
             let flow_uninits =
-                dataflow::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                                      MaybeUninitializedLvals::new(tcx, mir, &env),
-                                      |bd, p| &bd.move_data().move_paths[p]);
+                do_dataflow(tcx, mir, id, &[], &dead_unwinds,
+                            MaybeUninitializedLvals::new(tcx, mir, &env),
+                            |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
 
             ElaborateDropsCtxt {
                 tcx,
@@ -96,9 +96,9 @@ fn find_dead_unwinds<'a, 'tcx>(
     // reach cleanup blocks, which can't have unwind edges themselves.
     let mut dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let flow_inits =
-        dataflow::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                           MaybeInitializedLvals::new(tcx, mir, &env),
-                           |bd, p| &bd.move_data().move_paths[p]);
+        do_dataflow(tcx, mir, id, &[], &dead_unwinds,
+                    MaybeInitializedLvals::new(tcx, mir, &env),
+                    |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
     for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
         let location = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref location, unwind: Some(_), .. } |
