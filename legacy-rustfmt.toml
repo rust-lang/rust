@@ -1,3 +1,2 @@
 indent_style = "Visual"
 combine_control_expr = false
-fn_args_paren_newline = true

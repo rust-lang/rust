@@ -806,39 +806,6 @@ trait Lorem {
 }
 ```
 
-## `fn_args_paren_newline`
-
-If function argument parenthesis goes on a newline
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-#### `false` (default):
-
-```rust
-fn lorem(
-    ipsum: Ipsum,
-    dolor: Dolor,
-    sit: Sit,
-    amet: Amet,
-) -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
-    // body
-}
-```
-
-#### `true`:
-
-```rust
-fn lorem
-    (
-    ipsum: Ipsum,
-    dolor: Dolor,
-    sit: Sit,
-    amet: Amet,
-) -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
-    // body
-}
-```
 
 ## `brace_style`
 

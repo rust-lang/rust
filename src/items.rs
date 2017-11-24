@@ -1859,13 +1859,6 @@ fn rewrite_fn_base(
     if one_line_budget == 0 {
         if snuggle_angle_bracket {
             result.push('(');
-        } else if context.config.fn_args_paren_newline() {
-            result.push('\n');
-            result.push_str(&arg_indent.to_string(context.config));
-            if context.config.indent_style() == IndentStyle::Visual {
-                arg_indent = arg_indent + 1; // extra space for `(`
-            }
-            result.push('(');
         } else {
             result.push_str("(");
             if context.config.indent_style() == IndentStyle::Visual {

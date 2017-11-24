@@ -549,7 +549,6 @@ create_config! {
         "Add trailing semicolon after break, continue and return";
     fn_empty_single_line: bool, true, false, "Put empty-body functions on a single line";
     fn_single_line: bool, false, false, "Put single-expression functions on a single line";
-    fn_args_paren_newline: bool, false, false, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, false, "Argument density in functions";
     array_width: usize, 60, false,
         "Maximum width of an array literal before falling back to vertical formatting";
