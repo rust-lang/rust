@@ -42,6 +42,7 @@ pub mod copy_prop;
 pub mod generator;
 pub mod inline;
 pub mod nll;
+pub mod lower_128bit;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
@@ -240,6 +241,8 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
         // From here on out, regions are gone.
         erase_regions::EraseRegions,
+
+        lower_128bit::Lower128Bit,
 
         // Optimizations begin.
         inline::Inline,
