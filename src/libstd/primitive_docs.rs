@@ -79,9 +79,12 @@ mod prim_bool { }
 /// write
 ///
 /// ```
+/// # #![feature(never_type)]
+/// # fn foo() -> u32 {
 /// let x: ! = {
-///     return 123;
+///     return 123
 /// };
+/// # }
 /// ```
 ///
 /// Although the `let` is pointless here, it illustrates the meaning of `!`. Since `x` is never
@@ -92,10 +95,13 @@ mod prim_bool { }
 /// A more realistic usage of `!` is in this code:
 ///
 /// ```
+/// # fn get_a_number() -> Option<u32> { None }
+/// # loop {
 /// let num: u32 = match get_a_number() {
 ///     Some(num) => num,
 ///     None => break,
-/// }
+/// };
+/// # }
 /// ```
 ///
 /// Both match arms must produce values of type `u32`, but since `break` never produces a value at
@@ -110,18 +116,20 @@ mod prim_bool { }
 /// trait:
 ///
 /// ```
-/// trait FromStr {
-///     type Error;
-///     fn from_str(s: &str) -> Result<Self, Self::Error>;
+/// trait FromStr: Sized {
+///     type Err;
+///     fn from_str(s: &str) -> Result<Self, Self::Err>;
 /// }
 /// ```
 ///
-/// When implementing this trait for `String` we need to pick a type for `Error`. And since
+/// When implementing this trait for `String` we need to pick a type for `Err`. And since
 /// converting a string into a string will never result in an error, the appropriate type is `!`.
-/// If we have to call `String::from_str` for some reason, the result will be a
-/// `Result<String, !>`, which we can unpack like this:
+/// (Currently the type actually used is an enum with no variants, though this is only because `!`
+/// was added to Rust at a later date and it may change in the future). With an `Err` type of `!`,
+/// if we have to call `String::from_str` for some reason the result will be a `Result<String, !>`
+/// which we can unpack like this:
 ///
-/// ```
+/// ```ignore (string-from-str-error-type-is-not-never-yet)
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
@@ -138,6 +146,11 @@ mod prim_bool { }
 /// for example:
 ///
 /// ```
+/// # #![feature(never_type)]
+/// # use std::fmt;
+/// # trait Debug {
+/// # fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result;
+/// # }
 /// impl Debug for ! {
 ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
 ///         *self
