@@ -38,3 +38,8 @@ fn test_estimated_capacity() {
     assert_eq!(format_args!("{}, hello!", "World").estimated_capacity(), 0);
     assert_eq!(format_args!("{}. 16-bytes piece", "World").estimated_capacity(), 32);
 }
+
+#[test]
+fn test_slice_hex() {
+    assert_eq!(format!("{:02X}", b"AZaz\0"), "[41, 5A, 61, 7A, 00]");
+}

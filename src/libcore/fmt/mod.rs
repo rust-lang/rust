@@ -1699,6 +1699,30 @@ impl<T: Debug> Debug for [T] {
     }
 }
 
+macro_rules! slice_impls {
+    ($( $Trait: ident ),+) => {
+        $(
+            #[unstable(feature = "slice_more_fmt_traits", issue = /* FIXME */ "0")]
+            impl<T: $Trait> $Trait for [T] {
+                fn fmt(&self, f: &mut Formatter) -> Result {
+                    f.write_char('[')?;
+                    let mut iter = self.iter();
+                    if let Some(item) = iter.next() {
+                        $Trait::fmt(item, f)?;
+                        for item in iter {
+                            f.write_str(", ")?;
+                            $Trait::fmt(item, f)?;
+                        }
+                    }
+                    f.write_char(']')
+                }
+            }
+        )+
+    }
+}
+
+slice_impls!(Octal, LowerHex, UpperHex, Pointer, Binary, LowerExp, UpperExp);
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
