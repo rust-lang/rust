@@ -604,15 +604,7 @@ create_config! {
     impl_empty_single_line: bool, true, false, "Put empty-body implementations on a single line";
     fn_empty_single_line: bool, true, false, "Put empty-body functions on a single line";
     fn_single_line: bool, false, false, "Put single-expression functions on a single line";
-
-    // Where clauses
-    // TODO:
-    // 1. Should we at least try to put the where clause on the same line as the rest of the
-    // function decl?
-    // 2. Currently options `Tall` and `Vertical` produce the same output.
-    where_density: Density, Density::Vertical, false, "Density of a where clause";
     where_single_line: bool, false, false, "To force single line where layout";
-    where_layout: ListTactic, ListTactic::Vertical, false, "Element layout inside a where clause";
 
     // Imports
     imports_indent: IndentStyle, IndentStyle::Visual, false, "Indent of imports";

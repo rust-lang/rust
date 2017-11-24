@@ -302,10 +302,7 @@ impl<'a> FmtVisitor<'a> {
     ) -> Option<String> {
         let context = self.get_context();
 
-        let has_body =
-            !is_empty_block(block, self.codemap) || !context.config.fn_empty_single_line();
-        let mut newline_brace =
-            newline_for_brace(self.config, &fn_sig.generics.where_clause, has_body);
+        let mut newline_brace = newline_for_brace(self.config, &fn_sig.generics.where_clause);
 
         let (mut result, force_newline_brace) =
             rewrite_fn_base(&context, indent, ident, fn_sig, span, newline_brace, true)?;
@@ -604,7 +601,7 @@ pub fn format_impl(
             &generics.where_clause,
             context.config.brace_style(),
             Shape::legacy(where_budget, offset.block_only()),
-            context.config.where_density(),
+            Density::Vertical,
             "{",
             where_span_end,
             self_ty.span.hi(),
@@ -978,18 +975,12 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         }
         result.push_str(&trait_bound_str);
 
-        let has_body = !trait_items.is_empty();
-
-        let where_density = if (context.config.where_density() == Density::Compressed
-            && (!result.contains('\n') || context.config.indent_style() == IndentStyle::Block))
-            || (context.config.indent_style() == IndentStyle::Block && result.is_empty())
-            || (context.config.where_density() == Density::CompressedIfEmpty && !has_body
-                && !result.contains('\n'))
-        {
-            Density::Compressed
-        } else {
-            Density::Tall
-        };
+        let where_density =
+            if context.config.indent_style() == IndentStyle::Block && result.is_empty() {
+                Density::Compressed
+            } else {
+                Density::Tall
+            };
 
         let where_budget = context.budget(last_line_width(&result));
         let pos_before_where = if type_param_bounds.is_empty() {
@@ -1373,7 +1364,7 @@ pub fn rewrite_type_alias(
         &generics.where_clause,
         context.config.brace_style(),
         Shape::legacy(where_budget, indent),
-        context.config.where_density(),
+        Density::Vertical,
         "=",
         Some(span.hi()),
         generics.span.hi(),
@@ -2027,38 +2018,12 @@ fn rewrite_fn_base(
         }
     }
 
-    let should_compress_where = match context.config.where_density() {
-        Density::Compressed => !result.contains('\n'),
-        Density::CompressedIfEmpty => !has_body && !result.contains('\n'),
-        _ => false,
-    };
-
     let pos_before_where = match fd.output {
         ast::FunctionRetTy::Default(..) => args_span.hi(),
         ast::FunctionRetTy::Ty(ref ty) => ty.span.hi(),
     };
 
     let is_args_multi_lined = arg_str.contains('\n');
-
-    if where_clause.predicates.len() == 1 && should_compress_where {
-        let budget = context.budget(last_line_used_width(&result, indent.width()));
-        if let Some(where_clause_str) = rewrite_where_clause(
-            context,
-            where_clause,
-            context.config.brace_style(),
-            Shape::legacy(budget, indent),
-            Density::Compressed,
-            "{",
-            Some(span.hi()),
-            pos_before_where,
-            WhereClauseOption::compressed(),
-            is_args_multi_lined,
-        ) {
-            result.push_str(&where_clause_str);
-            force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
-            return Some((result, force_new_line_for_brace));
-        }
-    }
 
     let option = WhereClauseOption::new(!has_body, put_args_in_block && ret_str.is_empty());
     let where_clause_str = rewrite_where_clause(
@@ -2112,14 +2077,6 @@ impl WhereClauseOption {
             suppress_comma: suppress_comma,
             snuggle: snuggle,
             compress_where: false,
-        }
-    }
-
-    pub fn compressed() -> WhereClauseOption {
-        WhereClauseOption {
-            suppress_comma: true,
-            snuggle: false,
-            compress_where: true,
         }
     }
 
@@ -2355,19 +2312,16 @@ fn compute_budgets_for_args(
     Some((0, context.budget(used_space), new_indent))
 }
 
-fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause, has_body: bool) -> bool {
+fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> bool {
     let predicate_count = where_clause.predicates.len();
 
     if config.where_single_line() && predicate_count == 1 {
         return false;
     }
-    match (config.brace_style(), config.where_density()) {
-        (BraceStyle::AlwaysNextLine, _) => true,
-        (_, Density::Compressed) if predicate_count == 1 => false,
-        (_, Density::CompressedIfEmpty) if predicate_count == 1 && !has_body => false,
-        (BraceStyle::SameLineWhere, _) if predicate_count > 0 => true,
-        _ => false,
-    }
+    let brace_style = config.brace_style();
+
+    brace_style == BraceStyle::AlwaysNextLine
+        || (brace_style == BraceStyle::SameLineWhere && predicate_count > 0)
 }
 
 fn rewrite_generics(
@@ -2694,14 +2648,8 @@ fn rewrite_where_clause(
         false,
     );
     let item_vec = items.collect::<Vec<_>>();
-    // FIXME: we don't need to collect here if the where_layout isn't
-    // HorizontalVertical.
-    let tactic = definitive_tactic(
-        &item_vec,
-        context.config.where_layout(),
-        Separator::Comma,
-        budget,
-    );
+    // FIXME: we don't need to collect here
+    let tactic = definitive_tactic(&item_vec, ListTactic::Vertical, Separator::Comma, budget);
 
     let mut comma_tactic = context.config.trailing_comma();
     // Kind of a hack because we don't usually have trailing commas in where clauses.

@@ -1,5 +1,4 @@
 // rustfmt-indent_style: Block
-// rustfmt-where_layout: HorizontalVertical
 // Test different indents.
 
 fn foo(

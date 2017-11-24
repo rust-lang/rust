@@ -1,5 +1,4 @@
 // rustfmt-indent_style: Block
-// rustfmt-where_density: Compressed
 // Test different indents.
 
 fn qux() where X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT {
