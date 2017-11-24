@@ -985,8 +985,15 @@ impl f64 {
     /// However there is one caveat: prior to the 2008 version of IEEE-754, how
     /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
     /// (notably x86 and ARM) picked the interpretation that was ultimately
-    /// standardized in 2008, but some didn't (notably MIPS). As a result, all
-    /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
+    /// standardized in 2008, but some didn't (notably MIPS). As a result,
+    /// all signaling NaNs on older MIPS are quiet NaNs on x86, and vice-versa.
+    ///
+    /// Since the release of the IEEE-754 2008 revision, the MIPS platform
+    /// had been undergoing a change in the NaN signaling behaviour.
+    /// In 2012, the MIPS specification release 3.5 made it optional for CPUs
+    /// to support IEEE-754 2008 NaN behaviour. They could indicate their
+    /// treatment of NaNs via a specific flag. In 2014, release 6 of the MIPS
+    /// specification made IEEE-754 2008 a hard requirement.
     ///
     /// Rather than trying to preserve signaling-ness cross-platform, this
     /// implementation favours preserving the exact bits. This means that
