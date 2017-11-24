@@ -796,7 +796,8 @@ pub fn struct_lit_tactic(
     if let Some(h_shape) = h_shape {
         let prelim_tactic = match (context.config.indent_style(), items.len()) {
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
-            _ => context.config.struct_lit_multiline_style().to_list_tactic(),
+            _ if context.config.struct_lit_single_line() => ListTactic::HorizontalVertical,
+            _ => ListTactic::Vertical,
         };
         definitive_tactic(items, prelim_tactic, Separator::Comma, h_shape.width)
     } else {

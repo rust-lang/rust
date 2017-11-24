@@ -1,4 +1,4 @@
-// rustfmt-struct_lit_multiline_style: PreferSingle
+// rustfmt-struct_lit_single_line: true
 // rustfmt-struct_lit_width: 100
 // Struct literal multiline-style
 

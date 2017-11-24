@@ -21,7 +21,7 @@ use closures;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               rewrite_comment, rewrite_missing_comment, FindUncommented};
-use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle};
+use config::{Config, ControlBraceStyle, IndentStyle};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
@@ -2346,8 +2346,7 @@ pub fn wrap_struct_field(
     one_line_width: usize,
 ) -> String {
     if context.config.indent_style() == IndentStyle::Block
-        && (fields_str.contains('\n')
-            || context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti
+        && (fields_str.contains('\n') || !context.config.struct_lit_single_line()
             || fields_str.len() > one_line_width)
     {
         format!(

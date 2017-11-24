@@ -100,22 +100,6 @@ impl Density {
     }
 }
 
-configuration_option_enum! { MultilineStyle:
-    // Use horizontal layout if it fits in one line, fall back to vertical
-    PreferSingle,
-    // Use vertical layout
-    ForceMulti,
-}
-
-impl MultilineStyle {
-    pub fn to_list_tactic(self) -> ListTactic {
-        match self {
-            MultilineStyle::PreferSingle => ListTactic::HorizontalVertical,
-            MultilineStyle::ForceMulti => ListTactic::Vertical,
-        }
-    }
-}
-
 configuration_option_enum! { ReportTactic:
     Always,
     Unnumbered,
@@ -563,8 +547,8 @@ create_config! {
     where_density: Density, Density::Vertical, false, "Density of a where clause";
     where_single_line: bool, false, false, "To force single line where layout";
     where_layout: ListTactic, ListTactic::Vertical, false, "Element layout inside a where clause";
-    struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle, false,
-        "Multiline style on literal structs";
+    struct_lit_single_line: bool, true, false,
+        "Put small struct literals on a single line";
     report_todo: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never, false,

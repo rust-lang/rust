@@ -246,7 +246,7 @@ let lorem = Lorem { ipsum: dolor,
                     sit: amet, };
 ```
 
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`indent_style`](#indent_style).
+See also: [`struct_lit_single_line`](#struct_lit_single_line), [`indent_style`](#indent_style).
 
 ### Where predicates
 
@@ -1746,20 +1746,20 @@ let lorem: [ usize; 2 ] = [ ipsum, dolor ];
 
 See also: [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets), [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets).
 
-## `struct_lit_multiline_style`
+## `struct_lit_single_line`
 
-Multiline style on literal structs
+Put small struct literals on a single line
 
-- **Default value**: `"PreferSingle"`
-- **Possible values**: `"ForceMulti"`, `"PreferSingle"`
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
 
-#### `"PreferSingle"` (default):
+#### `true` (default):
 
 ```rust
 let lorem = Lorem { ipsum: dolor, sit: amet };
 ```
 
-#### `"ForceMulti"`:
+#### `false`:
 
 ```rust
 let lorem = Lorem {
@@ -1787,7 +1787,7 @@ let lorem = Lorem { ipsum: dolor, sit: amet };
 #### Lines longer than `struct_lit_width`:
 See [`indent_style`](#indent_style).
 
-See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`indent_style`](#indent_style).
+See also: [`struct_lit_single_line`](#struct_lit_single_line), [`indent_style`](#indent_style).
 
 ## `struct_variant_width`
 
