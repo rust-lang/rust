@@ -598,8 +598,6 @@ create_config! {
         "Force match arm bodies to be in a new lines";
     indent_match_arms: bool, true, false, "Indent match arms instead of keeping them at the same \
                                     indentation level as the match keyword";
-    match_pattern_separator_break_point: SeparatorPlace, SeparatorPlace::Front, false,
-        "Put a match sub-patterns' separator in front or back.";
     space_before_colon: bool, false, false, "Leave a space before the colon";
     space_after_colon: bool, true, false, "Leave a space after the colon";
     spaces_around_ranges: bool, false, false, "Put spaces around the  .. and ... range operators";

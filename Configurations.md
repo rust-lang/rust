@@ -1283,39 +1283,6 @@ match lorem {
 
 See also: [`indent_match_arms`](#indent_match_arms), [`trailing_comma`](#trailing_comma), [`wrap_match_arms`](#wrap_match_arms).
 
-## `match_pattern_separator_break_point`
-
-Put a match sub-patterns' separator (`|`) in front or back.
-
-- **Default value**: `"Back"`
-- **Possible values**: `"Back"`, `"Front"`
-
-#### `"Back"` (default):
-
-```rust
-match m {
-    Variant::Tag |
-    Variant::Tag2 |
-    Variant::Tag3 |
-    Variant::Tag4 |
-    Variant::Tag5 |
-    Variant::Tag6 => {}
-}
-```
-
-#### `Front`:
-
-```rust
-match m {
-    Variant::Tag
-    | Variant::Tag2
-    | Variant::Tag3
-    | Variant::Tag4
-    | Variant::Tag5
-    | Variant::Tag6 => {}
-}
-```
-
 ## `max_width`
 
 Maximum width of each line

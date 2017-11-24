@@ -1475,7 +1475,7 @@ fn rewrite_match_pattern(
         tactic: tactic,
         separator: " |",
         trailing_separator: SeparatorTactic::Never,
-        separator_place: context.config.match_pattern_separator_break_point(),
+        separator_place: context.config.binop_separator(),
         shape: pat_shape,
         ends_with_newline: false,
         preserve_newline: false,
