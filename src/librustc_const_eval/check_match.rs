@@ -28,7 +28,7 @@ use rustc::util::common::ErrorReported;
 
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
 use rustc_back::slice;
@@ -44,47 +44,11 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::BodyId, s: Span, id: ast::NodeId) {
-        intravisit::walk_fn(self, fk, fd, b, s, id);
-
-        check_body(self.tcx, b);
+    fn visit_body(&mut self, body: &'tcx hir::Body) {
+        intravisit::walk_body(self, body);
+        let def_id = self.tcx.hir.body_owner_def_id(body.id());
+        let _ = self.tcx.check_match(def_id);
     }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
-        intravisit::walk_item(self, item);
-        match item.node {
-            hir::ItemStatic(.., body_id) | hir::ItemConst(.., body_id) => {
-                check_body(self.tcx, body_id);
-            }
-            _ => (),
-        }
-    }
-
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        intravisit::walk_impl_item(self, ii);
-        if let hir::ImplItemKind::Const(_, body_id) = ii.node {
-            check_body(self.tcx, body_id);
-        }
-    }
-
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        intravisit::walk_trait_item(self, ti);
-        if let hir::TraitItemKind::Const(_, Some(body_id)) = ti.node {
-            check_body(self.tcx, body_id);
-        }
-    }
-
-    // Enum variants and types (e.g. `[T; { .. }]`) may have bodies too,
-    // but they are const-evaluated during typeck.
-}
-
-fn check_body<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    body_id: hir::BodyId,
-) {
-    let def_id = tcx.hir.body_owner_def_id(body_id);
-    let _ = tcx.check_match(def_id);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
