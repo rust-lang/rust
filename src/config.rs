@@ -501,45 +501,44 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
 
 
 create_config! {
+    // Fundamental stuff
+    max_width: usize, 100, true, "Maximum width of each line";
+    hard_tabs: bool, false, true, "Use tab characters for indentation, spaces for alignment";
+    tab_spaces: usize, 4, true, "Number of spaces per tab";
+    newline_style: NewlineStyle, NewlineStyle::Unix, true, "Unix or Windows line endings";
     indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
-    unstable_features: bool, false, true,
-            "Enables unstable features. Only available on nightly channel";
-    verbose: bool, false, false, "Use verbose output";
-    disable_all_formatting: bool, false, false, "Don't reformat anything";
-    skip_children: bool, false, false, "Don't reformat out of line modules";
-    file_lines: FileLines, FileLines::all(), false,
-        "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
-         via the --file-lines option";
-    max_width: usize, 100, false, "Maximum width of each line";
-    error_on_line_overflow: bool, true, false, "Error if unable to get all lines within max_width";
-    error_on_line_overflow_comments: bool, true, false,
-        "Error if unable to get comments within max_width";
-    tab_spaces: usize, 4, false, "Number of spaces per tab";
+
+    // strings and comments
+    format_strings: bool, false, false, "Format string literals where necessary";
+    wrap_comments: bool, false, true, "Break comments to fit on the line";
+    comment_width: usize, 80, false,
+        "Maximum length of comments. No effect unless wrap_comments = true";
+    normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
+
+    // Width heuristics
     fn_call_width: usize, 60, false,
         "Maximum width of the args of a function call before falling back to vertical formatting";
     struct_lit_width: usize, 18, false,
         "Maximum width in the body of a struct lit before falling back to vertical formatting";
     struct_variant_width: usize, 35, false,
         "Maximum width in the body of a struct variant before falling back to vertical formatting";
-    force_explicit_abi: bool, true, false, "Always print the abi for extern items";
-    newline_style: NewlineStyle, NewlineStyle::Unix, false, "Unix or Windows line endings";
-    brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for items";
-    control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
-        "Brace style for control flow constructs";
-    impl_empty_single_line: bool, true, false, "Put empty-body implementations on a single line";
-    trailing_comma: SeparatorTactic, SeparatorTactic::Vertical, false,
-        "How to handle trailing commas for lists";
-    trailing_semicolon: bool, true, false,
-        "Add trailing semicolon after break, continue and return";
-    fn_empty_single_line: bool, true, false, "Put empty-body functions on a single line";
-    fn_single_line: bool, false, false, "Put single-expression functions on a single line";
-    fn_args_density: Density, Density::Tall, false, "Argument density in functions";
     array_width: usize, 60, false,
         "Maximum width of an array literal before falling back to vertical formatting";
     array_horizontal_layout_threshold: usize, 0, false,
         "How many elements array must have before rustfmt uses horizontal layout.";
-    type_punctuation_density: TypeDensity, TypeDensity::Wide, false,
-        "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
+    chain_width: usize, 60, false, "Maximum length of a chain to fit on a single line";
+    single_line_if_else_max_width: usize, 50, false, "Maximum line length for single line if-else \
+                                                expressions. A value of zero means always break \
+                                                if-else expressions.";
+
+    // Single line expressions and items.
+    struct_lit_single_line: bool, true, false,
+        "Put small struct literals on a single line";
+    impl_empty_single_line: bool, true, false, "Put empty-body implementations on a single line";
+    fn_empty_single_line: bool, true, false, "Put empty-body functions on a single line";
+    fn_single_line: bool, false, false, "Put single-expression functions on a single line";
+
+    // Where clauses
     // TODO:
     // 1. Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
@@ -547,30 +546,20 @@ create_config! {
     where_density: Density, Density::Vertical, false, "Density of a where clause";
     where_single_line: bool, false, false, "To force single line where layout";
     where_layout: ListTactic, ListTactic::Vertical, false, "Element layout inside a where clause";
-    struct_lit_single_line: bool, true, false,
-        "Put small struct literals on a single line";
-    report_todo: ReportTactic, ReportTactic::Never, false,
-        "Report all, none or unnumbered occurrences of TODO in source file comments";
-    report_fixme: ReportTactic, ReportTactic::Never, false,
-        "Report all, none or unnumbered occurrences of FIXME in source file comments";
-    chain_width: usize, 60, false, "Maximum length of a chain to fit on a single line";
+
+    // Imports
     imports_indent: IndentStyle, IndentStyle::Visual, false, "Indent of imports";
     imports_layout: ListTactic, ListTactic::Mixed, false, "Item layout inside a import block";
+
+    // Ordering
     reorder_extern_crates: bool, true, false, "Reorder extern crate statements alphabetically";
     reorder_extern_crates_in_group: bool, true, false, "Reorder extern crate statements in group";
     reorder_imports: bool, false, false, "Reorder import statements alphabetically";
     reorder_imports_in_group: bool, false, false, "Reorder import statements in group";
     reorder_imported_names: bool, true, false,
         "Reorder lists of names in import statements alphabetically";
-    single_line_if_else_max_width: usize, 50, false, "Maximum line length for single line if-else \
-                                                expressions. A value of zero means always break \
-                                                if-else expressions.";
-    format_strings: bool, false, false, "Format string literals where necessary";
-    hard_tabs: bool, false, false, "Use tab characters for indentation, spaces for alignment";
-    wrap_comments: bool, false, false, "Break comments to fit on the line";
-    comment_width: usize, 80, false,
-        "Maximum length of comments. No effect unless wrap_comments = true";
-    normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
+
+    // Match
     wrap_match_arms: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
                                   the same line with the pattern of arms";
     match_block_trailing_comma: bool, false, false,
@@ -579,19 +568,21 @@ create_config! {
         "Force match arm bodies to be in a new lines";
     indent_match_arms: bool, true, false, "Indent match arms instead of keeping them at the same \
                                     indentation level as the match keyword";
+    multiline_match_arm_forces_block: bool, false, false,
+        "Force multiline match arm bodies to be wrapped in a block";
+
+    // Spaces around punctuation
+    binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
+        "Where to put a binary operator when a binary expression goes multiline.";
+    type_punctuation_density: TypeDensity, TypeDensity::Wide, false,
+        "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     space_before_colon: bool, false, false, "Leave a space before the colon";
     space_after_colon: bool, true, false, "Leave a space after the colon";
     spaces_around_ranges: bool, false, false, "Put spaces around the  .. and ... range operators";
     spaces_within_parens_and_brackets: bool, false, false,
         "Put spaces within non-empty parentheses or brackets";
-    use_try_shorthand: bool, false, false, "Replace uses of the try! macro by the ? shorthand";
-    write_mode: WriteMode, WriteMode::Overwrite, false,
-        "What Write Mode to use when none is supplied: \
-         Replace, Overwrite, Display, Plain, Diff, Coverage";
-    color: Color, Color::Auto, false,
-        "What Color option to use when none is supplied: Always, Never, Auto";
-    condense_wildcard_suffixes: bool, false, false, "Replace strings of _ wildcards by a single .. \
-                                              in tuple patterns";
+
+    // Misc.
     combine_control_expr: bool, true, false, "Combine control expressions with function calls.";
     struct_field_align_threshold: usize, 0, false, "Align struct fields if their diffs fits within \
                                              threshold.";
@@ -601,13 +592,45 @@ create_config! {
         "Try to put attributes on the same line as fields and variants.";
     multiline_closure_forces_block: bool, false, false,
         "Force multiline closure bodies to be wrapped in a block";
-    multiline_match_arm_forces_block: bool, false, false,
-        "Force multiline match arm bodies to be wrapped in a block";
-    merge_derives: bool, true, false, "Merge multiple `#[derive(...)]` into a single one";
-    binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
-        "Where to put a binary operator when a binary expression goes multiline.";
+    fn_args_density: Density, Density::Tall, false, "Argument density in functions";
+    brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for items";
+    control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
+        "Brace style for control flow constructs";
+    trailing_comma: SeparatorTactic, SeparatorTactic::Vertical, false,
+        "How to handle trailing commas for lists";
+    trailing_semicolon: bool, true, false,
+        "Add trailing semicolon after break, continue and return";
+
+    // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
+    merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
+    use_try_shorthand: bool, false, false, "Replace uses of the try! macro by the ? shorthand";
+    condense_wildcard_suffixes: bool, false, false, "Replace strings of _ wildcards by a single .. \
+                                              in tuple patterns";
+    force_explicit_abi: bool, true, true, "Always print the abi for extern items";
+
+    // Control options (changes the operation of rustfmt, rather than the formatting)
+    write_mode: WriteMode, WriteMode::Overwrite, false,
+        "What Write Mode to use when none is supplied: \
+         Replace, Overwrite, Display, Plain, Diff, Coverage";
+    color: Color, Color::Auto, false,
+        "What Color option to use when none is supplied: Always, Never, Auto";
     required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
-        "Require a specific version of rustfmt."
+        "Require a specific version of rustfmt.";
+    unstable_features: bool, false, true,
+            "Enables unstable features. Only available on nightly channel";
+    verbose: bool, false, false, "Use verbose output";
+    disable_all_formatting: bool, false, false, "Don't reformat anything";
+    skip_children: bool, false, false, "Don't reformat out of line modules";
+    file_lines: FileLines, FileLines::all(), false,
+        "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
+         via the --file-lines option";
+    error_on_line_overflow: bool, true, false, "Error if unable to get all lines within max_width";
+    error_on_line_overflow_comments: bool, true, false,
+        "Error if unable to get comments within max_width";
+    report_todo: ReportTactic, ReportTactic::Never, false,
+        "Report all, none or unnumbered occurrences of TODO in source file comments";
+    report_fixme: ReportTactic, ReportTactic::Never, false,
+        "Report all, none or unnumbered occurrences of FIXME in source file comments";
 }
 
 #[cfg(test)]
