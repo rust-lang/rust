@@ -25,9 +25,9 @@ use externalfiles::{ExternalHtml, LoadStringError, load_string};
 
 use html_diff;
 
-use html::render::reset_ids;
+use html::render::{render_text, reset_ids};
 use html::escape::Escape;
-use html::render::{USED_ID_MAP, render_difference};
+use html::render::render_difference;
 use html::markdown;
 use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, old_find_testable_code};
 use html::markdown::RenderType;
@@ -101,19 +101,11 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     let (hoedown_output, pulldown_output) = if include_toc {
         // Save the state of USED_ID_MAP so it only gets updated once even
         // though we're rendering twice.
-        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
-        let hoedown_output = format!("{}", MarkdownWithToc(text, RenderType::Hoedown));
-        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
-        let pulldown_output = format!("{}", MarkdownWithToc(text, RenderType::Pulldown));
-        (hoedown_output, pulldown_output)
+        render_text(|ty| format!("{}", MarkdownWithToc(text, ty)))
     } else {
         // Save the state of USED_ID_MAP so it only gets updated once even
         // though we're rendering twice.
-        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
-        let hoedown_output = format!("{}", Markdown(text, RenderType::Hoedown));
-        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
-        let pulldown_output = format!("{}", Markdown(text, RenderType::Pulldown));
-        (hoedown_output, pulldown_output)
+        render_text(|ty| format!("{}", Markdown(text, ty)))
     };
 
     let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
