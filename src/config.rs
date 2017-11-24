@@ -613,10 +613,8 @@ create_config! {
                                              threshold.";
     remove_blank_lines_at_start_or_end_of_block: bool, true, false,
         "Remove blank lines at start or end of a block";
-    attributes_on_same_line_as_field: bool, true, false,
-        "Try to put attributes on the same line as fields.";
-    attributes_on_same_line_as_variant: bool, true, false,
-        "Try to put attributes on the same line as variants in enum declarations.";
+    same_line_attributes: bool, true, false,
+        "Try to put attributes on the same line as fields and variants.";
     multiline_closure_forces_block: bool, false, false,
         "Force multiline closure bodies to be wrapped in a block";
     multiline_match_arm_forces_block: bool, false, false,

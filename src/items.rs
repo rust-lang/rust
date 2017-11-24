@@ -567,8 +567,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         let attrs_extendable = attrs_str.is_empty()
-            || (context.config.attributes_on_same_line_as_variant()
-                && is_attributes_extendable(&attrs_str));
+            || (context.config.same_line_attributes() && is_attributes_extendable(&attrs_str));
         combine_strs_with_missing_comments(
             &context,
             &attrs_str,
@@ -1450,8 +1449,7 @@ pub fn rewrite_struct_field(
 
     let attrs_str = field.attrs.rewrite(context, shape)?;
     let attrs_extendable = attrs_str.is_empty()
-        || (context.config.attributes_on_same_line_as_field()
-            && is_attributes_extendable(&attrs_str));
+        || (context.config.same_line_attributes() && is_attributes_extendable(&attrs_str));
     let missing_span = if field.attrs.is_empty() {
         mk_sp(field.span.lo(), field.span.lo())
     } else {

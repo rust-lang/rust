@@ -296,9 +296,9 @@ let lorem = vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "
 #### Lines longer than `array_width`:
 See [`indent_style`](#indent_style).
 
-## `attributes_on_same_line_as_field`
+## `same_line_attributes`
 
-Try to put attributes on the same line as fields
+Try to put attributes on the same line as fields and variants
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -310,6 +310,12 @@ struct Lorem {
     #[serde(rename = "Ipsum")] ipsum: usize,
     #[serde(rename = "Dolor")] dolor: usize,
     #[serde(rename = "Amet")] amet: usize,
+}
+
+enum Lorem {
+    #[serde(skip_serializing)] Ipsum,
+    #[serde(skip_serializing)] Dolor,
+    #[serde(skip_serializing)] Amet,
 }
 ```
 
@@ -324,28 +330,7 @@ struct Lorem {
     #[serde(rename = "Amet")]
     amet: usize,
 }
-```
 
-## `attributes_on_same_line_as_variant`
-
-Try to put attributes on the same line as variants
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-
-#### `true` (default):
-
-```rust
-enum Lorem {
-    #[serde(skip_serializing)] Ipsum,
-    #[serde(skip_serializing)] Dolor,
-    #[serde(skip_serializing)] Amet,
-}
-```
-
-#### `false`:
-
-```rust
 enum Lorem {
     #[serde(skip_serializing)]
     Ipsum,
@@ -355,6 +340,7 @@ enum Lorem {
     Amet,
 }
 ```
+
 
 ## `binop_separator`
 
