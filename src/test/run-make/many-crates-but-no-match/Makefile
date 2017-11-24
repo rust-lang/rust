@@ -29,6 +29,5 @@ all:
 	$(RUSTC) -L $(A2) -L $(A3) crateC.rs >$(LOG) 2>&1 || true
 	grep "found possibly newer version of crate \`crateA\` which \`crateB\` depends on" $(LOG)
 	grep "note: perhaps that crate needs to be recompiled?" $(LOG)
-	grep "note: crate \`crateA\` path #1:" $(LOG)
-	grep "note: crate \`crateA\` path #2:" $(LOG)
-	grep "note: crate \`crateB\` path #1:" $(LOG)
+	grep "crate \`crateA\`:" $(LOG)  # this will match two entries
+	grep "crate \`crateB\`:" $(LOG)
