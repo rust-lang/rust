@@ -440,27 +440,6 @@ let lorem = ipsum.dolor().sit().amet().consectetur().adipiscing().elit();
 #### Lines longer than `chain_width`:
 See [`chain_indent`](#chain_indent).
 
-## `chain_split_single_child`
-
-Split a chain with a single child if its length exceeds [`chain_width`](#chain_width).
-
-- **Default value**: `false`
-- **Possible values**: `false`, `true`
-
-#### `false` (default):
-
-```rust
-let files = fs::read_dir("tests/coverage/source").expect("Couldn't read source dir");
-```
-
-#### `true`:
-
-```rust
-let files = fs::read_dir("tests/coverage/source")
-    .expect("Couldn't read source dir");
-```
-
-See also [`chain_width`](#chain_width).
 
 ## `combine_control_expr`
 
