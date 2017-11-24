@@ -168,7 +168,7 @@ mod prim_bool { }
 /// [`Debug`]: fmt/trait.Debug.html
 /// [`Default`]: default/trait.Default.html
 ///
-#[stable(feature = "rust1", since = "1.23.0")]
+#[unstable(feature = "never_type_impls", issue = "35121")]
 mod prim_never { }
 
 #[doc(primitive = "char")]
