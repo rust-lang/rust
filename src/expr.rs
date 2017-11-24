@@ -2632,6 +2632,12 @@ pub fn choose_rhs<R: Rewrite>(
             let new_indent_str = &new_shape.indent.to_string(context.config);
 
             match (orig_rhs, new_rhs) {
+                (Some(ref orig_rhs), Some(ref new_rhs))
+                    if wrap_str(new_rhs.clone(), context.config.max_width(), new_shape)
+                        .is_none() =>
+                {
+                    Some(format!(" {}", orig_rhs))
+                }
                 (Some(ref orig_rhs), Some(ref new_rhs)) if prefer_next_line(orig_rhs, new_rhs) => {
                     Some(format!("\n{}{}", new_indent_str, new_rhs))
                 }
