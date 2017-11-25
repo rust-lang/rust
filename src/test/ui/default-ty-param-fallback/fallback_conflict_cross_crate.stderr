@@ -1,0 +1,10 @@
+error[E0282]: type annotations needed
+  --> $DIR/fallback_conflict_cross_crate.rs:22:15
+   |
+22 |     let foo = bleh();
+   |         ---   ^^^^ cannot infer type for `A`
+   |         |
+   |         consider giving `foo` a type
+
+error: aborting due to previous error
+

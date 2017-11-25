@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/fallback_conflict.rs:22:9
+   |
+22 |     let x = foo();
+   |         ^
+   |         |
+   |         cannot infer type for `_`
+   |         consider giving `x` a type
+
+error: aborting due to previous error
+

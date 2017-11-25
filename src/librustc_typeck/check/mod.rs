@@ -90,7 +90,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
 use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
-use rustc::infer::type_variable::{TypeVariableOrigin, Default};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
@@ -2185,13 +2185,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// will have `String` as its default.
     ///
     /// Adding a default to a type parameter that has none should be backwards compatible.
-    /// However if we get conflicting defaults we do not know how to resolve them.
-    /// Therefore we must future-proof against such a conflict by not allowing
-    /// type variables with defaults to unify with type variables without defaults.
+    /// Therefore we take care to future-proof against conflicting defaults.
     ///
-    /// We may come up with rules to prioritize a type parameter over another.
-    /// When unifying type variables, the highest priority parameter involved
-    /// has the final say on what the default should be.
     /// Currently we prioritize defaults from impls and fns over defaults in types,
     /// this for example allows `fn foo<T=String>(x: Option<T>)` to work
     /// even though `Option<T>` has no default for `T`.
@@ -2215,10 +2210,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 bags.entry(root).or_insert(Vec::new()).push(vid);
             }
         }
-        // A bag will successfuly fallback to a default if all of it's variables
-        // have a default, and that default is the same.
-        // Low priority variables will be ignored in the presence of higher priority variables.
-        'bags: for (_, mut bag) in bags.into_iter() {
+
+        // Attempt to find a fallback for each bag.
+        for (_, bag) in bags {
             // Partition the bag by the origin of the type param.
             let (fn_or_impl, ty_def) = bag.into_iter().partition(|&v| {
                 match self.infcx.type_variables.borrow().var_origin(v) {
@@ -2228,37 +2222,53 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => bug!("type var does not support fallback")
                 }
             });
-            // Params from fns or impls take priority, if they exist ignore the rest of the bag.
-            bag = fn_or_impl;
-            if bag.is_empty() {
-                bag = ty_def;
-            }
-            // For future-proofing against conflicting defaults,
-            // if one of the variables has no default, nothing is unified.
-            for &vid in &bag {
-                let default = self.infcx.type_variables.borrow().default(vid).clone();
-                debug!("apply_user_type_parameter_fallback: \
-                        checking var: {:?} with default: {:?}", vid, default);
-                match default {
-                    Default::User(_) => {},
-                    _ => continue 'bags,
+            // Params from fns or impls have higher priority than those from type definitions.
+            // We consider the priority levels in order and stop at the first success or failure:
+            // We succeed if all defaults exist and agree.
+            // We fail if existing defaults agree but there are missing defaults.
+            // We continue if the priority level is empty or if there are any disagreements.
+            let priority_levels: Vec<Vec<ty::TyVid>> = vec![fn_or_impl, ty_def];
+            'priority_levels: for priority_level in priority_levels {
+                if priority_level.is_empty() {
+                    continue;
                 }
-            }
-            for &vid in &bag {
-                // If future-proof, then all vars have defaults.
-                let default = self.infcx.type_variables.borrow().default(vid).clone();
-                let ty = self.tcx.mk_var(vid);
-                debug!("apply_user_type_parameter_fallback: applying fallback to var: {:?} \
-                        with ty: {:?} with default: {:?}", vid, ty, default);
-                if let Default::User(user_default) = default {
-                    let normalized_default = self.normalize_associated_types_in(
-                                        user_default.origin_span,
-                                        &user_default.ty);
-                // QUESTION(leodasvacas):
-                // This will emit "expected type mismatch" on conflicting defaults, which is bad.
-                // I'd be happy to somehow detect or rollback this demand on conflict defaults
-                // so we would emit "type annotations needed" instead.
-                    self.demand_eqtype(user_default.origin_span, &ty, normalized_default);
+                let normalized_default = |&vid| {
+                    let default = self.infcx.type_variables.borrow().default(vid).get_user();
+                    default.map(|d| self.normalize_associated_types_in(d.origin_span, &d.ty))
+                };
+                let mut existing_defaults = priority_level.iter().filter_map(&normalized_default);
+                let equivalent_default = match existing_defaults.next() {
+                    Some(default) => default,
+                    None => break, // Failed, no params have defaults at this level.
+                };
+
+                // If there are conflicting defaults, skip this level.
+                // FIXME(leodasvacas):  In a case like `impl<X: Default=u32, Y = <X as Id>::This>`,
+                // as found in the test "dependent_associated_type.rs",
+                // if `Y` is normalized before the default of `X` is applied,
+                // then it's normalized to `TyInfer`, so we use a fragile workaround here.
+                // If it is `Y = Vec<<X as Id>::This>` we are in trouble again.
+                // Type equality that considers all inference variables equal is a correct fix.
+                if existing_defaults.any(|default| match (&default.sty, &equivalent_default.sty) {
+                                                        (&ty::TyInfer(_), &ty::TyInfer(_)) => false,
+                                                        (ref a, ref b) => **a != **b
+                                                    })
+                 {
+                    debug!("apply_user_type_parameter_fallback: skipping priority level");
+                    continue;
+                }
+                // All existing defaults agree, but for future-proofing
+                // we must fail if there is a param with no default.
+                if priority_level.iter().any(|vid| normalized_default(vid) == None) {
+                    break;
+                }
+                // All defaults exist and agree, apply the default and succeed.
+                for &vid in &priority_level {
+                    let ty = self.tcx.mk_var(vid);
+                    debug!("apply_user_type_parameter_fallback: applying fallback to var: {:?} \
+                        with ty: {:?} with default: {:?}", vid, ty, equivalent_default);
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, &ty, equivalent_default);
+                    break 'priority_levels;
                 }
             }
         }

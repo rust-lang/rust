@@ -92,6 +92,16 @@ pub enum Default<'tcx> {
     None,
 }
 
+impl<'tcx> Default<'tcx> {
+    pub fn get_user(&self) -> Option<UserDefault<'tcx>> {
+        match *self {
+            Default::User(ref user_default) => Some(user_default.clone()),
+            Default::None => None,
+            _ => bug!("Default exists but is not user"),
+        }
+    }
+}
+
 // We will use this to store the required information to recapitulate
 // what happened when an error occurs.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
