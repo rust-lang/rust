@@ -530,7 +530,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         if lifetime_ref.is_elided() {
-            self.resolve_elided_lifetimes(slice::ref_slice(lifetime_ref));
+            self.resolve_elided_lifetimes(slice::ref_slice(lifetime_ref), false);
             return;
         }
         if lifetime_ref.is_static() {
@@ -1114,7 +1114,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
 
         if params.lifetimes.iter().all(|l| l.is_elided()) {
-            self.resolve_elided_lifetimes(&params.lifetimes);
+            self.resolve_elided_lifetimes(&params.lifetimes, true);
         } else {
             for l in &params.lifetimes { self.visit_lifetime(l); }
         }
@@ -1445,7 +1445,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     }
 
-    fn resolve_elided_lifetimes(&mut self, lifetime_refs: &[hir::Lifetime]) {
+    fn resolve_elided_lifetimes(&mut self, lifetime_refs: &[hir::Lifetime], deprecated: bool) {
         if lifetime_refs.is_empty() {
             return;
         }

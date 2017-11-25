@@ -216,6 +216,12 @@ declare_lint! {
     "detect mut variables which don't need to be mutable"
 }
 
+declare_lint! {
+    pub ELIDED_LIFETIME_IN_PATH,
+    Allow,
+    "hidden lifetime parameters are deprecated, try `Foo<'_>`"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -256,7 +262,8 @@ impl LintPass for HardwiredLints {
             LATE_BOUND_LIFETIME_ARGUMENTS,
             DEPRECATED,
             UNUSED_UNSAFE,
-            UNUSED_MUT
+            UNUSED_MUT,
+            ELIDED_LIFETIME_IN_PATH
         )
     }
 }
