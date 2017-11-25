@@ -377,11 +377,10 @@
                 results = {},
                 split = valLower.split("::");
 
-            // remove empty keywords
-            for (var j = 0; j < split.length; ++j) {
-                split[j].toLowerCase();
-                if (split[j] === "") {
-                    split.splice(j, 1);
+            for (var z = 0; z < split.length; ++z) {
+                if (split[z] === "") {
+                    split.splice(z, 1);
+                    z -= 1;
                 }
             }
 
@@ -408,9 +407,7 @@
                     if (obj.generics &&
                         obj.generics.length >= val.generics.length) {
                         var elems = obj.generics.slice(0);
-                        for (var y = 0;
-                             y < val.generics.length;
-                             ++y) {
+                        for (var y = 0; y < val.generics.length; ++y) {
                             // The point here is to find the type that matches the most.
                             var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
                             for (var x = 0; x < elems.length; ++x) {
@@ -530,6 +527,49 @@
                     }
                 }
                 return literalSearch === true ? false : lev_distance;
+            }
+
+            function checkPath(startsWith, lastElem, ty) {
+                var ret_lev = MAX_LEV_DISTANCE + 1;
+                var path = ty.path.split("::");
+
+                if (ty.parent && ty.parent.name) {
+                    path.push(ty.parent.name.toLowerCase());
+                }
+
+                if (startsWith.length > path.length) {
+                    return MAX_LEV_DISTANCE + 1;
+                }
+                for (var i = 0; i < path.length; ++i) {
+                    if (i + startsWith.length > path.length) {
+                        break;
+                    }
+                    var lev_total = 0;
+                    var aborted = false;
+                    for (var x = 0; x < startsWith.length; ++x) {
+                        var lev = levenshtein(path[i + x], startsWith[x]);
+                        if (lev > MAX_LEV_DISTANCE) {
+                            aborted = true;
+                            break;
+                        }
+                        lev_total += lev;
+                    }
+                    if (aborted === false) {
+                        var extra = MAX_LEV_DISTANCE + 1;
+                        if (i + startsWith.length < path.length) {
+                            extra = levenshtein(path[i + startsWith.length], lastElem);
+                        }
+                        if (extra > MAX_LEV_DISTANCE) {
+                            extra = levenshtein(ty.name, lastElem);
+                        }
+                        if (extra < MAX_LEV_DISTANCE + 1) {
+                            lev_total += extra;
+                            ret_lev = Math.min(ret_lev,
+                                               Math.round(lev_total / (startsWith.length + 1)));
+                        }
+                    }
+                }
+                return ret_lev;
             }
 
             function typePassesFilter(filter, type) {
@@ -668,85 +708,106 @@
                 query.search = val;
                 // gather matching search results up to a certain maximum
                 val = val.replace(/\_/g, "");
-                var valGenerics = extractGenerics(val);
-                var results_length = 0;
-                for (var i = 0; i < split.length; ++i) {
-                    for (var j = 0; j < nSearchWords; ++j) {
-                        var lev_distance;
-                        var ty = searchIndex[j];
-                        if (!ty) {
-                            continue;
-                        }
-                        var returned = false;
-                        var in_args = false;
-                        var index = -1;
-                        // we want lev results to go lower than others
-                        var lev = MAX_LEV_DISTANCE;
-                        var fullId = itemTypes[ty.ty] + ty.path + ty.name;
 
-                        if (searchWords[j].indexOf(split[i]) > -1 ||
-                            searchWords[j].indexOf(val) > -1 ||
-                            searchWords[j].replace(/_/g, "").indexOf(val) > -1)
-                        {
-                            // filter type: ... queries
-                            if (typePassesFilter(typeFilter, ty) &&
-                                results[fullId] === undefined) {
-                                index = searchWords[j].replace(/_/g, "").indexOf(val);
+                var results_length = 0;
+                var valGenerics = extractGenerics(val);
+
+                var paths = valLower.split("::");
+                var j;
+                for (j = 0; j < paths.length; ++j) {
+                    if (paths[j] === "") {
+                        paths.splice(j, 1);
+                        j -= 1;
+                    }
+                }
+                val = paths[paths.length - 1];
+                var startsWith = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
+
+                for (j = 0; j < nSearchWords; ++j) {
+                    var lev_distance;
+                    var ty = searchIndex[j];
+                    if (!ty) {
+                        continue;
+                    }
+                    var lev_add = 0;
+                    if (paths.length > 1) {
+                        var lev = checkPath(startsWith, paths[paths.length - 1], ty);
+                        if (lev > MAX_LEV_DISTANCE) {
+                            continue;
+                        } else if (lev > 0) {
+                            lev_add = 1;
+                        }
+                    }
+
+                    var returned = false;
+                    var in_args = false;
+                    var index = -1;
+                    // we want lev results to go lower than others
+                    var lev = MAX_LEV_DISTANCE + 1;
+                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
+
+                    if (searchWords[j].indexOf(val) > -1 ||
+                        searchWords[j].replace(/_/g, "").indexOf(val) > -1)
+                    {
+                        // filter type: ... queries
+                        if (typePassesFilter(typeFilter, ty) &&
+                            results[fullId] === undefined) {
+                            index = searchWords[j].replace(/_/g, "").indexOf(val);
+                        }
+                    }
+                    if ((lev_distance = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
+                        if (typePassesFilter(typeFilter, ty) &&
+                            (results[fullId] === undefined ||
+                             results[fullId].lev > lev_distance)) {
+                            lev = Math.min(lev, lev_distance);
+                            index = Math.max(0, index);
+                        }
+                    }
+                    if ((lev_distance = findArg(searchIndex[j], valGenerics))
+                        <= MAX_LEV_DISTANCE) {
+                        if (typePassesFilter(typeFilter, ty) &&
+                            (results[fullId] === undefined ||
+                             results[fullId].lev > lev_distance)) {
+                            in_args = true;
+                            lev = Math.min(lev_distance, lev);
+                            index = Math.max(0, index);
+                        }
+                    }
+                    if ((lev_distance = checkReturned(searchIndex[j], valGenerics)) <=
+                        MAX_LEV_DISTANCE) {
+                        if (typePassesFilter(typeFilter, ty) &&
+                            (results[fullId] === undefined ||
+                             results[fullId].lev > lev_distance)) {
+                            returned = true;
+                            lev = Math.min(lev_distance, lev);
+                            index = Math.max(0, index);
+                        }
+                    }
+                    lev += lev_add;
+                    if (index !== -1) {
+                        if (results[fullId] === undefined) {
+                            results[fullId] = {
+                                id: j,
+                                index: index,
+                                lev: lev,
+                                in_args: in_args,
+                                returned: returned,
+                            };
+                            results_length += 1;
+                        } else {
+                            if (results[fullId].lev > lev) {
+                                results[fullId].lev = lev;
+                            }
+                            if (in_args === true) {
+                                results[fullId].in_args = true;
+                            }
+                            if (returned === true) {
+                                results[fullId].returned = true;
                             }
                         }
-                        if ((lev_distance = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, ty) &&
-                                (results[fullId] === undefined ||
-                                 results[fullId].lev > lev_distance)) {
-                                lev = Math.min(lev, lev_distance);
-                                index = Math.max(0, index);
-                            }
-                        }
-                        if ((lev_distance = findArg(searchIndex[j], valGenerics))
-                            <= MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, ty) &&
-                                (results[fullId] === undefined ||
-                                 results[fullId].lev > lev_distance)) {
-                                in_args = true;
-                                lev = Math.min(lev_distance, lev);
-                                index = Math.max(0, index);
-                            }
-                        }
-                        if ((lev_distance = checkReturned(searchIndex[j], valGenerics)) <=
-                            MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, ty) &&
-                                (results[fullId] === undefined ||
-                                 results[fullId].lev > lev_distance)) {
-                                returned = true;
-                                lev = Math.min(lev_distance, lev);
-                                index = Math.max(0, index);
-                            }
-                        }
-                        if (index !== -1) {
-                            if (results[fullId] === undefined) {
-                                results[fullId] = {
-                                    id: j,
-                                    index: index,
-                                    lev: lev,
-                                    in_args: in_args,
-                                    returned: returned,
-                                };
-                                results_length += 1;
-                            } else {
-                                if (results[fullId].lev > lev) {
-                                    results[fullId].lev = lev;
-                                }
-                                if (in_args === true) {
-                                    results[fullId].in_args = true;
-                                }
-                                if (returned === true) {
-                                    results[fullId].returned = true;
-                                }
-                            }
-                        }
-                        if (results_length === max) {
-                            break;
-                        }
+                    }
+                    if (results_length === max) {
+                        break;
                     }
                 }
             }
@@ -837,16 +898,14 @@
                 var result = results[i];
 
                 // this validation does not make sense when searching by types
-                if (result.dontValidate) {
+                if (result.dontValidate || result.returned === true && result.param === true) {
                     continue;
                 }
                 var name = result.item.name.toLowerCase(),
                     path = result.item.path.toLowerCase(),
                     parent = result.item.parent;
 
-                if (result.returned === false && result.param === false &&
-                    validateResult(name, path, split, parent) === false)
-                {
+                if (validateResult(name, path, split, parent) === false) {
                     result.id = -1;
                 }
             }
