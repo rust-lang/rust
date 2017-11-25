@@ -34,11 +34,13 @@ error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:27:17
    |
 27 |   let w: &str = s[..2];
-   |                 ^^^^^^ expected &str, found str
+   |                 ^^^^^^
+   |                 |
+   |                 expected &str, found str
+   |                 help: consider borrowing here: `&s[..2]`
    |
    = note: expected type `&str`
               found type `str`
-   = help: try with `&s[..2]`
 
 error: aborting due to 4 previous errors
 
