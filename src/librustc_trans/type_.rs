@@ -286,4 +286,8 @@ impl Type {
             Type::i8(ccx)
         }
     }
+
+    pub fn x86_mmx(ccx: &CrateContext) -> Type {
+        ty!(llvm::LLVMX86MMXTypeInContext(ccx.llcx()))
+    }
 }

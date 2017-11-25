@@ -540,6 +540,22 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             }
         }
 
+        "nontemporal_store" => {
+            let tp_ty = substs.type_at(0);
+            let dst = args[0].deref(bcx.ccx);
+            let val = if let OperandValue::Ref(ptr, align) = args[1].val {
+                bcx.load(ptr, align.non_abi())
+            } else {
+                from_immediate(bcx, args[1].immediate())
+            };
+            let ptr = bcx.pointercast(dst.llval, val_ty(val).ptr_to());
+            let store = bcx.nontemporal_store(val, ptr);
+            unsafe {
+                llvm::LLVMSetAlignment(store, ccx.align_of(tp_ty).abi() as u32);
+            }
+            return
+        }
+
         _ => {
             let intr = match Intrinsic::find(&name) {
                 Some(intr) => intr,

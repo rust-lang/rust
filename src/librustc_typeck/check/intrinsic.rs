@@ -318,6 +318,10 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (0, vec![ptr_ty, tcx.types.usize], tcx.types.usize)
             },
 
+            "nontemporal_store" => {
+                (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil())
+            }
+
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
                                 "unrecognized intrinsic function: `{}`",
