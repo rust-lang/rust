@@ -9,5 +9,6 @@
 // except according to those terms.
 
 pub S {
+//~^ ERROR missing `struct` for struct definition
 }
 fn main() {}
