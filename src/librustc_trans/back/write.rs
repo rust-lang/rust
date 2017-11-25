@@ -1402,8 +1402,9 @@ fn start_executing_work(tcx: TyCtxt,
         // for doesn't require full LTO. Some targets require one LLVM module
         // (they effectively don't have a linker) so it's up to us to use LTO to
         // link everything together.
-        thinlto: sess.opts.debugging_opts.thinlto &&
-            !sess.target.target.options.requires_lto,
+        thinlto: sess.thinlto() &&
+            !sess.target.target.options.requires_lto &&
+            unsafe { llvm::LLVMRustThinLTOAvailable() },
 
         no_landing_pads: sess.no_landing_pads(),
         save_temps: sess.opts.cg.save_temps,

@@ -656,30 +656,91 @@ impl Session {
             return n as usize
         }
 
+        // Why is 16 codegen units the default all the time?
+        //
+        // The main reason for enabling multiple codegen units by default is to
+        // leverage the ability for the trans backend to do translation and
+        // codegen in parallel. This allows us, especially for large crates, to
+        // make good use of all available resources on the machine once we've
+        // hit that stage of compilation. Large crates especially then often
+        // take a long time in trans/codegen and this helps us amortize that
+        // cost.
+        //
+        // Note that a high number here doesn't mean that we'll be spawning a
+        // large number of threads in parallel. The backend of rustc contains
+        // global rate limiting through the `jobserver` crate so we'll never
+        // overload the system with too much work, but rather we'll only be
+        // optimizing when we're otherwise cooperating with other instances of
+        // rustc.
+        //
+        // Rather a high number here means that we should be able to keep a lot
+        // of idle cpus busy. By ensuring that no codegen unit takes *too* long
+        // to build we'll be guaranteed that all cpus will finish pretty closely
+        // to one another and we should make relatively optimal use of system
+        // resources
+        //
+        // Note that the main cost of codegen units is that it prevents LLVM
+        // from inlining across codegen units. Users in general don't have a lot
+        // of control over how codegen units are split up so it's our job in the
+        // compiler to ensure that undue performance isn't lost when using
+        // codegen units (aka we can't require everyone to slap `#[inline]` on
+        // everything).
+        //
+        // If we're compiling at `-O0` then the number doesn't really matter too
+        // much because performance doesn't matter and inlining is ok to lose.
+        // In debug mode we just want to try to guarantee that no cpu is stuck
+        // doing work that could otherwise be farmed to others.
+        //
+        // In release mode, however (O1 and above) performance does indeed
+        // matter! To recover the loss in performance due to inlining we'll be
+        // enabling ThinLTO by default (the function for which is just below).
+        // This will ensure that we recover any inlining wins we otherwise lost
+        // through codegen unit partitioning.
+        //
+        // ---
+        //
+        // Ok that's a lot of words but the basic tl;dr; is that we want a high
+        // number here -- but not too high. Additionally we're "safe" to have it
+        // always at the same number at all optimization levels.
+        //
+        // As a result 16 was chosen here! Mostly because it was a power of 2
+        // and most benchmarks agreed it was roughly a local optimum. Not very
+        // scientific.
         match self.opts.optimize {
-            // If we're compiling at `-O0` then default to 16 codegen units.
-            // The number here shouldn't matter too too much as debug mode
-            // builds don't rely on performance at all, meaning that lost
-            // opportunities for inlining through multiple codegen units is
-            // a non-issue.
-            //
-            // Note that the high number here doesn't mean that we'll be
-            // spawning a large number of threads in parallel. The backend
-            // of rustc contains global rate limiting through the
-            // `jobserver` crate so we'll never overload the system with too
-            // much work, but rather we'll only be optimizing when we're
-            // otherwise cooperating with other instances of rustc.
-            //
-            // Rather the high number here means that we should be able to
-            // keep a lot of idle cpus busy. By ensuring that no codegen
-            // unit takes *too* long to build we'll be guaranteed that all
-            // cpus will finish pretty closely to one another and we should
-            // make relatively optimal use of system resources
             config::OptLevel::No => 16,
+            _ => 1, // FIXME(#46346) this should be 16
+        }
+    }
 
-            // All other optimization levels default use one codegen unit,
-            // the historical default in Rust for a Long Time.
-            _ => 1,
+    /// Returns whether ThinLTO is enabled for this compilation
+    pub fn thinlto(&self) -> bool {
+        // If processing command line options determined that we're incompatible
+        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
+        if let Some(enabled) = self.opts.cli_forced_thinlto {
+            return enabled
+        }
+
+        // If explicitly specified, use that with the next highest priority
+        if let Some(enabled) = self.opts.debugging_opts.thinlto {
+            return enabled
+        }
+
+        // If there's only one codegen unit and LTO isn't enabled then there's
+        // no need for ThinLTO so just return false.
+        if self.codegen_units() == 1 && !self.lto() {
+            return false
+        }
+
+        // Right now ThinLTO isn't compatible with incremental compilation.
+        if self.opts.incremental.is_some() {
+            return false
+        }
+
+        // Now we're in "defaults" territory. By default we enable ThinLTO for
+        // optimized compiles (anything greater than O0).
+        match self.opts.optimize {
+            config::OptLevel::No => false,
+            _ => true,
         }
     }
 }
