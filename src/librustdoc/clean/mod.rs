@@ -3118,6 +3118,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Struct(i) => (i, TypeKind::Struct),
         Def::Union(i) => (i, TypeKind::Union),
         Def::Mod(i) => (i, TypeKind::Module),
+        Def::TyForeign(i) => (i, TypeKind::Foreign),
         Def::Static(i, _) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent_def_id(i).unwrap(), TypeKind::Enum),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
