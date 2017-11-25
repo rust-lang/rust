@@ -10,6 +10,8 @@
 
 #![deny(warnings)]
 
+#![feature(allocator_api)]
+#![feature(alloc_system)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
@@ -29,6 +31,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 
+extern crate alloc_system;
 extern crate std_unicode;
 extern crate rand;
 
@@ -39,6 +42,7 @@ mod binary_heap;
 mod btree;
 mod cow_str;
 mod fmt;
+mod heap;
 mod linked_list;
 mod slice;
 mod str;
