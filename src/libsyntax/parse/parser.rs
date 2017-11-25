@@ -1295,7 +1295,6 @@ impl<'a> Parser<'a> {
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             let (generics, TyParam {ident, bounds, default, ..}) =
                 self.parse_trait_item_assoc_ty(vec![])?;
-            self.expect(&token::Semi)?;
             (ident, TraitItemKind::Type(bounds, default), generics)
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
@@ -4464,6 +4463,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        self.expect(&token::Semi)?;
 
         Ok((generics, TyParam {
             attrs: preceding_attrs.into(),

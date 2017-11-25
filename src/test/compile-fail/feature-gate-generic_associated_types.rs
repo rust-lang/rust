@@ -10,8 +10,15 @@
 
 use std::ops::Deref;
 
-trait PointerFamily {
+trait PointerFamily<U> {
     type Pointer<T>: Deref<Target = T>;
+    type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
+}
+
+struct Foo;
+impl PointerFamily<u32> for Foo {
+    type Pointer<usize> = Box<usize>;
+    type Pointer2<u32> = Box<u32>;
 }
 
 fn main() {}

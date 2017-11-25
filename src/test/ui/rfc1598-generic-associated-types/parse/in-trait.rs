@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Zparse-only
+// compile-flags: -Z parse-only
 
 #![feature(generic_associated_types)]
+
+use std::ops::Deref;
 
 trait Foo {
     type Bar<'a>;
@@ -20,6 +22,11 @@ trait Foo {
     type Bar<'a, 'b, T, U>;
     type Bar<'a, 'b, T, U,>;
     type Bar<'a, 'b, T: Debug, U,>;
+    type Bar<'a, 'b, T: Debug, U,>: Debug;
+    type Bar<'a, 'b, T: Debug, U,>: Deref<Target = T> + Into<U>;
+    type Bar<'a, 'b, T: Debug, U,> where T: Deref<Target = U>, U: Into<T>;
+    type Bar<'a, 'b, T: Debug, U,>: Deref<Target = T> + Into<U>
+        where T: Deref<Target = U>, U: Into<T>;
 }
 
 fn main() {}

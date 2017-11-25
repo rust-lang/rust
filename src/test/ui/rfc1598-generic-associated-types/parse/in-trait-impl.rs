@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Zparse-only
+// compile-flags: -Z parse-only
 
 #![feature(generic_associated_types)]
 
 impl<T> Baz for T where T: Foo {
+    //FIXME(sunjay): This should parse successfully
     type Quux<'a> = <T as Foo>::Bar<'a, 'static>;
 }
 
