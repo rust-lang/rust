@@ -220,6 +220,28 @@ impl<T> LinkedList<T> {
             node
         })
     }
+
+    /// Unlinks the specified node from the current list.
+    ///
+    /// Warning: this will not check that the provided node belongs to the current list.
+    #[inline]
+    unsafe fn unlink_node(&mut self, mut node: Shared<Node<T>>) {
+        let node = node.as_mut();
+
+        match node.prev {
+            Some(mut prev) => prev.as_mut().next = node.next.clone(),
+            // this node is the head node
+            None => self.head = node.next.clone(),
+        };
+
+        match node.next {
+            Some(mut next) => next.as_mut().prev = node.prev.clone(),
+            // this node is the tail node
+            None => self.tail = node.prev.clone(),
+        };
+
+        self.len -= 1;
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -720,6 +742,50 @@ impl<T> LinkedList<T> {
         self.len = at;
 
         second_part
+    }
+
+    /// Removes any element matching the given predicate. Returns the elements which were removed
+    /// in a new list.
+    ///
+    /// This operation should compute in O(n) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(linked_list_remove_if)]
+    ///
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut d = LinkedList::new();
+    /// d.push_back(1);
+    /// d.push_back(2);
+    /// d.push_back(3);
+    /// assert_eq!(d.remove_if(|v| *v < 3).len(), 2);
+    /// assert_eq!(d.len(), 1);
+    /// ```
+    #[unstable(feature = "linked_list_remove_if",
+               reason = "experimental method",
+               issue = "0")]
+    pub fn remove_if<P>(&mut self, predicate: P) -> LinkedList<T>
+        where P: Fn(&T) -> bool
+    {
+        let mut deleted = LinkedList::new();
+
+        let mut it = self.head;
+
+        while let Some(node) = it {
+            unsafe {
+                it = node.as_ref().next;
+
+                if predicate(&node.as_ref().element) {
+                    self.unlink_node(node);
+                    // move the unlinked node into the deleted list.
+                    deleted.push_back_node(Box::from_raw(node.as_ptr()));
+                }
+            }
+        }
+
+        deleted
     }
 
     /// Returns a place for insertion at the front of the list.
@@ -1501,5 +1567,18 @@ mod tests {
             assert_eq!(a, b);
         }
         assert_eq!(i, v.len());
+    }
+
+    #[test]
+    fn remove_if_test() {
+        let mut m: LinkedList<u32> = LinkedList::new();
+        m.extend(&[1, 2, 3, 4, 5, 6]);
+        let deleted = m.remove_if(|v| *v < 4);
+
+        check_links(&m);
+        check_links(&deleted);
+
+        assert_eq!(deleted.into_iter().collect::<Vec<_>>(), &[1, 2, 3]);
+        assert_eq!(m.into_iter().collect::<Vec<_>>(), &[4, 5, 6]);
     }
 }
