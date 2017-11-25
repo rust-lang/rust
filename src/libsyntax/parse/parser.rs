@@ -5490,7 +5490,7 @@ impl<'a> Parser<'a> {
             if token_str == ";" {
                 err.note("consider removing the semicolon");
             }
-            return Err();
+            return Err(err);
         }
 
         let hi = if self.span == syntax_pos::DUMMY_SP {
