@@ -10,10 +10,10 @@
 
 //! Performs various peephole optimizations.
 
-use rustc::mir::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
+use rustc::mir::{Constant, Literal, Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::visit::{MutVisitor, Visitor};
-use rustc::ty::TyCtxt;
-use rustc::util::nodemap::FxHashSet;
+use rustc::ty::{TyCtxt, TypeVariants};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::Idx;
 use std::mem;
 use transform::{MirPass, MirSource};
@@ -44,11 +44,11 @@ impl MirPass for InstCombine {
     }
 }
 
-pub struct InstCombineVisitor {
-    optimizations: OptimizationList,
+pub struct InstCombineVisitor<'tcx> {
+    optimizations: OptimizationList<'tcx>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor {
+impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
             debug!("Replacing `&*`: {:?}", rvalue);
@@ -62,6 +62,11 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor {
             *rvalue = Rvalue::Use(Operand::Consume(new_lvalue))
         }
 
+        if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
+            debug!("Replacing `Len([_; N])`: {:?}", rvalue);
+            *rvalue = Rvalue::Use(Operand::Constant(box constant));
+        }
+
         self.super_rvalue(rvalue, location)
     }
 }
@@ -70,7 +75,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor {
 struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
     mir: &'b Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    optimizations: OptimizationList,
+    optimizations: OptimizationList<'tcx>,
 }
 
 impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
@@ -93,11 +98,23 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
             }
         }
 
+        if let Rvalue::Len(ref lvalue) = *rvalue {
+            let lvalue_ty = lvalue.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
+            if let TypeVariants::TyArray(_, len) = lvalue_ty.sty {
+                let span = self.mir.source_info(location).span;
+                let ty = self.tcx.types.usize;
+                let literal = Literal::Value { value: len };
+                let constant = Constant { span, ty, literal };
+                self.optimizations.arrays_lengths.insert(location, constant);
+            }
+        }
+
         self.super_rvalue(rvalue, location)
     }
 }
 
 #[derive(Default)]
-struct OptimizationList {
+struct OptimizationList<'tcx> {
     and_stars: FxHashSet<Location>,
+    arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
 }
