@@ -1108,9 +1108,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         }
     }
 
-    // We must link the sanitizer runtime using -Wl,--whole-archive but since
-    // it's packed in a .rlib, it contains stuff that are not objects that will
-    // make the linker error. So we must remove those bits from the .rlib before
+    // We must link the sanitizer runtime using --whole-archive but since it's
+    // packed in a .rlib, it contains stuff that are not objects that will make
+    // the linker error. So we must remove those bits from the .rlib before
     // linking it.
     fn link_sanitizer_runtime(cmd: &mut Linker,
                               sess: &Session,
@@ -1129,7 +1129,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             // FIXME: Remove this logic into librustc_*san once Cargo supports it
             let rpath = cratepath.parent().unwrap();
             let rpath = rpath.to_str().expect("non-utf8 component in path");
-            cmd.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
+            cmd.args(&["-rpath".into(), rpath.into()]);
         }
 
         let dst = tmpdir.join(cratepath.file_name().unwrap());

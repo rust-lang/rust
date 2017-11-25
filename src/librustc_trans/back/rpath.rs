@@ -26,41 +26,30 @@ pub struct RPathConfig<'a> {
 }
 
 pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
-    // No rpath on windows
-    if !config.has_rpath {
-        return Vec::new();
-    }
-
     let mut flags = Vec::new();
 
-    debug!("preparing the RPATH!");
+    // No rpath on windows
+    if config.has_rpath {
+        debug!("preparing the RPATH!");
 
-    let libs = config.used_crates.clone();
-    let libs = libs.iter().filter_map(|&(_, ref l)| l.option()).collect::<Vec<_>>();
-    let rpaths = get_rpaths(config, &libs);
-    flags.extend_from_slice(&rpaths_to_flags(&rpaths));
+        let libs = config.used_crates.iter().filter_map(|&(_, ref l)| {
+            l.option()
+        }).collect::<Vec<_>>();
 
-    // Use DT_RUNPATH instead of DT_RPATH if available
-    if config.linker_is_gnu {
-        flags.push("-Wl,--enable-new-dtags".to_string());
+        for rpath in get_rpaths(config, &libs) {
+            flags.push("-rpath".into());
+            flags.push(rpath);
+        }
+
+        // Use DT_RUNPATH instead of DT_RPATH if available
+        if config.linker_is_gnu {
+            flags.push("--enable-new-dtags".into());
+        }
     }
 
     flags
 }
 
-fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
-    let mut ret = Vec::new();
-    for rpath in rpaths {
-        if rpath.contains(',') {
-            ret.push("-Wl,-rpath".into());
-            ret.push("-Xlinker".into());
-            ret.push(rpath.clone());
-        } else {
-            ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
-        }
-    }
-    return ret;
-}
 
 fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
     debug!("output: {:?}", config.out_filename.display());
@@ -91,8 +80,7 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
     rpaths.extend_from_slice(&fallback_rpaths);
 
     // Remove duplicates
-    let rpaths = minimize_rpaths(&rpaths);
-    return rpaths;
+    minimize_rpaths(&rpaths)
 }
 
 fn get_rpaths_relative_to_output(config: &mut RPathConfig,
@@ -187,19 +175,8 @@ fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
 #[cfg(all(unix, test))]
 mod tests {
     use super::{RPathConfig};
-    use super::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
+    use super::{minimize_rpaths, get_rpath_relative_to_output};
     use std::path::{Path, PathBuf};
-
-    #[test]
-    fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags(&[
-            "path1".to_string(),
-            "path2".to_string()
-        ]);
-        assert_eq!(flags,
-                   ["-Wl,-rpath,path1",
-                    "-Wl,-rpath,path2"]);
-    }
 
     #[test]
     fn test_minimize1() {
@@ -263,20 +240,5 @@ mod tests {
                                                    Path::new("lib/libstd.so"));
             assert_eq!(res, "$ORIGIN/../lib");
         }
-    }
-
-    #[test]
-    fn test_xlinker() {
-        let args = rpaths_to_flags(&[
-            "a/normal/path".to_string(),
-            "a,comma,path".to_string()
-        ]);
-
-        assert_eq!(args, vec![
-            "-Wl,-rpath,a/normal/path".to_string(),
-            "-Wl,-rpath".to_string(),
-            "-Xlinker".to_string(),
-            "a,comma,path".to_string()
-        ]);
     }
 }

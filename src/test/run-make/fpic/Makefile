@@ -7,7 +7,10 @@ ifeq ($(UNAME),Darwin)
 all:
 else ifdef IS_WINDOWS
 all:
-else
+else ifeq ($(findstring stage0,$(RUST_BUILD_STAGE)),stage0)
 all:
 	$(RUSTC) hello.rs -C link-args=-Wl,-z,text
+else
+all:
+	$(RUSTC) hello.rs -C link-args='-z text'
 endif
