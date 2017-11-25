@@ -12,7 +12,7 @@
 
 struct Struct {
     a: usize,
-} //~ ERROR expected item, found ';'
+}; //~ ERROR expected item, found ';'
 //~| NOTE consider removing the semicolon
 
 fn main() {}
