@@ -129,11 +129,15 @@ mod tests {
             Divsf3,
             Divdf3,
 
-            // int/add.rs
+            // int/addsub.rs
             AddU128,
             AddI128,
             AddoU128,
             AddoI128,
+            SubU128,
+            SubI128,
+            SuboU128,
+            SuboI128,
 
             // int/mul.rs
             Muldi3,
@@ -159,12 +163,6 @@ mod tests {
             Ashrti3,
             Lshrdi3,
             Lshrti3,
-
-            // int/sub.rs
-            SubU128,
-            SubI128,
-            SuboU128,
-            SuboI128,
 
             // int/udiv.rs
             Udivdi3,
@@ -390,7 +388,7 @@ fn addsf3() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::add::rust_u128_add;
+use compiler_builtins::int::addsub::rust_u128_add;
 
 static TEST_CASES: &[((u128, u128), u128)] = &[
 "
@@ -448,7 +446,7 @@ fn u128_add() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::add::rust_i128_add;
+use compiler_builtins::int::addsub::rust_i128_add;
 
 static TEST_CASES: &[((i128, i128), i128)] = &[
 "
@@ -508,7 +506,7 @@ fn i128_add() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::add::rust_u128_addo;
+use compiler_builtins::int::addsub::rust_u128_addo;
 
 static TEST_CASES: &[((u128, u128), (u128, bool))] = &[
 "
@@ -568,7 +566,7 @@ fn u128_addo() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::add::rust_i128_addo;
+use compiler_builtins::int::addsub::rust_i128_addo;
 
 static TEST_CASES: &[((i128, i128), (i128, bool))] = &[
 "
@@ -3514,7 +3512,7 @@ fn subsf3() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::sub::rust_u128_sub;
+use compiler_builtins::int::addsub::rust_u128_sub;
 
 static TEST_CASES: &[((u128, u128), u128)] = &[
 "
@@ -3572,7 +3570,7 @@ fn u128_sub() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::sub::rust_i128_sub;
+use compiler_builtins::int::addsub::rust_i128_sub;
 
 static TEST_CASES: &[((i128, i128), i128)] = &[
 "
@@ -3632,7 +3630,7 @@ fn i128_sub() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::sub::rust_u128_subo;
+use compiler_builtins::int::addsub::rust_u128_subo;
 
 static TEST_CASES: &[((u128, u128), (u128, bool))] = &[
 "
@@ -3692,7 +3690,7 @@ fn u128_subo() {
 
         fn prologue() -> &'static str {
             "
-use compiler_builtins::int::sub::rust_i128_subo;
+use compiler_builtins::int::addsub::rust_i128_subo;
 
 static TEST_CASES: &[((i128, i128), (i128, bool))] = &[
 "

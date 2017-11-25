@@ -12,11 +12,10 @@ macro_rules! os_ty {
     }
 }
 
-pub mod add;
+pub mod addsub;
 pub mod mul;
 pub mod sdiv;
 pub mod shift;
-pub mod sub;
 pub mod udiv;
 
 /// Trait for some basic operations on integers
