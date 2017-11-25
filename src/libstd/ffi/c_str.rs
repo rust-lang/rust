@@ -19,8 +19,10 @@ use memchr;
 use ops;
 use os::raw::c_char;
 use ptr;
+use rc::Rc;
 use slice;
 use str::{self, Utf8Error};
+use sync::Arc;
 use sys;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
@@ -704,6 +706,42 @@ impl From<CString> for Box<CStr> {
     }
 }
 
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl From<CString> for Arc<CStr> {
+    #[inline]
+    fn from(s: CString) -> Arc<CStr> {
+        let arc: Arc<[u8]> = Arc::from(s.into_inner());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl<'a> From<&'a CStr> for Arc<CStr> {
+    #[inline]
+    fn from(s: &CStr) -> Arc<CStr> {
+        let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl From<CString> for Rc<CStr> {
+    #[inline]
+    fn from(s: CString) -> Rc<CStr> {
+        let rc: Rc<[u8]> = Rc::from(s.into_inner());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl<'a> From<&'a CStr> for Rc<CStr> {
+    #[inline]
+    fn from(s: &CStr) -> Rc<CStr> {
+        let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
+    }
+}
+
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<CStr> {
     fn default() -> Box<CStr> {
@@ -1201,6 +1239,8 @@ mod tests {
     use borrow::Cow::{Borrowed, Owned};
     use hash::{Hash, Hasher};
     use collections::hash_map::DefaultHasher;
+    use rc::Rc;
+    use sync::Arc;
 
     #[test]
     fn c_to_rust() {
@@ -1336,5 +1376,22 @@ mod tests {
     fn boxed_default() {
         let boxed = <Box<CStr>>::default();
         assert_eq!(boxed.to_bytes_with_nul(), &[0]);
+    }
+
+    #[test]
+    fn into_rc() {
+        let orig: &[u8] = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(orig).unwrap();
+        let rc: Rc<CStr> = Rc::from(cstr);
+        let arc: Arc<CStr> = Arc::from(cstr);
+
+        assert_eq!(&*rc, cstr);
+        assert_eq!(&*arc, cstr);
+
+        let rc2: Rc<CStr> = Rc::from(cstr.to_owned());
+        let arc2: Arc<CStr> = Arc::from(cstr.to_owned());
+
+        assert_eq!(&*rc2, cstr);
+        assert_eq!(&*arc2, cstr);
     }
 }

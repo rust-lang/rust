@@ -15,6 +15,8 @@ use borrow::Cow;
 use fmt;
 use sys_common::wtf8::{Wtf8, Wtf8Buf};
 use mem;
+use rc::Rc;
+use sync::Arc;
 use sys_common::{AsInner, IntoInner};
 
 #[derive(Clone, Hash)]
@@ -115,6 +117,16 @@ impl Buf {
         let inner: Box<Wtf8> = unsafe { mem::transmute(boxed) };
         Buf { inner: Wtf8Buf::from_box(inner) }
     }
+
+    #[inline]
+    pub fn into_arc(&self) -> Arc<Slice> {
+        self.as_slice().into_arc()
+    }
+
+    #[inline]
+    pub fn into_rc(&self) -> Rc<Slice> {
+        self.as_slice().into_rc()
+    }
 }
 
 impl Slice {
@@ -143,5 +155,17 @@ impl Slice {
 
     pub fn empty_box() -> Box<Slice> {
         unsafe { mem::transmute(Wtf8::empty_box()) }
+    }
+
+    #[inline]
+    pub fn into_arc(&self) -> Arc<Slice> {
+        let arc = self.inner.into_arc();
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Slice) }
+    }
+
+    #[inline]
+    pub fn into_rc(&self) -> Rc<Slice> {
+        let rc = self.inner.into_rc();
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
 }
