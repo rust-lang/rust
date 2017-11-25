@@ -1,5 +1,4 @@
 use int::LargeInt;
-use int::Int;
 
 trait Sub: LargeInt {
     fn sub(self, other: Self) -> Self {
@@ -8,12 +7,13 @@ trait Sub: LargeInt {
     }
 }
 
+impl Sub for i128 {}
 impl Sub for u128 {}
 
-trait Subo: Int {
+trait Subo: Sub {
     fn subo(self, other: Self, overflow: &mut i32) -> Self {
         *overflow = 0;
-        let result = self.wrapping_sub(other);
+        let result = Sub::sub(self, other);
         if other >= Self::ZERO {
             if result > self {
                 *overflow = 1;

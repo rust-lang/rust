@@ -1,8 +1,8 @@
 use int::LargeInt;
 use int::Int;
 
-trait Add: LargeInt {
-    fn add(self, other: Self) -> Self {
+trait UAdd: LargeInt {
+    fn uadd(self, other: Self) -> Self {
         let (low, carry) = self.low().overflowing_add(other.low());
         let high = self.high().wrapping_add(other.high());
         let carry = if carry { Self::HighHalf::ONE } else { Self::HighHalf::ZERO };
@@ -10,12 +10,25 @@ trait Add: LargeInt {
     }
 }
 
-impl Add for u128 {}
+impl UAdd for u128 {}
 
-trait Addo: Int {
+trait Add: Int
+    where <Self as Int>::UnsignedInt: UAdd
+{
+    fn add(self, other: Self) -> Self {
+        Self::from_unsigned(self.unsigned().uadd(other.unsigned()))
+    }
+}
+
+impl Add for u128 {}
+impl Add for i128 {}
+
+trait Addo: Add
+    where <Self as Int>::UnsignedInt: UAdd
+{
     fn addo(self, other: Self, overflow: &mut i32) -> Self {
         *overflow = 0;
-        let result = self.wrapping_add(other);
+        let result = Add::add(self, other);
         if other >= Self::ZERO {
             if result < self {
                 *overflow = 1;
