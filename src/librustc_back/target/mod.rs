@@ -53,7 +53,7 @@ use syntax::abi::{Abi, lookup as lookup_abi};
 use {LinkerFlavor, PanicStrategy, RelroLevel};
 
 mod android_base;
-mod apple_base;
+pub mod apple_base;
 mod apple_ios_base;
 mod arm_base;
 mod bitrig_base;

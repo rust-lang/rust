@@ -9,8 +9,43 @@
 // except according to those terms.
 
 use std::env;
+use std::io;
+use std::process::Command;
+use std::str;
 
-use target::{LinkArgs, TargetOptions};
+use target::TargetOptions;
+
+pub fn xcrun(print_arg: &str, sdk_name: &str) -> io::Result<String> {
+    Command::new("xcrun").arg(print_arg).arg("--sdk").arg(sdk_name).output().and_then(|output| {
+        if output.status.success() {
+            Ok(str::from_utf8(&output.stdout[..]).unwrap().trim().to_string())
+        } else {
+            let error = format!(
+                "process exit with error: {}",
+                str::from_utf8(&output.stderr[..]).unwrap(),
+            );
+            Err(io::Error::new(io::ErrorKind::Other, &error[..]))
+        }
+    })
+}
+
+pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
+    xcrun("--show-sdk-path", sdk_name).map_err(|e| {
+        format!("failed to get {} SDK path: {}", sdk_name, e)
+    })
+}
+
+pub fn get_sdk_version(sdk_name: &str) -> Result<String, String> {
+    xcrun("--show-sdk-version", sdk_name).map_err(|e| {
+        format!("failed to get {} SDK version: {}", sdk_name, e)
+    })
+}
+
+pub fn get_deployment_target() -> String {
+    env::var("MACOSX_DEPLOYMENT_TARGET").or_else(|_e| {
+        get_sdk_version("macosx")
+    }).unwrap_or("10.7".to_string())
+}
 
 pub fn opts() -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
@@ -22,15 +57,11 @@ pub fn opts() -> TargetOptions {
     // MACOSX_DEPLOYMENT_TARGET set to 10.6 will cause the linker to generate
     // warnings about the usage of ELF TLS.
     //
-    // Here we detect what version is being requested, defaulting to 10.7. ELF
-    // TLS is flagged as enabled if it looks to be supported.
-    let deployment_target = env::var("MACOSX_DEPLOYMENT_TARGET").ok();
-    let version = deployment_target.as_ref().and_then(|s| {
-        let mut i = s.splitn(2, ".");
-        i.next().and_then(|a| i.next().map(|b| (a, b)))
-    }).and_then(|(a, b)| {
-        a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok()
-    }).unwrap_or((10, 7));
+    // Here we detect what version is being requested. ELF TLS is flagged as
+    // enabled if it looks to be supported.
+    let deployment_target = get_deployment_target();
+    let mut i = deployment_target.splitn(2, '.').map(|s| s.parse::<u32>().unwrap());
+    let version = (i.next().unwrap(), i.next().unwrap());
 
     TargetOptions {
         // macOS has -dead_strip, which doesn't rely on function_sections
@@ -43,9 +74,9 @@ pub fn opts() -> TargetOptions {
         dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),
         archive_format: "bsd".to_string(),
-        pre_link_args: LinkArgs::new(),
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: version >= (10, 7),
+        linker: "ld".to_string(),
         .. Default::default()
     }
 }

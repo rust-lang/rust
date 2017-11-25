@@ -23,7 +23,7 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
 use rustc::ty::TyCtxt;
-use rustc_back::LinkerFlavor;
+use rustc_back::{LinkerFlavor, target};
 use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
@@ -66,6 +66,7 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: false,
+                    building_executable: true,
                 }) as Box<Linker>
             }
             LinkerFlavor::Ld => {
@@ -75,6 +76,7 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: true,
+                    building_executable: true,
                 }) as Box<Linker>
             }
             LinkerFlavor::Binaryen => {
@@ -126,6 +128,8 @@ pub struct GccLinker<'a> {
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
+    // Keeps track of product being an executable.
+    building_executable: bool,
 }
 
 impl<'a> GccLinker<'a> {
@@ -286,6 +290,8 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
+        self.building_executable = false;
+
         // On mac we need to tell the linker to let this library be rpathed
         if self.sess.target.target.options.is_like_osx {
             self.linker_arg("-dylib");
@@ -371,6 +377,20 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn finalize(&mut self) -> Command {
+        if self.sess.target.target.options.is_like_osx && self.is_ld {
+            self.cmd.arg("-macosx_version_min");
+            let deployment_target = target::apple_base::get_deployment_target();
+            self.cmd.arg(&deployment_target);
+
+            if self.building_executable {
+                let mut i = deployment_target.splitn(2, '.').map(|s| s.parse::<u32>().unwrap());
+                let version = (i.next().unwrap(), i.next().unwrap());
+                if version < (10, 8) {
+                    self.cmd.arg("-lcrt1.10.6.o");
+                }
+            }
+        }
+
         self.hint_dynamic(); // Reset to default before returning the composed command line.
         let mut cmd = Command::new("");
         ::std::mem::swap(&mut cmd, &mut self.cmd);
