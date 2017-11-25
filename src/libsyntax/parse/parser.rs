@@ -5486,7 +5486,11 @@ impl<'a> Parser<'a> {
 
         if !self.eat(term) {
             let token_str = self.this_token_to_string();
-            return Err(self.fatal(&format!("expected item, found `{}`", token_str)));
+            let mut err = self.fatal(&format!("expected item, found `{}`", token_str));
+            if token_str == ";" {
+                err.note("consider removing the semicolon");
+            }
+            return Err();
         }
 
         let hi = if self.span == syntax_pos::DUMMY_SP {
