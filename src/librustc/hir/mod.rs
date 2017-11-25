@@ -244,23 +244,6 @@ impl Path {
     pub fn is_global(&self) -> bool {
         !self.segments.is_empty() && self.segments[0].name == keywords::CrateRoot.name()
     }
-
-    /// Wether this path is any of `::std::ops::{Range, RangeTo, RangeFrom}`.
-    pub fn is_range(&self) -> bool {
-        let mut base = ["{{root}}", "std", "ops"].iter().map(|p| p.to_string()).collect::<Vec<_>>();
-        let range_paths = ["Range", "RangeTo", "RangeFrom"];
-        let segments = self.segments.iter()
-            .map(|segment| format!("{}", segment.name))
-            .collect::<Vec<String>>();
-        for path in &range_paths {
-            base.push(path.to_string());
-            if base == segments {
-                return true;
-            }
-            base.pop();
-        }
-        false
-    }
 }
 
 impl fmt::Debug for Path {

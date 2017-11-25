@@ -20,7 +20,7 @@ fn main() { //~ NOTE expected `()` because of default return type
   //~| NOTE expected type
   let v = s[..2];
   //~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied
-  //~| NOTE consider a slice instead
+  //~| HELP consider a slice instead
   //~| NOTE `str` does not have a constant size known at compile-time
   //~| HELP the trait `std::marker::Sized` is not implemented for `str`
   //~| NOTE all local variables must have a statically known size
