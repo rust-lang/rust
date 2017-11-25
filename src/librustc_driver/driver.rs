@@ -56,6 +56,7 @@ use std::sync::mpsc;
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
+use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax;
@@ -63,6 +64,7 @@ use syntax_ext;
 use arena::DroplessArena;
 
 use derive_registrar;
+use pretty::ReplaceBodyWithLoop;
 
 use profile;
 
@@ -808,6 +810,12 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                          krate,
                                          sess.diagnostic())
     });
+
+    // If we're actually rustdoc then there's no need to actually compile
+    // anything, so switch everything to just looping
+    if sess.opts.actually_rustdoc {
+        krate = ReplaceBodyWithLoop::new(sess).fold_crate(krate);
+    }
 
     // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
     // bunch of checks in the `modify` function below. For now just skip this

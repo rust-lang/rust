@@ -76,7 +76,7 @@ pub struct Config {
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
     pub llvm_targets: Option<String>,
-    pub llvm_experimental_targets: Option<String>,
+    pub llvm_experimental_targets: String,
     pub llvm_link_jobs: Option<u32>,
 
     // rust codegen options
@@ -447,7 +447,8 @@ impl Config {
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
             set(&mut config.llvm_link_shared, llvm.link_shared);
             config.llvm_targets = llvm.targets.clone();
-            config.llvm_experimental_targets = llvm.experimental_targets.clone();
+            config.llvm_experimental_targets = llvm.experimental_targets.clone()
+                .unwrap_or("WebAssembly".to_string());
             config.llvm_link_jobs = llvm.link_jobs;
         }
 
