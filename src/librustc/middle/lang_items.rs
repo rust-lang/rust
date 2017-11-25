@@ -40,7 +40,7 @@ macro_rules! language_item_table {
 
 
 enum_from_u32! {
-    #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
     pub enum LangItem {
         $($variant,)*
     }
