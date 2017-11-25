@@ -271,12 +271,10 @@ intrinsics! {
 }
 
 #[cfg_attr(not(stage0), lang = "u128_div")]
-#[allow(dead_code)]
-fn rust_u128_div(a: u128, b: u128) -> u128 {
+pub fn rust_u128_div(a: u128, b: u128) -> u128 {
     __udivti3(a, b)
 }
 #[cfg_attr(not(stage0), lang = "u128_rem")]
-#[allow(dead_code)]
-fn rust_u128_rem(a: u128, b: u128) -> u128 {
+pub fn rust_u128_rem(a: u128, b: u128) -> u128 {
     __umodti3(a, b)
 }

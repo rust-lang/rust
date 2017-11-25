@@ -31,25 +31,21 @@ impl Subo for i128 {}
 impl Subo for u128 {}
 
 #[cfg_attr(not(stage0), lang = "i128_sub")]
-#[allow(dead_code)]
-fn rust_i128_sub(a: i128, b: i128) -> i128 {
+pub fn rust_i128_sub(a: i128, b: i128) -> i128 {
     rust_u128_sub(a as _, b as _) as _
 }
 #[cfg_attr(not(stage0), lang = "i128_subo")]
-#[allow(dead_code)]
-fn rust_i128_subo(a: i128, b: i128) -> (i128, bool) {
+pub fn rust_i128_subo(a: i128, b: i128) -> (i128, bool) {
     let mut oflow = 0;
     let r = a.subo(b, &mut oflow);
     (r, oflow != 0)
 }
 #[cfg_attr(not(stage0), lang = "u128_sub")]
-#[allow(dead_code)]
-fn rust_u128_sub(a: u128, b: u128) -> u128 {
+pub fn rust_u128_sub(a: u128, b: u128) -> u128 {
     a.sub(b)
 }
 #[cfg_attr(not(stage0), lang = "u128_subo")]
-#[allow(dead_code)]
-fn rust_u128_subo(a: u128, b: u128) -> (u128, bool) {
+pub fn rust_u128_subo(a: u128, b: u128) -> (u128, bool) {
     let mut oflow = 0;
     let r = a.subo(b, &mut oflow);
     (r, oflow != 0)

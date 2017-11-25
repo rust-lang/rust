@@ -46,25 +46,21 @@ impl Addo for i128 {}
 impl Addo for u128 {}
 
 #[cfg_attr(not(stage0), lang = "i128_add")]
-#[allow(dead_code)]
-fn rust_i128_add(a: i128, b: i128) -> i128 {
+pub fn rust_i128_add(a: i128, b: i128) -> i128 {
     rust_u128_add(a as _, b as _) as _
 }
 #[cfg_attr(not(stage0), lang = "i128_addo")]
-#[allow(dead_code)]
-fn rust_i128_addo(a: i128, b: i128) -> (i128, bool) {
+pub fn rust_i128_addo(a: i128, b: i128) -> (i128, bool) {
     let mut oflow = 0;
     let r = a.addo(b, &mut oflow);
     (r, oflow != 0)
 }
 #[cfg_attr(not(stage0), lang = "u128_add")]
-#[allow(dead_code)]
-fn rust_u128_add(a: u128, b: u128) -> u128 {
+pub fn rust_u128_add(a: u128, b: u128) -> u128 {
     a.add(b)
 }
 #[cfg_attr(not(stage0), lang = "u128_addo")]
-#[allow(dead_code)]
-fn rust_u128_addo(a: u128, b: u128) -> (u128, bool) {
+pub fn rust_u128_addo(a: u128, b: u128) -> (u128, bool) {
     let mut oflow = 0;
     let r = a.addo(b, &mut oflow);
     (r, oflow != 0)
