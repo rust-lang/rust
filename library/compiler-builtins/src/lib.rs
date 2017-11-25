@@ -17,6 +17,7 @@
 #![feature(repr_simd)]
 #![feature(abi_unadjusted)]
 #![feature(linkage)]
+#![feature(lang_items)]
 #![allow(unused_features)]
 #![no_builtins]
 #![unstable(feature = "compiler_builtins_lib",

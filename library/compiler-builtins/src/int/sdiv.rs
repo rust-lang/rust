@@ -97,3 +97,14 @@ intrinsics! {
         a.divmod(b, rem, |a, b| __divdi3(a, b))
     }
 }
+
+#[cfg_attr(not(stage0), lang = "i128_div")]
+#[allow(dead_code)]
+fn rust_i128_div(a: i128, b: i128) -> i128 {
+    __divti3(a, b)
+}
+#[cfg_attr(not(stage0), lang = "i128_rem")]
+#[allow(dead_code)]
+fn rust_i128_rem(a: i128, b: i128) -> i128 {
+    __modti3(a, b)
+}

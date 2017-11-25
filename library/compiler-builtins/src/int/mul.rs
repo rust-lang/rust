@@ -70,6 +70,18 @@ impl Mulo for i32 {}
 impl Mulo for i64 {}
 impl Mulo for i128 {}
 
+trait UMulo : Int {
+    fn mulo(self, other: Self, overflow: &mut i32) -> Self {
+        *overflow = 0;
+        let result = self.wrapping_mul(other);
+        if self > Self::max_value().aborting_div(other) {
+            *overflow = 1;
+        }
+        result
+    }
+}
+impl UMulo for u128 {}
+
 intrinsics! {
     #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
     #[arm_aeabi_alias = __aeabi_lmul]
@@ -94,4 +106,29 @@ intrinsics! {
     pub extern "C" fn __muloti4(a: i128, b: i128, oflow: &mut i32) -> i128 {
         a.mulo(b, oflow)
     }
+}
+
+#[cfg_attr(not(stage0), lang = "i128_mul")]
+#[allow(dead_code)]
+fn rust_i128_mul(a: i128, b: i128) -> i128 {
+    __multi3(a, b)
+}
+#[cfg_attr(not(stage0), lang = "i128_mulo")]
+#[allow(dead_code)]
+fn rust_i128_mulo(a: i128, b: i128) -> (i128, bool) {
+    let mut oflow = 0;
+    let r = __muloti4(a, b, &mut oflow);
+    (r, oflow != 0)
+}
+#[cfg_attr(not(stage0), lang = "u128_mul")]
+#[allow(dead_code)]
+fn rust_u128_mul(a: u128, b: u128) -> u128 {
+    __multi3(a as _, b as _) as _
+}
+#[cfg_attr(not(stage0), lang = "u128_mulo")]
+#[allow(dead_code)]
+fn rust_u128_mulo(a: u128, b: u128) -> (u128, bool) {
+    let mut oflow = 0;
+    let r = a.mulo(b, &mut oflow);
+    (r, oflow != 0)
 }
