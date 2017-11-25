@@ -21,7 +21,6 @@ use ptr::P;
 use symbol::Symbol;
 use tokenstream::{TokenTree};
 use util::small_vector::SmallVector;
-use rustc_data_structures::sync::Lock;
 
 use diagnostics::metadata::output_metadata;
 
@@ -29,12 +28,6 @@ pub use errors::*;
 
 // Maximum width of any line in an extended error description (inclusive).
 const MAX_DESCRIPTION_WIDTH: usize = 80;
-
-rustc_global! {
-    static REGISTERED_DIAGNOSTICS: Lock<ErrorMap> = {
-        Lock::new(BTreeMap::new())
-    }
-}
 
 /// Error information type.
 pub struct ErrorInfo {
@@ -45,14 +38,6 @@ pub struct ErrorInfo {
 /// Mapping from error codes to metadata.
 pub type ErrorMap = BTreeMap<Name, ErrorInfo>;
 
-fn with_registered_diagnostics<T, F>(f: F) -> T where
-    F: FnOnce(&mut ErrorMap) -> T,
-{
-    rustc_access_global!(REGISTERED_DIAGNOSTICS, move |slot| {
-        f(&mut *slot.borrow_mut())
-    })
-}
-
 pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
                                    span: Span,
                                    token_tree: &[TokenTree])
@@ -62,27 +47,27 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         _ => unreachable!()
     };
 
-    with_registered_diagnostics(|diagnostics| {
-        match diagnostics.get_mut(&code.name) {
-            // Previously used errors.
-            Some(&mut ErrorInfo { description: _, use_site: Some(previous_span) }) => {
-                ecx.struct_span_warn(span, &format!(
-                    "diagnostic code {} already used", code
-                )).span_note(previous_span, "previous invocation")
-                  .emit();
-            }
-            // Newly used errors.
-            Some(ref mut info) => {
-                info.use_site = Some(span);
-            }
-            // Unregistered errors.
-            None => {
-                ecx.span_err(span, &format!(
-                    "used diagnostic code {} not registered", code
-                ));
-            }
+    let mut diagnostics = ecx.parse_sess.registered_diagnostics.lock();
+    match diagnostics.get_mut(&code.name) {
+        // Previously used errors.
+        Some(&mut ErrorInfo { description: _, use_site: Some(previous_span) }) => {
+            ecx.struct_span_warn(span, &format!(
+                "diagnostic code {} already used", code
+            )).span_note(previous_span, "previous invocation")
+                .emit();
         }
-    });
+        // Newly used errors.
+        Some(ref mut info) => {
+            info.use_site = Some(span);
+        }
+        // Unregistered errors.
+        None => {
+            ecx.span_err(span, &format!(
+                "used diagnostic code {} not registered", code
+            ));
+        }
+    }
+
     MacEager::expr(ecx.expr_tuple(span, Vec::new()))
 }
 
@@ -131,17 +116,17 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
     });
     // Add the error to the map.
-    with_registered_diagnostics(|diagnostics| {
-        let info = ErrorInfo {
-            description,
-            use_site: None
-        };
-        if diagnostics.insert(code.name, info).is_some() {
-            ecx.span_err(span, &format!(
-                "diagnostic code {} already registered", code
-            ));
-        }
-    });
+    let mut diagnostics = ecx.parse_sess.registered_diagnostics.lock();
+    let info = ErrorInfo {
+        description,
+        use_site: None
+    };
+    if diagnostics.insert(code.name, info).is_some() {
+        ecx.span_err(span, &format!(
+            "diagnostic code {} already registered", code
+        ));
+    }
+
     let sym = Ident::with_empty_ctxt(Symbol::gensym(&format!(
         "__register_diagnostic_{}", code
     )));
@@ -173,18 +158,17 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
 
     // Output error metadata to `tmp/extended-errors/<target arch>/<crate name>.json`
     if let Ok(target_triple) = env::var("CFG_COMPILER_HOST_TRIPLE") {
-        with_registered_diagnostics(|diagnostics| {
-            if let Err(e) = output_metadata(ecx,
-                                            &target_triple,
-                                            &crate_name.name.as_str(),
-                                            diagnostics) {
-                ecx.span_bug(span, &format!(
-                    "error writing metadata for triple `{}` and crate `{}`, error: {}, \
-                     cause: {:?}",
-                    target_triple, crate_name, e.description(), e.cause()
-                ));
-            }
-        });
+        let diagnostics = ecx.parse_sess.registered_diagnostics.lock();
+        if let Err(e) = output_metadata(ecx,
+                                        &target_triple,
+                                        &crate_name.name.as_str(),
+                                        &*diagnostics) {
+            ecx.span_bug(span, &format!(
+                "error writing metadata for triple `{}` and crate `{}`, error: {}, \
+                    cause: {:?}",
+                target_triple, crate_name, e.description(), e.cause()
+            ));
+        }
     } else {
         ecx.span_err(span, &format!(
             "failed to write metadata for crate `{}` because $CFG_COMPILER_HOST_TRIPLE is not set",
@@ -192,19 +176,19 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
     }
 
     // Construct the output expression.
-    let (count, expr) =
-        with_registered_diagnostics(|diagnostics| {
-            let descriptions: Vec<P<ast::Expr>> =
-                diagnostics.iter().filter_map(|(&code, info)| {
-                    info.description.map(|description| {
-                        ecx.expr_tuple(span, vec![
-                            ecx.expr_str(span, code),
-                            ecx.expr_str(span, description)
-                        ])
-                    })
-                }).collect();
-            (descriptions.len(), ecx.expr_vec(span, descriptions))
-        });
+    let (count, expr) = {
+        let diagnostics = ecx.parse_sess.registered_diagnostics.lock();
+        let descriptions: Vec<P<ast::Expr>> =
+            diagnostics.iter().filter_map(|(&code, info)| {
+                info.description.map(|description| {
+                    ecx.expr_tuple(span, vec![
+                        ecx.expr_str(span, code),
+                        ecx.expr_str(span, description)
+                    ])
+                })
+            }).collect();
+        (descriptions.len(), ecx.expr_vec(span, descriptions))
+    };
 
     let static_ = ecx.lifetime(span, Ident::from_str("'static"));
     let ty_str = ecx.ty_rptr(

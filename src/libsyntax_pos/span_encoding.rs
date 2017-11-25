@@ -14,12 +14,11 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
+use GLOBALS;
 use {BytePos, SpanData};
 use hygiene::SyntaxContext;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lock;
-
 /// A compressed span.
 /// Contains either fields of `SpanData` inline if they are small, or index into span interner.
 /// The primary goal of `Span` is to be as small as possible and fit into other structures
@@ -112,7 +111,7 @@ fn decode(span: Span) -> SpanData {
 }
 
 #[derive(Default)]
-struct SpanInterner {
+pub struct SpanInterner {
     spans: FxHashMap<SpanData, u32>,
     span_data: Vec<SpanData>,
 }
@@ -138,8 +137,5 @@ impl SpanInterner {
 // If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_span_interner<T, F: FnOnce(&mut SpanInterner) -> T>(f: F) -> T {
-    rustc_global!(static INTERNER: Lock<SpanInterner> = {
-        Lock::new(SpanInterner::default())
-    });
-    rustc_access_global!(INTERNER, |interner| f(&mut *interner.lock()))
+    GLOBALS.with(|globals| f(&mut *globals.span_interner.lock()))
 }

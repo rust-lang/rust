@@ -33,6 +33,7 @@ use rustc::session::config::{OutputFilenames, OutputTypes};
 use rustc_trans_utils::trans_crate::TransCrate;
 use std::rc::Rc;
 use rustc_data_structures::sync::{Send, Lrc};
+use syntax;
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap::{CodeMap, FilePathMapping};
@@ -97,8 +98,18 @@ fn errors(msgs: &[&str]) -> (Box<Emitter + Send>, usize) {
 }
 
 fn test_env<F>(source_string: &str,
-               (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+               args: (Box<Emitter + Send>, usize),
                body: F)
+    where F: FnOnce(Env)
+{
+    syntax::with_globals(&syntax::Globals::new(), || {
+        test_env_impl(source_string, args, body)
+    });
+}
+
+fn test_env_impl<F>(source_string: &str,
+                    (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+                    body: F)
     where F: FnOnce(Env)
 {
     let mut options = config::basic_options();

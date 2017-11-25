@@ -3145,36 +3145,41 @@ mod tests {
     use ast;
     use codemap;
     use syntax_pos;
+    use {Globals, with_globals};
 
     #[test]
     fn test_fun_to_string() {
-        let abba_ident = ast::Ident::from_str("abba");
+        with_globals(&Globals::new(), || {
+            let abba_ident = ast::Ident::from_str("abba");
 
-        let decl = ast::FnDecl {
-            inputs: Vec::new(),
-            output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
-            variadic: false
-        };
-        let generics = ast::Generics::default();
-        assert_eq!(fun_to_string(&decl, ast::Unsafety::Normal,
-                                 ast::Constness::NotConst,
-                                 abba_ident, &generics),
-                   "fn abba()");
+            let decl = ast::FnDecl {
+                inputs: Vec::new(),
+                output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
+                variadic: false
+            };
+            let generics = ast::Generics::default();
+            assert_eq!(fun_to_string(&decl, ast::Unsafety::Normal,
+                                    ast::Constness::NotConst,
+                                    abba_ident, &generics),
+                    "fn abba()");
+        })
     }
 
     #[test]
     fn test_variant_to_string() {
-        let ident = ast::Ident::from_str("principal_skinner");
+        with_globals(&Globals::new(), || {
+            let ident = ast::Ident::from_str("principal_skinner");
 
-        let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
-            name: ident,
-            attrs: Vec::new(),
-            // making this up as I go.... ?
-            data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
-            disr_expr: None,
-        });
+            let var = codemap::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
+                name: ident,
+                attrs: Vec::new(),
+                // making this up as I go.... ?
+                data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
+                disr_expr: None,
+            });
 
-        let varstr = variant_to_string(&var);
-        assert_eq!(varstr, "principal_skinner");
+            let varstr = variant_to_string(&var);
+            assert_eq!(varstr, "principal_skinner");
+        })
     }
 }

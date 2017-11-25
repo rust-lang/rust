@@ -15,11 +15,11 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
+use GLOBALS;
 use Span;
 use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
-use rustc_data_structures::sync::Lock;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -106,7 +106,7 @@ impl Mark {
     }
 }
 
-struct HygieneData {
+pub struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
@@ -114,7 +114,7 @@ struct HygieneData {
 }
 
 impl HygieneData {
-    fn new() -> Self {
+    pub fn new() -> Self {
         HygieneData {
             marks: vec![MarkData::default()],
             syntax_contexts: vec![SyntaxContextData::default()],
@@ -124,10 +124,7 @@ impl HygieneData {
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        rustc_global! {
-            static HYGIENE_DATA: Lock<HygieneData> = Lock::new(HygieneData::new());
-        }
-        rustc_access_global!(HYGIENE_DATA, |data| f(&mut *data.borrow_mut()))
+        GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 }
 

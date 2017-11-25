@@ -107,7 +107,9 @@ pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
     env_logger::init().unwrap();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
-        get_args().map(|args| main_args(&args)).unwrap_or(1)
+        syntax::with_globals(&syntax::Globals::new(), move || {
+            get_args().map(|args| main_args(&args)).unwrap_or(1)
+        })
     }).unwrap().join().unwrap_or(101);
     process::exit(res as i32);
 }
@@ -266,7 +268,7 @@ pub fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
 }
 
-pub fn main_args(args: &[String]) -> isize {
+fn main_args(args: &[String]) -> isize {
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);

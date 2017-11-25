@@ -193,6 +193,17 @@ pub fn run_compiler<'a>(args: &[String],
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
 {
+    syntax::with_globals(&syntax::Globals::new(), || {
+        run_compiler_impl(args, callbacks, file_loader, emitter_dest)
+    })
+}
+
+fn run_compiler_impl<'a>(args: &[String],
+                         callbacks: &mut CompilerCalls<'a>,
+                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
+                         emitter_dest: Option<Box<Write + Send>>)
+                         -> (CompileResult, Option<Session>)
+{
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),
@@ -1189,7 +1200,9 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    let thread = cfg.spawn(f);
+    let thread = cfg.spawn(|| {
+        syntax::with_globals(&syntax::Globals::new(), || f())
+    });
     thread.unwrap().join()
 }
 

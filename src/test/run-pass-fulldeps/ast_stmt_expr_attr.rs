@@ -115,6 +115,10 @@ fn reject_stmt_parse(es: &str) {
 }
 
 fn main() {
+    syntax::with_globals(&syntax::Globals::new(), || run());
+}
+
+fn run() {
     let both = &["#[attr]", "#![attr]"];
     let outer = &["#[attr]"];
     let none = &[];

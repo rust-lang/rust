@@ -37,8 +37,10 @@ use std::path::PathBuf;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lrc, Lock};
 
-#[macro_use]
 extern crate rustc_data_structures;
+
+#[macro_use]
+extern crate scoped_tls;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -54,6 +56,24 @@ mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
+
+pub struct Globals {
+    symbol_interner: Lock<symbol::Interner>,
+    span_interner: Lock<span_encoding::SpanInterner>,
+    hygiene_data: Lock<hygiene::HygieneData>,
+}
+
+impl Globals {
+    pub fn new() -> Globals {
+        Globals {
+            symbol_interner: Lock::new(symbol::Interner::fresh()),
+            span_interner: Lock::new(span_encoding::SpanInterner::default()),
+            hygiene_data: Lock::new(hygiene::HygieneData::new()),
+        }
+    }
+}
+
+scoped_thread_local!(pub static GLOBALS: Globals);
 
 pub type FileName = String;
 

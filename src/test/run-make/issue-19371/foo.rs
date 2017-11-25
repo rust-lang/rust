@@ -19,13 +19,12 @@ extern crate rustc_trans;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
-use rustc::session::config::{basic_options, build_configuration, Input,
+use rustc::session::config::{basic_options, Input,
                              OutputType, OutputTypes};
 use rustc_driver::driver::{compile_input, CompileController, anon_src};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
 
-use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -68,8 +67,10 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
 }
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
-    let (sess, cstore) = basic_sess(sysroot);
-    let control = CompileController::basic();
-    let input = Input::Str { name: anon_src(), input: code };
-    let _ = compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);
+    syntax::with_globals(&syntax::Globals::new(), || {
+        let (sess, cstore) = basic_sess(sysroot);
+        let control = CompileController::basic();
+        let input = Input::Str { name: anon_src(), input: code };
+        let _ = compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);
+    });
 }
