@@ -624,6 +624,9 @@ pub trait Display {
 ///
 /// The `Octal` trait should format its output as a number in base-8.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0o` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -639,6 +642,8 @@ pub trait Display {
 ///
 /// assert_eq!(format!("{:o}", x), "52");
 /// assert_eq!(format!("{:#o}", x), "0o52");
+///
+/// assert_eq!(format!("{:o}", -16), "37777777760");
 /// ```
 ///
 /// Implementing `Octal` on a type:
@@ -671,6 +676,9 @@ pub trait Octal {
 ///
 /// The `Binary` trait should format its output as a number in binary.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0b` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -686,6 +694,8 @@ pub trait Octal {
 ///
 /// assert_eq!(format!("{:b}", x), "101010");
 /// assert_eq!(format!("{:#b}", x), "0b101010");
+///
+/// assert_eq!(format!("{:b}", -16), "11111111111111111111111111110000");
 /// ```
 ///
 /// Implementing `Binary` on a type:
@@ -719,6 +729,9 @@ pub trait Binary {
 /// The `LowerHex` trait should format its output as a number in hexadecimal, with `a` through `f`
 /// in lower case.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -734,6 +747,8 @@ pub trait Binary {
 ///
 /// assert_eq!(format!("{:x}", x), "2a");
 /// assert_eq!(format!("{:#x}", x), "0x2a");
+///
+/// assert_eq!(format!("{:x}", -16), "fffffff0");
 /// ```
 ///
 /// Implementing `LowerHex` on a type:
@@ -767,6 +782,9 @@ pub trait LowerHex {
 /// The `UpperHex` trait should format its output as a number in hexadecimal, with `A` through `F`
 /// in upper case.
 ///
+/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// negative values are formatted as the two’s complement representation.
+///
 /// The alternate flag, `#`, adds a `0x` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
@@ -782,6 +800,8 @@ pub trait LowerHex {
 ///
 /// assert_eq!(format!("{:X}", x), "2A");
 /// assert_eq!(format!("{:#X}", x), "0x2A");
+///
+/// assert_eq!(format!("{:X}", -16), "FFFFFFF0");
 /// ```
 ///
 /// Implementing `UpperHex` on a type:
