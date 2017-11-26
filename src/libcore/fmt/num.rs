@@ -25,6 +25,7 @@ trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
            Sub<Output=Self> + Copy {
     fn zero() -> Self;
     fn from_u8(u: u8) -> Self;
+    fn from_u32(u: u32) -> Self;
     fn to_u8(&self) -> u8;
     fn to_u16(&self) -> u16;
     fn to_u32(&self) -> u32;
@@ -36,6 +37,7 @@ macro_rules! doit {
     ($($t:ident)*) => ($(impl Int for $t {
         fn zero() -> $t { 0 }
         fn from_u8(u: u8) -> $t { u as $t }
+        fn from_u32(u: u32) -> $t { u as $t }
         fn to_u8(&self) -> u8 { *self as u8 }
         fn to_u16(&self) -> u16 { *self as u16 }
         fn to_u32(&self) -> u32 { *self as u32 }
@@ -279,6 +281,46 @@ macro_rules! impl_unsigned_to_str {
                 slice::from_raw_parts_mut(buf_ptr.offset(curr), buf.len() - curr as usize)
             )
         }
+
+        fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool, minus_sign: bool)
+                        -> &mut str {
+            assert!(2 <= radix && radix <= 36, "radix must be between 2 and 36 inclusive");
+            let radix = $t::from_u32(radix);
+            let mut curr = buf.len();
+            macro_rules! next {
+                () => {
+                    match curr.checked_sub(1) {
+                        Some(next) => curr = next,
+                        None => panic!(
+                            "A buffer of length {} is too small to represent {} in base {}",
+                            buf.len(), self, radix
+                        )
+                    }
+                }
+            }
+            let mut n = self;
+            loop {
+                next!();
+                let digit = (n % radix).to_u8();
+                buf[curr] = digit + if digit < 10 {
+                    b'0'
+                } else if uppercase {
+                    b'A' - 10
+                } else {
+                    b'a' - 10
+                };
+                n /= radix;
+                if n == 0 {
+                    if minus_sign {
+                        next!();
+                        buf[curr] = b'-'
+                    }
+                    return unsafe {
+                        str::from_utf8_unchecked_mut(&mut buf[curr..])
+                    }
+                }
+            }
+        }
     })*);
 }
 
@@ -300,6 +342,17 @@ macro_rules! impl_signed_to_str {
                 n.to_str_unchecked(buf, is_negative)
             }
         }
+
+        fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool) -> &mut str {
+            let is_negative = self < 0;
+            let n = if is_negative {
+                // convert the negative num to positive by summing 1 to it's 2 complement
+                (!self.$conv_fn()).wrapping_add(1)
+            } else {
+                self.$conv_fn()
+            };
+            n.to_str_radix(buf, radix, uppercase, is_negative)
+        }
     })*);
 }
 
@@ -319,8 +372,11 @@ impl_signed_to_str!(i8 to_u8, i16 to_u16, i32 to_u32, i64 to_u64, i128 to_u128);
 pub(crate) trait UnsignedToStr {
     fn to_str(self, buf: &mut [u8]) -> &mut str;
     unsafe fn to_str_unchecked(self, buf: &mut [u8], minus_sign: bool) -> &mut str;
+    fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool, minus_sign: bool)
+                    -> &mut str;
 }
 
 pub(crate) trait SignedToStr {
     fn to_str(self, buf: &mut [u8]) -> &mut str;
+    fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool) -> &mut str;
 }

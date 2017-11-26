@@ -151,6 +151,66 @@ macro_rules! int_impl {
             from_str_radix(src, radix)
         }
 
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9A-Z`.
+        ///
+        /// The returned slice starts with a minus sign for negative values
+        /// but contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((i16::min_value() + 1).to_uppercase_str_radix(&mut [0; 5], 16), "-7FFF")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_uppercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::SignedToStr::to_str_radix(self as $ActualT, buffer, radix, true)
+        }
+
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9a-z`.
+        ///
+        /// The returned slice starts with a minus sign for negative values
+        /// but contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((i16::min_value() + 1).to_lowercase_str_radix(&mut [0; 5], 16), "-7fff")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_lowercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::SignedToStr::to_str_radix(self as $ActualT, buffer, radix, false)
+        }
+
         /// Writes the decimal representation in a pre-allocated buffer.
         ///
         /// The returned slice starts with a minus sign for negative values
@@ -162,6 +222,10 @@ macro_rules! int_impl {
         /// This function will panic if `buffer` is smaller than [`MAX_STR_LEN`].
         ///
         /// [`MAX_STR_LEN`]: #associatedconstant.MAX_STR_LEN
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
         ///
         /// # Examples
         ///
@@ -1356,6 +1420,64 @@ macro_rules! uint_impl {
             from_str_radix(src, radix)
         }
 
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9A-F`.
+        ///
+        /// The returned slice contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((std::char::MAX as u32).to_uppercase_str_radix(&mut [0; 8], 16), "10FFFF")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_uppercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::UnsignedToStr::to_str_radix(self as $ActualT, buffer, radix, true, false)
+        }
+
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9a-z`.
+        ///
+        /// The returned slice contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((std::char::MAX as u32).to_lowercase_str_radix(&mut [0; 8], 16), "10ffff")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_lowercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::UnsignedToStr::to_str_radix(self as $ActualT, buffer, radix, false, false)
+        }
+
         /// Writes the decimal representation in a pre-allocated buffer.
         ///
         /// The returned slice contains no leading zero or plus sign,
@@ -1366,6 +1488,10 @@ macro_rules! uint_impl {
         /// This function will panic if `buffer` is smaller than [`MAX_STR_LEN`].
         ///
         /// [`MAX_STR_LEN`]: #associatedconstant.MAX_STR_LEN
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
         ///
         /// # Examples
         ///
