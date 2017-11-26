@@ -35,8 +35,10 @@ use hash::{Hash, Hasher};
 use iter::FromIterator;
 use mem;
 use ops;
+use rc::Rc;
 use slice;
 use str;
+use sync::Arc;
 use sys_common::AsInner;
 
 const UTF8_REPLACEMENT_CHARACTER: &'static str = "\u{FFFD}";
@@ -640,6 +642,18 @@ impl Wtf8 {
     pub fn empty_box() -> Box<Wtf8> {
         let boxed: Box<[u8]> = Default::default();
         unsafe { mem::transmute(boxed) }
+    }
+
+    #[inline]
+    pub fn into_arc(&self) -> Arc<Wtf8> {
+        let arc: Arc<[u8]> = Arc::from(&self.bytes);
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Wtf8) }
+    }
+
+    #[inline]
+    pub fn into_rc(&self) -> Rc<Wtf8> {
+        let rc: Rc<[u8]> = Rc::from(&self.bytes);
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Wtf8) }
     }
 }
 
