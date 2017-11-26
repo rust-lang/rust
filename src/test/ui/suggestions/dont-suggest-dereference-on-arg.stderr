@@ -1,8 +1,8 @@
 error: non-reference pattern used to match a reference (see issue #42640)
-  --> $DIR/suggestion.rs:12:12
+  --> $DIR/dont-suggest-dereference-on-arg.rs:16:18
    |
-12 |     if let Some(y) = &Some(22) { //~ ERROR non-reference pattern
-   |            ^^^^^^^ help: consider using a reference: `&Some(y)`
+16 |         .filter(|&(ref a, _)| foo(a))
+   |                  ^^^^^^^^^^^ help: consider using a reference: `&&(ref a, _)`
    |
    = help: add #![feature(match_default_bindings)] to the crate attributes to enable
 
