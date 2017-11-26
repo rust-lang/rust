@@ -209,7 +209,7 @@ macro_rules! impl_Display {
                 (!self.$conv_fn()).wrapping_add(1)
             };
             unsafe {
-                let mut buf: [u8; 39] = mem::uninitialized();
+                let mut buf: [u8; i128::MAX_STR_LEN] = mem::uninitialized();
                 f.pad_integral(is_nonnegative, "", n.to_str_unchecked(&mut buf, false))
             }
         }
