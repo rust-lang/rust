@@ -217,21 +217,40 @@ macro_rules! impl_Display {
 macro_rules! impl_unsigned_to_str {
     ($($t:ident),*) => ($(
     impl UnsignedToStr for $t {
+        /// Returns `self.to_string().len()`
         fn str_len(self) -> usize {
-            // python -c 'print([len(str((1<<bits)-1)) for bits in range(128)])'
-            const DECIMAL_LENGTH_BY_BINARY_LENGTH: [u8; 128] = [
-                1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5,  // 0..15 significant bits
-                5, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, // 16..31
-                10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 15,  // 32..47
-                15, 15, 16, 16, 16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 19,  // 48..63
-                20, 20, 20, 21, 21, 21, 22, 22, 22, 22, 23, 23, 23, 24, 24, 24,  // 64..79
-                25, 25, 25, 25, 26, 26, 26, 27, 27, 27, 28, 28, 28, 28, 29, 29,  // 80..95
-                29, 30, 30, 30, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 34, 34,  // 96..111
-                34, 35, 35, 35, 35, 36, 36, 36, 37, 37, 37, 38, 38, 38, 38, 39,  // 112..127
-            ];
+            if self == 0 {
+                // We use one "0" digit even though the mathematical answer
+                // is zero significant decimal digits.
+                return 1
+            }
 
-            let bits = ::mem::size_of::<$t>() * 8 - self.leading_zeros() as usize;
-            DECIMAL_LENGTH_BY_BINARY_LENGTH[bits] as usize
+            #[inline]
+            fn ceiling_div(numerator: u32, denominator: u32) -> u32 {
+                (numerator + denominator - 1) / denominator
+            }
+
+            let type_bits = ::mem::size_of::<$t>() as u32 * 8;
+
+            // This is the number of bits in `self`, ignoring leading zeros.
+            // It is equal to `ceil(log2(self + 1))`.
+            let bits = type_bits - self.leading_zeros();
+
+            // `28 / 93` is an approximation of `log(2) / log(10)`.
+            // So if we take `bits` as an approximation of `log2(self + 1)`,
+            // this is an approximation of `ceil(log10(self + 1))`.
+            let approx_log10 = ceiling_div(bits * 28, 93);
+
+            // Because of integer rounding, this approximation turns out to be good enough
+            // to provide the exact result we want for all values up to 128 bits.
+            // This can be verified by running:
+            //
+            // ```python
+            // print(all(len(str((1 << bits) - 1)) == (bits * 28 + 92) // 93
+            //           for bits in range(1, 128)))
+            // ```
+            // python -c 'print(all(len(str((1<<bits)-1)) == (bits * 28 + 92)//93 for bits in range(1, 128)))'
+            approx_log10 as usize
         }
 
         fn to_str(self, buf: &mut [u8]) -> &mut str {
