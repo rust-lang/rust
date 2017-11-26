@@ -12,6 +12,7 @@ macro_rules! os_ty {
     }
 }
 
+pub mod addsub;
 pub mod mul;
 pub mod sdiv;
 pub mod shift;
@@ -72,6 +73,7 @@ pub trait Int:
     fn wrapping_mul(self, other: Self) -> Self;
     fn wrapping_sub(self, other: Self) -> Self;
     fn wrapping_shl(self, other: u32) -> Self;
+    fn overflowing_add(self, other: Self) -> (Self, bool);
     fn aborting_div(self, other: Self) -> Self;
     fn aborting_rem(self, other: Self) -> Self;
     fn leading_zeros(self) -> u32;
@@ -117,6 +119,10 @@ macro_rules! int_impl_common {
 
             fn wrapping_shl(self, other: u32) -> Self {
                 <Self>::wrapping_shl(self, other)
+            }
+
+            fn overflowing_add(self, other: Self) -> (Self, bool) {
+                <Self>::overflowing_add(self, other)
             }
 
             fn aborting_div(self, other: Self) -> Self {
