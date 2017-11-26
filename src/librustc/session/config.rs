@@ -1778,7 +1778,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         Some("mir") => BorrowckMode::Mir,
         Some("compare") => BorrowckMode::Compare,
         Some(m) => {
-            early_error(error_format, &format!("unknown borrowchk mode `{}`", m))
+            early_error(error_format, &format!("unknown borrowck mode `{}`", m))
         },
     };
 
