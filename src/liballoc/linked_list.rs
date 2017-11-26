@@ -1288,6 +1288,8 @@ mod tests {
             let mut node_ptr: &Node<T>;
             match list.head {
                 None => {
+                    // tail node should also be None.
+                    assert!(list.tail.is_none());
                     assert_eq!(0, list.len);
                     return;
                 }
@@ -1314,6 +1316,11 @@ mod tests {
                     }
                 }
             }
+
+            // verify that the tail node points to the last node.
+            let tail = list.tail.as_ref().expect("some tail node").as_ref();
+            assert_eq!(tail as *const Node<T>, node_ptr as *const Node<T>);
+            // check that len matches interior links.
             assert_eq!(len, list.len);
         }
     }
