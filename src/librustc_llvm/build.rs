@@ -169,7 +169,7 @@ fn main() {
        .file("../rustllvm/ArchiveWrapper.cpp")
        .cpp(true)
        .cpp_link_stdlib(None) // we handle this below
-       .compile("librustllvm.a");
+       .compile("rustllvm");
 
     let (llvm_kind, llvm_link_arg) = detect_llvm_link(major, minor, &llvm_config);
 
