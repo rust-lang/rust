@@ -1168,6 +1168,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     ) {
         let tcx = self.tcx();
 
+        self.prove_aggregate_predicates(aggregate_kind, location);
+
         match aggregate_kind {
             // tuple rvalue field type is always the type of the op. Nothing to check here.
             AggregateKind::Tuple => return,
@@ -1233,6 +1235,31 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 );
             }
         }
+    }
+
+    fn prove_aggregate_predicates(
+        &mut self,
+        aggregate_kind: &AggregateKind<'tcx>,
+        location: Location,
+    ) {
+        let tcx = self.tcx();
+
+        let instantiated_predicates = match aggregate_kind {
+            AggregateKind::Adt(def, _, substs, _) => {
+                tcx.predicates_of(def.did).instantiate(tcx, substs)
+            }
+
+            AggregateKind::Closure(def_id, substs) |
+            AggregateKind::Generator(def_id, substs, _) => {
+                tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
+            }
+
+            AggregateKind::Array(_) |
+            AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
+        };
+
+        let predicates = self.normalize(&instantiated_predicates.predicates, location);
+        self.prove_predicates(&predicates, location);
     }
 
     fn prove_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>, location: Location) {
