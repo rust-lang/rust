@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate bindgen;
 extern crate cc;
 extern crate build_helper;
 
@@ -139,6 +140,127 @@ fn main() {
     let cxxflags = output(&mut cmd);
     let mut cfg = cc::Build::new();
     cfg.warnings(false);
+
+    let out_path = PathBuf::from(env::var("OUT_DIR")
+        .expect("Failed to determine output directory"));
+
+    let mut builder = bindgen::builder()
+        .header("../rustllvm/rustllvm.h")
+        .clang_args(&["-x", "c++"])
+        .rust_target(bindgen::RustTarget::Nightly)
+        .whitelist_recursively(false)
+        .whitelist_type("(LLVM)?Rust.*")
+        .whitelist_function("(LLVM)?Rust.*")
+        .rustfmt_bindings(true)
+        .layout_tests(false)
+        .with_codegen_config(bindgen::CodegenConfig{
+            functions: true,
+            types: true,
+            vars: false,
+            methods: false,
+            constructors: false,
+            destructors: false,
+        });
+
+    for visible_type in [
+        "LLVMBool",
+        "LLVMDiagnosticHandler",
+        "LLVMTwineRef",
+        "LLVMValueRef",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
+        "llvm::LLVMContext_InlineAsmDiagHandlerTy",
+    ].into_iter() {
+        builder = builder
+            .whitelist_type(visible_type);
+    }
+
+    for opaque_type in [
+        "LLVMBasicBlockRef",
+        "LLVMBuilderRef",
+        "LLVMContextRef",
+        "LLVMDebugLocRef",
+        "LLVMDiagnosticInfoRef",
+        "LLVMMemoryBufferRef",
+        "LLVMMetadataRef",
+        "LLVMModuleRef",
+        "LLVMObjectFileRef",
+        "LLVMOpaqueTwine",
+        "LLVMOpaqueValue",
+        "LLVMPassManagerRef",
+        "LLVMRustArchiveIteratorRef",
+        "LLVMRustJITMemoryManagerRef",
+        "LLVMRustOperandBundleDefRef",
+        "LLVMSMDiagnosticRef",
+        "LLVMSectionIteratorRef",
+        "LLVMTargetDataRef",
+        "LLVMTargetMachineRef",
+        "LLVMTypeKind",
+        "LLVMTypeRef",
+        "RustStringRef",
+        "llvm::DIBuilder",
+        "llvm::DiagnosticInfo",
+        "llvm::SMDiagnostic",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
+        "llvm::object::Archive_Child",
+        "llvm::object::OwningBinary",
+    ].into_iter() {
+        builder = builder
+            .opaque_type(opaque_type)
+            .whitelist_type(opaque_type);
+    }
+
+    for rustified_enum in [
+        "LLVMAtomicOrdering",
+        "LLVMAtomicRMWBinOp",
+        "LLVMDLLStorageClass",
+        "LLVMDiagnosticSeverity",
+        "LLVMIntPredicate",
+        "LLVMRealPredicate",
+        "LLVMRelocMode",
+        "LLVMRustArchiveKind",
+        "LLVMRustAsmDialect",
+        "LLVMRustAttribute",
+        "LLVMRustCodeGenOptLevel",
+        "LLVMRustCodeModel",
+        "LLVMRustDIFlags",
+        "LLVMRustDiagnosticKind",
+        "LLVMRustFileType",
+        "LLVMRustLinkage",
+        "LLVMRustPassKind",
+        "LLVMRustResult",
+        "LLVMRustSynchronizationScope",
+        "LLVMRustVisibility",
+        "LLVMThreadLocalMode",
+        "LLVMTypeKind",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1161.
+        "llvm::CallingConv::.*",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
+        "llvm::LLVMContext.*",
+    ].into_iter() {
+        builder = builder
+            .whitelist_type(rustified_enum)
+            .rustified_enum(rustified_enum)
+    }
+
+    for llvm_function in [
+        "LLVMCountParams",
+        "LLVMGetParam",
+        "LLVMCreateObjectFile",
+        "LLVMCreateTargetData",
+        "LLVMDisposeObjectFile",
+        "LLVMDisposeSectionIterator",
+        "LLVMDisposeTargetData",
+        "LLVMGetSections",
+        "LLVMGetValueName",
+        "LLVMSetFunctionCallConv",
+        "LLVMSetInstructionCallConv",
+        "LLVMSetThreadLocal",
+        "LLVMSetThreadLocalMode",
+        "LLVMSetUnnamedAddr",
+    ].into_iter() {
+        builder = builder.whitelist_function(llvm_function);
+    }
+
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
@@ -151,7 +273,13 @@ fn main() {
         }
 
         cfg.flag(flag);
+        builder = builder.clang_arg(flag);
     }
+
+    builder.generate()
+        .expect("Failed to generate bindings")
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Failed to write bindings");
 
     for component in &components {
         let mut flag = String::from("-DLLVM_COMPONENT_");

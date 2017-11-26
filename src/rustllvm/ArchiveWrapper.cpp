@@ -10,10 +10,6 @@
 
 #include "rustllvm.h"
 
-#include "llvm/Object/Archive.h"
-#include "llvm/Object/ArchiveWriter.h"
-#include "llvm/Support/Path.h"
-
 using namespace llvm;
 using namespace llvm::object;
 
@@ -47,14 +43,6 @@ struct RustArchiveIterator {
 #endif
 };
 
-enum class LLVMRustArchiveKind {
-  Other,
-  GNU,
-  MIPS64,
-  BSD,
-  COFF,
-};
-
 static Archive::Kind fromRust(LLVMRustArchiveKind Kind) {
   switch (Kind) {
   case LLVMRustArchiveKind::GNU:
@@ -70,13 +58,7 @@ static Archive::Kind fromRust(LLVMRustArchiveKind Kind) {
   }
 }
 
-typedef OwningBinary<Archive> *LLVMRustArchiveRef;
-typedef RustArchiveMember *LLVMRustArchiveMemberRef;
-typedef Archive::Child *LLVMRustArchiveChildRef;
-typedef Archive::Child const *LLVMRustArchiveChildConstRef;
-typedef RustArchiveIterator *LLVMRustArchiveIteratorRef;
-
-extern "C" LLVMRustArchiveRef LLVMRustOpenArchive(char *Path) {
+extern "C" LLVMRustArchiveRef LLVMRustOpenArchive(const char *Path) {
   ErrorOr<std::unique_ptr<MemoryBuffer>> BufOr =
       MemoryBuffer::getFile(Path, -1, false);
   if (!BufOr) {

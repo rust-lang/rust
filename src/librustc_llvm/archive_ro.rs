@@ -93,6 +93,7 @@ impl<'a> Iterator for Iter<'a> {
         if ptr.is_null() {
             ::last_error().map(Err)
         } else {
+            let ptr = ptr as *mut _;
             Some(Ok(Child {
                 ptr,
                 _data: marker::PhantomData,

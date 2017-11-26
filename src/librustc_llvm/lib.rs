@@ -20,22 +20,13 @@
 
 #![feature(box_syntax)]
 #![feature(concat_idents)]
+#![feature(const_fn)]
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(static_nobundle)]
 
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
-
-#[macro_use]
-extern crate bitflags;
 extern crate libc;
 
-pub use self::IntPredicate::*;
-pub use self::RealPredicate::*;
-pub use self::TypeKind::*;
-pub use self::AtomicRmwBinOp::*;
 pub use self::MetadataType::*;
 pub use self::CodeGenOptSize::*;
 pub use self::CallConv::*;
@@ -104,18 +95,15 @@ impl FromStr for ArchiveKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "gnu" => Ok(ArchiveKind::K_GNU),
-            "mips64" => Ok(ArchiveKind::K_MIPS64),
-            "bsd" => Ok(ArchiveKind::K_BSD),
-            "coff" => Ok(ArchiveKind::K_COFF),
+            "gnu" => Ok(ArchiveKind::GNU),
+            "mips64" => Ok(ArchiveKind::MIPS64),
+            "bsd" => Ok(ArchiveKind::BSD),
+            "coff" => Ok(ArchiveKind::COFF),
             _ => Err(()),
         }
     }
 }
 
-#[allow(missing_copy_implementations)]
-pub enum RustString_opaque {}
-type RustStringRef = *mut RustString_opaque;
 type RustStringRepr = *mut RefCell<Vec<u8>>;
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
@@ -409,7 +397,7 @@ impl OperandBundleDef {
     pub fn new(name: &str, vals: &[ValueRef]) -> OperandBundleDef {
         let name = CString::new(name).unwrap();
         let def = unsafe {
-            LLVMRustBuildOperandBundleDef(name.as_ptr(), vals.as_ptr(), vals.len() as c_uint)
+            LLVMRustBuildOperandBundleDef(name.as_ptr(), vals.as_ptr() as *mut _, vals.len() as c_uint)
         };
         OperandBundleDef { inner: def }
     }

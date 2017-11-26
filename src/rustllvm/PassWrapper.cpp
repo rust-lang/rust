@@ -67,12 +67,6 @@ extern "C" void LLVMInitializePasses() {
   initializeTarget(Registry);
 }
 
-enum class LLVMRustPassKind {
-  Other,
-  Function,
-  Module,
-};
-
 static LLVMRustPassKind toRust(PassKind Kind) {
   switch (Kind) {
   case PT_Function:
@@ -210,16 +204,6 @@ extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
   return false;
 }
 
-enum class LLVMRustCodeModel {
-  Other,
-  Default,
-  JITDefault,
-  Small,
-  Kernel,
-  Medium,
-  Large,
-};
-
 static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
   case LLVMRustCodeModel::Default:
@@ -238,14 +222,6 @@ static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
     report_fatal_error("Bad CodeModel.");
   }
 }
-
-enum class LLVMRustCodeGenOptLevel {
-  Other,
-  None,
-  Less,
-  Default,
-  Aggressive,
-};
 
 static CodeGenOpt::Level fromRust(LLVMRustCodeGenOptLevel Level) {
   switch (Level) {
@@ -497,12 +473,6 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   Initialized = true;
   cl::ParseCommandLineOptions(Argc, Argv);
 }
-
-enum class LLVMRustFileType {
-  Other,
-  AssemblyFile,
-  ObjectFile,
-};
 
 static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
   switch (Type) {
