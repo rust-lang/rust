@@ -217,7 +217,6 @@ macro_rules! impl_Display {
 macro_rules! impl_unsigned_to_str {
     ($($t:ident),*) => ($(
     impl UnsignedToStr for $t {
-        #[inline]
         fn to_str(self, buf: &mut [u8]) -> &mut str {
             // python -c 'print([len(str((1<<bits)-1)) for bits in range(128)])'
             const DECIMAL_LENGTH_BY_BINARY_LENGTH: [usize; 128] = [
@@ -240,50 +239,47 @@ macro_rules! impl_unsigned_to_str {
         }
 
         /// `buf` must be large enough
-        #[inline]
         unsafe fn to_str_unchecked(self, buf: &mut [u8]) -> &mut str {
             let mut curr = buf.len() as isize;
             let buf_ptr = buf.as_mut_ptr();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
             let mut n = self;
 
-            {
-                // need at least 16 bits for the 4-characters-at-a-time to work.
-                if ::mem::size_of::<$t>() >= 2 {
-                    // eagerly decode 4 characters at a time
-                    #[allow(unused_comparisons, overflowing_literals)]
-                    while n >= 10000 {
-                        let rem = (n % 10000) as isize;
-                        n /= 10000;
+            // need at least 16 bits for the 4-characters-at-a-time to work.
+            if ::mem::size_of::<$t>() >= 2 {
+                // eagerly decode 4 characters at a time
+                #[allow(unused_comparisons, overflowing_literals)]
+                while n >= 10000 {
+                    let rem = (n % 10000) as isize;
+                    n /= 10000;
 
-                        let d1 = (rem / 100) << 1;
-                        let d2 = (rem % 100) << 1;
-                        curr -= 4;
-                        ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                        ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
-                    }
-                }
-
-                // if we reach here numbers are <= 9999, so at most 4 chars long
-                let mut n = n as isize; // possibly reduce 64bit math
-
-                // decode 2 more chars, if > 2 chars
-                if n >= 100 {
-                    let d1 = (n % 100) << 1;
-                    n /= 100;
-                    curr -= 2;
+                    let d1 = (rem / 100) << 1;
+                    let d2 = (rem % 100) << 1;
+                    curr -= 4;
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
                 }
+            }
 
-                // decode last 1 or 2 chars
-                if n < 10 {
-                    curr -= 1;
-                    *buf_ptr.offset(curr) = (n as u8) + b'0';
-                } else {
-                    let d1 = n << 1;
-                    curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                }
+            // if we reach here numbers are <= 9999, so at most 4 chars long
+            let mut n = n as isize; // possibly reduce 64bit math
+
+            // decode 2 more chars, if > 2 chars
+            if n >= 100 {
+                let d1 = (n % 100) << 1;
+                n /= 100;
+                curr -= 2;
+                ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+            }
+
+            // decode last 1 or 2 chars
+            if n < 10 {
+                curr -= 1;
+                *buf_ptr.offset(curr) = (n as u8) + b'0';
+            } else {
+                let d1 = n << 1;
+                curr -= 2;
+                ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
             }
 
             str::from_utf8_unchecked_mut(
