@@ -1422,7 +1422,7 @@ macro_rules! uint_impl {
 
         /// Write the representation in a given base in a pre-allocated buffer.
         ///
-        /// Digits are a subset (depending on `radix`) of `0-9A-F`.
+        /// Digits are a subset (depending on `radix`) of `0-9A-Z`.
         ///
         /// The returned slice contains no leading zero or plus sign,
         /// and is aligned to the *end* of `buffer`.
