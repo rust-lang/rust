@@ -1315,6 +1315,25 @@ macro_rules! uint_impl {
             from_str_radix(src, radix)
         }
 
+        /// Writes the decimal representation in a pre-allocated buffer.
+        ///
+        /// The returned slice contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `buffer` is too small.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// assert_eq!(0xFFFF_u32.to_str(&mut [0; 10]), "65635")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_str(self, buffer: &mut [u8]) -> &mut str {
+            fmt::num::UnsignedToStr::to_str(self as $ActualT, buffer)
+        }
+
         /// Returns the number of ones in the binary representation of `self`.
         ///
         /// # Examples

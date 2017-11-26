@@ -206,22 +206,48 @@ macro_rules! impl_Display {
                 // convert the negative num to positive by summing 1 to it's 2 complement
                 (!self.$conv_fn()).wrapping_add(1)
             };
-            let mut buf: [u8; 39] = unsafe { mem::uninitialized() };
-            f.pad_integral(is_nonnegative, "", n.to_str_unsigned(&mut buf))
+            unsafe {
+                let mut buf: [u8; 39] = mem::uninitialized();
+                f.pad_integral(is_nonnegative, "", n.to_str_unchecked(&mut buf))
+            }
         }
     })+);
 }
 
-macro_rules! impl_to_str_unsigned {
+macro_rules! impl_unsigned_to_str {
     ($($t:ident),*) => ($(
-    impl ToStrUnsigned for $t {
-        fn to_str_unsigned(self, buf: &mut [u8; 39]) -> &str {
+    impl UnsignedToStr for $t {
+        #[inline]
+        fn to_str(self, buf: &mut [u8]) -> &mut str {
+            // python -c 'print([len(str((1<<bits)-1)) for bits in range(128)])'
+            const DECIMAL_LENGTH_BY_BINARY_LENGTH: [usize; 128] = [
+                1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5,  // 0..15 significant bits
+                5, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, // 16..31
+                10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 15,  // 32..47
+                15, 15, 16, 16, 16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 19,  // 48..63
+                20, 20, 20, 21, 21, 21, 22, 22, 22, 22, 23, 23, 23, 24, 24, 24,  // 64..79
+                25, 25, 25, 25, 26, 26, 26, 27, 27, 27, 28, 28, 28, 28, 29, 29,  // 80..95
+                29, 30, 30, 30, 31, 31, 31, 32, 32, 32, 32, 33, 33, 33, 34, 34,  // 96..111
+                34, 35, 35, 35, 35, 36, 36, 36, 37, 37, 37, 38, 38, 38, 38, 39,  // 112..127
+            ];
+
+            let bits = ::mem::size_of::<$t>() * 8 - self.leading_zeros() as usize;
+            assert!(buf.len() >= DECIMAL_LENGTH_BY_BINARY_LENGTH[bits],
+                    "A buffer of length {} is too small to represent {}", buf.len(), self);
+            unsafe {
+                self.to_str_unchecked(buf)
+            }
+        }
+
+        /// `buf` must be large enough
+        #[inline]
+        unsafe fn to_str_unchecked(self, buf: &mut [u8]) -> &mut str {
             let mut curr = buf.len() as isize;
             let buf_ptr = buf.as_mut_ptr();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
             let mut n = self;
 
-            unsafe {
+            {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
                 if ::mem::size_of::<$t>() >= 2 {
                     // eagerly decode 4 characters at a time
@@ -260,11 +286,9 @@ macro_rules! impl_to_str_unsigned {
                 }
             }
 
-            let buf_slice = unsafe {
-                str::from_utf8_unchecked(
-                    slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
-            };
-            buf_slice
+            str::from_utf8_unchecked_mut(
+                slice::from_raw_parts_mut(buf_ptr.offset(curr), buf.len() - curr as usize)
+            )
         }
     })*);
 }
@@ -279,8 +303,9 @@ impl_Display!(isize, usize: to_u32);
 #[cfg(target_pointer_width = "64")]
 impl_Display!(isize, usize: to_u64);
 
-impl_to_str_unsigned!(u8, u16, u32, u64, u128);
+impl_unsigned_to_str!(u8, u16, u32, u64, u128);
 
-pub(crate) trait ToStrUnsigned {
-    fn to_str_unsigned(self, buf: &mut [u8; 39]) -> &str;
+pub(crate) trait UnsignedToStr {
+    fn to_str(self, buf: &mut [u8]) -> &mut str;
+    unsafe fn to_str_unchecked(self, buf: &mut [u8]) -> &mut str;
 }
