@@ -19,19 +19,15 @@ enum Opt<T=String> {
 }
 
 fn main() {
-    // func1 and func2 cannot agree so we apply the fallback from the type.
+    // func1 and func2 cannot agree so we fail.
+    // NB: While it would be future-proof wrt API evolution to use the `String` default in `Opt`,
+    // that is not future proof wrt to compiler evolution,
+    // such as making priority levels more fine-grained or just fixing bugs.
     let x = Opt::Non;
     func1(&x);
     func2(&x);
 }
 
-// Defaults on fns take precedence.
-fn func1<P: AsRef<Path> = &'static str>(_: &Opt<P>) {
-    // Testing that we got String.
-    assert_eq!(size_of::<P>(), size_of::<String>())
-}
+fn func1<P: AsRef<Path> = &'static str>(_: &Opt<P>) { }
 
-fn func2<P: AsRef<Path> = &'static &'static str>(_: &Opt<P>) {
-    // Testing that we got String.
-    assert_eq!(size_of::<P>(), size_of::<String>())
-}
+fn func2<P: AsRef<Path> = &'static &'static str>(_: &Opt<P>) { }

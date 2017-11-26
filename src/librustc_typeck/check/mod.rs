@@ -2209,9 +2209,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Adding a default to a type parameter that has none should be backwards compatible.
     /// Therefore we take care to future-proof against conflicting defaults.
     ///
-    /// Currently we prioritize defaults from impls and fns over defaults in types,
+    /// Currently we prioritize params from impls and fns over params in types,
     /// this for example allows `fn foo<T=String>(x: Option<T>)` to work
     /// even though `Option<T>` has no default for `T`.
+    /// Lower priority defaults are considered when there are no higher priority params involved.
     fn apply_user_type_parameter_fallback(&self) {
         use self::TypeVariableOrigin::TypeParameterDefinition;
         use ty::OriginOfTyParam;
@@ -2253,50 +2254,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 });
                 // Params from fns or impls have higher priority than those from type definitions.
-                // Consider the priority levels in order:
-                // Try again later if a default can't be normalized.
-                // Succeed if all defaults exist and agree.
-                // Fail if existing defaults agree but there are missing defaults.
-                // Skip the priority level if it's empty or there are disagreements.
-                let priority_levels: Vec<Vec<ty::TyVid>> = vec![fn_or_impl, ty_def];
-                'priority_levels: for priority_level in priority_levels {
-                    if priority_level.is_empty() {
-                        continue;
-                    }
-                    let get_default = |&v| self.infcx.type_variables.borrow().default(v).as_user();
-                    let mut existing_defaults = Vec::new();
-                    for default in priority_level.iter().filter_map(&get_default) {
+                // The first non-empty priority level is considered.
+                let mut bag: Vec<ty::TyVid> = fn_or_impl;
+                if bag.is_empty() {
+                    bag = ty_def;
+                }
+                // - Try again later if a default can't be normalized.
+                // - Fail if there are conflicting or missing defaults.
+                // - Succeess if all defaults exist and agree.
+                let get_default = |&v| self.infcx.type_variables.borrow().default(v).as_user();
+                let mut normalized_defaults = Vec::new();
+                for default in bag.iter().map(&get_default) {
+                    if let Some(default) = default {
                         match self.eager_normalize_in(default.origin_span, &default.ty) {
-                            Some(def) => existing_defaults.push(def),
+                            Some(default) => normalized_defaults.push(default),
                             None => continue 'bags, // Try again later.
                         }
-                    }
-                    let mut existing_defaults = existing_defaults.iter();
-                    let equivalent_default = match existing_defaults.next() {
-                        Some(default) => default,
-                        None => break, // Failed, no params have defaults at this level.
-                    };
-                    // On conflicting defaults, skip this level.
-                    if existing_defaults.any(|&default| default.sty != equivalent_default.sty) {
-                        debug!("apply_user_type_parameter_fallback: skipping priority level");
-                        continue;
-                    }
-                    // All existing defaults agree, but for future-proofing
-                    // we must fail if there is a param with no default.
-                    if priority_level.iter().any(|vid| get_default(vid) == None) {
-                        break;
-                    }
-                    // All defaults exist and agree, apply the default and succeed.
-                    for &vid in &priority_level {
-                        let ty = self.tcx.mk_var(vid);
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, &ty, equivalent_default);
-                        debug!("apply_user_type_parameter_fallback: applied fallback to var: {:?} \
-                            with ty: {:?} with default: {:?}", vid, ty, equivalent_default);
-                        // Progress was made.
-                        fixed_point = false;
+                    } else {
+                        // Fail, missing default.
                         *done = true;
-                        break 'priority_levels;
+                        continue 'bags;
                     }
+                }
+                let equivalent_default = normalized_defaults[0];
+                // Fail on conflicting defaults.
+                if normalized_defaults.iter().any(|&d| d.sty != equivalent_default.sty) {
+                    break;
+                }
+                // All defaults exist and agree, success, apply the default.
+                fixed_point = false;
+                *done = true;
+                for &vid in &bag {
+                    let ty = self.tcx.mk_var(vid);
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, &ty, equivalent_default);
+                    debug!("apply_user_type_parameter_fallback: applied fallback to var: {:?} \
+                        with ty: {:?} with default: {:?}", vid, ty, equivalent_default);
                 }
             }
             if fixed_point {

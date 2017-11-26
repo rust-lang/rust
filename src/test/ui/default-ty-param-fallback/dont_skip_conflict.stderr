@@ -1,0 +1,10 @@
+error[E0282]: type annotations needed
+  --> $DIR/dont_skip_conflict.rs:26:13
+   |
+26 |     let x = Opt::Non;
+   |         -   ^^^^^^^^ cannot infer type for `T`
+   |         |
+   |         consider giving `x` a type
+
+error: aborting due to previous error
+
