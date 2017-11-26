@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z parse-only
+// must-compile-successfully
 
 #![feature(generic_associated_types)]
 
