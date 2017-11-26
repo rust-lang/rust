@@ -768,6 +768,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::BorrowCheck => { force!(borrowck, def_id!()); }
         DepKind::MirBorrowCheck => { force!(mir_borrowck, def_id!()); }
         DepKind::UnsafetyCheckResult => { force!(unsafety_check_result, def_id!()); }
+        DepKind::UnsafeDeriveOnReprPacked => { force!(unsafe_derive_on_repr_packed, def_id!()); }
         DepKind::Reachability => { force!(reachable_set, LOCAL_CRATE); }
         DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }
         DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }

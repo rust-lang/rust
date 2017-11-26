@@ -479,6 +479,7 @@ define_dep_nodes!( <'tcx>
     [] BorrowCheck(DefId),
     [] MirBorrowCheck(DefId),
     [] UnsafetyCheckResult(DefId),
+    [] UnsafeDeriveOnReprPacked(DefId),
 
     [] Reachability,
     [] MirKeys,
