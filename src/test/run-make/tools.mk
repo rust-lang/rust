@@ -92,7 +92,7 @@ ifeq ($(UNAME),SunOS)
 	EXTRACFLAGS := -lm -lpthread -lposix4 -lsocket -lresolv
 else
 ifeq ($(UNAME),OpenBSD)
-	EXTRACFLAGS := -lm -lpthread
+	EXTRACFLAGS := -lm -lpthread -lc++abi
 	RUSTC := $(RUSTC) -C linker="$(word 1,$(CC:ccache=))"
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
