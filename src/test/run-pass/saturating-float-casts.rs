@@ -10,6 +10,7 @@
 
 // Tests saturating float->int casts. See u128-as-f32.rs for the opposite direction.
 // compile-flags: -Z saturating-float-casts
+// ignore-wasm32-bare FIXME(#46298) needs upstream llvm fixes
 
 #![feature(test, i128, i128_type, stmt_expr_attributes)]
 #![deny(overflowing_literals)]

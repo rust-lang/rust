@@ -161,8 +161,8 @@ matrix:
       if: branch = auto
     - env: IMAGE=i686-gnu-nopt
       if: branch = auto
-    # - env: IMAGE=wasm32 issue 42646
-    #   if: branch = auto
+    - env: IMAGE=wasm32-unknown
+      if: branch = auto
     - env: IMAGE=x86_64-gnu
       if: branch = auto
     - env: IMAGE=x86_64-gnu-full-bootstrap

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
+
 fn main() {
     let mut x = Packed(Aligned(Droppy(0)));
     x.0 = Aligned(Droppy(0));
