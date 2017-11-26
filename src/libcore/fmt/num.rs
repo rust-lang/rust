@@ -208,7 +208,7 @@ macro_rules! impl_Display {
             };
             unsafe {
                 let mut buf: [u8; 39] = mem::uninitialized();
-                f.pad_integral(is_nonnegative, "", n.to_str_unchecked(&mut buf))
+                f.pad_integral(is_nonnegative, "", n.to_str_unchecked(&mut buf, false))
             }
         }
     })+);
@@ -217,9 +217,9 @@ macro_rules! impl_Display {
 macro_rules! impl_unsigned_to_str {
     ($($t:ident),*) => ($(
     impl UnsignedToStr for $t {
-        fn to_str(self, buf: &mut [u8]) -> &mut str {
+        fn str_len(self) -> usize {
             // python -c 'print([len(str((1<<bits)-1)) for bits in range(128)])'
-            const DECIMAL_LENGTH_BY_BINARY_LENGTH: [usize; 128] = [
+            const DECIMAL_LENGTH_BY_BINARY_LENGTH: [u8; 128] = [
                 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5,  // 0..15 significant bits
                 5, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, // 16..31
                 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 15,  // 32..47
@@ -231,15 +231,19 @@ macro_rules! impl_unsigned_to_str {
             ];
 
             let bits = ::mem::size_of::<$t>() * 8 - self.leading_zeros() as usize;
-            assert!(buf.len() >= DECIMAL_LENGTH_BY_BINARY_LENGTH[bits],
+            DECIMAL_LENGTH_BY_BINARY_LENGTH[bits] as usize
+        }
+
+        fn to_str(self, buf: &mut [u8]) -> &mut str {
+            assert!(buf.len() >= UnsignedToStr::str_len(self),
                     "A buffer of length {} is too small to represent {}", buf.len(), self);
             unsafe {
-                self.to_str_unchecked(buf)
+                self.to_str_unchecked(buf, false)
             }
         }
 
         /// `buf` must be large enough
-        unsafe fn to_str_unchecked(self, buf: &mut [u8]) -> &mut str {
+        unsafe fn to_str_unchecked(self, buf: &mut [u8], minus_sign: bool) -> &mut str {
             let mut curr = buf.len() as isize;
             let buf_ptr = buf.as_mut_ptr();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
@@ -282,9 +286,38 @@ macro_rules! impl_unsigned_to_str {
                 ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
             }
 
+            if minus_sign {
+                curr -= 1;
+                *buf_ptr.offset(curr) = b'-';
+            }
+
             str::from_utf8_unchecked_mut(
                 slice::from_raw_parts_mut(buf_ptr.offset(curr), buf.len() - curr as usize)
             )
+        }
+    })*);
+}
+
+macro_rules! impl_signed_to_str {
+    ($($t:ident $conv_fn: ident),*) => ($(
+    impl SignedToStr for $t {
+        fn to_str(self, buf: &mut [u8]) -> &mut str {
+            let is_negative = self < 0;
+            let n = if is_negative {
+                // convert the negative num to positive by summing 1 to it's 2 complement
+                (!self.$conv_fn()).wrapping_add(1)
+            } else {
+                self.$conv_fn()
+            };
+            let mut str_len = UnsignedToStr::str_len(n);
+            if is_negative {
+                str_len += 1  // += "-".len()
+            }
+            assert!(buf.len() >= str_len,
+                    "A buffer of length {} is too small to represent {}", buf.len(), self);
+            unsafe {
+                n.to_str_unchecked(buf, is_negative)
+            }
         }
     })*);
 }
@@ -300,8 +333,14 @@ impl_Display!(isize, usize: to_u32);
 impl_Display!(isize, usize: to_u64);
 
 impl_unsigned_to_str!(u8, u16, u32, u64, u128);
+impl_signed_to_str!(i8 to_u8, i16 to_u16, i32 to_u32, i64 to_u64, i128 to_u128);
 
 pub(crate) trait UnsignedToStr {
+    fn str_len(self) -> usize;
     fn to_str(self, buf: &mut [u8]) -> &mut str;
-    unsafe fn to_str_unchecked(self, buf: &mut [u8]) -> &mut str;
+    unsafe fn to_str_unchecked(self, buf: &mut [u8], minus_sign: bool) -> &mut str;
+}
+
+pub(crate) trait SignedToStr {
+    fn to_str(self, buf: &mut [u8]) -> &mut str;
 }

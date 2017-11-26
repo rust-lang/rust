@@ -150,6 +150,28 @@ macro_rules! int_impl {
             from_str_radix(src, radix)
         }
 
+        /// Writes the decimal representation in a pre-allocated buffer.
+        ///
+        /// The returned slice starts with a minus sign for negative values
+        /// but contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `buffer` is too small.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!(i16::min_value().to_str(&mut [0; 6]), "-32768")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_str(self, buffer: &mut [u8]) -> &mut str {
+            fmt::num::SignedToStr::to_str(self as $ActualT, buffer)
+        }
+
         /// Returns the number of ones in the binary representation of `self`.
         ///
         /// # Examples
@@ -1327,7 +1349,9 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// assert_eq!(0xFFFF_u32.to_str(&mut [0; 10]), "65635")
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!(0xFFFF_u32.to_str(&mut [0; 10]), "65535")
         /// ```
         #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
         pub fn to_str(self, buffer: &mut [u8]) -> &mut str {
