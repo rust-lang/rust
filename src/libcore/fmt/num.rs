@@ -200,21 +200,32 @@ macro_rules! impl_Display {
         #[allow(unused_comparisons)]
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let is_nonnegative = *self >= 0;
-            let mut n = if is_nonnegative {
+            let n = if is_nonnegative {
                 self.$conv_fn()
             } else {
                 // convert the negative num to positive by summing 1 to it's 2 complement
                 (!self.$conv_fn()).wrapping_add(1)
             };
             let mut buf: [u8; 39] = unsafe { mem::uninitialized() };
+            f.pad_integral(is_nonnegative, "", n.to_str_unsigned(&mut buf))
+        }
+    })+);
+}
+
+macro_rules! impl_to_str_unsigned {
+    ($($t:ident),*) => ($(
+    impl ToStrUnsigned for $t {
+        fn to_str_unsigned(self, buf: &mut [u8; 39]) -> &str {
             let mut curr = buf.len() as isize;
             let buf_ptr = buf.as_mut_ptr();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+            let mut n = self;
 
             unsafe {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
                 if ::mem::size_of::<$t>() >= 2 {
                     // eagerly decode 4 characters at a time
+                    #[allow(unused_comparisons, overflowing_literals)]
                     while n >= 10000 {
                         let rem = (n % 10000) as isize;
                         n /= 10000;
@@ -253,7 +264,7 @@ macro_rules! impl_Display {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
             };
-            f.pad_integral(is_nonnegative, "", buf_slice)
+            buf_slice
         }
     })*);
 }
@@ -267,3 +278,9 @@ impl_Display!(isize, usize: to_u16);
 impl_Display!(isize, usize: to_u32);
 #[cfg(target_pointer_width = "64")]
 impl_Display!(isize, usize: to_u64);
+
+impl_to_str_unsigned!(u8, u16, u32, u64, u128);
+
+pub(crate) trait ToStrUnsigned {
+    fn to_str_unsigned(self, buf: &mut [u8; 39]) -> &str;
+}
