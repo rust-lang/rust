@@ -93,7 +93,7 @@ pub enum Default<'tcx> {
 }
 
 impl<'tcx> Default<'tcx> {
-    pub fn get_user(&self) -> Option<UserDefault<'tcx>> {
+    pub fn as_user(&self) -> Option<UserDefault<'tcx>> {
         match *self {
             Default::User(ref user_default) => Some(user_default.clone()),
             Default::None => None,

@@ -113,6 +113,7 @@ use std::rc::Rc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
+use std::iter::FromIterator;
 use std::mem::replace;
 use std::ops::{self, Deref};
 use syntax::abi::Abi;
@@ -2001,6 +2002,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                          value)
     }
 
+    fn eager_normalize_in<T>(&self, span: Span, value: &T) -> Option<T>
+        where T : TypeFoldable<'tcx>
+    {
+        let infer_ok = self.inh.partially_normalize_associated_types_in(span,
+                                                                        self.body_id,
+                                                                        self.param_env,
+                                                                        value);
+        if infer_ok.obligations.is_empty() {
+            Some(infer_ok.value)
+        } else {
+            self.inh.register_predicates(infer_ok.obligations);
+            self.select_obligations_where_possible();
+            let resolved = self.resolve_type_vars_if_possible(&infer_ok.value);
+            if !resolved.needs_infer() {
+                Some(resolved)
+            } else {
+                None
+            }
+        }
+    }
+
     pub fn require_type_meets(&self,
                               ty: Ty<'tcx>,
                               span: Span,
@@ -2210,66 +2232,75 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 bags.entry(root).or_insert(Vec::new()).push(vid);
             }
         }
-
+        // Discard key, bags is a sequence of pairs (bag, done).
+        let mut bags = Vec::from_iter(bags.into_iter().map(|b| b.1).map(|b| (b, false)));
         // Attempt to find a fallback for each bag.
-        for (_, bag) in bags {
-            // Partition the bag by the origin of the type param.
-            let (fn_or_impl, ty_def) = bag.into_iter().partition(|&v| {
-                match self.infcx.type_variables.borrow().var_origin(v) {
-                    TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
-                    TypeParameterDefinition(_, _, OriginOfTyParam::Impl) => true,
-                    TypeParameterDefinition(_, _, OriginOfTyParam::TyDef) => false,
-                    _ => bug!("type var does not support fallback")
+        loop {
+            // For dependent defaults, solving a bag
+            // might allow us to normalize an associated type in another bag.
+            // For example in `impl<X = u32, Y = <X as Trait>::Type>`.
+            // Therefore we loop over the bags until we are at a fixed point.
+            let mut fixed_point = true;
+            // Loop over bags that are not done.
+            'bags: for &mut(ref bag, ref mut done) in bags.iter_mut().filter(|bag| !bag.1) {
+                // Partition the bag by the origin of the type param.
+                let (fn_or_impl, ty_def) = bag.iter().partition(|&&v| {
+                    match self.infcx.type_variables.borrow().var_origin(v) {
+                        TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
+                        TypeParameterDefinition(_, _, OriginOfTyParam::Impl) => true,
+                        TypeParameterDefinition(_, _, OriginOfTyParam::TyDef) => false,
+                        _ => bug!("type var does not support fallback")
+                    }
+                });
+                // Params from fns or impls have higher priority than those from type definitions.
+                // Consider the priority levels in order:
+                // Try again later if a default can't be normalized.
+                // Succeed if all defaults exist and agree.
+                // Fail if existing defaults agree but there are missing defaults.
+                // Skip the priority level if it's empty or there are disagreements.
+                let priority_levels: Vec<Vec<ty::TyVid>> = vec![fn_or_impl, ty_def];
+                'priority_levels: for priority_level in priority_levels {
+                    if priority_level.is_empty() {
+                        continue;
+                    }
+                    let get_default = |&v| self.infcx.type_variables.borrow().default(v).as_user();
+                    let mut existing_defaults = Vec::new();
+                    for default in priority_level.iter().filter_map(&get_default) {
+                        match self.eager_normalize_in(default.origin_span, &default.ty) {
+                            Some(def) => existing_defaults.push(def),
+                            None => continue 'bags, // Try again later.
+                        }
+                    }
+                    let mut existing_defaults = existing_defaults.iter();
+                    let equivalent_default = match existing_defaults.next() {
+                        Some(default) => default,
+                        None => break, // Failed, no params have defaults at this level.
+                    };
+                    // On conflicting defaults, skip this level.
+                    if existing_defaults.any(|&default| default.sty != equivalent_default.sty) {
+                        debug!("apply_user_type_parameter_fallback: skipping priority level");
+                        continue;
+                    }
+                    // All existing defaults agree, but for future-proofing
+                    // we must fail if there is a param with no default.
+                    if priority_level.iter().any(|vid| get_default(vid) == None) {
+                        break;
+                    }
+                    // All defaults exist and agree, apply the default and succeed.
+                    for &vid in &priority_level {
+                        let ty = self.tcx.mk_var(vid);
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, &ty, equivalent_default);
+                        debug!("apply_user_type_parameter_fallback: applied fallback to var: {:?} \
+                            with ty: {:?} with default: {:?}", vid, ty, equivalent_default);
+                        // Progress was made.
+                        fixed_point = false;
+                        *done = true;
+                        break 'priority_levels;
+                    }
                 }
-            });
-            // Params from fns or impls have higher priority than those from type definitions.
-            // We consider the priority levels in order and stop at the first success or failure:
-            // We succeed if all defaults exist and agree.
-            // We fail if existing defaults agree but there are missing defaults.
-            // We continue if the priority level is empty or if there are any disagreements.
-            let priority_levels: Vec<Vec<ty::TyVid>> = vec![fn_or_impl, ty_def];
-            'priority_levels: for priority_level in priority_levels {
-                if priority_level.is_empty() {
-                    continue;
-                }
-                let normalized_default = |&vid| {
-                    let default = self.infcx.type_variables.borrow().default(vid).get_user();
-                    default.map(|d| self.normalize_associated_types_in(d.origin_span, &d.ty))
-                };
-                let mut existing_defaults = priority_level.iter().filter_map(&normalized_default);
-                let equivalent_default = match existing_defaults.next() {
-                    Some(default) => default,
-                    None => break, // Failed, no params have defaults at this level.
-                };
-
-                // If there are conflicting defaults, skip this level.
-                // FIXME(leodasvacas):  In a case like `impl<X: Default=u32, Y = <X as Id>::This>`,
-                // as found in the test "dependent_associated_type.rs",
-                // if `Y` is normalized before the default of `X` is applied,
-                // then it's normalized to `TyInfer`, so we use a fragile workaround here.
-                // If it is `Y = Vec<<X as Id>::This>` we are in trouble again.
-                // Type equality that considers all inference variables equal is a correct fix.
-                if existing_defaults.any(|default| match (&default.sty, &equivalent_default.sty) {
-                                                        (&ty::TyInfer(_), &ty::TyInfer(_)) => false,
-                                                        (ref a, ref b) => **a != **b
-                                                    })
-                 {
-                    debug!("apply_user_type_parameter_fallback: skipping priority level");
-                    continue;
-                }
-                // All existing defaults agree, but for future-proofing
-                // we must fail if there is a param with no default.
-                if priority_level.iter().any(|vid| normalized_default(vid) == None) {
-                    break;
-                }
-                // All defaults exist and agree, apply the default and succeed.
-                for &vid in &priority_level {
-                    let ty = self.tcx.mk_var(vid);
-                    debug!("apply_user_type_parameter_fallback: applying fallback to var: {:?} \
-                        with ty: {:?} with default: {:?}", vid, ty, equivalent_default);
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, &ty, equivalent_default);
-                    break 'priority_levels;
-                }
+            }
+            if fixed_point {
+                break;
             }
         }
     }

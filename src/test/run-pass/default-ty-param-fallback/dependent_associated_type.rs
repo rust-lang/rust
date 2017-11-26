@@ -14,19 +14,20 @@
 use std::marker::PhantomData;
 
 trait Id {
-    type This;
+    type Me;
 }
 
 impl<A> Id for A {
-    type This = A;
+    type Me = A;
 }
 
-struct Foo<X, Y> {
-    data: PhantomData<(X, Y)>
+struct Foo<X, Y, Z, W> {
+    data: PhantomData<(X, Y, Z, W)>,
 }
 
-impl<X: Default = usize, Y = <X as Id>::This> Foo<X, Y> {
-    fn new() -> Foo<X, Y> {
+impl<X: Default = u32, Y = <X as Id>::Me, Z = <Y as Id>::Me, W = Vec<<X as Id>::Me>>
+    Foo<X, Y, Z, W> {
+    fn new() -> Foo<X, Y, Z, W> {
         Foo { data: PhantomData }
     }
 }
