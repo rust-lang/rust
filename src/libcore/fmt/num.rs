@@ -217,45 +217,10 @@ macro_rules! impl_Display {
 macro_rules! impl_unsigned_to_str {
     ($($t:ident),*) => ($(
     impl UnsignedToStr for $t {
-        /// Returns `self.to_string().len()`
-        fn str_len(self) -> usize {
-            if self == 0 {
-                // We use one "0" digit even though the mathematical answer
-                // is zero significant decimal digits.
-                return 1
-            }
-
-            #[inline]
-            fn ceiling_div(numerator: u32, denominator: u32) -> u32 {
-                (numerator + denominator - 1) / denominator
-            }
-
-            let type_bits = ::mem::size_of::<$t>() as u32 * 8;
-
-            // This is the number of bits in `self`, ignoring leading zeros.
-            // It is equal to `ceil(log2(self + 1))`.
-            let bits = type_bits - self.leading_zeros();
-
-            // `28 / 93` is an approximation of `log(2) / log(10)`.
-            // So if we take `bits` as an approximation of `log2(self + 1)`,
-            // this is an approximation of `ceil(log10(self + 1))`.
-            let approx_log10 = ceiling_div(bits * 28, 93);
-
-            // Because of integer rounding, this approximation turns out to be good enough
-            // to provide the exact result we want for all values up to 128 bits.
-            // This can be verified by running:
-            //
-            // ```python
-            // print(all(len(str((1 << bits) - 1)) == (bits * 28 + 92) // 93
-            //           for bits in range(1, 128)))
-            // ```
-            // python -c 'print(all(len(str((1<<bits)-1)) == (bits * 28 + 92)//93 for bits in range(1, 128)))'
-            approx_log10 as usize
-        }
-
         fn to_str(self, buf: &mut [u8]) -> &mut str {
-            assert!(buf.len() >= UnsignedToStr::str_len(self),
-                    "A buffer of length {} is too small to represent {}", buf.len(), self);
+            assert!(buf.len() >= $t::MAX_STR_LEN, concat!(
+                "A buffer of length ", stringify!($t), "::MAX_STR_LEN or more is required."
+            ));
             unsafe {
                 self.to_str_unchecked(buf, false)
             }
@@ -321,6 +286,9 @@ macro_rules! impl_signed_to_str {
     ($($t:ident $conv_fn: ident),*) => ($(
     impl SignedToStr for $t {
         fn to_str(self, buf: &mut [u8]) -> &mut str {
+            assert!(buf.len() >= $t::MAX_STR_LEN, concat!(
+                "A buffer of length ", stringify!($t), "::MAX_STR_LEN or more is required."
+            ));
             let is_negative = self < 0;
             let n = if is_negative {
                 // convert the negative num to positive by summing 1 to it's 2 complement
@@ -328,12 +296,6 @@ macro_rules! impl_signed_to_str {
             } else {
                 self.$conv_fn()
             };
-            let mut str_len = UnsignedToStr::str_len(n);
-            if is_negative {
-                str_len += 1  // += "-".len()
-            }
-            assert!(buf.len() >= str_len,
-                    "A buffer of length {} is too small to represent {}", buf.len(), self);
             unsafe {
                 n.to_str_unchecked(buf, is_negative)
             }
@@ -355,7 +317,6 @@ impl_unsigned_to_str!(u8, u16, u32, u64, u128);
 impl_signed_to_str!(i8 to_u8, i16 to_u16, i32 to_u32, i64 to_u64, i128 to_u128);
 
 pub(crate) trait UnsignedToStr {
-    fn str_len(self) -> usize;
     fn to_str(self, buf: &mut [u8]) -> &mut str;
     unsafe fn to_str_unchecked(self, buf: &mut [u8], minus_sign: bool) -> &mut str;
 }
