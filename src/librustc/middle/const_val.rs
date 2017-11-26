@@ -106,7 +106,8 @@ pub enum ErrKind<'tcx> {
 
     ErroneousReferencedConstant(Box<ConstEvalErr<'tcx>>),
 
-    TypeckError
+    TypeckError,
+    CheckMatchError,
 }
 
 impl<'tcx> From<ConstMathErr> for ErrKind<'tcx> {
@@ -168,6 +169,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             ErroneousReferencedConstant(_) => simple!("could not evaluate referenced constant"),
 
             TypeckError => simple!("type-checking failed"),
+            CheckMatchError => simple!("match-checking failed"),
         }
     }
 
@@ -212,8 +214,9 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         primary_span: Span,
         primary_kind: &str)
     {
-        if let ErrKind::TypeckError = self.kind {
-            return;
+        match self.kind {
+            ErrKind::TypeckError | ErrKind::CheckMatchError => return,
+            _ => {}
         }
         self.struct_error(tcx, primary_span, primary_kind).emit();
     }

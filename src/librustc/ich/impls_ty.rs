@@ -371,7 +371,8 @@ for ::middle::const_val::ErrKind<'gcx> {
             MiscBinaryOp |
             MiscCatchAll |
             IndexOpFeatureGated |
-            TypeckError => {
+            TypeckError |
+            CheckMatchError => {
                 // nothing to do
             }
             UnimplementedConstVal(s) => {
