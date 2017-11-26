@@ -314,7 +314,7 @@ pub trait Copy : Clone {
 ///
 /// For cases when one does need thread-safe interior mutability,
 /// Rust provides [atomic data types], as well as explicit locking via
-/// [`sync::Mutex`][mutex] and [`sync::RWLock`][rwlock]. These types
+/// [`sync::Mutex`][mutex] and [`sync::RwLock`][rwlock]. These types
 /// ensure that any mutation cannot cause data races, hence the types
 /// are `Sync`. Likewise, [`sync::Arc`][arc] provides a thread-safe
 /// analogue of [`Rc`][rc].
