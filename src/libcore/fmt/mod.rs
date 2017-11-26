@@ -1305,6 +1305,9 @@ impl<'a> Formatter<'a> {
 
     /// Flags for formatting
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.24.0",
+                       reason = "use the `sign_plus`, `sign_minus`, `alternate`, \
+                                 or `sign_aware_zero_pad` methods instead")]
     pub fn flags(&self) -> u32 { self.flags }
 
     /// Character used as 'fill' whenever there is alignment
