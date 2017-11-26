@@ -14,8 +14,6 @@
 // the contents implement Drop and we hit a panic in the middle of
 // construction.
 
-#![feature(const_atomic_usize_new)]
-
 use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

@@ -25,8 +25,6 @@
 #![feature(box_syntax)]
 #![feature(i128_type)]
 
-#![feature(const_min_value)]
-
 extern crate arena;
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;

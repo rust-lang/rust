@@ -110,7 +110,6 @@ macro_rules! int_impl {
         /// assert_eq!(i8::min_value(), -128);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_min_value")]
         #[inline]
         pub const fn min_value() -> Self {
             !0 ^ ((!0 as $UnsignedT) >> 1) as Self
@@ -124,7 +123,6 @@ macro_rules! int_impl {
         /// assert_eq!(i8::max_value(), 127);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_max_value")]
         #[inline]
         pub const fn max_value() -> Self {
             !Self::min_value()
@@ -1283,7 +1281,6 @@ macro_rules! uint_impl {
         /// assert_eq!(u8::min_value(), 0);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_min_value")]
         #[inline]
         pub const fn min_value() -> Self { 0 }
 
@@ -1295,7 +1292,6 @@ macro_rules! uint_impl {
         /// assert_eq!(u8::max_value(), 255);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_max_value")]
         #[inline]
         pub const fn max_value() -> Self { !0 }
 
