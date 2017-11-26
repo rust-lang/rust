@@ -5487,8 +5487,9 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = self.this_token_to_string();
             let mut err = self.fatal(&format!("expected item, found `{}`", token_str));
+            let msg = "consider removing this semicolon";
             if token_str == ";" {
-                err.note("consider removing the semicolon");
+                err.span_suggestion_short(self.span, msg, "".to_string());
             }
             return Err(err);
         }
