@@ -81,6 +81,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // (And cycle errors around impls tend to occur during the
         // collect/coherence phases anyhow.)
         item_path::with_forced_impl_filename_line(|| {
+            let span = self.sess.codemap().def_span(span);
             let mut err =
                 struct_span_err!(self.sess, span, E0391,
                                  "unsupported cyclic reference between types/traits detected");

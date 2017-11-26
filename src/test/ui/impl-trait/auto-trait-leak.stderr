@@ -23,14 +23,8 @@ error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::S
 error[E0391]: unsupported cyclic reference between types/traits detected
   --> $DIR/auto-trait-leak.rs:52:1
    |
-52 | / fn cycle1() -> impl Clone {
-53 | |     //~^ ERROR unsupported cyclic reference between types/traits detected
-54 | |     //~| cyclic reference
-55 | |     //~| NOTE the cycle begins when processing `cycle1`...
-...  |
-60 | |     Rc::new(Cell::new(5))
-61 | | }
-   | |_^ cyclic reference
+52 | fn cycle1() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic reference
    |
 note: the cycle begins when processing `cycle1`...
   --> $DIR/auto-trait-leak.rs:52:1
