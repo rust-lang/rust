@@ -24,3 +24,9 @@ error: item name ends with its containing module's name
 11 |     pub enum CakeFoo {}
    |     ^^^^^^^^^^^^^^^^^^^
 
+error: item name starts with its containing module's name
+  --> $DIR/stutter.rs:12:5
+   |
+12 |     pub struct Foo7Bar;
+   |     ^^^^^^^^^^^^^^^^^^^
+
