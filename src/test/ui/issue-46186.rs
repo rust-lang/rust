@@ -10,6 +10,6 @@
 
 struct Struct {
     a: usize,
-}; //~ ERROR expected item, found ';'
+}; //~ ERROR expected item, found `;`
 
 fn main() {}
