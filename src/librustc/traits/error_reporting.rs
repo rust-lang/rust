@@ -835,7 +835,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     if let hir::ExprIndex(_, _) = expr.node {
                         if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                             err.span_suggestion(expr.span,
-                                                "consider a slice instead",
+                                                "consider borrowing here",
                                                 format!("&{}", snippet));
                         }
                     }
