@@ -13,6 +13,7 @@
 // including) the call to `use_x`. The `else` branch is not included.
 
 // ignore-tidy-linelength
+// ignore-test #46267
 // compile-flags:-Znll -Zverbose
 //                     ^^^^^^^^^ force compiler to dump more region information
 
