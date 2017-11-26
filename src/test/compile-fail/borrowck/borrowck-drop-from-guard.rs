@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-//compile-flags: -Z emit-end-regions -Z borrowck-mir
+//compile-flags: -Z borrowck=mir
 
 fn foo(_:String) {}
 
@@ -19,6 +19,6 @@ fn main()
     match Some(42) {
         Some(_) if { drop(my_str); false } => {}
         Some(_) => {}
-        None => { foo(my_str); } //~ ERROR (Mir) [E0382]
+        None => { foo(my_str); } //~ ERROR [E0382]
     }
 }

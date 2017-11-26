@@ -9,12 +9,11 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 fn cplusplus_mode(x: isize) -> &'static isize {
     &x //[ast]~ ERROR `x` does not live long enough
-       //[mir]~^ ERROR `x` does not live long enough (Ast)
-       //[mir]~| ERROR borrowed value does not live long enough (Mir)
+       //[mir]~^ ERROR borrowed value does not live long enough
 }
 
 fn main() {}

@@ -9,12 +9,11 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 static NUM: i32 = 18;
 
 fn main() {
     NUM = 20; //[ast]~ ERROR E0594
-              //[mir]~^ ERROR cannot assign to immutable static item (Ast)
-              //[mir]~| ERROR cannot assign to immutable static item `NUM` (Mir)
+              //[mir]~^ ERROR cannot assign to immutable static item
 }

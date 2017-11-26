@@ -54,7 +54,7 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 
     if {
         !tcx.has_attr(def_id, "rustc_mir_borrowck") &&
-            !tcx.sess.opts.debugging_opts.borrowck_mir &&
+            !tcx.sess.opts.borrowck_mode.use_mir() &&
             !tcx.sess.opts.debugging_opts.nll
     } {
         return;

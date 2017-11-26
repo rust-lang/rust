@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck-mir -Z emit-end-regions
+// compile-flags: -Z borrowck=compare
 
 fn main() {
     let mut x = Box::new(0);

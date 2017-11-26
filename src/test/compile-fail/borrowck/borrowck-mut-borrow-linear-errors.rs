@@ -13,7 +13,7 @@
 // down to O(n) errors (for n problem lines), instead of O(n^2) errors.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 fn main() {
     let mut x = 1;
@@ -21,18 +21,15 @@ fn main() {
     loop {
         match 1 {
             1 => { addr = &mut x; } //[ast]~ ERROR [E0499]
-            //[mir]~^ ERROR (Ast) [E0499]
-            //[mir]~| ERROR (Mir) [E0499]
+            //[mir]~^ ERROR [E0499]
             2 => { addr = &mut x; } //[ast]~ ERROR [E0499]
-            //[mir]~^ ERROR (Ast) [E0499]
-            //[mir]~| ERROR (Mir) [E0506]
-            //[mir]~| ERROR (Mir) [E0499]
-            //[mir]~| ERROR (Mir) [E0499]
+            //[mir]~^ ERROR [E0506]
+            //[mir]~| ERROR [E0499]
+            //[mir]~| ERROR [E0499]
             _ => { addr = &mut x; } //[ast]~ ERROR [E0499]
-            //[mir]~^ ERROR (Ast) [E0499]
-            //[mir]~| ERROR (Mir) [E0506]
-            //[mir]~| ERROR (Mir) [E0499]
-            //[mir]~| ERROR (Mir) [E0499]
+            //[mir]~^ ERROR [E0506]
+            //[mir]~| ERROR [E0499]
+            //[mir]~| ERROR [E0499]
         }
     }
 }

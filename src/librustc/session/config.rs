@@ -362,6 +362,9 @@ top_level_options!(
 
         debugging_opts: DebuggingOptions [TRACKED],
         prints: Vec<PrintRequest> [UNTRACKED],
+        // Determines which borrow checker(s) to run. This is the parsed, sanitized
+        // version of `debugging_opts.borrowck`, which is just a plain string.
+        borrowck_mode: BorrowckMode [UNTRACKED],
         cg: CodegenOptions [TRACKED],
         // FIXME(mw): We track this for now but it actually doesn't make too
         //            much sense: The value of this option can stay the same
@@ -399,6 +402,32 @@ pub enum PrintRequest {
     TlsModels,
     TargetSpec,
     NativeStaticLibs,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum BorrowckMode {
+    Ast,
+    Mir,
+    Compare,
+}
+
+impl BorrowckMode {
+    /// Should we emit the AST-based borrow checker errors?
+    pub fn use_ast(self) -> bool {
+        match self {
+            BorrowckMode::Ast => true,
+            BorrowckMode::Compare => true,
+            BorrowckMode::Mir => false,
+        }
+    }
+    /// Should we emit the MIR-based borrow checker errors?
+    pub fn use_mir(self) -> bool {
+        match self {
+            BorrowckMode::Ast => false,
+            BorrowckMode::Compare => true,
+            BorrowckMode::Mir => true,
+        }
+    }
 }
 
 pub enum Input {
@@ -526,6 +555,7 @@ pub fn basic_options() -> Options {
         incremental: None,
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
+        borrowck_mode: BorrowckMode::Ast,
         cg: basic_codegen_options(),
         error_format: ErrorOutputType::default(),
         externs: Externs(BTreeMap::new()),
@@ -973,8 +1003,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "make unnamed regions display as '# (where # is some non-ident unique id)"),
     emit_end_regions: bool = (false, parse_bool, [UNTRACKED],
         "emit EndRegion as part of MIR; enable transforms that solely process EndRegion"),
-    borrowck_mir: bool = (false, parse_bool, [UNTRACKED],
-        "implicitly treat functions as if they have `#[rustc_mir_borrowck]` attribute"),
+    borrowck: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "select which borrowck is used (`ast`, `mir`, or `compare`)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass"),
     count_llvm_insns: bool = (false, parse_bool,
@@ -1743,6 +1773,15 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         }
     }));
 
+    let borrowck_mode = match debugging_opts.borrowck.as_ref().map(|s| &s[..]) {
+        None | Some("ast") => BorrowckMode::Ast,
+        Some("mir") => BorrowckMode::Mir,
+        Some("compare") => BorrowckMode::Compare,
+        Some(m) => {
+            early_error(error_format, &format!("unknown borrowck mode `{}`", m))
+        },
+    };
+
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
         early_warn(error_format, "-C remark will not show source locations without \
                                 --debuginfo");
@@ -1784,6 +1823,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         incremental,
         debugging_opts,
         prints,
+        borrowck_mode,
         cg,
         error_format,
         externs: Externs(externs),
