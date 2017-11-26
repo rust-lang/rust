@@ -86,12 +86,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  "unsupported cyclic reference between types/traits detected");
             err.span_label(span, "cyclic reference");
 
-            err.span_note(stack[0].0, &format!("the cycle begins when {}...",
-                                               stack[0].1.describe(self)));
+            err.span_note(self.sess.codemap().def_span(stack[0].0),
+                          &format!("the cycle begins when {}...", stack[0].1.describe(self)));
 
             for &(span, ref query) in &stack[1..] {
-                err.span_note(span, &format!("...which then requires {}...",
-                                             query.describe(self)));
+                err.span_note(self.sess.codemap().def_span(span),
+                              &format!("...which then requires {}...", query.describe(self)));
             }
 
             err.note(&format!("...which then again requires {}, completing the cycle.",
