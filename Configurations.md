@@ -1026,36 +1026,6 @@ impl Lorem {
 
 See also [`brace_style`](#brace_style).
 
-## `indent_match_arms`
-
-Indent match arms instead of keeping them at the same indentation level as the match keyword
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-
-#### `true` (default):
-
-```rust
-match lorem {
-    Lorem::Ipsum => (),
-    Lorem::Dolor => (),
-    Lorem::Sit => (),
-    Lorem::Amet => (),
-}
-```
-
-#### `false`:
-
-```rust
-match lorem {
-Lorem::Ipsum => (),
-Lorem::Dolor => (),
-Lorem::Sit => (),
-Lorem::Amet => (),
-}
-```
-
-See also: [`match_block_trailing_comma`](#match_block_trailing_comma), [`wrap_match_arms`](#wrap_match_arms).
 
 ## `imports_indent`
 
@@ -1209,7 +1179,7 @@ match lorem {
 }
 ```
 
-See also: [`indent_match_arms`](#indent_match_arms), [`trailing_comma`](#trailing_comma), [`wrap_match_arms`](#wrap_match_arms).
+See also: [`trailing_comma`](#trailing_comma), [`wrap_match_arms`](#wrap_match_arms).
 
 ## `max_width`
 
@@ -1919,7 +1889,7 @@ match lorem {
 }
 ```
 
-See also: [`indent_match_arms`](#indent_match_arms), [`match_block_trailing_comma`](#match_block_trailing_comma).
+See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
 ## `write_mode`
 

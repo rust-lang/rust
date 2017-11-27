@@ -1284,12 +1284,6 @@ fn rewrite_match(
         inner_attrs[inner_attrs.len() - 1].span().hi()
     };
 
-    let arm_indent_str = if context.config.indent_match_arms() {
-        nested_indent_str
-    } else {
-        shape.indent.to_string(context.config)
-    };
-
     if arms.is_empty() {
         let snippet = context.snippet(mk_sp(open_brace_pos, span.hi() - BytePos(1)));
         if snippet.trim().is_empty() {
@@ -1304,7 +1298,7 @@ fn rewrite_match(
             cond_str,
             block_sep,
             inner_attrs_str,
-            arm_indent_str,
+            nested_indent_str,
             rewrite_match_arms(context, arms, shape, span, open_brace_pos)?,
             shape.indent.to_string(context.config),
         ))
@@ -1334,11 +1328,9 @@ fn rewrite_match_arms(
     span: Span,
     open_brace_pos: BytePos,
 ) -> Option<String> {
-    let arm_shape = if context.config.indent_match_arms() {
-        shape.block_indent(context.config.tab_spaces())
-    } else {
-        shape.block_indent(0)
-    }.with_max_width(context.config);
+    let arm_shape = shape
+        .block_indent(context.config.tab_spaces())
+        .with_max_width(context.config);
 
     let arm_len = arms.len();
     let is_last_iter = repeat(false)

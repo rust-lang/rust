@@ -621,14 +621,12 @@ create_config! {
     // Match
     wrap_match_arms: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
                                   the same line with the pattern of arms";
+    multiline_match_arm_forces_block: bool, false, false,
+        "Force multiline match arm bodies to be wrapped in a block";
     match_block_trailing_comma: bool, false, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     match_arm_forces_newline: bool, false, false,
         "Force match arm bodies to be in a new lines";
-    indent_match_arms: bool, true, false, "Indent match arms instead of keeping them at the same \
-                                    indentation level as the match keyword";
-    multiline_match_arm_forces_block: bool, false, false,
-        "Force multiline match arm bodies to be wrapped in a block";
 
     // Spaces around punctuation
     binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
