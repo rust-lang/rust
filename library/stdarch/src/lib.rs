@@ -15,8 +15,8 @@
 //! support.
 //!
 //! The `vendor` module exposes vendor-specific intrinsics that typically
-//! correspond to a single machine instruction. In general, these intrinsics are
-//! not portable: their availability is architecture-dependent, and not all
+//! correspond to a single machine instruction. In general, these intrinsics
+//! are not portable: their availability is architecture-dependent, and not all
 //! machines of that architecture might provide the intrinsic.
 //!
 //! Two macros make it possible to write portable code:
@@ -24,8 +24,8 @@
 //! * `cfg!(target_feature = "feature")`: returns `true` if the `feature` is
 //! enabled in all CPUs that the binary will run on (at compile-time)
 //! * `cfg_feature_enabled!("feature")`: returns `true` if the `feature` is
-//! enabled in the CPU in which the binary is currently running on (at run-time,
-//! unless the result is known at compile time)
+//! enabled in the CPU in which the binary is currently running on (at
+//! run-time, unless the result is known at compile time)
 //!
 //! # Example
 //!
@@ -63,10 +63,10 @@
 //! #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 //! #[target_feature = "+sse2"]
 //! unsafe fn sum_sse2(x: i32x4) -> i32 {
-//!     let x = vendor::_mm_add_epi32(x, vendor::_mm_srli_si128(x.into(), 8).into());
-//!     let x = vendor::_mm_add_epi32(x, vendor::_mm_srli_si128(x.into(), 4).into());
-//!     vendor::_mm_cvtsi128_si32(x)
-//! }
+//! let x = vendor::_mm_add_epi32(x, vendor::_mm_srli_si128(x.into(),
+//! 8).into()); let x = vendor::_mm_add_epi32(x,
+//! vendor::_mm_srli_si128(x.into(), 4).into()); vendor::
+//! _mm_cvtsi128_si32(x) }
 //!
 //! // Uses the SSE2 version if SSE2 is enabled for all target
 //! // CPUs at compile-time (does not perform any run-time
