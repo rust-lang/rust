@@ -544,14 +544,12 @@ impl<'a> FmtVisitor<'a> {
         let span = mk_sp(lo, field.span.lo());
 
         let variant_body = match field.node.data {
-            ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => {
-                format_struct(
-                    &context,
-                    &StructParts::from_variant(field),
-                    self.block_indent,
-                    Some(one_line_width),
-                )?
-            }
+            ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => format_struct(
+                &context,
+                &StructParts::from_variant(field),
+                self.block_indent,
+                Some(one_line_width),
+            )?,
             ast::VariantData::Unit(..) => if let Some(ref expr) = field.node.disr_expr {
                 let lhs = format!("{} =", field.node.name);
                 rewrite_assign_rhs(&context, lhs, &**expr, shape)?
