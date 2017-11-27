@@ -22,13 +22,13 @@ use rustc_data_structures::indexed_vec::Idx;
 use super::MoveDataParamEnv;
 use util::elaborate_drops::DropFlagState;
 
-use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex};
-use super::move_paths::LookupResult;
+use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex, InitIndex};
+use super::move_paths::{LookupResult, InitKind};
 use super::{BitDenotation, BlockSets, DataflowOperator};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
-use super::on_lookup_result_bits;
+use super::{on_lookup_result_bits, for_location_inits};
 
 mod storage_liveness;
 
@@ -242,6 +242,56 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MovingOutStatements<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
+/// `EverInitializedLvals` tracks all l-values that might have ever been
+/// initialized upon reaching a particular point in the control flow
+/// for a function, without an intervening `Storage Dead`.
+///
+/// This dataflow is used to determine if an immutable local variable may
+/// be assigned to.
+///
+/// For example, in code like the following, we have corresponding
+/// dataflow information shown in the right-hand comments.
+///
+/// ```rust
+/// struct S;
+/// fn foo(pred: bool) {                       // ever-init:
+///                                            // {          }
+///     let a = S; let b = S; let c; let d;    // {a, b      }
+///
+///     if pred {
+///         drop(a);                           // {a, b,     }
+///         b = S;                             // {a, b,     }
+///
+///     } else {
+///         drop(b);                           // {a, b,      }
+///         d = S;                             // {a, b,    d }
+///
+///     }                                      // {a, b,    d }
+///
+///     c = S;                                 // {a, b, c, d }
+/// }
+/// ```
+pub struct EverInitializedLvals<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    mir: &'a Mir<'tcx>,
+    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+}
+
+impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedLvals<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+               mir: &'a Mir<'tcx>,
+               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
+               -> Self
+    {
+        EverInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for EverInitializedLvals<'a, 'gcx, 'tcx> {
+    fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
+}
+
+
 impl<'a, 'gcx, 'tcx> MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
@@ -454,7 +504,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         let stmt = &mir[location.block].statements[location.statement_index];
         let loc_map = &move_data.loc_map;
         let path_map = &move_data.path_map;
-        let rev_lookup = &move_data.rev_lookup;
+        let bits_per_block = self.bits_per_block();
 
         match stmt.kind {
             // this analysis only tries to find moves explicitly
@@ -474,52 +524,23 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
             }
         }
 
-        let bits_per_block = self.bits_per_block();
-        match stmt.kind {
-            mir::StatementKind::SetDiscriminant { .. } => {
-                span_bug!(stmt.source_info.span, "SetDiscriminant should not exist in borrowck");
+        for_location_inits(tcx, mir, move_data, location,
+            |mpi| for moi in &path_map[mpi] {
+                assert!(moi.index() < bits_per_block);
+                sets.kill_set.add(&moi);
             }
-            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                // assigning into this `lvalue` kills all
-                // MoveOuts from it, and *also* all MoveOuts
-                // for children and associated fragment sets.
-                match rvalue.initialization_state() {
-                    mir::tcx::RvalueInitializationState::Shallow => {
-                        if let LookupResult::Exact(mpi) = rev_lookup.find(lvalue) {
-                             for moi in &path_map[mpi] {
-                                 assert!(moi.index() < bits_per_block);
-                                 sets.kill_set.add(&moi);
-                             }
-                        }
-                    }
-                    mir::tcx::RvalueInitializationState::Deep => {
-                        on_lookup_result_bits(tcx,
-                                              mir,
-                                              move_data,
-                                              rev_lookup.find(lvalue),
-                                              |mpi| for moi in &path_map[mpi] {
-                                                  assert!(moi.index() < bits_per_block);
-                                                  sets.kill_set.add(&moi);
-                                              });
-                    }
-                }
-            }
-            mir::StatementKind::StorageLive(_) |
-            mir::StatementKind::StorageDead(_) |
-            mir::StatementKind::InlineAsm { .. } |
-            mir::StatementKind::EndRegion(_) |
-            mir::StatementKind::Validate(..) |
-            mir::StatementKind::Nop => {}
-        }
+        );
     }
 
     fn terminator_effect(&self,
                          sets: &mut BlockSets<MoveOutIndex>,
                          location: Location)
     {
-        let (mir, move_data) = (self.mir, self.move_data());
+        let (tcx, mir, move_data) = (self.tcx, self.mir, self.move_data());
         let term = mir[location.block].terminator();
         let loc_map = &move_data.loc_map;
+        let path_map = &move_data.path_map;
+
         debug!("terminator {:?} at loc {:?} moves out of move_indexes {:?}",
                term, location, &loc_map[location]);
         let bits_per_block = self.bits_per_block();
@@ -527,19 +548,13 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
             assert!(move_index.index() < bits_per_block);
             zero_to_one(sets.gen_set.words_mut(), *move_index);
         }
-        match term.kind {
-            mir::TerminatorKind::DropAndReplace { ref location, .. } => {
-                on_lookup_result_bits(self.tcx,
-                                      mir,
-                                      move_data,
-                                      move_data.rev_lookup.find(location),
-                                      |mpi| for moi in &move_data.path_map[mpi] {
-                                          assert!(moi.index() < bits_per_block);
-                                          sets.kill_set.add(&moi);
-                                      });
+
+        for_location_inits(tcx, mir, move_data, location,
+            |mpi| for moi in &path_map[mpi] {
+                assert!(moi.index() < bits_per_block);
+                sets.kill_set.add(&moi);
             }
-            _ => {}
-        }
+        );
     }
 
     fn propagate_call_return(&self,
@@ -562,11 +577,96 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
     }
 }
 
+impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
+    type Idx = InitIndex;
+    fn name() -> &'static str { "ever_init" }
+    fn bits_per_block(&self) -> usize {
+        self.move_data().inits.len()
+    }
+
+    fn start_block_effect(&self, sets: &mut BlockSets<InitIndex>) {
+        let bits_per_block = self.bits_per_block();
+        for init_index in (0..self.mir.arg_count).map(InitIndex::new) {
+            assert!(init_index.index() < bits_per_block);
+            sets.gen_set.add(&init_index);
+        }
+    }
+    fn statement_effect(&self,
+                        sets: &mut BlockSets<InitIndex>,
+                        location: Location) {
+        let (_, mir, move_data) = (self.tcx, self.mir, self.move_data());
+        let stmt = &mir[location.block].statements[location.statement_index];
+        let init_path_map = &move_data.init_path_map;
+        let init_loc_map = &move_data.init_loc_map;
+        let rev_lookup = &move_data.rev_lookup;
+        let bits_per_block = self.bits_per_block();
+
+        debug!("statement {:?} at loc {:?} initializes move_indexes {:?}",
+               stmt, location, &init_loc_map[location]);
+        for init_index in &init_loc_map[location] {
+            assert!(init_index.index() < bits_per_block);
+            sets.gen_set.add(init_index);
+        }
+
+        match stmt.kind {
+            mir::StatementKind::StorageDead(local) => {
+                // End inits for StorageDead, so that an immutable variable can
+                // be reinitialized on the next iteration of the loop.
+                if let LookupResult::Exact(mpi) = rev_lookup.find(&mir::Lvalue::Local(local)) {
+                    debug!("stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
+                        stmt, location, &init_path_map[mpi]);
+                    for ii in &init_path_map[mpi] {
+                        assert!(ii.index() < bits_per_block);
+                        sets.kill_set.add(&ii);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn terminator_effect(&self,
+                         sets: &mut BlockSets<InitIndex>,
+                         location: Location)
+    {
+        let (mir, move_data) = (self.mir, self.move_data());
+        let term = mir[location.block].terminator();
+        let init_loc_map = &move_data.init_loc_map;
+        debug!("terminator {:?} at loc {:?} initializes move_indexes {:?}",
+               term, location, &init_loc_map[location]);
+        let bits_per_block = self.bits_per_block();
+        for init_index in &init_loc_map[location] {
+            if move_data.inits[*init_index].kind != InitKind::NonPanicPathOnly {
+                assert!(init_index.index() < bits_per_block);
+                sets.gen_set.add(init_index);
+            }
+        }
+    }
+
+    fn propagate_call_return(&self,
+                             in_out: &mut IdxSet<InitIndex>,
+                             call_bb: mir::BasicBlock,
+                             _dest_bb: mir::BasicBlock,
+                             _dest_lval: &mir::Lvalue) {
+        let move_data = self.move_data();
+        let bits_per_block = self.bits_per_block();
+        let init_loc_map = &move_data.init_loc_map;
+
+        let call_loc = Location {
+            block: call_bb,
+            statement_index: self.mir[call_bb].statements.len(),
+        };
+        for init_index in &init_loc_map[call_loc] {
+            assert!(init_index.index() < bits_per_block);
+            in_out.add(init_index);
+        }
+    }
+}
+
 fn zero_to_one(bitvec: &mut [usize], move_index: MoveOutIndex) {
     let retval = bitvec.set_bit(move_index.index());
     assert!(retval);
 }
-
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
@@ -593,6 +693,13 @@ impl<'a, 'gcx, 'tcx> BitwiseOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
         pred1 | pred2 // moves from both preds are in scope
+    }
+}
+
+impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedLvals<'a, 'gcx, 'tcx> {
+    #[inline]
+    fn join(&self, pred1: usize, pred2: usize) -> usize {
+        pred1 | pred2 // inits from both preds are in scope
     }
 }
 
@@ -631,5 +738,12 @@ impl<'a, 'gcx, 'tcx> DataflowOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no loans in scope by default
+    }
+}
+
+impl<'a, 'gcx, 'tcx> DataflowOperator for EverInitializedLvals<'a, 'gcx, 'tcx> {
+    #[inline]
+    fn bottom_value() -> bool {
+        false // bottom = no initialized variables by default
     }
 }
