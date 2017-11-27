@@ -103,7 +103,7 @@ use fmt;
 ///
 /// On some platforms this function may not do anything at all.
 #[inline]
-#[stable(feature = "spin_loop_hint", since = "1.23.0")]
+#[stable(feature = "spin_loop_hint", since = "1.24.0")]
 pub fn spin_loop_hint() {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     unsafe {
