@@ -545,7 +545,6 @@ impl<'a> FmtVisitor<'a> {
 
         let variant_body = match field.node.data {
             ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => {
-                // FIXME: Should limit the width, as we have a trailing comma
                 format_struct(
                     &context,
                     &StructParts::from_variant(field),
