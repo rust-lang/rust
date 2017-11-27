@@ -1,4 +1,4 @@
-// rustfmt-wrap_match_arms: true
+// rustfmt-match_arm_blocks: false
 // Wrap match-arms
 
 fn main() {

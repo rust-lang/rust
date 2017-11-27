@@ -26,7 +26,7 @@ fn issue1656() {
             match rewrite {
                 Some(ref body_str)
                     if (!body_str.contains('\n') && body_str.len() <= arm_shape.width)
-                        || !context.config.wrap_match_arms()
+                        || !context.config.match_arm_blocks()
                         || (extend && first_line_width(body_str) <= arm_shape.width)
                         || is_block =>
                 {

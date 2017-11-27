@@ -1,4 +1,4 @@
-// rustfmt-wrap_match_arms: false
+// rustfmt-match_arm_blocks: false
 // rustfmt-match_block_trailing_comma: true
 // Match expressions, no unwrapping of block arms or wrapping of multiline
 // expressions.

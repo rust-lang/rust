@@ -618,12 +618,6 @@ create_config! {
     reorder_imported_names: bool, true, false,
         "Reorder lists of names in import statements alphabetically";
 
-    // Match
-    wrap_match_arms: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
-                                  the same line with the pattern of arms";
-    match_block_trailing_comma: bool, false, false,
-        "Put a trailing comma after a block based match arm (non-block arms are not affected)";
-
     // Spaces around punctuation
     binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
         "Where to put a binary operator when a binary expression goes multiline.";
@@ -643,6 +637,8 @@ create_config! {
         "Remove blank lines at start or end of a block";
     same_line_attributes: bool, true, false,
         "Try to put attributes on the same line as fields and variants.";
+    match_arm_blocks: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
+        the same line with the pattern of arms";
     force_multiline_blocks: bool, false, false,
         "Force multiline closure bodies and match arms to be wrapped in a block";
     fn_args_density: Density, Density::Tall, false, "Argument density in functions";
@@ -653,6 +649,8 @@ create_config! {
         "How to handle trailing commas for lists";
     trailing_semicolon: bool, true, false,
         "Add trailing semicolon after break, continue and return";
+    match_block_trailing_comma: bool, false, false,
+        "Put a trailing comma after a block based match arm (non-block arms are not affected)";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";

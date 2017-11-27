@@ -1138,7 +1138,7 @@ match lorem {
 }
 ```
 
-See also: [`trailing_comma`](#trailing_comma), [`wrap_match_arms`](#wrap_match_arms).
+See also: [`trailing_comma`](#trailing_comma), [`match_arm_blocks`](#match_arm_blocks).
 
 ## `max_width`
 
@@ -1806,7 +1806,7 @@ Break comments to fit on the line
 // commodo consequat.
 ```
 
-## `wrap_match_arms`
+## `match_arm_blocks`
 
 Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
 

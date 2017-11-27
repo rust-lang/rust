@@ -1559,7 +1559,7 @@ fn rewrite_match_body(
 
         let indent_str = shape.indent.to_string(context.config);
         let nested_indent_str = next_line_indent.to_string(context.config);
-        let (body_prefix, body_suffix) = if context.config.wrap_match_arms() {
+        let (body_prefix, body_suffix) = if context.config.match_arm_blocks() {
             let comma = if context.config.match_block_trailing_comma() {
                 ","
             } else {
