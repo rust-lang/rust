@@ -1586,13 +1586,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                    _context: Context,
                                    (lvalue, span): (&Lvalue<'tcx>, Span),
                                    assigned_span: Span) {
-        self.tcx.cannot_reassign_immutable(span,
+        let mut err = self.tcx.cannot_reassign_immutable(span,
                                            &self.describe_lvalue(lvalue),
-                                           Origin::Mir)
-                .span_label(span, "cannot assign twice to immutable variable")
-                .span_label(assigned_span, format!("first assignment to `{}`",
-                                                   self.describe_lvalue(lvalue)))
-                .emit();
+                                           Origin::Mir);
+        err.span_label(span, "cannot assign twice to immutable variable");
+        if span != assigned_span {
+            err.span_label(assigned_span, format!("first assignment to `{}`",
+                                              self.describe_lvalue(lvalue)));
+        }
+        err.emit();
     }
 
     fn report_assignment_to_static(&mut self,
