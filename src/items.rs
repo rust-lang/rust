@@ -533,7 +533,6 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let context = self.get_context();
-        let indent = self.block_indent;
         // 1 = ','
         let shape = self.shape().sub_width(1)?;
         let attrs_str = field.node.attrs.rewrite(&context, shape)?;
@@ -550,7 +549,7 @@ impl<'a> FmtVisitor<'a> {
                 format_struct(
                     &context,
                     &StructParts::from_variant(field),
-                    indent,
+                    self.block_indent,
                     Some(one_line_width),
                 )?
             }
