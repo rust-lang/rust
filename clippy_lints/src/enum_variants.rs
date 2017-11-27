@@ -264,8 +264,17 @@ impl EarlyLintPass for EnumVariantNames {
                         let matching = partial_match(mod_camel, &item_camel);
                         let rmatching = partial_rmatch(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();
+
+                        let is_word_beginning = |c: char| {
+                            c == '_' || c.is_uppercase() || c.is_numeric()
+                        };
+
                         if matching == nchars {
-                            span_lint(cx, STUTTER, item.span, "item name starts with its containing module's name");
+                            match item_camel.chars().nth(nchars) {
+                                Some(c) if is_word_beginning(c) =>
+                                    span_lint(cx, STUTTER, item.span, "item name starts with its containing module's name"),
+                                _ => ()
+                            }
                         }
                         if rmatching == nchars {
                             span_lint(cx, STUTTER, item.span, "item name ends with its containing module's name");

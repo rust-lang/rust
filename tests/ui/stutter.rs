@@ -9,6 +9,10 @@ mod foo {
     pub fn bar_foo() {}
     pub struct FooCake {}
     pub enum CakeFoo {}
+    pub struct Foo7Bar;
+
+    // Should not warn
+    pub struct Foobar;
 }
 
 fn main() {}
