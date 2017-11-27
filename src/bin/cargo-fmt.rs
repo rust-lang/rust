@@ -13,6 +13,7 @@
 #![cfg(not(test))]
 #![deny(warnings)]
 
+extern crate cargo_metadata;
 extern crate getopts;
 extern crate serde_json as json;
 
