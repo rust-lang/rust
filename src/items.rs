@@ -534,7 +534,8 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let indent = self.block_indent;
-        let shape = self.shape();
+        // 1 = ','
+        let shape = self.shape().sub_width(1)?;
         let attrs_str = field.node.attrs.rewrite(&context, shape)?;
         let lo = field
             .node
@@ -555,8 +556,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::VariantData::Unit(..) => if let Some(ref expr) = field.node.disr_expr {
                 let lhs = format!("{} =", field.node.name);
-                // 1 = ','
-                rewrite_assign_rhs(&context, lhs, &**expr, shape.sub_width(1)?)?
+                rewrite_assign_rhs(&context, lhs, &**expr, shape)?
             } else {
                 field.node.name.to_string()
             },
@@ -1312,7 +1312,7 @@ fn format_tuple_struct(
         }
         result.push(')');
     } else {
-        let shape = Shape::indented(offset, context.config);
+        let shape = Shape::indented(offset, context.config).sub_width(1)?;
         let fields = &fields.iter().map(|field| field).collect::<Vec<_>>()[..];
         let one_line_width = context.config.width_heuristics().fn_call_width;
         result = rewrite_call_inner(context, &result, fields, span, shape, one_line_width, false)?;
