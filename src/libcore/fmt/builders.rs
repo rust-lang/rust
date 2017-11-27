@@ -10,44 +10,29 @@
 
 use fmt;
 
-struct PadAdapter<'a, 'b: 'a> {
-    fmt: &'a mut fmt::Formatter<'b>,
+struct PadAdapter<'a> {
+    buf: &'a mut (fmt::Write + 'a),
     on_newline: bool,
 }
 
-impl<'a, 'b: 'a> PadAdapter<'a, 'b> {
-    fn new(fmt: &'a mut fmt::Formatter<'b>) -> PadAdapter<'a, 'b> {
-        PadAdapter {
-            fmt,
-            on_newline: false,
-        }
-    }
-
-    fn as_formatter(&mut self) -> fmt::Formatter {
-        fmt::Formatter {
-            // These only exist in the struct for the `Formatter::run` method,
-            // which won’t be used.
-            curarg: self.fmt.curarg.clone(),
-            args: self.fmt.args,
-
-            // We want to preserve these
-            flags: self.fmt.flags,
-            fill: self.fmt.fill,
-            align: self.fmt.align,
-            width: self.fmt.width,
-            precision: self.fmt.precision,
-
-            // And change this
-            buf: self,
-        }
+impl<'a> PadAdapter<'a> {
+    fn wrap<'b, 'c: 'a+'b>(fmt: &'c mut fmt::Formatter, slot: &'b mut Option<Self>)
+                        -> fmt::Formatter<'b> {
+        fmt.wrap_buf(move |buf| {
+            *slot = Some(PadAdapter {
+                buf,
+                on_newline: false,
+            });
+            slot.as_mut().unwrap()
+        })
     }
 }
 
-impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
+impl<'a> fmt::Write for PadAdapter<'a> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
         while !s.is_empty() {
             if self.on_newline {
-                self.fmt.write_str("    ")?;
+                self.buf.write_str("    ")?;
             }
 
             let split = match s.find('\n') {
@@ -60,7 +45,7 @@ impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
                     s.len()
                 }
             };
-            self.fmt.write_str(&s[..split])?;
+            self.buf.write_str(&s[..split])?;
             s = &s[split..];
         }
 
@@ -131,13 +116,13 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
             };
 
             if self.is_pretty() {
-                use fmt::Write;
-                let mut writer = PadAdapter::new(self.fmt);
+                let mut slot = None;
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
                 writer.write_str(prefix)?;
                 writer.write_str("\n")?;
                 writer.write_str(name)?;
                 writer.write_str(": ")?;
-                value.fmt(&mut writer.as_formatter())
+                value.fmt(&mut writer)
             } else {
                 write!(self.fmt, "{} {}: ", prefix, name)?;
                 value.fmt(self.fmt)
@@ -228,11 +213,11 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
             };
 
             if self.is_pretty() {
-                use fmt::Write;
-                let mut writer = PadAdapter::new(self.fmt);
+                let mut slot = None;
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
                 writer.write_str(prefix)?;
                 writer.write_str("\n")?;
-                value.fmt(&mut writer.as_formatter())
+                value.fmt(&mut writer)
             } else {
                 self.fmt.write_str(prefix)?;
                 self.fmt.write_str(space)?;
@@ -276,14 +261,14 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     fn entry(&mut self, entry: &fmt::Debug) {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
-                use fmt::Write;
-                let mut writer = PadAdapter::new(self.fmt);
+                let mut slot = None;
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
                 writer.write_str(if self.has_fields {
                     ",\n"
                 } else {
                     "\n"
                 })?;
-                entry.fmt(&mut writer.as_formatter())
+                entry.fmt(&mut writer)
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
@@ -500,16 +485,16 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     pub fn entry(&mut self, key: &fmt::Debug, value: &fmt::Debug) -> &mut DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
-                use fmt::Write;
-                let mut writer = PadAdapter::new(self.fmt);
+                let mut slot = None;
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
                 writer.write_str(if self.has_fields {
                     ",\n"
                 } else {
                     "\n"
                 })?;
-                key.fmt(&mut writer.as_formatter())?;
+                key.fmt(&mut writer)?;
                 writer.write_str(": ")?;
-                value.fmt(&mut writer.as_formatter())
+                value.fmt(&mut writer)
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
