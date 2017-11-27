@@ -137,10 +137,9 @@ fn format_crate(
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets
         .into_iter()
-        .filter(|t| t.kind.should_format())
         .inspect(|t| {
             if verbosity == Verbosity::Verbose {
-                println!("[{:?}] {:?}", t.kind, t.path)
+                println!("[{}] {:?}", t.kind, t.path)
             }
         })
         .map(|t| t.path)
@@ -154,53 +153,13 @@ fn get_fmt_args() -> Vec<String> {
     env::args().skip_while(|a| a != "--").skip(1).collect()
 }
 
-#[derive(Debug)]
-enum TargetKind {
-    Lib,         // dylib, staticlib, lib
-    Bin,         // bin
-    Example,     // example file
-    Test,        // test file
-    Bench,       // bench file
-    CustomBuild, // build script
-    ProcMacro,   // a proc macro implementation
-    Other,       // plugin,...
-}
-
-impl TargetKind {
-    fn should_format(&self) -> bool {
-        match *self {
-            TargetKind::Lib
-            | TargetKind::Bin
-            | TargetKind::Example
-            | TargetKind::Test
-            | TargetKind::Bench
-            | TargetKind::CustomBuild
-            | TargetKind::ProcMacro => true,
-            _ => false,
-        }
-    }
-
-    fn from_str(s: &str) -> Self {
-        match s {
-            "bin" => TargetKind::Bin,
-            "lib" | "dylib" | "staticlib" | "cdylib" | "rlib" => TargetKind::Lib,
-            "test" => TargetKind::Test,
-            "example" => TargetKind::Example,
-            "bench" => TargetKind::Bench,
-            "custom-build" => TargetKind::CustomBuild,
-            "proc-macro" => TargetKind::ProcMacro,
-            _ => TargetKind::Other,
-        }
-    }
-}
-
 /// Target uses a `path` field for equality and hashing.
 #[derive(Debug)]
 pub struct Target {
     /// A path to the main source file of the target.
     path: PathBuf,
     /// A kind of target (e.g. lib, bin, example, ...).
-    kind: TargetKind,
+    kind: String,
 }
 
 impl Target {
@@ -210,7 +169,7 @@ impl Target {
 
         Target {
             path: canonicalized,
-            kind: TargetKind::from_str(&target.kind[0]),
+            kind: target.kind[0].clone(),
         }
     }
 }
