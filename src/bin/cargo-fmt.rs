@@ -13,19 +13,21 @@
 #![cfg(not(test))]
 #![deny(warnings)]
 
+extern crate cargo_metadata;
 extern crate getopts;
 extern crate serde_json as json;
 
 use std::env;
+use std::fs;
+use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::str;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
 use getopts::{Matches, Options};
-use json::Value;
 
 fn main() {
     let exit_status = execute();
@@ -50,13 +52,16 @@ fn execute() -> i32 {
     opts.optflag("", "all", "format all packages (only usable in workspaces)");
 
     // If there is any invalid argument passed to `cargo fmt`, return without formatting.
-    if let Some(arg) = env::args()
-        .skip(2)
-        .take_while(|a| a != "--")
-        .find(|a| !a.starts_with('-'))
-    {
-        print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
-        return failure;
+    let mut is_package_arg = false;
+    for arg in env::args().skip(2).take_while(|a| a != "--") {
+        if arg.starts_with("-") {
+            is_package_arg = arg.starts_with("--package");
+        } else if !is_package_arg {
+            print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
+            return failure;
+        } else {
+            is_package_arg = false;
+        }
     }
 
     let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
@@ -82,9 +87,9 @@ fn execute() -> i32 {
         return success;
     }
 
-    let workspace_hitlist = WorkspaceHitlist::from_matches(&matches);
+    let strategy = CargoFmtStrategy::from_matches(&matches);
 
-    match format_crate(verbosity, &workspace_hitlist) {
+    match format_crate(verbosity, &strategy) {
         Err(e) => {
             print_usage_to_stderr(&opts, &e.to_string());
             failure
@@ -125,17 +130,16 @@ pub enum Verbosity {
 
 fn format_crate(
     verbosity: Verbosity,
-    workspace_hitlist: &WorkspaceHitlist,
+    strategy: &CargoFmtStrategy,
 ) -> Result<ExitStatus, io::Error> {
-    let targets = get_targets(workspace_hitlist)?;
+    let targets = get_targets(strategy)?;
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets
         .into_iter()
-        .filter(|t| t.kind.should_format())
         .inspect(|t| {
             if verbosity == Verbosity::Verbose {
-                println!("[{:?}] {:?}", t.kind, t.path)
+                println!("[{}] {:?}", t.kind, t.path)
             }
         })
         .map(|t| t.path)
@@ -149,223 +153,157 @@ fn get_fmt_args() -> Vec<String> {
     env::args().skip_while(|a| a != "--").skip(1).collect()
 }
 
+/// Target uses a `path` field for equality and hashing.
 #[derive(Debug)]
-enum TargetKind {
-    Lib,         // dylib, staticlib, lib
-    Bin,         // bin
-    Example,     // example file
-    Test,        // test file
-    Bench,       // bench file
-    CustomBuild, // build script
-    ProcMacro,   // a proc macro implementation
-    Other,       // plugin,...
+pub struct Target {
+    /// A path to the main source file of the target.
+    path: PathBuf,
+    /// A kind of target (e.g. lib, bin, example, ...).
+    kind: String,
 }
 
-impl TargetKind {
-    fn should_format(&self) -> bool {
-        match *self {
-            TargetKind::Lib
-            | TargetKind::Bin
-            | TargetKind::Example
-            | TargetKind::Test
-            | TargetKind::Bench
-            | TargetKind::CustomBuild
-            | TargetKind::ProcMacro => true,
-            _ => false,
+impl Target {
+    pub fn from_target(target: &cargo_metadata::Target) -> Self {
+        let path = PathBuf::from(&target.src_path);
+        let canonicalized = fs::canonicalize(&path).unwrap_or(path);
+
+        Target {
+            path: canonicalized,
+            kind: target.kind[0].clone(),
         }
     }
 }
 
-#[derive(Debug)]
-pub struct Target {
-    path: PathBuf,
-    kind: TargetKind,
+impl PartialEq for Target {
+    fn eq(&self, other: &Target) -> bool {
+        self.path == other.path
+    }
 }
 
-impl Target {
-    pub fn from_json(json_val: &Value) -> Option<Self> {
-        let jtarget = json_val.as_object()?;
-        let path = PathBuf::from(jtarget.get("src_path")?.as_str()?);
-        let kinds = jtarget.get("kind")?.as_array()?;
-        let kind = match kinds[0].as_str()? {
-            "bin" => TargetKind::Bin,
-            "lib" | "dylib" | "staticlib" | "cdylib" | "rlib" => TargetKind::Lib,
-            "test" => TargetKind::Test,
-            "example" => TargetKind::Example,
-            "bench" => TargetKind::Bench,
-            "custom-build" => TargetKind::CustomBuild,
-            "proc-macro" => TargetKind::ProcMacro,
-            _ => TargetKind::Other,
-        };
+impl Eq for Target {}
 
-        Some(Target {
-            path: path,
-            kind: kind,
-        })
+impl Hash for Target {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.path.hash(state);
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum WorkspaceHitlist {
+pub enum CargoFmtStrategy {
+    /// Format every packages and dependencies.
     All,
+    /// Format pacakges that are specified by the command line argument.
     Some(Vec<String>),
-    None,
+    /// Format the root packages only.
+    Root,
 }
 
-impl WorkspaceHitlist {
-    pub fn get_some(&self) -> Option<&[String]> {
-        if let WorkspaceHitlist::Some(ref hitlist) = *self {
-            Some(hitlist)
-        } else {
-            None
-        }
-    }
-
-    pub fn from_matches(matches: &Matches) -> WorkspaceHitlist {
+impl CargoFmtStrategy {
+    pub fn from_matches(matches: &Matches) -> CargoFmtStrategy {
         match (matches.opt_present("all"), matches.opt_present("p")) {
-            (false, false) => WorkspaceHitlist::None,
-            (true, _) => WorkspaceHitlist::All,
-            (false, true) => WorkspaceHitlist::Some(matches.opt_strs("p")),
+            (false, false) => CargoFmtStrategy::Root,
+            (true, _) => CargoFmtStrategy::All,
+            (false, true) => CargoFmtStrategy::Some(matches.opt_strs("p")),
         }
     }
 }
 
-fn get_cargo_metadata_from_utf8(v: &[u8]) -> Option<Value> {
-    json::from_str(str::from_utf8(v).ok()?).ok()
-}
+/// Based on the specified CargoFmtStrategy, returns a set of main source files.
+fn get_targets(strategy: &CargoFmtStrategy) -> Result<HashSet<Target>, io::Error> {
+    let mut targets = HashSet::new();
 
-fn get_json_array_with<'a>(v: &'a Value, key: &str) -> Option<&'a Vec<Value>> {
-    v.as_object()?.get(key)?.as_array()
-}
-
-// `cargo metadata --no-deps | jq '.["packages"]'`
-fn get_packages(v: &[u8]) -> Result<Vec<Value>, io::Error> {
-    let e = io::Error::new(
-        io::ErrorKind::NotFound,
-        String::from("`cargo metadata` returned json without a 'packages' key"),
-    );
-    match get_cargo_metadata_from_utf8(v) {
-        Some(ref json_obj) => get_json_array_with(json_obj, "packages").cloned().ok_or(e),
-        None => Err(e),
+    match *strategy {
+        CargoFmtStrategy::Root => get_targets_root_only(&mut targets)?,
+        CargoFmtStrategy::All => get_targets_recursive(None, &mut targets, &mut HashSet::new())?,
+        CargoFmtStrategy::Some(ref hitlist) => get_targets_with_hitlist(hitlist, &mut targets)?,
     }
-}
 
-fn extract_target_from_package(package: &Value) -> Option<Vec<Target>> {
-    let jtargets = get_json_array_with(package, "targets")?;
-    let mut targets: Vec<Target> = vec![];
-    for jtarget in jtargets {
-        targets.push(Target::from_json(jtarget)?);
-    }
-    Some(targets)
-}
-
-fn filter_packages_with_hitlist(
-    packages: Vec<Value>,
-    workspace_hitlist: &WorkspaceHitlist,
-) -> Result<Vec<Value>, &String> {
-    let some_hitlist: Option<HashSet<&String>> =
-        workspace_hitlist.get_some().map(HashSet::from_iter);
-    if some_hitlist.is_none() {
-        return Ok(packages);
-    }
-    let mut hitlist = some_hitlist.unwrap();
-    let members: Vec<Value> = packages
-        .into_iter()
-        .filter(|member| {
-            member
-                .as_object()
-                .and_then(|member_obj| {
-                    member_obj
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .map(|member_name| {
-                            hitlist.take(&member_name.to_string()).is_some()
-                        })
-                })
-                .unwrap_or(false)
-        })
-        .collect();
-    if hitlist.is_empty() {
-        Ok(members)
-    } else {
-        Err(hitlist.into_iter().next().unwrap())
-    }
-}
-
-fn get_dependencies_from_package(package: &Value) -> Option<Vec<PathBuf>> {
-    let jdependencies = get_json_array_with(package, "dependencies")?;
-    let root_path = env::current_dir().ok()?;
-    let mut dependencies: Vec<PathBuf> = vec![];
-    for jdep in jdependencies {
-        let jdependency = jdep.as_object()?;
-        if !jdependency.get("source")?.is_null() {
-            continue;
-        }
-        let name = jdependency.get("name")?.as_str()?;
-        let mut path = root_path.clone();
-        path.push(&name);
-        dependencies.push(path);
-    }
-    Some(dependencies)
-}
-
-// Returns a vector of local dependencies under this crate
-fn get_path_to_local_dependencies(packages: &[Value]) -> Vec<PathBuf> {
-    let mut local_dependencies: Vec<PathBuf> = vec![];
-    for package in packages {
-        if let Some(mut d) = get_dependencies_from_package(package) {
-            local_dependencies.append(&mut d);
-        }
-    }
-    local_dependencies
-}
-
-// Returns a vector of all compile targets of a crate
-fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, io::Error> {
-    let output = Command::new("cargo")
-        .args(&["metadata", "--no-deps", "--format-version=1"])
-        .output()?;
-    if output.status.success() {
-        let cur_dir = env::current_dir()?;
-        let mut targets: Vec<Target> = vec![];
-        let packages = get_packages(&output.stdout)?;
-
-        // If we can find any local dependencies, we will try to get targets from those as well.
-        if *workspace_hitlist == WorkspaceHitlist::All {
-            for path in get_path_to_local_dependencies(&packages) {
-                match env::set_current_dir(path) {
-                    Ok(..) => match get_targets(workspace_hitlist) {
-                        Ok(ref mut t) => targets.append(t),
-                        Err(..) => continue,
-                    },
-                    Err(..) => continue,
-                }
-            }
-        }
-
-        env::set_current_dir(cur_dir)?;
-        match filter_packages_with_hitlist(packages, workspace_hitlist) {
-            Ok(packages) => {
-                for package in packages {
-                    if let Some(mut target) = extract_target_from_package(&package) {
-                        targets.append(&mut target);
-                    }
-                }
-                Ok(targets)
-            }
-            Err(package) => {
-                // Mimick cargo of only outputting one <package> spec.
-                Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    format!("package `{}` is not a member of the workspace", package),
-                ))
-            }
-        }
-    } else {
+    if targets.is_empty() {
         Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            str::from_utf8(&output.stderr).unwrap(),
+            io::ErrorKind::Other,
+            format!("Failed to find targets"),
         ))
+    } else {
+        Ok(targets)
+    }
+}
+
+fn get_targets_root_only(targets: &mut HashSet<Target>) -> Result<(), io::Error> {
+    let metadata = get_cargo_metadata(None)?;
+
+    for package in metadata.packages {
+        for target in package.targets {
+            if target.name == package.name {
+                targets.insert(Target::from_target(&target));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn get_targets_recursive(
+    manifest_path: Option<&Path>,
+    mut targets: &mut HashSet<Target>,
+    visited: &mut HashSet<String>,
+) -> Result<(), io::Error> {
+    let metadata = get_cargo_metadata(manifest_path)?;
+
+    for package in metadata.packages {
+        add_targets(&package.targets, &mut targets);
+
+        // Look for local dependencies.
+        for dependency in package.dependencies {
+            if dependency.source.is_some() || visited.contains(&dependency.name) {
+                continue;
+            }
+
+            let mut manifest_path = PathBuf::from(&package.manifest_path);
+
+            manifest_path.pop();
+            manifest_path.push(&dependency.name);
+            manifest_path.push("Cargo.toml");
+
+            if manifest_path.exists() {
+                visited.insert(dependency.name);
+                get_targets_recursive(Some(&manifest_path), &mut targets, visited)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn get_targets_with_hitlist(
+    hitlist: &[String],
+    targets: &mut HashSet<Target>,
+) -> Result<(), io::Error> {
+    let metadata = get_cargo_metadata(None)?;
+
+    let mut workspace_hitlist: HashSet<&String> = HashSet::from_iter(hitlist);
+
+    for package in metadata.packages {
+        for target in package.targets {
+            if workspace_hitlist.remove(&target.name) {
+                targets.insert(Target::from_target(&target));
+            }
+        }
+    }
+
+    if workspace_hitlist.is_empty() {
+        Ok(())
+    } else {
+        let package = workspace_hitlist.iter().next().unwrap();
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("package `{}` is not a member of the workspace", package),
+        ))
+    }
+}
+
+fn add_targets(target_paths: &[cargo_metadata::Target], targets: &mut HashSet<Target>) {
+    for target in target_paths {
+        targets.insert(Target::from_target(&target));
     }
 }
 
@@ -379,6 +317,7 @@ fn format_files(
     } else {
         std::process::Stdio::inherit()
     };
+
     if verbosity == Verbosity::Verbose {
         print!("rustfmt");
         for a in fmt_args {
@@ -389,6 +328,7 @@ fn format_files(
         }
         println!();
     }
+
     let mut command = Command::new("rustfmt")
         .stdout(stdout)
         .args(files)
@@ -401,5 +341,16 @@ fn format_files(
             ),
             _ => e,
         })?;
+
     command.wait()
+}
+
+fn get_cargo_metadata(manifest_path: Option<&Path>) -> Result<cargo_metadata::Metadata, io::Error> {
+    match cargo_metadata::metadata(manifest_path) {
+        Ok(metadata) => Ok(metadata),
+        Err(..) => Err(io::Error::new(
+            io::ErrorKind::Other,
+            "`cargo manifest` failed.",
+        )),
+    }
 }
