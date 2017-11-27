@@ -77,8 +77,6 @@ configuration_option_enum! { Density:
     Compressed,
     // Use more lines.
     Tall,
-    // Try to compress if the body is empty.
-    CompressedIfEmpty,
     // Place every item on a separate line.
     Vertical,
 }
@@ -95,7 +93,7 @@ impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
         match self {
             Density::Compressed => ListTactic::Mixed,
-            Density::Tall | Density::CompressedIfEmpty => ListTactic::HorizontalVertical,
+            Density::Tall => ListTactic::HorizontalVertical,
             Density::Vertical => ListTactic::Vertical,
         }
     }

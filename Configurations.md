@@ -636,7 +636,7 @@ See also [`comment_width`](#comment_width).
 Argument density in functions
 
 - **Default value**: `"Tall"`
-- **Possible values**: `"Compressed"`, `"CompressedIfEmpty"`, `"Tall"`, `"Vertical"`
+- **Possible values**: `"Compressed"`, `"Tall"`, `"Vertical"`
 
 #### `"Tall"` (default):
 
@@ -690,35 +690,6 @@ trait Lorem {
     fn lorem(
         ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
         adipiscing: Adipiscing, elit: Elit,
-    ) {
-        // body
-    }
-}
-```
-
-#### `"CompressedIfEmpty"`:
-
-```rust
-trait Lorem {
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet);
-
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet) {
-        // body
-    }
-
-    fn lorem(
-        ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
-        adipiscing: Adipiscing, elit: Elit,
-    );
-
-    fn lorem(
-        ipsum: Ipsum,
-        dolor: Dolor,
-        sit: Sit,
-        amet: Amet,
-        consectetur: Consectetur,
-        adipiscing: Adipiscing,
-        elit: Elit,
     ) {
         // body
     }
