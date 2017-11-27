@@ -581,6 +581,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                      trait_ref.self_ty()));
                         }
 
+                        self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
+
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
                             self.predicate_can_apply(obligation.param_env, trait_ref) {
@@ -819,6 +821,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
         self.note_obligation_cause(&mut err, obligation);
         err.emit();
+    }
+
+    /// When encountering an assignment of an unsized trait, like `let x = ""[..];`, provide a
+    /// suggestion to borrow the initializer in order to use have a slice instead.
+    fn suggest_borrow_on_unsized_slice(&self,
+                                       code: &ObligationCauseCode<'tcx>,
+                                       err: &mut DiagnosticBuilder<'tcx>) {
+        if let &ObligationCauseCode::VariableType(node_id) = code {
+            let parent_node = self.tcx.hir.get_parent_node(node_id);
+            if let Some(hir::map::NodeLocal(ref local)) = self.tcx.hir.find(parent_node) {
+                if let Some(ref expr) = local.init {
+                    if let hir::ExprIndex(_, _) = expr.node {
+                        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                            err.span_suggestion(expr.span,
+                                                "consider borrowing here",
+                                                format!("&{}", snippet));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn report_arg_count_mismatch(

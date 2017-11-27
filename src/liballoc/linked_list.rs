@@ -220,6 +220,28 @@ impl<T> LinkedList<T> {
             node
         })
     }
+
+    /// Unlinks the specified node from the current list.
+    ///
+    /// Warning: this will not check that the provided node belongs to the current list.
+    #[inline]
+    unsafe fn unlink_node(&mut self, mut node: Shared<Node<T>>) {
+        let node = node.as_mut();
+
+        match node.prev {
+            Some(mut prev) => prev.as_mut().next = node.next.clone(),
+            // this node is the head node
+            None => self.head = node.next.clone(),
+        };
+
+        match node.next {
+            Some(mut next) => next.as_mut().prev = node.prev.clone(),
+            // this node is the tail node
+            None => self.tail = node.prev.clone(),
+        };
+
+        self.len -= 1;
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -722,6 +744,49 @@ impl<T> LinkedList<T> {
         second_part
     }
 
+    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    ///
+    /// If the closure returns true, then the element is removed and yielded.
+    /// If the closure returns false, it will try again, and call the closure on the next element,
+    /// seeing if it passes the test.
+    ///
+    /// Note that `drain_filter` lets you mutate every element in the filter closure, regardless of
+    /// whether you choose to keep or remove it.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a list into evens and odds, reusing the original list:
+    ///
+    /// ```
+    /// #![feature(drain_filter)]
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut numbers: LinkedList<u32> = LinkedList::new();
+    /// numbers.extend(&[1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
+    ///
+    /// let evens = numbers.drain_filter(|x| *x % 2 == 0).collect::<LinkedList<_>>();
+    /// let odds = numbers;
+    ///
+    /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![2, 4, 6, 8, 14]);
+    /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 9, 11, 13, 15]);
+    /// ```
+    #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
+    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<T, F>
+        where F: FnMut(&mut T) -> bool
+    {
+        // avoid borrow issues.
+        let it = self.head;
+        let old_len = self.len;
+
+        DrainFilter {
+            list: self,
+            it: it,
+            pred: filter,
+            idx: 0,
+            old_len: old_len,
+        }
+    }
+
     /// Returns a place for insertion at the front of the list.
     ///
     /// Using this method with placement syntax is equivalent to
@@ -964,6 +1029,56 @@ impl<'a, T> IterMut<'a, T> {
                 self.head.as_mut().map(|node| &mut node.as_mut().element)
             }
         }
+    }
+}
+
+/// An iterator produced by calling `drain_filter` on LinkedList.
+#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
+pub struct DrainFilter<'a, T: 'a, F: 'a>
+    where F: FnMut(&mut T) -> bool,
+{
+    list: &'a mut LinkedList<T>,
+    it: Option<Shared<Node<T>>>,
+    pred: F,
+    idx: usize,
+    old_len: usize,
+}
+
+#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
+impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
+    where F: FnMut(&mut T) -> bool,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        while let Some(mut node) = self.it {
+            unsafe {
+                self.it = node.as_ref().next;
+                self.idx += 1;
+
+                if (self.pred)(&mut node.as_mut().element) {
+                    self.list.unlink_node(node);
+                    return Some(Box::from_raw(node.as_ptr()).element);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.old_len - self.idx))
+    }
+}
+
+#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
+impl<'a, T: 'a + fmt::Debug, F> fmt::Debug for DrainFilter<'a, T, F>
+    where F: FnMut(&mut T) -> bool
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("DrainFilter")
+         .field(&self.list)
+         .finish()
     }
 }
 
@@ -1508,5 +1623,29 @@ mod tests {
             assert_eq!(a, b);
         }
         assert_eq!(i, v.len());
+    }
+
+    #[test]
+    fn drain_filter_test() {
+        let mut m: LinkedList<u32> = LinkedList::new();
+        m.extend(&[1, 2, 3, 4, 5, 6]);
+        let deleted = m.drain_filter(|v| *v < 4).collect::<Vec<_>>();
+
+        check_links(&m);
+
+        assert_eq!(deleted, &[1, 2, 3]);
+        assert_eq!(m.into_iter().collect::<Vec<_>>(), &[4, 5, 6]);
+    }
+
+    #[test]
+    fn drain_to_empty_test() {
+        let mut m: LinkedList<u32> = LinkedList::new();
+        m.extend(&[1, 2, 3, 4, 5, 6]);
+        let deleted = m.drain_filter(|_| true).collect::<Vec<_>>();
+
+        check_links(&m);
+
+        assert_eq!(deleted, &[1, 2, 3, 4, 5, 6]);
+        assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
     }
 }

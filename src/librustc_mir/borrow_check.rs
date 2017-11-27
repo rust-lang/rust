@@ -484,6 +484,34 @@ enum WriteKind {
     Move,
 }
 
+#[derive(Copy, Clone)]
+enum InitializationRequiringAction {
+    Update,
+    Borrow,
+    Use,
+    Assignment,
+}
+
+impl InitializationRequiringAction {
+    fn as_noun(self) -> &'static str {
+        match self {
+            InitializationRequiringAction::Update     => "update",
+            InitializationRequiringAction::Borrow     => "borrow",
+            InitializationRequiringAction::Use        => "use",
+            InitializationRequiringAction::Assignment => "assign"
+        }
+    }
+
+    fn as_verb_in_past_tense(self) -> &'static str {
+        match self {
+            InitializationRequiringAction::Update     => "updated",
+            InitializationRequiringAction::Borrow     => "borrowed",
+            InitializationRequiringAction::Use        => "used",
+            InitializationRequiringAction::Assignment => "assigned"
+        }
+    }
+}
+
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Checks an access to the given lvalue to see if it is allowed. Examines the set of borrows
     /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
@@ -574,7 +602,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Write of P[i] or *P, or WriteAndRead of any P, requires P init'd.
         match mode {
             MutateMode::WriteAndRead => {
-                self.check_if_path_is_moved(context, "update", lvalue_span, flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Update,
+                                            lvalue_span, flow_state);
             }
             MutateMode::JustWrite => {
                 self.check_if_assigned_path_is_moved(context, lvalue_span, flow_state);
@@ -600,7 +629,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Mut => (Deep, Write(WriteKind::MutableBorrow(bk))),
                 };
                 self.access_lvalue(context, (lvalue, span), access_kind, flow_state);
-                self.check_if_path_is_moved(context, "borrow", (lvalue, span), flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Borrow,
+                                            (lvalue, span), flow_state);
             }
 
             Rvalue::Use(ref operand) |
@@ -619,7 +649,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 };
                 self.access_lvalue(
                     context, (lvalue, span), (Shallow(Some(af)), Read(ReadKind::Copy)), flow_state);
-                self.check_if_path_is_moved(context, "use", (lvalue, span), flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
+                                            (lvalue, span), flow_state);
             }
 
             Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2) |
@@ -720,7 +751,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // skip this check in that case).
             }
             ConsumeKind::Consume => {
-                self.check_if_path_is_moved(context, "use", lvalue_span, flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
+                                            lvalue_span, flow_state);
             }
         }
     }
@@ -772,7 +804,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     fn check_if_path_is_moved(&mut self,
                               context: Context,
-                              desired_action: &str,
+                              desired_action: InitializationRequiringAction,
                               lvalue_span: (&Lvalue<'tcx>, Span),
                               flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         // FIXME: analogous code in check_loans first maps `lvalue` to
@@ -943,7 +975,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // `base` to its base_path.
 
                                     self.check_if_path_is_moved(
-                                        context, "assignment", (base, span), flow_state);
+                                        context, InitializationRequiringAction::Assignment,
+                                        (base, span), flow_state);
 
                                     // (base initialized; no need to
                                     // recur further)
@@ -1347,7 +1380,7 @@ mod prefixes {
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_use_of_moved_or_uninitialized(&mut self,
                            _context: Context,
-                           desired_action: &str,
+                           desired_action: InitializationRequiringAction,
                            (lvalue, span): (&Lvalue<'tcx>, Span),
                            mpi: MovePathIndex,
                            curr_move_out: &IdxSetBuf<MoveOutIndex>) {
@@ -1357,7 +1390,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         if mois.is_empty() {
             self.tcx.cannot_act_on_uninitialized_variable(span,
-                                                          desired_action,
+                                                          desired_action.as_noun(),
                                                           &self.describe_lvalue(lvalue),
                                                           Origin::Mir)
                     .span_label(span, format!("use of possibly uninitialized `{}`",
@@ -1367,11 +1400,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let msg = ""; //FIXME: add "partially " or "collaterally "
 
             let mut err = self.tcx.cannot_act_on_moved_value(span,
-                                                             desired_action,
+                                                             desired_action.as_noun(),
                                                              msg,
                                                              &self.describe_lvalue(lvalue),
                                                              Origin::Mir);
-            err.span_label(span, format!("value {} here after move", desired_action));
+
+            err.span_label(span, format!("value {} here after move",
+                                         desired_action.as_verb_in_past_tense()));
             for moi in mois {
                 let move_msg = ""; //FIXME: add " (into closure)"
                 let move_span = self.mir.source_info(self.move_data.moves[*moi].source).span;

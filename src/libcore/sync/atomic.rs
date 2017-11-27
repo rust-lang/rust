@@ -103,9 +103,8 @@ use fmt;
 ///
 /// On some platforms this function may not do anything at all.
 #[inline]
-#[unstable(feature = "hint_core_should_pause", issue = "41196")]
-pub fn hint_core_should_pause()
-{
+#[stable(feature = "spin_loop_hint", since = "1.24.0")]
+pub fn spin_loop_hint() {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     unsafe {
         asm!("pause" ::: "memory" : "volatile");
