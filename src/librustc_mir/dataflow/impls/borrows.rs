@@ -212,6 +212,12 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::Assign(_, ref rhs) => {
                 if let mir::Rvalue::Ref(region, _, ref place) = *rhs {
                     if is_unsafe_place(self.tcx, self.mir, place) { return; }
+                    if let RegionKind::ReEmpty = region {
+                        // If the borrowed value is dead, the region for it
+                        // can be empty. Don't track the borrow in that case.
+                        return
+                    }
+
                     let index = self.location_map.get(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
