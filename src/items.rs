@@ -366,7 +366,7 @@ impl<'a> FmtVisitor<'a> {
 
         let codemap = self.get_context().codemap;
 
-        if self.config.fn_empty_single_line() && is_empty_block(block, codemap)
+        if self.config.empty_item_single_line() && is_empty_block(block, codemap)
             && self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width()
         {
             return Some(format!("{}{{}}", fn_str));
@@ -705,7 +705,7 @@ fn is_impl_single_line(
     let open_pos = snippet.find_uncommented("{")? + 1;
 
     Some(
-        context.config.impl_empty_single_line() && items.is_empty() && !result.contains('\n')
+        context.config.empty_item_single_line() && items.is_empty() && !result.contains('\n')
             && result.len() + where_clause_str.len() <= context.config.max_width()
             && !contains_comment(&snippet[open_pos..]),
     )

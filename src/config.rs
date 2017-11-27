@@ -599,10 +599,10 @@ create_config! {
     normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
 
     // Single line expressions and items.
+    empty_item_single_line: bool, true, false,
+        "Put empty-body functions and impls on a single line";
     struct_lit_single_line: bool, true, false,
         "Put small struct literals on a single line";
-    impl_empty_single_line: bool, true, false, "Put empty-body implementations on a single line";
-    fn_empty_single_line: bool, true, false, "Put empty-body functions on a single line";
     fn_single_line: bool, false, false, "Put single-expression functions on a single line";
     where_single_line: bool, false, false, "To force single line where layout";
 

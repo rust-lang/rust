@@ -874,10 +874,9 @@ struct Dolor<T>
 ```
 
 
+## `empty_item_single_line`
 
-## `fn_empty_single_line`
-
-Put empty-body functions on a single line
+Put empty-body functions and impls on a single line
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -886,6 +885,8 @@ Put empty-body functions on a single line
 
 ```rust
 fn lorem() {}
+
+impl Lorem {}
 ```
 
 #### `false`:
@@ -893,9 +894,12 @@ fn lorem() {}
 ```rust
 fn lorem() {
 }
+
+impl Lorem {
+}
 ```
 
-See also [`control_brace_style`](#control_brace_style).
+See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_style).
 
 
 ## `fn_single_line`
@@ -1003,28 +1007,6 @@ fn lorem() -> usize {
 ```
 
 See also: [`tab_spaces`](#tab_spaces).
-
-## `impl_empty_single_line`
-
-Put empty-body implementations on a single line
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-
-#### `true` (default):
-
-```rust
-impl Lorem {}
-```
-
-#### `false`:
-
-```rust
-impl Lorem {
-}
-```
-
-See also [`brace_style`](#brace_style).
 
 
 ## `imports_indent`
