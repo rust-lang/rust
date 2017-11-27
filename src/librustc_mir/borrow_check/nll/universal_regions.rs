@@ -493,7 +493,27 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 substs.substs
             }
             ty::TyFnDef(_, substs) => substs,
-            _ => bug!(),
+
+            // FIXME. When we encounter other sorts of constant
+            // expressions, such as the `22` in `[foo; 22]`, we can
+            // get the type `usize` here. For now, just return an
+            // empty vector of substs in this case, since there are no
+            // generics in scope in such expressions right now.
+            //
+            // Eventually I imagine we could get a wider range of
+            // types.  What is the best way to handle this? Should we
+            // be checking something other than the type of the def-id
+            // to figure out what to do (e.g. the def-key?).
+            ty::TyUint(..) => {
+                assert!(identity_substs.is_empty());
+                identity_substs
+            }
+
+            _ => span_bug!(
+                tcx.def_span(self.mir_def_id),
+                "unknown defining type: {:?}",
+                defining_ty
+            ),
         };
 
         let global_mapping = iter::once((gcx.types.re_static, fr_static));
@@ -551,7 +571,15 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             ty::TyFnDef(def_id, _) => {
                 let sig = tcx.fn_sig(def_id);
                 let sig = indices.fold_to_region_vids(tcx, &sig);
-                return sig.inputs_and_output();
+                sig.inputs_and_output()
+            }
+
+            // FIXME: as above, this happens on things like `[foo;
+            // 22]`. For now, no inputs, one output, but it seems like
+            // we need a more general way to handle this category of
+            // MIR.
+            ty::TyUint(..) => {
+                ty::Binder::dummy(tcx.mk_type_list(iter::once(defining_ty)))
             }
 
             _ => span_bug!(
