@@ -1499,8 +1499,7 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (
-                    !context.config.multiline_match_arm_forces_block()
-                        && expr.can_be_overflowed(context, 1),
+                    !context.config.force_multiline_blocks() && expr.can_be_overflowed(context, 1),
                     &**expr,
                 )
             } else {
@@ -1508,8 +1507,7 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
             }
         }
         _ => (
-            !context.config.multiline_match_arm_forces_block()
-                && body.can_be_overflowed(context, 1),
+            !context.config.force_multiline_blocks() && body.can_be_overflowed(context, 1),
             &*body,
         ),
     }

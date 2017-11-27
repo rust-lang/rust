@@ -1172,9 +1172,9 @@ pub enum Foo {}
 pub enum Foo {}
 ```
 
-## `multiline_closure_forces_block`
+## `force_multiline_blocks`
 
-Force multiline closure bodies to be wrapped in a block
+Force multiline closure and match arm bodies to be wrapped in a block
 
 - **Default value**: `false`
 - **Possible values**: `false`, `true`
@@ -1186,6 +1186,13 @@ result.and_then(|maybe_value| match maybe_value {
     None => ...,
     Some(value) => ...,
 })
+
+match lorem {
+    None => if ipsum {
+        println!("Hello World");
+    },
+    Some(dolor) => ...,
+}
 ```
 
 #### `true`:
@@ -1198,29 +1205,7 @@ result.and_then(|maybe_value| {
         Some(value) => ...,
     }
 })
-```
 
-## `multiline_match_arm_forces_block`
-
-Force multiline match arm bodies to be wrapped in a block
-
-- **Default value**: `false`
-- **Possible values**: `false`, `true`
-
-#### `false` (default):
-
-```rust
-match lorem {
-    None => if ipsum {
-        println!("Hello World");
-    },
-    Some(dolor) => ...,
-}
-```
-
-#### `true`:
-
-```rust
 match lorem {
     None => {
         if ipsum {
@@ -1230,6 +1215,7 @@ match lorem {
     Some(dolor) => ...,
 }
 ```
+
 
 ## `newline_style`
 

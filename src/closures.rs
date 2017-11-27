@@ -146,7 +146,7 @@ fn rewrite_closure_expr(
         rewrite = and_one_line(rewrite);
     }
     rewrite = rewrite.and_then(|rw| {
-        if context.config.multiline_closure_forces_block() && rw.contains('\n') {
+        if context.config.force_multiline_blocks() && rw.contains('\n') {
             None
         } else {
             Some(rw)
