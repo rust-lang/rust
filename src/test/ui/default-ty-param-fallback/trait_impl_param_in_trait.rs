@@ -7,39 +7,31 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+// compile-flags: --error-format=human
 
 #![feature(default_type_parameter_fallback)]
 
-trait A<T = Self> {
-    fn a(t: &T) -> Self;
-}
-
-trait B<T = Self> {
+trait B<T> {
     fn b(&self) -> T;
 }
 
 impl<T = X> B<T> for X
-    where T: A<X>
+    where T: Default
 {
     fn b(&self) -> T {
-        T::a(self)
+        T::default()
     }
 }
 
+#[derive(Copy, Clone, Default)]
 struct X(u8);
 
-impl A for X {
-    fn a(x: &X) -> X {
-        X(x.0)
-    }
-}
-
-fn g(x: &X) {
-    // Bug: replacing with `let x = X::b(x)` will cause `x` to be unknown in `x.0`.
-    let x = <X as B>::b(x);
-    x.0;
-}
-
 fn main() {
-    g(&X(0));
+    let x = X(0);
+    let y = x.b();
+    foo(y);
+}
+
+fn foo<T = u32>(a: T) -> T {
+    a
 }

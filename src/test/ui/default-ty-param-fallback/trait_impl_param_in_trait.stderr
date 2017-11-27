@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/trait_impl_param_in_trait.rs:31:9
+   |
+31 |     let y = x.b();
+   |         ^
+   |         |
+   |         cannot infer type for `_`
+   |         consider giving `y` a type
+
+error: aborting due to previous error
+
