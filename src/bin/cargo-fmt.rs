@@ -18,6 +18,7 @@ extern crate getopts;
 extern crate serde_json as json;
 
 use std::env;
+use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
@@ -175,20 +176,9 @@ impl TargetKind {
             _ => false,
         }
     }
-}
 
-#[derive(Debug)]
-pub struct Target {
-    path: PathBuf,
-    kind: TargetKind,
-}
-
-impl Target {
-    pub fn from_json(json_val: &Value) -> Option<Self> {
-        let jtarget = json_val.as_object()?;
-        let path = PathBuf::from(jtarget.get("src_path")?.as_str()?);
-        let kinds = jtarget.get("kind")?.as_array()?;
-        let kind = match kinds[0].as_str()? {
+    fn from_str(s: &str) -> Self {
+        match s {
             "bin" => TargetKind::Bin,
             "lib" | "dylib" | "staticlib" | "cdylib" | "rlib" => TargetKind::Lib,
             "test" => TargetKind::Test,
@@ -197,12 +187,42 @@ impl Target {
             "custom-build" => TargetKind::CustomBuild,
             "proc-macro" => TargetKind::ProcMacro,
             _ => TargetKind::Other,
-        };
+        }
+    }
+}
 
-        Some(Target {
-            path: path,
-            kind: kind,
-        })
+/// Target uses a `path` field for equality and hashing.
+#[derive(Debug)]
+pub struct Target {
+    /// A path to the main source file of the target.
+    path: PathBuf,
+    /// A kind of target (e.g. lib, bin, example, ...).
+    kind: TargetKind,
+}
+
+impl Target {
+    pub fn from_target(target: &cargo_metadata::Target) -> Self {
+        let path = PathBuf::from(&target.src_path);
+        let canonicalized = fs::canonicalize(&path).unwrap_or(path);
+
+        Target {
+            path: canonicalized,
+            kind: TargetKind::from_str(&target.kind[0]),
+        }
+    }
+}
+
+impl PartialEq for Target {
+    fn eq(&self, other: &Target) -> bool {
+        self.path == other.path
+    }
+}
+
+impl Eq for Target {}
+
+impl Hash for Target {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.path.hash(state);
     }
 }
 
