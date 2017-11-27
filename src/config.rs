@@ -625,8 +625,6 @@ create_config! {
         "Force multiline match arm bodies to be wrapped in a block";
     match_block_trailing_comma: bool, false, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
-    match_arm_forces_newline: bool, false, false,
-        "Force match arm bodies to be in a new lines";
 
     // Spaces around punctuation
     binop_separator: SeparatorPlace, SeparatorPlace::Front, false,

@@ -1529,11 +1529,6 @@ fn rewrite_match_body(
     } else {
         (false, false)
     };
-    let extend = if context.config.match_arm_forces_newline() {
-        is_block
-    } else {
-        extend
-    };
 
     let comma = arm_comma(context.config, body, is_last);
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
@@ -1606,7 +1601,7 @@ fn rewrite_match_body(
 
         match rewrite {
             Some(ref body_str)
-                if !forbid_same_line && !context.config.match_arm_forces_newline()
+                if !forbid_same_line
                     && (is_block
                         || (!body_str.contains('\n') && body_str.len() <= body_shape.width)) =>
             {
