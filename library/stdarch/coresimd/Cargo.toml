@@ -21,6 +21,7 @@ maintenance = { status = "experimental" }
 [dev-dependencies]
 cupid = "0.5.0"
 stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
+stdsimd = { version = "0.0.3", path = ".." }
 
 [features]
 # Internal-usage only: denies all warnings.

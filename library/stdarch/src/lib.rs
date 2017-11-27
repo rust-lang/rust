@@ -1,26 +1,4 @@
-//! SIMD support
-//!
-//! This crate provides the fundamentals of supporting SIMD in Rust. This crate
-//! should compile on all platforms and provide `simd` and `vendor` modules at
-//! the top-level. The `simd` module contains *portable vector types* which
-//! should work across all platforms and be implemented in the most efficient
-//! manner possible for the platform at hand. The `vendor` module contains
-//! vendor intrinsics that operate over these SIMD types, typically
-//! corresponding to a particular CPU instruction
-//!
-//! ```rust
-//! extern crate stdsimd;
-//! use stdsimd::simd::u32x4;
-//!
-//! fn main() {
-//!     let a = u32x4::new(1, 2, 3, 4);
-//!     let b = u32x4::splat(10);
-//!     assert_eq!(a + b, u32x4::new(11, 12, 13, 14));
-//! }
-//! ```
-//!
-//! > **Note**: This crate is *nightly only* at the moment, and requires a
-//! > nightly rust toolchain to compile.
+//! SIMD and vendor intrinsics support library.
 //!
 //! This documentation is only for one particular architecture, you can find
 //! others at:
@@ -30,66 +8,96 @@
 //! * [arm](https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/)
 //! * [aarch64](https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/)
 //!
-//! ## Portability
+//! # Overview
 //!
-//! The `simd` module and its types should be portable to all platforms. The
-//! runtime characteristics of these types may vary per platform and per CPU
-//! feature enabled, but they should always have the most optimized
-//! implementation for the target at hand.
+//! The `simd` module exposes *portable vector types*. These types work on all
+//! platforms, but their run-time performance may vary depending on hardware
+//! support.
 //!
-//! The `vendor` module provides no portability guarantees. The `vendor` module
-//! is per CPU architecture currently and provides intrinsics corresponding to
-//! functions for that particular CPU architecture. Note that the functions
-//! provided in this module are intended to correspond to CPU instructions and
-//! have no runtime support for whether you CPU actually supports the
-//! instruction.
+//! The `vendor` module exposes vendor-specific intrinsics that typically
+//! correspond to a single machine instruction. In general, these intrinsics are
+//! not portable: their availability is architecture-dependent, and not all
+//! machines of that architecture might provide the intrinsic.
 //!
-//! CPU target feature detection is done via the `cfg_feature_enabled!` macro
-//! at runtime. This macro will detect at runtime whether the specified feature
-//! is available or not, returning true or false depending on the current CPU.
+//! Two macros make it possible to write portable code:
 //!
-//! ```
-//! #![feature(cfg_target_feature)]
+//! * `cfg!(target_feature = "feature")`: returns `true` if the `feature` is
+//! enabled in all CPUs that the binary will run on (at compile-time)
+//! * `cfg_feature_enabled!("feature")`: returns `true` if the `feature` is
+//! enabled in the CPU in which the binary is currently running on (at run-time,
+//! unless the result is known at compile time)
+//!
+//! # Example
+//!
+//! ```rust
+//! #![feature(cfg_target_feature, target_feature)]
 //!
 //! #[macro_use]
 //! extern crate stdsimd;
+//! use stdsimd::vendor;
+//! use stdsimd::simd::i32x4;
 //!
 //! fn main() {
-//!     if cfg_feature_enabled!("avx2") {
-//!         println!("avx2 intrinsics will work");
-//!     } else {
-//!         println!("avx2 intrinsics will not work");
-//!         // undefined behavior: may generate a `SIGILL`.
+//!     let a = i32x4::new(1, 2, 3, 4);
+//!     let b = i32x4::splat(10);
+//!     assert_eq!(b, i32x4::new(10, 10, 10, 10));
+//!     let c = a + b;
+//!     assert_eq!(c, i32x4::new(11, 12, 13, 14));
+//!     assert_eq!(sum_portable(b), 40);
+//!     assert_eq!(sum_ct(b), 40);
+//!     assert_eq!(sum_rt(b), 40);
+//! }
+//!
+//! // Sums the elements of the vector.
+//! fn sum_portable(x: i32x4) -> i32 {
+//!     let mut r = 0;
+//!     for i in 0..4 {
+//!         r += x.extract(i);
+//!     }
+//!     r
+//! }
+//!
+//! // Sums the elements of the vector using SSE2 instructions.
+//! // This function is only safe to call if the CPU where the
+//! // binary runs supports SSE2.
+//! #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+//! #[target_feature = "+sse2"]
+//! unsafe fn sum_sse2(x: i32x4) -> i32 {
+//!     let x = vendor::_mm_add_epi32(x, vendor::_mm_srli_si128(x.into(), 8).into());
+//!     let x = vendor::_mm_add_epi32(x, vendor::_mm_srli_si128(x.into(), 4).into());
+//!     vendor::_mm_cvtsi128_si32(x)
+//! }
+//!
+//! // Uses the SSE2 version if SSE2 is enabled for all target
+//! // CPUs at compile-time (does not perform any run-time
+//! // feature detection).
+//! fn sum_ct(x: i32x4) -> i32 {
+//!     #[cfg(all(any(target_arch = "x86_64", target_arch = "x86"),
+//!               target_feature = "sse2"))]
+//!     {
+//!         // This function is only available for x86/x86_64 targets,
+//!         // and is only safe to call it if the target supports SSE2
+//!         unsafe { sum_sse2(x) }
+//!     }
+//!     #[cfg(not(all(any(target_arch = "x86_64", target_arch = "x86"),
+//!               target_feature = "sse2")))]
+//!     {
+//!         sum_portable(x)
 //!     }
 //! }
-//! ```
 //!
-//! After verifying that a specified feature is available, use `target_feature`
-//! to enable a given feature and use the desired intrinsic.
-//!
-//! ```ignore
-//! # #![feature(cfg_target_feature)]
-//! # #![feature(target_feature)]
-//! # #[macro_use]
-//! # extern crate stdsimd;
-//! # fn main() {
-//! #     if cfg_feature_enabled!("avx2") {
-//! // avx2 specific code may be used in this function
-//! #[target_feature = "+avx2"]
-//! fn and_256() {
-//!     // avx2 feature specific intrinsics will work here!
-//!     use stdsimd::vendor::{__m256i, _mm256_and_si256};
-//!
-//!     let a = __m256i::splat(5);
-//!     let b = __m256i::splat(3);
-//!
-//!     let got = unsafe { _mm256_and_si256(a, b) };
-//!
-//!     assert_eq!(got, __m256i::splat(1));
+//! // Detects SSE2 at run-time, and uses a SIMD intrinsic if enabled.
+//! fn sum_rt(x: i32x4) -> i32 {
+//!     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+//!     {
+//!         // If SSE2 is not enabled at compile-time, this
+//!         // detects whether SSE2 is available at run-time:
+//!         if cfg_feature_enabled!("sse2") {
+//!             return unsafe { sum_sse2(x) };
+//!         }
+//!     }
+//!     sum_portable(x)
 //! }
-//! #         and_256();
-//! #     }
-//! # }
 //! ```
 //!
 //! # Status
