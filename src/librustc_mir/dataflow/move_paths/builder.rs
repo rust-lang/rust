@@ -22,7 +22,7 @@ use std::mem;
 use super::abs_domain::Lift;
 
 use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, MoveOut, MoveOutIndex};
-use super::{MoveError};
+use super::{MoveError, InitIndex, Init, LookupResult, InitKind};
 use super::IllegalMoveOriginKind::*;
 
 struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
@@ -40,6 +40,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
            -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
+        let mut init_path_map = IndexVec::new();
 
         MoveDataBuilder {
             mir,
@@ -51,18 +52,28 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
                 loc_map: LocationMap::new(mir),
                 rev_lookup: MovePathLookup {
                     locals: mir.local_decls.indices().map(Lvalue::Local).map(|v| {
-                        Self::new_move_path(&mut move_paths, &mut path_map, None, v)
+                        Self::new_move_path(
+                            &mut move_paths,
+                            &mut path_map,
+                            &mut init_path_map,
+                            None,
+                            v,
+                        )
                     }).collect(),
                     projections: FxHashMap(),
                 },
                 move_paths,
                 path_map,
+                inits: IndexVec::new(),
+                init_loc_map: LocationMap::new(mir),
+                init_path_map,
             }
         }
     }
 
     fn new_move_path(move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
                      path_map: &mut IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
+                     init_path_map: &mut IndexVec<MovePathIndex, Vec<InitIndex>>,
                      parent: Option<MovePathIndex>,
                      lvalue: Lvalue<'tcx>)
                      -> MovePathIndex
@@ -82,6 +93,10 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
 
         let path_map_ent = path_map.push(vec![]);
         assert_eq!(path_map_ent, move_path);
+
+        let init_path_map_ent = init_path_map.push(vec![]);
+        assert_eq!(init_path_map_ent, move_path);
+
         move_path
     }
 }
@@ -165,6 +180,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 let path = MoveDataBuilder::new_move_path(
                     &mut self.builder.data.move_paths,
                     &mut self.builder.data.path_map,
+                    &mut self.builder.data.init_path_map,
                     Some(base),
                     lval.clone()
                 );
@@ -204,6 +220,8 @@ pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>,
                                                      (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
     let mut builder = MoveDataBuilder::new(mir, tcx, param_env);
 
+    builder.gather_args();
+
     for (bb, block) in mir.basic_blocks().iter_enumerated() {
         for (i, stmt) in block.statements.iter().enumerate() {
             let source = Location { block: bb, statement_index: i };
@@ -221,6 +239,22 @@ pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
+    fn gather_args(&mut self) {
+        for arg in self.mir.args_iter() {
+            let path = self.data.rev_lookup.locals[arg];
+            let span = self.mir.local_decls[arg].source_info.span;
+
+            let init = self.data.inits.push(Init {
+                path, span, kind: InitKind::Deep
+            });
+
+            debug!("gather_args: adding init {:?} of {:?} for argument {:?}",
+                init, path, arg);
+
+            self.data.init_path_map[path].push(init);
+        }
+    }
+
     fn gather_statement(&mut self, loc: Location, stmt: &Statement<'tcx>) {
         debug!("gather_statement({:?}, {:?})", loc, stmt);
         (Gatherer { builder: self, loc }).gather_statement(stmt);
@@ -247,6 +281,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                     // move-path for the interior so it will be separate from
                     // the exterior.
                     self.create_move_path(&lval.clone().deref());
+                    self.gather_init(lval, InitKind::Shallow);
+                } else {
+                    self.gather_init(lval, InitKind::Deep);
                 }
                 self.gather_rvalue(rval);
             }
@@ -329,6 +366,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
                 self.gather_operand(value);
+                self.gather_init(location, InitKind::Deep);
             }
             TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
                 self.gather_operand(func);
@@ -337,6 +375,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 }
                 if let Some((ref destination, _bb)) = *destination {
                     self.create_move_path(destination);
+                    self.gather_init(destination, InitKind::NonPanicPathOnly);
                 }
             }
         }
@@ -377,5 +416,23 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
 
         self.builder.data.path_map[path].push(move_out);
         self.builder.data.loc_map[self.loc].push(move_out);
+    }
+
+    fn gather_init(&mut self, lval: &Lvalue<'tcx>, kind: InitKind) {
+        debug!("gather_init({:?}, {:?})", self.loc, lval);
+
+        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(lval) {
+            let init = self.builder.data.inits.push(Init {
+                span: self.builder.mir.source_info(self.loc).span,
+                path,
+                kind,
+            });
+
+            debug!("gather_init({:?}, {:?}): adding init {:?} of {:?}",
+               self.loc, lval, init, path);
+
+            self.builder.data.init_path_map[path].push(init);
+            self.builder.data.init_loc_map[self.loc].push(init);
+        }
     }
 }
