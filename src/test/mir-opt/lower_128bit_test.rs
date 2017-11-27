@@ -11,7 +11,6 @@
 // compile-flags: -Z lower_128bit_ops -C debug_assertions=no
 
 #![feature(i128_type)]
-#![feature(lang_items)]
 
 fn test_signed(mut x: i128) -> i128 {
     x += 1;
