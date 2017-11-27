@@ -195,7 +195,12 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let &mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = data;
 
+            let mut interim_state;
             let sets = &mut self.flow_state.sets.for_block(bb.index());
+            if BD::accumulates_intrablock_state() {
+                interim_state = sets.on_entry.to_owned();
+                sets.on_entry = &mut interim_state;
+            }
             for j_stmt in 0..statements.len() {
                 let location = Location { block: bb, statement_index: j_stmt };
                 self.flow_state.operator.statement_effect(sets, location);
@@ -559,6 +564,31 @@ pub trait InitialFlow {
 pub trait BitDenotation: BitwiseOperator {
     /// Specifies what index type is used to access the bitvector.
     type Idx: Idx;
+
+    /// Some analyses want to accumulate knowledge within a block when
+    /// analyzing its statements for building the gen/kill sets. Override
+    /// this method to return true in such cases.
+    ///
+    /// When this returns true, the statement-effect (re)construction
+    /// will clone the `on_entry` state and pass along a reference via
+    /// `sets.on_entry` to that local clone into `statement_effect` and
+    /// `terminator_effect`).
+    ///
+    /// When its false, no local clone is constucted; instead a
+    /// reference directly into `on_entry` is passed along via
+    /// `sets.on_entry` instead, which represents the flow state at
+    /// the block's start, not necessarily the state immediately prior
+    /// to the statement/terminator under analysis.
+    ///
+    /// In either case, the passed reference is mutable; but this is a
+    /// wart from using the `BlockSets` type in the API; the intention
+    /// is that the `statement_effect` and `terminator_effect` methods
+    /// mutate only the gen/kill sets.
+    ///
+    /// FIXME: We should consider enforcing the intention described in
+    /// the previous paragraph by passing the three sets in separate
+    /// parameters to encode their distinct mutabilities.
+    fn accumulates_intrablock_state() -> bool { false }
 
     /// A name describing the dataflow analysis that this
     /// BitDenotation is supporting.  The name should be something
