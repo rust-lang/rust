@@ -84,9 +84,9 @@ fn execute() -> i32 {
         return success;
     }
 
-    let workspace_hitlist = WorkspaceHitlist::from_matches(&matches);
+    let strategy = CargoFmtStrategy::from_matches(&matches);
 
-    match format_crate(verbosity, &workspace_hitlist) {
+    match format_crate(verbosity, &strategy) {
         Err(e) => {
             print_usage_to_stderr(&opts, &e.to_string());
             failure
@@ -127,9 +127,9 @@ pub enum Verbosity {
 
 fn format_crate(
     verbosity: Verbosity,
-    workspace_hitlist: &WorkspaceHitlist,
+    strategy: &CargoFmtStrategy,
 ) -> Result<ExitStatus, io::Error> {
-    let targets = get_targets(workspace_hitlist)?;
+    let targets = get_targets(strategy)?;
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets
@@ -227,37 +227,33 @@ impl Hash for Target {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum WorkspaceHitlist {
+pub enum CargoFmtStrategy {
+    /// Format every packages and dependencies.
     All,
+    /// Format pacakges that are specified by the command line argument.
     Some(Vec<String>),
-    None,
+    /// Format the root packages only.
+    Root,
 }
 
-impl WorkspaceHitlist {
-    pub fn get_some(&self) -> Option<&[String]> {
-        if let WorkspaceHitlist::Some(ref hitlist) = *self {
-            Some(hitlist)
-        } else {
-            None
-        }
-    }
-
-    pub fn from_matches(matches: &Matches) -> WorkspaceHitlist {
+impl CargoFmtStrategy {
+    pub fn from_matches(matches: &Matches) -> CargoFmtStrategy {
         match (matches.opt_present("all"), matches.opt_present("p")) {
-            (false, false) => WorkspaceHitlist::None,
-            (true, _) => WorkspaceHitlist::All,
-            (false, true) => WorkspaceHitlist::Some(matches.opt_strs("p")),
+            (false, false) => CargoFmtStrategy::Root,
+            (true, _) => CargoFmtStrategy::All,
+            (false, true) => CargoFmtStrategy::Some(matches.opt_strs("p")),
         }
     }
 }
 
-fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<HashSet<Target>, io::Error> {
+/// Based on the specified CargoFmtStrategy, returns a set of main source files.
+fn get_targets(strategy: &CargoFmtStrategy) -> Result<HashSet<Target>, io::Error> {
     let mut targets = HashSet::new();
 
-    match *workspace_hitlist {
-        WorkspaceHitlist::None => get_targets_root_only(&mut targets)?,
-        WorkspaceHitlist::All => get_targets_recursive(None, &mut targets, &mut HashSet::new())?,
-        WorkspaceHitlist::Some(ref hitlist) => get_targets_with_hitlist(hitlist, &mut targets)?,
+    match *strategy {
+        CargoFmtStrategy::Root => get_targets_root_only(&mut targets)?,
+        CargoFmtStrategy::All => get_targets_recursive(None, &mut targets, &mut HashSet::new())?,
+        CargoFmtStrategy::Some(ref hitlist) => get_targets_with_hitlist(hitlist, &mut targets)?,
     }
 
     if targets.is_empty() {
@@ -317,25 +313,25 @@ fn get_targets_recursive(
 }
 
 fn get_targets_with_hitlist(
-    target_names: &[String],
+    hitlist: &[String],
     targets: &mut HashSet<Target>,
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(None)?;
 
-    let mut hitlist: HashSet<&String> = HashSet::from_iter(target_names);
+    let mut workspace_hitlist: HashSet<&String> = HashSet::from_iter(hitlist);
 
     for package in metadata.packages {
         for target in package.targets {
-            if hitlist.remove(&target.name) {
+            if workspace_hitlist.remove(&target.name) {
                 targets.insert(Target::from_target(&target));
             }
         }
     }
 
-    if hitlist.is_empty() {
+    if workspace_hitlist.is_empty() {
         Ok(())
     } else {
-        let package = hitlist.iter().next().unwrap();
+        let package = workspace_hitlist.iter().next().unwrap();
         Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!("package `{}` is not a member of the workspace", package),
