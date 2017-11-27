@@ -59,7 +59,10 @@ pub fn type_check<'a, 'gcx, 'tcx>(
 }
 
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
-    tcx.sess.diagnostic().span_bug(span, msg);
+    // We sometimes see MIR failures (notably predicate failures) due to
+    // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
+    // to avoid reporting bugs in those cases.
+    tcx.sess.diagnostic().delay_span_bug(span, msg);
 }
 
 macro_rules! span_mirbug {
@@ -171,7 +174,44 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         );
 
         let expected_ty = match constant.literal {
-            Literal::Value { value } => value.ty,
+            Literal::Value { value } => {
+                if let ConstVal::Function(def_id, ..) = value.val {
+                    let tcx = self.tcx();
+                    let type_checker = &mut self.cx;
+
+                    // FIXME -- For now, use the substitutions from
+                    // `value.ty` rather than `value.val`. The
+                    // renumberer will rewrite them to independent
+                    // sets of regions; in principle, we ought to
+                    // derive the type of the `value.val` from "first
+                    // principles" and equate with value.ty, but as we
+                    // are transitioning to the miri-based system, we
+                    // don't have a handy function for that, so for
+                    // now we just ignore `value.val` regions.
+                    let substs = match value.ty.sty {
+                        ty::TyFnDef(ty_def_id, substs) => {
+                            assert_eq!(def_id, ty_def_id);
+                            substs
+                        }
+                        _ => {
+                            span_bug!(
+                                self.last_span,
+                                "unexpected type for constant function: {:?}",
+                                value.ty
+                            )
+                        }
+                    };
+
+                    let instantiated_predicates =
+                        tcx.predicates_of(def_id).instantiate(tcx, substs);
+                    let predicates =
+                        type_checker.normalize(&instantiated_predicates.predicates, location);
+                    type_checker.prove_predicates(&predicates, location);
+                }
+
+                value.ty
+            }
+
             Literal::Promoted { .. } => {
                 // FIXME -- promoted MIR return types reference
                 // various "free regions" (e.g., scopes and things)
