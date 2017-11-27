@@ -1359,7 +1359,7 @@ impl<T> Receiver<T> {
     ///     Err(mpsc::RecvTimeoutError::Timeout)
     /// );
     /// ```
-    #[stable(feature = "mpsc_recv_deadline", since = "1.23.0")]
+    #[unstable(feature = "deadline_api", issue = "46316")]
     pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
         use self::RecvTimeoutError::*;
 
