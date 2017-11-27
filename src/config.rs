@@ -364,7 +364,7 @@ macro_rules! create_config {
                             self.$i.2 = val;
                         } else {
                             println!("Warning: can't set some features as unstable \
-                                    features are only available in nightly channel.");
+                                      features are only available in nightly channel.");
                         }
                     }
                 }

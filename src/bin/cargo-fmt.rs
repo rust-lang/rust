@@ -359,6 +359,7 @@ fn format_files(
     } else {
         std::process::Stdio::inherit()
     };
+
     if verbosity == Verbosity::Verbose {
         print!("rustfmt");
         for a in fmt_args {
@@ -369,6 +370,7 @@ fn format_files(
         }
         println!();
     }
+
     let mut command = Command::new("rustfmt")
         .stdout(stdout)
         .args(files)
@@ -381,6 +383,7 @@ fn format_files(
             ),
             _ => e,
         })?;
+
     command.wait()
 }
 
