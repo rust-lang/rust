@@ -384,33 +384,23 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // StorageDead, but we don't always emit those (notably on unwind paths),
                 // so this "extra check" serves as a kind of backup.
                 let domain = flow_state.borrows.base_results.operator();
-                for borrow in domain.borrows() {
-                    let root_place = self.prefixes(
-                        &borrow.place,
-                        PrefixSet::All
-                    ).last().unwrap();
-                    match root_place {
-                        Place::Static(_) => {
-                            self.access_place(
-                                ContextKind::StorageDead.new(loc),
-                                (&root_place, self.mir.source_info(borrow.location).span),
-                                (Deep, Write(WriteKind::StorageDeadOrDrop)),
-                                LocalMutationIsAllowed::Yes,
-                                flow_state
-                            );
-                        }
-                        Place::Local(_) => {
-                            self.access_place(
-                                ContextKind::StorageDead.new(loc),
-                                (&root_place, self.mir.source_info(borrow.location).span),
-                                (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
-                                LocalMutationIsAllowed::Yes,
-                                flow_state
-                            );
-                        }
-                        Place::Projection(_) => ()
+                let data = domain.borrows();
+                flow_state.borrows.with_elems_outgoing(|borrows| for i in borrows {
+                    let borrow = &data[i];
+
+                    if self.place_is_invalidated_at_exit(&borrow.place) {
+                        debug!("borrow conflicts at exit {:?}", borrow);
+                        let borrow_span = self.mir.source_info(borrow.location).span;
+                        // FIXME: should be talking about the region lifetime instead
+                        // of just a span here.
+                        let end_span = domain.opt_region_end_span(&borrow.region);
+
+                        self.report_borrowed_value_does_not_live_long_enough(
+                            ContextKind::StorageDead.new(loc),
+                            (&borrow.place, borrow_span),
+                            end_span)
                     }
-                }
+                });
             }
             TerminatorKind::Goto { target: _ } |
             TerminatorKind::Unreachable |
@@ -594,7 +584,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     context, common_prefix, place_span, bk,
                                     &borrow, end_issued_loan_span)
                             }
-                             WriteKind::StorageDeadOrDrop => {
+                            WriteKind::StorageDeadOrDrop => {
                                 let end_span =
                                     flow_state.borrows.base_results.operator().opt_region_end_span(
                                         &borrow.region);
@@ -750,6 +740,50 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             Operand::Constant(_) => {}
         }
+    }
+
+    /// Returns whether a borrow of this place is invalidated when the function
+    /// exits
+    fn place_is_invalidated_at_exit(&self, place: &Place<'tcx>) -> bool {
+        debug!("place_is_invalidated_at_exit({:?})", place);
+        let root_place = self.prefixes(place, PrefixSet::All).last().unwrap();
+
+        // FIXME(nll-rfc#40): do more precise destructor tracking here. For now
+        // we just know that all locals are dropped at function exit (otherwise
+        // we'll have a memory leak) and assume that all statics have a destructor.
+        let (might_be_alive, will_be_dropped) = match root_place {
+            Place::Static(statik) => {
+                // Thread-locals might be dropped after the function exits, but
+                // "true" statics will never be.
+                let is_thread_local = self.tcx.get_attrs(statik.def_id).iter().any(|attr| {
+                    attr.check_name("thread_local")
+                });
+
+                (true, is_thread_local)
+            }
+            Place::Local(_) => {
+                // Locals are always dropped at function exit, and if they
+                // have a destructor it would've been called already.
+                (false, true)
+            }
+            Place::Projection(..) => bug!("root of {:?} is a projection ({:?})?",
+                                           place, root_place)
+        };
+
+        if !will_be_dropped {
+            debug!("place_is_invalidated_at_exit({:?}) - won't be dropped", place);
+            return false;
+        }
+
+        // FIXME: replace this with a proper borrow_conflicts_with_place when
+        // that is merged.
+        let prefix_set = if might_be_alive {
+            PrefixSet::Supporting
+        } else {
+            PrefixSet::Shallow
+        };
+
+        self.prefixes(place, prefix_set).any(|prefix| prefix == root_place)
     }
 }
 
@@ -1667,13 +1701,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     fn report_borrowed_value_does_not_live_long_enough(&mut self,
                                                        _: Context,
-                                                       (place, span): (&Place, Span),
+                                                       (place, span): (&Place<'tcx>, Span),
                                                        end_span: Option<Span>) {
-        let proper_span = match *place {
+        let root_place = self.prefixes(place, PrefixSet::All).last().unwrap();
+        let proper_span = match *root_place {
             Place::Local(local) => self.mir.local_decls[local].source_info.span,
             _ => span
         };
-
         let mut err = self.tcx.path_does_not_live_long_enough(span, "borrowed value", Origin::Mir);
         err.span_label(proper_span, "temporary value created here");
         err.span_label(span, "temporary value dropped here while still borrowed");
@@ -2161,5 +2195,13 @@ impl<BD> FlowInProgress<BD> where BD: BitDenotation {
     fn elems_incoming(&self) -> indexed_set::Elems<BD::Idx> {
         let univ = self.base_results.sets().bits_per_block();
         self.curr_state.elems(univ)
+    }
+
+    fn with_elems_outgoing<F>(&self, f: F) where F: FnOnce(indexed_set::Elems<BD::Idx>) {
+        let mut curr_state = self.curr_state.clone();
+        curr_state.union(&self.stmt_gen);
+        curr_state.subtract(&self.stmt_kill);
+        let univ = self.base_results.sets().bits_per_block();
+        f(curr_state.elems(univ));
     }
 }
