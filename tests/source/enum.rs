@@ -165,3 +165,10 @@ enum State {
     TimedOut,
     Disconnected,
 }
+
+// #2190
+#[derive(Debug, Fail)]
+enum AnError {
+    #[fail(display = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    UnexpectedSingleToken { token: syn::Token },
+}

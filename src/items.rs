@@ -452,9 +452,7 @@ impl<'a> FmtVisitor<'a> {
         let variant_list = self.format_variant_list(enum_def, body_start, span.hi() - BytePos(1));
         match variant_list {
             Some(ref body_str) => self.buffer.push_str(body_str),
-            None => if contains_comment(&enum_snippet[brace_pos..]) {
-                self.format_missing_no_indent(span.hi() - BytePos(1))
-            },
+            None => self.format_missing_no_indent(span.hi() - BytePos(1)),
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
 
