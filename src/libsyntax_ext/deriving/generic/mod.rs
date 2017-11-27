@@ -393,7 +393,7 @@ fn find_type_parameters(ty: &ast::Ty,
 }
 
 impl<'a> TraitDef<'a> {
-    pub fn expand(&self,
+    pub fn expand(self,
                   cx: &mut ExtCtxt,
                   mitem: &ast::MetaItem,
                   item: &'a Annotatable,
@@ -401,7 +401,7 @@ impl<'a> TraitDef<'a> {
         self.expand_ext(cx, mitem, item, push, false);
     }
 
-    pub fn expand_ext(&self,
+    pub fn expand_ext(self,
                       cx: &mut ExtCtxt,
                       mitem: &ast::MetaItem,
                       item: &'a Annotatable,
@@ -409,23 +409,15 @@ impl<'a> TraitDef<'a> {
                       from_scratch: bool) {
         match *item {
             Annotatable::Item(ref item) => {
-                let newitem = match item.node {
-                    ast::ItemKind::Struct(ref struct_def, ref generics) => {
-                        self.expand_struct_def(cx, &struct_def, item.ident, generics, from_scratch)
-                    }
-                    ast::ItemKind::Enum(ref enum_def, ref generics) => {
-                        self.expand_enum_def(cx, enum_def, &item.attrs,
-                                             item.ident, generics, from_scratch)
-                    }
-                    ast::ItemKind::Union(ref struct_def, ref generics) => {
-                        if self.supports_unions {
-                            self.expand_struct_def(cx, &struct_def, item.ident,
-                                                   generics, from_scratch)
-                        } else {
-                            cx.span_err(mitem.span,
-                                        "this trait cannot be derived for unions");
-                            return;
-                        }
+                let is_packed = item.attrs.iter().any(|attr| {
+                    attr::find_repr_attrs(&cx.parse_sess.span_diagnostic, attr)
+                        .contains(&attr::ReprPacked)
+                });
+                let has_no_type_params = match item.node {
+                    ast::ItemKind::Struct(_, ref generics) |
+                    ast::ItemKind::Enum(_, ref generics) |
+                    ast::ItemKind::Union(_, ref generics) => {
+                        generics.ty_params.is_empty()
                     }
                     _ => {
                         // Non-ADT derive is an error, but it should have been
@@ -433,6 +425,39 @@ impl<'a> TraitDef<'a> {
                         // libsyntax/ext/expand.rs:MacroExpander::expand()
                         return;
                     }
+                };
+                let is_always_copy =
+                    attr::contains_name(&item.attrs, "rustc_copy_clone_marker") &&
+                    has_no_type_params;
+                let use_temporaries = is_packed && is_always_copy;
+
+                let newitem = match item.node {
+                    ast::ItemKind::Struct(ref struct_def, ref generics) => {
+                        self.expand_struct_def(cx, &struct_def, item.ident, generics, from_scratch,
+                                               use_temporaries)
+                    }
+                    ast::ItemKind::Enum(ref enum_def, ref generics) => {
+                        // We ignore `use_temporaries` here, because
+                        // `repr(packed)` enums cause an error later on.
+                        //
+                        // This can only cause further compilation errors
+                        // downstream in blatantly illegal code, so it
+                        // is fine.
+                        self.expand_enum_def(cx, enum_def, &item.attrs,
+                                             item.ident, generics, from_scratch)
+                    }
+                    ast::ItemKind::Union(ref struct_def, ref generics) => {
+                        if self.supports_unions {
+                            self.expand_struct_def(cx, &struct_def, item.ident,
+                                                   generics, from_scratch,
+                                                   use_temporaries)
+                        } else {
+                            cx.span_err(mitem.span,
+                                        "this trait cannot be derived for unions");
+                            return;
+                        }
+                    }
+                    _ => unreachable!(),
                 };
                 // Keep the lint attributes of the previous item to control how the
                 // generated implementations are linted
@@ -675,7 +700,8 @@ impl<'a> TraitDef<'a> {
                          struct_def: &'a VariantData,
                          type_ident: Ident,
                          generics: &Generics,
-                         from_scratch: bool)
+                         from_scratch: bool,
+                         use_temporaries: bool)
                          -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> = struct_def.fields()
             .iter()
@@ -701,7 +727,8 @@ impl<'a> TraitDef<'a> {
                                                          struct_def,
                                                          type_ident,
                                                          &self_args[..],
-                                                         &nonself_args[..])
+                                                         &nonself_args[..],
+                                                         use_temporaries)
                 };
 
                 method_def.create_method(cx,
@@ -958,6 +985,22 @@ impl<'a> MethodDef<'a> {
     ///         }
     ///     }
     /// }
+    ///
+    /// // or if A is repr(packed) - note fields are matched by-value
+    /// // instead of by-reference.
+    /// impl PartialEq for A {
+    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///         match *self {
+    ///             A {x: __self_0_0, y: __self_0_1} => {
+    ///                 match __arg_1 {
+    ///                     A {x: __self_1_0, y: __self_1_1} => {
+    ///                         __self_0_0.eq(&__self_1_0) && __self_0_1.eq(&__self_1_1)
+    ///                     }
+    ///                 }
+    ///             }
+    ///         }
+    ///     }
+    /// }
     /// ```
     fn expand_struct_method_body<'b>(&self,
                                      cx: &mut ExtCtxt,
@@ -965,7 +1008,8 @@ impl<'a> MethodDef<'a> {
                                      struct_def: &'b VariantData,
                                      type_ident: Ident,
                                      self_args: &[P<Expr>],
-                                     nonself_args: &[P<Expr>])
+                                     nonself_args: &[P<Expr>],
+                                     use_temporaries: bool)
                                      -> P<Expr> {
 
         let mut raw_fields = Vec::new(); // Vec<[fields of self],
@@ -977,7 +1021,8 @@ impl<'a> MethodDef<'a> {
                                                                  struct_path,
                                                                  struct_def,
                                                                  &format!("__self_{}", i),
-                                                                 ast::Mutability::Immutable);
+                                                                 ast::Mutability::Immutable,
+                                                                 use_temporaries);
             patterns.push(pat);
             raw_fields.push(ident_expr);
         }
@@ -1140,7 +1185,6 @@ impl<'a> MethodDef<'a> {
                                   self_args: Vec<P<Expr>>,
                                   nonself_args: &[P<Expr>])
                                   -> P<Expr> {
-
         let sp = trait_.span;
         let variants = &enum_def.variants;
 
@@ -1512,12 +1556,18 @@ impl<'a> TraitDef<'a> {
     fn create_subpatterns(&self,
                           cx: &mut ExtCtxt,
                           field_paths: Vec<ast::SpannedIdent>,
-                          mutbl: ast::Mutability)
+                          mutbl: ast::Mutability,
+                          use_temporaries: bool)
                           -> Vec<P<ast::Pat>> {
         field_paths.iter()
             .map(|path| {
+                let binding_mode = if use_temporaries {
+                    ast::BindingMode::ByValue(ast::Mutability::Immutable)
+                } else {
+                    ast::BindingMode::ByRef(mutbl)
+                };
                 cx.pat(path.span,
-                       PatKind::Ident(ast::BindingMode::ByRef(mutbl), (*path).clone(), None))
+                       PatKind::Ident(binding_mode, (*path).clone(), None))
             })
             .collect()
     }
@@ -1528,8 +1578,10 @@ impl<'a> TraitDef<'a> {
          struct_path: ast::Path,
          struct_def: &'a VariantData,
          prefix: &str,
-         mutbl: ast::Mutability)
-         -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
+         mutbl: ast::Mutability,
+         use_temporaries: bool)
+         -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>)
+    {
         let mut paths = Vec::new();
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
@@ -1539,12 +1591,18 @@ impl<'a> TraitDef<'a> {
                 span: sp,
                 node: ident,
             });
-            let val = cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp, ident)));
+            let val = cx.expr_path(cx.path_ident(sp, ident));
+            let val = if use_temporaries {
+                val
+            } else {
+                cx.expr_deref(sp, val)
+            };
             let val = cx.expr(sp, ast::ExprKind::Paren(val));
+
             ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
         }
 
-        let subpats = self.create_subpatterns(cx, paths, mutbl);
+        let subpats = self.create_subpatterns(cx, paths, mutbl, use_temporaries);
         let pattern = match *struct_def {
             VariantData::Struct(..) => {
                 let field_pats = subpats.into_iter()
@@ -1588,7 +1646,9 @@ impl<'a> TraitDef<'a> {
         let variant_ident = variant.node.name;
         let sp = variant.span.with_ctxt(self.span.ctxt());
         let variant_path = cx.path(sp, vec![enum_ident, variant_ident]);
-        self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl)
+        let use_temporaries = false; // enums can't be repr(packed)
+        self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl,
+                                   use_temporaries)
     }
 }
 

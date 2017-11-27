@@ -1723,10 +1723,17 @@ impl Location {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum UnsafetyViolationKind {
+    General,
+    ExternStatic(ast::NodeId),
+    BorrowPacked(ast::NodeId),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub description: &'static str,
-    pub lint_node_id: Option<ast::NodeId>,
+    pub kind: UnsafetyViolationKind,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

@@ -719,7 +719,8 @@ impl Eq for Ipv4Addr {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Ipv4Addr {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        self.inner.s_addr.hash(s)
+        // `inner` is #[repr(packed)], so we need to copy `s_addr`.
+        {self.inner.s_addr}.hash(s)
     }
 }
 

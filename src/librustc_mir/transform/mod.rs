@@ -23,6 +23,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 pub mod add_validation;
+pub mod add_moves_for_packed_drops;
 pub mod clean_end_regions;
 pub mod check_unsafety;
 pub mod simplify_branches;
@@ -236,7 +237,12 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         // an AllCallEdges pass right before it.
         add_call_guards::AllCallEdges,
         add_validation::AddValidation,
+        // AddMovesForPackedDrops needs to run after drop
+        // elaboration.
+        add_moves_for_packed_drops::AddMovesForPackedDrops,
+
         simplify::SimplifyCfg::new("elaborate-drops"),
+
         // No lifetime analysis based on borrowing can be done from here on out.
 
         // From here on out, regions are gone.

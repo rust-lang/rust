@@ -32,4 +32,4 @@ clippy = "Broken"
 rls = "Testing"
 
 # ping @nrc
-rustfmt = "Testing"
+rustfmt = "Compiling"

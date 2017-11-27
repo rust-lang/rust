@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #[repr(packed)]
-struct Foo {
-    bar: u8,
-    baz: usize
+pub struct Bad<T: ?Sized> {
+    data: T, //~ ERROR `T: std::marker::Sized` is not satisfied
 }
 
-pub fn main() {
-    let foo = Foo { bar: 1, baz: 2 };
-    let brw = unsafe { &foo.baz };
-
-    assert_eq!(*brw, 2);
-}
+fn main() {}

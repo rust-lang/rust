@@ -9,8 +9,12 @@
 // except according to those terms.
 
 #[repr(packed)]
-#[derive(Copy, Clone)]
-struct Packed<T>(T);
+struct Packed<T: Copy>(T);
+
+impl<T: Copy> Copy for Packed<T> {}
+impl<T: Copy> Clone for Packed<T> {
+    fn clone(&self) -> Self { *self }
+}
 
 fn main() {
     let one = (Some(Packed((&(), 0))), true);

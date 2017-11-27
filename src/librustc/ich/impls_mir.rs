@@ -33,9 +33,28 @@ impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
 });
 impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref });
 impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator, is_cleanup });
-impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, lint_node_id });
+impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, kind });
 impl_stable_hash_for!(struct mir::UnsafetyCheckResult { violations, unsafe_blocks });
 
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for mir::UnsafetyViolationKind {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            mir::UnsafetyViolationKind::General => {}
+            mir::UnsafetyViolationKind::ExternStatic(lint_node_id) |
+            mir::UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
+                lint_node_id.hash_stable(hcx, hasher);
+            }
+
+        }
+    }
+}
 impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for mir::Terminator<'gcx> {
     #[inline]

@@ -15,14 +15,14 @@ use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::lint::builtin::{SAFE_EXTERN_STATICS, UNUSED_UNSAFE};
+use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, Visitor};
 
 use syntax::ast;
 
 use std::rc::Rc;
-
+use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
@@ -138,6 +138,19 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     lvalue: &Lvalue<'tcx>,
                     context: LvalueContext<'tcx>,
                     location: Location) {
+        if let LvalueContext::Borrow { .. } = context {
+            if util::is_disaligned(self.tcx, self.mir, self.param_env, lvalue) {
+                let source_info = self.source_info;
+                let lint_root =
+                    self.visibility_scope_info[source_info.scope].lint_root;
+                self.register_violations(&[UnsafetyViolation {
+                    source_info,
+                    description: "borrow of packed field",
+                    kind: UnsafetyViolationKind::BorrowPacked(lint_root)
+                }], &[]);
+            }
+        }
+
         match lvalue {
             &Lvalue::Projection(box Projection {
                 ref base, ref elem
@@ -156,26 +169,28 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     ty::TyRawPtr(..) => {
                         self.require_unsafe("dereference of raw pointer")
                     }
-                    ty::TyAdt(adt, _) if adt.is_union() => {
-                        if context == LvalueContext::Store ||
-                            context == LvalueContext::Drop
-                        {
-                            let elem_ty = match elem {
-                                &ProjectionElem::Field(_, ty) => ty,
-                                _ => span_bug!(
-                                    self.source_info.span,
-                                    "non-field projection {:?} from union?",
-                                    lvalue)
-                            };
-                            if elem_ty.moves_by_default(self.tcx, self.param_env,
-                                                        self.source_info.span) {
-                                self.require_unsafe(
-                                    "assignment to non-`Copy` union field")
+                    ty::TyAdt(adt, _) => {
+                        if adt.is_union() {
+                            if context == LvalueContext::Store ||
+                                context == LvalueContext::Drop
+                            {
+                                let elem_ty = match elem {
+                                    &ProjectionElem::Field(_, ty) => ty,
+                                    _ => span_bug!(
+                                        self.source_info.span,
+                                        "non-field projection {:?} from union?",
+                                        lvalue)
+                                };
+                                if elem_ty.moves_by_default(self.tcx, self.param_env,
+                                                            self.source_info.span) {
+                                    self.require_unsafe(
+                                        "assignment to non-`Copy` union field")
+                                } else {
+                                    // write to non-move union, safe
+                                }
                             } else {
-                                // write to non-move union, safe
+                                self.require_unsafe("access to union field")
                             }
-                        } else {
-                            self.require_unsafe("access to union field")
                         }
                     }
                     _ => {}
@@ -195,11 +210,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
                         description: "use of extern static",
-                        lint_node_id: Some(lint_root)
+                        kind: UnsafetyViolationKind::ExternStatic(lint_root)
                     }], &[]);
                 }
             }
-        }
+        };
         self.super_lvalue(lvalue, context, location);
     }
 }
@@ -210,7 +225,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
-            source_info, description, lint_node_id: None
+            source_info, description, kind: UnsafetyViolationKind::General
         }], &[]);
     }
 
@@ -244,6 +259,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         unsafety_check_result,
+        unsafe_derive_on_repr_packed,
         ..*providers
     };
 }
@@ -326,6 +342,27 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     }
 }
 
+fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
+    let lint_node_id = match tcx.hir.as_local_node_id(def_id) {
+        Some(node_id) => node_id,
+        None => bug!("checking unsafety for non-local def id {:?}", def_id)
+    };
+
+    // FIXME: when we make this a hard error, this should have its
+    // own error code.
+    let message = if !tcx.generics_of(def_id).types.is_empty() {
+        format!("#[derive] can't be used on a #[repr(packed)] struct with \
+                 type parameters (error E0133)")
+    } else {
+        format!("#[derive] can't be used on a non-Copy #[repr(packed)] struct \
+                 (error E0133)")
+    };
+    tcx.lint_node(SAFE_PACKED_BORROWS,
+                  lint_node_id,
+                  tcx.def_span(def_id),
+                  &message);
+}
+
 /// Return the NodeId for an enclosing scope that is also `unsafe`
 fn is_enclosed(tcx: TyCtxt,
                used_unsafe: &FxHashSet<ast::NodeId>,
@@ -358,6 +395,22 @@ fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: a
     db.emit();
 }
 
+fn builtin_derive_def_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
+    debug!("builtin_derive_def_id({:?})", def_id);
+    if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
+        if tcx.has_attr(impl_def_id, "automatically_derived") {
+            debug!("builtin_derive_def_id({:?}) - is {:?}", def_id, impl_def_id);
+            Some(impl_def_id)
+        } else {
+            debug!("builtin_derive_def_id({:?}) - not automatically derived", def_id);
+            None
+        }
+    } else {
+        debug!("builtin_derive_def_id({:?}) - not a method", def_id);
+        None
+    }
+}
+
 pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     debug!("check_unsafety({:?})", def_id);
 
@@ -372,21 +425,35 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     } = tcx.unsafety_check_result(def_id);
 
     for &UnsafetyViolation {
-        source_info, description, lint_node_id
+        source_info, description, kind
     } in violations.iter() {
         // Report an error.
-        if let Some(lint_node_id) = lint_node_id {
-            tcx.lint_node(SAFE_EXTERN_STATICS,
-                          lint_node_id,
-                          source_info.span,
-                          &format!("{} requires unsafe function or \
-                                    block (error E0133)", description));
-        } else {
-            struct_span_err!(
-                tcx.sess, source_info.span, E0133,
-                "{} requires unsafe function or block", description)
-                .span_label(source_info.span, description)
-                .emit();
+        match kind {
+            UnsafetyViolationKind::General => {
+                struct_span_err!(
+                    tcx.sess, source_info.span, E0133,
+                    "{} requires unsafe function or block", description)
+                    .span_label(source_info.span, description)
+                    .emit();
+            }
+            UnsafetyViolationKind::ExternStatic(lint_node_id) => {
+                tcx.lint_node(SAFE_EXTERN_STATICS,
+                              lint_node_id,
+                              source_info.span,
+                              &format!("{} requires unsafe function or \
+                                        block (error E0133)", description));
+            }
+            UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
+                if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
+                    tcx.unsafe_derive_on_repr_packed(impl_def_id);
+                } else {
+                    tcx.lint_node(SAFE_PACKED_BORROWS,
+                                  lint_node_id,
+                                  source_info.span,
+                                  &format!("{} requires unsafe function or \
+                                            block (error E0133)", description));
+                }
+            }
         }
     }
 
