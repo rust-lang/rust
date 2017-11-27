@@ -23,7 +23,7 @@ use util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex, InitIndex};
 use super::move_paths::{LookupResult, InitKind};
-use super::{BitDenotation, BlockSets, DataflowOperator};
+use super::{BitDenotation, BlockSets, InitialFlow};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
@@ -702,35 +702,35 @@ impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedLvals<'a, 'gcx, 'tcx> {
 // propagating, or you start at all-ones and then use Intersect as
 // your merge when propagating.
 
-impl<'a, 'gcx, 'tcx> DataflowOperator for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = uninitialized
     }
 }
 
-impl<'a, 'gcx, 'tcx> DataflowOperator for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'gcx, 'tcx> DataflowOperator for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for DefinitelyInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         true // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'gcx, 'tcx> DataflowOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for MovingOutStatements<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no loans in scope by default
     }
 }
 
-impl<'a, 'gcx, 'tcx> DataflowOperator for EverInitializedLvals<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InitialFlow for EverInitializedLvals<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no initialized variables by default

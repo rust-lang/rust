@@ -127,7 +127,7 @@ pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                  bd: BD,
                                                  p: P)
                                                  -> DataflowResults<BD>
-    where BD: BitDenotation,
+    where BD: BitDenotation + InitialFlow,
           P: Fn(&BD, BD::Idx) -> DebugFormatted
 {
     let name_found = |sess: &Session, attrs: &[ast::Attribute], name| -> Option<String> {
@@ -176,7 +176,6 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
         };
         while propcx.changed {
             propcx.changed = false;
-            propcx.reset(&mut temp);
             propcx.walk_cfg(&mut temp);
         }
     }
@@ -212,13 +211,6 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
 
 impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: BitDenotation
 {
-    fn reset(&mut self, bits: &mut IdxSet<BD::Idx>) {
-        let e = if BD::bottom_value() {!0} else {0};
-        for b in bits.words_mut() {
-            *b = e;
-        }
-    }
-
     fn walk_cfg(&mut self, in_out: &mut IdxSet<BD::Idx>) {
         let mir = self.builder.mir;
         for (bb_idx, bb_data) in mir.basic_blocks().iter().enumerate() {
@@ -554,12 +546,17 @@ impl<E:Idx> AllSets<E> {
 }
 
 /// Parameterization for the precise form of data flow that is used.
-pub trait DataflowOperator: BitwiseOperator {
+/// `InitialFlow` handles initializing the bitvectors before any
+/// code is inspected by the analysis. Analyses that need more nuanced
+/// initialization (e.g. they need to consult the results of some other
+/// dataflow analysis to set up the initial bitvectors) should not
+/// implement this.
+pub trait InitialFlow {
     /// Specifies the initial value for each bit in the `on_entry` set
     fn bottom_value() -> bool;
 }
 
-pub trait BitDenotation: DataflowOperator {
+pub trait BitDenotation: BitwiseOperator {
     /// Specifies what index type is used to access the bitvector.
     type Idx: Idx;
 
@@ -642,7 +639,7 @@ impl<'a, 'gcx, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
     pub fn new(_tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                dead_unwinds: &'a IdxSet<mir::BasicBlock>,
-               denotation: D) -> Self {
+               denotation: D) -> Self where D: InitialFlow {
         let bits_per_block = denotation.bits_per_block();
         let usize_bits = mem::size_of::<usize>() * 8;
         let words_per_block = (bits_per_block + usize_bits - 1) / usize_bits;

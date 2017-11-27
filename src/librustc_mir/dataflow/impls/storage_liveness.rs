@@ -74,7 +74,7 @@ impl<'a, 'tcx> BitwiseOperator for MaybeStorageLive<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DataflowOperator for MaybeStorageLive<'a, 'tcx> {
+impl<'a, 'tcx> InitialFlow for MaybeStorageLive<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = dead
