@@ -28,7 +28,7 @@ use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_back::tempdir::TempDir;
+use tempdir::TempDir;
 use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;

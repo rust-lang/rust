@@ -63,6 +63,7 @@ extern crate rustc_errors as errors;
 extern crate serialize;
 #[cfg(windows)]
 extern crate cc; // Used to locate MSVC
+extern crate tempdir;
 
 pub use base::trans_crate;
 use back::bytecode::RLIB_BYTECODE_EXTENSION;

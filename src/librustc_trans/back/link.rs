@@ -26,7 +26,7 @@ use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
-use rustc_back::tempdir::TempDir;
+use tempdir::TempDir;
 use rustc_back::{PanicStrategy, RelroLevel, LinkerFlavor};
 use context::get_reloc_model;
 use llvm;

@@ -10,12 +10,12 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_back;
+extern crate tempdir;
 
 use std::fs::File;
 use std::io::{Read, Write};
 
-use rustc_back::tempdir::TempDir;
+use tempdir::TempDir;
 
 #[cfg(unix)]
 fn switch_stdout_to(file: File) {
