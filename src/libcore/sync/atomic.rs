@@ -928,7 +928,7 @@ impl<T> AtomicPtr<T> {
 }
 
 #[cfg(target_has_atomic = "8")]
-#[stable(feature = "atomic_from", since = "1.23.0")]
+#[stable(feature = "atomic_bool_from", since = "1.24.0")]
 impl From<bool> for AtomicBool {
     #[inline]
     fn from(b: bool) -> Self { Self::new(b) }
