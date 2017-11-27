@@ -14,7 +14,7 @@ use util::elaborate_drops::DropFlagState;
 
 use super::{MoveDataParamEnv};
 use super::indexes::MovePathIndex;
-use super::move_paths::{MoveData, LookupResult};
+use super::move_paths::{MoveData, LookupResult, InitKind};
 
 pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
@@ -197,47 +197,40 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
                              |mpi| callback(mpi, DropFlagState::Absent))
     }
 
-    let block = &mir[loc.block];
-    match block.statements.get(loc.statement_index) {
-        Some(stmt) => match stmt.kind {
-            mir::StatementKind::SetDiscriminant{ .. } => {
-                span_bug!(stmt.source_info.span, "SetDiscrimant should not exist during borrowck");
+    debug!("drop_flag_effects: assignment for location({:?})", loc);
+
+    for_location_inits(
+        tcx,
+        mir,
+        move_data,
+        loc,
+        |mpi| callback(mpi, DropFlagState::Present)
+    );
+}
+
+pub(crate) fn for_location_inits<'a, 'gcx, 'tcx, F>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    move_data: &MoveData<'tcx>,
+    loc: Location,
+    mut callback: F)
+    where F: FnMut(MovePathIndex)
+{
+    for ii in &move_data.init_loc_map[loc] {
+        let init = move_data.inits[*ii];
+        match init.kind {
+            InitKind::Deep => {
+                let path = init.path;
+
+                on_all_children_bits(tcx, mir, move_data,
+                                    path,
+                                    &mut callback)
+            },
+            InitKind::Shallow => {
+                let mpi = init.path;
+                callback(mpi);
             }
-            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                match rvalue.initialization_state() {
-                    mir::tcx::RvalueInitializationState::Shallow => {
-                        debug!("drop_flag_effects: box assignment {:?}", stmt);
-                        if let LookupResult::Exact(mpi) = move_data.rev_lookup.find(lvalue) {
-                            callback(mpi, DropFlagState::Present);
-                        }
-                    }
-                    mir::tcx::RvalueInitializationState::Deep => {
-                        debug!("drop_flag_effects: assignment {:?}", stmt);
-                        on_lookup_result_bits(tcx, mir, move_data,
-                                              move_data.rev_lookup.find(lvalue),
-                                              |mpi| callback(mpi, DropFlagState::Present))
-                    }
-                }
-            }
-            mir::StatementKind::StorageLive(_) |
-            mir::StatementKind::StorageDead(_) |
-            mir::StatementKind::InlineAsm { .. } |
-            mir::StatementKind::EndRegion(_) |
-            mir::StatementKind::Validate(..) |
-            mir::StatementKind::Nop => {}
-        },
-        None => {
-            debug!("drop_flag_effects: replace {:?}", block.terminator());
-            match block.terminator().kind {
-                mir::TerminatorKind::DropAndReplace { ref location, .. } => {
-                    on_lookup_result_bits(tcx, mir, move_data,
-                                          move_data.rev_lookup.find(location),
-                                          |mpi| callback(mpi, DropFlagState::Present))
-                }
-                _ => {
-                    // other terminators do not contain move-ins
-                }
-            }
+            InitKind::NonPanicPathOnly => (),
         }
     }
 }

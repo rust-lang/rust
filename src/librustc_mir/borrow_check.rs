@@ -31,7 +31,7 @@ use dataflow::{do_dataflow};
 use dataflow::{MoveDataParamEnv};
 use dataflow::{BitDenotation, BlockSets, DataflowResults, DataflowResultsConsumer};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
-use dataflow::{MovingOutStatements};
+use dataflow::{MovingOutStatements, EverInitializedLvals};
 use dataflow::{Borrows, BorrowData, BorrowIndex};
 use dataflow::move_paths::{MoveError, IllegalMoveOriginKind};
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult, MoveOutIndex};
@@ -130,6 +130,9 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let flow_move_outs = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                                      MovingOutStatements::new(tcx, mir, &mdpe),
                                      |bd, i| &bd.move_data().moves[i]);
+    let flow_ever_inits = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+                                     EverInitializedLvals::new(tcx, mir, &mdpe),
+                                     |bd, i| &bd.move_data().inits[i]);
 
     let mut mbcx = MirBorrowckCtxt {
         tcx: tcx,
@@ -143,7 +146,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let mut state = InProgress::new(flow_borrows,
                                     flow_inits,
                                     flow_uninits,
-                                    flow_move_outs);
+                                    flow_move_outs,
+                                    flow_ever_inits);
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 }
@@ -167,6 +171,7 @@ pub struct InProgress<'b, 'gcx: 'tcx, 'tcx: 'b> {
     inits: FlowInProgress<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
     uninits: FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
     move_outs: FlowInProgress<MovingOutStatements<'b, 'gcx, 'tcx>>,
+    ever_inits: FlowInProgress<EverInitializedLvals<'b, 'gcx, 'tcx>>,
 }
 
 struct FlowInProgress<BD> where BD: BitDenotation {
@@ -190,7 +195,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         flow_state.each_flow(|b| b.reset_to_entry_of(bb),
                              |i| i.reset_to_entry_of(bb),
                              |u| u.reset_to_entry_of(bb),
-                             |m| m.reset_to_entry_of(bb));
+                             |m| m.reset_to_entry_of(bb),
+                             |e| e.reset_to_entry_of(bb));
     }
 
     fn reconstruct_statement_effect(&mut self,
@@ -199,7 +205,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         flow_state.each_flow(|b| b.reconstruct_statement_effect(location),
                              |i| i.reconstruct_statement_effect(location),
                              |u| u.reconstruct_statement_effect(location),
-                             |m| m.reconstruct_statement_effect(location));
+                             |m| m.reconstruct_statement_effect(location),
+                             |e| e.reconstruct_statement_effect(location));
     }
 
     fn apply_local_effect(&mut self,
@@ -208,7 +215,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         flow_state.each_flow(|b| b.apply_local_effect(),
                              |i| i.apply_local_effect(),
                              |u| u.apply_local_effect(),
-                             |m| m.apply_local_effect());
+                             |m| m.apply_local_effect(),
+                             |e| e.apply_local_effect());
     }
 
     fn reconstruct_terminator_effect(&mut self,
@@ -217,7 +225,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         flow_state.each_flow(|b| b.reconstruct_terminator_effect(location),
                              |i| i.reconstruct_terminator_effect(location),
                              |u| u.reconstruct_terminator_effect(location),
-                             |m| m.reconstruct_terminator_effect(location));
+                             |m| m.reconstruct_terminator_effect(location),
+                             |e| e.reconstruct_terminator_effect(location));
     }
 
     fn visit_block_entry(&mut self,
@@ -475,6 +484,34 @@ enum WriteKind {
     Move,
 }
 
+#[derive(Copy, Clone)]
+enum InitializationRequiringAction {
+    Update,
+    Borrow,
+    Use,
+    Assignment,
+}
+
+impl InitializationRequiringAction {
+    fn as_noun(self) -> &'static str {
+        match self {
+            InitializationRequiringAction::Update     => "update",
+            InitializationRequiringAction::Borrow     => "borrow",
+            InitializationRequiringAction::Use        => "use",
+            InitializationRequiringAction::Assignment => "assign"
+        }
+    }
+
+    fn as_verb_in_past_tense(self) -> &'static str {
+        match self {
+            InitializationRequiringAction::Update     => "updated",
+            InitializationRequiringAction::Borrow     => "borrowed",
+            InitializationRequiringAction::Use        => "used",
+            InitializationRequiringAction::Assignment => "assigned"
+        }
+    }
+}
+
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Checks an access to the given lvalue to see if it is allowed. Examines the set of borrows
     /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
@@ -565,7 +602,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Write of P[i] or *P, or WriteAndRead of any P, requires P init'd.
         match mode {
             MutateMode::WriteAndRead => {
-                self.check_if_path_is_moved(context, "update", lvalue_span, flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Update,
+                                            lvalue_span, flow_state);
             }
             MutateMode::JustWrite => {
                 self.check_if_assigned_path_is_moved(context, lvalue_span, flow_state);
@@ -591,7 +629,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Mut => (Deep, Write(WriteKind::MutableBorrow(bk))),
                 };
                 self.access_lvalue(context, (lvalue, span), access_kind, flow_state);
-                self.check_if_path_is_moved(context, "borrow", (lvalue, span), flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Borrow,
+                                            (lvalue, span), flow_state);
             }
 
             Rvalue::Use(ref operand) |
@@ -610,7 +649,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 };
                 self.access_lvalue(
                     context, (lvalue, span), (Shallow(Some(af)), Read(ReadKind::Copy)), flow_state);
-                self.check_if_path_is_moved(context, "use", (lvalue, span), flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
+                                            (lvalue, span), flow_state);
             }
 
             Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2) |
@@ -711,7 +751,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // skip this check in that case).
             }
             ConsumeKind::Consume => {
-                self.check_if_path_is_moved(context, "use", lvalue_span, flow_state);
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
+                                            lvalue_span, flow_state);
             }
         }
     }
@@ -750,29 +791,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         if let Some(mpi) = self.move_path_for_lvalue(lvalue) {
-            if flow_state.inits.curr_state.contains(&mpi) {
-                // may already be assigned before reaching this statement;
-                // report error.
-                // FIXME: Not ideal, it only finds the assignment that lexically comes first
-                let assigned_lvalue = &move_data.move_paths[mpi].lvalue;
-                let assignment_stmt = self.mir.basic_blocks().iter().filter_map(|bb| {
-                    bb.statements.iter().find(|stmt| {
-                        if let StatementKind::Assign(ref lv, _) = stmt.kind {
-                            *lv == *assigned_lvalue
-                        } else {
-                            false
-                        }
-                    })
-                }).next().unwrap();
-                self.report_illegal_reassignment(
-                    context, (lvalue, span), assignment_stmt.source_info.span);
+            for ii in &move_data.init_path_map[mpi] {
+                if flow_state.ever_inits.curr_state.contains(ii) {
+                    let first_assign_span = self.move_data.inits[*ii].span;
+                    self.report_illegal_reassignment(
+                        context, (lvalue, span), first_assign_span);
+                    break;
+                }
             }
         }
     }
 
     fn check_if_path_is_moved(&mut self,
                               context: Context,
-                              desired_action: &str,
+                              desired_action: InitializationRequiringAction,
                               lvalue_span: (&Lvalue<'tcx>, Span),
                               flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         // FIXME: analogous code in check_loans first maps `lvalue` to
@@ -943,7 +975,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // `base` to its base_path.
 
                                     self.check_if_path_is_moved(
-                                        context, "assignment", (base, span), flow_state);
+                                        context, InitializationRequiringAction::Assignment,
+                                        (base, span), flow_state);
 
                                     // (base initialized; no need to
                                     // recur further)
@@ -1347,7 +1380,7 @@ mod prefixes {
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_use_of_moved_or_uninitialized(&mut self,
                            _context: Context,
-                           desired_action: &str,
+                           desired_action: InitializationRequiringAction,
                            (lvalue, span): (&Lvalue<'tcx>, Span),
                            mpi: MovePathIndex,
                            curr_move_out: &IdxSetBuf<MoveOutIndex>) {
@@ -1357,7 +1390,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         if mois.is_empty() {
             self.tcx.cannot_act_on_uninitialized_variable(span,
-                                                          desired_action,
+                                                          desired_action.as_noun(),
                                                           &self.describe_lvalue(lvalue),
                                                           Origin::Mir)
                     .span_label(span, format!("use of possibly uninitialized `{}`",
@@ -1367,11 +1400,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let msg = ""; //FIXME: add "partially " or "collaterally "
 
             let mut err = self.tcx.cannot_act_on_moved_value(span,
-                                                             desired_action,
+                                                             desired_action.as_noun(),
                                                              msg,
                                                              &self.describe_lvalue(lvalue),
                                                              Origin::Mir);
-            err.span_label(span, format!("value {} here after move", desired_action));
+
+            err.span_label(span, format!("value {} here after move",
+                                         desired_action.as_verb_in_past_tense()));
             for moi in mois {
                 let move_msg = ""; //FIXME: add " (into closure)"
                 let move_span = self.mir.source_info(self.move_data.moves[*moi].source).span;
@@ -1586,13 +1621,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                    _context: Context,
                                    (lvalue, span): (&Lvalue<'tcx>, Span),
                                    assigned_span: Span) {
-        self.tcx.cannot_reassign_immutable(span,
+        let mut err = self.tcx.cannot_reassign_immutable(span,
                                            &self.describe_lvalue(lvalue),
-                                           Origin::Mir)
-                .span_label(span, "cannot assign twice to immutable variable")
-                .span_label(assigned_span, format!("first assignment to `{}`",
-                                                   self.describe_lvalue(lvalue)))
-                .emit();
+                                           Origin::Mir);
+        err.span_label(span, "cannot assign twice to immutable variable");
+        if span != assigned_span {
+            err.span_label(assigned_span, format!("first assignment to `{}`",
+                                              self.describe_lvalue(lvalue)));
+        }
+        err.emit();
     }
 
     fn report_assignment_to_static(&mut self,
@@ -1852,30 +1889,35 @@ impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
     pub(super) fn new(borrows: DataflowResults<Borrows<'b, 'gcx, 'tcx>>,
                       inits: DataflowResults<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
                       uninits: DataflowResults<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
-                      move_out: DataflowResults<MovingOutStatements<'b, 'gcx, 'tcx>>)
+                      move_out: DataflowResults<MovingOutStatements<'b, 'gcx, 'tcx>>,
+                      ever_inits: DataflowResults<EverInitializedLvals<'b, 'gcx, 'tcx>>)
                       -> Self {
         InProgress {
             borrows: FlowInProgress::new(borrows),
             inits: FlowInProgress::new(inits),
             uninits: FlowInProgress::new(uninits),
-            move_outs: FlowInProgress::new(move_out)
+            move_outs: FlowInProgress::new(move_out),
+            ever_inits: FlowInProgress::new(ever_inits)
         }
     }
 
-    fn each_flow<XB, XI, XU, XM>(&mut self,
+    fn each_flow<XB, XI, XU, XM, XE>(&mut self,
                                  mut xform_borrows: XB,
                                  mut xform_inits: XI,
                                  mut xform_uninits: XU,
-                                 mut xform_move_outs: XM) where
+                                 mut xform_move_outs: XM,
+                                 mut xform_ever_inits: XE) where
         XB: FnMut(&mut FlowInProgress<Borrows<'b, 'gcx, 'tcx>>),
         XI: FnMut(&mut FlowInProgress<MaybeInitializedLvals<'b, 'gcx, 'tcx>>),
         XU: FnMut(&mut FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>),
         XM: FnMut(&mut FlowInProgress<MovingOutStatements<'b, 'gcx, 'tcx>>),
+        XE: FnMut(&mut FlowInProgress<EverInitializedLvals<'b, 'gcx, 'tcx>>),
     {
         xform_borrows(&mut self.borrows);
         xform_inits(&mut self.inits);
         xform_uninits(&mut self.uninits);
         xform_move_outs(&mut self.move_outs);
+        xform_ever_inits(&mut self.ever_inits);
     }
 
     fn summary(&self) -> String {
@@ -1931,6 +1973,17 @@ impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
             let move_out =
                 &self.move_outs.base_results.operator().move_data().moves[mpi_move_out];
             s.push_str(&format!("{:?}", move_out));
+        });
+        s.push_str("] ");
+
+        s.push_str("ever_init: [");
+        let mut saw_one = false;
+        self.ever_inits.each_state_bit(|mpi_ever_init| {
+            if saw_one { s.push_str(", "); };
+            saw_one = true;
+            let ever_init =
+                &self.ever_inits.base_results.operator().move_data().inits[mpi_ever_init];
+            s.push_str(&format!("{:?}", ever_init));
         });
         s.push_str("]");
 

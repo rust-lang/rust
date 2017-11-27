@@ -27,6 +27,7 @@ use std::usize;
 pub use self::impls::{MaybeStorageLive};
 pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
 pub use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
+pub use self::impls::EverInitializedLvals;
 pub use self::impls::borrows::{Borrows, BorrowData, BorrowIndex};
 pub(crate) use self::drop_flag_effects::*;
 

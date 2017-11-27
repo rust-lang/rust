@@ -60,12 +60,16 @@ pub(crate) mod indexes {
     /// Index into MoveData.moves.
     new_index!(MoveOutIndex, "mo");
 
+    /// Index into MoveData.inits.
+    new_index!(InitIndex, "in");
+
     /// Index into Borrows.locations
     new_index!(BorrowIndex, "bw");
 }
 
 pub use self::indexes::MovePathIndex;
 pub use self::indexes::MoveOutIndex;
+pub use self::indexes::InitIndex;
 
 impl MoveOutIndex {
     pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
@@ -126,6 +130,11 @@ pub struct MoveData<'tcx> {
     pub loc_map: LocationMap<Vec<MoveOutIndex>>,
     pub path_map: IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
     pub rev_lookup: MovePathLookup<'tcx>,
+    pub inits: IndexVec<InitIndex, Init>,
+    /// Each Location `l` is mapped to the Inits that are effects
+    /// of executing the code at `l`.
+    pub init_loc_map: LocationMap<Vec<InitIndex>>,
+    pub init_path_map: IndexVec<MovePathIndex, Vec<InitIndex>>,
 }
 
 pub trait HasMoveData<'tcx> {
@@ -179,6 +188,34 @@ pub struct MoveOut {
 impl fmt::Debug for MoveOut {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.path, self.source)
+    }
+}
+
+/// `Init` represents a point in a program that initializes some L-value;
+#[derive(Copy, Clone)]
+pub struct Init {
+    /// path being initialized
+    pub path: MovePathIndex,
+    /// span of initialization
+    pub span: Span,
+    /// Extra information about this initialization
+    pub kind: InitKind,
+}
+
+/// Additional information about the initialization.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InitKind {
+    /// Deep init, even on panic
+    Deep,
+    /// Only does a shallow init
+    Shallow,
+    /// This doesn't initialize the variabe on panic (and a panic is possible).
+    NonPanicPathOnly,
+}
+
+impl fmt::Debug for Init {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{:?}@{:?} ({:?})", self.path, self.span, self.kind)
     }
 }
 
