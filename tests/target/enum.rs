@@ -222,3 +222,14 @@ enum AnError {
     #[fail(display = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
     UnexpectedSingleToken { token: syn::Token },
 }
+
+// #2193
+enum WidthOf101 {
+    #[fail(display = ".....................................................")] Io(::std::io::Error),
+    #[fail(display = ".....................................................")]
+    Ioo(::std::io::Error),
+    Xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(::std::io::Error),
+    Xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(
+        ::std::io::Error,
+    ),
+}
