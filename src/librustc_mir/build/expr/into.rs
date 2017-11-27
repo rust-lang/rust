@@ -273,7 +273,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Break { .. } |
             ExprKind::InlineAsm { .. } |
             ExprKind::Return {.. } => {
-                this.stmt_expr(block, expr)
+                unpack!(block = this.stmt_expr(block, expr));
+                this.cfg.push_assign_unit(block, source_info, destination);
+                block.unit()
             }
 
             // these are the cases that are more naturally handled by some other mode

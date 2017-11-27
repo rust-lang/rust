@@ -54,6 +54,7 @@ fn main() {
 //         Validate(Acquire, [_1: &ReFree(DefId(0/1:9 ~ validate_4[317d]::write_42[0]::{{closure}}[0]), BrEnv) [closure@NodeId(22)], _2: *mut i32]);
 //         Validate(Release, [_1: &ReFree(DefId(0/1:9 ~ validate_4[317d]::write_42[0]::{{closure}}[0]), BrEnv) [closure@NodeId(22)], _2: *mut i32]);
 //         (*_2) = const 23i32;
+//         _0 = ();
 //         return;
 //     }
 // }
