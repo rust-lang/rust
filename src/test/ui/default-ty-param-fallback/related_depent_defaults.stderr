@@ -1,10 +1,10 @@
 error[E0282]: type annotations needed
-  --> $DIR/trait_impl.rs:24:13
+  --> $DIR/related_depent_defaults.rs:21:13
    |
-24 |     let x = Vec::new(); // x: Vec<$0>
+21 |     let a = Opt::Non;
    |         -   ^^^^^^^^ cannot infer type for `T`
    |         |
-   |         consider giving `x` a type
+   |         consider giving `a` a type
 
 error: aborting due to previous error
 

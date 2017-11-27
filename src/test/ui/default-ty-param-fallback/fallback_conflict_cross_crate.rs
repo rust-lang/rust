@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-//aux-build:default_ty_param_cross_crate_crate.rs
+// aux-build:default_ty_param_cross_crate_crate.rs
+// compile-flags: --error-format=human
 
 #![feature(default_type_parameter_fallback)]
 

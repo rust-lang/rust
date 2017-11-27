@@ -113,7 +113,6 @@ use std::rc::Rc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
-use std::iter::FromIterator;
 use std::mem::replace;
 use std::ops::{self, Deref};
 use syntax::abi::Abi;
@@ -2002,27 +2001,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                          value)
     }
 
-    fn eager_normalize_in<T>(&self, span: Span, value: &T) -> Option<T>
-        where T : TypeFoldable<'tcx>
-    {
-        let infer_ok = self.inh.partially_normalize_associated_types_in(span,
-                                                                        self.body_id,
-                                                                        self.param_env,
-                                                                        value);
-        if infer_ok.obligations.is_empty() {
-            Some(infer_ok.value)
-        } else {
-            self.inh.register_predicates(infer_ok.obligations);
-            self.select_obligations_where_possible();
-            let resolved = self.resolve_type_vars_if_possible(&infer_ok.value);
-            if !resolved.needs_infer() {
-                Some(resolved)
-            } else {
-                None
-            }
-        }
-    }
-
     pub fn require_type_meets(&self,
                               ty: Ty<'tcx>,
                               span: Span,
@@ -2233,20 +2211,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 bags.entry(root).or_insert(Vec::new()).push(vid);
             }
         }
-        // Discard key, bags is a sequence of pairs (bag, done).
-        let mut bags = Vec::from_iter(bags.into_iter().map(|b| b.1).map(|b| (b, false)));
-        // Attempt to find a fallback for each bag.
-        loop {
-            // For dependent defaults, solving a bag
-            // might allow us to normalize an associated type in another bag.
-            // For example in `impl<X = u32, Y = <X as Trait>::Type>`.
-            // Therefore we loop over the bags until we are at a fixed point.
-            let mut fixed_point = true;
-            // Loop over bags that are not done.
-            'bags: for &mut(ref bag, ref mut done) in bags.iter_mut().filter(|bag| !bag.1) {
+        // We put everything in a single transaction
+        // because dependent defaults create cross-bag dependencies.
+        // This is bad in that we may report errors
+        // for things that actually were successfully inferred.
+        let _ = self.commit_if_ok(|_| { self.save_and_restore_in_snapshot_flag(|infcx| {
+            // Clone the whole thing so we can use it for this snapshot.
+            let mut local_fullfilment = self.fulfillment_cx.borrow().clone();
+            // Attempt to find a fallback for each bag.
+            // - Fail if there are missing defaults.
+            // - Apply default if all default exist.
+            'bags: for bag in bags.into_iter().map(|b| b.1) {
                 // Partition the bag by the origin of the type param.
                 let (fn_or_impl, ty_def) = bag.iter().partition(|&&v| {
-                    match self.infcx.type_variables.borrow().var_origin(v) {
+                    match infcx.type_variables.borrow().var_origin(v) {
                         TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
                         TypeParameterDefinition(_, _, OriginOfTyParam::Impl) => true,
                         TypeParameterDefinition(_, _, OriginOfTyParam::TyDef) => false,
@@ -2259,42 +2237,40 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if bag.is_empty() {
                     bag = ty_def;
                 }
-                // - Try again later if a default can't be normalized.
-                // - Fail if there are conflicting or missing defaults.
-                // - Succeess if all defaults exist and agree.
-                let get_default = |&v| self.infcx.type_variables.borrow().default(v).as_user();
+                let get_default = |&v| infcx.type_variables.borrow().default(v).as_user();
                 let mut normalized_defaults = Vec::new();
-                for default in bag.iter().map(&get_default) {
-                    if let Some(default) = default {
-                        match self.eager_normalize_in(default.origin_span, &default.ty) {
-                            Some(default) => normalized_defaults.push(default),
-                            None => continue 'bags, // Try again later.
+                for (&vid, default) in bag.iter().zip(bag.iter().map(&get_default)) {
+                    if let Some(d) = default {
+                        let infr_ok = self.normalize_associated_types_in_as_infer_ok(d.origin_span,
+                                                                                    &d.ty);
+                        normalized_defaults.push((vid, infr_ok.value));
+                        for obligation in infr_ok.obligations {
+                            local_fullfilment.register_predicate_obligation(infcx, obligation);
                         }
                     } else {
-                        // Fail, missing default.
-                        *done = true;
-                        continue 'bags;
+                        continue 'bags; // Fail, missing default.
                     }
                 }
-                let equivalent_default = normalized_defaults[0];
-                // Fail on conflicting defaults.
-                if normalized_defaults.iter().any(|&d| d.sty != equivalent_default.sty) {
-                    break;
-                }
-                // All defaults exist and agree, success, apply the default.
-                fixed_point = false;
-                *done = true;
-                for &vid in &bag {
+                // All defaults exist, apply them.
+                for (vid, default) in normalized_defaults {
                     let ty = self.tcx.mk_var(vid);
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, &ty, equivalent_default);
+                    let cause = self.misc(syntax_pos::DUMMY_SP);
+                    if let Ok(infer_ok) = self.at(&cause, self.param_env).sub(default, ty) {
+                        for obligation in infer_ok.obligations {
+                            local_fullfilment.register_predicate_obligation(infcx, obligation);
+                        }
+                    }
                     debug!("apply_user_type_parameter_fallback: applied fallback to var: {:?} \
-                        with ty: {:?} with default: {:?}", vid, ty, equivalent_default);
+                        with ty: {:?} with default: {:?}", vid, ty, default);
                 }
             }
-            if fixed_point {
-                break;
+            // Rollback on any conflict.
+            if local_fullfilment.select_where_possible(self).is_err() {
+                Err(())
+            } else {
+                Ok(())
             }
-        }
+        })});
     }
 
     // Implements type inference fallback algorithm

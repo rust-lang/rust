@@ -7,25 +7,38 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
 
 #![feature(default_type_parameter_fallback)]
 
-use std::path::Path;
+use std::marker::PhantomData;
 
-enum Opt<T=String> {
+#[derive(Copy, Clone)]
+enum Opt<T> {
     Som(T),
     Non,
 }
 
-fn main() {
-    // Defaults on the type definiton work, as long no other params are interfering.
-    let _ = Opt::Non;
-    let _: Opt<_> = Opt::Non;
-
-    func1(None);
-    func2(Opt::Non);
+trait Id {
+    type Me;
 }
 
-// Defaults on fns take precedence.
-fn func1<P: AsRef<Path> = String>(p: Option<P>) { }
-fn func2<P: AsRef<Path> = String>(p: Opt<P>) { }
+impl<A> Id for A {
+    type Me = A;
+}
+
+struct Foo<X, Y, Z> {
+    data: PhantomData<(X, Y, Z)>,
+}
+
+impl<X: Default = u32, Y = <X as Id>::Me, Z = <Y as Id>::Me>
+    Foo<X, Y, Z> {
+    fn new(_: Opt<X>, _: Opt<Y>, _: Opt<Z>) -> Foo<X, Y, Z> {
+        Foo { data: PhantomData }
+    }
+}
+
+fn main() {
+    let a = Opt::Non;
+    let _ = Foo::new(a, a, a);
+}

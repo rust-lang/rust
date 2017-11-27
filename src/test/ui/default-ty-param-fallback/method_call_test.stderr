@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
-  --> $DIR/method_call_test.rs:22:9
+  --> $DIR/method_call_test.rs:23:9
    |
-22 |     let f = Foo.method();
+23 |     let f = Foo.method();
    |         ^
    |         |
    |         cannot infer type for `_`

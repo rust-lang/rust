@@ -9,11 +9,29 @@
 // except according to those terms.
 // compile-flags: --error-format=human
 
-enum Opt<T=String> {
+#![feature(default_type_parameter_fallback)]
+
+#[derive(Copy, Clone)]
+enum Opt<T=usize> {
     Som(T),
     Non,
 }
 
 fn main() {
-    Opt::Non;
+    let a = Opt::Non;
+    let b = Opt::Non;
+    func1(a, b);
+    func2(a, b);
+
+    let c = Opt::Non;
+    let d = Opt::Non;
+    func1(c, d);
+    func2(d, c);
 }
+
+fn func1<X = u32, Y = X>(_: Opt<X>, _: Opt<Y>) {
+}
+
+fn func2<X = usize, Y = X>(_: Opt<X>, _: Opt<Y>) {
+}
+

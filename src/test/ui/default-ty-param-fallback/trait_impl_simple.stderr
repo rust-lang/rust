@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
-  --> $DIR/trait_impl_simple.rs:24:13
+  --> $DIR/trait_impl_simple.rs:25:13
    |
-24 |     let x = Vec::new(); // x: Vec<$0>
+25 |     let x = Vec::new(); // x: Vec<$0>
    |         -   ^^^^^^^^ cannot infer type for `T`
    |         |
    |         consider giving `x` a type

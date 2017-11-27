@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+// compile-flags: --error-format=human
 
 #![feature(default_type_parameter_fallback)]
 
@@ -18,9 +19,6 @@ fn foo<F:Default=usize>() -> F { F::default() }
 fn bar<B:Debug=isize>(b: B) { println!("{:?}", b); }
 
 fn main() {
-    // Here, F is instantiated with $0=uint
     let x = foo();
-
-    // Here, B is instantiated with $1=uint, and constraint $0 <: $1 is added.
     bar(x);
 }

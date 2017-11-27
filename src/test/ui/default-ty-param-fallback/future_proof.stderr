@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
-  --> $DIR/future_proof.rs:24:5
+  --> $DIR/future_proof.rs:25:5
    |
-24 |     func(noner());
+25 |     func(noner());
    |     ^^^^ cannot infer type for `P`
 
 error: aborting due to previous error

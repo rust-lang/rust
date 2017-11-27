@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
-  --> $DIR/type_alias.rs:18:13
+  --> $DIR/type_alias.rs:19:13
    |
-18 |     let x = IntMap::new();
+19 |     let x = IntMap::new();
    |         -   ^^^^^^^^^^^ cannot infer type for `K`
    |         |
    |         consider giving `x` a type

@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
-  --> $DIR/feature_gate.rs:17:5
+  --> $DIR/feature_gate.rs:18:5
    |
-17 |     Opt::Non;
+18 |     Opt::Non;
    |     ^^^^^^^^ cannot infer type for `T`
 
 error: aborting due to previous error
