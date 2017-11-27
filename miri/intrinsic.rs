@@ -514,7 +514,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let (_, align) = self.size_and_align_of_dst(ty, args[0].value)?;
                 self.write_primval(
                     dest,
-                    PrimVal::from_u128(align.pref() as u128),
+                    PrimVal::from_u128(align.abi() as u128),
                     dest_layout.ty,
                 )?;
             }
