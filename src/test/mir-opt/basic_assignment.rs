@@ -50,16 +50,16 @@ fn main() {
 //         StorageLive(_5);
 //         StorageLive(_6);
 //         _6 = move _4;
-//         replace(_5 <- move _6) -> [return: bb1, unwind: bb5];
+//         replace(_5 <-move _6) -> [return: bb2, unwind: bb5];
 //     }
 //     bb1: {
-//         drop(_6) -> [return: bb6, unwind: bb4];
-//     }
-//     bb2: {
 //         resume;
 //     }
+//     bb2: {
+//         drop(_6) -> [return: bb6, unwind: bb4];
+//     }
 //     bb3: {
-//         drop(_4) -> bb2;
+//         drop(_4) -> bb1;
 //     }
 //     bb4: {
 //         drop(_5) -> bb3;
@@ -74,7 +74,7 @@ fn main() {
 //     }
 //     bb7: {
 //         StorageDead(_5);
-//         drop(_4) -> bb8;
+//         drop(_4) -> [return: bb8, unwind: bb1];
 //     }
 //     bb8: {
 //         StorageDead(_4);

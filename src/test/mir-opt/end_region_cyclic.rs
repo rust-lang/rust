@@ -62,6 +62,7 @@ fn query() -> bool { true }
 //     let mut _15: std::option::Option<&'35_0rs S<'35_0rs>>;
 //     let mut _16: &'35_0rs S<'35_0rs>;
 //     let mut _17: &'35_0rs S<'35_0rs>;
+//
 //     bb0: {
 //         goto -> bb1;
 //     }
@@ -70,9 +71,12 @@ fn query() -> bool { true }
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = std::option::Option<&'35_0rs S<'35_0rs>>::None;
-//         _3 = const <std::cell::Cell<T>>::new(move _4) -> bb2;
+//         _3 = const <std::cell::Cell<T>>::new(move _4) -> [return: bb3, unwind: bb2];
 //     }
 //     bb2: {
+//         resume;
+//     }
+//     bb3: {
 //         StorageDead(_4);
 //         _2 = S<'35_0rs> { r: move _3 };
 //         StorageDead(_3);
@@ -85,27 +89,27 @@ fn query() -> bool { true }
 //         _8 = &'35_0rs (*_9);
 //         _7 = std::option::Option<&'35_0rs S<'35_0rs>>::Some(move _8,);
 //         StorageDead(_8);
-//         _5 = const <std::cell::Cell<T>>::set(move _6, move _7) -> bb3;
+//         _5 = const <std::cell::Cell<T>>::set(move _6, move _7) -> [return: bb4, unwind: bb2];
 //     }
-//     bb3: {
+//     bb4: {
 //         EndRegion('16s);
 //         StorageDead(_7);
 //         StorageDead(_6);
 //         StorageDead(_9);
 //         StorageLive(_11);
-//         _11 = const query() -> bb4;
-//     }
-//     bb4: {
-//         switchInt(move _11) -> [0u8: bb6, otherwise: bb5];
+//         _11 = const query() -> [return: bb5, unwind: bb2];
 //     }
 //     bb5: {
+//         switchInt(move _11) -> [0u8: bb7, otherwise: bb6];
+//     }
+//     bb6: {
 //         _0 = ();
 //         StorageDead(_11);
 //         EndRegion('35_0rs);
 //         StorageDead(_2);
 //         return;
 //     }
-//     bb6: {
+//     bb7: {
 //         _10 = ();
 //         StorageDead(_11);
 //         StorageLive(_14);
@@ -117,9 +121,9 @@ fn query() -> bool { true }
 //         _16 = &'35_0rs (*_17);
 //         _15 = std::option::Option<&'35_0rs S<'35_0rs>>::Some(move _16,);
 //         StorageDead(_16);
-//         _13 = const <std::cell::Cell<T>>::set(move _14, move_15) -> bb7;
+//         _13 = const <std::cell::Cell<T>>::set(move _14, move _15) -> [return: bb8, unwind: bb2];
 //     }
-//     bb7: {
+//     bb8: {
 //         EndRegion('33s);
 //         StorageDead(_15);
 //         StorageDead(_14);

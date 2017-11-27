@@ -260,6 +260,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         deaggregator::Deaggregator,
         copy_prop::CopyPropagation,
         remove_noop_landing_pads::RemoveNoopLandingPads,
+        simplify::SimplifyCfg::new("final"),
         simplify::SimplifyLocals,
 
         generator::StateTransform,

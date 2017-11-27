@@ -28,7 +28,7 @@ fn main() {
 //         StorageDead(_3);
 //         _0 = ();
 //         Validate(Release, [_1: std::boxed::Box<[i32]>]);
-//         drop(_1) -> bb2;
+//         drop(_1) -> [return: bb2, unwind: bb3];
 //     }
 //     ...
 // }

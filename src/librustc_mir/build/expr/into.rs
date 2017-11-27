@@ -255,7 +255,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.cfg.terminate(block, source_info, TerminatorKind::Call {
                         func: fun,
                         args,
-                        cleanup,
+                        cleanup: Some(cleanup),
                         destination: if diverges {
                             None
                         } else {

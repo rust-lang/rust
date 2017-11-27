@@ -63,7 +63,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     bb6: {
 //         StorageDead(_3);
 //         _0 = ();
-//         drop(_1) -> bb7;
+//         drop(_1) -> [return: bb7, unwind: bb1];
 //     }
 //     bb7: {
 //         StorageDead(_1);
@@ -88,9 +88,12 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         StorageDead(_3);
 //         EndRegion('15_0rs);
 //         StorageDead(_2);
-//         drop(_1) -> bb1;
+//         drop(_1) -> [return: bb2, unwind: bb1];
 //     }
 //     bb1: {
+//         resume;
+//     }
+//     bb2: {
 //         return;
 //     }
 // }
