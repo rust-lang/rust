@@ -38,23 +38,8 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
                         bb: BasicBlock,
                         terminator: &mut Terminator<'tcx>,
                         location: Location) {
-        match terminator.kind {
-            TerminatorKind::Goto { .. } |
-            TerminatorKind::Resume |
-            TerminatorKind::Return |
-            TerminatorKind::Unreachable |
-            TerminatorKind::GeneratorDrop |
-            TerminatorKind::Yield { .. } |
-            TerminatorKind::SwitchInt { .. } |
-            TerminatorKind::FalseEdges { .. } => {
-                /* nothing to do */
-            },
-            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
-            TerminatorKind::Assert { cleanup: ref mut unwind, .. } |
-            TerminatorKind::DropAndReplace { ref mut unwind, .. } |
-            TerminatorKind::Drop { ref mut unwind, .. } => {
-                unwind.take();
-            },
+        if let Some(unwind) = terminator.kind.unwind_mut() {
+            unwind.take();
         }
         self.super_terminator(bb, terminator, location);
     }
