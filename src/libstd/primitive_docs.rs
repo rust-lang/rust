@@ -76,7 +76,7 @@ mod prim_bool { }
 /// so returns `!`.
 ///
 /// `break`, `continue` and `return` expressions also have type `!`. For example we are allowed to
-/// write
+/// write:
 ///
 /// ```
 /// # #![feature(never_type)]
@@ -104,10 +104,11 @@ mod prim_bool { }
 /// # }
 /// ```
 ///
-/// Both match arms must produce values of type `u32`, but since `break` never produces a value at
-/// all we know it can never produce a value which isn't a `u32`. This illustrates another
+/// Both match arms must produce values of type [`u32`], but since `break` never produces a value
+/// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
 /// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
 ///
+/// [`u32`]: primitive.str.html
 /// [`exit`]: process/fn.exit.html
 ///
 /// # `!` and generics
@@ -122,21 +123,27 @@ mod prim_bool { }
 /// }
 /// ```
 ///
-/// When implementing this trait for `String` we need to pick a type for `Err`. And since
+/// When implementing this trait for [`String`] we need to pick a type for [`Err`]. And since
 /// converting a string into a string will never result in an error, the appropriate type is `!`.
 /// (Currently the type actually used is an enum with no variants, though this is only because `!`
-/// was added to Rust at a later date and it may change in the future). With an `Err` type of `!`,
-/// if we have to call `String::from_str` for some reason the result will be a `Result<String, !>`
-/// which we can unpack like this:
+/// was added to Rust at a later date and it may change in the future). With an [`Err`] type of
+/// `!`, if we have to call [`String::from_str`] for some reason the result will be a
+/// [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```ignore (string-from-str-error-type-is-not-never-yet)
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// Since the `Err` variant contains a `!`, it can never occur. So we can exhaustively match on
-/// `Result<T, !>` by just taking the `Ok` variant. This illustrates another behaviour of `!` - it
-/// can be used to "delete" certain enum variants from generic types like `Result`.
+/// Since the [`Err`] variant contains a `!`, it can never occur. So we can exhaustively match on
+/// [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behaviour of `!` -
+/// it can be used to "delete" certain enum variants from generic types like `Result`.
 ///
+/// [`String::from_str`]: str/trait.FromStr.html#tymethod.from_str
+/// [`Result<String, !>`]: result/enum.Result.html
+/// [`Result<T, !>`]: result/enum.Result.html
+/// [`Ok`]: result/enum.Result.html#variant.Ok
+/// [`String`]: string/struct.String.html
+/// [`Err`]: result/enum.Result.html#variant.Err
 /// [`FromStr`]: str/trait.FromStr.html
 ///
 /// # `!` and traits
@@ -158,13 +165,13 @@ mod prim_bool { }
 /// }
 /// ```
 ///
-/// Once again we're using `!`'s ability to coerce into any other type, in this case `fmt::Result`.
-/// Since this method takes a `&!` as an argument we know that it can never be called (because
-/// there is no value of type `!` for it to be called with). Writing `*self` essentially tells the
-/// compiler "We know that this code can never be run, so just treat the entire function body has
-/// having type `fmt::Result`". This pattern can be used a lot when implementing traits for `!`.
-/// Generally, any trait which only has methods which take a `self` parameter should have such as
-/// impl.
+/// Once again we're using `!`'s ability to coerce into any other type, in this case
+/// [`fmt::Result`]. Since this method takes a `&!` as an argument we know that it can never be
+/// called (because there is no value of type `!` for it to be called with). Writing `*self`
+/// essentially tells the compiler "We know that this code can never be run, so just treat the
+/// entire function body has having type [`fmt::Result`]". This pattern can be used a lot when
+/// implementing traits for `!`. Generally, any trait which only has methods which take a `self`
+/// parameter should have such as impl.
 ///
 /// On the other hand, one trait which would not be appropriate to implement is [`Default`]:
 ///
@@ -176,10 +183,13 @@ mod prim_bool { }
 ///
 /// Since `!` has no values, it has no default value either. It's true that we could write an
 /// `impl` for this which simply panics, but the same is true for any type (we could `impl
-/// Default` for (eg.) `File` by just making `default()` panic.)
+/// Default` for (eg.) [`File`] by just making [`default()`] panic.)
 ///
+/// [`fmt::Result`]: fmt/type.Result.html
+/// [`File`]: fs/struct.File.html
 /// [`Debug`]: fmt/trait.Debug.html
 /// [`Default`]: default/trait.Default.html
+/// [`default()`]: default/trait.Default.html#tymethod.default
 ///
 #[unstable(feature = "never_type_impls", issue = "35121")]
 mod prim_never { }
