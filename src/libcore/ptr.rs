@@ -474,6 +474,11 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.
     ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -485,8 +490,10 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null()
+    pub fn is_null(self) -> bool {
+        // Compare via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        (self as *const u8) == null()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -518,9 +525,7 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-        // Check for null via a cast to a thin pointer, so fat pointers are only
-        // considering their "data" part for null-ness.
-        if (self as *const u8).is_null() {
+        if self.is_null() {
             None
         } else {
             Some(&*self)
@@ -1107,6 +1112,11 @@ impl<T: ?Sized> *const T {
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
     ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1118,8 +1128,10 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null_mut()
+    pub fn is_null(self) -> bool {
+        // Compare via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        (self as *mut u8) == null_mut()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -1151,9 +1163,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-        // Check for null via a cast to a thin pointer, so fat pointers are only
-        // considering their "data" part for null-ness.
-        if (self as *const u8).is_null() {
+        if self.is_null() {
             None
         } else {
             Some(&*self)
@@ -1277,9 +1287,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
-        // Check for null via a cast to a thin pointer, so fat pointers are only
-        // considering their "data" part for null-ness.
-        if (self as *mut u8).is_null() {
+        if self.is_null() {
             None
         } else {
             Some(&mut *self)
