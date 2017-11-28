@@ -601,7 +601,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
         clean::Primitive(prim) => primitive_link(f, prim, prim.as_str()),
         clean::BareFunction(ref decl) => {
             if f.alternate() {
-                write!(f, "{}{}fn{:#}{:#}",
+                write!(f, "{}{:#}fn{:#}{:#}",
                        UnsafetySpace(decl.unsafety),
                        AbiSpace(decl.abi),
                        decl.generics,
