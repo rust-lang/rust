@@ -96,7 +96,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(name) => format!("`{}`", name),
             None => "value".to_owned(),
         };
-        let borrow_msg = match self.describe_place(&borrow.place) {
+        let borrow_msg = match self.describe_place(&borrow.borrowed_place) {
             Some(name) => format!("`{}`", name),
             None => "value".to_owned(),
         };
@@ -124,7 +124,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             span,
             &self.describe_place(place).unwrap_or("_".to_owned()),
             self.retrieve_borrow_span(borrow),
-            &self.describe_place(&borrow.place).unwrap_or("_".to_owned()),
+            &self.describe_place(&borrow.borrowed_place).unwrap_or("_".to_owned()),
             Origin::Mir,
         );
 
@@ -328,7 +328,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) {
         let end_span = borrows.opt_region_end_span(&borrow.region);
         let scope_tree = borrows.scope_tree();
-        let root_place = self.prefixes(&borrow.place, PrefixSet::All).last().unwrap();
+        let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All).last().unwrap();
 
         match root_place {
             &Place::Local(local) => {
@@ -357,7 +357,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => drop_span,
         };
 
-        match (borrow.region, &self.describe_place(&borrow.place)) {
+        match (borrow.region, &self.describe_place(&borrow.borrowed_place)) {
             (RegionKind::ReScope(_), Some(name)) => {
                 self.report_scoped_local_value_does_not_live_long_enough(
                     name, &scope_tree, &borrow, drop_span, borrow_span, proper_span, end_span);

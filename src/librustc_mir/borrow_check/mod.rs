@@ -917,7 +917,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                       flow_state: &Flows<'cx, 'gcx, 'tcx>)
     {
         debug!("check_for_invalidation_at_exit({:?})", borrow);
-        let place = &borrow.place;
+        let place = &borrow.borrowed_place;
         let root_place = self.prefixes(place, PrefixSet::All).last().unwrap();
 
         // FIXME(nll-rfc#40): do more precise destructor tracking here. For now
@@ -1792,7 +1792,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         for i in flow_state.borrows.elems_incoming() {
             let borrowed = &data[i];
 
-            if self.places_conflict(&borrowed.place, place, access) {
+            if self.places_conflict(&borrowed.borrowed_place, place, access) {
                 let ctrl = op(self, i, borrowed);
                 if ctrl == Control::Break { return; }
             }
