@@ -942,8 +942,8 @@ impl<'a, 'tcx> LayoutDetails {
             AlwaysSized,
             /// A univariant, the last field of which may be coerced to unsized.
             MaybeUnsized,
-            /// A univariant, but part of an enum.
-            EnumVariant(Integer),
+            /// A univariant, but with a prefix of an arbitrary size & alignment (e.g. enum tag).
+            Prefixed(Size, Align),
         }
         let univariant_uninterned = |fields: &[TyLayout], repr: &ReprOptions, kind| {
             let packed = repr.packed();
@@ -962,14 +962,11 @@ impl<'a, 'tcx> LayoutDetails {
             let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
             // Anything with repr(C) or repr(packed) doesn't optimize.
-            let optimize = match kind {
-                StructKind::AlwaysSized |
-                StructKind::MaybeUnsized |
-                StructKind::EnumVariant(I8) => {
-                    (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty()
-                }
-                StructKind::EnumVariant(_) => false
-            };
+            let mut optimize = (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty();
+            if let StructKind::Prefixed(_, align) = kind {
+                optimize &= align.abi() == 1;
+            }
+
             if optimize {
                 let end = if let StructKind::MaybeUnsized = kind {
                     fields.len() - 1
@@ -987,7 +984,7 @@ impl<'a, 'tcx> LayoutDetails {
                             (!f.is_zst(), cmp::Reverse(f.align.abi()))
                         })
                     }
-                    StructKind::EnumVariant(_) => {
+                    StructKind::Prefixed(..) => {
                         optimizing.sort_by_key(|&x| fields[x as usize].align.abi());
                     }
                 }
@@ -1001,12 +998,11 @@ impl<'a, 'tcx> LayoutDetails {
 
             let mut offset = Size::from_bytes(0);
 
-            if let StructKind::EnumVariant(discr) = kind {
-                offset = discr.size();
+            if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
                 if !packed {
-                    let discr_align = discr.align(dl);
-                    align = align.max(discr_align);
+                    align = align.max(prefix_align);
                 }
+                offset = prefix_size.abi_align(prefix_align);
             }
 
             for &i in &inverse_memory_index {
@@ -1558,10 +1554,24 @@ impl<'a, 'tcx> LayoutDetails {
                 let mut start_align = Align::from_bytes(256, 256).unwrap();
                 assert_eq!(Integer::for_abi_align(dl, start_align), None);
 
+                // repr(C) on an enum tells us to make a (tag, union) layout,
+                // so we need to grow the prefix alignment to be at least
+                // the alignment of the union. (This value is used both for
+                // determining the alignment of the overall enum, and the
+                // determining the alignment of the payload after the tag.)
+                let mut prefix_align = min_ity.align(dl);
+                if def.repr.c() {
+                    for fields in &variants {
+                        for field in fields {
+                            prefix_align = prefix_align.max(field.align);
+                        }
+                    }
+                }
+
                 // Create the set of structs that represent each variant.
                 let mut variants = variants.into_iter().enumerate().map(|(i, field_layouts)| {
                     let mut st = univariant_uninterned(&field_layouts,
-                        &def.repr, StructKind::EnumVariant(min_ity))?;
+                        &def.repr, StructKind::Prefixed(min_ity.size(), prefix_align))?;
                     st.variants = Variants::Single { index: i };
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
