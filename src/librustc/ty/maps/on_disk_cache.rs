@@ -73,11 +73,11 @@ pub struct OnDiskCache<'sess> {
 
     // These two fields caches that are populated lazily during decoding.
     file_index_to_file: RefCell<FxHashMap<FileMapIndex, Rc<FileMap>>>,
-    synthetic_expansion_infos: RefCell<FxHashMap<usize, SyntaxContext>>,
+    synthetic_expansion_infos: RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
-    query_result_index: FxHashMap<SerializedDepNodeIndex, usize>,
+    query_result_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 }
 
 // This type is used only for (de-)serialization.
@@ -88,10 +88,24 @@ struct Header {
 }
 
 type EncodedPrevDiagnostics = Vec<(SerializedDepNodeIndex, Vec<Diagnostic>)>;
-type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, usize)>;
+type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 struct FileMapIndex(u32);
+
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, RustcEncodable, RustcDecodable)]
+struct AbsoluteBytePos(u32);
+
+impl AbsoluteBytePos {
+    fn new(pos: usize) -> AbsoluteBytePos {
+        debug_assert!(pos <= ::std::u32::MAX as usize);
+        AbsoluteBytePos(pos as u32)
+    }
+
+    fn to_usize(self) -> usize {
+        self.0 as usize
+    }
+}
 
 impl<'sess> OnDiskCache<'sess> {
     /// Create a new OnDiskCache instance from the serialized data in `data`.
@@ -309,7 +323,7 @@ impl<'sess> OnDiskCache<'sess> {
 
         let mut decoder = CacheDecoder {
             tcx: Some(tcx),
-            opaque: opaque::Decoder::new(&self.serialized_data[..], pos),
+            opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
             codemap: self.codemap,
             cnum_map: cnum_map.as_ref().unwrap(),
             file_index_to_file: &mut file_index_to_file,
@@ -389,7 +403,7 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     opaque: opaque::Decoder<'x>,
     codemap: &'x CodeMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
-    synthetic_expansion_infos: &'x mut FxHashMap<usize, SyntaxContext>,
+    synthetic_expansion_infos: &'x mut FxHashMap<AbsoluteBytePos, SyntaxContext>,
     file_index_to_file: &'x mut FxHashMap<FileMapIndex, Rc<FileMap>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
 }
@@ -521,18 +535,18 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
                 SyntaxContext::empty()
             }
             TAG_EXPANSION_INFO_INLINE => {
-                let pos = self.position();
+                let pos = AbsoluteBytePos::new(self.position());
                 let expn_info: ExpnInfo = Decodable::decode(self)?;
                 let ctxt = SyntaxContext::allocate_directly(expn_info);
                 self.synthetic_expansion_infos.insert(pos, ctxt);
                 ctxt
             }
             TAG_EXPANSION_INFO_SHORTHAND => {
-                let pos = usize::decode(self)?;
+                let pos = AbsoluteBytePos::decode(self)?;
                 if let Some(ctxt) = self.synthetic_expansion_infos.get(&pos).cloned() {
                     ctxt
                 } else {
-                    let expn_info = self.with_position(pos, |this| {
+                    let expn_info = self.with_position(pos.to_usize(), |this| {
                          ExpnInfo::decode(this)
                     })?;
                     let ctxt = SyntaxContext::allocate_directly(expn_info);
@@ -644,7 +658,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     encoder: &'enc mut E,
     type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    expn_info_shorthands: FxHashMap<Mark, usize>,
+    expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
     codemap: CachingCodemapView<'tcx>,
     file_to_file_index: FxHashMap<*const FileMap, FileMapIndex>,
 }
@@ -725,7 +739,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Span> for CacheEncoder<'enc, 'a, 'tcx
                     pos.encode(self)
                 } else {
                     TAG_EXPANSION_INFO_INLINE.encode(self)?;
-                    let pos = self.position();
+                    let pos = AbsoluteBytePos::new(self.position());
                     self.expn_info_shorthands.insert(mark, pos);
                     expn_info.encode(self)
                 }
@@ -951,7 +965,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
             // Record position of the cache entry
-            query_result_index.push((dep_node, encoder.position()));
+            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
             // Encode the type check tables with the SerializedDepNodeIndex
             // as tag.
