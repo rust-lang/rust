@@ -16,7 +16,7 @@ fn closure_to_loc() {
     //~| HELP consider boxing your closure and/or using it as a trait object
     //~| expected closure, found a different closure
     //~| expected type `[closure
-    //~| found type `[closure
+    //~| found type `fn(_) -> _`
 }
 
 fn closure_from_match() {
@@ -31,7 +31,7 @@ fn closure_from_match() {
     //~| HELP consider boxing your closure and/or using it as a trait object
     //~| expected closure, found a different closure
     //~| expected type `[closure
-    //~| found type `[closure
+    //~| found type `fn(_) -> _`
 }
 
 fn main() { }

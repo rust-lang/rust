@@ -723,8 +723,40 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // When encountering &T != &mut T, highlight only the borrow
             (&ty::TyRef(r1, ref tnm1), &ty::TyRef(r2, ref tnm2)) if equals(&tnm1.ty, &tnm2.ty) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                push_ty_ref(&r1, tnm1, &mut values.0);
-                push_ty_ref(&r2, tnm2, &mut values.1);
+                push_ty_ref(& r1, tnm1, & mut values.0);
+                push_ty_ref( & r2, tnm2, &mut values.1);
+                values
+            }
+            // When comparing against a closure, print its signature without location
+            (_, &ty::TyClosure(did, _)) => {
+                let mut values = (DiagnosticStyledString::highlighted(format!("{}", t1)),
+                                  DiagnosticStyledString::new());
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
+                    if let Some(hir::map::NodeExpr(expr)) = self.tcx.hir.find(node_id) {
+                        if let hir::ExprClosure(capture, ref fn_decl, _, _, _) = expr.node {
+                            let args = fn_decl.inputs.iter()
+                                .map(|arg| format!("{}", arg))
+                                .collect::<Vec<String>>()
+                                .join(", ");
+                            values.1.push_highlighted(
+                                format!("{}fn({}) -> {}",
+                                        if capture == hir::CaptureByValue {
+                                            "move "
+                                        } else {
+                                            ""
+                                        },
+                                        args,
+                                        if let hir::Return(ref r_ty) = fn_decl.output {
+                                            format!("{}", r_ty)
+                                        } else {
+                                            "_".to_string()
+                                        }));
+                            return values;
+                        }
+                    }
+                }
+                // fallback
+                values.1.push_highlighted(format!("{}", t2));
                 values
             }
 

@@ -1440,8 +1440,13 @@ pub struct Ty {
 
 impl fmt::Debug for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "type({})",
-               print::to_string(print::NO_ANN, |s| s.print_type(self)))
+        write!(f, "type({})", print::to_string(print::NO_ANN, |s| s.print_type(self)))
+    }
+}
+
+impl fmt::Display for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", print::to_string(print::NO_ANN, |s| s.print_type(self)))
     }
 }
 
