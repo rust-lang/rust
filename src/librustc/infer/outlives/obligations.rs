@@ -88,7 +88,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         body_id: ast::NodeId,
         obligation: RegionObligation<'tcx>,
     ) {
-        debug!("register_region_obligation({:?}, {:?})", body_id, obligation);
+        debug!(
+            "register_region_obligation(body_id={:?}, obligation={:?})",
+            body_id,
+            obligation
+        );
+
         self.region_obligations
             .borrow_mut()
             .push((body_id, obligation));
@@ -139,6 +144,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             "cannot process registered region obligations in a snapshot"
         );
 
+        debug!("process_registered_region_obligations()");
+
         // pull out the region obligations with the given `body_id` (leaving the rest)
         let mut my_region_obligations = Vec::with_capacity(self.region_obligations.borrow().len());
         {
@@ -157,6 +164,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             cause,
         } in my_region_obligations
         {
+            debug!(
+                "process_registered_region_obligations: sup_type={:?} sub_region={:?} cause={:?}",
+                sup_type,
+                sub_region,
+                cause
+            );
+
             let origin = SubregionOrigin::from_obligation_cause(
                 &cause,
                 || infer::RelateParamBound(cause.span, sup_type),
