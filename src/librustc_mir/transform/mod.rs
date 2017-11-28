@@ -44,6 +44,7 @@ pub mod generator;
 pub mod inline;
 pub mod nll;
 pub mod lower_128bit;
+pub mod reuse_lvalues;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
@@ -252,12 +253,17 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
         // Optimizations begin.
         inline::Inline,
+
+        // Lowering generator control-flow and variables
+        // has to happen before we do anything else to them.
+        generator::StateTransform,
+
         instcombine::InstCombine,
         deaggregator::Deaggregator,
+        reuse_lvalues::ReuseLvalues,
         copy_prop::CopyPropagation,
         simplify::SimplifyLocals,
 
-        generator::StateTransform,
         add_call_guards::CriticalCallEdges,
         dump_mir::Marker("PreTrans"),
     ];
