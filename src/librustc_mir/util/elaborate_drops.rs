@@ -19,7 +19,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
 use util::patch::MirPatch;
 
-use std::iter;
+use std::{iter, u32};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
@@ -95,6 +95,7 @@ pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path>;
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path>;
     fn downcast_subpath(&self, path: Self::Path, variant: usize) -> Option<Self::Path>;
+    fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path>;
 }
 
 #[derive(Debug)]
@@ -632,8 +633,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         loop_block
     }
 
-    fn open_drop_for_array(&mut self, ety: Ty<'tcx>) -> BasicBlock {
-        debug!("open_drop_for_array({:?})", ety);
+    fn open_drop_for_array(&mut self, ety: Ty<'tcx>, opt_size: Option<u64>) -> BasicBlock {
+        debug!("open_drop_for_array({:?}, {:?})", ety, opt_size);
 
         // if size_of::<ety>() == 0 {
         //     index_based_loop
@@ -641,9 +642,27 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         //     ptr_based_loop
         // }
 
-        let tcx = self.tcx();
+        if let Some(size) = opt_size {
+            assert!(size <= (u32::MAX as u64),
+                    "move out check doesn't implemented for array bigger then u32");
+            let size = size as u32;
+            let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size).map(|i| {
+                (self.place.clone().elem(ProjectionElem::ConstantIndex{
+                    offset: i,
+                    min_length: size,
+                    from_end: false
+                }),
+                 self.elaborator.array_subpath(self.path, i, size))
+            }).collect();
+
+            if fields.iter().any(|(_,path)| path.is_some()) {
+                let (succ, unwind) = self.drop_ladder_bottom();
+                return self.drop_ladder(fields, succ, unwind).0
+            }
+        }
 
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
+        let tcx = self.tcx();
         let size = &Place::Local(self.new_temp(tcx.types.usize));
         let size_is_zero = &Place::Local(self.new_temp(tcx.types.bool));
         let base_block = BasicBlockData {
@@ -779,9 +798,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 let succ = self.succ;
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
-            ty::TyArray(ety, _) | ty::TySlice(ety) => {
-                self.open_drop_for_array(ety)
-            }
+            ty::TyArray(ety, size) => self.open_drop_for_array(
+                ety, size.val.to_const_int().and_then(|v| v.to_u64())),
+            ty::TySlice(ety) => self.open_drop_for_array(ety, None),
+
             _ => bug!("open drop from non-ADT `{:?}`", ty)
         }
     }
