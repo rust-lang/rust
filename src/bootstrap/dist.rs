@@ -1083,7 +1083,8 @@ impl Step for Rls {
         let rls = builder.ensure(tool::Rls {
             compiler: builder.compiler(stage, build.build),
             target
-        }).expect("Rls to build: toolstate is testing");
+        }).or_else(|| { println!("Unable to build RLS, skipping dist"); None })?;
+
         install(&rls, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rls");
         install(&src.join("README.md"), &doc, 0o644);
@@ -1167,11 +1168,12 @@ impl Step for Rustfmt {
         let rustfmt = builder.ensure(tool::Rustfmt {
             compiler: builder.compiler(stage, build.build),
             target
-        }).expect("Rustfmt to build: toolstate is testing");
+        }).or_else(|| { println!("Unable to build Rustfmt, skipping dist"); None })?;
         let cargofmt = builder.ensure(tool::Cargofmt {
             compiler: builder.compiler(stage, build.build),
             target
-        }).expect("Cargofmt to build: toolstate is testing");
+        }).or_else(|| { println!("Unable to build Cargofmt, skipping dist"); None })?;
+
         install(&rustfmt, &image.join("bin"), 0o755);
         install(&cargofmt, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rustfmt");
