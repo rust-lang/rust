@@ -19,18 +19,8 @@ use ty::subst::Subst;
 
 use infer::{InferCtxt, InferOk};
 
-#[derive(Copy, Clone, Debug)]
-enum InferIsLocal {
-    BrokenYes,
-    Yes,
-    No
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum Conflict {
-    Upstream,
-    Downstream
-}
+#[derive(Copy, Clone)]
+struct InferIsLocal(bool);
 
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
@@ -136,46 +126,32 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                             trait_ref: ty::TraitRef<'tcx>,
-                                             broken: bool)
-                                             -> Option<Conflict>
+                                             trait_ref: ty::TraitRef<'tcx>) -> bool
 {
-    debug!("trait_ref_is_knowable(trait_ref={:?}, broken={:?})", trait_ref, broken);
-    let mode = if broken {
-        InferIsLocal::BrokenYes
-    } else {
-        InferIsLocal::Yes
-    };
-    if orphan_check_trait_ref(tcx, trait_ref, mode).is_ok() {
-        // A downstream or cousin crate is allowed to implement some
-        // substitution of this trait-ref.
-        debug!("trait_ref_is_knowable: downstream crate might implement");
-        return Some(Conflict::Downstream);
+    debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
+
+    // if the orphan rules pass, that means that no ancestor crate can
+    // impl this, so it's up to us.
+    if orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(false)).is_ok() {
+        debug!("trait_ref_is_knowable: orphan check passed");
+        return true;
     }
 
-    if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
-        // This is a local or fundamental trait, so future-compatibility
-        // is no concern. We know that downstream/cousin crates are not
-        // allowed to implement a substitution of this trait ref, which
-        // means impls could only come from dependencies of this crate,
-        // which we already know about.
-        return None;
+    // if the trait is not marked fundamental, then it's always possible that
+    // an ancestor crate will impl this in the future, if they haven't
+    // already
+    if !trait_ref_is_local_or_fundamental(tcx, trait_ref) {
+        debug!("trait_ref_is_knowable: trait is neither local nor fundamental");
+        return false;
     }
-    // This is a remote non-fundamental trait, so if another crate
-    // can be the "final owner" of a substitution of this trait-ref,
-    // they are allowed to implement it future-compatibly.
-    //
-    // However, if we are a final owner, then nobody else can be,
-    // and if we are an intermediate owner, then we don't care
-    // about future-compatibility, which means that we're OK if
-    // we are an owner.
-    if orphan_check_trait_ref(tcx, trait_ref, InferIsLocal::No).is_ok() {
-        debug!("trait_ref_is_knowable: orphan check passed");
-        return None;
-    } else {
-        debug!("trait_ref_is_knowable: nonlocal, nonfundamental, unowned");
-        return Some(Conflict::Upstream);
-    }
+
+    // find out when some downstream (or cousin) crate could impl this
+    // trait-ref, presuming that all the parameters were instantiated
+    // with downstream types. If not, then it could only be
+    // implemented by an upstream crate, which means that the impl
+    // must be visible to us, and -- since the trait is fundamental
+    // -- we can test.
+    orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(true)).is_err()
 }
 
 pub fn trait_ref_is_local_or_fundamental<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -213,7 +189,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         return Ok(());
     }
 
-    orphan_check_trait_ref(tcx, trait_ref, InferIsLocal::No)
+    orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(false))
 }
 
 fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
@@ -221,8 +197,8 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
                                 infer_is_local: InferIsLocal)
                                 -> Result<(), OrphanCheckErr<'tcx>>
 {
-    debug!("orphan_check_trait_ref(trait_ref={:?}, infer_is_local={:?})",
-           trait_ref, infer_is_local);
+    debug!("orphan_check_trait_ref(trait_ref={:?}, infer_is_local={})",
+           trait_ref, infer_is_local.0);
 
     // First, create an ordered iterator over all the type parameters to the trait, with the self
     // type appearing first.
@@ -236,9 +212,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
             // uncovered type parameters.
             let uncovered_tys = uncovered_tys(tcx, input_ty, infer_is_local);
             for uncovered_ty in uncovered_tys {
-                if let Some(param) = uncovered_ty.walk()
-                    .find(|t| is_possibly_remote_type(t, infer_is_local))
-                {
+                if let Some(param) = uncovered_ty.walk().find(|t| is_type_parameter(t)) {
                     debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
                     return Err(OrphanCheckErr::UncoveredTy(param));
                 }
@@ -250,11 +224,11 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
 
         // Otherwise, enforce invariant that there are no type
         // parameters reachable.
-        if let Some(param) = input_ty.walk()
-            .find(|t| is_possibly_remote_type(t, infer_is_local))
-        {
-            debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
-            return Err(OrphanCheckErr::UncoveredTy(param));
+        if !infer_is_local.0 {
+            if let Some(param) = input_ty.walk().find(|t| is_type_parameter(t)) {
+                debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
+                return Err(OrphanCheckErr::UncoveredTy(param));
+            }
         }
     }
 
@@ -276,7 +250,7 @@ fn uncovered_tys<'tcx>(tcx: TyCtxt, ty: Ty<'tcx>, infer_is_local: InferIsLocal)
     }
 }
 
-fn is_possibly_remote_type(ty: Ty, _infer_is_local: InferIsLocal) -> bool {
+fn is_type_parameter(ty: Ty) -> bool {
     match ty.sty {
         ty::TyProjection(..) | ty::TyParam(..) => true,
         _ => false,
@@ -299,15 +273,7 @@ fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     }
 }
 
-fn def_id_is_local(def_id: DefId, infer_is_local: InferIsLocal) -> bool {
-    match infer_is_local {
-        InferIsLocal::Yes => false,
-        InferIsLocal::No |
-        InferIsLocal::BrokenYes => def_id.is_local()
-    }
-}
-
-fn ty_is_local_constructor(ty: Ty, infer_is_local: InferIsLocal) -> bool {
+fn ty_is_local_constructor(ty: Ty, infer_is_local: InferIsLocal)-> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.sty {
@@ -330,19 +296,20 @@ fn ty_is_local_constructor(ty: Ty, infer_is_local: InferIsLocal) -> bool {
             false
         }
 
-        ty::TyInfer(..) => match infer_is_local {
-            InferIsLocal::No => false,
-            InferIsLocal::Yes |
-            InferIsLocal::BrokenYes => true
-        },
+        ty::TyInfer(..) => {
+            infer_is_local.0
+        }
 
-        ty::TyAdt(def, _) => def_id_is_local(def.did, infer_is_local),
-        ty::TyForeign(did) => def_id_is_local(did, infer_is_local),
+        ty::TyAdt(def, _) => {
+            def.did.is_local()
+        }
+
+        ty::TyForeign(did) => {
+            did.is_local()
+        }
 
         ty::TyDynamic(ref tt, ..) => {
-            tt.principal().map_or(false, |p| {
-                def_id_is_local(p.def_id(), infer_is_local)
-            })
+            tt.principal().map_or(false, |p| p.def_id().is_local())
         }
 
         ty::TyError => {
