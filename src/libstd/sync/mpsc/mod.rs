@@ -1324,6 +1324,7 @@ impl<T> Receiver<T> {
     /// Successfully receiving value before reaching deadline:
     ///
     /// ```no_run
+    /// #![feature(deadline_api)]
     /// use std::thread;
     /// use std::time::{Duration, Instant};
     /// use std::sync::mpsc;
@@ -1343,6 +1344,7 @@ impl<T> Receiver<T> {
     /// Receiving an error upon reaching deadline:
     ///
     /// ```no_run
+    /// #![feature(deadline_api)]
     /// use std::thread;
     /// use std::time::{Duration, Instant};
     /// use std::sync::mpsc;
