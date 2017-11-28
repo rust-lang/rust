@@ -51,6 +51,6 @@ fn main() {
 //            | Live variables at bb2[1]: [_2]
 //        _7 = (*_2);
 //            | Live variables at bb2[2]: [_7]
-//        _6 = const use_x(_7) -> bb4;
+//        _6 = const use_x(move _7) -> bb4;
 //    }
 // END rustc.main.nll.0.mir

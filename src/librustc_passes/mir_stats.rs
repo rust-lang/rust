@@ -181,7 +181,8 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                      location: Location) {
         self.record("Operand", operand);
         self.record(match *operand {
-            Operand::Consume(..) => "Operand::Consume",
+            Operand::Copy(..) => "Operand::Copy",
+            Operand::Move(..) => "Operand::Move",
             Operand::Constant(..) => "Operand::Constant",
         }, operand);
         self.super_operand(operand, location);

@@ -31,7 +31,7 @@ fn main() {
 //     bb1: {
 //         StorageLive(_4);
 //         _4 = _1;
-//         switchInt(_4) -> [0u8: bb3, otherwise: bb2];
+//         switchInt(move _4) -> [0u8: bb3, otherwise: bb2];
 //     }
 //
 //     bb2: {

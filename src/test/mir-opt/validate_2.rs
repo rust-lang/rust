@@ -22,7 +22,7 @@ fn main() {
 //     bb1: {
 //         Validate(Acquire, [_2: std::boxed::Box<[i32; 3]>]);
 //         Validate(Release, [_2: std::boxed::Box<[i32; 3]>]);
-//         _1 = _2 as std::boxed::Box<[i32]> (Unsize);
+//         _1 = move _2 as std::boxed::Box<[i32]> (Unsize);
 //         Validate(Acquire, [_1: std::boxed::Box<[i32]>]);
 //         StorageDead(_2);
 //         StorageDead(_3);

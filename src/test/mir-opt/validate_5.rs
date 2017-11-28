@@ -40,7 +40,7 @@ fn main() {
 //         Validate(Acquire, [_1: &ReFree(DefId(0/0:4 ~ validate_5[317d]::test[0]), BrAnon(0)) mut i32]);
 //         ...
 //         Validate(Release, [_2: bool, _3: *mut i32]);
-//         _2 = const write_42(_3) -> bb1;
+//         _2 = const write_42(move _3) -> bb1;
 //     }
 //     ...
 // }
@@ -55,11 +55,11 @@ fn main() {
 //         Validate(Suspend(ReScope(Node(ItemLocalId(9)))), [(*_2): i32]);
 //         _4 = &ReErased mut (*_2);
 //         Validate(Acquire, [(*_4): i32/ReScope(Node(ItemLocalId(9)))]);
-//         _3 = _4 as *mut i32 (Misc);
+//         _3 = move _4 as *mut i32 (Misc);
 //         EndRegion(ReScope(Node(ItemLocalId(9))));
 //         StorageDead(_4);
 //         Validate(Release, [_0: bool, _3: *mut i32]);
-//         _0 = const write_42(_3) -> bb1;
+//         _0 = const write_42(move _3) -> bb1;
 //     }
 //     ...
 // }

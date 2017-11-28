@@ -215,7 +215,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      Rvalue::Discriminant(lvalue.clone()));
                 assert_eq!(values.len() + 1, targets.len());
                 self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
-                    discr: Operand::Consume(discr),
+                    discr: Operand::Move(discr),
                     switch_ty: discr_ty,
                     values: From::from(values),
                     targets,
@@ -233,7 +233,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ConstVal::Bool(false) => vec![false_bb, true_bb],
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v)
                     };
-                    (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Consume(lvalue.clone()),
+                    (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Copy(lvalue.clone()),
                                               true_bb, false_bb))
                 } else {
                     // The switch may be inexhaustive so we
@@ -248,7 +248,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         v.val.to_const_int().expect("switching on integral")
                     ).collect();
                     (targets.clone(), TerminatorKind::SwitchInt {
-                        discr: Operand::Consume(lvalue.clone()),
+                        discr: Operand::Copy(lvalue.clone()),
                         switch_ty,
                         values: From::from(values),
                         targets,
@@ -259,7 +259,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::Eq { value, mut ty } => {
-                let mut val = Operand::Consume(lvalue.clone());
+                let mut val = Operand::Copy(lvalue.clone());
 
                 // If we're using b"..." as a pattern, we need to insert an
                 // unsizing coercion, as the byte string has the type &[u8; N].
@@ -273,7 +273,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             let val_slice = self.temp(ty, test.span);
                             self.cfg.push_assign(block, source_info, &val_slice,
                                                  Rvalue::Cast(CastKind::Unsize, val, ty));
-                            val = Operand::Consume(val_slice);
+                            val = Operand::Move(val_slice);
                         }
                     }
 
@@ -288,7 +288,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let slice = self.temp(ty, test.span);
                     self.cfg.push_assign(block, source_info, &slice,
                                          Rvalue::Cast(CastKind::Unsize, array, ty));
-                    Operand::Consume(slice)
+                    Operand::Move(slice)
                 } else {
                     self.literal_operand(test.span, ty, Literal::Value {
                         value
@@ -322,7 +322,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let block = self.cfg.start_new_block();
                     self.cfg.terminate(eq_block, source_info,
                                        TerminatorKind::if_(self.hir.tcx(),
-                                                           Operand::Consume(eq_result),
+                                                           Operand::Move(eq_result),
                                                            block, fail));
                     vec![block, fail]
                 } else {
@@ -335,7 +335,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
                 let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
-                let val = Operand::Consume(lvalue.clone());
+                let val = Operand::Copy(lvalue.clone());
 
                 let fail = self.cfg.start_new_block();
                 let block = self.compare(block, fail, test.span, BinOp::Le, lo, val.clone());
@@ -362,14 +362,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // result = actual == expected OR result = actual < expected
                 self.cfg.push_assign(block, source_info, &result,
                                      Rvalue::BinaryOp(op,
-                                                      Operand::Consume(actual),
-                                                      Operand::Consume(expected)));
+                                                      Operand::Move(actual),
+                                                      Operand::Move(expected)));
 
                 // branch based on result
                 let (false_bb, true_bb) = (self.cfg.start_new_block(),
                                            self.cfg.start_new_block());
                 self.cfg.terminate(block, source_info,
-                                   TerminatorKind::if_(self.hir.tcx(), Operand::Consume(result),
+                                   TerminatorKind::if_(self.hir.tcx(), Operand::Move(result),
                                                        true_bb, false_bb));
                 vec![true_bb, false_bb]
             }
@@ -394,7 +394,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // branch based on result
         let target_block = self.cfg.start_new_block();
         self.cfg.terminate(block, source_info,
-                           TerminatorKind::if_(self.hir.tcx(), Operand::Consume(result),
+                           TerminatorKind::if_(self.hir.tcx(), Operand::Move(result),
                                                target_block, fail_block));
         target_block
     }

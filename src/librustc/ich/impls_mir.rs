@@ -420,7 +420,10 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Operand<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            mir::Operand::Consume(ref lvalue) => {
+            mir::Operand::Copy(ref lvalue) => {
+                lvalue.hash_stable(hcx, hasher);
+            }
+            mir::Operand::Move(ref lvalue) => {
                 lvalue.hash_stable(hcx, hasher);
             }
             mir::Operand::Constant(ref constant) => {

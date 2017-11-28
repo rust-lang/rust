@@ -260,7 +260,8 @@ impl MirPass for AddValidation {
                                 .chain(
                                     args.iter().filter_map(|op| {
                                         match op {
-                                            &Operand::Consume(ref lval) =>
+                                            &Operand::Copy(ref lval) |
+                                            &Operand::Move(ref lval) =>
                                                 Some(lval_to_operand(lval.clone())),
                                             &Operand::Constant(..) => { None },
                                         }
@@ -353,14 +354,17 @@ impl MirPass for AddValidation {
                         block_data.statements.insert(i, release_stmt);
                     }
                     // Casts can change what validation does (e.g. unsizing)
-                    StatementKind::Assign(_, Rvalue::Cast(kind, Operand::Consume(_), _))
+                    StatementKind::Assign(_, Rvalue::Cast(kind, Operand::Copy(_), _)) |
+                    StatementKind::Assign(_, Rvalue::Cast(kind, Operand::Move(_), _))
                         if kind != CastKind::Misc =>
                     {
                         // Due to a lack of NLL; we can't capture anything directly here.
                         // Instead, we have to re-match and clone there.
                         let (dest_lval, src_lval) = match block_data.statements[i].kind {
                             StatementKind::Assign(ref dest_lval,
-                                    Rvalue::Cast(_, Operand::Consume(ref src_lval), _)) =>
+                                    Rvalue::Cast(_, Operand::Copy(ref src_lval), _)) |
+                            StatementKind::Assign(ref dest_lval,
+                                    Rvalue::Cast(_, Operand::Move(ref src_lval), _)) =>
                             {
                                 (dest_lval.clone(), src_lval.clone())
                             },

@@ -83,10 +83,10 @@ fn main() {
 //     _1 = const i128_sub(_1, const 2i128) -> bb6;
 //     ...
 //     _11 = const 7i32 as u32 (Misc);
-//     _1 = const i128_shr(_1, _11) -> bb9;
+//     _1 = const i128_shr(_1, move _11) -> bb9;
 //     ...
 //     _12 = const 6i32 as u32 (Misc);
-//     _1 = const i128_shl(_1, _12) -> bb10;
+//     _1 = const i128_shl(_1, move _12) -> bb10;
 // END rustc.test_signed.Lower128Bit.after.mir
 
 // START rustc.test_unsigned.Lower128Bit.after.mir
@@ -101,8 +101,8 @@ fn main() {
 //     _1 = const u128_sub(_1, const 2u128) -> bb4;
 //     ...
 //     _5 = const 7i32 as u32 (Misc);
-//     _1 = const u128_shr(_1, _5) -> bb7;
+//     _1 = const u128_shr(_1, move _5) -> bb7;
 //     ...
 //     _6 = const 6i32 as u32 (Misc);
-//     _1 = const u128_shl(_1, _6) -> bb8;
+//     _1 = const u128_shl(_1, move _6) -> bb8;
 // END rustc.test_unsigned.Lower128Bit.after.mir

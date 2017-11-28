@@ -505,7 +505,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         (Base::Value(llprojected), llextra)
                     }
                     mir::ProjectionElem::Index(index) => {
-                        let index = &mir::Operand::Consume(mir::Lvalue::Local(index));
+                        let index = &mir::Operand::Copy(mir::Lvalue::Local(index));
                         let llindex = self.const_operand(index, span)?.llval;
 
                         let iv = if let Some(iv) = common::const_to_opt_u128(llindex, false) {
@@ -540,7 +540,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                      -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
         debug!("const_operand({:?} @ {:?})", operand, span);
         let result = match *operand {
-            mir::Operand::Consume(ref lvalue) => {
+            mir::Operand::Copy(ref lvalue) |
+            mir::Operand::Move(ref lvalue) => {
                 Ok(self.const_lvalue(lvalue, span)?.to_const(span))
             }
 

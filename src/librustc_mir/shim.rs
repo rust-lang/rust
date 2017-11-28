@@ -385,7 +385,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let ret_statement = self.make_statement(
             StatementKind::Assign(
                 Lvalue::Local(RETURN_POINTER),
-                Rvalue::Use(Operand::Consume(rcvr))
+                Rvalue::Use(Operand::Copy(rcvr))
             )
         );
         self.block(vec![ret_statement], TerminatorKind::Return, false);
@@ -448,7 +448,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `let loc = Clone::clone(ref_loc);`
         self.block(vec![statement], TerminatorKind::Call {
             func,
-            args: vec![Operand::Consume(ref_loc)],
+            args: vec![Operand::Move(ref_loc)],
             destination: Some((loc.clone(), next)),
             cleanup: Some(cleanup),
         }, false);
@@ -470,14 +470,14 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let compute_cond = self.make_statement(
             StatementKind::Assign(
                 cond.clone(),
-                Rvalue::BinaryOp(BinOp::Ne, Operand::Consume(end), Operand::Consume(beg))
+                Rvalue::BinaryOp(BinOp::Ne, Operand::Copy(end), Operand::Copy(beg))
             )
         );
 
         // `if end != beg { goto loop_body; } else { goto loop_end; }`
         self.block(
             vec![compute_cond],
-            TerminatorKind::if_(tcx, Operand::Consume(cond), loop_body, loop_end),
+            TerminatorKind::if_(tcx, Operand::Move(cond), loop_body, loop_end),
             is_cleanup
         );
     }
@@ -547,7 +547,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             self.make_statement(
                 StatementKind::Assign(
                     ret_field,
-                    Rvalue::Use(Operand::Consume(cloned))
+                    Rvalue::Use(Operand::Move(cloned))
                 )
             ),
             self.make_statement(
@@ -555,7 +555,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
                     Lvalue::Local(beg),
                     Rvalue::BinaryOp(
                         BinOp::Add,
-                        Operand::Consume(Lvalue::Local(beg)),
+                        Operand::Copy(Lvalue::Local(beg)),
                         Operand::Constant(self.make_usize(1))
                     )
                 )
@@ -568,7 +568,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let ret_statement = self.make_statement(
             StatementKind::Assign(
                 Lvalue::Local(RETURN_POINTER),
-                Rvalue::Use(Operand::Consume(ret.clone())),
+                Rvalue::Use(Operand::Move(ret.clone())),
             )
         );
         self.block(vec![ret_statement], TerminatorKind::Return, false);
@@ -611,7 +611,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
                 Lvalue::Local(beg),
                 Rvalue::BinaryOp(
                     BinOp::Add,
-                    Operand::Consume(Lvalue::Local(beg)),
+                    Operand::Copy(Lvalue::Local(beg)),
                     Operand::Constant(self.make_usize(1))
                 )
             )
@@ -666,7 +666,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
                 Lvalue::Local(RETURN_POINTER),
                 Rvalue::Aggregate(
                     box kind,
-                    returns.into_iter().map(Operand::Consume).collect()
+                    returns.into_iter().map(Operand::Move).collect()
                 )
             )
         );
@@ -705,8 +705,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut statements = vec![];
 
     let rcvr = match rcvr_adjustment {
-        Adjustment::Identity => Operand::Consume(rcvr_l),
-        Adjustment::Deref => Operand::Consume(rcvr_l.deref()),
+        Adjustment::Identity => Operand::Move(rcvr_l),
+        Adjustment::Deref => Operand::Copy(rcvr_l.deref()),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(temp_decl(
@@ -724,7 +724,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, rcvr_l)
                 )
             });
-            Operand::Consume(Lvalue::Local(ref_rcvr))
+            Operand::Move(Lvalue::Local(ref_rcvr))
         }
     };
 
@@ -750,11 +750,11 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(untuple_args) = untuple_args {
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
             let arg_lv = Lvalue::Local(Local::new(1+1));
-            Operand::Consume(arg_lv.field(Field::new(i), *ity))
+            Operand::Move(arg_lv.field(Field::new(i), *ity))
         }));
     } else {
         args.extend((1..sig.inputs().len()).map(|i| {
-            Operand::Consume(Lvalue::Local(Local::new(1+i)))
+            Operand::Move(Lvalue::Local(Local::new(1+i)))
         }));
     }
 
@@ -868,7 +868,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
                 Rvalue::Aggregate(
                     box AggregateKind::Adt(adt_def, variant_no, substs, None),
                     (1..sig.inputs().len()+1).map(|i| {
-                        Operand::Consume(Lvalue::Local(Local::new(i)))
+                        Operand::Move(Lvalue::Local(Local::new(i)))
                     }).collect()
                 )
             )

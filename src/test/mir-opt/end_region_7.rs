@@ -40,8 +40,8 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         _1 = D::{{constructor}}(const 0i32,);
 //         StorageLive(_3);
 //         StorageLive(_4);
-//         _4 = _1;
-//         _3 = [closure@NodeId(22)] { d: _4 };
+//         _4 = move _1;
+//         _3 = [closure@NodeId(22)] { d: move _4 };
 //         drop(_4) -> [return: bb4, unwind: bb3];
 //     }
 //     bb1: {
@@ -55,7 +55,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     }
 //     bb4: {
 //         StorageDead(_4);
-//         _2 = const foo(_3) -> [return: bb5, unwind: bb3];
+//         _2 = const foo(move _3) -> [return: bb5, unwind: bb3];
 //     }
 //     bb5: {
 //         drop(_3) -> [return: bb6, unwind: bb2];
@@ -84,7 +84,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         _2 = &'15_0rs (_1.0: D);
 //         StorageLive(_3);
 //         _3 = ((*_2).0: i32);
-//         _0 = _3;
+//         _0 = move _3;
 //         StorageDead(_3);
 //         EndRegion('15_0rs);
 //         StorageDead(_2);

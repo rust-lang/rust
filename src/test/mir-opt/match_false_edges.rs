@@ -54,12 +54,12 @@ fn main() {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      _5 = discriminant(_2);
-//      switchInt(_5) -> [0isize: bb5, 1isize: bb3, otherwise: bb7];
+//      switchInt(move _5) -> [0isize: bb5, 1isize: bb3, otherwise: bb7];
 //  }
 //  bb1: { // arm1
 //      StorageLive(_7);
 //      _7 = _3;
-//      _1 = (const 1i32, _7);
+//      _1 = (const 1i32, move _7);
 //      StorageDead(_7);
 //      goto -> bb12;
 //  }
@@ -89,7 +89,7 @@ fn main() {
 //      _6 = const guard() -> bb9;
 //  }
 //  bb9: { // end of guard
-//      switchInt(_6) -> [0u8: bb10, otherwise: bb1];
+//      switchInt(move _6) -> [0u8: bb10, otherwise: bb1];
 //  }
 //  bb10: { // to pre_binding2
 //      falseEdges -> [real: bb4, imaginary: bb4];
@@ -99,7 +99,7 @@ fn main() {
 //      _4 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
 //      _8 = _4;
-//      _1 = (const 2i32, _8);
+//      _1 = (const 2i32, move _8);
 //      StorageDead(_8);
 //      goto -> bb12;
 //  }
@@ -114,12 +114,12 @@ fn main() {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      _5 = discriminant(_2);
-//      switchInt(_5) -> [0isize: bb4, 1isize: bb3, otherwise: bb7];
+//      switchInt(move _5) -> [0isize: bb4, 1isize: bb3, otherwise: bb7];
 //  }
 //  bb1: { // arm1
 //      StorageLive(_7);
 //      _7 = _3;
-//      _1 = (const 1i32, _7);
+//      _1 = (const 1i32, move _7);
 //      StorageDead(_7);
 //      goto -> bb12;
 //  }
@@ -149,7 +149,7 @@ fn main() {
 //      _6 = const guard() -> bb9;
 //  }
 //  bb9: { // end of guard
-//      switchInt(_6) -> [0u8: bb10, otherwise: bb1];
+//      switchInt(move _6) -> [0u8: bb10, otherwise: bb1];
 //  }
 //  bb10: { // to pre_binding2
 //      falseEdges -> [real: bb5, imaginary: bb4];
@@ -159,7 +159,7 @@ fn main() {
 //      _4 = ((_2 as Some).0: i32);
 //      StorageLive(_8);
 //      _8 = _4;
-//      _1 = (const 2i32, _8);
+//      _1 = (const 2i32, move _8);
 //      StorageDead(_8);
 //      goto -> bb12;
 //  }
@@ -174,7 +174,7 @@ fn main() {
 //     ...
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
 //     _7 = discriminant(_2);
-//     switchInt(_7) -> [1isize: bb3, otherwise: bb4];
+//     switchInt(move _7) -> [1isize: bb3, otherwise: bb4];
 // }
 // bb1: { // arm1
 //      _1 = const 1i32;
@@ -207,7 +207,7 @@ fn main() {
 //      _8 = const guard() -> bb9;
 //  }
 //  bb9: { //end of guard
-//      switchInt(_8) -> [0u8: bb10, otherwise: bb1];
+//      switchInt(move _8) -> [0u8: bb10, otherwise: bb1];
 //  }
 //  bb10: { // to pre_binding2
 //      falseEdges -> [real: bb4, imaginary: bb4];
@@ -224,11 +224,11 @@ fn main() {
 //      StorageLive(_10);
 //      StorageLive(_11);
 //      _11 = _5;
-//      _10 = const guard2(_11) -> bb13;
+//      _10 = const guard2(move _11) -> bb13;
 //  }
 //  bb13: { // end of guard2
 //      StorageDead(_11);
-//      switchInt(_10) -> [0u8: bb14, otherwise: bb2];
+//      switchInt(move _10) -> [0u8: bb14, otherwise: bb2];
 //  }
 //  bb14: { // to pre_binding4
 //      falseEdges -> [real: bb6, imaginary: bb6];

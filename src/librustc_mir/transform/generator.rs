@@ -230,7 +230,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((1,
                 None,
-                Operand::Consume(Lvalue::Local(self.new_ret_local)),
+                Operand::Move(Lvalue::Local(self.new_ret_local)),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((0,
                 Some(resume),
@@ -452,7 +452,7 @@ fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let default_block = insert_term_block(mir, default);
 
     let switch = TerminatorKind::SwitchInt {
-        discr: Operand::Consume(transform.make_field(transform.state_field, tcx.types.u32)),
+        discr: Operand::Copy(transform.make_field(transform.state_field, tcx.types.u32)),
         switch_ty: tcx.types.u32,
         values: Cow::from(cases.iter().map(|&(i, _)| ConstInt::U32(i)).collect::<Vec<_>>()),
         targets: cases.iter().map(|&(_, d)| d).chain(once(default_block)).collect(),

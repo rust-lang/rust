@@ -252,6 +252,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn check_overflow(&self) -> bool {
         self.check_overflow
     }
+
+    pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        self.infcx.type_moves_by_default(self.param_env, ty, span)
+    }
 }
 
 fn lint_level_for_hir_id(tcx: TyCtxt, mut id: ast::NodeId) -> ast::NodeId {

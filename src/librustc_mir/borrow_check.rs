@@ -25,7 +25,7 @@ use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
 
 use syntax::ast::{self};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 use dataflow::{do_dataflow};
 use dataflow::{MoveDataParamEnv};
@@ -38,7 +38,6 @@ use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult, M
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
 use self::MutateMode::{JustWrite, WriteAndRead};
-use self::ConsumeKind::{Consume};
 
 
 pub fn provide(providers: &mut Providers) {
@@ -77,7 +76,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let id = tcx.hir.as_local_node_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
-    let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx, param_env) {
+    let move_data: MoveData<'tcx> = match MoveData::gather_moves(input_mir, tcx) {
         Ok(move_data) => move_data,
         Err((move_data, move_errors)) => {
             for move_error in move_errors {
@@ -140,7 +139,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         node_id: id,
         move_data: &mdpe.move_data,
         param_env: param_env,
-        storage_drop_or_dead_error_reported: FxHashSet(),
+        storage_dead_or_drop_error_reported: FxHashSet(),
     };
 
     let mut state = InProgress::new(flow_borrows,
@@ -159,10 +158,10 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     node_id: ast::NodeId,
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
-    /// This field keeps track of when storage drop or dead errors are reported
+    /// This field keeps track of when storage dead or drop errors are reported
     /// in order to stop duplicate error reporting and identify the conditions required
     /// for a "temporary value dropped here while still borrowed" error. See #45360.
-    storage_drop_or_dead_error_reported: FxHashSet<Local>,
+    storage_dead_or_drop_error_reported: FxHashSet<Local>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
@@ -264,14 +263,19 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                                    flow_state);
             }
             StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
+                let context = ContextKind::InlineAsm.new(location);
                 for (o, output) in asm.outputs.iter().zip(outputs) {
                     if o.is_indirect {
-                        self.consume_lvalue(ContextKind::InlineAsm.new(location),
-                                            Consume,
-                                            (output, span),
-                                            flow_state);
+                        // FIXME(eddyb) indirect inline asm outputs should
+                        // be encoeded through MIR lvalue derefs instead.
+                        self.access_lvalue(context,
+                                           (output, span),
+                                           (Deep, Read(ReadKind::Copy)),
+                                           flow_state);
+                        self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
+                                                    (output, span), flow_state);
                     } else {
-                        self.mutate_lvalue(ContextKind::InlineAsm.new(location),
+                        self.mutate_lvalue(context,
                                            (output, span),
                                            Deep,
                                            if o.is_rw { WriteAndRead } else { JustWrite },
@@ -279,9 +283,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     }
                 }
                 for input in inputs {
-                    self.consume_operand(ContextKind::InlineAsm.new(location),
-                                         Consume,
-                                         (input, span), flow_state);
+                    self.consume_operand(context, (input, span), flow_state);
                 }
             }
             StatementKind::EndRegion(ref _rgn) => {
@@ -296,15 +298,9 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             }
 
             StatementKind::StorageDead(local) => {
-                if !self.storage_drop_or_dead_error_reported.contains(&local) {
-                    let error_reported = self.access_lvalue(ContextKind::StorageDead.new(location),
-                        (&Lvalue::Local(local), span),
-                        (Shallow(None), Write(WriteKind::StorageDeadOrDrop)), flow_state);
-
-                    if error_reported {
-                        self.storage_drop_or_dead_error_reported.insert(local);
-                    }
-                }
+                self.access_lvalue(ContextKind::StorageDead.new(location),
+                    (&Lvalue::Local(local), span),
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)), flow_state);
             }
         }
     }
@@ -320,13 +316,13 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         match term.kind {
             TerminatorKind::SwitchInt { ref discr, switch_ty: _, values: _, targets: _ } => {
                 self.consume_operand(ContextKind::SwitchInt.new(loc),
-                                     Consume,
                                      (discr, span), flow_state);
             }
             TerminatorKind::Drop { location: ref drop_lvalue, target: _, unwind: _ } => {
-                self.consume_lvalue(ContextKind::Drop.new(loc),
-                                    ConsumeKind::Drop,
-                                    (drop_lvalue, span), flow_state);
+                self.access_lvalue(ContextKind::Drop.new(loc),
+                                   (drop_lvalue, span),
+                                   (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                                   flow_state);
             }
             TerminatorKind::DropAndReplace { location: ref drop_lvalue,
                                              value: ref new_value,
@@ -338,16 +334,13 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                                    JustWrite,
                                    flow_state);
                 self.consume_operand(ContextKind::DropAndReplace.new(loc),
-                                     ConsumeKind::Drop,
                                      (new_value, span), flow_state);
             }
             TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
                 self.consume_operand(ContextKind::CallOperator.new(loc),
-                                     Consume,
                                      (func, span), flow_state);
                 for arg in args {
                     self.consume_operand(ContextKind::CallOperand.new(loc),
-                                         Consume,
                                          (arg, span), flow_state);
                 }
                 if let Some((ref dest, _/*bb*/)) = *destination {
@@ -360,15 +353,12 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(ContextKind::Assert.new(loc),
-                                     Consume,
                                      (cond, span), flow_state);
                 match *msg {
                     AssertMessage::BoundsCheck { ref len, ref index } => {
                         self.consume_operand(ContextKind::Assert.new(loc),
-                                             Consume,
                                              (len, span), flow_state);
                         self.consume_operand(ContextKind::Assert.new(loc),
-                                             Consume,
                                              (index, span), flow_state);
                     }
                     AssertMessage::Math(_/*const_math_err*/) => {}
@@ -379,7 +369,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
             TerminatorKind::Yield { ref value, resume: _, drop: _} => {
                 self.consume_operand(ContextKind::Yield.new(loc),
-                                     Consume, (value, span), flow_state);
+                                     (value, span), flow_state);
             }
 
             TerminatorKind::Resume |
@@ -427,9 +417,6 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum MutateMode { JustWrite, WriteAndRead }
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum ConsumeKind { Drop, Consume }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum Control { Continue, Break }
@@ -523,8 +510,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      context: Context,
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
-                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) -> bool {
+                     flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         let (sd, rw) = kind;
+
+        let storage_dead_or_drop_local = match (lvalue_span.0, rw) {
+            (&Lvalue::Local(local), Write(WriteKind::StorageDeadOrDrop)) => Some(local),
+            _ => None
+        };
+
+        // Check if error has already been reported to stop duplicate reporting.
+        if let Some(local) = storage_dead_or_drop_local {
+            if self.storage_dead_or_drop_error_reported.contains(&local) {
+                return;
+            }
+        }
 
         // Check permissions
         self.check_access_permissions(lvalue_span, rw);
@@ -590,7 +589,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
                 }
             });
-        error_reported
+
+        if error_reported {
+            if let Some(local) = storage_dead_or_drop_local {
+                self.storage_dead_or_drop_error_reported.insert(local);
+            }
+        }
     }
 
     fn mutate_lvalue(&mut self,
@@ -637,7 +641,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Rvalue::Repeat(ref operand, _) |
             Rvalue::UnaryOp(_/*un_op*/, ref operand) |
             Rvalue::Cast(_/*cast_kind*/, ref operand, _/*ty*/) => {
-                self.consume_operand(context, Consume, (operand, span), flow_state)
+                self.consume_operand(context, (operand, span), flow_state)
             }
 
             Rvalue::Len(ref lvalue) |
@@ -655,8 +659,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2) |
             Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
-                self.consume_operand(context, Consume, (operand1, span), flow_state);
-                self.consume_operand(context, Consume, (operand2, span), flow_state);
+                self.consume_operand(context, (operand1, span), flow_state);
+                self.consume_operand(context, (operand2, span), flow_state);
             }
 
             Rvalue::NullaryOp(_op, _ty) => {
@@ -669,7 +673,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             Rvalue::Aggregate(ref _aggregate_kind, ref operands) => {
                 for operand in operands {
-                    self.consume_operand(context, Consume, (operand, span), flow_state);
+                    self.consume_operand(context, (operand, span), flow_state);
                 }
             }
         }
@@ -677,83 +681,33 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     fn consume_operand(&mut self,
                        context: Context,
-                       consume_via_drop: ConsumeKind,
                        (operand, span): (&Operand<'tcx>, Span),
                        flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         match *operand {
-            Operand::Consume(ref lvalue) => {
-                self.consume_lvalue(context, consume_via_drop, (lvalue, span), flow_state)
-            }
-            Operand::Constant(_) => {}
-        }
-    }
-
-    fn consume_lvalue(&mut self,
-                      context: Context,
-                      consume_via_drop: ConsumeKind,
-                      lvalue_span: (&Lvalue<'tcx>, Span),
-                      flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
-        let lvalue = lvalue_span.0;
-
-        let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
-
-        // Erase the regions in type before checking whether it moves by
-        // default. There are a few reasons to do this:
-        //
-        // - They should not affect the result.
-        // - It avoids adding new region constraints into the surrounding context,
-        //   which would trigger an ICE, since the infcx will have been "frozen" by
-        //   the NLL region context.
-        let gcx = self.tcx.global_tcx();
-        let erased_ty = gcx.lift(&self.tcx.erase_regions(&ty)).unwrap();
-        let moves_by_default = erased_ty.moves_by_default(gcx, self.param_env, DUMMY_SP);
-
-        // Check if error has already been reported to stop duplicate reporting.
-        let has_storage_drop_or_dead_error_reported = match *lvalue {
-            Lvalue::Local(local) => self.storage_drop_or_dead_error_reported.contains(&local),
-            _ => false,
-        };
-
-        // If the error has been reported already, then we don't need the access_lvalue call.
-        if !has_storage_drop_or_dead_error_reported || consume_via_drop != ConsumeKind::Drop {
-            let error_reported;
-
-            if moves_by_default {
-                let kind = match consume_via_drop {
-                    ConsumeKind::Drop => WriteKind::StorageDeadOrDrop,
-                    _ => WriteKind::Move,
-                };
-
-                // move of lvalue: check if this is move of already borrowed path
-                error_reported = self.access_lvalue(context, lvalue_span,
-                                                    (Deep, Write(kind)), flow_state);
-            } else {
+            Operand::Copy(ref lvalue) => {
                 // copy of lvalue: check if this is "copy of frozen path"
                 // (FIXME: see check_loans.rs)
-                error_reported = self.access_lvalue(context, lvalue_span,
-                                                    (Deep, Read(ReadKind::Copy)), flow_state);
-            }
+                self.access_lvalue(context,
+                                   (lvalue, span),
+                                   (Deep, Read(ReadKind::Copy)),
+                                   flow_state);
 
-            // If there was an error, then we keep track of it so as to deduplicate it.
-            // We only do this on ConsumeKind::Drop.
-            if error_reported && consume_via_drop == ConsumeKind::Drop {
-                if let Lvalue::Local(local) = *lvalue {
-                    self.storage_drop_or_dead_error_reported.insert(local);
-                }
-            }
-        }
-
-        // Finally, check if path was already moved.
-        match consume_via_drop {
-            ConsumeKind::Drop => {
-                // If path is merely being dropped, then we'll already
-                // check the drop flag to see if it is moved (thus we
-                // skip this check in that case).
-            }
-            ConsumeKind::Consume => {
+                // Finally, check if path was already moved.
                 self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
-                                            lvalue_span, flow_state);
+                                            (lvalue, span), flow_state);
             }
+            Operand::Move(ref lvalue) => {
+                // move of lvalue: check if this is move of already borrowed path
+                self.access_lvalue(context,
+                                   (lvalue, span),
+                                   (Deep, Write(WriteKind::Move)),
+                                   flow_state);
+
+                // Finally, check if path was already moved.
+                self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
+                                            (lvalue, span), flow_state);
+            }
+            Operand::Constant(_) => {}
         }
     }
 }
@@ -1489,22 +1443,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             return None;
                         };
 
-                        self.tcx
-                            .with_freevars(node_id, |freevars| {
-                                for (v, lv) in freevars.iter().zip(lvs) {
-                                    if let Operand::Consume(Lvalue::Local(l)) = *lv {
-                                        if local == l {
-                                            debug!(
-                                                "find_closure_span: found captured local {:?}",
-                                                l
-                                            );
-                                            return Some(v.span);
-                                        }
+                        self.tcx.with_freevars(node_id, |freevars| {
+                            for (v, lv) in freevars.iter().zip(lvs) {
+                                match *lv {
+                                    Operand::Copy(Lvalue::Local(l)) |
+                                    Operand::Move(Lvalue::Local(l)) if local == l => {
+                                        debug!(
+                                            "find_closure_span: found captured local {:?}",
+                                            l
+                                        );
+                                        return Some(v.span);
                                     }
+                                    _ => {}
                                 }
-                                None
-                            })
-                            .map(|var_span| (args_span, var_span))
+                            }
+                            None
+                        }).map(|var_span| (args_span, var_span))
                     } else {
                         None
                     };

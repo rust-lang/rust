@@ -611,8 +611,11 @@ macro_rules! make_mir_visitor {
                              operand: & $($mutability)* Operand<'tcx>,
                              location: Location) {
                 match *operand {
-                    Operand::Consume(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::Consume, location);
+                    Operand::Copy(ref $($mutability)* lvalue) => {
+                        self.visit_lvalue(lvalue, LvalueContext::Copy, location);
+                    }
+                    Operand::Move(ref $($mutability)* lvalue) => {
+                        self.visit_lvalue(lvalue, LvalueContext::Move, location);
                     }
                     Operand::Constant(ref $($mutability)* constant) => {
                         self.visit_constant(constant, location);
@@ -679,7 +682,7 @@ macro_rules! make_mir_visitor {
                         self.visit_ty(ty, TyContext::Location(location));
                     }
                     ProjectionElem::Index(ref $($mutability)* local) => {
-                        self.visit_local(local, LvalueContext::Consume, location);
+                        self.visit_local(local, LvalueContext::Copy, location);
                     }
                     ProjectionElem::ConstantIndex { offset: _,
                                                     min_length: _,
@@ -860,7 +863,8 @@ pub enum LvalueContext<'tcx> {
     Projection(Mutability),
 
     // Consumed as part of an operand
-    Consume,
+    Copy,
+    Move,
 
     // Starting and ending a storage live range
     StorageLive,
@@ -913,7 +917,8 @@ impl<'tcx> LvalueContext<'tcx> {
             LvalueContext::Inspect |
             LvalueContext::Borrow { kind: BorrowKind::Shared, .. } |
             LvalueContext::Borrow { kind: BorrowKind::Unique, .. } |
-            LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume |
+            LvalueContext::Projection(Mutability::Not) |
+            LvalueContext::Copy | LvalueContext::Move |
             LvalueContext::StorageLive | LvalueContext::StorageDead |
             LvalueContext::Validate => false,
         }
@@ -924,7 +929,8 @@ impl<'tcx> LvalueContext<'tcx> {
         match *self {
             LvalueContext::Inspect | LvalueContext::Borrow { kind: BorrowKind::Shared, .. } |
             LvalueContext::Borrow { kind: BorrowKind::Unique, .. } |
-            LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume => true,
+            LvalueContext::Projection(Mutability::Not) |
+            LvalueContext::Copy | LvalueContext::Move => true,
             LvalueContext::Borrow { kind: BorrowKind::Mut, .. } | LvalueContext::Store |
             LvalueContext::Call | LvalueContext::Projection(Mutability::Mut) |
             LvalueContext::Drop | LvalueContext::StorageLive | LvalueContext::StorageDead |

@@ -519,7 +519,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         match *operand {
-            Operand::Consume(ref lvalue) => {
+            Operand::Copy(ref lvalue) |
+            Operand::Move(ref lvalue) => {
                 self.nest(|this| {
                     this.super_operand(operand, location);
                     this.try_consume();
@@ -872,10 +873,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                self.const_fn_arg_vars.insert(index.index()) {
 
                 // Direct use of an argument is permitted.
-                if let Rvalue::Use(Operand::Consume(Lvalue::Local(local))) = *rvalue {
-                    if self.mir.local_kind(local) == LocalKind::Arg {
-                        return;
+                match *rvalue {
+                    Rvalue::Use(Operand::Copy(Lvalue::Local(local))) |
+                    Rvalue::Use(Operand::Move(Lvalue::Local(local))) => {
+                        if self.mir.local_kind(local) == LocalKind::Arg {
+                            return;
+                        }
                     }
+                    _ => {}
                 }
 
                 // Avoid a generic error for other uses of arguments.

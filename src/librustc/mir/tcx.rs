@@ -230,7 +230,8 @@ impl<'tcx> Operand<'tcx> {
         where D: HasLocalDecls<'tcx>
     {
         match self {
-            &Operand::Consume(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
+            &Operand::Copy(ref l) |
+            &Operand::Move(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
             &Operand::Constant(ref c) => c.ty,
         }
     }

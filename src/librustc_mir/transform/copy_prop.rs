@@ -126,7 +126,8 @@ impl MirPass for CopyPropagation {
                         StatementKind::Assign(Lvalue::Local(local), Rvalue::Use(ref operand)) if
                                 local == dest_local => {
                             let maybe_action = match *operand {
-                                Operand::Consume(ref src_lvalue) => {
+                                Operand::Copy(ref src_lvalue) |
+                                Operand::Move(ref src_lvalue) => {
                                     Action::local_copy(&mir, &def_use_analysis, src_lvalue)
                                 }
                                 Operand::Constant(ref src_constant) => {
@@ -173,7 +174,11 @@ fn eliminate_self_assignments<'tcx>(
                 match stmt.kind {
                     StatementKind::Assign(
                         Lvalue::Local(local),
-                        Rvalue::Use(Operand::Consume(Lvalue::Local(src_local))),
+                        Rvalue::Use(Operand::Copy(Lvalue::Local(src_local))),
+                    ) |
+                    StatementKind::Assign(
+                        Lvalue::Local(local),
+                        Rvalue::Use(Operand::Move(Lvalue::Local(src_local))),
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {
                         continue;
@@ -351,7 +356,8 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
         self.super_operand(operand, location);
 
         match *operand {
-            Operand::Consume(Lvalue::Local(local)) if local == self.dest_local => {}
+            Operand::Copy(Lvalue::Local(local)) |
+            Operand::Move(Lvalue::Local(local)) if local == self.dest_local => {}
             _ => return,
         }
 

@@ -50,7 +50,7 @@ impl MirPass for ElaborateDrops {
             _ => return
         }
         let param_env = tcx.param_env(src.def_id);
-        let move_data = MoveData::gather_moves(mir, tcx, param_env).unwrap();
+        let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let elaborate_patch = {
             let mir = &*mir;
             let env = MoveDataParamEnv {
@@ -278,7 +278,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     }
 
     fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>> {
-        self.ctxt.drop_flag(path).map(Operand::Consume)
+        self.ctxt.drop_flag(path).map(Operand::Copy)
     }
 }
 

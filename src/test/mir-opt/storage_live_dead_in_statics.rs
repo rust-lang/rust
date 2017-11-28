@@ -185,11 +185,11 @@ fn main() {
 //        _47 = (const 0u32, const 2u32);
 //        StorageLive(_48);
 //        _48 = (const 0u32, const 3u32);
-//        _6 = [_7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, _33, _34, _35, _36, _37, _38, _39, _40, _41, _42, _43, _44, _45, _46, _47, _48];
+//        _6 = [move _7, move _8, move _9, move _10, move _11, move _12, move _13, move _14, move _15, move _16, move _17, move _18, move _19, move _20, move _21, move _22, move _23, move _24, move _25, move _26, move _27, move _28, move _29, move _30, move _31, move _32, move _33, move _34, move _35, move _36, move _37, move _38, move _39, move _40, move _41, move _42, move _43, move _44, move _45, move _46, move _47, move _48];
 //        _5 = &_6;
 //        _4 = &(*_5);
-//        _3 = _4 as &'static [(u32, u32)] (Unsize);
-//        _2 = Foo { tup: const "hi", data: _3 };
+//        _3 = move _4 as &'static [(u32, u32)] (Unsize);
+//        _2 = Foo { tup: const "hi", data: move _3 };
 //        _1 = &_2;
 //        _0 = &(*_1);
 //        StorageDead(_1);

@@ -20,7 +20,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::visit::Visitor;
+use rustc::mir::visit::{LvalueContext, Visitor};
 use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -107,10 +107,10 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn visit_lvalue(
         &mut self,
         lvalue: &Lvalue<'tcx>,
-        _context: visit::LvalueContext,
+        context: LvalueContext,
         location: Location,
     ) {
-        self.sanitize_lvalue(lvalue, location);
+        self.sanitize_lvalue(lvalue, location, context);
     }
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
@@ -164,9 +164,13 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>, location: Location) -> LvalueTy<'tcx> {
+    fn sanitize_lvalue(&mut self,
+                       lvalue: &Lvalue<'tcx>,
+                       location: Location,
+                       context: LvalueContext)
+                       -> LvalueTy<'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
-        match *lvalue {
+        let lvalue_ty = match *lvalue {
             Lvalue::Local(index) => LvalueTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
@@ -189,7 +193,12 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 LvalueTy::Ty { ty: sty }
             }
             Lvalue::Projection(ref proj) => {
-                let base_ty = self.sanitize_lvalue(&proj.base, location);
+                let base_context = if context.is_mutating_use() {
+                    LvalueContext::Projection(Mutability::Mut)
+                } else {
+                    LvalueContext::Projection(Mutability::Not)
+                };
+                let base_ty = self.sanitize_lvalue(&proj.base, location, base_context);
                 if let LvalueTy::Ty { ty } = base_ty {
                     if ty.references_error() {
                         assert!(self.errors_reported);
@@ -200,7 +209,15 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 }
                 self.sanitize_projection(base_ty, &proj.elem, lvalue, location)
             }
+        };
+        if let LvalueContext::Copy = context {
+            let ty = lvalue_ty.to_ty(self.tcx());
+            if self.cx.infcx.type_moves_by_default(self.cx.param_env, ty, DUMMY_SP) {
+                span_mirbug!(self, lvalue,
+                             "attempted copy of non-Copy type ({:?})", ty);
+            }
         }
+        lvalue_ty
     }
 
     fn sanitize_projection(

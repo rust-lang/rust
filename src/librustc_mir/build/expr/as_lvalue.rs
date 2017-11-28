@@ -70,14 +70,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      &len, Rvalue::Len(slice.clone()));
                 this.cfg.push_assign(block, source_info, // lt = idx < len
                                      &lt, Rvalue::BinaryOp(BinOp::Lt,
-                                                           Operand::Consume(Lvalue::Local(idx)),
-                                                           Operand::Consume(len.clone())));
+                                                           Operand::Copy(Lvalue::Local(idx)),
+                                                           Operand::Copy(len.clone())));
 
                 let msg = AssertMessage::BoundsCheck {
-                    len: Operand::Consume(len),
-                    index: Operand::Consume(Lvalue::Local(idx))
+                    len: Operand::Move(len),
+                    index: Operand::Copy(Lvalue::Local(idx))
                 };
-                let success = this.assert(block, Operand::Consume(lt), true,
+                let success = this.assert(block, Operand::Move(lt), true,
                                           msg, expr_span);
                 success.and(slice.index(idx))
             }

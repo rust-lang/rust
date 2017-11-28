@@ -65,7 +65,7 @@ fn main() {
 //         Validate(Acquire, [_1: &ReFree(DefId(0/0:4 ~ validate_4[317d]::test[0]), BrAnon(0)) mut i32]);
 //         Validate(Release, [_1: &ReFree(DefId(0/0:4 ~ validate_4[317d]::test[0]), BrAnon(0)) mut i32]);
 //         ...
-//         _2 = const write_42(_3) -> bb1;
+//         _2 = const write_42(move _3) -> bb1;
 //     }
 //     bb1: {
 //         Validate(Acquire, [_2: bool]);
@@ -82,7 +82,7 @@ fn main() {
 //         Validate(Release, [_1: &ReFree(DefId(0/1:10 ~ validate_4[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(60)], _2: &ReFree(DefId(0/1:10 ~ validate_4[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
 //         StorageLive(_3);
 //         ...
-//         _0 = const write_42(_3) -> bb1;
+//         _0 = const write_42(move _3) -> bb1;
 //     }
 //     ...
 // }

@@ -75,71 +75,71 @@ fn main() {
 // START rustc.test_signed.Lower128Bit.after.mir
 //     _2 = const i128_addo(_1, const 1i128) -> bb10;
 //     ...
-//     _1 = (_2.0: i128);
+//     _1 = move (_2.0: i128);
 //     _3 = const i128_subo(_1, const 2i128) -> bb11;
 //     ...
-//     _1 = (_3.0: i128);
+//     _1 = move (_3.0: i128);
 //     _4 = const i128_mulo(_1, const 3i128) -> bb12;
 //     ...
-//     _1 = (_4.0: i128);
+//     _1 = move (_4.0: i128);
 //     ...
 //     _1 = const i128_div(_1, const 4i128) -> bb13;
 //     ...
 //     _1 = const i128_rem(_1, const 5i128) -> bb15;
 //     ...
-//     _1 = (_13.0: i128);
+//     _1 = move (_13.0: i128);
 //     ...
 //     _17 = const 7i32 as u128 (Misc);
-//     _14 = const i128_shro(_1, _17) -> bb16;
+//     _14 = const i128_shro(_1, move _17) -> bb16;
 //     ...
-//     _1 = (_14.0: i128);
+//     _1 = move (_14.0: i128);
 //     ...
-//     assert(!(_2.1: bool), "attempt to add with overflow") -> bb1;
+//     assert(!move (_2.1: bool), "attempt to add with overflow") -> bb1;
 //     ...
-//     assert(!(_3.1: bool), "attempt to subtract with overflow") -> bb2;
+//     assert(!move (_3.1: bool), "attempt to subtract with overflow") -> bb2;
 //     ...
-//     assert(!(_4.1: bool), "attempt to multiply with overflow") -> bb3;
+//     assert(!move (_4.1: bool), "attempt to multiply with overflow") -> bb3;
 //     ...
-//     assert(!(_13.1: bool), "attempt to shift left with overflow") -> bb8;
+//     assert(!move (_13.1: bool), "attempt to shift left with overflow") -> bb8;
 //     ...
 //     _16 = const 6i32 as u128 (Misc);
-//     _13 = const i128_shlo(_1, _16) -> bb14;
+//     _13 = const i128_shlo(_1, move _16) -> bb14;
 //     ...
-//     assert(!(_14.1: bool), "attempt to shift right with overflow") -> bb9;
+//     assert(!move (_14.1: bool), "attempt to shift right with overflow") -> bb9;
 // END rustc.test_signed.Lower128Bit.after.mir
 
 // START rustc.test_unsigned.Lower128Bit.after.mir
 //     _2 = const u128_addo(_1, const 1u128) -> bb8;
 //     ...
-//     _1 = (_2.0: u128);
+//     _1 = move (_2.0: u128);
 //     _3 = const u128_subo(_1, const 2u128) -> bb9;
 //     ...
-//     _1 = (_3.0: u128);
+//     _1 = move (_3.0: u128);
 //     _4 = const u128_mulo(_1, const 3u128) -> bb10;
 //     ...
-//     _1 = (_4.0: u128);
+//     _1 = move (_4.0: u128);
 //     ...
 //     _1 = const u128_div(_1, const 4u128) -> bb11;
 //     ...
 //     _1 = const u128_rem(_1, const 5u128) -> bb13;
 //     ...
-//     _1 = (_7.0: u128);
+//     _1 = move (_7.0: u128);
 //     ...
 //     _11 = const 7i32 as u128 (Misc);
-//     _8 = const u128_shro(_1, _11) -> bb14;
+//     _8 = const u128_shro(_1, move _11) -> bb14;
 //     ...
-//     _1 = (_8.0: u128);
+//     _1 = move (_8.0: u128);
 //     ...
-//     assert(!(_2.1: bool), "attempt to add with overflow") -> bb1;
+//     assert(!move (_2.1: bool), "attempt to add with overflow") -> bb1;
 //     ...
-//     assert(!(_3.1: bool), "attempt to subtract with overflow") -> bb2;
+//     assert(!move (_3.1: bool), "attempt to subtract with overflow") -> bb2;
 //     ...
-//     assert(!(_4.1: bool), "attempt to multiply with overflow") -> bb3;
+//     assert(!move (_4.1: bool), "attempt to multiply with overflow") -> bb3;
 //     ...
-//     assert(!(_7.1: bool), "attempt to shift left with overflow") -> bb6;
+//     assert(!move (_7.1: bool), "attempt to shift left with overflow") -> bb6;
 //     ...
 //     _10 = const 6i32 as u128 (Misc);
-//     _7 = const u128_shlo(_1, _10) -> bb12;
+//     _7 = const u128_shlo(_1, move _10) -> bb12;
 //     ...
-//     assert(!(_8.1: bool), "attempt to shift right with overflow") -> bb7;
+//     assert(!move (_8.1: bool), "attempt to shift right with overflow") -> bb7;
 // END rustc.test_unsigned.Lower128Bit.after.mir
