@@ -796,7 +796,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     let (msg, note) = if let UnstableFeatures::Disallow =
                             self.tcx.sess.opts.unstable_features {
                         (format!("calls in {}s are limited to \
-                                  struct and enum constructors",
+                                  struct and enum literals",
                                  self.mode),
                          Some("a limited form of compile-time function \
                                evaluation is available on a nightly \
@@ -804,7 +804,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     } else {
                         (format!("calls in {}s are limited \
                                   to constant functions, \
-                                  struct and enum constructors",
+                                  struct and enum literals",
                                  self.mode),
                          None)
                     };
