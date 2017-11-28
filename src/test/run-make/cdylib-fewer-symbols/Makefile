@@ -3,7 +3,9 @@
 
 -include ../tools.mk
 
-ifdef IS_MSVC
+# FIXME: The __rdl_ and __rust_ symbol still remains, no matter using MSVC or GNU
+# See https://github.com/rust-lang/rust/pull/46207#issuecomment-347561753
+ifdef IS_WINDOWS
 all:
 	true
 else
