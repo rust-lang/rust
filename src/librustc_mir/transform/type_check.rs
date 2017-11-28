@@ -1210,41 +1210,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         self.prove_aggregate_predicates(aggregate_kind, location);
 
-        match aggregate_kind {
+        if *aggregate_kind == AggregateKind::Tuple {
             // tuple rvalue field type is always the type of the op. Nothing to check here.
-            AggregateKind::Tuple => return,
-
-            // For closures, we have some **extra requirements** we
-            // have to check. In particular, in their upvars and
-            // signatures, closures often reference various regions
-            // from the surrounding function -- we call those the
-            // closure's free regions. When we borrow-check (and hence
-            // region-check) closures, we may find that the closure
-            // requires certain relationships between those free
-            // regions. However, because those free regions refer to
-            // portions of the CFG of their caller, the closure is not
-            // in a position to verify those relationships. In that
-            // case, the requirements get "propagated" to us, and so
-            // we have to solve them here where we instantiate the
-            // closure.
-            //
-            // Despite the opacity of the previous parapgrah, this is
-            // actually relatively easy to understand in terms of the
-            // desugaring. A closure gets desugared to a struct, and
-            // these extra requirements are basically like where
-            // clauses on the struct.
-            AggregateKind::Closure(def_id, substs) => {
-                if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
-                    closure_region_requirements.apply_requirements(
-                        self.infcx,
-                        location,
-                        *def_id,
-                        *substs,
-                    );
-                }
-            }
-
-            _ => {}
+            return;
         }
 
         for (i, operand) in operands.iter().enumerate() {
@@ -1295,7 +1263,39 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 tcx.predicates_of(def.did).instantiate(tcx, substs)
             }
 
-            AggregateKind::Closure(def_id, substs) |
+            // For closures, we have some **extra requirements** we
+            //
+            // have to check. In particular, in their upvars and
+            // signatures, closures often reference various regions
+            // from the surrounding function -- we call those the
+            // closure's free regions. When we borrow-check (and hence
+            // region-check) closures, we may find that the closure
+            // requires certain relationships between those free
+            // regions. However, because those free regions refer to
+            // portions of the CFG of their caller, the closure is not
+            // in a position to verify those relationships. In that
+            // case, the requirements get "propagated" to us, and so
+            // we have to solve them here where we instantiate the
+            // closure.
+            //
+            // Despite the opacity of the previous parapgrah, this is
+            // actually relatively easy to understand in terms of the
+            // desugaring. A closure gets desugared to a struct, and
+            // these extra requirements are basically like where
+            // clauses on the struct.
+            AggregateKind::Closure(def_id, substs) => {
+                if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
+                    closure_region_requirements.apply_requirements(
+                        self.infcx,
+                        location,
+                        *def_id,
+                        *substs,
+                    );
+                }
+
+                tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
+            }
+
             AggregateKind::Generator(def_id, substs, _) => {
                 tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
             }
