@@ -162,7 +162,13 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         let cx = bx.cx;
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
-        let align = self.align.min(self.layout.align).min(field.align);
+        let align = if self.layout.abi == layout::Abi::Uninhabited {
+            // Uninhabited places can only exist in dead code, so we can pretend
+            // alignment is ideal, to avoid tripping off special cases elsewhere.
+            field.align
+        } else {
+            self.align.min(self.layout.align).min(field.align)
+        };
 
         let simple = || {
             // Unions and newtypes only use an offset of 0.

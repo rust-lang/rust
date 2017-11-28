@@ -42,6 +42,10 @@ impl<I: Idx> SparseBitSet<I> {
         }
     }
 
+    pub fn capacity(&self) -> usize {
+        self.map.len() * 128
+    }
+
     pub fn contains(&self, index: I) -> bool {
         let (key, mask) = key_and_mask(index);
         self.map.get(&key).map_or(false, |bits| (bits & mask) != 0)

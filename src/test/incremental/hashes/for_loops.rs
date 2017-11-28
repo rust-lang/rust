@@ -59,7 +59,7 @@ pub fn change_iteration_variable_name() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_iteration_variable_name() {
     let mut _x = 0;

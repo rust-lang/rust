@@ -14,9 +14,11 @@
 #![crate_type = "lib"]
 
 #[repr(align(64))]
+#[derive(Copy, Clone)]
 pub struct Align64(i32);
 // CHECK: %Align64 = type { [0 x i32], i32, [15 x i32] }
 
+#[derive(Copy, Clone)]
 pub struct Nested64 {
     a: Align64,
     b: i32,
@@ -32,6 +34,7 @@ pub enum Enum4 {
 // CHECK: %Enum4 = type { [0 x i32], i32, [1 x i32] }
 // CHECK: %"Enum4::A" = type { [1 x i32], i32, [0 x i32] }
 
+#[derive(Copy, Clone)]
 pub enum Enum64 {
     A(Align64),
     B(i32),
@@ -59,7 +62,7 @@ pub fn nested64(a: Align64, b: i32, c: i32, d: i8) -> Nested64 {
 // CHECK-LABEL: @enum4
 #[no_mangle]
 pub fn enum4(a: i32) -> Enum4 {
-// CHECK: %e4 = alloca %Enum4, align 4
+// CHECK: alloca %Enum4, align 4
     let e4 = Enum4::A(a);
     e4
 }

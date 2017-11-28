@@ -46,6 +46,7 @@ pub mod inline;
 pub mod lower_128bit;
 pub mod uniform_array_move_out;
 pub mod split_local_fields;
+pub mod unify_places;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
@@ -267,6 +268,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         instcombine::InstCombine,
         deaggregator::Deaggregator,
         split_local_fields::SplitLocalFields,
+        unify_places::UnifyPlaces,
         copy_prop::CopyPropagation,
         remove_noop_landing_pads::RemoveNoopLandingPads,
         simplify::SimplifyCfg::new("final"),
