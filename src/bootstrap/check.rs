@@ -1245,6 +1245,17 @@ impl Step for Crate {
         if target.contains("emscripten") {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
                       build.config.nodejs.as_ref().expect("nodejs not configured"));
+        } else if target.starts_with("wasm32") {
+            // On the wasm32-unknown-unknown target we're using LTO which is
+            // incompatible with `-C prefer-dynamic`, so disable that here
+            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+            let node = build.config.nodejs.as_ref()
+                .expect("nodejs not configured");
+            let runner = format!("{} {}/src/etc/wasm32-shim.js",
+                                 node.display(),
+                                 build.src.display());
+            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)), &runner);
         } else if build.remote_tested(target) {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
                       format!("{} run",

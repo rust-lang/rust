@@ -45,8 +45,8 @@ imports.env = {
   exp2f: function(x) { return Math.pow(2, x); },
   ldexp: function(x, y) { return x * Math.pow(2, y); },
   ldexpf: function(x, y) { return x * Math.pow(2, y); },
-  log10: function(x) { return Math.log10(x); },
-  log10f: function(x) { return Math.log10(x); },
+  log10: Math.log10,
+  log10f: Math.log10,
 
   // These are called in src/libstd/sys/wasm/stdio.rs and are used when
   // debugging is enabled.
@@ -71,14 +71,12 @@ imports.env = {
     return process.argv.length - 2;
   },
   rust_wasm_args_arg_size: function(i) {
-    return process.argv[i + 2].length;
+    return Buffer.byteLength(process.argv[i + 2]);
   },
   rust_wasm_args_arg_fill: function(idx, ptr) {
     let arg = process.argv[idx + 2];
     let view = new Uint8Array(memory.buffer);
-    for (var i = 0; i < arg.length; i++) {
-      view[ptr + i] = arg.charCodeAt(i);
-    }
+    Buffer.from(arg).copy(view, ptr);
   },
 
   // These are called in src/libstd/sys/wasm/os.rs and are used when
@@ -91,15 +89,13 @@ imports.env = {
     if (!(key in process.env)) {
       return -1;
     }
-    return process.env[key].length;
+    return Buffer.byteLength(process.env[key]);
   },
   rust_wasm_getenv_data: function(a, b, ptr) {
     let key = copystr(a, b);
     let value = process.env[key];
     let view = new Uint8Array(memory.buffer);
-    for (var i = 0; i < value.length; i++) {
-      view[ptr + i] = value.charCodeAt(i);
-    }
+    Buffer.from(value).copy(view, ptr);
   },
 };
 
