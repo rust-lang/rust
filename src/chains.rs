@@ -8,56 +8,56 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// Formatting of chained expressions, i.e. expressions which are chained by
-/// dots: struct and enum field access, method calls, and try shorthand (?).
-///
-/// Instead of walking these subexpressions one-by-one, as is our usual strategy
-/// for expression formatting, we collect maximal sequences of these expressions
-/// and handle them simultaneously.
-///
-/// Whenever possible, the entire chain is put on a single line. If that fails,
-/// we put each subexpression on a separate, much like the (default) function
-/// argument function argument strategy.
-///
-/// Depends on config options: `chain_indent` is the indent to use for
-/// blocks in the parent/root/base of the chain (and the rest of the chain's
-/// alignment).
-/// E.g., `let foo = { aaaa; bbb; ccc }.bar.baz();`, we would layout for the
-/// following values of `chain_indent`:
-/// Block:
-/// ```
-/// let foo = {
-///     aaaa;
-///     bbb;
-///     ccc
-/// }.bar
-///     .baz();
-/// ```
-/// Visual:
-/// ```
-/// let foo = {
-///               aaaa;
-///               bbb;
-///               ccc
-///           }
-///           .bar
-///           .baz();
-/// ```
-///
-/// If the first item in the chain is a block expression, we align the dots with
-/// the braces.
-/// Block:
-/// ```
-/// let a = foo.bar
-///     .baz()
-///     .qux
-/// ```
-/// Visual:
-/// ```
-/// let a = foo.bar
-///            .baz()
-///            .qux
-/// ```
+//! Formatting of chained expressions, i.e. expressions which are chained by
+//! dots: struct and enum field access, method calls, and try shorthand (?).
+//!
+//! Instead of walking these subexpressions one-by-one, as is our usual strategy
+//! for expression formatting, we collect maximal sequences of these expressions
+//! and handle them simultaneously.
+//!
+//! Whenever possible, the entire chain is put on a single line. If that fails,
+//! we put each subexpression on a separate, much like the (default) function
+//! argument function argument strategy.
+//!
+//! Depends on config options: `chain_indent` is the indent to use for
+//! blocks in the parent/root/base of the chain (and the rest of the chain's
+//! alignment).
+//! E.g., `let foo = { aaaa; bbb; ccc }.bar.baz();`, we would layout for the
+//! following values of `chain_indent`:
+//! Block:
+//! ```
+//! let foo = {
+//!     aaaa;
+//!     bbb;
+//!     ccc
+//! }.bar
+//!     .baz();
+//! ```
+//! Visual:
+//! ```
+//! let foo = {
+//!               aaaa;
+//!               bbb;
+//!               ccc
+//!           }
+//!           .bar
+//!           .baz();
+//! ```
+//!
+//! If the first item in the chain is a block expression, we align the dots with
+//! the braces.
+//! Block:
+//! ```
+//! let a = foo.bar
+//!     .baz()
+//!     .qux
+//! ```
+//! Visual:
+//! ```
+//! let a = foo.bar
+//!            .baz()
+//!            .qux
+//! ```
 
 use shape::Shape;
 use config::IndentStyle;
