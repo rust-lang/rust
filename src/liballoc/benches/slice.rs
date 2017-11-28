@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::__rand::{thread_rng};
+use rand::{thread_rng};
 use std::mem;
 use std::ptr;
 
