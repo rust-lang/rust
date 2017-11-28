@@ -16,6 +16,7 @@ RUSTDOC := $(RUSTDOC) --linker $(RUSTC_LINKER) -Z unstable-options
 endif
 #CC := $(CC) -L $(TMPDIR)
 HTMLDOCCK := $(PYTHON) $(S)/src/etc/htmldocck.py
+CGREP := "$(S)/src/etc/cat-and-grep.sh"
 
 # This is the name of the binary we will generate and run; use this
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
