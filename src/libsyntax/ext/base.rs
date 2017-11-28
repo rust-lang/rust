@@ -687,7 +687,7 @@ impl<'a> ExtCtxt<'a> {
                 mark: Mark::root(),
                 depth: 0,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                directory_ownership: DirectoryOwnership::Owned,
+                directory_ownership: DirectoryOwnership::Owned { relative: None },
             },
             expansions: HashMap::new(),
         }

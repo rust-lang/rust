@@ -93,7 +93,8 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
                        &path.join("test/ui"),
                        &path.join("test/compile-fail"),
                        &path.join("test/compile-fail-fulldeps"),
-                       &path.join("test/parse-fail"),],
+                       &path.join("test/parse-fail"),
+                       &path.join("test/ui"),],
                      &mut |path| super::filter_dirs(path),
                      &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();

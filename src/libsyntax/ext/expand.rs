@@ -976,7 +976,8 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 if inline_module {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
-                        self.cx.current_expansion.directory_ownership = DirectoryOwnership::Owned;
+                        self.cx.current_expansion.directory_ownership =
+                            DirectoryOwnership::Owned { relative: None };
                         module.directory.push(&*path.as_str());
                     } else {
                         module.directory.push(&*item.ident.name.as_str());
@@ -988,8 +989,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         other => PathBuf::from(other.to_string()),
                     };
                     let directory_ownership = match path.file_name().unwrap().to_str() {
-                        Some("mod.rs") => DirectoryOwnership::Owned,
-                        _ => DirectoryOwnership::UnownedViaMod(false),
+                        Some("mod.rs") => DirectoryOwnership::Owned { relative: None },
+                        Some(_) => DirectoryOwnership::Owned {
+                            relative: Some(item.ident),
+                        },
+                        None => DirectoryOwnership::UnownedViaMod(false),
                     };
                     path.pop();
                     module.directory = path;

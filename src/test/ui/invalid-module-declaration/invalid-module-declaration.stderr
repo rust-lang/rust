@@ -1,14 +1,10 @@
-error: cannot declare a new module at this location
+error[E0583]: file not found for module `baz`
   --> $DIR/auxiliary/foo/bar.rs:11:9
    |
 11 | pub mod baz;
    |         ^^^
    |
-note: maybe move this module `$DIR/auxiliary/foo/bar.rs` to its own directory via `$DIR/auxiliary/foo/bar/mod.rs`
-  --> $DIR/auxiliary/foo/bar.rs:11:9
-   |
-11 | pub mod baz;
-   |         ^^^
+   = help: name the file either bar/baz.rs or bar/baz/mod.rs inside the directory "$DIR/auxiliary/foo"
 
 error: aborting due to previous error
 
