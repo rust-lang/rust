@@ -316,8 +316,8 @@ pub fn read_utf8<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// # }
 /// ```
 #[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
-pub fn write<P: AsRef<Path>>(path: P, contents: &[u8]) -> io::Result<()> {
-    File::create(path)?.write_all(contents)
+pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
+    File::create(path)?.write_all(contents.as_ref())
 }
 
 impl File {
@@ -3039,7 +3039,7 @@ mod tests {
 
         let tmpdir = tmpdir();
 
-        check!(fs::write(&tmpdir.join("test"), &bytes));
+        check!(fs::write(&tmpdir.join("test"), &bytes[..]));
         let v = check!(fs::read(&tmpdir.join("test")));
         assert!(v == &bytes[..]);
 
