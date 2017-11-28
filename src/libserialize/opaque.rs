@@ -162,6 +162,10 @@ impl<'a> Decoder<'a> {
         self.position
     }
 
+    pub fn set_position(&mut self, pos: usize) {
+        self.position = pos
+    }
+
     pub fn advance(&mut self, bytes: usize) {
         self.position += bytes;
     }

@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if !self.dep_graph.is_fully_enabled() {
                     return None;
                 }
-                match self.dep_graph.try_mark_green(self, &dep_node) {
+                match self.dep_graph.try_mark_green(self.global_tcx(), &dep_node) {
                     Some(dep_node_index) => {
                         debug_assert!(self.dep_graph.is_green(dep_node_index));
                         self.dep_graph.read_index(dep_node_index);
