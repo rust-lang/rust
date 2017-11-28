@@ -289,21 +289,18 @@ impl<'sess> OnDiskCache<'sess> {
         debug_assert!(prev.is_none());
     }
 
-    pub fn load_query_result<'a, 'tcx, T>(&self,
-                                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                          dep_node_index: SerializedDepNodeIndex)
-                                          -> T
+    /// Returns the cached query result if there is something in the cache for
+    /// the given SerializedDepNodeIndex. Otherwise returns None.
+    pub fn try_load_query_result<'a, 'tcx, T>(&self,
+                                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                              dep_node_index: SerializedDepNodeIndex)
+                                              -> Option<T>
         where T: Decodable
     {
-        let result = self.load_indexed(tcx,
-                                       dep_node_index,
-                                       &self.query_result_index,
-                                       "query result");
-        if let Some(result) = result {
-            result
-        } else {
-            bug!("Could not find query result for key {:?}", dep_node_index)
-        }
+        self.load_indexed(tcx,
+                          dep_node_index,
+                          &self.query_result_index,
+                          "query result")
     }
 
     /// Store a diagnostic emitted during computation of an anonymous query.
