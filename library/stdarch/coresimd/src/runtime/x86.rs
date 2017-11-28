@@ -29,6 +29,9 @@ use super::bit;
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __unstable_detect_feature {
+    ("mmx") => {
+        $crate::vendor::__unstable_detect_feature(
+            $crate::vendor::__Feature::mmx{})  };
     ("sse") => {
         $crate::vendor::__unstable_detect_feature(
             $crate::vendor::__Feature::sse{})  };
@@ -165,6 +168,8 @@ macro_rules! __unstable_detect_feature {
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 pub enum __Feature {
+    /// MMX
+    mmx,
     /// SSE (Streaming SIMD Extensions)
     sse,
     /// SSE2 (Streaming SIMD Extensions 2)
@@ -332,6 +337,7 @@ pub fn detect_features() -> usize {
         enable(proc_info_ecx, 20, __Feature::sse4_2);
         enable(proc_info_ecx, 23, __Feature::popcnt);
         enable(proc_info_edx, 24, __Feature::fxsr);
+        enable(proc_info_edx, 23, __Feature::mmx);
         enable(proc_info_edx, 25, __Feature::sse);
         enable(proc_info_edx, 26, __Feature::sse2);
 

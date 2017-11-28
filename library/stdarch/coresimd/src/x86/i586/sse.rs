@@ -626,10 +626,6 @@ pub unsafe fn _mm_cvt_ss2si(a: f32x4) -> i32 {
     _mm_cvtss_si32(a)
 }
 
-// Blocked by https://github.com/rust-lang-nursery/stdsimd/issues/74
-// pub unsafe fn _mm_cvtps_pi32(a: f32x4) -> i32x2
-// pub unsafe fn _mm_cvt_ps2pi(a: f32x4) -> i32x2 { _mm_cvtps_pi32(a) }
-
 /// Convert the lowest 32 bit float in the input vector to a 32 bit integer
 /// with
 /// truncation.
@@ -654,10 +650,6 @@ pub unsafe fn _mm_cvttss_si32(a: f32x4) -> i32 {
 pub unsafe fn _mm_cvtt_ss2si(a: f32x4) -> i32 {
     _mm_cvttss_si32(a)
 }
-
-// Blocked by https://github.com/rust-lang-nursery/stdsimd/issues/74
-// pub unsafe fn _mm_cvttps_pi32(a: f32x4) -> i32x2;
-// pub unsafe fn _mm_cvtt_ps2pi(a: f32x4) -> i32x2 { _mm_cvttps_pi32(a) }
 
 /// Extract the lowest 32 bit float from the input vector.
 #[inline(always)]
