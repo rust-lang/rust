@@ -370,7 +370,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
     let size_hint = r.size_hint();
     if size_hint > 0 {
         unsafe {
-            g.buf.reserve(size_hint);
+            g.buf.reserve(size_hint.saturating_add(1));
             let capacity = g.buf.capacity();
             g.buf.set_len(capacity);
             r.initializer().initialize(&mut g.buf[g.len..]);
