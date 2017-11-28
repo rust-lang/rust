@@ -555,6 +555,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>)
         -> (DiagnosticStyledString, DiagnosticStyledString)
     {
+        fn equals<'tcx>(a: &Ty<'tcx>, b: &Ty<'tcx>) -> bool {
+            match (&a.sty, &b.sty) {
+                (a, b) if *a == *b => true,
+                (&ty::TyInt(_), &ty::TyInfer(ty::InferTy::IntVar(_))) |
+                (&ty::TyInfer(ty::InferTy::IntVar(_)), &ty::TyInt(_)) |
+                (&ty::TyInfer(ty::InferTy::IntVar(_)), &ty::TyInfer(ty::InferTy::IntVar(_))) |
+                (&ty::TyFloat(_), &ty::TyInfer(ty::InferTy::FloatVar(_))) |
+                (&ty::TyInfer(ty::InferTy::FloatVar(_)), &ty::TyFloat(_)) |
+                (&ty::TyInfer(ty::InferTy::FloatVar(_)),
+                 &ty::TyInfer(ty::InferTy::FloatVar(_))) => true,
+                _ => false,
+            }
+        }
+
         match (&t1.sty, &t2.sty) {
             (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
@@ -672,6 +686,50 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                      DiagnosticStyledString::highlighted(format!("{}", t2)))
                 }
             }
+
+            // When finding T != &T, hightlight only the borrow
+            (&ty::TyRef(_, ref tnm1), _) if equals(&tnm1.ty, &t2) => {
+                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                values.0.push_highlighted(format!("&{}", if tnm1.mutbl == hir::MutMutable {
+                    "mut "
+                 } else {
+                     ""
+                 }));
+                values.0.push_normal(format!("{}", tnm1.ty));
+                values.1.push_normal(format!("{}", t2));
+                values
+            }
+            (_, &ty::TyRef(_, ref tnm2)) if equals(&t1, &tnm2.ty) => {
+                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                values.1.push_highlighted(format!("&{}", if tnm2.mutbl == hir::MutMutable {
+                    "mut "
+                 } else {
+                     ""
+                 }));
+                values.0.push_normal(format!("{}", t1));
+                values.1.push_normal(format!("{}", tnm2.ty));
+                values
+            }
+
+            // When encountering &T != &mut T, highlight only the borrow
+            (&ty::TyRef(_, ref tnm1), &ty::TyRef(_, ref tnm2)) if equals(&tnm1.ty, &tnm2.ty) => {
+                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                values.0.push_highlighted(format!("&{}", if tnm1.mutbl == hir::MutMutable {
+                    "mut "
+                 } else {
+                     ""
+                 }));
+                values.1.push_highlighted(format!("&{}", if tnm2.mutbl == hir::MutMutable {
+                    "mut "
+                 } else {
+                     ""
+                 }));
+
+                values.0.push_normal(format!("{}", tnm1.ty));
+                values.1.push_normal(format!("{}", tnm2.ty));
+                values
+            }
+
             _ => {
                 if t1 == t2 {
                     // The two types are the same, elide and don't highlight.
