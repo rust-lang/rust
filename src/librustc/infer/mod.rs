@@ -1201,6 +1201,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// translate them into the form that the NLL solver
     /// understands. See the NLL module for mode details.
     pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
+        assert!(self.region_obligations.borrow().is_empty(),
+                "region_obligations not empty: {:#?}",
+                self.region_obligations.borrow());
+
         self.borrow_region_constraints().take_and_reset_data()
     }
 
