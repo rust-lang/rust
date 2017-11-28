@@ -3212,6 +3212,18 @@ impl<'a> Resolver<'a> {
         let name = path[path.len() - 1].node.name;
         // Make sure error reporting is deterministic.
         names.sort_by_key(|name| name.as_str());
+
+
+        // Ugly code, just to see if using case insensitive comparison will help
+        let exact_match = names.iter().find(|x| x.as_str().to_uppercase() == name.as_str().to_uppercase());
+        // do not use Levenstein, just return the value we found (if any)
+        if exact_match.is_some() {
+            return match exact_match {
+                Some(found) => Some(found.clone()),
+                _ => None,
+            }
+        }
+
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
             Some(found) if found != name => Some(found),
             _ => None,
