@@ -4935,8 +4935,16 @@ mod c {
             // compiler-rt's build system already
             cfg.flag("-fno-builtin");
             cfg.flag("-fvisibility=hidden");
-            cfg.flag("-fomit-frame-pointer");
             cfg.flag("-ffreestanding");
+            // Avoid the following warning appearing once **per file**:
+            // clang: warning: optimization flag '-fomit-frame-pointer' is not supported for target 'armv7' [-Wignored-optimization-argument]
+            //
+            // Note that compiler-rt's build system also checks
+            //
+            // `check_cxx_compiler_flag(-fomit-frame-pointer COMPILER_RT_HAS_FOMIT_FRAME_POINTER_FLAG)`
+            //
+            // in https://github.com/rust-lang/compiler-rt/blob/c8fbcb3/cmake/config-ix.cmake#L19.
+            cfg.flag_if_supported("-fomit-frame-pointer");
             cfg.define("VISIBILITY_HIDDEN", None);
         }
 
