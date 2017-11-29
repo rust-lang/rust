@@ -1088,15 +1088,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         match self.is_knowable(stack) {
-            Some(Conflict::Downstream { used_to_be_broken: true }) if false => {
-                // ignore this for future-compat.
-            }
             None => {}
             Some(conflict) => {
                 debug!("coherence stage: not knowable");
                 // Heuristics: show the diagnostics when there are no candidates in crate.
                 let candidate_set = self.assemble_candidates(stack)?;
-                if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
+                if !candidate_set.ambiguous && candidate_set.vec.iter().all(|c| {
+                    !self.evaluate_candidate(stack, &c).may_apply()
+                }) {
                     let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                     let self_ty = trait_ref.self_ty();
                     let trait_desc = trait_ref.to_string();
