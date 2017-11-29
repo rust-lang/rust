@@ -8,8 +8,7 @@
 //!
 //! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
-use v64::{i16x4, i32x2, i8x8};
-use x86::__m64;
+use v64::{__m64, i16x4, i32x2, i8x8};
 use core::mem;
 
 #[cfg(test)]
@@ -59,9 +58,8 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use v64::{i16x4, i32x2, i8x8};
+    use v64::{__m64, i16x4, i32x2, i8x8};
     use x86::i686::mmx;
-    use x86::__m64;
     use stdsimd_test::simd_test;
 
     #[simd_test = "sse"] // FIXME: should be mmx

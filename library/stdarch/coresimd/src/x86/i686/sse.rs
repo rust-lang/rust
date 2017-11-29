@@ -1,8 +1,7 @@
 //! `i686` Streaming SIMD Extensions (SSE)
 
 use v128::f32x4;
-use v64::{i16x4, i32x2, i8x8, u16x4, u8x8};
-use x86::__m64;
+use v64::{__m64, i16x4, i32x2, i8x8, u16x4, u8x8};
 use core::mem;
 use x86::i586;
 use x86::i686::mmx;

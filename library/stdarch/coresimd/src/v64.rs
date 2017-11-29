@@ -29,12 +29,20 @@ define_impl! { u8x8, u8, 8, i8x8, x0, x1, x2, x3, x4, x5, x6, x7 }
 define_ty! { i8x8, i8, i8, i8, i8, i8, i8, i8, i8 }
 define_impl! { i8x8, i8, 8, i8x8, x0, x1, x2, x3, x4, x5, x6, x7 }
 
-define_from!(u32x2, i32x2, u16x4, i16x4, u8x8, i8x8);
-define_from!(i32x2, u32x2, u16x4, i16x4, u8x8, i8x8);
-define_from!(u16x4, u32x2, i32x2, i16x4, u8x8, i8x8);
-define_from!(i16x4, u32x2, i32x2, u16x4, u8x8, i8x8);
-define_from!(u8x8, u32x2, i32x2, u16x4, i16x4, i8x8);
-define_from!(i8x8, u32x2, i32x2, u16x4, i16x4, u8x8);
+// On `x86` corresponds to llvm's `x86_mmx` type.
+define_ty_doc! {
+    __m64, i64 |
+    /// 64-bit wide integer vector type.
+}
+define_impl! { __m64, i64, 1, __m64, x0 }
+
+define_from!(u32x2, i32x2, u16x4, i16x4, u8x8, i8x8, __m64);
+define_from!(i32x2, u32x2, u16x4, i16x4, u8x8, i8x8, __m64);
+define_from!(u16x4, u32x2, i32x2, i16x4, u8x8, i8x8, __m64);
+define_from!(i16x4, u32x2, i32x2, u16x4, u8x8, i8x8, __m64);
+define_from!(u8x8, u32x2, i32x2, u16x4, i16x4, i8x8, __m64);
+define_from!(i8x8, u32x2, i32x2, u16x4, i16x4, u8x8, __m64);
+define_from!(__m64, i8x8, u32x2, i32x2, u16x4, i16x4, u8x8);
 
 define_common_ops!(f32x2, u32x2, i32x2, u16x4, i16x4, u8x8, i8x8);
 define_float_ops!(f32x2);
@@ -67,7 +75,9 @@ define_casts!(
     (u16x4, u32x4, as_u32x4),
     (u16x4, i32x4, as_i32x4),
     (u32x2, u64x2, as_u64x2),
-    (u32x2, i64x2, as_i64x2)
+    (u32x2, i64x2, as_i64x2) /* FIXME:
+                              * (__m64, __m128i, as___m128i),
+                              * (__m64, __m256i, as___m256i) */
 );
 
 #[cfg(test)]
