@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:plugin_crate_outlive_expansion_phase.rs
+// aux-build:outlive-expansion-phase.rs
 // ignore-stage1
 
 #![feature(plugin)]
-#![plugin(plugin_crate_outlive_expansion_phase)]
+#![plugin(outlive_expansion_phase)]
 
 pub fn main() {}
