@@ -634,6 +634,7 @@ impl Rewrite for ast::Block {
         }
 
         let prefix = block_prefix(context, self, shape)?;
+        let shape = shape.offset_left(last_line_width(&prefix))?;
 
         let result = rewrite_block_with_visitor(context, &prefix, self, shape, false);
         if let Some(ref result_str) = result {
