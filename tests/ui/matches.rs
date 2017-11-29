@@ -285,6 +285,14 @@ fn match_wild_err_arm() {
         Err(_) => println!("err")
     }
 
+    // this is a current false positive, see #1996
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(x) if x*x == 64 => println!("ok 64"),
+        Ok(_) => println!("ok"),
+        Err(_) => println!("err")
+    }
+
     match (x, Some(1i32)) {
         (Ok(x), Some(_)) => println!("ok {}", x),
         (Ok(_), Some(x)) => println!("ok {}", x),
