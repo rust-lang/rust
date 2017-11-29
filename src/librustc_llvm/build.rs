@@ -150,6 +150,7 @@ fn main() {
         .header("../rustllvm/ArchiveWrapper.cpp")
         .clang_arg("-DBINDGEN_NO_TLS")
         .clang_args(&["-x", "c++"])
+        .enable_cxx_namespaces()
         .rust_target(bindgen::RustTarget::Nightly)
         .whitelist_recursively(false)
         .whitelist_type("(LLVM)?Rust.*")
@@ -182,7 +183,6 @@ fn main() {
         "LLVMTwineRef",
         "LLVMTypeRef",
         "LLVMValueRef",
-        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
     ].into_iter() {
         builder = builder
             .whitelist_type(visible_type);
@@ -216,6 +216,7 @@ fn main() {
         "RustStringRef",
         "llvm::DIBuilder",
         "llvm::DiagnosticInfo",
+        "llvm::LLVMContext",
         "llvm::OperandBundleDef",
         "llvm::SMDiagnostic",
         // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
@@ -264,7 +265,9 @@ fn main() {
         // https://github.com/rust-lang-nursery/rust-bindgen/issues/1161.
         "llvm::CallingConv::.*",
         // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
-        "llvm::LLVMContext.*",
+        // Opens the whole namespace, wtf?
+        "llvm::LLVMContext__bindgen_ty_1",
+//      llvm::LLVMContext_DiagnosticHandlerTy
     ].into_iter() {
         builder = builder
             .whitelist_type(rustified_enum)
@@ -525,10 +528,23 @@ fn main() {
         builder = builder.clang_arg(flag);
     }
 
+    builder = builder.clang_arg(
+        "-I/home/tduberstein/local/clang/clang+llvm-5.0.0-linux-x86_64-sles11.3/lib/clang/5.0.0/include",
+    );
+    let libclang_path_var = "LIBCLANG_PATH";
+    let var = env::var(libclang_path_var);
+    env::set_var(libclang_path_var, "/home/tduberstein/local/clang/clang+llvm-5.0.0-linux-x86_64-sles11.3/lib");
     builder.generate()
         .expect("Failed to generate bindings")
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Failed to write bindings");
+    match var {
+       Ok(var) => env::set_var(libclang_path_var, var),
+       Err(e) => match e {
+           env::VarError::NotPresent => (),
+           env::VarError::NotUnicode(var) => env::set_var(libclang_path_var, var),
+       },
+    }
 
     for component in &components {
         let mut flag = String::from("-DLLVM_COMPONENT_");

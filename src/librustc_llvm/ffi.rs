@@ -77,13 +77,16 @@ pub use LLVMTypeKind::LLVMVectorTypeKind as Vector;
 pub use LLVMTypeKind::LLVMX86_FP80TypeKind as X86_FP80;
 pub use LLVMTypeRef as TypeRef;
 pub use LLVMValueRef as ValueRef;
-pub use llvm_CallingConv__bindgen_ty_1 as CallConv;
-pub use llvm_LLVMContext__bindgen_ty_1 as MetadataType;
+pub use llvm::CallingConv::_bindgen_ty_1 as CallConv;
+pub use llvm::LLVMContext__bindgen_ty_1 as MetadataType;
 
-pub type LLVMSMDiagnosticRef = *const llvm_SMDiagnostic;
+pub type LLVMSMDiagnosticRef = *const llvm::SMDiagnostic;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
+
+pub use root::*;
+pub use llvm::*;
 
 //#[allow(dead_code)]
 //#[allow(non_camel_case_types)]
