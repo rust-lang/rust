@@ -38,7 +38,7 @@ note: potential failure(s)
    |
 31 |             panic!();
    |             ^^^^^^^^^
-   = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
   --> $DIR/fallible_impl_from.rs:37:1
@@ -65,7 +65,7 @@ note: potential failure(s)
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 43 |             panic!("{:?}", s);
    |             ^^^^^^^^^^^^^^^^^^
-   = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
   --> $DIR/fallible_impl_from.rs:55:1
@@ -87,5 +87,5 @@ note: potential failure(s)
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 58 |             panic!("{:?}", s);
    |             ^^^^^^^^^^^^^^^^^^
-   = note: this error originates in a macro outside of the current crate (run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
