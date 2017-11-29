@@ -217,6 +217,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub IRREFUTABLE_LET_PATTERN,
+    Error,
+    "detects irrefutable patterns in if-let and while-let statements"
+}
+
+declare_lint! {
     pub UNUSED_MUT,
     Warn,
     "detect mut variables which don't need to be mutable"
@@ -263,6 +269,7 @@ impl LintPass for HardwiredLints {
             LATE_BOUND_LIFETIME_ARGUMENTS,
             DEPRECATED,
             UNUSED_UNSAFE,
+            IRREFUTABLE_LET_PATTERN,
             UNUSED_MUT
         )
     }
