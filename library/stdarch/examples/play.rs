@@ -24,11 +24,11 @@ mod example {
 
         let mut needle = needle.to_string().into_bytes();
         needle.resize(16, 0);
-        let vneedle = vendor::__m128i::from(s::u8x16::load(&needle, 0));
+        let vneedle = s::__m128i::from(s::u8x16::load(&needle, 0));
 
         let mut haystack = haystack.to_string().into_bytes();
         haystack.resize(16, 0);
-        let vhaystack = vendor::__m128i::from(s::u8x16::load(&haystack, 0));
+        let vhaystack = s::__m128i::from(s::u8x16::load(&haystack, 0));
 
         unsafe {
             vendor::_mm_cmpestri(

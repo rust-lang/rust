@@ -42,14 +42,24 @@ define_impl! {
     x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15
 }
 
-define_from!(u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16, i8x16);
-define_from!(i64x2, u64x2, u32x4, i32x4, u16x8, i16x8, u8x16, i8x16);
-define_from!(u32x4, u64x2, i64x2, i32x4, u16x8, i16x8, u8x16, i8x16);
-define_from!(i32x4, u64x2, i64x2, u32x4, u16x8, i16x8, u8x16, i8x16);
-define_from!(u16x8, u64x2, i64x2, u32x4, i32x4, i16x8, u8x16, i8x16);
-define_from!(i16x8, u64x2, i64x2, u32x4, i32x4, u16x8, u8x16, i8x16);
-define_from!(u8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, i8x16);
-define_from!(i8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16);
+define_ty_doc! {
+    __m128i, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8 |
+    /// 128-bit wide signed integer vector type
+}
+define_impl! {
+    __m128i, i8, 16, __m128i,
+    x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15
+}
+
+define_from!(u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16, i8x16, __m128i);
+define_from!(i64x2, u64x2, u32x4, i32x4, u16x8, i16x8, u8x16, i8x16, __m128i);
+define_from!(u32x4, u64x2, i64x2, i32x4, u16x8, i16x8, u8x16, i8x16, __m128i);
+define_from!(i32x4, u64x2, i64x2, u32x4, u16x8, i16x8, u8x16, i8x16, __m128i);
+define_from!(u16x8, u64x2, i64x2, u32x4, i32x4, i16x8, u8x16, i8x16, __m128i);
+define_from!(i16x8, u64x2, i64x2, u32x4, i32x4, u16x8, u8x16, i8x16, __m128i);
+define_from!(u8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, i8x16, __m128i);
+define_from!(i8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16, __m128i);
+define_from!(__m128i, i8x16, u64x2, i64x2, u32x4, i32x4, u16x8, i16x8, u8x16);
 
 define_common_ops!(
     f64x2,
@@ -61,7 +71,8 @@ define_common_ops!(
     u16x8,
     i16x8,
     u8x16,
-    i8x16
+    i8x16,
+    __m128i
 );
 define_float_ops!(f64x2, f32x4);
 define_integer_ops!(
@@ -72,9 +83,10 @@ define_integer_ops!(
     (u16x8, u16),
     (i16x8, i16),
     (u8x16, u8),
-    (i8x16, i8)
+    (i8x16, i8),
+    (__m128i, i8)
 );
-define_signed_integer_ops!(i64x2, i32x4, i16x8, i8x16);
+define_signed_integer_ops!(i64x2, i32x4, i16x8, i8x16, __m128i);
 define_casts!(
     (f64x2, f32x2, as_f32x2),
     (f64x2, u64x2, as_u64x2),

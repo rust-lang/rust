@@ -6,7 +6,6 @@
 use stdsimd_test::assert_instr;
 
 use v128::*;
-use x86::__m128i;
 
 /// String contains unsigned 8-bit characters *(Default)*
 pub const _SIDD_UBYTE_OPS: i8 = 0b0000_0000;
@@ -103,8 +102,8 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
 ///
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{__m128i, _mm_cmpistri, _SIDD_CMP_EQUAL_ORDERED};
+/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_EQUAL_ORDERED};
 ///
 /// let haystack = b"This is a long string of text data\r\n\tthat extends
 /// multiple lines";
@@ -145,8 +144,8 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{__m128i, _mm_cmpistri, _SIDD_CMP_EQUAL_ANY};
+/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_EQUAL_ANY};
 ///
 /// // Ensure your input is 16 byte aligned
 /// let password = b"hunter2\0\0\0\0\0\0\0\0\0";
@@ -186,8 +185,8 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{__m128i, _mm_cmpistri, _SIDD_CMP_RANGES};
+/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_RANGES};
 /// # let b = __m128i::from(u8x16::load(b":;<=>?@[\\]^_`abc", 0));
 ///
 /// // Specify the ranges of values to be searched for [A-Za-z0-9].
@@ -225,8 +224,8 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
-/// use stdsimd::simd::u16x8;
-/// use stdsimd::vendor::{__m128i, _mm_cmpistri};
+/// use stdsimd::simd::{__m128i, u16x8};
+/// use stdsimd::vendor::{_mm_cmpistri};
 /// use stdsimd::vendor::{_SIDD_UWORD_OPS, _SIDD_CMP_EQUAL_EACH};
 ///
 /// # let mut some_utf16_words = [0u16; 8];
@@ -399,8 +398,8 @@ pub unsafe fn _mm_cmpestrm(
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
 ///
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{__m128i, _mm_cmpestri, _SIDD_CMP_EQUAL_ORDERED};
+/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::vendor::{_mm_cmpestri, _SIDD_CMP_EQUAL_ORDERED};
 ///
 /// // The string we want to find a substring in
 /// let haystack = b"Split \r\n\t line  ";
@@ -612,7 +611,6 @@ mod tests {
 
     use std::ptr;
     use v128::*;
-    use x86::__m128i;
     use x86::i586::sse42;
 
     // Currently one cannot `load` a &[u8] that is is less than 16

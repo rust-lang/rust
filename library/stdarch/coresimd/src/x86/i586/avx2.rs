@@ -24,7 +24,7 @@ use simd_llvm::{simd_shuffle16, simd_shuffle32};
 
 use v256::*;
 use v128::*;
-use x86::{__m128i, __m256i};
+use x86::__m256i;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -2911,7 +2911,7 @@ mod tests {
     use v256::*;
     use v128::*;
     use x86::i586::avx2;
-    use x86::{__m128i, __m256i};
+    use x86::__m256i;
     use std;
 
     #[simd_test = "avx2"]

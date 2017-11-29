@@ -1,7 +1,6 @@
 //! `i686`'s Streaming SIMD Extensions 4.1 (SSE4.1)
 
 use v128::*;
-use x86::__m128i;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -164,7 +163,6 @@ mod tests {
     use stdsimd_test::simd_test;
     use x86::i686::sse41;
     use v128::*;
-    use x86::__m128i;
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_extract_epi64() {

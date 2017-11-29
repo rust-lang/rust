@@ -1,6 +1,5 @@
 //! Streaming SIMD Extensions 3 (SSE3)
 
-use x86::__m128i;
 use simd_llvm::{simd_shuffle2, simd_shuffle4};
 use v128::*;
 
@@ -184,7 +183,8 @@ mod tests {
     #[simd_test = "sse3"]
     unsafe fn _mm_lddqu_si128() {
         let a =
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
+                .into();
         let r = sse3::_mm_lddqu_si128(&a);
         assert_eq!(a, r);
     }
