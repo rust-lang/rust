@@ -1668,7 +1668,9 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 self.visit_expr(expr);
             },
             ExprCall(ref f, ref args) => {
-                for (ty, expr) in self.cx.tables.expr_ty(f).fn_sig(self.cx.tcx).inputs().skip_binder().iter().zip(args) {
+                self.visit_expr(f);
+                for expr in args {
+                    let ty = self.cx.tables.expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
                     if let ty::TyRef(_, mutbl) = ty.sty {
                         if mutbl.mutbl == MutMutable {
