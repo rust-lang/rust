@@ -1428,15 +1428,45 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Cloning two elements from a slice into another:
     ///
-    /// dst.clone_from_slice(&src);
-    /// assert!(dst == [1, 2, 3]);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.clone_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `clone_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].clone_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.clone_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`copy_from_slice`]: #method.copy_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
@@ -1454,15 +1484,45 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Copying two elements from a slice into another:
     ///
-    /// dst.copy_from_slice(&src);
-    /// assert_eq!(src, dst);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.copy_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `copy_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].copy_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.copy_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`clone_from_slice`]: #method.clone_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
@@ -1478,16 +1538,49 @@ impl<T> [T] {
     ///
     /// # Example
     ///
+    /// Swapping two elements across slices:
+    ///
     /// ```
     /// #![feature(swap_with_slice)]
     ///
-    /// let mut slice1 = [1, 2, 3];
-    /// let mut slice2 = [7, 8, 9];
+    /// let mut slice1 = [0, 0];
+    /// let mut slice2 = [1, 2, 3, 4];
     ///
-    /// slice1.swap_with_slice(&mut slice2);
-    /// assert_eq!(slice1, [7, 8, 9]);
-    /// assert_eq!(slice2, [1, 2, 3]);
+    /// slice1.swap_with_slice(&mut slice2[2..]);
+    ///
+    /// assert_eq!(slice1, [3, 4]);
+    /// assert_eq!(slice2, [1, 2, 0, 0]);
     /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference to a
+    /// particular piece of data in a particular scope. Because of this,
+    /// attempting to use `swap_with_slice` on a single slice will result in
+    /// a compile failure:
+    ///
+    /// ```compile_fail
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    /// slice[..2].swap_with_slice(&mut slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// mutable sub-slices from a slice:
+    ///
+    /// ```
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.swap_with_slice(&mut right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 1, 2]);
+    /// ```
+    ///
+    /// [`split_at_mut`]: #method.split_at_mut
     #[unstable(feature = "swap_with_slice", issue = "44030")]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
         core_slice::SliceExt::swap_with_slice(self, other)
