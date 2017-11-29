@@ -50,9 +50,9 @@ pub const _SIDD_UNIT_MASK: i8 = 0b0100_0000;
 #[inline(always)]
 #[target_feature = "+sse4.2"]
 #[cfg_attr(test, assert_instr(pcmpistrm, imm8 = 0))]
-pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
+pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> __m128i {
     macro_rules! call {
-        ($imm8:expr) => { pcmpistrm128(a, b, $imm8) }
+        ($imm8:expr) => { __m128i::from(pcmpistrm128(i8x16::from(a), i8x16::from(b), $imm8)) }
     }
     constify_imm8!(imm8, call)
 }
@@ -102,23 +102,23 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
 ///
-/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::simd::u8x16;
 /// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_EQUAL_ORDERED};
 ///
 /// let haystack = b"This is a long string of text data\r\n\tthat extends
 /// multiple lines";
 /// let needle = b"\r\n\t\0\0\0\0\0\0\0\0\0\0\0\0\0";
 ///
-/// let a = __m128i::from(u8x16::load(needle, 0));
+/// let a = u8x16::load(needle, 0);
 /// let hop = 16;
 /// let mut indexes = Vec::new();
 ///
 /// // Chunk the haystack into 16 byte chunks and find
 /// // the first "\r\n\t" in the chunk.
 /// for (i, chunk) in haystack.chunks(hop).enumerate() {
-///     let b = __m128i::from(u8x16::load(chunk, 0));
+///     let b = u8x16::load(chunk, 0);
 ///     let idx = unsafe {
-///         _mm_cmpistri(a, b, _SIDD_CMP_EQUAL_ORDERED)
+///         _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_EQUAL_ORDERED)
 ///     };
 ///     if idx != 16 {
 ///        indexes.push((idx as usize) + (i * hop));
@@ -144,7 +144,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
-/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::simd::u8x16;
 /// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_EQUAL_ANY};
 ///
 /// // Ensure your input is 16 byte aligned
@@ -152,12 +152,12 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// let special_chars = b"!@#$%^&*()[]:;<>";
 ///
 /// // Load the input
-/// let a = __m128i::from(u8x16::load(special_chars, 0));
-/// let b = __m128i::from(u8x16::load(password, 0));
+/// let a = u8x16::load(special_chars, 0);
+/// let b = u8x16::load(password, 0);
 ///
 /// // Use _SIDD_CMP_EQUAL_ANY to find the index of any bytes in b
 /// let idx = unsafe {
-///     _mm_cmpistri(a, b, _SIDD_CMP_EQUAL_ANY)
+///     _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_EQUAL_ANY)
 /// };
 ///
 /// if idx < 16 {
@@ -185,18 +185,18 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
-/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::simd::u8x16;
 /// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_RANGES};
-/// # let b = __m128i::from(u8x16::load(b":;<=>?@[\\]^_`abc", 0));
+/// # let b = u8x16::load(b":;<=>?@[\\]^_`abc", 0);
 ///
 /// // Specify the ranges of values to be searched for [A-Za-z0-9].
-/// let a = __m128i::from(u8x16::load(b"AZaz09\0\0\0\0\0\0\0\0\0\0", 0));
+/// let a = u8x16::load(b"AZaz09\0\0\0\0\0\0\0\0\0\0", 0);
 ///
 /// // Use _SIDD_CMP_RANGES to find the index of first byte in ranges.
 /// // Which in this case will be the first alpha numeric byte found
 /// // in the string.
 /// let idx = unsafe {
-///     _mm_cmpistri(a, b, _SIDD_CMP_RANGES)
+///     _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_RANGES)
 /// };
 ///
 ///
@@ -224,7 +224,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
-/// use stdsimd::simd::{__m128i, u16x8};
+/// use stdsimd::simd::u16x8;
 /// use stdsimd::vendor::{_mm_cmpistri};
 /// use stdsimd::vendor::{_SIDD_UWORD_OPS, _SIDD_CMP_EQUAL_EACH};
 ///
@@ -233,14 +233,14 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 /// # '❤'.encode_utf16(&mut some_utf16_words);
 /// # '𝕊'.encode_utf16(&mut more_utf16_words);
 /// // Load the input
-/// let a = __m128i::from(u16x8::load(&some_utf16_words, 0));
-/// let b = __m128i::from(u16x8::load(&more_utf16_words, 0));
+/// let a = u16x8::load(&some_utf16_words, 0);
+/// let b = u16x8::load(&more_utf16_words, 0);
 ///
 /// // Specify _SIDD_UWORD_OPS to compare words instead of bytes, and
 /// // use _SIDD_CMP_EQUAL_EACH to compare the two strings.
 /// let idx = unsafe {
-///     _mm_cmpistri(a, b, _SIDD_UWORD_OPS | _SIDD_CMP_EQUAL_EACH)
-/// };
+/// _mm_cmpistri(a.into(), b.into(), _SIDD_UWORD_OPS |
+/// _SIDD_CMP_EQUAL_EACH) };
 ///
 /// if idx == 0 {
 ///     println!("16-bit unicode strings were equal!");
@@ -272,7 +272,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i8) -> u8x16 {
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
 pub unsafe fn _mm_cmpistri(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpistri128(a, b, $imm8) }
+        ($imm8:expr) => { pcmpistri128(i8x16::from(a), i8x16::from(b), $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -285,7 +285,9 @@ pub unsafe fn _mm_cmpistri(a: __m128i, b: __m128i, imm8: i8) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
 pub unsafe fn _mm_cmpistrz(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpistriz128(a, b, $imm8) }
+        ($imm8:expr) => { pcmpistriz128(i8x16::from(a),
+                                        i8x16::from(b),
+                                        $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -298,7 +300,7 @@ pub unsafe fn _mm_cmpistrz(a: __m128i, b: __m128i, imm8: i8) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
 pub unsafe fn _mm_cmpistrc(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpistric128(a, b, $imm8) }
+        ($imm8:expr) => { pcmpistric128(i8x16::from(a), i8x16::from(b), $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -311,7 +313,7 @@ pub unsafe fn _mm_cmpistrc(a: __m128i, b: __m128i, imm8: i8) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
 pub unsafe fn _mm_cmpistrs(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpistris128(a, b, $imm8) }
+        ($imm8:expr) => { pcmpistris128(i8x16::from(a), i8x16::from(b), $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -323,7 +325,7 @@ pub unsafe fn _mm_cmpistrs(a: __m128i, b: __m128i, imm8: i8) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
 pub unsafe fn _mm_cmpistro(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpistrio128(a, b, $imm8) }
+        ($imm8:expr) => { pcmpistrio128(i8x16::from(a), i8x16::from(b), $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -336,7 +338,7 @@ pub unsafe fn _mm_cmpistro(a: __m128i, b: __m128i, imm8: i8) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
 pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i8) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpistria128(a, b, $imm8) }
+        ($imm8:expr) => { pcmpistria128(i8x16::from(a), i8x16::from(b), $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -348,9 +350,11 @@ pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i8) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpestrm, imm8 = 0))]
 pub unsafe fn _mm_cmpestrm(
     a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
-) -> u8x16 {
+) -> __m128i {
     macro_rules! call {
-        ($imm8:expr) => { pcmpestrm128(a, la, b, lb, $imm8) }
+        ($imm8:expr) => { __m128i::from(pcmpestrm128(i8x16::from(a), la,
+                                                     i8x16::from(b), lb,
+                                                     $imm8)) }
     }
     constify_imm8!(imm8, call)
 }
@@ -398,7 +402,7 @@ pub unsafe fn _mm_cmpestrm(
 /// #         #[target_feature = "+sse4.2"]
 /// #         fn worker() {
 ///
-/// use stdsimd::simd::{__m128i, u8x16};
+/// use stdsimd::simd::u8x16;
 /// use stdsimd::vendor::{_mm_cmpestri, _SIDD_CMP_EQUAL_ORDERED};
 ///
 /// // The string we want to find a substring in
@@ -408,13 +412,13 @@ pub unsafe fn _mm_cmpestrm(
 /// // extra bytes we do not want to search for.
 /// let needle = b"\r\n\t ignore this ";
 ///
-/// let a = __m128i::from(u8x16::load(needle, 0));
-/// let b = __m128i::from(u8x16::load(haystack, 0));
+/// let a = u8x16::load(needle, 0);
+/// let b = u8x16::load(haystack, 0);
 ///
 /// // Note: We explicitly specify we only want to search `b` for the
 /// // first 3 characters of a.
 /// let idx = unsafe {
-///     _mm_cmpestri(a, 3, b, 15, _SIDD_CMP_EQUAL_ORDERED)
+///     _mm_cmpestri(a.into(), 3, b.into(), 15, _SIDD_CMP_EQUAL_ORDERED)
 /// };
 ///
 /// assert_eq!(idx, 6);
@@ -444,7 +448,7 @@ pub unsafe fn _mm_cmpestri(
     a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpestri128(a, la, b, lb, $imm8) }
+        ($imm8:expr) => { pcmpestri128(i8x16::from(a), la, i8x16::from(b), lb, $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -459,7 +463,7 @@ pub unsafe fn _mm_cmpestrz(
     a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpestriz128(a, la, b, lb, $imm8) }
+        ($imm8:expr) => { pcmpestriz128(i8x16::from(a), la, i8x16::from(b), lb, $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -474,7 +478,7 @@ pub unsafe fn _mm_cmpestrc(
     a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpestric128(a, la, b, lb, $imm8) }
+        ($imm8:expr) => { pcmpestric128(i8x16::from(a), la, i8x16::from(b), lb, $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -489,7 +493,7 @@ pub unsafe fn _mm_cmpestrs(
     a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpestris128(a, la, b, lb, $imm8) }
+        ($imm8:expr) => { pcmpestris128(i8x16::from(a), la, i8x16::from(b), lb, $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -504,7 +508,7 @@ pub unsafe fn _mm_cmpestro(
     a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpestrio128(a, la, b, lb, $imm8) }
+        ($imm8:expr) => { pcmpestrio128(i8x16::from(a), la, i8x16::from(b), lb, $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -520,7 +524,7 @@ pub unsafe fn _mm_cmpestra(
     a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
 ) -> i32 {
     macro_rules! call {
-        ($imm8:expr) => { pcmpestria128(a, la, b, lb, $imm8) }
+        ($imm8:expr) => { pcmpestria128(i8x16::from(a), la, i8x16::from(b), lb, $imm8) }
     }
     constify_imm8!(imm8, call)
 }
@@ -556,46 +560,33 @@ pub unsafe fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
 extern "C" {
     // SSE 4.2 string and text comparison ops
     #[link_name = "llvm.x86.sse42.pcmpestrm128"]
-    fn pcmpestrm128(
-        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
-    ) -> u8x16;
+    fn pcmpestrm128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> u8x16;
     #[link_name = "llvm.x86.sse42.pcmpestri128"]
-    fn pcmpestri128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8)
-        -> i32;
+    fn pcmpestri128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestriz128"]
-    fn pcmpestriz128(
-        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
-    ) -> i32;
+    fn pcmpestriz128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestric128"]
-    fn pcmpestric128(
-        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
-    ) -> i32;
+    fn pcmpestric128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestris128"]
-    fn pcmpestris128(
-        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
-    ) -> i32;
+    fn pcmpestris128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestrio128"]
-    fn pcmpestrio128(
-        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
-    ) -> i32;
+    fn pcmpestrio128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpestria128"]
-    fn pcmpestria128(
-        a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8
-    ) -> i32;
+    fn pcmpestria128(a: i8x16, la: i32, b: i8x16, lb: i32, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistrm128"]
-    fn pcmpistrm128(a: __m128i, b: __m128i, imm8: i8) -> u8x16;
+    fn pcmpistrm128(a: i8x16, b: i8x16, imm8: i8) -> i8x16;
     #[link_name = "llvm.x86.sse42.pcmpistri128"]
-    fn pcmpistri128(a: __m128i, b: __m128i, imm8: i8) -> i32;
+    fn pcmpistri128(a: i8x16, b: i8x16, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistriz128"]
-    fn pcmpistriz128(a: __m128i, b: __m128i, imm8: i8) -> i32;
+    fn pcmpistriz128(a: i8x16, b: i8x16, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistric128"]
-    fn pcmpistric128(a: __m128i, b: __m128i, imm8: i8) -> i32;
+    fn pcmpistric128(a: i8x16, b: i8x16, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistris128"]
-    fn pcmpistris128(a: __m128i, b: __m128i, imm8: i8) -> i32;
+    fn pcmpistris128(a: i8x16, b: i8x16, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistrio128"]
-    fn pcmpistrio128(a: __m128i, b: __m128i, imm8: i8) -> i32;
+    fn pcmpistrio128(a: i8x16, b: i8x16, imm8: i8) -> i32;
     #[link_name = "llvm.x86.sse42.pcmpistria128"]
-    fn pcmpistria128(a: __m128i, b: __m128i, imm8: i8) -> i32;
+    fn pcmpistria128(a: i8x16, b: i8x16, imm8: i8) -> i32;
     // SSE 4.2 CRC instructions
     #[link_name = "llvm.x86.sse42.crc32.32.8"]
     fn crc32_32_8(crc: u32, v: u8) -> u32;
@@ -640,7 +631,7 @@ mod tests {
             0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
             0xff, 0xff, 0xff, 0xff, 0x00, 0xff, 0xff, 0xff,
         );
-        assert_eq!(i, res);
+        assert_eq!(i, res.into());
     }
 
     #[simd_test = "sse4.2"]
@@ -715,7 +706,7 @@ mod tests {
             0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         );
-        assert_eq!(i, r);
+        assert_eq!(i, r.into());
     }
 
     #[simd_test = "sse4.2"]

@@ -34,7 +34,6 @@ define_ty_doc! {
     __m64, i64 |
     /// 64-bit wide integer vector type.
 }
-define_impl! { __m64, i64, 1, __m64, x0 }
 
 define_from!(u32x2, i32x2, u16x4, i16x4, u8x8, i8x8, __m64);
 define_from!(i32x2, u32x2, u16x4, i16x4, u8x8, i8x8, __m64);

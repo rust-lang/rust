@@ -314,11 +314,11 @@ pub unsafe fn _mm_subs_epu16(a: u16x8, b: u16x8) -> u16x8 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(pslldq, imm8 = 1))]
-pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
-    let (zero, imm8) = (__m128i::splat(0), imm8 as u32);
+pub unsafe fn _mm_slli_si128(a: i8x16, imm8: i32) -> i8x16 {
+    let (zero, imm8) = (i8x16::splat(0), imm8 as u32);
     macro_rules! shuffle {
         ($shift:expr) => {
-            simd_shuffle16::<__m128i, __m128i>(zero, a, [
+            simd_shuffle16::<i8x16, i8x16>(zero, a, [
                 16 - $shift, 17 - $shift,
                 18 - $shift, 19 - $shift,
                 20 - $shift, 21 - $shift,
@@ -355,7 +355,7 @@ pub unsafe fn _mm_slli_si128(a: __m128i, imm8: i32) -> __m128i {
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(pslldq, imm8 = 1))]
-pub unsafe fn _mm_bslli_si128(a: __m128i, imm8: i32) -> __m128i {
+pub unsafe fn _mm_bslli_si128(a: i8x16, imm8: i32) -> i8x16 {
     _mm_slli_si128(a, imm8)
 }
 
@@ -363,7 +363,7 @@ pub unsafe fn _mm_bslli_si128(a: __m128i, imm8: i32) -> __m128i {
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(psrldq, imm8 = 1))]
-pub unsafe fn _mm_bsrli_si128(a: __m128i, imm8: i32) -> __m128i {
+pub unsafe fn _mm_bsrli_si128(a: i8x16, imm8: i32) -> i8x16 {
     _mm_srli_si128(a, imm8)
 }
 
@@ -458,11 +458,11 @@ pub unsafe fn _mm_sra_epi32(a: i32x4, count: i32x4) -> i32x4 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(psrldq, imm8 = 1))]
-pub unsafe fn _mm_srli_si128(a: __m128i, imm8: i32) -> __m128i {
-    let (zero, imm8) = (__m128i::splat(0), imm8 as u32);
+pub unsafe fn _mm_srli_si128(a: i8x16, imm8: i32) -> i8x16 {
+    let (zero, imm8) = (i8x16::splat(0), imm8 as u32);
     macro_rules! shuffle {
         ($shift:expr) => {
-            simd_shuffle16::<__m128i, __m128i>(a, zero, [
+            simd_shuffle16::<i8x16, i8x16>(a, zero, [
                 0 + $shift, 1 + $shift,
                 2 + $shift, 3 + $shift,
                 4 + $shift, 5 + $shift,
@@ -555,7 +555,7 @@ pub unsafe fn _mm_srl_epi64(a: i64x2, count: i64x2) -> i64x2 {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(andps))]
 pub unsafe fn _mm_and_si128(a: __m128i, b: __m128i) -> __m128i {
-    a & b
+    mem::transmute(i8x16::from(a) & i8x16::from(b))
 }
 
 /// Compute the bitwise NOT of 128 bits (representing integer data) in `a` and
@@ -564,7 +564,7 @@ pub unsafe fn _mm_and_si128(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(andnps))]
 pub unsafe fn _mm_andnot_si128(a: __m128i, b: __m128i) -> __m128i {
-    (!a) & b
+    mem::transmute((!i8x16::from(a)) & i8x16::from(b))
 }
 
 /// Compute the bitwise OR of 128 bits (representing integer data) in `a` and
@@ -573,7 +573,7 @@ pub unsafe fn _mm_andnot_si128(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(orps))]
 pub unsafe fn _mm_or_si128(a: __m128i, b: __m128i) -> __m128i {
-    a | b
+    mem::transmute(i8x16::from(a) | i8x16::from(b))
 }
 
 /// Compute the bitwise XOR of 128 bits (representing integer data) in `a` and
@@ -582,7 +582,7 @@ pub unsafe fn _mm_or_si128(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(xorps))]
 pub unsafe fn _mm_xor_si128(a: __m128i, b: __m128i) -> __m128i {
-    a ^ b
+    mem::transmute(i8x16::from(a) ^ i8x16::from(b))
 }
 
 /// Compare packed 8-bit integers in `a` and `b` for equality.
@@ -820,7 +820,7 @@ pub unsafe fn _mm_setr_epi8(
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(xorps))]
 pub unsafe fn _mm_setzero_si128() -> __m128i {
-    __m128i::splat(0)
+    mem::transmute((0_i64, 0_i64))
 }
 
 /// Load 64-bit integer from memory into first element of returned vector.
@@ -848,7 +848,7 @@ pub unsafe fn _mm_load_si128(mem_addr: *const __m128i) -> __m128i {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(movups))]
 pub unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
-    let mut dst = __m128i::splat(mem::uninitialized());
+    let mut dst: __m128i = mem::uninitialized();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut __m128i as *mut u8,
@@ -2551,42 +2551,42 @@ mod tests {
     #[simd_test = "sse2"]
     unsafe fn _mm_slli_si128() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
-        let r = sse2::_mm_slli_si128(a, 1);
+        let r = sse2::_mm_slli_si128(a.into(), 1);
         let e =
-            __m128i::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        assert_eq!(r, e);
+            i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        assert_eq!(r, e.into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
-        let r = sse2::_mm_slli_si128(a, 15);
-        let e = __m128i::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
-        assert_eq!(r, e);
+        let r = sse2::_mm_slli_si128(a.into(), 15);
+        let e = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
+        assert_eq!(r, e.into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
-        let r = sse2::_mm_slli_si128(a, 16);
-        assert_eq!(r, __m128i::splat(0));
+        let r = sse2::_mm_slli_si128(a.into(), 16);
+        assert_eq!(r, i8x16::splat(0).into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
-        let r = sse2::_mm_slli_si128(a, -1);
-        assert_eq!(r, __m128i::splat(0));
+        let r = sse2::_mm_slli_si128(a.into(), -1);
+        assert_eq!(i8x16::splat(0), r.into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
-        let r = sse2::_mm_slli_si128(a, -0x80000000);
-        assert_eq!(r, __m128i::splat(0));
+        let r = sse2::_mm_slli_si128(a.into(), -0x80000000);
+        assert_eq!(r, i8x16::splat(0).into());
     }
 
     #[simd_test = "sse2"]
@@ -2673,44 +2673,44 @@ mod tests {
     #[simd_test = "sse2"]
     unsafe fn _mm_srli_si128() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
         let r = sse2::_mm_srli_si128(a, 1);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = __m128i::new(
+        let e = i8x16::new(
             2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0,
         );
-        assert_eq!(r, e);
+        assert_eq!(r, e.into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
         let r = sse2::_mm_srli_si128(a, 15);
-        let e = __m128i::new(16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        assert_eq!(r, e);
+        let e = i8x16::new(16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(r, e.into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
         let r = sse2::_mm_srli_si128(a, 16);
-        assert_eq!(r, __m128i::splat(0));
+        assert_eq!(r, i8x16::splat(0).into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
         let r = sse2::_mm_srli_si128(a, -1);
-        assert_eq!(r, __m128i::splat(0));
+        assert_eq!(r, i8x16::splat(0).into());
 
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = __m128i::new(
+        let a = i8x16::new(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
         );
         let r = sse2::_mm_srli_si128(a, -0x80000000);
-        assert_eq!(r, __m128i::splat(0));
+        assert_eq!(r, i8x16::splat(0).into());
     }
 
     #[simd_test = "sse2"]
@@ -2766,34 +2766,34 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_and_si128() {
-        let a = __m128i::splat(5);
-        let b = __m128i::splat(3);
-        let r = sse2::_mm_and_si128(a, b);
-        assert_eq!(r, __m128i::splat(1));
+        let a = i8x16::splat(5);
+        let b = i8x16::splat(3);
+        let r = sse2::_mm_and_si128(a.into(), b.into());
+        assert_eq!(r, i8x16::splat(1).into());
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_andnot_si128() {
-        let a = __m128i::splat(5);
-        let b = __m128i::splat(3);
-        let r = sse2::_mm_andnot_si128(a, b);
-        assert_eq!(r, __m128i::splat(2));
+        let a = i8x16::splat(5);
+        let b = i8x16::splat(3);
+        let r = sse2::_mm_andnot_si128(a.into(), b.into());
+        assert_eq!(r, i8x16::splat(2).into());
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_or_si128() {
-        let a = __m128i::splat(5);
-        let b = __m128i::splat(3);
-        let r = sse2::_mm_or_si128(a, b);
-        assert_eq!(r, __m128i::splat(7));
+        let a = i8x16::splat(5);
+        let b = i8x16::splat(3);
+        let r = sse2::_mm_or_si128(a.into(), b.into());
+        assert_eq!(r, i8x16::splat(7).into());
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_xor_si128() {
-        let a = __m128i::splat(5);
-        let b = __m128i::splat(3);
-        let r = sse2::_mm_xor_si128(a, b);
-        assert_eq!(r, __m128i::splat(6));
+        let a = i8x16::splat(5);
+        let b = i8x16::splat(3);
+        let r = sse2::_mm_xor_si128(a.into(), b.into());
+        assert_eq!(r, i8x16::splat(6).into());
     }
 
     #[simd_test = "sse2"]
@@ -2995,7 +2995,7 @@ mod tests {
     #[simd_test = "sse2"]
     unsafe fn _mm_setzero_si128() {
         let r = sse2::_mm_setzero_si128();
-        assert_eq!(r, __m128i::from(i64x2::splat(0)));
+        assert_eq!(r, i64x2::splat(0).into());
     }
 
     #[simd_test = "sse2"]
@@ -3030,26 +3030,26 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_store_si128() {
-        let a = __m128i::splat(9);
-        let mut r = __m128i::splat(0);
-        sse2::_mm_store_si128(&mut r as *mut _ as *mut __m128i, a);
+        let a = i8x16::splat(9);
+        let mut r = i8x16::splat(0);
+        sse2::_mm_store_si128(&mut r as *mut _ as *mut __m128i, a.into());
         assert_eq!(r, a);
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_storeu_si128() {
-        let a = __m128i::splat(9);
-        let mut r = __m128i::splat(0);
-        sse2::_mm_storeu_si128(&mut r as *mut _ as *mut __m128i, a);
+        let a = i8x16::splat(9);
+        let mut r = i8x16::splat(0);
+        sse2::_mm_storeu_si128(&mut r as *mut _ as *mut __m128i, a.into());
         assert_eq!(r, a);
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_storel_epi64() {
-        let a = __m128i::from(i64x2::new(2, 9));
-        let mut r = __m128i::splat(0);
+        let a = i64x2::new(2, 9).into();
+        let mut r = i8x16::splat(0);
         sse2::_mm_storel_epi64(&mut r as *mut _ as *mut __m128i, a);
-        assert_eq!(r, __m128i::from(i64x2::new(2, 0)));
+        assert_eq!(r, i64x2::new(2, 0).into());
     }
 
     #[simd_test = "sse2"]

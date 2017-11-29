@@ -67,7 +67,7 @@ pub unsafe fn _mm_hsub_ps(a: f32x4, b: f32x4) -> f32x4 {
 #[target_feature = "+sse3"]
 #[cfg_attr(test, assert_instr(lddqu))]
 pub unsafe fn _mm_lddqu_si128(mem_addr: *const __m128i) -> __m128i {
-    lddqu(mem_addr as *const _)
+    ::core::mem::transmute(lddqu(mem_addr as *const _))
 }
 
 /// Duplicate the low double-precision (64-bit) floating-point element
@@ -121,9 +121,8 @@ extern "C" {
     #[link_name = "llvm.x86.sse3.hsub.ps"]
     fn hsubps(a: f32x4, b: f32x4) -> f32x4;
     #[link_name = "llvm.x86.sse3.ldu.dq"]
-    fn lddqu(mem_addr: *const i8) -> __m128i;
+    fn lddqu(mem_addr: *const i8) -> i8x16;
 }
-
 
 #[cfg(test)]
 mod tests {
