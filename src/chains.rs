@@ -147,9 +147,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let last_subexpr = &subexpr_list[suffix_try_num];
     let subexpr_list = &subexpr_list[suffix_try_num..subexpr_num - prefix_try_num];
     let iter = subexpr_list.iter().skip(1).rev().zip(child_shape_iter);
-    let mut rewrites = iter.map(|(e, shape)| {
-        rewrite_chain_subexpr(e, total_span, context, shape)
-    }).collect::<Option<Vec<_>>>()?;
+    let mut rewrites = iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
+        .collect::<Option<Vec<_>>>()?;
 
     // Total of all items excluding the last.
     let extend_last_subexpr = last_line_extendable(&parent_rewrite) && rewrites.is_empty();
@@ -166,18 +165,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let all_in_one_line = !parent_rewrite_contains_newline
         && rewrites.iter().all(|s| !s.contains('\n'))
         && almost_total < one_line_budget;
-    let last_shape = {
-        let last_shape = if rewrites.len() == 0 {
-            first_child_shape
-        } else {
-            other_child_shape
-        };
-        match context.config.indent_style() {
-            IndentStyle::Visual => last_shape.sub_width(shape.rhs_overhead(context.config))?,
-            IndentStyle::Block => last_shape,
-        }
-    };
-    let last_shape = last_shape.sub_width(suffix_try_num)?;
+    let last_shape = if rewrites.len() == 0 {
+        first_child_shape
+    } else {
+        other_child_shape
+    }.sub_width(shape.rhs_overhead(context.config) + suffix_try_num)?;
 
     // Rewrite the last child. The last child of a chain requires special treatment. We need to
     // know whether 'overflowing' the last child make a better formatting:

@@ -224,9 +224,7 @@ pub fn rewrite_comment(
     // we should stop now.
     let num_bare_lines = orig.lines()
         .map(|line| line.trim())
-        .filter(|l| {
-            !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*"))
-        })
+        .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
         .count();
     if num_bare_lines > 0 && !config.normalize_comments() {
         return Some(orig.to_owned());

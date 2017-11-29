@@ -28,13 +28,13 @@ fn main() {
     });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
-        let x = c;
-        x
-    })
+                               let x = c;
+                               x
+                           })
                            .method_call_b(aaaaa, bbbbb, |c| {
-        let x = c;
-        x
-    });
+                               let x = c;
+                               x
+                           });
 
     fffffffffffffffffffffffffffffffffff(a, {
         SCRIPT_TASK_ROOT.with(|root| {
@@ -42,10 +42,10 @@ fn main() {
                               });
     });
 
-    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx.map(|x| x + 5)
-                                                                          .map(|x| x / 2)
-                                                                          .fold(0,
-                                                                                |acc, x| acc + x);
+    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
+        xxxxxxx.map(|x| x + 5)
+               .map(|x| x / 2)
+               .fold(0, |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
                              x += 1;

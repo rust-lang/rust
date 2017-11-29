@@ -185,3 +185,24 @@ fn issue2126() {
         }
     }
 }
+
+// #2200
+impl Foo {
+    pub fn from_ast(diagnostic: &::errors::Handler,
+                    attrs: &[ast::Attribute]) -> Attributes {
+        let other_attrs = attrs.iter().filter_map(|attr| {
+            attr.with_desugared_doc(|attr| {
+                if attr.check_name("doc") {
+                    if let Some(mi) = attr.meta() {
+                        if let Some(value) = mi.value_str() {
+                            doc_strings.push(DocFragment::Include(line,
+                                                                  attr.span,
+                                                                  filename,
+                                                                  contents));
+                        }
+                    }
+                }
+            })
+        }).collect();
+    }
+}
