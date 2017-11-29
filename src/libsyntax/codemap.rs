@@ -358,7 +358,7 @@ impl CodeMap {
     }
 
     // If the relevant filemap is empty, we don't return a line number.
-    fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Rc<FileMap>> {
+    pub fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Rc<FileMap>> {
         let idx = self.lookup_filemap_idx(pos);
 
         let files = self.files.borrow();
