@@ -1,0 +1,20 @@
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:27:41
+   |
+27 |     bar: <T as StreamingIterator>::Item<'static>,
+   |                                         ^^^^^^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:35:64
+   |
+35 | fn foo<T>(iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
+   |                                                                ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:21:48
+   |
+21 |     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
+   |                                                ^^ lifetime parameter not allowed on this type
+
+error: aborting due to 3 previous errors
+

@@ -13,13 +13,14 @@
 // Checking the interaction with this other feature
 #![feature(associated_type_defaults)]
 
+//FIXME(#44265): "undeclared lifetime" errors will be addressed in a follow-up PR
+
 use std::fmt::{Display, Debug};
 
 trait Foo {
     type Assoc where Self: Sized;
-    type Assoc2 <T >where T: Display;
-    type WithDefault <T> = Iterator <Item=T> where T: Debug;
-    // No generics on this associated type
+    type Assoc2<T> where T: Display;
+    type WithDefault<T> where T: Debug = Iterator<Item=T>;
     type NoGenerics;
 }
 
@@ -27,9 +28,10 @@ struct Bar;
 
 impl Foo for Bar {
     type Assoc = usize;
-    type Assoc2 <T> = Vec<T>;
+    type Assoc2<T> = Vec<T>;
     type WithDefault<'a, T> = &'a Iterator<T>;
-    type NoGenerics = f64;
+    //~^ ERROR undeclared lifetime
+    type NoGenerics = ::std::cell::Cell<i32>;
 }
 
 fn main() {}

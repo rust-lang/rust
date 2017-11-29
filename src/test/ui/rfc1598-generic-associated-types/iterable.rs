@@ -10,9 +10,12 @@
 
 #![feature(generic_associated_types)]
 
+//FIXME(#44265): "undeclared lifetime" errors will be addressed in a follow-up PR
+
 trait Iterable {
     type Item<'a>;
     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+    //~^ ERROR undeclared lifetime
 
     fn iter<'a>(&'a self) -> Self::Iter<'a>;
 }

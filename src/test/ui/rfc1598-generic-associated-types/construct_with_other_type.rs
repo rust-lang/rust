@@ -10,6 +10,8 @@
 
 #![feature(generic_associated_types)]
 
+//FIXME(#44265): "undeclared lifetime" errors will be addressed in a follow-up PR
+
 trait Foo {
     type Bar<'a, 'b>;
 }
@@ -20,6 +22,7 @@ trait Baz {
 
 impl<T> Baz for T where T: Foo {
     type Quux<'a> = <T as Foo>::Bar<'a, 'static>;
+    //~^ ERROR undeclared lifetime
 }
 
 fn main() {}
