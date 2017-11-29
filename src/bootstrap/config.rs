@@ -403,6 +403,7 @@ impl Config {
             config.docdir = install.docdir.clone().map(PathBuf::from);
             config.bindir = install.bindir.clone().map(PathBuf::from);
             config.libdir = install.libdir.clone().map(PathBuf::from);
+            config.libdir_relative = install.libdir.clone().map(PathBuf::from);
             config.mandir = install.mandir.clone().map(PathBuf::from);
         }
 
