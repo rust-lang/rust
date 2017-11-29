@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#pragma once
+
 #include "llvm-c/BitReader.h"
+#include "llvm-c/BitWriter.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Object.h"

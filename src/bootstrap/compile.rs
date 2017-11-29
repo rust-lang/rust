@@ -153,6 +153,8 @@ pub fn std_cargo(build: &Build,
         features.push_str(" force_alloc_system");
     }
 
+    features.push_str(" rustc_llvm/rebuild_bindings");
+
     if compiler.stage != 0 && build.config.sanitizers {
         // This variable is used by the sanitizer runtime crates, e.g.
         // rustc_lsan, to build the sanitizer runtime from C code

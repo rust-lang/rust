@@ -115,7 +115,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
         let val: llvm::ValueRef = C_i32(bcx.ccx, ia.ctxt.outer().as_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
-            llvm::LLVMMDNodeInContext(bcx.ccx.llcx(), &val, 1));
+            llvm::LLVMMDNodeInContext(bcx.ccx.llcx(), &val as *const _ as *mut _, 1));
     }
 }
 

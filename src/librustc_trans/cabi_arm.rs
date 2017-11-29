@@ -96,7 +96,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
     // If this is a target with a hard-float ABI, and the function is not explicitly
     // `extern "aapcs"`, then we must use the VFP registers for homogeneous aggregates.
     let vfp = ccx.sess().target.target.llvm_target.ends_with("hf")
-        && fty.cconv != CallConv::ArmAapcsCallConv
+        && fty.cconv != CallConv::ARM_AAPCS
         && !fty.variadic;
 
     if !fty.ret.is_ignore() {

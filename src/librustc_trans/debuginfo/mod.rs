@@ -22,7 +22,14 @@ use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
-use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
+use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray};
+// https://github.com/rust-lang-nursery/rust-bindgen/issues/1165.
+use llvm::{
+    LLVMRustDIFlags_FlagZero,
+    LLVMRustDIFlags_FlagPrototyped,
+    LLVMRustDIFlags_FlagMainSubprogram,
+};
+
 use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::Substs;
 
@@ -262,11 +269,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let function_name = CString::new(name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
 
-    let mut flags = DIFlags::FlagPrototyped;
+    let mut flags = LLVMRustDIFlags_FlagPrototyped;
     match *cx.sess().entry_fn.borrow() {
         Some((id, _)) => {
             if local_id == Some(id) {
-                flags = flags | DIFlags::FlagMainSubprogram;
+                flags = flags | LLVMRustDIFlags_FlagMainSubprogram;
             }
         }
         None => {}
@@ -496,7 +503,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     loc.line as c_uint,
                     type_metadata,
                     cx.sess().opts.optimize != config::OptLevel::No,
-                    DIFlags::FlagZero,
+                    LLVMRustDIFlags_FlagZero,
                     argument_index,
                     align.abi() as u32,
                 )

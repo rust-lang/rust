@@ -115,7 +115,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
 pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
-    declare_raw_fn(ccx, name, llvm::CCallConv, fn_type)
+    declare_raw_fn(ccx, name, llvm::CallConv::C, fn_type)
 }
 
 

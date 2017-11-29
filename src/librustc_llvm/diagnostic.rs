@@ -93,7 +93,7 @@ impl OptimizationDiagnostic {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct InlineAsmDiagnostic {
     pub cookie: c_uint,
     pub message: TwineRef,

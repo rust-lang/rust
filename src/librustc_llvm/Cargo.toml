@@ -10,12 +10,10 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [features]
-static-libstdcpp = []
-
-[dependencies]
-bitflags = "1.0"
-rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
+rebuild-bindings = ["bindgen"]
 
 [build-dependencies]
-build_helper = { path = "../build_helper" }
+# https://github.com/rust-lang-nursery/rust-bindgen/pull/1162.
+bindgen = { git = "https://github.com/rust-lang-nursery/rust-bindgen.git", rev = "75f9e1c", optional = true }
 cc = "1.0.1"
+build_helper = { path = "../build_helper" }

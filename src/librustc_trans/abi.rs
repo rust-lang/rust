@@ -695,26 +695,26 @@ impl<'a, 'tcx> FnType<'tcx> {
         use self::Abi::*;
         let cconv = match ccx.sess().target.target.adjust_abi(sig.abi) {
             RustIntrinsic | PlatformIntrinsic |
-            Rust | RustCall => llvm::CCallConv,
+            Rust | RustCall => llvm::CallConv::C,
 
             // It's the ABI's job to select this, not us.
             System => bug!("system abi should be selected elsewhere"),
 
-            Stdcall => llvm::X86StdcallCallConv,
-            Fastcall => llvm::X86FastcallCallConv,
-            Vectorcall => llvm::X86_VectorCall,
-            Thiscall => llvm::X86_ThisCall,
-            C => llvm::CCallConv,
-            Unadjusted => llvm::CCallConv,
-            Win64 => llvm::X86_64_Win64,
-            SysV64 => llvm::X86_64_SysV,
-            Aapcs => llvm::ArmAapcsCallConv,
-            PtxKernel => llvm::PtxKernel,
-            Msp430Interrupt => llvm::Msp430Intr,
-            X86Interrupt => llvm::X86_Intr,
+            Stdcall => llvm::X86_StdCall,
+            Fastcall => llvm::CallConv::X86_FastCall,
+            Vectorcall => llvm::CallConv::X86_VectorCall,
+            Thiscall => llvm::CallConv::X86_ThisCall,
+            C => llvm::CallConv::C,
+            Unadjusted => llvm::CallConv::C,
+            Win64 => llvm::CallConv::X86_64_Win64,
+            SysV64 => llvm::CallConv::X86_64_SysV,
+            Aapcs => llvm::CallConv::ARM_AAPCS,
+            PtxKernel => llvm::CallConv::PTX_Kernel,
+            Msp430Interrupt => llvm::CallConv::MSP430_INTR,
+            X86Interrupt => llvm::CallConv::X86_INTR,
 
             // These API constants ought to be more specific...
-            Cdecl => llvm::CCallConv,
+            Cdecl => llvm::CallConv::C,
         };
 
         let mut inputs = sig.inputs();
@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> FnType<'tcx> {
             }
         }
 
-        if self.cconv != llvm::CCallConv {
+        if self.cconv != llvm::CallConv::C {
             llvm::SetInstructionCallConv(callsite, self.cconv);
         }
     }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate bindgen;
 extern crate cc;
 extern crate build_helper;
 
@@ -139,6 +140,382 @@ fn main() {
     let cxxflags = output(&mut cmd);
     let mut cfg = cc::Build::new();
     cfg.warnings(false);
+
+    #[cfg(feature = "rebuild-bindings")]
+    let mut builder = bindgen::builder()
+        .header("../rustllvm/PassWrapper.cpp")
+        .header("../rustllvm/RustWrapper.cpp")
+        .header("../rustllvm/ArchiveWrapper.cpp")
+        .clang_arg("-DBINDGEN_NO_TLS")
+        .clang_args(&["-x", "c++"])
+        .enable_cxx_namespaces()
+        .rust_target(bindgen::RustTarget::Nightly)
+        .whitelist_recursively(false)
+        .whitelist_type("(LLVM)?Rust.*")
+        .whitelist_function("(LLVM)?Rust.*")
+        .rustfmt_bindings(true)
+        .layout_tests(false)
+        .with_codegen_config(bindgen::CodegenConfig{
+            functions: true,
+            types: true,
+            vars: false,
+            methods: false,
+            constructors: false,
+            destructors: false,
+        });
+
+    #[cfg(feature = "rebuild-bindings")]
+    for visible_type in [
+        // Rust wants to define constants of this type.
+        "LLVMBool",
+        // Rust wants to know these callback types.
+        "DemangleFn",
+        "LLVMDiagnosticHandler",
+        // Rust wants to know that these are pointers.
+        "LLVMBasicBlockRef",
+        "LLVMBuilderRef",
+        "LLVMMetadataRef",
+        "LLVMModuleRef",
+        "LLVMPassRef",
+        "LLVMRustArchiveRef",
+        "LLVMTargetMachineRef",
+        "LLVMTwineRef",
+        "LLVMTypeRef",
+        "LLVMValueRef",
+    ].into_iter() {
+        builder = builder
+            .whitelist_type(visible_type);
+    }
+
+    #[cfg(feature = "rebuild-bindings")]
+    for opaque_type in [
+        "LLVMContextRef",
+        "LLVMDebugLocRef",
+        "LLVMDiagnosticInfoRef",
+        "LLVMMemoryBufferRef",
+        "LLVMObjectFileRef",
+        "LLVMOpaqueBasicBlock",
+        "LLVMOpaqueBuilder",
+        "LLVMOpaqueMetadata",
+        "LLVMOpaqueModule",
+        "LLVMOpaquePass",
+        "LLVMOpaqueRef",
+        "LLVMOpaqueTargetMachine",
+        "LLVMOpaqueTwine",
+        "LLVMOpaqueType",
+        "LLVMOpaqueValue",
+        "LLVMPassManagerBuilderRef",
+        "LLVMPassManagerRef",
+        "LLVMRust.*Buffer",
+        "LLVMRustArchiveIteratorRef",
+        "LLVMRustJITMemoryManagerRef",
+        "LLVMRustThinLTOData",
+        "LLVMSectionIteratorRef",
+        "LLVMTargetDataRef",
+        "RustArchiveIterator",
+        "RustStringRef",
+        "llvm::DIBuilder",
+        "llvm::DiagnosticInfo",
+        "llvm::LLVMContext",
+        "llvm::OperandBundleDef",
+        "llvm::SMDiagnostic",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
+        "llvm::object::Archive_Child",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
+        "llvm::object::Archive_child_iterator",
+        "llvm::object::OwningBinary",
+    ].into_iter() {
+        builder = builder
+            .opaque_type(opaque_type)
+            .whitelist_type(opaque_type);
+    }
+
+    #[cfg(feature = "rebuild-bindings")]
+    for bitfield_enum in [
+        "LLVMRustDIFlags",
+    ].into_iter() {
+        builder = builder
+            .whitelist_type(bitfield_enum)
+            .bitfield_enum(bitfield_enum);
+    }
+
+    #[cfg(feature = "rebuild-bindings")]
+    for rustified_enum in [
+        "LLVMAtomicOrdering",
+        "LLVMAtomicRMWBinOp",
+        "LLVMDLLStorageClass",
+        "LLVMDiagnosticSeverity",
+        "LLVMIntPredicate",
+        "LLVMOpcode",
+        "LLVMRealPredicate",
+        "LLVMRustArchiveKind",
+        "LLVMRustAsmDialect",
+        "LLVMRustAttribute",
+        "LLVMRustCodeGenOptLevel",
+        "LLVMRustCodeModel",
+        "LLVMRustDiagnosticKind",
+        "LLVMRustFileType",
+        "LLVMRustLinkage",
+        "LLVMRustPassKind",
+        "LLVMRustRelocMode",
+        "LLVMRustResult",
+        "LLVMRustSynchronizationScope",
+        "LLVMRustVisibility",
+        "LLVMThreadLocalMode",
+        "LLVMTypeKind",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1161.
+        "llvm::CallingConv::.*",
+        // https://github.com/rust-lang-nursery/rust-bindgen/issues/1164.
+        // Opens the whole namespace, wtf?
+        "llvm::LLVMContext__bindgen_ty_1",
+//      llvm::LLVMContext_DiagnosticHandlerTy
+    ].into_iter() {
+        builder = builder
+            .whitelist_type(rustified_enum)
+            .rustified_enum(rustified_enum);
+    }
+
+
+    #[cfg(feature = "rebuild-bindings")]
+    for llvm_function in [
+        "LLVMAddCase",
+        "LLVMAddClause",
+        "LLVMAddGlobal",
+        "LLVMAddIncoming",
+        "LLVMAddNamedMetadataOperand",
+        "LLVMAppendBasicBlockInContext",
+        "LLVMBuildAShr",
+        "LLVMBuildAdd",
+        "LLVMBuildAggregateRet",
+        "LLVMBuildAlloca",
+        "LLVMBuildAnd",
+        "LLVMBuildAtomicRMW",
+        "LLVMBuildBinOp",
+        "LLVMBuildBitCast",
+        "LLVMBuildBr",
+        "LLVMBuildCast",
+        "LLVMBuildCondBr",
+        "LLVMBuildExactSDiv",
+        "LLVMBuildExtractElement",
+        "LLVMBuildExtractValue",
+        "LLVMBuildFAdd",
+        "LLVMBuildFCmp",
+        "LLVMBuildFDiv",
+        "LLVMBuildFMul",
+        "LLVMBuildFNeg",
+        "LLVMBuildFPCast",
+        "LLVMBuildFPExt",
+        "LLVMBuildFPToSI",
+        "LLVMBuildFPToUI",
+        "LLVMBuildFPTrunc",
+        "LLVMBuildFRem",
+        "LLVMBuildFSub",
+        "LLVMBuildFree",
+        "LLVMBuildGEP",
+        "LLVMBuildGlobalString",
+        "LLVMBuildGlobalStringPtr",
+        "LLVMBuildICmp",
+        "LLVMBuildInBoundsGEP",
+        "LLVMBuildIndirectBr",
+        "LLVMBuildInsertElement",
+        "LLVMBuildInsertValue",
+        "LLVMBuildIntToPtr",
+        "LLVMBuildIsNotNull",
+        "LLVMBuildIsNull",
+        "LLVMBuildLShr",
+        "LLVMBuildLoad",
+        "LLVMBuildMul",
+        "LLVMBuildNSWAdd",
+        "LLVMBuildNSWMul",
+        "LLVMBuildNSWNeg",
+        "LLVMBuildNSWSub",
+        "LLVMBuildNUWAdd",
+        "LLVMBuildNUWMul",
+        "LLVMBuildNUWNeg",
+        "LLVMBuildNUWSub",
+        "LLVMBuildNeg",
+        "LLVMBuildNot",
+        "LLVMBuildOr",
+        "LLVMBuildPhi",
+        "LLVMBuildPointerCast",
+        "LLVMBuildPtrDiff",
+        "LLVMBuildPtrToInt",
+        "LLVMBuildResume",
+        "LLVMBuildRet",
+        "LLVMBuildRetVoid",
+        "LLVMBuildSDiv",
+        "LLVMBuildSExt",
+        "LLVMBuildSExtOrBitCast",
+        "LLVMBuildSIToFP",
+        "LLVMBuildSRem",
+        "LLVMBuildSelect",
+        "LLVMBuildShl",
+        "LLVMBuildShuffleVector",
+        "LLVMBuildStore",
+        "LLVMBuildStructGEP",
+        "LLVMBuildSub",
+        "LLVMBuildSwitch",
+        "LLVMBuildTrunc",
+        "LLVMBuildTruncOrBitCast",
+        "LLVMBuildUDiv",
+        "LLVMBuildUIToFP",
+        "LLVMBuildURem",
+        "LLVMBuildUnreachable",
+        "LLVMBuildVAArg",
+        "LLVMBuildXor",
+        "LLVMBuildZExt",
+        "LLVMBuildZExtOrBitCast",
+        "LLVMCloneModule",
+        "LLVMConstAShr",
+        "LLVMConstAdd",
+        "LLVMConstAnd",
+        "LLVMConstArray",
+        "LLVMConstBitCast",
+        "LLVMConstExtractValue",
+        "LLVMConstFAdd",
+        "LLVMConstFCmp",
+        "LLVMConstFDiv",
+        "LLVMConstFMul",
+        "LLVMConstFNeg",
+        "LLVMConstFPCast",
+        "LLVMConstFRem",
+        "LLVMConstFSub",
+        "LLVMConstICmp",
+        "LLVMConstInlineAsm",
+        "LLVMConstInt",
+        "LLVMConstIntCast",
+        "LLVMConstIntGetZExtValue",
+        "LLVMConstIntOfArbitraryPrecision",
+        "LLVMConstIntToPtr",
+        "LLVMConstLShr",
+        "LLVMConstMul",
+        "LLVMConstNeg",
+        "LLVMConstNot",
+        "LLVMConstNull",
+        "LLVMConstOr",
+        "LLVMConstPointerCast",
+        "LLVMConstPtrToInt",
+        "LLVMConstSDiv",
+        "LLVMConstSIToFP",
+        "LLVMConstSRem",
+        "LLVMConstShl",
+        "LLVMConstStringInContext",
+        "LLVMConstStructInContext",
+        "LLVMConstSub",
+        "LLVMConstTrunc",
+        "LLVMConstUDiv",
+        "LLVMConstUIToFP",
+        "LLVMConstURem",
+        "LLVMConstVector",
+        "LLVMConstXor",
+        "LLVMConstZExt",
+        "LLVMContextCreate",
+        "LLVMContextDispose",
+        "LLVMContextSetDiagnosticHandler",
+        "LLVMCountParamTypes",
+        "LLVMCountParams",
+        "LLVMCreateBuilderInContext",
+        "LLVMCreateFunctionPassManagerForModule",
+        "LLVMCreateObjectFile",
+        "LLVMCreatePassManager",
+        "LLVMCreateTargetData",
+        "LLVMDeleteBasicBlock",
+        "LLVMDeleteGlobal",
+        "LLVMDisposeBuilder",
+        "LLVMDisposeModule",
+        "LLVMDisposeObjectFile",
+        "LLVMDisposePassManager",
+        "LLVMDisposeSectionIterator",
+        "LLVMDisposeTargetData",
+        "LLVMDoubleTypeInContext",
+        "LLVMFloatTypeInContext",
+        "LLVMFunctionType",
+        "LLVMGetAlignment",
+        "LLVMGetBasicBlockParent",
+        "LLVMGetCurrentDebugLocation",
+        "LLVMGetDataLayout",
+        "LLVMGetElementType",
+        "LLVMGetFirstBasicBlock",
+        "LLVMGetFirstGlobal",
+        "LLVMGetGlobalParent",
+        "LLVMGetInitializer",
+        "LLVMGetInsertBlock",
+        "LLVMGetIntTypeWidth",
+        "LLVMGetMDKindIDInContext",
+        "LLVMGetModuleContext",
+        "LLVMGetNamedFunction",
+        "LLVMGetNamedGlobal",
+        "LLVMGetNextGlobal",
+        "LLVMGetParam",
+        "LLVMGetParamTypes",
+        "LLVMGetSectionContents",
+        "LLVMGetSectionSize",
+        "LLVMGetSections",
+        "LLVMGetUndef",
+        "LLVMGetValueName",
+        "LLVMGetVectorSize",
+        "LLVMInitializePasses",
+        "LLVMInt16TypeInContext",
+        "LLVMInt1TypeInContext",
+        "LLVMInt32TypeInContext",
+        "LLVMInt64TypeInContext",
+        "LLVMInt8TypeInContext",
+        "LLVMIntTypeInContext",
+        "LLVMIsAConstantInt",
+        "LLVMIsAGlobalVariable",
+        "LLVMIsDeclaration",
+        "LLVMIsGlobalConstant",
+        "LLVMIsSectionIteratorAtEnd",
+        "LLVMMDNodeInContext",
+        "LLVMMDStringInContext",
+        "LLVMModuleCreateWithNameInContext",
+        "LLVMMoveToNextSection",
+        "LLVMPassManagerBuilderCreate",
+        "LLVMPassManagerBuilderDispose",
+        "LLVMPassManagerBuilderPopulateFunctionPassManager",
+        "LLVMPassManagerBuilderPopulateLTOPassManager",
+        "LLVMPassManagerBuilderPopulateModulePassManager",
+        "LLVMPassManagerBuilderSetDisableUnrollLoops",
+        "LLVMPassManagerBuilderSetSizeLevel",
+        "LLVMPassManagerBuilderUseInlinerWithThreshold",
+        "LLVMPointerType",
+        "LLVMPositionBuilderAtEnd",
+        "LLVMPositionBuilderBefore",
+        "LLVMReplaceAllUsesWith",
+        "LLVMRunPassManager",
+        "LLVMSetAlignment",
+        "LLVMSetCleanup",
+        "LLVMSetCurrentDebugLocation",
+        "LLVMSetDLLStorageClass",
+        "LLVMSetDataLayout",
+        "LLVMSetFunctionCallConv",
+        "LLVMSetGlobalConstant",
+        "LLVMSetInitializer",
+        "LLVMSetInstDebugLocation",
+        "LLVMSetInstructionCallConv",
+        "LLVMSetMetadata",
+        "LLVMSetModuleInlineAsm",
+        "LLVMSetPersonalityFn",
+        "LLVMSetSection",
+        "LLVMSetTailCall",
+        "LLVMSetThreadLocal",
+        "LLVMSetThreadLocalMode",
+        "LLVMSetUnnamedAddr",
+        "LLVMSetValueName",
+        "LLVMSetVolatile",
+        "LLVMStartMultithreaded",
+        "LLVMStructCreateNamed",
+        "LLVMStructSetBody",
+        "LLVMStructTypeInContext",
+        "LLVMTypeOf",
+        "LLVMVectorType",
+        "LLVMVoidTypeInContext",
+        "LLVMWriteBitcodeToFile",
+        "LLVMX86MMXTypeInContext",
+    ].into_iter() {
+        builder = builder.whitelist_function(llvm_function);
+    }
+
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
@@ -151,6 +528,32 @@ fn main() {
         }
 
         cfg.flag(flag);
+        #[cfg(feature = "rebuild-bindings")]
+        {
+            builder = builder.clang_arg(flag);
+        }
+    }
+
+    #[cfg(feature = "rebuild-bindings")]
+    {
+        builder = builder.clang_arg(
+             "-I/home/tduberstein/local/clang/clang+llvm-5.0.0-linux-x86_64-sles11.3/lib/clang/5.0.0/include",
+        );
+    }
+    let libclang_path_var = "LIBCLANG_PATH";
+    let var = env::var(libclang_path_var);
+    env::set_var(libclang_path_var, "/home/tduberstein/local/clang/clang+llvm-5.0.0-linux-x86_64-sles11.3/lib");
+    #[cfg(feature = "rebuild-bindings")]
+    builder.generate()
+        .expect("Failed to generate bindings")
+        .write_to_file("bindings.rs")
+        .expect("Failed to write bindings");
+    match var {
+       Ok(var) => env::set_var(libclang_path_var, var),
+       Err(e) => match e {
+           env::VarError::NotPresent => (),
+           env::VarError::NotUnicode(var) => env::set_var(libclang_path_var, var),
+       },
     }
 
     for component in &components {

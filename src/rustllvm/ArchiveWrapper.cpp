@@ -76,7 +76,7 @@ typedef Archive::Child *LLVMRustArchiveChildRef;
 typedef Archive::Child const *LLVMRustArchiveChildConstRef;
 typedef RustArchiveIterator *LLVMRustArchiveIteratorRef;
 
-extern "C" LLVMRustArchiveRef LLVMRustOpenArchive(char *Path) {
+extern "C" LLVMRustArchiveRef LLVMRustOpenArchive(const char *Path) {
   ErrorOr<std::unique_ptr<MemoryBuffer>> BufOr =
       MemoryBuffer::getFile(Path, -1, false);
   if (!BufOr) {
@@ -220,7 +220,7 @@ extern "C" const char *LLVMRustArchiveChildData(LLVMRustArchiveChildRef Child,
 }
 
 extern "C" LLVMRustArchiveMemberRef
-LLVMRustArchiveMemberNew(char *Filename, char *Name,
+LLVMRustArchiveMemberNew(const char *Filename, const char *Name,
                          LLVMRustArchiveChildRef Child) {
   RustArchiveMember *Member = new RustArchiveMember;
   Member->Filename = Filename;
@@ -235,7 +235,7 @@ extern "C" void LLVMRustArchiveMemberFree(LLVMRustArchiveMemberRef Member) {
 }
 
 extern "C" LLVMRustResult
-LLVMRustWriteArchive(char *Dst, size_t NumMembers,
+LLVMRustWriteArchive(const char *Dst, size_t NumMembers,
                      const LLVMRustArchiveMemberRef *NewMembers,
                      bool WriteSymbtab, LLVMRustArchiveKind RustKind) {
 

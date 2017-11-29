@@ -226,7 +226,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
             // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs to
             // make things work.
             unsafe {
-                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::LLVMDLLImportStorageClass);
             }
         }
         g
@@ -235,7 +235,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     if ccx.use_dll_storage_attrs() && ccx.tcx().is_dllimport_foreign_item(def_id) {
         // For foreign (native) libs we know the exact storage type to use.
         unsafe {
-            llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+            llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::LLVMDLLImportStorageClass);
         }
     }
 
