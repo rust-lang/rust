@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax, const_refcell_new)]
+#![feature(box_syntax)]
 
 use std::cell::RefCell;
 

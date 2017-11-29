@@ -12,7 +12,6 @@
 
 #![feature(rustc_private)]
 #![feature(sort_unstable)]
-#![feature(const_atomic_usize_new)]
 
 extern crate rand;
 

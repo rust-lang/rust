@@ -1428,15 +1428,45 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Cloning two elements from a slice into another:
     ///
-    /// dst.clone_from_slice(&src);
-    /// assert!(dst == [1, 2, 3]);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.clone_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `clone_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].clone_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.clone_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`copy_from_slice`]: #method.copy_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
@@ -1454,15 +1484,45 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Copying two elements from a slice into another:
     ///
-    /// dst.copy_from_slice(&src);
-    /// assert_eq!(src, dst);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.copy_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `copy_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].copy_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.copy_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`clone_from_slice`]: #method.clone_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
@@ -1478,16 +1538,49 @@ impl<T> [T] {
     ///
     /// # Example
     ///
+    /// Swapping two elements across slices:
+    ///
     /// ```
     /// #![feature(swap_with_slice)]
     ///
-    /// let mut slice1 = [1, 2, 3];
-    /// let mut slice2 = [7, 8, 9];
+    /// let mut slice1 = [0, 0];
+    /// let mut slice2 = [1, 2, 3, 4];
     ///
-    /// slice1.swap_with_slice(&mut slice2);
-    /// assert_eq!(slice1, [7, 8, 9]);
-    /// assert_eq!(slice2, [1, 2, 3]);
+    /// slice1.swap_with_slice(&mut slice2[2..]);
+    ///
+    /// assert_eq!(slice1, [3, 4]);
+    /// assert_eq!(slice2, [1, 2, 0, 0]);
     /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference to a
+    /// particular piece of data in a particular scope. Because of this,
+    /// attempting to use `swap_with_slice` on a single slice will result in
+    /// a compile failure:
+    ///
+    /// ```compile_fail
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    /// slice[..2].swap_with_slice(&mut slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// mutable sub-slices from a slice:
+    ///
+    /// ```
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.swap_with_slice(&mut right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 1, 2]);
+    /// ```
+    ///
+    /// [`split_at_mut`]: #method.split_at_mut
     #[unstable(feature = "swap_with_slice", issue = "44030")]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
         core_slice::SliceExt::swap_with_slice(self, other)
@@ -1625,120 +1718,6 @@ impl [u8] {
         for byte in self {
             byte.make_ascii_lowercase();
         }
-    }
-
-    /// Checks if all bytes of this slice are ASCII alphabetic characters:
-    ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_alphabetic(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_alphabetic())
-    }
-
-    /// Checks if all bytes of this slice are ASCII uppercase characters:
-    /// U+0041 'A' ... U+005A 'Z'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_uppercase(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_uppercase())
-    }
-
-    /// Checks if all bytes of this slice are ASCII lowercase characters:
-    /// U+0061 'a' ... U+007A 'z'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_lowercase(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_lowercase())
-    }
-
-    /// Checks if all bytes of this slice are ASCII alphanumeric characters:
-    ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z', or
-    /// - U+0030 '0' ... U+0039 '9'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_alphanumeric(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_alphanumeric())
-    }
-
-    /// Checks if all bytes of this slice are ASCII decimal digit:
-    /// U+0030 '0' ... U+0039 '9'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_digit(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_digit())
-    }
-
-    /// Checks if all bytes of this slice are ASCII hexadecimal digits:
-    ///
-    /// - U+0030 '0' ... U+0039 '9', or
-    /// - U+0041 'A' ... U+0046 'F', or
-    /// - U+0061 'a' ... U+0066 'f'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_hexdigit(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_hexdigit())
-    }
-
-    /// Checks if all bytes of this slice are ASCII punctuation characters:
-    ///
-    /// - U+0021 ... U+002F `! " # $ % & ' ( ) * + , - . /`, or
-    /// - U+003A ... U+0040 `: ; < = > ? @`, or
-    /// - U+005B ... U+0060 `[ \\ ] ^ _ \``, or
-    /// - U+007B ... U+007E `{ | } ~`
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_punctuation(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_punctuation())
-    }
-
-    /// Checks if all bytes of this slice are ASCII graphic characters:
-    /// U+0021 '@' ... U+007E '~'.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_graphic(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_graphic())
-    }
-
-    /// Checks if all bytes of this slice are ASCII whitespace characters:
-    /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
-    /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
-    ///
-    /// Rust uses the WhatWG Infra Standard's [definition of ASCII
-    /// whitespace][infra-aw]. There are several other definitions in
-    /// wide use. For instance, [the POSIX locale][pct] includes
-    /// U+000B VERTICAL TAB as well as all the above characters,
-    /// but—from the very same specification—[the default rule for
-    /// "field splitting" in the Bourne shell][bfs] considers *only*
-    /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
-    ///
-    /// If you are writing a program that will process an existing
-    /// file format, check what that format's definition of whitespace is
-    /// before using this function.
-    ///
-    /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_whitespace(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_whitespace())
-    }
-
-    /// Checks if all bytes of this slice are ASCII control characters:
-    ///
-    /// - U+0000 NUL ... U+001F UNIT SEPARATOR, or
-    /// - U+007F DELETE.
-    ///
-    /// Note that most ASCII whitespace characters are control
-    /// characters, but SPACE is not.
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
-    #[inline]
-    pub fn is_ascii_control(&self) -> bool {
-        self.iter().all(|b| b.is_ascii_control())
     }
 }
 

@@ -242,7 +242,6 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_atomic_bool_new")]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -656,7 +655,6 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_atomic_ptr_new")]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
     }
@@ -926,6 +924,13 @@ impl<T> AtomicPtr<T> {
     }
 }
 
+#[cfg(target_has_atomic = "8")]
+#[stable(feature = "atomic_bool_from", since = "1.24.0")]
+impl From<bool> for AtomicBool {
+    #[inline]
+    fn from(b: bool) -> Self { Self::new(b) }
+}
+
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
 impl<T> From<*mut T> for AtomicPtr<T> {
@@ -935,7 +940,7 @@ impl<T> From<*mut T> for AtomicPtr<T> {
 
 #[cfg(target_has_atomic = "ptr")]
 macro_rules! atomic_int {
-    ($stable:meta, $const_unstable:meta,
+    ($stable:meta,
      $stable_cxchg:meta,
      $stable_debug:meta,
      $stable_access:meta,
@@ -1004,7 +1009,6 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
-            #[$const_unstable]
             pub const fn new(v: $int_type) -> Self {
                 $atomic_type {v: UnsafeCell::new(v)}
             }
@@ -1368,7 +1372,6 @@ macro_rules! atomic_int {
 #[cfg(target_has_atomic = "8")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i8_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1378,7 +1381,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "8")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u8_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1388,7 +1390,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "16")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i16_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1398,7 +1399,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "16")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u16_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1408,7 +1408,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "32")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i32_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1418,7 +1417,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "32")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u32_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1428,7 +1426,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "64")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_i64_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1438,7 +1435,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "64")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
-    rustc_const_unstable(feature = "const_atomic_u64_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1448,7 +1444,6 @@ atomic_int! {
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
-    rustc_const_unstable(feature = "const_atomic_isize_new"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
@@ -1458,7 +1453,6 @@ atomic_int!{
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
-    rustc_const_unstable(feature = "const_atomic_usize_new"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),

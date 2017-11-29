@@ -110,7 +110,6 @@ macro_rules! int_impl {
         /// assert_eq!(i8::min_value(), -128);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_min_value")]
         #[inline]
         pub const fn min_value() -> Self {
             !0 ^ ((!0 as $UnsignedT) >> 1) as Self
@@ -124,7 +123,6 @@ macro_rules! int_impl {
         /// assert_eq!(i8::max_value(), 127);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_max_value")]
         #[inline]
         pub const fn max_value() -> Self {
             !Self::min_value()
@@ -1290,7 +1288,6 @@ macro_rules! uint_impl {
         /// assert_eq!(u8::min_value(), 0);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_min_value")]
         #[inline]
         pub const fn min_value() -> Self { 0 }
 
@@ -1302,7 +1299,6 @@ macro_rules! uint_impl {
         /// assert_eq!(u8::max_value(), 255);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_max_value")]
         #[inline]
         pub const fn max_value() -> Self { !0 }
 
@@ -2438,7 +2434,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphabetic());
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphabetic(&self) -> bool {
         if *self >= 0x80 { return false; }
@@ -2476,7 +2472,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_uppercase());
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_uppercase(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2514,7 +2510,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_lowercase());
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_lowercase(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2555,7 +2551,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_alphanumeric());
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphanumeric(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2593,7 +2589,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_digit());
     /// assert!(!esc.is_ascii_digit());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_digit(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2634,7 +2630,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_hexdigit());
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_hexdigit(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2676,7 +2672,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_punctuation());
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_punctuation(&self) -> bool {
         if *self >= 0x80 { return false }
@@ -2714,7 +2710,7 @@ impl u8 {
     /// assert!(!lf.is_ascii_graphic());
     /// assert!(!esc.is_ascii_graphic());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_graphic(&self) -> bool {
         if *self >= 0x80 { return false; }
@@ -2769,7 +2765,7 @@ impl u8 {
     /// assert!(lf.is_ascii_whitespace());
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_whitespace(&self) -> bool {
         if *self >= 0x80 { return false; }
@@ -2809,7 +2805,7 @@ impl u8 {
     /// assert!(lf.is_ascii_control());
     /// assert!(esc.is_ascii_control());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_control(&self) -> bool {
         if *self >= 0x80 { return false; }

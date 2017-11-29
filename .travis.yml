@@ -16,12 +16,11 @@ matrix:
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
-      if: branch = auto
+      if: branch = try OR branch = auto
 
-    # "alternate" deployments, these are "nightlies" but don't have assertions
-    # turned on, they're deployed to a different location primarily for projects
-    # which are stuck on nightly and don't want llvm assertions in the artifacts
-    # that they use.
+    # "alternate" deployments, these are "nightlies" but have LLVM assertions
+    # turned on, they're deployed to a different location primarily for
+    # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
       if: branch = try OR branch = auto
 
@@ -312,20 +311,6 @@ deploy:
       branch: auto
       condition: $DEPLOY = 1
 
-  - provider: s3
-    bucket: rust-lang-ci2
-    skip_cleanup: true
-    local_dir: deploy
-    upload_dir: rustc-builds-try
-    acl: public_read
-    region: us-west-1
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
-    on:
-      branch: try
-      condition: $DEPLOY_ALT = 1
-
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
   - provider: s3
@@ -340,4 +325,35 @@ deploy:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: auto
+      condition: $DEPLOY_ALT = 1
+
+  # These two providers are the same as the two above, except deploy on the
+  # try branch. Travis does not appear to provide a way to use "or" in these
+  # conditions.
+  - provider: s3
+    bucket: rust-lang-ci2
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds
+    acl: public_read
+    region: us-west-1
+    access_key_id: AKIAJVBODR3IA4O72THQ
+    secret_access_key:
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
+    on:
+      branch: try
+      condition: $DEPLOY = 1
+
+  - provider: s3
+    bucket: rust-lang-ci2
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds-alt
+    acl: public_read
+    region: us-west-1
+    access_key_id: AKIAJVBODR3IA4O72THQ
+    secret_access_key:
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
+    on:
+      branch: try
       condition: $DEPLOY_ALT = 1

@@ -1109,7 +1109,7 @@ impl char {
     /// assert!(!lf.is_ascii_alphabetic());
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphabetic(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_alphabetic()
@@ -1143,7 +1143,7 @@ impl char {
     /// assert!(!lf.is_ascii_uppercase());
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_uppercase(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_uppercase()
@@ -1177,7 +1177,7 @@ impl char {
     /// assert!(!lf.is_ascii_lowercase());
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_lowercase(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_lowercase()
@@ -1214,7 +1214,7 @@ impl char {
     /// assert!(!lf.is_ascii_alphanumeric());
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_alphanumeric(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_alphanumeric()
@@ -1248,7 +1248,7 @@ impl char {
     /// assert!(!lf.is_ascii_digit());
     /// assert!(!esc.is_ascii_digit());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_digit(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_digit()
@@ -1285,7 +1285,7 @@ impl char {
     /// assert!(!lf.is_ascii_hexdigit());
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_hexdigit(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_hexdigit()
@@ -1323,7 +1323,7 @@ impl char {
     /// assert!(!lf.is_ascii_punctuation());
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_punctuation(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_punctuation()
@@ -1357,7 +1357,7 @@ impl char {
     /// assert!(!lf.is_ascii_graphic());
     /// assert!(!esc.is_ascii_graphic());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_graphic(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_graphic()
@@ -1408,7 +1408,7 @@ impl char {
     /// assert!(lf.is_ascii_whitespace());
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_whitespace(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_whitespace()
@@ -1444,7 +1444,7 @@ impl char {
     /// assert!(lf.is_ascii_control());
     /// assert!(esc.is_ascii_control());
     /// ```
-    #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_control(&self) -> bool {
         self.is_ascii() && (*self as u8).is_ascii_control()
