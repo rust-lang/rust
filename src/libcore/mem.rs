@@ -311,7 +311,6 @@ pub fn forget<T>(t: T) {
 /// [alignment]: ./fn.align_of.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_size_of")]
 pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
@@ -403,7 +402,6 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_align_of")]
 pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }

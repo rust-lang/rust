@@ -22,9 +22,6 @@
 #![feature(i128)]
 #![feature(i128_type)]
 
-#![feature(const_min_value)]
-#![feature(const_max_value)]
-
 extern crate rustc_apfloat;
 
 extern crate syntax;

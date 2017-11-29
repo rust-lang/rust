@@ -45,8 +45,6 @@
 #![deny(warnings)]
 #![forbid(unsafe_code)]
 
-#![feature(const_max_value)]
-#![feature(const_min_value)]
 #![feature(i128_type)]
 #![feature(slice_patterns)]
 #![feature(try_from)]

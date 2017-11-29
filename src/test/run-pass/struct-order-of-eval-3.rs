@@ -11,8 +11,6 @@
 // Checks that functional-record-update order-of-eval is as expected
 // even when no Drop-implementations are involved.
 
-#![feature(const_atomic_usize_new)]
-
 use std::sync::atomic::{Ordering, AtomicUsize};
 
 struct W { wrapped: u32 }

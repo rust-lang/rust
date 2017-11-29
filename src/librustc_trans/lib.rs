@@ -33,9 +33,6 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
-#![feature(const_atomic_bool_new)]
-#![feature(const_once_new)]
-
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 

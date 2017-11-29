@@ -42,10 +42,6 @@
 #![feature(try_trait)]
 #![feature(unique)]
 
-#![feature(const_atomic_bool_new)]
-#![feature(const_atomic_usize_new)]
-#![feature(const_atomic_isize_new)]
-
 extern crate core;
 extern crate test;
 
