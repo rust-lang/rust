@@ -140,7 +140,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 let ident = path.segments[0].identifier;
                 if ident.name == keywords::DollarCrate.name() {
                     path.segments[0].identifier.name = keywords::CrateRoot.name();
-                    let module = self.0.resolve_crate_root(ident.ctxt);
+                    let module = self.0.resolve_crate_root(ident.ctxt, true);
                     if !module.is_local() {
                         let span = path.segments[0].span;
                         path.segments.insert(1, match module.kind {

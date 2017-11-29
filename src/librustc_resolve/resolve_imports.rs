@@ -620,7 +620,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                          "crate root imports need to be explicitly named: \
                                           `use crate as name;`".to_string()));
                         } else {
-                            Some(self.resolve_crate_root(source.ctxt.modern()))
+                            Some(self.resolve_crate_root(source.ctxt.modern(), false))
                         }
                     } else if extern_absolute_paths &&
                               !token::Ident(source).is_path_segment_keyword() {
