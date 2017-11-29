@@ -123,7 +123,9 @@ fn foo() {
 
 fn issue1405() {
     open_raw_fd(fd, b'r').and_then(|file| {
-        Capture::new_raw(None, |_, err| unsafe { raw::pcap_fopen_offline(file, err) })
+        Capture::new_raw(None, |_, err| unsafe {
+            raw::pcap_fopen_offline(file, err)
+        })
     });
 }
 
@@ -174,8 +176,9 @@ fn issue1329() {
 }
 
 fn issue325() {
-    let f =
-        || unsafe { xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx };
+    let f = || unsafe {
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    };
 }
 
 fn issue1697() {
@@ -228,5 +231,12 @@ fn issue2171() {
         } else {
             PERIPHERALS = true;
         }
+    })
+}
+
+fn issue2207() {
+    a.map(|_| {
+        unsafe { a_very_very_very_very_very_very_very_long_function_name_or_anything_else() }
+            .to_string()
     })
 }
