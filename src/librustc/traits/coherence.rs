@@ -16,13 +16,14 @@ use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Re
 use traits::IntercrateMode;
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
+use ty::fold::TypeFoldable;
 use ty::subst::Subst;
 
 use infer::{InferCtxt, InferOk};
 
-#[derive(Copy, Clone, Debug)]
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
+#[derive(Copy, Clone, Debug)]
 enum InCrate {
     Local,
     Remote
@@ -224,6 +225,92 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     orphan_check_trait_ref(tcx, trait_ref, InCrate::Local)
 }
 
+/// Check whether a trait-ref is potentially implementable by a crate.
+///
+/// The current rule is that a trait-ref orphan checks in a crate C:
+///
+/// 1. Order the parameters in the trait-ref in subst order - Self first,
+///    others linearly (e.g. `<U as Foo<V, W>>` is U < V < W).
+/// 2. Of these type parameters, there is at least one type parameter
+///    in which, walking the type as a tree, you can reach a type local
+///    to C where all types in-between are fundamental types. Call the
+///    first such parameter the "local key parameter".
+///     - e.g. `Box<LocalType>` is OK, because you can visit LocalType
+///       going through `Box`, which is fundamental.
+///     - similarly, `FundamentalPair<Vec<()>, Box<LocalType>>` is OK for
+///       the same reason.
+///     - but (knowing that `Vec<T>` is non-fundamental, and assuming it's
+///       not local), `Vec<LocalType>` is bad, because `Vec<->` is between
+///       the local type and the type parameter.
+/// 3. Every type parameter before the local key parameter is fully known in C.
+///     - e.g. `impl<T> T: Trait<LocalType>` is bad, because `T` might be
+///       an unknown type.
+///     - but `impl<T> LocalType: Trait<T>` is OK, because `LocalType`
+///       occurs before `T`.
+/// 4. Every type in the local key parameter not known in C, going
+///    through the parameter's type tree, must appear only as a subtree of
+///    a type local to C, with only fundamental types between the type
+///    local to C and the local key parameter.
+///     - e.g. `Vec<LocalType<T>>>` (or equivalently `Box<Vec<LocalType<T>>>`)
+///     is bad, because the only local type with `T` as a subtree is
+///     `LocalType<T>`, and `Vec<->` is between it and the type parameter.
+///     - similarly, `FundamentalPair<LocalType<T>, T>` is bad, because
+///     the second occurence of `T` is not a subtree of *any* local type.
+///     - however, `LocalType<Vec<T>>` is OK, because `T` is a subtree of
+///     `LocalType<Vec<T>>`, which is local and has no types between it and
+///     the type parameter.
+///
+/// The orphan rules actually serve several different purposes:
+///
+/// 1. They enable link-safety - i.e. 2 mutually-unknowing crates (where
+///    every type local to one crate is unknown in the other) can't implement
+///    the same trait-ref. This follows because it can be seen that no such
+///    type can orphan-check in 2 such crates.
+///
+///    To check that a local impl follows the orphan rules, we check it in
+///    InCrate::Local mode, using type parameters for the "generic" types.
+///
+/// 2. They ground negative reasoning for coherence. If a user wants to
+///    write both a conditional blanket impl and a specific impl, we need to
+///    make sure they do not overlap. For example, if we write
+///    ```
+///    impl<T> IntoIterator for Vec<T>
+///    impl<T: Iterator> IntoIterator for T
+///    ```
+///    We need to be able to prove that `Option<$0>: !Iterator` for every type $0.
+///    We can observe that this holds in the current crate, but we need to make
+///    sure this will also hold in all unknown crates (both "independent" crates,
+///    which we need for link-safety, and also child crates, because we don't want
+///    child crates to get error for impl conflicts in a *dependency*).
+///
+///    For that, we only allow negative reasoning if, for every assignment to the
+///    inference variables, every unknown crate would get an orphan error if they
+///    try to implement this trait-ref. To check for this, we use InCrate::Remote
+///    mode. That is sound because we already know all the impls from known crates.
+///
+/// 3. For non-#[fundamental] traits, they guarantee that parent crates can
+///    add "non-blanket" impls without breaking negative reasoning in dependent
+///    crates. This is the "rebalancing coherence" (RFC 1023) restriction.
+///
+///    For that, we only a allow crate to perform negative reasoning on
+///    non-local-non-#[fundamental] only if there's a local key parameter as per (2).
+///
+///    Because we never perform negative reasoning generically (coherence does
+///    not involve type parameters), this can be interpreted as doing the full
+///    orphan check (using InCrate::Local mode), substituting non-local known
+///    types for all inference variables.
+///
+///    This allows for crates to future-compatibly add impls as long as they
+///    can't apply to types with a key parameter in a child crate - applying
+///    the rules, this basically means that every type parameter in the impl
+///    must appear behind a non-fundamental type (because this is not a
+///    type-system requirement, crate owners might also go for "semantic
+///    future-compatibility" involving things such as sealed traits, but
+///    the above requirement is sufficient, and is necessary in "open world"
+///    cases).
+///
+/// Note that this function is never called for types that have both type
+/// parameters and inference variables.
 fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
                                 trait_ref: ty::TraitRef<'tcx>,
                                 in_crate: InCrate)
@@ -231,6 +318,11 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
 {
     debug!("orphan_check_trait_ref(trait_ref={:?}, in_crate={:?})",
            trait_ref, in_crate);
+
+    if trait_ref.needs_infer() && trait_ref.needs_subst() {
+        bug!("can't orphan check a trait ref with both params and inference variables {:?}",
+             trait_ref);
+    }
 
     // First, create an ordered iterator over all the type parameters to the trait, with the self
     // type appearing first.
