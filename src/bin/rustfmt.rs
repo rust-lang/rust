@@ -87,9 +87,10 @@ impl CliOptions {
             if let Ok(write_mode) = WriteMode::from_str(write_mode) {
                 options.write_mode = Some(write_mode);
             } else {
-                return Err(FmtError::from(
-                    format!("Invalid write-mode: {}", write_mode),
-                ));
+                return Err(FmtError::from(format!(
+                    "Invalid write-mode: {}",
+                    write_mode
+                )));
             }
         }
 

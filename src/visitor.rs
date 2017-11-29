@@ -109,9 +109,7 @@ impl<'a> FmtVisitor<'a> {
         if self.config.remove_blank_lines_at_start_or_end_of_block() {
             if let Some(first_stmt) = b.stmts.first() {
                 let attr_lo = inner_attrs
-                    .and_then(|attrs| {
-                        inner_attributes(attrs).first().map(|attr| attr.span.lo())
-                    })
+                    .and_then(|attrs| inner_attributes(attrs).first().map(|attr| attr.span.lo()))
                     .or_else(|| {
                         // Attributes for an item in a statement position
                         // do not belong to the statement. (rust-lang/rust#34459)
@@ -872,10 +870,7 @@ fn rewrite_first_group_attrs(
             for derive in derives {
                 derive_args.append(&mut get_derive_args(context, derive)?);
             }
-            return Some((
-                derives.len(),
-                format_derive(context, &derive_args, shape)?,
-            ));
+            return Some((derives.len(), format_derive(context, &derive_args, shape)?));
         }
     }
     // Rewrite the first attribute.

@@ -292,9 +292,7 @@ pub fn format_expr(
     };
 
     expr_rw
-        .and_then(|expr_str| {
-            recover_comment_removed(expr_str, expr.span, context)
-        })
+        .and_then(|expr_str| recover_comment_removed(expr_str, expr.span, context))
         .and_then(|expr_str| {
             let attrs = outer_attributes(&expr.attrs);
             let attrs_str = attrs.rewrite(context, shape)?;
@@ -1925,9 +1923,7 @@ where
         config: context.config,
     };
 
-    write_list(&item_vec, &fmt).map(|args_str| {
-        (tactic != DefinitiveListTactic::Vertical, args_str)
-    })
+    write_list(&item_vec, &fmt).map(|args_str| (tactic != DefinitiveListTactic::Vertical, args_str))
 }
 
 fn try_overflow_last_arg<'a, T>(

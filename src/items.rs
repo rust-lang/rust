@@ -817,8 +817,7 @@ fn format_impl_ref_and_type(
             IndentStyle::Visual => new_line_offset + trait_ref_overhead,
             IndentStyle::Block => new_line_offset,
         };
-        result.push_str(&*self_ty
-            .rewrite(context, Shape::legacy(budget, type_offset))?);
+        result.push_str(&*self_ty.rewrite(context, Shape::legacy(budget, type_offset))?);
         Some(result)
     } else {
         unreachable!();
@@ -1578,9 +1577,7 @@ fn rewrite_static(
             lhs,
             &**expr,
             Shape::legacy(remaining_width, offset.block_only()),
-        ).and_then(|res| {
-            recover_comment_removed(res, static_parts.span, context)
-        })
+        ).and_then(|res| recover_comment_removed(res, static_parts.span, context))
             .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         Some(format!("{}{};", prefix, ty_str))
@@ -2096,18 +2093,14 @@ fn rewrite_args(
     generics_str_contains_newline: bool,
 ) -> Option<String> {
     let mut arg_item_strs = args.iter()
-        .map(|arg| {
-            arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent))
-        })
+        .map(|arg| arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent)))
         .collect::<Option<Vec<_>>>()?;
 
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
     // on rust issue #27522.
     let min_args = explicit_self
-        .and_then(|explicit_self| {
-            rewrite_explicit_self(explicit_self, args, context)
-        })
+        .and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
         .map_or(1, |self_str| {
             arg_item_strs[0] = self_str;
             2
@@ -2326,9 +2319,8 @@ fn rewrite_generics(
 ) -> Option<String> {
     let g_shape = generics_shape_from_config(context.config, shape, 0)?;
     let one_line_width = shape.width.checked_sub(2).unwrap_or(0);
-    rewrite_generics_inner(context, generics, g_shape, one_line_width, span).or_else(|| {
-        rewrite_generics_inner(context, generics, g_shape, 0, span)
-    })
+    rewrite_generics_inner(context, generics, g_shape, one_line_width, span)
+        .or_else(|| rewrite_generics_inner(context, generics, g_shape, 0, span))
 }
 
 fn rewrite_generics_inner(

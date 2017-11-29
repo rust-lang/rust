@@ -147,9 +147,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let last_subexpr = &subexpr_list[suffix_try_num];
     let subexpr_list = &subexpr_list[suffix_try_num..subexpr_num - prefix_try_num];
     let iter = subexpr_list.iter().skip(1).rev().zip(child_shape_iter);
-    let mut rewrites = iter.map(|(e, shape)| {
-        rewrite_chain_subexpr(e, total_span, context, shape)
-    }).collect::<Option<Vec<_>>>()?;
+    let mut rewrites = iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
+        .collect::<Option<Vec<_>>>()?;
 
     // Total of all items excluding the last.
     let extend_last_subexpr = last_line_extendable(&parent_rewrite) && rewrites.is_empty();
