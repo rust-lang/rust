@@ -34,8 +34,6 @@ static STATIC_VISIBILITY: u8 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub static STATIC_VISIBILITY: u8 = 0;
 
 
@@ -46,8 +44,6 @@ static STATIC_MUTABILITY: u8 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 static mut STATIC_MUTABILITY: u8 = 0;
 
 
@@ -58,8 +54,6 @@ static STATIC_LINKAGE: u8 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[linkage="weak_odr"]
 static STATIC_LINKAGE: u8 = 0;
 
@@ -71,8 +65,6 @@ static STATIC_NO_MANGLE: u8 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[no_mangle]
 static STATIC_NO_MANGLE: u8 = 0;
 
@@ -84,8 +76,6 @@ static STATIC_THREAD_LOCAL: u8 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[thread_local]
 static STATIC_THREAD_LOCAL: u8 = 0;
 
@@ -97,8 +87,6 @@ static STATIC_CHANGE_TYPE_1: i16 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 static STATIC_CHANGE_TYPE_1: u64 = 0;
 
 
@@ -109,16 +97,12 @@ static STATIC_CHANGE_TYPE_2: Option<i8> = None;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 static STATIC_CHANGE_TYPE_2: Option<u16> = None;
 
 
 // Change value between simple literals ---------------------------------------
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 static STATIC_CHANGE_VALUE_1: i16 = {
     #[cfg(cfail1)]
     { 1 }
@@ -131,8 +115,6 @@ static STATIC_CHANGE_VALUE_1: i16 = {
 // Change value between expressions -------------------------------------------
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 static STATIC_CHANGE_VALUE_2: i16 = {
     #[cfg(cfail1)]
     { 1 + 1 }
@@ -143,8 +125,6 @@ static STATIC_CHANGE_VALUE_2: i16 = {
 
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 static STATIC_CHANGE_VALUE_3: i16 = {
     #[cfg(cfail1)]
     { 2 + 3 }
@@ -155,8 +135,6 @@ static STATIC_CHANGE_VALUE_3: i16 = {
 
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 static STATIC_CHANGE_VALUE_4: i16 = {
     #[cfg(cfail1)]
     { 1 + 2 * 3 }
@@ -179,13 +157,9 @@ mod static_change_type_indirectly {
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     static STATIC_CHANGE_TYPE_INDIRECTLY_1: Type = Type;
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     static STATIC_CHANGE_TYPE_INDIRECTLY_2: Option<Type> = None;
 }

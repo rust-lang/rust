@@ -36,8 +36,6 @@ fn change_closure_body() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn change_closure_body() {
     let _ = || 3u32;
 }
@@ -56,8 +54,6 @@ fn add_parameter() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn add_parameter() {
     let x = 0u32;
     let _ = |x: u32| x + 1;
@@ -76,8 +72,6 @@ fn change_parameter_pattern() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn change_parameter_pattern() {
     let _ = |&x: &u32| x;
 }
@@ -95,8 +89,6 @@ fn add_move() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn add_move() {
     let _ = move || 1;
 }
@@ -115,8 +107,6 @@ fn add_type_ascription_to_parameter() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;
     let _: u32 = closure(1);
@@ -136,8 +126,6 @@ fn change_parameter_type() {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn change_parameter_type() {
     let closure = |x: u16| (x as u64) + 1;
     let _ = closure(1);

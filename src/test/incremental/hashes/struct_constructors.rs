@@ -44,8 +44,6 @@ pub fn change_field_value_regular_struct() -> RegularStruct {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_field_value_regular_struct() -> RegularStruct {
     RegularStruct {
         x: 0,
@@ -69,8 +67,6 @@ pub fn change_field_order_regular_struct() -> RegularStruct {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_field_order_regular_struct() -> RegularStruct {
     RegularStruct {
         y: 4,
@@ -99,8 +95,6 @@ pub fn add_field_regular_struct() -> RegularStruct {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
         x: 3,
@@ -136,8 +130,6 @@ pub fn change_field_label_regular_struct() -> RegularStruct {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_field_label_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
         x: 3,
@@ -173,8 +165,6 @@ pub fn change_constructor_path_regular_struct() {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_constructor_path_regular_struct() {
     let _ = RegularStruct2 {
         x: 0,
@@ -197,8 +187,6 @@ pub mod change_constructor_path_indirectly_regular_struct {
         except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,TypeckTables"
     )]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn function() -> Struct {
         Struct {
             x: 0,
@@ -221,8 +209,6 @@ pub fn change_field_value_tuple_struct() -> TupleStruct {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_field_value_tuple_struct() -> TupleStruct {
     TupleStruct(0, 1, 3)
 }
@@ -240,8 +226,6 @@ pub fn change_constructor_path_tuple_struct() {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirOptimized,MirValidated,TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub fn change_constructor_path_tuple_struct() {
     let _ = TupleStruct2(0, 1, 2);
 }
@@ -260,8 +244,6 @@ pub mod change_constructor_path_indirectly_tuple_struct {
         except="FnSignature,Hir,HirBody,MirOptimized,MirValidated,TypeckTables"
     )]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     pub fn function() -> Struct {
         Struct(0, 1, 2)
     }
