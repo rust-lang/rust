@@ -85,7 +85,7 @@ const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bm
                                                  "avx512dq\0", "avx512er\0",
                                                  "avx512f\0", "avx512ifma\0",
                                                  "avx512pf\0", "avx512vbmi\0",
-                                                 "avx512vl\0", "avx512vpopcntdq\0"];
+                                                 "avx512vl\0", "avx512vpopcntdq\0", "mmx\0"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 
@@ -93,6 +93,8 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0",
                                                      "power8-altivec\0", "power9-altivec\0",
                                                      "power8-vector\0", "power9-vector\0",
                                                      "vsx\0"];
+
+const MIPS_WHITELIST: &'static [&'static str] = &["msa\0"];
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_target_machine(sess);
@@ -102,6 +104,7 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         "aarch64" => AARCH64_WHITELIST,
         "x86" | "x86_64" => X86_WHITELIST,
         "hexagon" => HEXAGON_WHITELIST,
+        "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
         _ => &[],
     };
