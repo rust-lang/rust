@@ -13,6 +13,9 @@ matrix:
     - env: TARGET=armv7-unknown-linux-gnueabihf
     - env: TARGET=aarch64-unknown-linux-gnu
     - os: osx
+      env: TARGET=i686-apple-darwin
+      script: ci/run.sh
+    - os: osx
       env: TARGET=x86_64-apple-darwin NO_ADD=1
       script: ci/run.sh
     - env: DOCUMENTATION
