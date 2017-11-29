@@ -1186,11 +1186,28 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.prove_trait_ref(trait_ref, location);
             }
 
+            Rvalue::Cast(cast_kind, op, ty) => {
+                match cast_kind {
+                    CastKind::ReifyFnPointer => {
+                        let ty_fn_ptr_from = tcx.mk_fn_ptr(op.ty(mir, tcx).fn_sig(tcx));
+
+                        if let Err(terr) = self.eq_types(ty_fn_ptr_from, ty, location.at_self()) {
+                            span_mirbug!(self, "", "casting {:?}", terr);
+                        }
+                    }
+
+                    CastKind::ClosureFnPointer |
+                    CastKind::UnsafeFnPointer |
+                    CastKind::Misc |
+                    CastKind::Unsize => {}
+
+                }
+            }
+
             // FIXME: These other cases have to be implemented in future PRs
             Rvalue::Use(..) |
             Rvalue::Ref(..) |
             Rvalue::Len(..) |
-            Rvalue::Cast(..) |
             Rvalue::BinaryOp(..) |
             Rvalue::CheckedBinaryOp(..) |
             Rvalue::UnaryOp(..) |
