@@ -25,6 +25,8 @@ matrix:
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
       if: branch = try OR branch = auto
 
+    # FIXME: The macOS dist images are temporarily disabled until Travis bug is fixed
+    # https://github.com/travis-ci/travis-ci/issues/8821
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
@@ -37,7 +39,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      if: branch = disabled
 
     # macOS builders. These are placed near the beginning because they are very
     # slow to run.
@@ -92,7 +94,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      if: branch = disabled
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -106,7 +108,7 @@ matrix:
         NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7.3
-      if: branch = auto
+      if: branch = disabled
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
