@@ -46,7 +46,7 @@ pub unsafe fn _mm256_add_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
-// Should be 'vandpd' instuction.
+// FIXME: Should be 'vandpd' instuction.
 // See https://github.com/rust-lang-nursery/stdsimd/issues/71
 #[cfg_attr(test, assert_instr(vandps))]
 pub unsafe fn _mm256_and_pd(a: f64x4, b: f64x4) -> f64x4 {
@@ -71,7 +71,7 @@ pub unsafe fn _mm256_and_ps(a: f32x8, b: f32x8) -> f32x8 {
 /// in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
-// Should be 'vorpd' instuction.
+// FIXME: Should be 'vorpd' instuction.
 // See https://github.com/rust-lang-nursery/stdsimd/issues/71
 #[cfg_attr(test, assert_instr(vorps))]
 pub unsafe fn _mm256_or_pd(a: f64x4, b: f64x4) -> f64x4 {
@@ -188,7 +188,7 @@ pub unsafe fn _mm256_shuffle_ps(a: f32x8, b: f32x8, imm8: i32) -> f32x8 {
 /// and then AND with `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
-// Should be 'vandnpd' instruction.
+// FIXME: Should be 'vandnpd' instruction.
 #[cfg_attr(test, assert_instr(vandnps))]
 pub unsafe fn _mm256_andnot_pd(a: f64x4, b: f64x4) -> f64x4 {
     let a: u64x4 = mem::transmute(a);
@@ -867,6 +867,7 @@ pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
 /// Extract an 8-bit integer from `a`, selected with `imm8`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi8(a: i8x32, imm8: i32) -> i32 {
     a.extract(imm8 as u32 & 31) as i32
 }
@@ -874,6 +875,7 @@ pub unsafe fn _mm256_extract_epi8(a: i8x32, imm8: i32) -> i32 {
 /// Extract a 16-bit integer from `a`, selected with `imm8`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi16(a: i16x16, imm8: i32) -> i32 {
     a.extract(imm8 as u32 & 15) as i32
 }
@@ -881,6 +883,7 @@ pub unsafe fn _mm256_extract_epi16(a: i16x16, imm8: i32) -> i32 {
 /// Extract a 32-bit integer from `a`, selected with `imm8`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi32(a: i32x8, imm8: i32) -> i32 {
     a.extract(imm8 as u32 & 7) as i32
 }
@@ -888,6 +891,7 @@ pub unsafe fn _mm256_extract_epi32(a: i32x8, imm8: i32) -> i32 {
 /// Extract a 64-bit integer from `a`, selected with `imm8`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi64(a: i64x4, imm8: i32) -> i32 {
     a.extract(imm8 as u32 & 3) as i32
 }
@@ -1251,6 +1255,7 @@ pub unsafe fn _mm256_insertf128_si256(
 /// at the location specified by `index`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi8(a: i8x32, i: i8, index: i32) -> i8x32 {
     let c = a;
     c.replace(index as u32 & 31, i)
@@ -1260,6 +1265,7 @@ pub unsafe fn _mm256_insert_epi8(a: i8x32, i: i8, index: i32) -> i8x32 {
 /// at the location specified by `index`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi16(a: i16x16, i: i16, index: i32) -> i16x16 {
     let c = a;
     c.replace(index as u32 & 15, i)
@@ -1269,6 +1275,7 @@ pub unsafe fn _mm256_insert_epi16(a: i16x16, i: i16, index: i32) -> i16x16 {
 /// at the location specified by `index`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi32(a: i32x8, i: i32, index: i32) -> i32x8 {
     let c = a;
     c.replace(index as u32 & 7, i)
@@ -1278,6 +1285,7 @@ pub unsafe fn _mm256_insert_epi32(a: i32x8, i: i32, index: i32) -> i32x8 {
 /// at the location specified by `index`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_insert_epi64(a: i64x4, i: i64, index: i32) -> i64x4 {
     let c = a;
     c.replace(index as u32 & 3, i)
@@ -1877,6 +1885,7 @@ pub unsafe fn _mm256_setzero_si256() -> __m256i {
 /// vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> f64x4 {
     f64x4::new(d, c, b, a)
@@ -1886,6 +1895,7 @@ pub unsafe fn _mm256_set_pd(a: f64, b: f64, c: f64, d: f64) -> f64x4 {
 /// vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_ps(
     a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h: f32
 ) -> f32x8 {
@@ -1896,6 +1906,7 @@ pub unsafe fn _mm256_set_ps(
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_epi8(
     e00: i8, e01: i8, e02: i8, e03: i8, e04: i8, e05: i8, e06: i8, e07: i8,
     e08: i8, e09: i8, e10: i8, e11: i8, e12: i8, e13: i8, e14: i8, e15: i8,
@@ -1914,6 +1925,7 @@ pub unsafe fn _mm256_set_epi8(
 /// Set packed 16-bit integers in returned vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_epi16(
     e00: i16, e01: i16, e02: i16, e03: i16, e04: i16, e05: i16, e06: i16,
     e07: i16, e08: i16, e09: i16, e10: i16, e11: i16, e12: i16, e13: i16,
@@ -1931,6 +1943,7 @@ pub unsafe fn _mm256_set_epi16(
 /// Set packed 32-bit integers in returned vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set_epi32(
     e0: i32, e1: i32, e2: i32, e3: i32, e4: i32, e5: i32, e6: i32, e7: i32
 ) -> i32x8 {
@@ -1940,6 +1953,7 @@ pub unsafe fn _mm256_set_epi32(
 /// Set packed 64-bit integers in returned vector with the supplied values.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> i64x4 {
     i64x4::new(d, c, b, a)
@@ -1949,6 +1963,7 @@ pub unsafe fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> i64x4 {
 /// vector with the supplied values in reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> f64x4 {
     f64x4::new(a, b, c, d)
 }
@@ -1957,6 +1972,7 @@ pub unsafe fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> f64x4 {
 /// vector with the supplied values in reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_ps(
     a: f32, b: f32, c: f32, d: f32, e: f32, f: f32, g: f32, h: f32
 ) -> f32x8 {
@@ -1967,6 +1983,7 @@ pub unsafe fn _mm256_setr_ps(
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_epi8(
     e00: i8, e01: i8, e02: i8, e03: i8, e04: i8, e05: i8, e06: i8, e07: i8,
     e08: i8, e09: i8, e10: i8, e11: i8, e12: i8, e13: i8, e14: i8, e15: i8,
@@ -1986,6 +2003,7 @@ pub unsafe fn _mm256_setr_epi8(
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_epi16(
     e00: i16, e01: i16, e02: i16, e03: i16, e04: i16, e05: i16, e06: i16,
     e07: i16, e08: i16, e09: i16, e10: i16, e11: i16, e12: i16, e13: i16,
@@ -2004,6 +2022,7 @@ pub unsafe fn _mm256_setr_epi16(
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_setr_epi32(
     e0: i32, e1: i32, e2: i32, e3: i32, e4: i32, e5: i32, e6: i32, e7: i32
 ) -> i32x8 {
@@ -2014,6 +2033,7 @@ pub unsafe fn _mm256_setr_epi32(
 /// reverse order.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 #[cfg_attr(test, assert_instr(vinsertf128))]
 pub unsafe fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> i64x4 {
     i64x4::new(a, b, c, d)
@@ -2023,6 +2043,7 @@ pub unsafe fn _mm256_setr_epi64x(a: i64, b: i64, c: i64, d: i64) -> i64x4 {
 /// elements of returned vector.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_pd(a: f64) -> f64x4 {
     f64x4::new(a, a, a, a)
 }
@@ -2031,6 +2052,7 @@ pub unsafe fn _mm256_set1_pd(a: f64) -> f64x4 {
 /// elements of returned vector.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_ps(a: f32) -> f32x8 {
     f32x8::new(a, a, a, a, a, a, a, a)
 }
@@ -2041,6 +2063,7 @@ pub unsafe fn _mm256_set1_ps(a: f32) -> f32x8 {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vpshufb))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_epi8(a: i8) -> i8x32 {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     i8x32::new(
@@ -2057,6 +2080,7 @@ pub unsafe fn _mm256_set1_epi8(a: i8) -> i8x32 {
 #[target_feature = "+avx"]
 //#[cfg_attr(test, assert_instr(vpshufb))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_epi16(a: i16) -> i16x16 {
     i16x16::new(a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a)
 }
@@ -2065,6 +2089,7 @@ pub unsafe fn _mm256_set1_epi16(a: i16) -> i16x16 {
 /// This intrinsic may generate the `vpbroadcastd`.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_epi32(a: i32) -> i32x8 {
     i32x8::new(a, a, a, a, a, a, a, a)
 }
@@ -2075,6 +2100,7 @@ pub unsafe fn _mm256_set1_epi32(a: i32) -> i32x8 {
 #[target_feature = "+avx"]
 //#[cfg_attr(test, assert_instr(vmovddup))]
 #[cfg_attr(test, assert_instr(vinsertf128))]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_set1_epi64x(a: i64) -> i64x4 {
     i64x4::new(a, a, a, a)
 }
@@ -2082,6 +2108,8 @@ pub unsafe fn _mm256_set1_epi64x(a: i64) -> i64x4 {
 /// Cast vector of type __m256d to type __m256.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castpd_ps(a: f64x4) -> f32x8 {
     mem::transmute(a)
 }
@@ -2089,6 +2117,8 @@ pub unsafe fn _mm256_castpd_ps(a: f64x4) -> f32x8 {
 /// Cast vector of type __m256 to type __m256d.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castps_pd(a: f32x8) -> f64x4 {
     mem::transmute(a)
 }
@@ -2096,6 +2126,8 @@ pub unsafe fn _mm256_castps_pd(a: f32x8) -> f64x4 {
 /// Casts vector of type __m256 to type __m256i.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castps_si256(a: f32x8) -> __m256i {
     mem::transmute(a)
 }
@@ -2103,51 +2135,53 @@ pub unsafe fn _mm256_castps_si256(a: f32x8) -> __m256i {
 /// Casts vector of type __m256i to type __m256.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castsi256_ps(a: __m256i) -> f32x8 {
     mem::transmute(a)
 }
 
 /// Casts vector of type __m256d to type __m256i.
-/// This intrinsic is only used for compilation and does not generate any
-/// instructions, thus it has zero latency.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castpd_si256(a: f64x4) -> __m256i {
     __m256i::from(a.as_i64x4())
 }
 
 /// Casts vector of type __m256i to type __m256d.
-/// This intrinsic is only used for compilation and does not generate any
-/// instructions, thus it has zero latency.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castsi256_pd(a: __m256i) -> f64x4 {
     simd_cast(i64x4::from(a))
 }
 
 /// Casts vector of type __m256 to type __m128.
-/// This intrinsic is only used for compilation and does not generate any
-/// instructions, thus it has zero latency.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castps256_ps128(a: f32x8) -> f32x4 {
     simd_shuffle4(a, a, [0, 1, 2, 3])
 }
 
 /// Casts vector of type __m256d to type __m128d.
-/// This intrinsic is only used for compilation and does not generate any
-/// instructions, thus it has zero latency.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castpd256_pd128(a: f64x4) -> f64x2 {
     simd_shuffle2(a, a, [0, 1])
 }
 
 /// Casts vector of type __m256i to type __m128i.
-/// This intrinsic is only used for compilation and does not generate any
-/// instructions, thus it has zero latency.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
     let a = i64x4::from(a);
     let dst: i64x2 = simd_shuffle2(a, a, [0, 1]);
@@ -2158,6 +2192,8 @@ pub unsafe fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
 /// the upper 128 bits of the result are undefined.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castps128_ps256(a: f32x4) -> f32x8 {
     // FIXME simd_shuffle8(a, a, [0, 1, 2, 3, -1, -1, -1, -1])
     simd_shuffle8(a, a, [0, 1, 2, 3, 0, 0, 0, 0])
@@ -2167,6 +2203,8 @@ pub unsafe fn _mm256_castps128_ps256(a: f32x4) -> f32x8 {
 /// the upper 128 bits of the result are undefined.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castpd128_pd256(a: f64x2) -> f64x4 {
     // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
     simd_shuffle4(a, a, [0, 1, 0, 0])
@@ -2176,6 +2214,8 @@ pub unsafe fn _mm256_castpd128_pd256(a: f64x2) -> f64x4 {
 /// the upper 128 bits of the result are undefined.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
     let a = i64x2::from(a);
     // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
@@ -2188,6 +2228,8 @@ pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
 /// the value of the source vector. The upper 128 bits are set to zero.
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_zextps128_ps256(a: f32x4) -> f32x8 {
     use x86::i586::sse::_mm_setzero_ps;
     simd_shuffle8(a, _mm_setzero_ps(), [0, 1, 2, 3, 4, 5, 6, 7])
@@ -2198,6 +2240,8 @@ pub unsafe fn _mm256_zextps128_ps256(a: f32x4) -> f32x8 {
 /// 128 bits are set to zero.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
     use x86::i586::sse2::_mm_setzero_si128;
     let b = mem::transmute(_mm_setzero_si128());
@@ -2211,6 +2255,8 @@ pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
 /// to zero.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
+// This intrinsic is only used for compilation and does not generate any
+// instructions, thus it has zero latency.
 pub unsafe fn _mm256_zextpd128_pd256(a: f64x2) -> f64x4 {
     use x86::i586::sse2::_mm_setzero_pd;
     simd_shuffle4(a, _mm_setzero_pd(), [0, 1, 2, 3])
@@ -2219,6 +2265,7 @@ pub unsafe fn _mm256_zextpd128_pd256(a: f64x2) -> f64x4 {
 /// Return vector of type `f32x8` with undefined elements.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_undefined_ps() -> f32x8 {
     f32x8::splat(mem::uninitialized())
 }
@@ -2226,6 +2273,7 @@ pub unsafe fn _mm256_undefined_ps() -> f32x8 {
 /// Return vector of type `f64x4` with undefined elements.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_undefined_pd() -> f64x4 {
     f64x4::splat(mem::uninitialized())
 }
@@ -2233,6 +2281,7 @@ pub unsafe fn _mm256_undefined_pd() -> f64x4 {
 /// Return vector of type __m256i with undefined elements.
 #[inline(always)]
 #[target_feature = "+avx"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_undefined_si256() -> __m256i {
     mem::transmute(i64x4::splat(mem::uninitialized()))
 }
@@ -2295,6 +2344,7 @@ pub unsafe fn _mm256_setr_m128i(lo: __m128i, hi: __m128i) -> __m256i {
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_loadu2_m128(
     hiaddr: *const f32, loaddr: *const f32
 ) -> f32x8 {
@@ -2309,6 +2359,7 @@ pub unsafe fn _mm256_loadu2_m128(
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_loadu2_m128d(
     hiaddr: *const f64, loaddr: *const f64
 ) -> f64x4 {
@@ -2322,6 +2373,7 @@ pub unsafe fn _mm256_loadu2_m128d(
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_loadu2_m128i(
     hiaddr: *const __m128i, loaddr: *const __m128i
 ) -> __m256i {
@@ -2336,6 +2388,7 @@ pub unsafe fn _mm256_loadu2_m128i(
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_storeu2_m128(
     hiaddr: *mut f32, loaddr: *mut f32, a: f32x8
 ) {
@@ -2352,6 +2405,7 @@ pub unsafe fn _mm256_storeu2_m128(
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_storeu2_m128d(
     hiaddr: *mut f64, loaddr: *mut f64, a: f64x4
 ) {
@@ -2367,6 +2421,7 @@ pub unsafe fn _mm256_storeu2_m128d(
 /// `hiaddr` and `loaddr` do not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
+// This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_storeu2_m128i(
     hiaddr: *mut __m128i, loaddr: *mut __m128i, a: __m256i
 ) {
