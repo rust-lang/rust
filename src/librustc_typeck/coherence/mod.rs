@@ -135,6 +135,6 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     overlap::check_auto_impls(tcx);
 
     // these queries are executed for side-effects (error reporting):
-    tcx.crate_inherent_impls(LOCAL_CRATE);
-    tcx.crate_inherent_impls_overlap_check(LOCAL_CRATE);
+    tcx.crate_inherent_impls();
+    tcx.crate_inherent_impls_overlap_check();
 }

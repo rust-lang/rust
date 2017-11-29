@@ -117,7 +117,7 @@ define_maps! { <'tcx>
 
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.
-    [] fn crate_variances: crate_variances(CrateNum) -> Rc<ty::CrateVariancesMap>,
+    [] fn crate_variances: crate_variances() -> Rc<ty::CrateVariancesMap>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
@@ -179,7 +179,7 @@ define_maps! { <'tcx>
     [] fn coerce_unsized_info: CoerceUnsizedInfo(DefId)
         -> ty::adjustment::CoerceUnsizedInfo,
 
-    [] fn typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
+    [] fn typeck_item_bodies: typeck_item_bodies_dep_node() -> CompileResult,
 
     [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
@@ -196,12 +196,12 @@ define_maps! { <'tcx>
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
+    [] fn crate_inherent_impls: crate_inherent_impls_dep_node() -> CrateInherentImpls,
 
     /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    [] fn crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node(CrateNum) -> (),
+    [] fn crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node() -> (),
 
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
@@ -385,11 +385,11 @@ fn coherent_trait_dep_node<'tcx>((_, def_id): (CrateNum, DefId)) -> DepConstruct
     DepConstructor::CoherenceCheckTrait(def_id)
 }
 
-fn crate_inherent_impls_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+fn crate_inherent_impls_dep_node<'tcx>() -> DepConstructor<'tcx> {
     DepConstructor::Coherence
 }
 
-fn inherent_impls_overlap_check_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+fn inherent_impls_overlap_check_dep_node<'tcx>() -> DepConstructor<'tcx> {
     DepConstructor::CoherenceInherentImplOverlapCheck
 }
 
@@ -407,7 +407,7 @@ fn symbol_name_dep_node<'tcx>(instance: ty::Instance<'tcx>) -> DepConstructor<'t
     DepConstructor::InstanceSymbolName { instance }
 }
 
-fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+fn typeck_item_bodies_dep_node<'tcx>() -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
@@ -420,7 +420,7 @@ fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::MirKeys
 }
 
-fn crate_variances<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+fn crate_variances<'tcx>() -> DepConstructor<'tcx> {
     DepConstructor::CrateVariances
 }
 

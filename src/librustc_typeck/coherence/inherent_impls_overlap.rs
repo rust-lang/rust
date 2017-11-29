@@ -9,15 +9,13 @@
 // except according to those terms.
 
 use namespace::Namespace;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::traits;
 use rustc::ty::TyCtxt;
 
-pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                    crate_num: CrateNum) {
-    assert_eq!(crate_num, LOCAL_CRATE);
+pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let krate = tcx.hir.krate();
     krate.visit_all_item_likes(&mut InherentOverlapChecker { tcx });
 }

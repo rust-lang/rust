@@ -14,7 +14,7 @@
 use arena;
 use rustc::dep_graph::DepKind;
 use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
 use rustc::ty::maps::Providers;
 use std::rc::Rc;
@@ -43,9 +43,8 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
+fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                              -> Rc<CrateVariancesMap> {
-    assert_eq!(crate_num, LOCAL_CRATE);
     let mut arena = arena::TypedArena::new();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
@@ -94,7 +93,7 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
 
     // Everything else must be inferred.
 
-    let crate_map = tcx.crate_variances(LOCAL_CRATE);
+    let crate_map = tcx.crate_variances();
     let dep_node = item_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
     tcx.dep_graph.read(dep_node);
 

@@ -18,7 +18,7 @@
 //! is computed by selecting an idea from this table.
 
 use rustc::dep_graph::DepKind;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
@@ -29,11 +29,8 @@ use syntax::ast;
 use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      crate_num: CrateNum)
+pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                       -> CrateInherentImpls {
-    assert_eq!(crate_num, LOCAL_CRATE);
-
     let krate = tcx.hir.krate();
     let mut collect = InherentCollect {
         tcx,
@@ -71,7 +68,7 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let result = tcx.dep_graph.with_ignore(|| {
-        let crate_map = tcx.crate_inherent_impls(ty_def_id.krate);
+        let crate_map = tcx.crate_inherent_impls();
         match crate_map.inherent_impls.get(&ty_def_id) {
             Some(v) => v.clone(),
             None => EMPTY_DEF_ID_VEC.with(|v| v.clone())
