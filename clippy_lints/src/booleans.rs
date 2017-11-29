@@ -167,8 +167,8 @@ struct SuggestContext<'a, 'tcx: 'a, 'v> {
 }
 
 impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
-    fn snip(&self, e: &Expr) -> String {
-        snippet_opt(self.cx, e.span).expect("don't try to improve booleans created by macros")
+    fn snip(&self, e: &Expr) -> Option<String> {
+        snippet_opt(self.cx, e.span)
     }
 
     fn simplify_not(&self, expr: &Expr) -> Option<String> {
@@ -182,20 +182,20 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                     BiLe => Some(" > "),
                     BiGe => Some(" < "),
                     _ => None,
-                }.map(|op| format!("{}{}{}", self.snip(lhs), op, self.snip(rhs)))
+                }.and_then(|op| Some(format!("{}{}{}", self.snip(lhs)?, op, self.snip(rhs)?)))
             },
             ExprMethodCall(ref path, _, ref args) if args.len() == 1 => {
                 METHODS_WITH_NEGATION
                     .iter().cloned()
                     .flat_map(|(a, b)| vec![(a, b), (b, a)])
                     .find(|&(a, _)| a == path.name.as_str())
-                    .map(|(_, neg_method)| format!("{}.{}()", self.snip(&args[0]), neg_method))
+                    .and_then(|(_, neg_method)| Some(format!("{}.{}()", self.snip(&args[0])?, neg_method)))
             },
             _ => None,
         }
     }
 
-    fn recurse(&mut self, suggestion: &Bool) {
+    fn recurse(&mut self, suggestion: &Bool) -> Option<()> {
         use quine_mc_cluskey::Bool::*;
         match *suggestion {
             True => {
@@ -218,13 +218,13 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                         self.output.push_str(&str)
                     } else {
                         self.output.push('!');
-                        let snip = self.snip(terminal);
+                        let snip = self.snip(terminal)?;
                         self.output.push_str(&snip);
                     }
                 },
                 True | False | Not(_) => {
                     self.output.push('!');
-                    self.recurse(inner)
+                    self.recurse(inner)?;
                 },
             },
             And(ref v) => {
@@ -250,10 +250,11 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
             },
             Term(n) => {
-                let snip = self.snip(self.terminals[n as usize]);
+                let snip = self.snip(self.terminals[n as usize])?;
                 self.output.push_str(&snip);
             },
         }
+        Some(())
     }
 }
 
