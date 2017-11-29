@@ -713,6 +713,21 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
       unwrapDI<DIType>(VTableHolder), UniqueId));
 }
 
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
+    uint32_t AlignInBits, LLVMRustDIFlags Flags, LLVMMetadataRef Discriminator,
+    LLVMMetadataRef Elements, const char *UniqueId) {
+#if LLVM_VERSION_GE(7, 0)
+  return wrap(Builder->createVariantPart(
+      unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
+      SizeInBits, AlignInBits, fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
+      DINodeArray(unwrapDI<MDTuple>(Elements)), UniqueId));
+#else
+  abort();
+#endif
+}
+
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
@@ -722,6 +737,28 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
                                         unwrapDI<DIFile>(File), LineNo,
                                         SizeInBits, AlignInBits, OffsetInBits,
                                         fromRust(Flags), unwrapDI<DIType>(Ty)));
+}
+
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
+    const char *Name, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
+    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMValueRef Discriminant,
+    LLVMRustDIFlags Flags, LLVMMetadataRef Ty) {
+#if LLVM_VERSION_GE(7, 0)
+  llvm::ConstantInt* D = nullptr;
+  if (Discriminant) {
+    D = unwrap<llvm::ConstantInt>(Discriminant);
+  }
+  return wrap(Builder->createVariantMemberType(unwrapDI<DIDescriptor>(Scope), Name,
+                                               unwrapDI<DIFile>(File), LineNo,
+                                               SizeInBits, AlignInBits, OffsetInBits, D,
+                                               fromRust(Flags), unwrapDI<DIType>(Ty)));
+#else
+  return wrap(Builder->createMemberType(unwrapDI<DIDescriptor>(Scope), Name,
+                                        unwrapDI<DIFile>(File), LineNo,
+                                        SizeInBits, AlignInBits, OffsetInBits,
+                                        fromRust(Flags), unwrapDI<DIType>(Ty)));
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlock(
@@ -826,11 +863,19 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
     uint32_t AlignInBits, LLVMMetadataRef Elements,
-    LLVMMetadataRef ClassTy) {
+    LLVMMetadataRef ClassTy, bool IsFixed) {
+#if LLVM_VERSION_GE(7, 0)
   return wrap(Builder->createEnumerationType(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
       SizeInBits, AlignInBits, DINodeArray(unwrapDI<MDTuple>(Elements)),
-      unwrapDI<DIType>(ClassTy)));
+      unwrapDI<DIType>(ClassTy), "", IsFixed));
+#else
+  // Ignore IsFixed on older LLVM.
+  return wrap(Builder->createEnumerationType(
+      unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
+      SizeInBits, AlignInBits, DINodeArray(unwrapDI<MDTuple>(Elements)),
+      unwrapDI<DIType>(ClassTy), ""));
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
