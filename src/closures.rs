@@ -131,7 +131,8 @@ fn rewrite_closure_with_block(
         rules: ast::BlockCheckMode::Default,
         span: body.span,
     };
-    rewrite_closure_block(&block, prefix, context, shape)
+    let block = ::expr::rewrite_block_with_visitor(context, "", &block, shape, true)?;
+    Some(format!("{} {}", prefix, block))
 }
 
 // Rewrite closure with a single expression without wrapping its body with block.
