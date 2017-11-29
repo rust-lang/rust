@@ -1342,7 +1342,7 @@ pub unsafe fn _mm256_store_ps(mem_addr: *const f32, a: f32x8) {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovupd expected
 pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> f64x4 {
-    let mut dst = f64x4::splat(mem::uninitialized());
+    let mut dst = _mm256_undefined_pd();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut f64x4 as *mut u8,
@@ -1368,7 +1368,7 @@ pub unsafe fn _mm256_storeu_pd(mem_addr: *mut f64, a: f64x4) {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovups))]
 pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> f32x8 {
-    let mut dst = f32x8::splat(mem::uninitialized());
+    let mut dst = _mm256_undefined_ps();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut f32x8 as *mut u8,
@@ -1413,7 +1413,7 @@ pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
-    let mut dst: __m256i = mem::uninitialized();
+    let mut dst = _mm256_undefined_si256();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut __m256i as *mut u8,
