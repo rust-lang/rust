@@ -1953,7 +1953,7 @@ where
                 context.force_one_line_chain = true;
             }
         }
-        last_arg_shape(&context, item_vec, one_line_shape, args_max_width).and_then(|arg_shape| {
+        last_arg_shape(args, item_vec, one_line_shape, args_max_width).and_then(|arg_shape| {
             rewrite_last_arg_with_overflow(&context, args, &mut item_vec[args.len() - 1], arg_shape)
         })
     } else {
@@ -2000,26 +2000,32 @@ where
     tactic
 }
 
-fn last_arg_shape(
-    context: &RewriteContext,
+/// Returns a shape for the last argument which is going to be overflowed.
+fn last_arg_shape<T>(
+    lists: &[&T],
     items: &[ListItem],
     shape: Shape,
     args_max_width: usize,
-) -> Option<Shape> {
-    let overhead = items.iter().rev().skip(1).fold(0, |acc, i| {
-        acc + i.item.as_ref().map_or(0, |s| first_line_width(s))
+) -> Option<Shape>
+where
+    T: Rewrite + Spanned + ToExpr,
+{
+    let is_nested_call = lists
+        .iter()
+        .next()
+        .and_then(|item| item.to_expr())
+        .map_or(false, is_nested_call);
+    if items.len() == 1 && !is_nested_call {
+        return Some(shape);
+    }
+    let offset = items.iter().rev().skip(1).fold(0, |acc, i| {
+        // 2 = ", "
+        acc + 2 + i.inner_as_ref().len()
     });
-    let max_width = min(args_max_width, shape.width);
-    let arg_indent = if context.use_block_indent() {
-        shape.block().indent.block_unindent(context.config)
-    } else {
-        shape.block().indent
-    };
-    Some(Shape {
-        width: max_width.checked_sub(overhead)?,
-        indent: arg_indent,
-        offset: 0,
-    })
+    Shape {
+        width: min(args_max_width, shape.width),
+        ..shape
+    }.offset_left(offset)
 }
 
 fn rewrite_last_arg_with_overflow<'a, T>(
@@ -2097,6 +2103,18 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
+        _ => false,
+    }
+}
+
+fn is_nested_call(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprKind::Call(..) | ast::ExprKind::Mac(..) => true,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Cast(ref expr, _) => is_nested_call(expr),
         _ => false,
     }
 }
