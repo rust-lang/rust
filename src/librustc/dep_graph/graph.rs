@@ -461,10 +461,10 @@ impl DepGraph {
         self.data.as_ref().and_then(|data| data.colors.borrow().get(dep_node).cloned())
     }
 
-    pub fn try_mark_green<'a, 'tcx>(&self,
-                                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    dep_node: &DepNode)
-                                    -> Option<DepNodeIndex> {
+    pub fn try_mark_green<'tcx>(&self,
+                                tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                                dep_node: &DepNode)
+                                -> Option<DepNodeIndex> {
         debug!("try_mark_green({:?}) - BEGIN", dep_node);
         let data = self.data.as_ref().unwrap();
 

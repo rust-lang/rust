@@ -291,10 +291,10 @@ impl<'sess> OnDiskCache<'sess> {
 
     /// Returns the cached query result if there is something in the cache for
     /// the given SerializedDepNodeIndex. Otherwise returns None.
-    pub fn try_load_query_result<'a, 'tcx, T>(&self,
-                                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                              dep_node_index: SerializedDepNodeIndex)
-                                              -> Option<T>
+    pub fn try_load_query_result<'tcx, T>(&self,
+                                          tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                                          dep_node_index: SerializedDepNodeIndex)
+                                          -> Option<T>
         where T: Decodable
     {
         self.load_indexed(tcx,
@@ -319,13 +319,13 @@ impl<'sess> OnDiskCache<'sess> {
         x.extend(diagnostics.into_iter());
     }
 
-    fn load_indexed<'a, 'tcx, T>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 dep_node_index: SerializedDepNodeIndex,
-                                 index: &FxHashMap<SerializedDepNodeIndex,
-                                                   AbsoluteBytePos>,
-                                 debug_tag: &'static str)
-                                 -> Option<T>
+    fn load_indexed<'tcx, T>(&self,
+                             tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                             dep_node_index: SerializedDepNodeIndex,
+                             index: &FxHashMap<SerializedDepNodeIndex,
+                                               AbsoluteBytePos>,
+                             debug_tag: &'static str)
+                             -> Option<T>
         where T: Decodable
     {
         let pos = if let Some(&pos) = index.get(&dep_node_index) {
