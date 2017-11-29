@@ -1297,11 +1297,72 @@ impl<T> Receiver<T> {
             Err(TryRecvError::Disconnected)
                 => Err(RecvTimeoutError::Disconnected),
             Err(TryRecvError::Empty)
-                => self.recv_max_until(Instant::now() + timeout)
+                => self.recv_deadline(Instant::now() + timeout)
         }
     }
 
-    fn recv_max_until(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
+    /// Attempts to wait for a value on this receiver, returning an error if the
+    /// corresponding channel has hung up, or if `deadline` is reached.
+    ///
+    /// This function will always block the current thread if there is no data
+    /// available and it's possible for more data to be sent. Once a message is
+    /// sent to the corresponding [`Sender`][] (or [`SyncSender`]), then this
+    /// receiver will wake up and return that message.
+    ///
+    /// If the corresponding [`Sender`] has disconnected, or it disconnects while
+    /// this call is blocking, this call will wake up and return [`Err`] to
+    /// indicate that no more messages can ever be received on this channel.
+    /// However, since channels are buffered, messages sent before the disconnect
+    /// will still be properly received.
+    ///
+    /// [`Sender`]: struct.Sender.html
+    /// [`SyncSender`]: struct.SyncSender.html
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+    ///
+    /// # Examples
+    ///
+    /// Successfully receiving value before reaching deadline:
+    ///
+    /// ```no_run
+    /// #![feature(deadline_api)]
+    /// use std::thread;
+    /// use std::time::{Duration, Instant};
+    /// use std::sync::mpsc;
+    ///
+    /// let (send, recv) = mpsc::channel();
+    ///
+    /// thread::spawn(move || {
+    ///     send.send('a').unwrap();
+    /// });
+    ///
+    /// assert_eq!(
+    ///     recv.recv_deadline(Instant::now() + Duration::from_millis(400)),
+    ///     Ok('a')
+    /// );
+    /// ```
+    ///
+    /// Receiving an error upon reaching deadline:
+    ///
+    /// ```no_run
+    /// #![feature(deadline_api)]
+    /// use std::thread;
+    /// use std::time::{Duration, Instant};
+    /// use std::sync::mpsc;
+    ///
+    /// let (send, recv) = mpsc::channel();
+    ///
+    /// thread::spawn(move || {
+    ///     thread::sleep(Duration::from_millis(800));
+    ///     send.send('a').unwrap();
+    /// });
+    ///
+    /// assert_eq!(
+    ///     recv.recv_deadline(Instant::now() + Duration::from_millis(400)),
+    ///     Err(mpsc::RecvTimeoutError::Timeout)
+    /// );
+    /// ```
+    #[unstable(feature = "deadline_api", issue = "46316")]
+    pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
         use self::RecvTimeoutError::*;
 
         loop {
