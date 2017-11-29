@@ -61,4 +61,18 @@ impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
     }
 }
 
+struct Unreachable;
+
+impl From<String> for Unreachable {
+    fn from(s: String) -> Unreachable {
+        if s.is_empty() {
+            return Unreachable;
+        }
+        match s.chars().next() {
+            Some(_) => Unreachable,
+            None => unreachable!(), // do not lint the unreachable macro
+        }
+    }
+}
+
 fn main() {}
