@@ -6,4 +6,9 @@ pub fn retry<F: Fn()>(f: F) {
     }
 }
 
-fn main() {}
+fn main() {
+    for y in 0..4 {
+        let func = || ();
+        func();
+    }
+}
